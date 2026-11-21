@@ -54,6 +54,7 @@ export type OperationAssessment={
   outcome:'success'|'failure';kind:OperationKind;elapsed:number;
   disposition?:import('./breach-operation-outcomes.ts').OperationDisposition;
   evacuatedCasualties?:number;
+  recoveredIntel?:number;
   casualties:number;teamSize:number;shots:number;hits:number;
   objective:boolean;targetSurrendered?:boolean;extracted:number;
   /** Retrospective actual captive condition, never inferred from zero HP. */
@@ -87,6 +88,8 @@ export function assessOperation(data:OperationAssessment,explain=false){
  // credit without rewriting medical severity or pretending they can fight.
  if(data.evacuatedCasualties)award('CASUALTIES EVACUATED',
    Math.min(12,Math.max(0,data.evacuatedCasualties)*4));
+ if(data.recoveredIntel)award('OPTIONAL INTELLIGENCE RECOVERED',
+   Math.min(20,Math.max(0,data.recoveredIntel)*5));
  if(data.elapsed>180)
   award('TIME MODIFIER',-Math.min(12,Math.floor((data.elapsed-180)/30)));
  if(data.kind==='capture'&&data.targetSurrendered)
