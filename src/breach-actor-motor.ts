@@ -10,7 +10,8 @@ import {approachingNarrowThreshold} from './breach-passage.ts';
 import {boundedMotorCornerLookahead} from './breach-motor-cornering.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
-import {openingYieldBudget,commitOpeningYield} from './breach-passage-yield.ts';
+import {openingYieldBudget,commitOpeningYield,MAX_OPENING_YIELD_TRAVEL}
+ from './breach-passage-yield.ts';
 import {noteQueueMotion} from './breach-queue-trace.ts';
 import {releaseEmbeddedMotorActor} from './breach-locomotion-clearance.ts';
 import {localDetourWaypointTolerance,completePreciseLocalDetour}
@@ -40,19 +41,35 @@ import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
  * inside the lead's physical body. The follower, never the lead's arrival
  * counter, moves by <=0.55 units at 60Hz to release the overlap.
  */
-// Forensic observer OFF during gameplay; no trace allocations unless
-// an explicit audit installs a listener on its own Session.
-export type GeneratedWaitYieldEvidence={time:number;actor:string;reason:string};
-const waitYieldForensics=new WeakMap<Session,
- (e:GeneratedWaitYieldEvidence)=>void>();
-export function listenGeneratedWaitYield(s:Session,
- cb:((e:GeneratedWaitYieldEvidence)=>void)|null):void{
- if(cb)waitYieldForensics.set(s,cb);else waitYieldForensics.delete(s);
-}
-function witnessGeneratedWaitYield(s:Session,a:TeamActor,reason:string){
- const observer=waitYieldForensics.get(s);
- if(observer)observer({time:s.seconds,actor:a.id,reason});
- return false;
+/** Real 60Hz no-progress witness; unlike the transient blocker flag this
+ * survives motor stage ordering. NEVER classify a normally advancing lead
+ * as stalled, and never retain evidence across authored-order or door change.
+ */
+type LeadStillEpisode={orderId:number;doorId:string;since:number;
+ lastAt:number;anchor:Pt;last:Pt};
+const leadStillEpisodes=new WeakMap<TeamActor,LeadStillEpisode>();
+function witnessedGeneratedEntryStillness(
+ peer:TeamActor,doorId:string,now:number
+):boolean{
+ const order=peer.plan[0],episode=peer.doorTraversal;
+ if(order?.kind!=='move'||order.entryDoorId!==doorId||
+    episode?.doorId!==doorId||
+    episode.maneuver!=='grab-and-hold'||peer.nav.length){
+  leadStillEpisodes.delete(peer);return false;
+ }
+ const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
+ const previous=leadStillEpisodes.get(peer);
+ if(!previous||previous.orderId!==order.id||
+    previous.doorId!==doorId||
+    now<previous.lastAt||now-previous.lastAt>.18||
+    dist(peer.p,previous.last)>.20||
+    dist(peer.p,previous.anchor)>1){
+  leadStillEpisodes.set(peer,{orderId:order.id,doorId,
+   since:now,lastAt:now,anchor:{...peer.p},last:{...peer.p}});
+  return false;
+ }
+ previous.lastAt=now;previous.last={...peer.p};
+ return now-previous.since>=1.25;
 }
 export function relieveGeneratedEntryWaitCollision(
  s:Session,a:TeamActor,n:PlanNode,dt:number
@@ -61,52 +78,32 @@ export function relieveGeneratedEntryWaitCollision(
     a.side!=='blue'||a.health<=0||a.stopped||
     a.plan[0]?.id!==n.id||a.plan[1]?.kind!=='move'||
     a.plan[1].entryDoorId!==n.doorId||
-    a.traversal||a.traversalPending||dt<=0)
-    return witnessGeneratedWaitYield(s,a,'not-exact-generated-wait');
+    a.traversal||a.traversalPending||dt<=0)return false;
  const leaf=s.doors.find(d=>d.id===n.doorId&&
    d.open&&!d.locked&&!d.jammed&&!d.wedged&&!d.heldBy&&
    (d.openFraction??0)>=.95&&Math.abs(d.angularVelocity??0)<.16);
- if(!leaf||openingYieldBudget(s,leaf,a.id)<.55)
-  return witnessGeneratedWaitYield(s,a,!leaf?'door-not-eligible':'budget');
+ if(!leaf||openingYieldBudget(s,leaf,a.id)<.55)return false;
  const d=(x:Pt,y:Pt)=>Math.hypot(x.x-y.x,x.y-y.y);
+ const priorYield=openingYieldBudget(s,leaf,a.id)<
+   MAX_OPENING_YIELD_TRAVEL-.1;
+ // After an ACTUAL initial overlap, create a small clearance margin for
+ // Rook's next swept stride instead of stopping at exact body contact.
+ const clearance=OPERATOR_RADIUS*2+(priorYield?4:1);
  const leaders=s.operators.filter(peer=>peer!==a&&peer.health>0&&
    peer.side===a.side&&peer.plan[0]?.kind==='move'&&
    peer.plan[0].entryDoorId===n.doorId&&
    peer.doorTraversal?.doorId===n.doorId&&
-   peer.blockedTime>=1.25&&
-   (peer.lastBlocker==='route'||peer.lastBlocker==='door')&&
-   d(a.p,peer.p)<OPERATOR_RADIUS*2+1);
- if(!leaders.length){
-  // Pure, opt-in diagnostic: explain which of the existing immutable
-  // same-door eligibility facts vetoed the stalled lead. No different
-  // motor policy or accepted movement is introduced here.
-  if(!waitYieldForensics.has(s))return false;
-  const peer=s.operators.find(x=>x.id==='rook');
-  if(!peer)return witnessGeneratedWaitYield(s,a,'no-lead:rook-missing');
-  const why=[
-   ...(peer===a?['same-actor']:[]),
-   ...(peer.health<=0?['dead']:[]),
-   ...(peer.side!==a.side?['wrong-side']:[]),
-   ...(peer.plan[0]?.kind!=='move'?['not-moving']:[]),
-   ...(peer.plan[0]?.entryDoorId!==n.doorId?['wrong-entry']:[]),
-   ...(peer.doorTraversal?.doorId!==n.doorId?['wrong-episode']:[]),
-   ...(peer.blockedTime<1.25?['not-stalled']:[]),
-   ...(peer.lastBlocker!=='route'&&peer.lastBlocker!=='door'?
-    ['wrong-blocker']:[]),
-   ...(d(a.p,peer.p)>=OPERATOR_RADIUS*2+1?['not-overlapping']:[])
-  ];
-  return witnessGeneratedWaitYield(s,a,
-   'no-lead:'+(why.join('+')||'inconsistent-census'));
- }
+   d(a.p,peer.p)<clearance&&
+   witnessedGeneratedEntryStillness(peer,n.doorId,s.seconds));
+ if(!leaders.length)return false;
  leaders.sort((x,y)=>d(x.p,a.p)-d(y.p,a.p)||x.id.localeCompare(y.id));
  const lead=leaders[0],old={...a.p},world=sessionWorldGeometry(s);
  // Only an actual overlap at this same threshold, never a remote crowd.
  if(pointToSegment(lead.p,doorLeafSegment(leaf))>
-    OPERATOR_RADIUS+25||d(old,lead.p)<.1)
-  return witnessGeneratedWaitYield(s,a,'lead-leaf-distance');
+    OPERATOR_RADIUS+25||d(old,lead.p)<.1)return false;
  const peers=s.operators.filter(peer=>peer!==a&&peer.health>0);
  const length=Math.min(.55,dt*35,openingYieldBudget(s,leaf,a.id));
- if(length<.1)return witnessGeneratedWaitYield(s,a,'no-step-budget');
+ if(length<.1)return false;
  const away=Math.atan2(old.y-lead.p.y,old.x-lead.p.x);
  let target:Pt|null=null,profile:'normal'|'squeeze'='normal',yaw=0,
      score=-Infinity;
@@ -135,7 +132,7 @@ export function relieveGeneratedEntryWaitCollision(
   const quality=gain-(p==='squeeze'?.07:0)-Math.abs(turn)*.03;
   if(quality>score){target=proposed;score=quality;profile=p;yaw=rotated;}
  }
- if(!target)return witnessGeneratedWaitYield(s,a,'no-swept-peer-clear-target');
+ if(!target)return false;
  a.priorP=old;a.p=target;a.velocity=0;
  a.lastBlocker='clear';a.retryRouteAt=0;
  if(profile==='squeeze'){
@@ -145,7 +142,6 @@ export function relieveGeneratedEntryWaitCollision(
  }
  commitOpeningYield(s,leaf,a.id,old,target);
  noteQueueMotion(s,a,'opening-leaf-yield',old,target,leaf.id);
- witnessGeneratedWaitYield(s,a,'yielded');
  return true;
 }
 
