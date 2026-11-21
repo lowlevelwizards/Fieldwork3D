@@ -1,4 +1,4 @@
-# Campaign Operations & Consequences — OC1–OC8
+# Campaign Operations & Consequences — OC1–OC9
 
 ## Player-facing design
 A mission is an operation with independent tactical, human, intelligence and campaign consequences. Primary objective failure does not erase rescued comrades or recovered intelligence. An organized retreat is allowed after the squad has actually deployed and started a mission, but never teleports personnel out. The player chooses how long to remain under threat to gather evidence or rescue casualties. Quick Play stays independent of campaign persistence.
@@ -37,7 +37,9 @@ A mission is an operation with independent tactical, human, intelligence and cam
 - Reuse existing treatment, real injury, drag and carry orders.
 - The report distinguishes stabilized, critical, actually evacuated, and left behind. Extraction alone does not prove survival or permanent death.
 - Career journals record physical casualty evacuation and unrecovered status independently. An unrecovered downed member moves to a nondeployable MIA archive with explicit unconfirmed fate; it never automatically heals or becomes confirmed killed. The squad cannot deploy with a missing assigned member: preflight requires a replacement.
-- Future expansions: explicit on-site recovery and roster reinstatement for MIA personnel, confidence-aware post-op medical triage, and recovery incidents. The current archive is safe but recovery is not faked. No automatic permadeath from ambiguous downed state.
+- OC9: an MIA veteran creates a named rescue follow-up contract. A genuine incapacitated rescue patient is placed in the tactical mission, and the existing DRAG/CARRY order must bring them to extraction. The after-action receipt certifies the physical carrier; campaign settlement restores the original career to reserve with prolonged medical recovery. A failed or unverified attempt leaves the patient MIA and generates a follow-up attempt.
+- The same transport toolbar now offers discovered downed civilians and the designated downed capture target without disclosing unseen people. Squad medical-supply recovery remains a separate action.
+- Future expansions: confidence-aware post-op prognosis and explicit death confirmation. Evacuation does not independently prove long-term recovery; there is no automatic permadeath from ambiguous downed state.
 
 ## OC5 — Score and report
 - Organised withdrawal gets its own scoring base and grade, not an automatic F.
@@ -71,5 +73,14 @@ A mission is an operation with independent tactical, human, intelligence and cam
 9. Typecheck, build, focused regression tests and verified release pipeline must pass before merge.
 10. Reconcile any concurrent main work before merging. Do not queue redundant Pages deployments.
 
-## Out of current batch
-Full living MIA/rescue campaign missions, per-person extraction persistence, environmental 3D collectible meshes, AI escalation when sweeping, equipment-drop economy, strategic enemy relocations and broader briefing intelligence are follow-on work. They require separate audits; do not advertise as complete until tested.
+## OC9 — Missing-personnel recovery and roster continuity
+- Generate one deterministic recovery response for each incapacitated missing veteran after real mission settlement, preserving the exact career identity and unconfirmed fate.
+- Install a downed rescue patient in the standard mission authority. A verified outcome requires actual live custody and extraction; pressing Withdraw or completing an unrelated objective does not rescue anyone.
+- A lost veteran cannot deploy, and a rescued veteran cannot redeploy until medical recovery completes. Personnel/briefing explain the recovery requirement.
+- Never duplicate careers, rewards, journals, follow-up cases or operator identity on repeated reports or imports.
+
+## Remaining scope / hard release gates
+- Individual asynchronous squad extraction and secure removal from live AI/physics/replay remain a distinct integration stage; position-based individual closeout is not a substitute for removing an actor from play.
+- Rich casualty prognosis, usable contextual civilian medical care and permanent-death evidence remain for their own medical stage.
+- AI escalation during searches, strategic enemy relocation, equipment-drop economy and deeper branching intelligence remain future campaign expansions.
+- All latest OC9 code must pass TypeScript, relevant mission tests and browser acceptance before merge. Never silence unrelated failing CI by changing frozen gameplay fingerprints or deploying into an active Pages queue.
