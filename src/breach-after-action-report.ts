@@ -101,6 +101,19 @@ export function buildAfterActionReport(rec:MissionRecorder):AfterActionReport{
   const hostiles=contactReviews(rec,'red',shots);
   const allFriendly=contactReviews(rec,'blue',shots);
   const finalById=new Map((rec.frames.at(-1)?.actors??[]).map(a=>[a.id,a]));
+  // A physically extracted member is intentionally absent from final live
+  // frames. Only a structured extraction event authorizes using that
+  // person's last actual historical frame for their end-of-service status.
+  // Legacy recordings without physical evacuation evidence stay unknown.
+  for(const event of rec.events){
+    if(event.meta?.action!=='individual-extraction')continue;
+    const id=event.actor??event.meta.contributorId;
+    if(!id||finalById.has(id))continue;
+    for(let i=rec.frames.length-2;i>=0;i--){
+      const last=rec.frames[i].actors.find(a=>a.id===id);
+      if(last){finalById.set(id,last);break;}
+    }
+  }
   // "SQUAD" in the Combat tab includes recoverable wounded survivors,
   // not only operators who were incapacitated in this recording.
   const friendlyCasualties=allFriendly.filter(c=>{
