@@ -52,21 +52,6 @@ export function selectSpecialists(paths=[]){
  * former path filters; manual forensic workflows remain available.
  */
 const movementPaths={
- movementRetail:[
-  /^src\/breach-(?:retail-rehearsal-recovery|door-traversal-maneuver|route-transition)\.ts$/,
-  /^tests\/release-d3-14d2-retail-rehearsal\.test\.mjs$/,
-  /^\.github\/workflows\/d3-14d2-retail-recovery\.yml$/
- ],
- movementDeparture:[
-  /^src\/breach-(?:d317c-micro-departure|route-recurrence|motor-collision|route-transition)\.ts$/,
-  /^tests\/release-d3-17c-physical-departure\.test\.mjs$/,
-  /^\.github\/workflows\/d3-17c-departure\.yml$/
- ],
- movementJoin:[
-  /^src\/breach-(?:d317d-door-route-join|door-traversal-maneuver|route-transition)\.ts$/,
-  /^tests\/release-d3-17d-door-route-join\.test\.mjs$/,
-  /^\.github\/workflows\/d3-17d-door-join\.yml$/
- ],
  movementRecovery:[
   /^src\/breach-[^/]*\.ts$/,
   /^tests\/release-d3-18[^/]*\.test\.mjs$/,
@@ -75,8 +60,11 @@ const movementPaths={
  movementRelease:[
   /^src\/breach-[^/]*\.ts$/,
   /^scripts\/audit-r7-squad-execution\.mjs$/,
+  /^scripts\/verification\/ci-d3-physical-truth\.mjs$/,
+  /^scripts\/lib\/d3-(?:17a-loop-incidents|30-physical-gate)\.mjs$/,
   /^tests\/release-d3-[^/]*\.test\.mjs$/,
-  /^\.github\/workflows\/d3-main-release-checkpoint\.yml$/
+  /^tests\/ci-d3-physical-truth\.test\.mjs$/,
+  /^\.github\/workflows\/d3-(?:14d2-retail-recovery|17c-departure|17d-door-join|18-physical-recovery|main-release-checkpoint)\.yml$/
  ]
 };
 export function selectMovementSuites(paths=[]){
