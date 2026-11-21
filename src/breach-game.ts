@@ -2,6 +2,9 @@ import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
 import {canConcludeWithdrawal} from './breach-operation-outcomes.ts';
+import {observeOptionalIntel,beginOptionalIntelGather,advanceOptionalIntel,
+ type OptionalIntelItem,type OptionalIntelGather,eligibleOptionalIntel}
+ from './breach-optional-intel.ts';
 import {coverTargetToken} from './worldgen/site-object-identity.ts';
 export {setStrafe,planPieAt,planPie,editPie,insertPlanNode,planWaitAt,planWait,planSync,planHoldClear,planReload,planReloadAt,planSwitchWeaponAt} from './breach-plan-utility-commands.ts';
 import {legalMoveRoute,knownTraversal,knownShoveCrossing} from './breach-known-route-authoring.ts';
@@ -404,7 +407,9 @@ export type Session=Omit<TacticalState,'operators'> & {
   /** Player-requested organized withdrawal; never a primary-objective win. */
   withdrawalRequested?:boolean;
   /** Set only after the actual GO-time physical extraction gate. */
-  withdrawalCompleted?:boolean;};
+  withdrawalCompleted?:boolean;
+  optionalIntel:OptionalIntelItem[];
+  intelGather:OptionalIntelGather|null;};
 // The elective enemy-planning budget is mission-local and never serialized.
 /** Planning authority for GO-time ordering; never edits PlanNode[].
  * A new GO after a tactical pause recomputes the remaining crossing
@@ -1667,6 +1672,10 @@ function observe(s:Session){
     const rescueSubject=s.missionType==='rescue'?
       s.civilians.find(c=>c.rescueTarget):undefined;
     const actualObjective=rescueSubject?.p??s.scenario.objective;
+    // Optional evidence is only discovered by genuine team observation;
+    // full-view architecture never pre-reveals its location.
+    if(s.optionalIntel.length)observeOptionalIntel(s.optionalIntel,p=>
+      team(s).some(a=>observerPointVisible(s,a,p)));
     if(s.objectiveIntel){
       const observed=team(s).some(a=>
         observerPointVisible(s,a,actualObjective));
@@ -1779,6 +1788,19 @@ function mission(s:Session,dt:number){
   // The equipment range is an intentionally open-ended live simulation.
   // It cannot accidentally complete a Campaign mission or generate a debrief.
   if(s.site?.training){advanceTrainingTrial(s);return;}
+  if(s.optionalIntel.length){
+    const gathered=advanceOptionalIntel(s,dt,(from,to)=>
+      unobstructed(from,to,s));
+    if(gathered){
+      const finder=team(s).find(a=>a.id===gathered.collectedBy);
+      if(finder){
+        notify(s,finder.name+' RECOVERED OPTIONAL INTELLIGENCE');
+        battleEvent(s,'intel',finder,gathered.p,'OPTIONAL INTELLIGENCE RECOVERED',
+          {action:'optional-intel-recovered',objectId:gathered.id,
+           contributorId:finder.id});
+      }
+    }
+  }
   // Intel is an actual carried mission item. An incapacitated courier
   // drops it at their final observed location for another operator to
   // recover; a different teammate cannot magically extract it.
@@ -2191,4 +2213,14 @@ export function nearestDoor(s:Session,p:Pt):Door|null{
     if(distance<best){best=distance;nearest=door;}
   }
   return nearest;
+}
+
+/** UI queries only genuinely discovered, physically accessible evidence. */
+export function nearbyOptionalIntel(s:Session,operatorId:string):OptionalIntelItem|null{
+ return eligibleOptionalIntel(s,operatorId,(from,to)=>unobstructed(from,to,s));
+}
+/** Queues a timed GO-time pickup, never claims an instant collection. */
+export function planOptionalIntelGather(s:Session,operatorId:string):boolean{
+ if(s.site?.training||!s.started)return false;
+ return beginOptionalIntelGather(s,operatorId,(from,to)=>unobstructed(from,to,s));
 }
