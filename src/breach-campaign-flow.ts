@@ -12,6 +12,7 @@ import {undoCampaignCarryGear,copyCampaignCarryLayout} from './campaign-state.ts
 import type {CampaignMode} from './breach-app-mode.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {team,debrief} from './breach-game.ts';
+import {requestWithdrawal} from './breach-operation-outcomes.ts';
 import type {OperationRecord} from './breach-operations.ts';
 import {loadOperationHistory,appendOperationHistory} from './breach-persistence.ts';
 import {careerEventsForOperation} from './campaign-history.ts';
@@ -102,6 +103,10 @@ function recordCompletedOperation(){
     id:'operation-'+currentCampaign.activeContractId,contractId:currentCampaign.activeContractId,
     day:currentCampaign.day,outcome:state.phase==='won'?'success':'failure',
     grade:stats.grade,elapsed:stats.time,
+    disposition:stats.operationOutcome.disposition,
+    objectiveSecured:stats.operationOutcome.objectiveSecured,
+    extractedIds:stats.operationOutcome.extractedOperatorIds.map(careerId),
+    leftBehindIds:stats.operationOutcome.leftBehindOperatorIds.map(careerId),
     ...(isDispatchPilot(currentCampaign)?
       {dispatchForce:dispatchForceHistory(stats.forceReview)}:{}),
     participatingIds:members.map(a=>careerId(a.id)),
@@ -142,6 +147,23 @@ function recordCompletedOperation(){
   appendOperationHistory(record);
 }
 
+ const withdrawButton=document.createElement('button');
+ withdrawButton.type='button';withdrawButton.id='campaignWithdrawButton';
+ withdrawButton.textContent='WITHDRAW SQUAD';
+ withdrawButton.title='Order an organized withdrawal; surviving mobile operators must reach extraction';
+ config.siteSettings.append(withdrawButton);
+ withdrawButton.addEventListener('click',()=>{
+  const state=config.getSession();
+  if(config.isReplaying()||!['mission','quick'].includes(config.getMode())||
+     !state.started||!['running','planning'].includes(state.phase))return;
+  if(state.withdrawalRequested){
+   state.withdrawalRequested=false;
+   showFieldworkActionFeedback('Withdrawal cancelled; mission continues');
+  }else if(requestWithdrawal(state)){
+   showFieldworkActionFeedback('Withdrawal ordered — move all mobile operators to extraction');
+  }
+  config.refreshHud();
+ });
  const backButton=document.createElement('button');
  backButton.type='button';backButton.id='campaignReturnButton';
  backButton.textContent='OPERATIONS ROOM';
