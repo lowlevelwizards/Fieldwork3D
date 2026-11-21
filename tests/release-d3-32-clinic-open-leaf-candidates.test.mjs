@@ -11,6 +11,7 @@ import {OPERATOR_RADIUS,doorLeafSegment,pointToSegment}
  from '../src/breach-core.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {sweptBodyClear,bodyClear} from '../src/breach-navigation.ts';
+import {routeWithSqueezeWorld,routeWithSqueezeIntel,routeToNextOperableDoor} from '../src/breach-squeeze-route.ts';
 
 test('D3.32 Clinic D9: old chord blocked, two swept full-body legs clear',()=>{
  const site=generateSite(14490156,'standard',undefined,
@@ -54,4 +55,67 @@ test('D3.32 Clinic D9: old chord blocked, two swept full-body legs clear',()=>{
   directBlocked:true,stage,fullBodyLegsClear:2,
   doorId:'D9',fraction:d9.openFraction
  }));
+});
+
+/** D3.32 P3B forensic ONLY: explain why Vale, freed from passage wait,
+ * has zero nav near D9. Probe a bounded number of physically swept
+ * departures on the same immutable clinic scene; no movement or policy.
+ */
+test('D3.32 Clinic Vale: classify physically clear cold route departures',()=>{
+ const site=generateSite(14490156,'standard',undefined,
+  {mission:'intel'},{archetype:'clinic'});
+ const quiet={...site,training:true,enemies:[],encounter:undefined};
+ const s=newSession(0,14490156,'full-view',site.scale??'standard',
+  'intel',quiet,{enableCivilians:false});
+ const open=new Map([['FRONT',1.55],['D3',1],['D8',1],
+  ['D9',1.55],['D10',1],['SERVICE',1],['COURT-1',1],['COURT-2',1]]);
+ for(const door of s.doors){
+  const f=open.get(door.id);
+  if(f!==undefined)Object.assign(door,{open:true,openFraction:f,
+   pushTarget:f,angularVelocity:0,heldBy:null});
+ }
+ const world=sessionWorldGeometry(s);
+ const from={x:430.32069912069454,y:278.5743135306611};
+ const goal={x:315.5,y:585};
+ const sweep=(a,b)=>sweptBodyClear(a,b,s.doors,OPERATOR_RADIUS,world);
+ const stand=p=>bodyClear(p,s.doors,OPERATOR_RADIUS,world);
+ let swept=0,worldProbes=0,portalProbes=0;
+ const worldStarts=[],portalStarts=[],intelStarts=[],safe=[];
+ for(const radius of [8,16,24,32,40,52])
+  for(let turn=0;turn<16;turn++){
+   const rad=turn*Math.PI/8;
+   const stage={x:from.x+Math.cos(rad)*radius,
+    y:from.y+Math.sin(rad)*radius};
+   if(!stand(stage)||!sweep(from,stage))continue;
+   swept++;
+   if(safe.length<16)safe.push({radius,turn});
+   if(worldProbes<24){
+    worldProbes++;
+    const route=routeWithSqueezeWorld(stage,goal,s.doors,world);
+    if(route.length&&sweep(stage,route[0]))
+     worldStarts.push({radius,turn,n:route.length,
+      first:route[0],last:route.at(-1)});
+   }
+   if(portalProbes<24){
+    portalProbes++;
+    const route=routeToNextOperableDoor(stage,goal,s.doors,world);
+    if(route.length&&sweep(stage,route[0]))
+     portalStarts.push({radius,turn,n:route.length,
+      first:route[0],last:route.at(-1)});
+   }
+   if(intelStarts.length<5){
+    const route=routeWithSqueezeIntel(s.intel,stage,goal);
+    if(route.length&&sweep(stage,route[0]))
+     intelStarts.push({radius,turn,n:route.length});
+   }
+  }
+ const hereWorld=routeWithSqueezeWorld(from,goal,s.doors,world);
+ const hereIntel=routeWithSqueezeIntel(s.intel,from,goal);
+ console.log('D332_VALE_COLD_PROBE',JSON.stringify({from,goal,
+  nearLeaf:pointToSegment(from,doorLeafSegment(s.doors.find(x=>x.id==='D9'))),
+  bodyClear:stand(from),worldAtActor:hereWorld.length,
+  intelAtActor:hereIntel.length,swept,worldProbes,portalProbes,
+  safe,worldStarts:worldStarts.slice(0,12),
+  portalStarts:portalStarts.slice(0,12),intelStarts}));
+ assert.ok(stand(from));
 });
