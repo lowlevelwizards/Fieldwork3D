@@ -37,6 +37,7 @@ jobs:
         run: |
           node --test tests/ci-regression-plan.test.mjs
           node --test tests/ci-specialist-routing.test.mjs
+          node --test tests/ci-movement-routing.test.mjs
           node scripts/verification/ci-regression-plan.mjs --check
           node scripts/verification/ci-workflow-inventory.mjs --check
           node scripts/verification/ci-workflow-contract.mjs
@@ -116,6 +117,8 @@ jobs:
       loadout: ${{ steps.owners.outputs.loadout }}
       physical: ${{ steps.owners.outputs.physical }}
       arsenal: ${{ steps.owners.outputs.arsenal }}
+      movementRecovery: ${{ steps.owners.outputs.movementRecovery }}
+      movementRelease: ${{ steps.owners.outputs.movementRelease }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -147,3 +150,20 @@ jobs:
     permissions:
       contents: read
       actions: read
+
+  # A3: one current witnessed physical truth gate supersedes three obsolete
+  # historical arrival snapshots; specialized forensic workflows stay manual.
+  # The D3.18 focused contract remains a separate reusable acceptance lane.
+  d3-recovery-critical:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.movementRecovery == 'true' }}
+    uses: ./.github/workflows/d3-18-physical-recovery.yml
+    permissions:
+      contents: read
+
+  d3-main-physical-checkpoint:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.movementRelease == 'true' }}
+    uses: ./.github/workflows/d3-main-release-checkpoint.yml
+    permissions:
+      contents: read

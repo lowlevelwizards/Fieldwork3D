@@ -11,6 +11,11 @@ const paths={
  loadout:'.github/workflows/loadout-prep-l2-critical.yml',
  physical:'.github/workflows/f6-physical-equipment-critical.yml',
  arsenal:'.github/workflows/arsenal-m2-mount-inventory.yml',
+ d3retail:'.github/workflows/d3-14d2-retail-recovery.yml',
+ d3departure:'.github/workflows/d3-17c-departure.yml',
+ d3join:'.github/workflows/d3-17d-door-join.yml',
+ d3recovery:'.github/workflows/d3-18-physical-recovery.yml',
+ d3release:'.github/workflows/d3-main-release-checkpoint.yml',
  pages:'.github/workflows/pages.yml'
 };
 const read=path=>readFileSync(path,'utf8');
@@ -65,6 +70,35 @@ export function validateWorkflowContracts(wf){
   if(name!=='loadout')assert.ok(!triggers.includes('  pull_request:'),
    name+' still has an independent PR trigger');
  }
+ // A3: physical movement PR verification has one current, witnessed
+ // D3.30 + frozen D3.15B4 release gate. Obsolete earlier cohorts remain
+ // individually runnable (including their non-main PR historical entry).
+ must('ci','--test tests/ci-movement-routing.test.mjs');
+ for(const [name,job,output] of [
+  ['d3recovery','d3-recovery-critical','movementRecovery'],
+  ['d3release','d3-main-physical-checkpoint','movementRelease']]){
+  must('ci',job+':');
+  must('ci','uses: ./.github/workflows/'+paths[name].split('/').at(-1));
+  must('ci','needs.specialist-routing.outputs.'+output);
+  must(name,'workflow_call:');
+  must(name,'workflow_dispatch:');
+ }
+ for(const name of ['d3retail','d3departure','d3join']){
+  no('ci','uses: ./.github/workflows/'+paths[name].split('/').at(-1));
+  must(name,'workflow_call:');
+  must(name,'workflow_dispatch:');
+  must(name,'branches-ignore: [main]');
+ }
+ for(const contract of [
+  'tests/release-d3-14d2-retail-rehearsal.test.mjs',
+  'tests/release-d3-17c-physical-departure.test.mjs',
+  'tests/release-d3-17d-door-route-join.test.mjs',
+  'tests/ci-d3-physical-truth.test.mjs',
+  'scripts/verify-d3-30-mainline.mjs',
+  'scripts/verification/ci-d3-physical-truth.mjs',
+  '--d329-cancellation-door-witness',
+  '--d315b4-blind22'])
+  must('d3release',contract);
  must('arsenal','smoke-arsenal-m25-visual.mjs');
  must('arsenal','audit-pages-release-checkpoint.mjs');
  must('architecture','breach-critical-suite.mjs');

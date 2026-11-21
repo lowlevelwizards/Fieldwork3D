@@ -1,6 +1,8 @@
 name: D3.14D2 physically swept retail rehearsal recovery
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/breach-retail-rehearsal-recovery.ts'
       - 'src/breach-door-traversal-maneuver.ts'
