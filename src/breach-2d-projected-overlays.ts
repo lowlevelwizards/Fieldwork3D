@@ -375,6 +375,28 @@ function renderProjectedPlans(){
     }
     draw.strokeStyle='#f0cd96';draw.lineWidth=3;draw.stroke();
   }
+  if(!replaying){
+    for(const item of state.optionalIntel??[]){
+      if(!item.discovered||item.collectedBy)continue;
+      const at=worldToScreen(item.p,7);
+      draw.save();draw.fillStyle='#343f34';draw.strokeStyle='#e0cb94';
+      draw.lineWidth=2;
+      draw.fillRect(at.x-10,at.y-7,20,14);
+      draw.strokeRect(at.x-10,at.y-7,20,14);
+      draw.fillStyle='#f1dfb0';draw.font='700 11px "Saira Condensed",sans-serif';
+      draw.textAlign='center';draw.fillText('INTEL',at.x,at.y-14);
+      draw.restore();
+    }
+  }
+  if(!replaying&&state.withdrawalRequested){
+    const exit=worldToScreen(state.scenario.extract,9);
+    draw.save();draw.strokeStyle='#b9ddca';draw.lineWidth=2;
+    draw.setLineDash([6,5]);draw.beginPath();
+    draw.arc(exit.x,exit.y,20,0,Math.PI*2);draw.stroke();
+    draw.setLineDash([]);draw.fillStyle='#d8f2df';
+    draw.font='700 12px "Saira Condensed",sans-serif';draw.textAlign='center';
+    draw.fillText('WITHDRAW',exit.x,exit.y-27);draw.restore();
+  }
   if(!replaying&&state.mission==='secure'){
     const bounds=approximateObjectiveBounds(state);
     if(bounds){

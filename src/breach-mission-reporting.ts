@@ -3,15 +3,16 @@
  * replay. Isolated from frame/render state to keep reporting truthful.
  */
 import type {Session} from './breach-game.ts';
-import type {Pt} from './breach-core.ts';
 import {team,enemies} from './breach-session-selectors.ts';
 import {operationBrief,assessOperation,type OperationKind} from './breach-operations.ts';
 import {stabilizationSummary} from './breach-casualty-status.ts';
 import {attributableCivilianHarm} from './breach-civilian-harm.ts';
 import {assessDispatchForce} from './dispatch-force-review.ts';
 import {captureVitalStatus} from './breach-capture-vitals.ts';
+import {deriveOperationOutcome,deployedTeam} from './breach-operation-outcomes.ts';
+import {verifiedMissingPersonRecovery} from './breach-missing-recovery.ts';
+import {optionalIntelRecovered} from './breach-optional-intel.ts';
 
-const near=(a:Pt,b:Pt,range:number)=>Math.hypot(a.x-b.x,a.y-b.y)<=range;
 
 export function operationBriefing(s:Session){
   const brief=operationBrief(s.missionType);
@@ -25,7 +26,10 @@ export function operationBriefing(s:Session){
 export function missionText(s:Session){
  if(s.site?.training)return 'TRAINING · '+s.site.name+' · PRACTICE';
   if(s.phase==='won')return 'COMPLETE — OPERATION SUCCESS';
-  if(s.phase==='lost')return 'MISSION FAILED';
+  if(s.phase==='lost')return s.withdrawalCompleted?'SQUAD WITHDRAWN':'MISSION FAILED';
+  if(s.withdrawalRequested)return 'WITHDRAWAL · '+
+    (s.extractedOperators?.length??0)+' EXTRACTED • MOVE REMAINING SQUAD TO EXIT';
+  if(s.missingRecoveryTargetId)return 'RECOVER MISSING OPERATOR · DRAG OR CARRY TO EXTRACTION';
   if(s.mission==='clear')return s.missionType==='capture'?
     'TAKE TARGET ALIVE · RESTRAIN OR TREAT IF DOWN':
     'CLEAR HOSTILES • SECURE OBJECTIVE';
@@ -45,11 +49,13 @@ export function missionText(s:Session){
     'RETURN TO EXTRACTION OUTSIDE';
 }
 export function debrief(s:Session){
-  const own=team(s);
+  const own=deployedTeam(s);
+  const operationOutcome=deriveOperationOutcome(s);
+  const missingPersonRecovery=verifiedMissingPersonRecovery(s);
+  const recoveredIntel=optionalIntelRecovered(s);
   const casualties=own.filter(a=>a.health<=0).length;
   const casualtyCare=stabilizationSummary(own);
-  const evacuated=own.filter(a=>a.health<=0&&
-   near(a.p,s.scenario.extract,47)).map(a=>a.id);
+  const evacuated=operationOutcome.evacuatedCasualtyIds;
   const shots=own.reduce((t,a)=>t+a.shots,0);
   const hits=own.reduce((t,a)=>t+a.hits,0);
   const target=enemies(s).find(e=>e.id===s.captureTarget);
@@ -84,18 +90,27 @@ export function debrief(s:Session){
   const forceReview=assessDispatchForce(s.civilianHarmEvents,s.battleEvents);
   const assessment=assessOperation({
     outcome:s.phase==='won'?'success':'failure',
+    disposition:operationOutcome.disposition,
+    evacuatedCasualties:operationOutcome.evacuatedCasualtyIds.length,
+    recoveredIntel:recoveredIntel.length,
     kind:s.missionType as OperationKind,
     elapsed:Math.floor(s.seconds),casualties,teamSize:own.length,
-    shots,hits,objective:s.mission==='done',
+    shots,hits,objective:operationOutcome.objectiveSecured,
     targetSurrendered:target?.surrendered??false,
     captureOutcome:s.missionType==='capture'?captureOutcome:undefined,
     civilianInjured,civilianDown,
     civilianPlayerInjured:attributable.injured,
     civilianPlayerDown:attributable.down,
-    extracted:own.filter(a=>a.health>0&&
-      near(a.p,s.scenario.extract,47)).length,
+    extracted:operationOutcome.extractedOperatorIds.length,
   },true);
-  return {result:s.phase,time:Math.floor(s.seconds),casualties,
+  return {result:s.phase,operationOutcome,
+    missingPersonRecovery,
+    optionalIntel:{total:s.optionalIntel?.length??0,
+      discovered:s.optionalIntel?.filter(i=>i.discovered).length??0,
+      collected:s.optionalIntel?.filter(i=>i.collectedBy!==null).length??0,
+      recovered:recoveredIntel.length,
+      itemIds:recoveredIntel.map(i=>i.id)},
+    time:Math.floor(s.seconds),casualties,
     stabilizedCasualties:casualtyCare.stabilized,
     criticalCasualties:casualtyCare.critical,
     evacuatedCasualties:evacuated,
@@ -105,7 +120,7 @@ export function debrief(s:Session){
     civilianPlayerDown:attributable.down,
     kills:own.reduce((t,a)=>t+a.kills,0),
     pauses:s.timesPaused,variant:s.scenario.name,
-    objective:s.mission==='done',
+    objective:operationOutcome.objectiveSecured,
     type:s.missionType,
     grade:assessment.grade,score:assessment.score,
     scoreComponents:assessment.scoreComponents,

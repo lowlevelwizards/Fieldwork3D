@@ -12,10 +12,12 @@ import {undoCampaignCarryGear,copyCampaignCarryLayout} from './campaign-state.ts
 import type {CampaignMode} from './breach-app-mode.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {team,debrief} from './breach-game.ts';
+import {requestWithdrawal,deployedTeam,requestIndividualExtraction} from './breach-operation-outcomes.ts';
+import {installMissingPersonRecovery} from './breach-missing-recovery.ts';
 import type {OperationRecord} from './breach-operations.ts';
 import {loadOperationHistory,appendOperationHistory} from './breach-persistence.ts';
 import {careerEventsForOperation} from './campaign-history.ts';
-import {resolveOperation,tacticalSlotOperator,type CampaignReport}
+import {resolveOperation,tacticalSlotOperator,campaignSquadPresent,type CampaignReport}
   from './campaign-state.ts';
 import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
  purchaseFieldStock,
@@ -59,7 +61,7 @@ export type CampaignFlowHooks={
  getMode:()=>CampaignMode;setMode:(value:CampaignMode)=>void;
  getIntel:()=>IntelMode;setIntel:(value:IntelMode)=>void;
  getScale:()=>SiteScale;setScale:(value:SiteScale)=>void;
- getSession:()=>Session;isReplaying:()=>boolean;
+ getSession:()=>Session;getSelected:()=>string;isReplaying:()=>boolean;
  siteSize:HTMLButtonElement;siteSettings:HTMLElement;briefingRoster:HTMLElement;
  refreshHud:()=>void;randomSeed:()=>number;
  resetContract:(job:CampaignState['contracts'][number])=>void;
@@ -94,7 +96,7 @@ function recordCompletedOperation(){
     (state.phase!=='won'&&state.phase!=='lost'))return;
   recordedOperation=state;
   if(config.getMode()==='mission'&&currentCampaign?.activeContractId){
-   const members=team(state);
+   const members=deployedTeam(state);
    const careerId=(slotId:string)=>tacticalSlotOperator(currentCampaign!,slotId)?.id??slotId;
    const mapping=Object.fromEntries(members.map(a=>[a.id,careerId(a.id)]));
    const stats=debrief(state);
@@ -102,6 +104,19 @@ function recordCompletedOperation(){
     id:'operation-'+currentCampaign.activeContractId,contractId:currentCampaign.activeContractId,
     day:currentCampaign.day,outcome:state.phase==='won'?'success':'failure',
     grade:stats.grade,elapsed:stats.time,
+    disposition:stats.operationOutcome.disposition,
+    objectiveSecured:stats.operationOutcome.objectiveSecured,
+    ...(stats.missingPersonRecovery?{
+      missingRecoveredId:stats.missingPersonRecovery.operatorId,
+      missingRecoveredBy:careerId(stats.missingPersonRecovery.carrierId)}:{}),
+    intelRecovered:stats.optionalIntel.recovered,
+    intelRecoveryBy:Object.fromEntries(members.flatMap(member=>{
+      const n=state.optionalIntel.filter(item=>item.collectedBy===member.id&&
+        stats.optionalIntel.itemIds.includes(item.id)).length;
+      return n?[[careerId(member.id),n]]:[];
+    })),
+    extractedIds:stats.operationOutcome.extractedOperatorIds.map(careerId),
+    leftBehindIds:stats.operationOutcome.leftBehindOperatorIds.map(careerId),
     ...(isDispatchPilot(currentCampaign)?
       {dispatchForce:dispatchForceHistory(stats.forceReview)}:{}),
     participatingIds:members.map(a=>careerId(a.id)),
@@ -142,6 +157,37 @@ function recordCompletedOperation(){
   appendOperationHistory(record);
 }
 
+ const withdrawButton=document.createElement('button');
+ withdrawButton.type='button';withdrawButton.id='campaignWithdrawButton';
+ withdrawButton.textContent='WITHDRAW SQUAD';
+ withdrawButton.title='Order an organized withdrawal; surviving mobile operators must reach extraction';
+ config.siteSettings.append(withdrawButton);
+ withdrawButton.addEventListener('click',()=>{
+  const state=config.getSession();
+  if(config.isReplaying()||!['mission','quick'].includes(config.getMode())||
+     !state.started||!['running','planning'].includes(state.phase))return;
+  if(state.withdrawalRequested){
+   state.withdrawalRequested=false;
+   if(state.pendingExtractionIds)state.pendingExtractionIds.length=0;
+   showFieldworkActionFeedback('Withdrawal cancelled; already-extracted personnel remain evacuated');
+  }else if(requestWithdrawal(state)){
+   showFieldworkActionFeedback('Withdrawal ordered — move all mobile operators to extraction');
+  }
+  config.refreshHud();
+ });
+ const extractSelected=document.createElement('button');
+ extractSelected.type='button';extractSelected.id='campaignExtractSelectedButton';
+ extractSelected.textContent='EXTRACT SELECTED';
+ extractSelected.title='Queue the selected operator to exit permanently, after reaching extraction and pressing GO';
+ config.siteSettings.append(extractSelected);
+ extractSelected.addEventListener('click',()=>{
+  const state=config.getSession();
+  if(config.isReplaying()||!['mission','quick'].includes(config.getMode())||
+    !requestIndividualExtraction(state,config.getSelected())){
+   showFieldworkActionFeedback('SELECT A MOBILE OPERATOR AT EXTRACTION; RELEASE CARRIED CASUALTIES FIRST');
+  }else showFieldworkActionFeedback('INDIVIDUAL EXTRACTION QUEUED — PRESS GO');
+  config.refreshHud();
+ });
  const backButton=document.createElement('button');
  backButton.type='button';backButton.id='campaignReturnButton';
  backButton.textContent='OPERATIONS ROOM';
@@ -406,6 +452,11 @@ function showCampaignHome(){
 }
 function deployCampaignContract(){
  if(!model.campaign?.activeContractId)return;
+ if(!campaignSquadPresent(model.campaign)){
+  void showFieldworkNotice('Squad incomplete',
+   'Missing, retired, or recovering personnel cannot deploy. Assign a ready replacement in Personnel.');
+  showCampaignHome();return;
+ }
  preGoPrep.close();
  const job=model.campaign.contracts.find(k=>k.id===model.campaign!.activeContractId);
  if(!job)return;
@@ -415,6 +466,12 @@ function deployCampaignContract(){
  model.scale=deployment.scale;
  config.siteSize.textContent='MAP SIZE · '+model.scale.toUpperCase();
  config.resetContract(job);
+ if(job.recoveryOperatorId&&
+    !installMissingPersonRecovery(config.getSession(),job.recoveryOperatorId)){
+  void showFieldworkNotice('Recovery mission unavailable',
+   'Unable to establish a transportable casualty at this site.');
+  showCampaignHome();return;
+ }
  setObjectiveIntelLevel(config.getSession(),contractObjectiveIntel(job));
  // Capture AFTER reset: the reset pathway invalidates prior mission state.
  deployedIncident=deployedDispatchIncident(model.campaign,job.id);

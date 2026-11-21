@@ -65,7 +65,7 @@ import {quoteCampaignSquadRefill,quoteCampaignOperatorRefill}
 import {FIELD_STOCK_PACKS,FIELD_STOCK_LIMIT}
  from './equipment-campaign-field-stock.ts';
 import {FieldInventoryUndoHistory} from './equipment-field-undo.ts';
-import {campaignIntelBalance,contractObjectiveIntel} from './campaign-state.ts';
+import {campaignIntelBalance,contractObjectiveIntel,campaignSquadPresent} from './campaign-state.ts';
 import {projectOperationsSummary} from './ui/campaign/operations-summary.ts';
 import './campaign-style.css';
 import './ui/campaign-uxr-workspaces.css';
@@ -1216,7 +1216,8 @@ export class CampaignScreen{
      'DAY '+earned.day+' · UNIT RECOGNITION: '+earned.name));
   }
   const highlights=c.journal.filter(e=>
-   ['wounded','first-deployment','first-success','objective','intel','down','distinction']
+   ['wounded','first-deployment','first-success','objective','intel','down','distinction',
+    'operator-missing','operator-recovered','casualty-evacuated']
     .includes(e.kind)).slice(-6).reverse();
   if(highlights.length){
    const timeline=node('details','campaign-career-timeline');
@@ -1246,7 +1247,8 @@ export class CampaignScreen{
     record.dataset.status=operator.status;
     const identity=node('div','campaign-archive-identity');
     identity.append(node('strong','',operator.callsign),
-     node('span','',operator.status.toUpperCase()));
+     node('span','',operator.missingSinceOperationId&&operator.status==='lost'?
+       'MISSING · FATE UNCONFIRMED':operator.status.toUpperCase()));
     const metrics=node('div','campaign-archive-metrics');
     metrics.append(node('span','',operator.missions+' DEPLOYMENTS'),
      node('span','',operator.successful+' SUCCESSES'));
@@ -2757,6 +2759,12 @@ export class CampaignScreen{
    add('RISK',['','LOW','MODERATE','HIGH'][contract.risk]);
    add('REWARD / DEADLINE',contract.reward+' CR · DAY '+contract.deadline);
   }
+  if(contract.recoveryOperatorId){
+   const patient=campaign.operators.find(o=>o.id===contract.recoveryOperatorId);
+   add('MISSING OPERATOR',
+    (patient?.callsign??'UNKNOWN')+
+    ' · MUST DRAG OR CARRY TO EXTRACTION · MEDICAL FATE UNCONFIRMED');
+  }
   add('OBJECTIVE WHEREABOUTS',({
    unknown:'Unknown · team must search the building',
    approximate:'Approximate section · several possible rooms',
@@ -2800,7 +2808,9 @@ export class CampaignScreen{
   for(const member of assigned){
    const person=node('div','campaign-preflight-member');
    person.append(node('strong','',member.callsign),node('span','',
-    member.weapon.toUpperCase()+' · '+(member.recoveryDays>0?
+    member.weapon.toUpperCase()+' · '+(member.status==='lost'?
+     'MISSING · FATE UNCONFIRMED':member.status==='retired'?
+     'RETIRED':member.recoveryDays>0?
      'RECOVERING '+member.recoveryDays+' DAYS':'READY')));
    roster.append(person);
   }
@@ -2809,6 +2819,8 @@ export class CampaignScreen{
   const cautions:string[]=[];
   if(assigned.length<4)cautions.push('Only '+assigned.length+' of 4 squad slots filled');
   if(assigned.some(p=>p.recoveryDays>0))cautions.push('Assigned operator still recovering');
+  if(!campaignSquadPresent(campaign))cautions.push(
+   'Four ready operators required. Replace missing, retired or recovering personnel.');
   if(campaign.supplies.ammo<60)cautions.push('Low ammunition stock for future resupply');
   if(campaign.supplies.medical===0)cautions.push('No spare medical kits in stock');
   if(cautions.length){
@@ -2816,7 +2828,8 @@ export class CampaignScreen{
    warnings.append(node('strong','','READINESS ADVISORIES'));
    for(const warning of cautions)warnings.append(node('p','',warning));
    const repairActions=node('div','campaign-preflight-fix-actions');
-   const needsSquad=assigned.length<4||assigned.some(p=>p.recoveryDays>0);
+   const needsSquad=!campaignSquadPresent(campaign)||
+     assigned.some(p=>p.recoveryDays>0);
    const needsSupply=campaign.supplies.ammo<60||campaign.supplies.medical===0;
    const fix=(tab:'personnel'|'logistics')=>{
     dismiss();
@@ -2839,6 +2852,8 @@ export class CampaignScreen{
    dismiss();
    this.handlers.chooseContract(contract.id);
   },'campaign-primary');
+  deploy.disabled=!campaignSquadPresent(campaign);
+  if(deploy.disabled)deploy.title='Assign four ready operators; missing, retired, and recovering personnel cannot deploy';
   const dismiss=()=>{
    overlay.remove();
    prior?.focus({preventScroll:true});
