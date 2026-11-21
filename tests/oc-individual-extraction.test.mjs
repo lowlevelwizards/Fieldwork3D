@@ -4,6 +4,7 @@ import {requestIndividualExtraction,commitIndividualExtractions,canConcludeWithd
  deriveOperationOutcome,deployedTeam} from '../src/breach-operation-outcomes.ts';
 import {optionalIntelRecovered,advanceOptionalIntel}
  from '../src/breach-optional-intel.ts';
+import {newSession,toggling,stepSession} from '../src/breach-game.ts';
 const friend=(id,x,health=4)=>({
  id,name:id.toUpperCase(),side:'blue',health,p:{x,y:0},
  carriedById:null,carryingId:null,surrendered:false,plan:[],path:[]
@@ -82,4 +83,21 @@ test('OC10 optional evidence stays with an archived living courier, never drops'
  assert.equal(evidence.collectedBy,'rook','archive is not a killed courier');
  assert.equal(optionalIntelRecovered(s).length,1,
   'physically carried evidence survives individual extraction');
+});
+
+test('OC10 actual 60 Hz mission tick retires an arrived squad member',()=>{
+ const s=newSession(0,78219,'floor-plan','standard','clear');
+ const rook=s.operators.find(a=>a.id==='rook');
+ const at={...s.scenario.extract};
+ rook.p={...at};rook.plan.length=0;rook.path.length=0;
+ s.started=true;s.phase='planning';s.withdrawalRequested=true;
+ assert.equal(requestIndividualExtraction(s,'rook'),true);
+ toggling(s);
+ stepSession(s,1/60);
+ assert.equal(s.operators.some(a=>a.id==='rook'),false);
+ assert.equal(s.extractedOperators.some(a=>a.id==='rook'),true);
+ assert.deepEqual(s.extractedOperators.find(a=>a.id==='rook').p,at,
+   'retired actor stays at the real gate; no off-map teleport');
+ assert.equal(s.battleEvents.some(e=>e.meta?.action==='individual-extraction'),true,
+   'authoritative fixed-step emits a real archival extraction event');
 });
