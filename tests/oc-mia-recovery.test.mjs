@@ -71,7 +71,7 @@ test('OC9 mission rescue restores same career only once with prolonged care',()=
  assert.equal(veteran.missingSinceOperationId,undefined);
  assert.ok(veteran.recoveryDays>=5);
  assert.equal(campaignSquadPresent(next),false,
-  'rescue must not auto-assign a recovered person');
+  'post-evacuation medical recovery blocks immediate redeployment');
  const event=next.journal.filter(e=>e.kind==='operator-recovered');
  assert.equal(event.length,1);
  assert.equal(event[0].operatorId,'moss');
