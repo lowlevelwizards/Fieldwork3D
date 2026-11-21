@@ -12,10 +12,10 @@ import {prepareMotorRoute} from '../src/breach-motor-route.ts';
 import {releaseEmbeddedMotorActor}
  from '../src/breach-locomotion-clearance.ts';
 import {witnessedGeneratedEntryStillness,
- observeGeneratedEntryPhysicalStillness}
+ observeGeneratedEntryPhysicalStillness,inspectGeneratedEntryStillness}
  from '../src/breach-generated-entry-stillness.ts';
 import {generateSite} from '../src/breach-site.ts';
-import {newSession} from '../src/breach-game.ts';
+import {newSession,team,planSquadEntry,stepSession,toggling} from '../src/breach-game.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {OPERATOR_RADIUS,pointToSegment,doorLeafSegment} from '../src/breach-core.ts';
 import {doorWouldStrikeActors,doorSwingBlocked} from '../src/breach-door.ts';
@@ -352,4 +352,65 @@ test('D3.33 P6: intermittent transient routes cannot erase physically witnessed 
  actor.plan[0].id++;
  assert.equal(witnessedGeneratedEntryStillness(actor,'FRONT',166/60),false,
   'a new authored order must get its own 1.25-second observation');
+});
+
+test('D3.33 P7: read-only live 60Hz Townhouse doorway recovery gate timeline',()=>{
+ const site=generateSite(9568385,'standard',undefined,
+  {mission:'intel'},{archetype:'townhouse'});
+ const quiet={...site,training:true,enemies:[],encounter:undefined};
+ const game=newSession(0,9568385,'full-view',site.scale??'standard',
+  'intel',quiet,{enableCivilians:false});
+ const actors=team(game).slice(0,4);
+ assert.equal(actors.length,4);
+ assert.equal(planSquadEntry(game,'FRONT'),true,
+  'original genuine Townhouse generated squad-entry order');
+ const rook=actors.find(a=>a.id==='rook'),ash=actors.find(a=>a.id==='ash');
+ assert.ok(rook&&ash);
+ toggling(game);
+ const summary={navZero:0,navPresent:0,stillnessAtLeast125:0,
+  stillnessWithNavZero:0,entryMoveNoNav:0,firstEligible:null,
+  maxStillnessAge:0,actualSteps:0,stepsAfterAshClear:0};
+ const last={...rook.p};
+ const marks=[],maneuvers={},positions=[];
+ for(let tick=0;tick<2700;tick++){
+  stepSession(game,1/60);
+  const e=rook.doorTraversal,w=inspectGeneratedEntryStillness(rook,game.seconds),
+   front=game.doors.find(d=>d.id==='FRONT'),
+   ashGap=Math.hypot(rook.p.x-ash.p.x,rook.p.y-ash.p.y),
+   order=rook.plan[0],now=game.seconds;
+  if(rook.nav.length)summary.navPresent++;else summary.navZero++;
+  if(!rook.nav.length&&order?.kind==='move')summary.entryMoveNoNav++;
+  if(w?.age>=1.25){
+   summary.stillnessAtLeast125++;
+   if(!rook.nav.length)summary.stillnessWithNavZero++;
+   if(!summary.firstEligible)summary.firstEligible=Number(now.toFixed(2));
+  }
+  if(w)summary.maxStillnessAge=Math.max(summary.maxStillnessAge,w.age);
+  const moved=Math.hypot(rook.p.x-last.x,rook.p.y-last.y);
+  if(moved>.01){summary.actualSteps++;if(ashGap>17)summary.stepsAfterAshClear++;}
+  last.x=rook.p.x;last.y=rook.p.y;
+  const maneuver=e?.maneuver??'none';maneuvers[maneuver]=(maneuvers[maneuver]??0)+1;
+  if(tick%30===0&&(tick>420||tick<120)){
+   const mark={time:Number(now.toFixed(2)),
+    rook:{x:Number(rook.p.x.toFixed(3)),y:Number(rook.p.y.toFixed(3))},
+    nav:rook.nav.length,order:order?.kind??null,entry:order?.entryDoorId??null,
+    maneuver,phase:e?.phase??null,still:w?.age!=null?
+      Number(w.age.toFixed(2)):null,
+    sampleGap:w?.sampleGap!=null?Number(w.sampleGap.toFixed(2)):null,
+    ashGap:Number(ashGap.toFixed(2)),ashOrder:ash.plan[0]?.kind??null,
+    front:Number((front?.openFraction??0).toFixed(3)),
+    blocked:Number(rook.blockedTime.toFixed(2)),
+    squeeze:rook.squeeze};
+   marks.push(mark);
+  }
+ }
+ console.log('D333_LIVE_GATE_TIMELINE',JSON.stringify({
+  summary,maneuvers,initial:marks.slice(0,4),
+  during:marks.filter(x=>x.time>=7&&x.time<=21).filter((_,i)=>i%2===0),
+  final:marks.slice(-14),
+  rook:{position:rook.p,nav:rook.nav.length,plan:rook.plan.slice(0,2)},
+  ash:{position:ash.p,plan:ash.plan.slice(0,2)}
+ }));
+ assert.equal(actors.length,4);
+ assert.ok(summary.navZero+summary.navPresent===2700);
 });

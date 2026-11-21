@@ -53,6 +53,16 @@ export function witnessedGeneratedEntryStillness(
   now-recorded.since>=1.25;
 }
 
+/** Read-only, cold test instrumentation of the authoritative 60Hz witness.
+ * This does not create a witness, mutate clocks, or select any movement.
+ */
+export function inspectGeneratedEntryStillness(peer:TeamActor,now:number){
+ const e=episodes.get(peer);
+ return e?{age:now-e.since,sampleGap:now-e.lastAt,
+  displacement:gap(peer.p,e.anchor),
+  doorId:e.doorId,orderId:e.orderId}:null;
+}
+
 /** The same generated ENTRY may own at most six previously swept, real
  * narrow-body exit strides. This is an ownership witness, NOT clearance.
  * Motor route and embedded-cover fallback share it to avoid undoing an
