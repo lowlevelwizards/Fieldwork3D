@@ -22,6 +22,10 @@ const session=()=>({
 test('OC10 individual departure is GO-time, verified twice, and never a teleport',()=>{
  const s=session();
  assert.equal(requestIndividualExtraction(s,'rook'),true);
+ assert.equal(commitIndividualExtractions(s).length,0,
+  'planning-phase helper must never retire a live combat actor');
+ assert.equal(s.pendingExtractionIds.length,1,
+  'queued intent is preserved until the real fixed GO tick');
  assert.equal(s.extractedOperators.length,0,'click is intent, not extraction');
  assert.equal(requestIndividualExtraction(s,'rook'),false,'idempotent authoring');
  s.operators[0].p.x=0;
