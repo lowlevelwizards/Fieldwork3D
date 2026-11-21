@@ -129,6 +129,11 @@ test('OC10 replay has the actor before extraction but not in later live frames',
   'later frames must not leave a ghost actor in the combat scene');
  assert.equal(s.extractedOperators.some(a=>a.id==='rook'),true,
   'the original full career record was archived separately');
+ assert.ok(recorder.manifest?.actors.some(a=>a.id==='rook'),
+  'first GO manifest retains physically evacuated operator identity');
+ assert.equal(recorder.manifest?.actors.filter(a=>a.side==='red').length,
+  s.operators.filter(a=>a.side==='red').length,
+  'preserving evacuated ally must not erase enemy replay identities');
  const overview=buildAfterActionReport(recorder);
  const historical=overview.operators.find(a=>a.id==='rook');
  assert.ok(historical,'evacuated operators remain in squad ranking');
