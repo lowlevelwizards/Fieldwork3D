@@ -116,6 +116,11 @@ jobs:
       loadout: ${{ steps.owners.outputs.loadout }}
       physical: ${{ steps.owners.outputs.physical }}
       arsenal: ${{ steps.owners.outputs.arsenal }}
+      movementRetail: ${{ steps.owners.outputs.movementRetail }}
+      movementDeparture: ${{ steps.owners.outputs.movementDeparture }}
+      movementJoin: ${{ steps.owners.outputs.movementJoin }}
+      movementRecovery: ${{ steps.owners.outputs.movementRecovery }}
+      movementRelease: ${{ steps.owners.outputs.movementRelease }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -147,3 +152,41 @@ jobs:
     permissions:
       contents: read
       actions: read
+
+  # A3: preserve original D3 path filters and physical acceptance as
+  # source-selected reusable jobs. No fifth independent PR workflow run.
+
+  d3-retail-physical:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.movementRetail == 'true' }}
+    uses: ./.github/workflows/d3-14d2-retail-recovery.yml
+    permissions:
+      contents: read
+
+  d3-departure-physical:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.movementDeparture == 'true' }}
+    uses: ./.github/workflows/d3-17c-departure.yml
+    permissions:
+      contents: read
+
+  d3-door-join-physical:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.movementJoin == 'true' }}
+    uses: ./.github/workflows/d3-17d-door-join.yml
+    permissions:
+      contents: read
+
+  d3-recovery-critical:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.movementRecovery == 'true' }}
+    uses: ./.github/workflows/d3-18-physical-recovery.yml
+    permissions:
+      contents: read
+
+  d3-main-physical-checkpoint:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.movementRelease == 'true' }}
+    uses: ./.github/workflows/d3-main-release-checkpoint.yml
+    permissions:
+      contents: read
