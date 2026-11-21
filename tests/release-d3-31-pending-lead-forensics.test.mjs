@@ -42,7 +42,8 @@ for(const c of cases)test('D3.31 P1 physical lead forensic '+c.name,()=>{
   failed:o.failedOrders,blocker:o.lastBlocker,
   active:o.activeOrderDetails?.kind??o.activeOrder??null,
   position:o.position??o.p??null,
-  nav:o.navCount??null,blocked:round(o.blockedTime)
+  nav:o.navCount??null,blocked:round(o.blockedTime),
+  stalls:o.stallEpisodes,retries:o.retries,motorPause:o.motorPause
  }));
  const pending=operators.filter(o=>o.outcome==='pending');
  const progress=entry.progressEvidence.filter(x=>x.actor===c.target)
@@ -58,6 +59,7 @@ for(const c of cases)test('D3.31 P1 physical lead forensic '+c.name,()=>{
   complete:entry.complete,arrivals:entry.arrivals,
   pending:pending.map(o=>o.id),operators,
   doorId:entry.doorId,doorEvidence:entry.doorEvidence?.filter(x=>x.operator===c.target).slice(-12),
+  physicalBlocks:entry.physicalBlockEvidence?.filter(x=>x.actor===c.target),
   routeSources:source,routeRejects:entry.routeTransitions?.rejectsByActor,
   progress,events:events.slice(-35)
  }));
