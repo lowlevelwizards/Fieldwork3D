@@ -35,8 +35,8 @@ export const FROZEN_WRITERS=Object.freeze({
   [660,'set','stack-micro-corner','stack','claimStackMicroAttempt','full-body micro-corner'],
   [700,'prepend','self-hinge-relief','door','selfBlockingHingeRelief','hinge-relief selector'],
   [730,'set','open-leaf-local-rejoin','door','claimPhysicalLeafRejoin','physical leaf rejoin + WATCH'],
-  [779,'set','cold-micro-departure','cold','claimRepeatedFurnitureDeparture','verified departure + WATCH'],
-  [750,'set','entry-squeeze-departure','squeeze','claimM2EntrySqueezeProbe','narrow profile + WATCH'],
+  [750,'set','cold-micro-departure','cold','claimRepeatedFurnitureDeparture','verified departure + WATCH'],
+  [779,'set','entry-squeeze-departure','squeeze','claimM2EntrySqueezeProbe','narrow profile + WATCH'],
   [827,'set','blocked-leg-connector','ordinary','allowPhysicalRouteReissue','first-stride full-body'],
   [864,'set','collision-world-replan','ordinary','allowPhysicalRouteReissue','material difference + recurrence'],
   [879,'set','collision-intel-replan','ordinary','allowPhysicalRouteReissue','material difference + recurrence']
