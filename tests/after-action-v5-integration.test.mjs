@@ -43,7 +43,9 @@ test('V5.7 one debrief controller retains authoritative replay and score ownersh
  const ctrl=read('src/ui/breach-after-action-controller.ts');
  const details=read('src/ui/breach-after-action-mission-details.ts');
  const report=read('src/breach-after-action-report.ts');
- assert.match(ctrl,/renderSquadDetails\(operator,inspectContribution\)/);
+ assert.match(ctrl,/renderSquadDetails\(operator,inspectContribution,/);
+ assert.match(ctrl,/s\.inventory\?\?undefined\)/,
+  'Full operator record retains authoritative inventory context');
  assert.match(ctrl,/port.setReturn\(origin\)/);
  assert.match(ctrl,/s.summaryCompact=context.summaryCompact/);
  assert.match(details,/stats.scoreComponents/);

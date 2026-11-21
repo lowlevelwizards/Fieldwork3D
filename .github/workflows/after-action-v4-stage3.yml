@@ -1,15 +1,6 @@
 name: After Action V4 — Stage 3 Persistent 3D Acceptance
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/after-action-v4-stage3.yml'
-      - 'src/ui/breach-after-action-*.ts'
-      - 'src/ui/breach-mission-screens.ts'
-      - 'src/breach-main.ts'
-      - 'src/breach-style.css'
-      - 'scripts/smoke-after-action-v4-stage3.mjs'
-      - 'tests/after-action-v4-stage3-persistent-models.test.mjs'
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
@@ -18,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   retained-models:
-    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'feature/after-action-v4-stage3-') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'feature/after-action-v4-stage3-') || startsWith(github.head_ref, 'refactor/ci-after-action-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
