@@ -2,6 +2,8 @@ import {setTransientRoute,prependTransientLeg}
  from './breach-route-transition.ts';
 import {evaluateOrdinaryRecoveryAdoption}
  from './breach-ordinary-recovery-adoption.ts';
+import {authorizeSpecialistRecovery}
+ from './breach-specialist-recovery-adoption.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 7: authoritative body-collision response and recovery.
  * A full-radius swept motion is preferred; squeeze is only a physical
@@ -300,7 +302,10 @@ export function resolveMotorCollision(
         if(alternative.length&&
            watchClearanceAllowed(a.p,alternative[0],p,
              !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)){
-          setTransientRoute(s,a,alternative,'d328-entry-fine-world');
+          const r3Specialist0=authorizeSpecialistRecovery(a,s,'d328-entry-fine-world',alternative,p,
+            'generated-stack','verified-world-join');
+          if(r3Specialist0){
+          setTransientRoute(s,a,alternative,'d328-entry-fine-world',r3Specialist0);
           markD326FineMotorRoute(a);
           noteD328FineOwnership(a,s.seconds);
           notePreciseLocalDetour(a,alternative[0]);
@@ -308,6 +313,7 @@ export function resolveMotorCollision(
           a.lastNavRepairAt=s.seconds;
           a.squeeze=false;a.squeezeTime=0;
           return true;
+          }
         }
       }
       // D3.14C2: after 3 genuine repeated departures from nearly
@@ -324,11 +330,15 @@ export function resolveMotorCollision(
           (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
           (from,to)=>routeWithSqueezeWorld(from,to,s.doors,world));
         if(alternative.length){
-          setTransientRoute(s,a,alternative,'lane-cycle-world');
+          const r3Specialist1=authorizeSpecialistRecovery(a,s,'lane-cycle-world',alternative,p,
+            'door-episode','swept-full-body');
+          if(r3Specialist1){
+          setTransientRoute(s,a,alternative,'lane-cycle-world',r3Specialist1);
           noteCircularWorldRoute(a,s.seconds);
           provisionalRouteAccepted(a);
           a.squeeze=false;a.squeezeTime=0;
           return true;
+          }
         }
       }
       // D3.15B2: a real generated STACK move can cycle between the same
@@ -343,11 +353,15 @@ export function resolveMotorCollision(
           a.p,p,fullLane[0],sweep,
           (from,to)=>routeWithSqueezeWorld(from,to,s.doors,world));
         if(worldTail.length){
-          setTransientRoute(s,a,worldTail,'lane-cycle-world');
+          const r3Specialist2=authorizeSpecialistRecovery(a,s,'lane-cycle-world',worldTail,p,
+            'generated-stack','verified-world-join');
+          if(r3Specialist2){
+          setTransientRoute(s,a,worldTail,'lane-cycle-world',r3Specialist2);
           noteCircularWorldRoute(a,s.seconds);
           provisionalRouteAccepted(a);
           a.squeeze=false;a.squeezeTime=0;
           return true;
+          }
         }
       }
       // D3.17B2: don't reissue a byte-for-byte equivalent side excursion
@@ -492,10 +506,14 @@ export function resolveMotorCollision(
         const rejoined=sweptRejoinExistingRoute(a.p,p,a.nav,
           (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
         if(rejoined.length){
+          const r3Specialist3=authorizeSpecialistRecovery(a,s,'door-escape-swept-rejoin',rejoined,p,
+            'physical-escape','swept-full-body');
+          if(r3Specialist3){
           a.lastNavRepairAt=s.seconds;
-          setTransientRoute(s,a,rejoined,'door-escape-swept-rejoin');
+          setTransientRoute(s,a,rejoined,'door-escape-swept-rejoin',r3Specialist3);
           provisionalRouteAccepted(a);
           return true;
+          }
         }
       }
       // G2B: only three repeated REAL leaf overlaps on this same
@@ -506,7 +524,12 @@ export function resolveMotorCollision(
           a.doorTraversal?.doorId??null,a.nav);
       // The current route is still authored and remains active. Replan
       // its transient motor path only after physically leaving the leaf.
-      setTransientRoute(s,a,[],'door-leaf-escape');
+      const r3EscapeProof=authorizeSpecialistRecovery(a,s,
+        'door-leaf-escape',[],p,'physical-escape',
+        'post-physical-escape',{escapedBody:true});
+      if(r3EscapeProof)
+        setTransientRoute(s,a,[],'door-leaf-escape',r3EscapeProof);
+      else a.nav=[]; // Physical escape still invalidates a blocked nav.
       if(tryGoalCompleteDoorHandoffAfterEscape(a,s,p))return true;
       if(!restoreAfterOpenLeafEscape(a,s,p))a.retryRouteAt=0;
       return true;
@@ -657,12 +680,16 @@ export function resolveMotorCollision(
       const sideRoute=selectStackMicroCorner(a.p,p,
         (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
       if(sideRoute.length){
-        setTransientRoute(s,a,sideRoute,'stack-micro-corner');
+        const r3Specialist4=authorizeSpecialistRecovery(a,s,'stack-micro-corner',sideRoute,p,
+            'generated-stack','swept-full-body');
+          if(r3Specialist4){
+          setTransientRoute(s,a,sideRoute,'stack-micro-corner',r3Specialist4);
         notePreciseLocalDetour(a,sideRoute[0]);
         noteCircularWorldRoute(a,s.seconds);
         a.lastNavRepairAt=s.seconds;
         provisionalRouteAccepted(a);
         return true;
+        }
       }
     }
     if(a.side==='blue'&&a.lastBlocker==='furniture'){
@@ -697,10 +724,14 @@ export function resolveMotorCollision(
          a.plan[0]?.kind==='move'){
         const relief=selfBlockingHingeRelief(a,s,p);
         if(relief){
-          prependTransientLeg(s,a,relief,'self-hinge-relief');
+          const r3Specialist5=authorizeSpecialistRecovery(a,s,'self-hinge-relief',[relief,...a.nav],p,
+            'door-contact','swept-full-body',{operation:'prepend'});
+          if(r3Specialist5){
+          prependTransientLeg(s,a,relief,'self-hinge-relief',r3Specialist5);
           a.recoveryAttempts++;
           a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
           return true;
+          }
         }
       }
       // D3.17E3-5: an actual stationary body at a stable open leaf may
@@ -727,11 +758,15 @@ export function resolveMotorCollision(
                !!a.aimInstruction&&a.aimInstruction.mode!=='free',
                (from,to)=>sweptBodyClear(from,to,
                  s.doors,OPERATOR_RADIUS,world))){
-            setTransientRoute(s,a,physical,'open-leaf-local-rejoin');
+            const r3Specialist6=authorizeSpecialistRecovery(a,s,'open-leaf-local-rejoin',physical,p,
+            'door-contact','verified-world-join');
+          if(r3Specialist6){
+          setTransientRoute(s,a,physical,'open-leaf-local-rejoin',r3Specialist6);
             notePreciseLocalDetour(a,physical[0]);
             a.lastNavRepairAt=s.seconds;
             a.retryRouteAt=s.seconds+.65;
             return true;
+            }
           }
         }
       }
@@ -776,11 +811,15 @@ export function resolveMotorCollision(
             from,to,s.doors,world));
         if(route.length&&watchClearanceAllowed(a.p,route[0],p,
             !!a.aimInstruction&&a.aimInstruction.mode!=='free',narrow)){
-          setTransientRoute(s,a,route,'entry-squeeze-departure');
+          const r3Specialist7=authorizeSpecialistRecovery(a,s,'entry-squeeze-departure',route,p,
+            'narrow-exit','oriented-squeeze');
+          if(r3Specialist7){
+          setTransientRoute(s,a,route,'entry-squeeze-departure',r3Specialist7);
           notePreciseLocalDetour(a,route[0]);
           a.lastNavRepairAt=s.seconds;
           provisionalRouteAccepted(a);
           return true;
+          }
         }
       }
       // D3.17E2: route changes are not physical progress. After repeated
