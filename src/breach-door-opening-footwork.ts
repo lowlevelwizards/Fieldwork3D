@@ -39,26 +39,36 @@ export function upcomingOpeningSweep(door:Door):number{
  const fraction=door.openFraction??0;
  return Math.min(Math.max(1,door.pushTarget??1),fraction+.17);
 }
-/** The first .72 opening is enough for some approaches but NOT a
- * blanket clearance for the operator actually trapped in the remaining
- * self-blocked sweep. Townhouse FRONT's physically stopped .931 leaf
- * repeatedly escaped and reacquired the same unsafe route for 40 seconds.
- * Offer the existing swept clearance footstep only when the STILL-OPENING
- * hinge's upcoming sweep would hit THIS actual body. After .72 the leaf
- * must be stationary; a normally moving, open passage stays untouched.
+/** Ordinary opening and explicit DOOR footwork retains its original .72
+ * threshold. High-partial self-clearance is a separate generated-ENTRY
+ * exception, never a generic policy for authored MOVE or other doors.
  */
 export function openingSweepThreatens(door:Door,position:Pt):boolean{
- const fraction=door.openFraction??0;
- const highPartial=fraction>=.72&&fraction<.98&&
-   Math.abs(door.angularVelocity??0)<.16;
  return door.open&&!door.locked&&!door.wedged&&!door.heldBy&&
-   (fraction<.72||highPartial)&&
+   (door.openFraction??0)<.72&&
+   doorWouldStrikeActors(door,upcomingOpeningSweep(door),
+     [position],OPERATOR_RADIUS);
+}
+/** D3.31: a currently active GENERATED ENTRY on its own physical leaf
+ * may need a swept stance adjustment after the broad aperture is open.
+ * Positive only for a stationary, self-striking 72–98% hinge: this
+ * function itself grants no hand, rotation, body motion or order rights.
+ */
+export function stoppedHighPartialEntryStrike(
+ door:Door,position:Pt
+):boolean{
+ const fraction=door.openFraction??0;
+ return door.open&&!door.locked&&!door.jammed&&!door.wedged&&
+   !door.heldBy&&fraction>=.72&&fraction<.98&&
+   Math.abs(door.angularVelocity??0)<.16&&
    doorWouldStrikeActors(door,upcomingOpeningSweep(door),
      [position],OPERATOR_RADIUS);
 }
 export function selectGuidedOpeningStep(a:TeamActor,s:Session,
- door:Door,goal:Pt):Pt|null{
- if(!openingSweepThreatens(door,a.p))return null;
+ door:Door,goal:Pt,allowHighPartialEntry=false):Pt|null{
+ if(!openingSweepThreatens(door,a.p)&&
+    !(allowHighPartialEntry&&stoppedHighPartialEntryStrike(door,a.p)))
+  return null;
  const world=sessionWorldGeometry(s);
  const fraction=upcomingOpeningSweep(door);
  const futureLeaf=doorLeafSegment({...door,openFraction:fraction});
