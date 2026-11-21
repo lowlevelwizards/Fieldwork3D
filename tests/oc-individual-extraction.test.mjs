@@ -6,6 +6,7 @@ import {optionalIntelRecovered,advanceOptionalIntel}
  from '../src/breach-optional-intel.ts';
 import {newSession,toggling,stepSession} from '../src/breach-game.ts';
 import {MissionRecorder} from '../src/breach-replay.ts';
+import {buildAfterActionReport} from '../src/breach-after-action-report.ts';
 import {reconcileSceneActorLifetimes}
  from '../src/rendering/breach-actor-frame-presenter.ts';
 const friend=(id,x,health=4)=>({
@@ -126,6 +127,11 @@ test('OC10 replay has the actor before extraction but not in later live frames',
   'later frames must not leave a ghost actor in the combat scene');
  assert.equal(s.extractedOperators.some(a=>a.id==='rook'),true,
   'the original full career record was archived separately');
+ const overview=buildAfterActionReport(recorder);
+ const historical=overview.operators.find(a=>a.id==='rook');
+ assert.ok(historical,'evacuated operators remain in squad ranking');
+ assert.notEqual(historical.status,'unknown',
+  'structured evacuation plus actual prior frame preserves verified condition');
 });
 
 test('OC10 departed friendly hides body, status, flashlight beam and shadows',()=>{
