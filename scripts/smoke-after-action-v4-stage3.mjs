@@ -184,16 +184,60 @@ try{
      check((await root.locator('.fw-v4-squad-model').textContent())
        .includes('3D VIEW UNAVAILABLE'),
        'WebGL loss did not expose fallback '+label);
+     // V6 Combat defaults to 3D and may automatically retry a lost
+     // graphics context. A genuine replacement is a success; an explicit
+     // unavailable state or paper fallback is also correct. Never silently
+     // accept a permanent LOADING label or a duplicate WebGL canvas.
      await root.locator('[data-after-tab="combat"]').click();
-     await root.locator('.fw-v3-combat-figure .fw-v3-small-button')
-       .filter({hasText:'3D'}).click();
-     check((await root.locator('[data-after-model]').textContent())
-       .includes('3D VIEW UNAVAILABLE'),
-       'Combat inherited a stale Loading label after WebGL loss '+label);
+     await page.waitForFunction(()=>{
+       const root=document.querySelector('#v4-stage3-qa');
+       const model=root.querySelector('[data-after-model]');
+       const active=root.querySelector(
+         '.fw-v4-inspection-switch button[aria-pressed="true"]');
+       const paper=active?.textContent?.trim()==='2D';
+       return !!model?.querySelector('.fw-v4-model-canvas')||
+         !!model?.textContent?.includes('3D VIEW UNAVAILABLE')||
+         !!model?.textContent?.includes('3D MODULE COULD NOT LOAD')||paper;
+     },{timeout:25000});
+     const combatStatus=await page.evaluate(()=>{
+       const root=document.querySelector('#v4-stage3-qa');
+       const model=root.querySelector('[data-after-model]');
+       const canvas=model?.querySelector('.fw-v4-model-canvas');
+       return {canvas:!!canvas,unique:root.querySelectorAll(
+         '.fw-v4-model-canvas').length===1,
+         replaced:canvas!==window.__v4Stage3Canvas,
+         fallback:!!model?.textContent?.includes('3D VIEW UNAVAILABLE')||
+           !!model?.textContent?.includes('3D MODULE COULD NOT LOAD'),
+         paper:root.querySelector(
+           '.fw-v4-inspection-switch button[aria-pressed="true"]'
+         )?.textContent?.trim()==='2D'};
+     });
+     check(combatStatus.canvas&&combatStatus.unique&&combatStatus.replaced||
+       combatStatus.fallback||combatStatus.paper,
+       'Lost graphics caused an invisible/stale Combat viewer '+
+         label+' '+JSON.stringify(combatStatus));
      await root.locator('[data-after-tab="squad"]').click();
-     check((await root.locator('[data-after-squad-model]').textContent())
-       .includes('3D VIEW UNAVAILABLE'),
-       'Squad lost the fallback message after a tab change '+label);
+     await page.waitForFunction(()=>{
+       const host=document.querySelector(
+         '#v4-stage3-qa [data-after-squad-model]');
+       return !!host?.querySelector('.fw-v4-model-canvas')||
+         !!host?.textContent?.includes('3D VIEW UNAVAILABLE')||
+         !!host?.textContent?.includes('3D MODULE COULD NOT LOAD');
+     },{timeout:25000});
+     const squadStatus=await page.evaluate(()=>{
+       const root=document.querySelector('#v4-stage3-qa');
+       const host=root.querySelector('[data-after-squad-model]');
+       const canvas=host?.querySelector('.fw-v4-model-canvas');
+       return {canvas:!!canvas,unique:root.querySelectorAll(
+         '.fw-v4-model-canvas').length===1,
+         replaced:canvas!==window.__v4Stage3Canvas,
+         fallback:!!host?.textContent?.includes('3D VIEW UNAVAILABLE')||
+           !!host?.textContent?.includes('3D MODULE COULD NOT LOAD')};
+     });
+     check(squadStatus.canvas&&squadStatus.unique&&squadStatus.replaced||
+       squadStatus.fallback,
+       'Squad lost WebGL recovery/fallback after Combat '+label+' '+
+         JSON.stringify(squadStatus));
    }
    // A new recorder owns a new viewer; the previous context is explicitly lost.
    const replaced=await page.evaluate(async()=>{
