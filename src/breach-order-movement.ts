@@ -1,3 +1,5 @@
+import {failedGeneratedStackSyncMember}
+ from './breach-generated-sync-dropout.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {escortWalkMultiplier} from './breach-civilian-mission.ts';
 import {physicalEscortWalkMultiplier} from './breach-follow-physical-policy.ts';
@@ -122,6 +124,20 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
  return function executeMovementOrder(s:Session,a:TeamActor,n:PlanNode,dt:number,
   visibleThreat:TeamActor|undefined,
   profile?:((section:string,elapsedMs:number)=>void)):boolean{
+  // D3.34: an irrecoverable, genuinely FAILED generated STACK
+  // member must not walk the same locked route forever OR falsely count
+  // ready at an unreachable SYNC. Leave the order intact and expose the
+  // physical obstruction to the operator HUD. Other squadmates can GO
+  // only when they individually reach their real safe stack positions.
+  if(n.kind==='sync'&&failedGeneratedStackSyncMember(
+       a,n.syncCode??'A')){
+    a.velocity=0;
+    if(a.orderIssue?.nodeId!==n.id)
+      a.orderIssue={nodeId:n.id,
+        reason:'ENTRY SEPARATED · LOCKED STACK ROUTE',
+        since:s.seconds};
+    return true;
+  }
   // Only opt-in perf probes allocate the wrapper. Normal fixed-step movement
   // continues using the original motor callback without extra timing work.
   clearCompletedEntryOnNewOrder(a,n.id);

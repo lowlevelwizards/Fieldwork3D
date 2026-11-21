@@ -1,3 +1,5 @@
+import {failedGeneratedStackSyncMember}
+ from '../src/breach-generated-sync-dropout.ts';
 /** D3.34: exact physical frozen Retail standard generated ENTRY,
  * not a synthetic plan-completion or a disabled doorway collision test.
  * The lead's STACK goal becomes covered by the already-open solid D1
@@ -110,6 +112,31 @@ test('D3.34 linked generated SYNC accepts only the same full-body safe stance',(
    sync,{...actor,side:'red'},proof,()=>true),null);
  assert.equal(validGeneratedStackSyncAnchor(
    sync,{...actor,plan:[]},proof,()=>true),null);
+});
+
+test('D3.34 split generated SYNC only after actual locked failed STACK',()=>{
+ const sync={id:7,kind:'sync',p:{x:210,y:180},syncCode:'B1'};
+ const generated={id:10,kind:'move',p:{x:287,y:125},
+  entryDoorId:'D1'};
+ const trapped={side:'blue',health:100,p:{x:158,y:82},
+  plan:[sync,generated],syncReady:null,
+  lastFailedOrder:{id:3,kind:'move',
+    reason:'PATH BLOCKED · DOOR LOCKED',at:10.98},
+  blockedTime:4,lastBlocker:'door'};
+ assert.equal(failedGeneratedStackSyncMember(trapped,'B1'),true);
+ for(const patch of [
+  {blockedTime:2.9},{lastBlocker:'clear'},
+  {syncReady:'B1'},{lastFailedOrder:null},
+  {lastFailedOrder:{...trapped.lastFailedOrder,reason:'RETRY'}},
+  {lastFailedOrder:{...trapped.lastFailedOrder,kind:'tool'}},
+  {plan:[sync]},{side:'red'},
+  {p:{x:207,y:179}},{plan:[{...sync,syncCode:'B2'},generated]}
+ ])assert.equal(failedGeneratedStackSyncMember({...trapped,...patch},'B1'),
+   false,JSON.stringify(patch));
+ // A manual SYNC without generated entry cannot silently lose a peer.
+ assert.equal(failedGeneratedStackSyncMember(
+  {...trapped,plan:[sync,{kind:'move',id:10,p:generated.p}]},'B1'),
+  false);
 });
 
 test('D3.34 Retail: Rook physically completes STACK and advances real ENTRY',()=>{
