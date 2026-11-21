@@ -76,7 +76,7 @@ test('D3.33 real Townhouse 9568385 generated ENTRY improves physical arrivals',(
    blocker:rook.lastBlocker,position:rook.position,
    door:rook.doorEpisode},
   operators:mode.operators.map(o=>({id:o.id,outcome:o.outcome,
-   remaining:o.remaining,failedOrders:o.failedOrders})),
+   remaining:o.remaining,position:o.position,failedOrders:o.failedOrders})),
   progress:report.progressSummary,summary:report.summary
  }));
  assert.equal(report.summary.invalidPositions,0);
@@ -200,6 +200,33 @@ test('D3.33 exact frozen follower WAIT physically yields from Rook without alter
  assert.ok(gap(ash.p)>gap(before)+.025,'the follower physically separates from lead');
  assert.deepEqual(ash.plan.map(n=>n.id),orderIds,'WAIT and authored ENTRY untouched');
  assert.equal(rook.p.x,positions.rook.x,'cannot teleport or shift blocked lead');
+
+ // Let the SAME collision-authorized follower yield run to equilibrium,
+ // keeping every other actor, leaf, and solid post at the frozen pose.
+ const stillAt=game.seconds;
+ let extra=0,lastStepAt=stillAt;
+ for(let tick=Math.ceil(stillAt*60)+1;tick<2700;tick++){
+  game.seconds=tick/60;
+  if(relieveGeneratedEntryWaitCollision(game,ash,wait,1/60)){
+   extra++;lastStepAt=game.seconds;
+  }
+ }
+ const finalGap=gap(ash.p);
+ rook.blockedTime=35.7;
+ const originalLead={...rook.p};
+ const port={notify:()=>{},hear:()=>{},battleEvent:()=>{},
+  cachedEnemyRoute:()=>[],knownShoveCrossing:()=>null,
+  ensurePassageSchedule:()=>new Map()};
+ const ready=prepareMotorRoute(rook,rook.plan[0].p,1/60,game,port);
+ const leadMoved=Math.hypot(rook.p.x-originalLead.x,
+  rook.p.y-originalLead.y);
+ console.log('D333_FROZEN_QUEUE_EQUILIBRIUM',JSON.stringify({
+  extra,finalGap,ash:ash.p,lastStepAt,rookStatus:ready,
+  rookStep:leadMoved,rook:rook.p,mode:rook.squeeze?'squeeze':'normal',
+  original:originalLead
+ }));
+ assert.ok(finalGap>=gap(before),'cannot close distance after yielding');
+
 });
 
 test('D3.33 authored WAIT never receives generated-entry yield entitlement',()=>{
