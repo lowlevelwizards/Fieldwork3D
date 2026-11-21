@@ -43,7 +43,6 @@ import {shouldProbeCircularFullBodyLane,alternateFullBodyLaneFromCycle,
  noteCircularWorldRoute,ownsCircularWorldRoute}
  from './breach-cycle-lane-recovery.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
-import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
 import {firstFullBodyMotorStrideClear,usefulFullBodyRecoveryRoute}
  from './breach-recovery-route-validation.ts';
 import {eligibleFrameActorDetour} from './breach-frame-actor-recovery.ts';
@@ -590,10 +589,9 @@ export function resolveMotorCollision(
     if(candidate&&d(candidate,a.p)>3&&d(candidate,p)<d(a.p,p)+12&&
        usefulFullBodyRecoveryRoute(a.p,a.nav,[candidate,...a.nav],
          sweep,a.blockedTime)&&
-       sweep(candidate,next)&&
+       sweep(candidate,next)&&sweep(a.p,candidate)&&
        watchClearanceAllowed(a.p,candidate,p,
-         !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)&&
-       true){
+         !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)){
       const frameAdoption=evaluateOrdinaryRecoveryAdoption({
         actor:a,session:s,source:'local-detour',operation:'prepend',
         goal:p,route:[candidate,...a.nav],orderIdAtSelection,
@@ -816,12 +814,21 @@ export function resolveMotorCollision(
         // the normal recovery budget when an identical connector recurs.
         if(usefulFullBodyRecoveryRoute(a.p,a.nav,connected,
              (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
-             a.blockedTime)&&
-           allowPhysicalRouteReissue(a,'blocked-leg-connector',p,
-             connected,s.seconds)){
-          setTransientRoute(s,a,connected,'blocked-leg-connector');
-          provisionalRouteAccepted(a);
-          return true;
+             a.blockedTime)){
+          const connectorAdoption=evaluateOrdinaryRecoveryAdoption({
+            actor:a,session:s,source:'blocked-leg-connector',
+            operation:'replace',goal:p,route:connected,
+            orderIdAtSelection,eligible:true,
+            certificate:'first-full-body-stride',watchSafe:true,
+            useful:true,retry:'collision-retry',
+            recurrence:'blocked-leg-connector'
+          });
+          if(connectorAdoption.accepted){
+            setTransientRoute(s,a,connected,'blocked-leg-connector',
+              connectorAdoption.proof);
+            provisionalRouteAccepted(a);
+            return true;
+          }
         }
       }
       // Once actual collision is observed, repair against real geometry,
@@ -844,14 +851,34 @@ export function resolveMotorCollision(
       // World/intel collision replans share one source-independent
       // stationary recurrence family. An unchanged near-anchor detour is
       // not physical progress and must not repeatedly replace the route.
-      if(materiallyDifferentRoute(a.nav,repaired)&&
-         allowPhysicalRouteReissue(a,'collision-replan',p,repaired,s.seconds)){
-        setTransientRoute(s,a,repaired,'collision-world-replan');adopted=true;
-      }else if(a.side==='blue'){
+      if(materiallyDifferentRoute(a.nav,repaired)){
+        const worldAdoption=evaluateOrdinaryRecoveryAdoption({
+          actor:a,session:s,source:'collision-world-replan',
+          operation:'replace',goal:p,route:repaired,
+          orderIdAtSelection,eligible:true,
+          // Trusted routing is an adoption candidate, not physical passage.
+          certificate:'world-route-selected',watchSafe:true,
+          useful:true,retry:'collision-retry',recurrence:'collision-replan'
+        });
+        if(worldAdoption.accepted){
+          setTransientRoute(s,a,repaired,'collision-world-replan',
+            worldAdoption.proof);adopted=true;
+        }
+      }
+      if(!adopted&&a.side==='blue'){
         const known=routeWithSqueezeIntel(s.intel,a.p,p);
-        if(materiallyDifferentRoute(a.nav,known)&&
-           allowPhysicalRouteReissue(a,'collision-replan',p,known,s.seconds)){
-          setTransientRoute(s,a,known,'collision-intel-replan');adopted=true;
+        if(materiallyDifferentRoute(a.nav,known)){
+          const intelAdoption=evaluateOrdinaryRecoveryAdoption({
+            actor:a,session:s,source:'collision-intel-replan',
+            operation:'replace',goal:p,route:known,
+            orderIdAtSelection,eligible:true,
+            certificate:'known-intel-route-selected',watchSafe:true,
+            useful:true,retry:'collision-retry',recurrence:'collision-replan'
+          });
+          if(intelAdoption.accepted){
+            setTransientRoute(s,a,known,'collision-intel-replan',
+              intelAdoption.proof);adopted=true;
+          }
         }
       }
       if(adopted){
