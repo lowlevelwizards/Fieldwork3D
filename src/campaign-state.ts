@@ -79,7 +79,10 @@ export type CampaignOperator={
  skills:ShootingSkills;experience:ShootingSkills;aptitudes:ShootingSkills;
  trait:string;distinctions:string[];
  missions:number;successful:number;injuries:number;recoveryDays:number;
- status:'available'|'reserve'|'lost'|'retired';weapon:'carbine'|'smg'|'rifle'|'shotgun';
+ status:'available'|'reserve'|'lost'|'retired';
+ /** Unrecovered casualty; unconfirmed fate, not a confirmed death. */
+ missingSinceOperationId?:string;
+ weapon:'carbine'|'smg'|'rifle'|'shotgun';
  magazine:number;reserve:number;shotsFired:number;joinedDay:number;
  loadout:EquipmentLoadout;armorCondition:ArmorIntegrity;
  medicalSupplies:FieldMedicalSupplies;
@@ -385,6 +388,7 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
  const casualties=new Set(r.casualties);
  const stabilized=new Set(r.stabilizedIds??[]);
  const evacuated=new Set(r.evacuatedIds??[]);
+ const missing=new Set(r.leftBehindIds??[]);
  const gainedSkills:SkillGains[]=[];
  const careerEvents:CareerEvent[]=[];
  // Withdrawal is not an automatic fatality. Record custody and recovery
@@ -409,8 +413,11 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
  }
  for(const id of r.leftBehindIds??[])if(participants.has(id))
   careerEvents.push({id:r.id+'-'+id+'-unrecovered',day:c.day,
-   operatorId:id,operationId:r.id,kind:'unrecovered',
-   detail:'Not recovered at extraction during '+contract.title});
+   operatorId:id,operationId:r.id,
+   kind:casualties.has(id)?'operator-missing':'unrecovered',
+   detail:casualties.has(id)?
+     'Missing after '+contract.title+'; fate unconfirmed':
+     'Not recovered at extraction during '+contract.title});
  const operators=c.operators.map(o=>{
   if(!participants.has(o.id)){
    const recoveryDays=Math.max(0,o.recoveryDays-1);
@@ -425,7 +432,13 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   if(performance?.injuryStage)careerEvents.push({id:r.id+'-'+o.id+'-wound',
    day:c.day,operatorId:o.id,operationId:r.id,kind:'wounded',
    detail:'Wounded during '+contract.title});
-  const base={...o,medicalSupplies:r.medicalRemaining?.[o.id]?
+  const unrecoveredCasualty=missing.has(o.id)&&casualties.has(o.id);
+  const base={...o,
+   // Missing is not recovered, discharged or confirmed dead. Preserve the
+   // veteran until a future verified recovery pathway exists.
+   ...(unrecoveredCasualty?{
+      status:'lost' as const,missingSinceOperationId:r.id}:{}),
+   medicalSupplies:r.medicalRemaining?.[o.id]?
    normalizedMedicalSupplies(r.medicalRemaining[o.id],kitMedicalSupplies(o.loadout)):
    o.medicalSupplies,missions:o.missions+1,
    successful:o.successful+(r.outcome==='success'?1:0),

@@ -63,6 +63,24 @@ test('OC1 score rewards actual casualty evacuation and nonbinary withdrawal grad
  assert.equal(assessOperation({...data,disposition:'failed'}).grade,'F');
 });
 
+test('OC4 unrecovered casualty becomes MIA, not healed or declared dead',()=>{
+ const original=newCampaign(8829),job=original.contracts[0];
+ const c=acceptContract(original,job.id);
+ const report={id:'mia-'+job.id,contractId:job.id,day:c.day,
+  outcome:'failure',disposition:'withdrawn',grade:'D',elapsed:121,
+  participatingIds:['rook','moss'],casualties:['moss'],
+  stabilizedIds:[],evacuatedIds:[],extractedIds:['rook'],
+  leftBehindIds:['moss'],objective:false,events:[]};
+ const result=resolveOperation(c,report);
+ const moss=result.operators.find(o=>o.id==='moss');
+ assert.equal(moss.status,'lost','missing cannot deploy or self-heal');
+ assert.equal(moss.missingSinceOperationId,report.id,'fate remains explicit');
+ assert.ok(result.journal.some(e=>e.kind==='operator-missing'&&
+  e.operatorId==='moss'&&e.detail.includes('unconfirmed')));
+ assert.equal(result.operators.find(o=>o.id==='rook').status,'available');
+ assert.deepEqual(resolveOperation(result,report),result);
+});
+
 test('OC6 withdrawn operations keep verified partial intel, but never double reward',()=>{
  const base=newCampaign(9021),job=base.contracts[0];
  const c=acceptContract(base,job.id),before=campaignIntelBalance(c);

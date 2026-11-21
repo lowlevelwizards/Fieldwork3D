@@ -1246,7 +1246,8 @@ export class CampaignScreen{
     record.dataset.status=operator.status;
     const identity=node('div','campaign-archive-identity');
     identity.append(node('strong','',operator.callsign),
-     node('span','',operator.status.toUpperCase()));
+     node('span','',operator.missingSinceOperationId&&operator.status==='lost'?
+       'MISSING · FATE UNCONFIRMED':operator.status.toUpperCase()));
     const metrics=node('div','campaign-archive-metrics');
     metrics.append(node('span','',operator.missions+' DEPLOYMENTS'),
      node('span','',operator.successful+' SUCCESSES'));
