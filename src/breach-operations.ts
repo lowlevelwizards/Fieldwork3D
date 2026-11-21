@@ -52,6 +52,8 @@ export const BRIEFS:Record<OperationKind,OperationBrief>={
 export const operationBrief=(kind:OperationKind)=>BRIEFS[kind];
 export type OperationAssessment={
   outcome:'success'|'failure';kind:OperationKind;elapsed:number;
+  disposition?:import('./breach-operation-outcomes.ts').OperationDisposition;
+  evacuatedCasualties?:number;
   casualties:number;teamSize:number;shots:number;hits:number;
   objective:boolean;targetSurrendered?:boolean;extracted:number;
   /** Retrospective actual captive condition, never inferred from zero HP. */
@@ -70,9 +72,10 @@ export function assessOperation(data:OperationAssessment,explain=false){
   Math.round(data.hits/data.shots*100):0;
  const survived=Math.max(0,data.teamSize-data.casualties);
  const components:OperationScoreComponent[]=[];
- let score=data.outcome==='success'?78:20;
- components.push({label:data.outcome==='success'?
-  'SUCCESSFUL OPERATION':'FAILED OPERATION',amount:score});
+ const withdrawn=data.outcome==='failure'&&data.disposition==='withdrawn';
+ let score=data.outcome==='success'?78:withdrawn?42:20;
+ components.push({label:data.outcome==='success'?'SUCCESSFUL OPERATION':
+   withdrawn?'ORGANIZED WITHDRAWAL':'FAILED OPERATION',amount:score});
  const award=(label:string,amount:number)=>{
   score+=amount;
   if(amount!==0)components.push({label,amount});
@@ -80,6 +83,10 @@ export function assessOperation(data:OperationAssessment,explain=false){
  if(data.objective)award('OBJECTIVE COMPLETED',12);
  award('SURVIVING SQUAD',Math.round(12*survived/Math.max(1,data.teamSize)));
  award('SQUAD CASUALTIES',-data.casualties*13);
+ // A downed member is still a casualty. Physical evacuation earns separate
+ // credit without rewriting medical severity or pretending they can fight.
+ if(data.evacuatedCasualties)award('CASUALTIES EVACUATED',
+   Math.min(12,Math.max(0,data.evacuatedCasualties)*4));
  if(data.elapsed>180)
   award('TIME MODIFIER',-Math.min(12,Math.floor((data.elapsed-180)/30)));
  if(data.kind==='capture'&&data.targetSurrendered)
@@ -97,7 +104,7 @@ export function assessOperation(data:OperationAssessment,explain=false){
  const raw=score;
  score=Math.max(0,Math.min(100,score));
  if(score!==raw)components.push({label:'SCORE LIMIT',amount:score-raw});
- const grade=data.outcome==='failure'?'F':
+ const grade=data.outcome==='failure'&&!withdrawn?'F':
   score>=90?'A':score>=78?'B':score>=62?'C':'D';
  const summary={grade,score,accuracy,survived};
  return explain?{...summary,scoreComponents:components}:summary;
