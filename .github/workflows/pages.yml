@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read # required to verify Pages artifact API registration
   pages: write
   id-token: write
 concurrency:
@@ -51,6 +52,28 @@ jobs:
         with:
           path: dist
           name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+      # GitHub's artifact metadata API can lag behind successful upload.
+      # deploy-pages queries that API immediately; it otherwise fails with
+      # "No artifacts named ..." even though the artifact exists moments later.
+      # Poll ONLY this run/attempt's immutable artifact rather than retrying
+      # the entire deployment or publishing an older attempt's output.
+      - name: Wait for Pages artifact registration
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PAGES_ARTIFACT: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          for attempt in $(seq 1 20); do
+            names="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts?per_page=100" \
+              --jq '.artifacts[].name' 2>/dev/null || true)"
+            if printf '%s\\n' "$names" | grep -Fxq "$PAGES_ARTIFACT"; then
+              echo "Exact Pages artifact is registered: $PAGES_ARTIFACT"
+              exit 0
+            fi
+            echo "Pages artifact registry pending (check $attempt/20)"
+            sleep 3
+          done
+          echo "Exact Pages artifact did not register; do not deploy stale content" >&2
+          exit 1
       - id: deployment
         uses: actions/deploy-pages@v4
         with:
