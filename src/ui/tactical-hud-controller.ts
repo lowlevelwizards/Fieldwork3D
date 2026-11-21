@@ -13,6 +13,7 @@ import type {createBreachUiElements} from './breach-ui-elements.ts';
 import type {CampaignMode} from '../breach-app-mode.ts';
 import type {CampaignState} from '../campaign-state.ts';
 import type {TransportCandidate} from '../breach-transport-candidate.ts';
+import {nearestEligibleActor} from './tactical-nearest-actor.ts';
 import type {DispatchIncidentContext} from '../dispatch-incident-context.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,rangeTrialLabel,type RangeTrial} from '../equipment-training-diagnostics.ts';
@@ -49,6 +50,14 @@ import {tacticalUiActionAvailability} from './tactical-command-affordances.ts';
 import {ExecutionNoticeFeed,locateNoticeOrder} from './execution-feedback.ts';
 import {createTacticalInteractionState,
  type TacticalInteractionState} from '../breach-tactical-interaction-state.ts';
+
+/** Separate medical-kit retrieval from DRAG/CARRY targeting: a nearby
+ * unconscious civilian cannot hide the RECOVER action for a downed teammate. */
+function recoverableSquadmate(s:Session,selected:string):TeamActor|null{
+ const friendly=team(s),actor=friendly.find(o=>o.id===selected&&o.health>0);
+ return actor?nearestEligibleActor(friendly,actor.p,o=>
+  o.id!==actor.id&&o.health<=0&&!o.surrendered):null;
+}
 
 /** A6: read-only HUD presentation snapshot. No command or navigation authority. */
 export type TacticalSessionPresentation={
@@ -578,10 +587,11 @@ export function createTacticalHudController(
    [dragButton,'DRAG'],[carryButton,'CARRY'],[retrieveButton,'RECOVER']
   ] as const){
    if(!button)continue;
-   const available=!!casualty&&(mode!=='RECOVER'||casualty.kind==='squad');
+   const person=mode==='RECOVER'?recoverableSquadmate(state,selected):casualty;
+   const available=!!person;
    button.hidden=!available;
    button.disabled=!available||state.phase!=='planning'||replaying;
-   writeDomText(button,available?mode+' · '+casualty!.name.toUpperCase():mode);
+   writeDomText(button,person?mode+' · '+person.name.toUpperCase():mode);
   }
   if(fieldLightButton){
    const selectedActor=friendly.find(a=>a.id===selected);
@@ -959,14 +969,15 @@ optionalIntelButton.addEventListener('click',()=>{
  port.updateHud();
 });
 medicalButton.insertAdjacentElement('afterend',optionalIntelButton);
-function casualtyActionButton(label:string,action:(target:TransportCandidate)=>void){
+function casualtyActionButton(label:string,action:(target:{id:string})=>void){
  const button=document.createElement('button');button.type='button';
  button.className=port.ui.loadout.className;button.textContent=label;
  button.hidden=true;
  button.addEventListener('click',()=>{
   if(port.state.phase!=='planning'||port.replaying)return;
-  const patient=port.casualtyCandidate();
-  if(patient&&(label!=='RECOVER'||patient.kind==='squad'))action(patient);
+  const patient=label==='RECOVER'?recoverableSquadmate(port.state,port.selected):
+    port.casualtyCandidate();
+  if(patient)action(patient);
   port.updateHud();
  });
  medicalButton!.insertAdjacentElement('afterend',button);
