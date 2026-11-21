@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read  # Pages upload metadata must be queryable before publishing.
   pages: write
   id-token: write
 concurrency:
@@ -51,6 +52,32 @@ jobs:
         with:
           path: dist
           name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+      # upload-pages-artifact can return before the Actions artifact list API
+      # exposes its name to deploy-pages. Verify the SAME run/attempt artifact
+      # exists before publishing; a missing artifact is a real release blocker.
+      # This is bounded and read-only; it never queues a duplicate Pages run.
+      - name: Wait for Pages artifact API visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PAGES_ARTIFACT: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          visible=0
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+            if gh api --method GET "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts?name=${PAGES_ARTIFACT}" --jq '.artifacts[].name' 2>/dev/null | grep -Fxq "${PAGES_ARTIFACT}"; then
+              visible=1
+              echo "Pages artifact ${PAGES_ARTIFACT} visible on Actions API (attempt ${attempt})"
+              break
+            fi
+            echo "Awaiting Pages artifact metadata (attempt ${attempt}/15)"
+            sleep 4
+          done
+          if [[ "${visible}" != "1" ]]; then
+            echo "Pages artifact not visible; refusing to deploy a missing build" >&2
+            exit 1
+          fi
+          # Leave a brief propagation window for deploy-pages' separate
+          # artifact metadata client to see the same newly-created object.
+          sleep 3
       - id: deployment
         uses: actions/deploy-pages@v4
         with:
