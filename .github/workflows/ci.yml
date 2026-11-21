@@ -104,3 +104,45 @@ jobs:
     uses: ./.github/workflows/closeout-stage6-browser.yml
     permissions:
       contents: read
+
+  # A2: one fast affected-file selector owns legacy equipment/Arsenal PR
+  # dispatch. Unrelated PRs no longer create three independent workflow runs.
+  specialist-routing:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      loadout: ${{ steps.owners.outputs.loadout }}
+      physical: ${{ steps.owners.outputs.physical }}
+      arsenal: ${{ steps.owners.outputs.arsenal }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: owners
+        name: Resolve changed-file specialist owners (fail closed on unknown)
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-specialist-routing.mjs --github-output
+
+  loadout-domain:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.loadout == 'true' }}
+    uses: ./.github/workflows/loadout-prep-l2-critical.yml
+    permissions:
+      contents: read
+
+  physical-equipment-domain:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.physical == 'true' }}
+    uses: ./.github/workflows/f6-physical-equipment-critical.yml
+    permissions:
+      contents: read
+
+  arsenal-mount-domain:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.arsenal == 'true' }}
+    uses: ./.github/workflows/arsenal-m2-mount-inventory.yml
+    permissions:
+      contents: read
+      actions: read
