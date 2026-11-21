@@ -229,11 +229,12 @@ export function buildM9Appearance(id:M9AppearanceId,
  // The sloping rear boundary angles toward the muzzle as it rises.
  // D7: two broad angled planes at the transition to the exposed barrel.
  // Extend its lower nose slightly forward, without an extra bevel object.
- // D10: simple square rear termination plus ONE large bevel into the
- // upper plane. Remove the large slanted rear-top wedge and tiny steps.
+ // D10 final visual cleanup: a SINGLE shallow front lip, not the
+ // previous triangular wedge where the exposed barrel begins.
+ // Front of the breech is short/near-vertical; the rear stays squared.
  const breech:Outline=[
-  [SLIDE_REAR,SLIDE_BOTTOM],[-.98,SLIDE_BOTTOM],
-  [-.98,1.96],[-1.34,2.73],[-1.78,SLIDE_TOP],
+  [SLIDE_REAR,SLIDE_BOTTOM],[-1.36,SLIDE_BOTTOM],
+  [-1.36,2.90],[-1.55,SLIDE_TOP],
   [-8.44,SLIDE_TOP],[SLIDE_REAR,2.64]
  ];
  const rearSlide=addOutline(root,'barrel',id,n++,breech,
@@ -457,7 +458,7 @@ export function buildM9Appearance(id:M9AppearanceId,
   guardOpening:true,actualOpenTop:true,
   barrelRadius:BARREL_RADIUS,barrelY:BARREL_Y,
   muzzleWrapEndX:a.nose+.04,
-  upperBridgeFrontX:-.98,beavertailRearX:-10.23,
+  upperBridgeFrontX:-1.36,beavertailRearX:-10.23,
   upperRoofInset:.14,lowerSlideTopY:2.16,
   frontWrapDepth:1.07,
   serrationBottomY:.70,serrationTopY:2.04,
