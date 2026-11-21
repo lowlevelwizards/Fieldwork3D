@@ -10,7 +10,9 @@ import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const cases=[
  {name:'townhouse-entry',index:1,seed:13946496,scale:'small',
-  target:'rook',expectedPending:4},
+  target:'rook',expectedPending:0},
+ {name:'townhouse-follower',index:1,seed:13946496,scale:'small',
+  target:'ash',expectedPending:0},
  {name:'retail-entry',index:3,seed:14299875,scale:'standard',
   target:'rook',expectedPending:3},
  {name:'garage-entry',index:5,seed:14354241,scale:'standard',
@@ -63,4 +65,7 @@ for(const c of cases)test('D3.31 P1 physical lead forensic '+c.name,()=>{
  // mistake generated WAIT/SYNC holds for physical arrival.
  assert.ok(pending.length<=c.expectedPending,
   'new pending operators in frozen physical lead cohort');
+ if(c.name.startsWith('townhouse'))
+  assert.equal(entry.arrivals,4,
+   'swept generated-ENTRY recovery must yield four genuinely arrived feet');
 });
