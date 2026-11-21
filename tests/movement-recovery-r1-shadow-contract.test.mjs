@@ -10,6 +10,8 @@ import {setTransientRoute,prependTransientLeg,observeTransientPrepend,
  noteDoorHandoffRejection,setTransientRouteObserver}
  from '../src/breach-route-transition.ts';
 import {inspectR0} from '../scripts/verification/movement-recovery-r0-audit.mjs';
+import {verifyR1ShadowMotorParity}
+ from '../scripts/verification/movement-recovery-r1-shadow-audit.mjs';
 
 const p=(x,y)=>({x,y});
 const pass={eligibility:'pass',clearance:'pass',cooldown:'pass',
@@ -148,4 +150,12 @@ test('R1 R0 baseline writer inventory remains intact',()=>{
  assert.equal(snapshot.routeWriters.core,30);
  assert.equal(snapshot.routeWriters.extended,36);
  assert.equal(snapshot.scenarios.length,8);
+});
+
+test('R1 real production motor is identical with adoption shadow off and on',()=>{
+ const result=verifyR1ShadowMotorParity(480);
+ assert.equal(result.parity,true);
+ assert.ok(result.events>0);
+ assert.equal(result.disagreements>=0,true,
+  'hypothetical disagreements are diagnostics, never movement gates');
 });
