@@ -38,6 +38,7 @@ jobs:
           node --test tests/ci-regression-plan.test.mjs
           node --test tests/ci-specialist-routing.test.mjs
           node --test tests/ci-movement-routing.test.mjs
+          node --test tests/ci-weapon-visual-routing.test.mjs
           node scripts/verification/ci-regression-plan.mjs --check
           node scripts/verification/ci-workflow-inventory.mjs --check
           node scripts/verification/ci-workflow-contract.mjs
@@ -119,6 +120,8 @@ jobs:
       arsenal: ${{ steps.owners.outputs.arsenal }}
       movementRecovery: ${{ steps.owners.outputs.movementRecovery }}
       movementRelease: ${{ steps.owners.outputs.movementRelease }}
+      arsenalM30: ${{ steps.owners.outputs.arsenalM30 }}
+      glockArt: ${{ steps.owners.outputs.glockArt }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -165,5 +168,22 @@ jobs:
     needs: specialist-routing
     if: ${{ needs.specialist-routing.outputs.movementRelease == 'true' }}
     uses: ./.github/workflows/d3-main-release-checkpoint.yml
+    permissions:
+      contents: read
+
+  # A4: source-selected production weapon art and WebGL verification.
+  # Their exact visual smoke commands and artifact upload remain in callees.
+  arsenal-m30-visual:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.arsenalM30 == 'true' }}
+    uses: ./.github/workflows/arsenal-m30.yml
+    permissions:
+      contents: read
+      actions: read
+
+  glock-family-visual:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.glockArt == 'true' }}
+    uses: ./.github/workflows/glock-family-art.yml
     permissions:
       contents: read

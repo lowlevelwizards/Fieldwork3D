@@ -1,38 +1,7 @@
 name: Arsenal M3.0 production weapon geometry audit and resource lifecycle
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'src/breach-weapon-geometry.ts'
-      - 'src/weapons/geometry/**'
-      - 'src/arsenal/**'
-      - 'src/breach-weapon-geometry.ts'
-      - 'scripts/audit-weapon-production-m30.mjs'
-      - 'scripts/smoke-arsenal-m30-shotgun-visual.mjs'
-      - 'arsenal-m30-shotgun-capture.html'
-      - 'src/arsenal-m30-shotgun-capture.ts'
-      - 'src/arsenal-m30c3-modular-capture.ts'
-      - 'arsenal-m30c3-modular-capture.html'
-      - 'scripts/smoke-arsenal-m30c3-modular-visual.mjs'
-      - 'scripts/smoke-arsenal-m30c4-runtime-visual.mjs'
-      - 'src/arsenal-m30c5-factory-capture.ts'
-      - 'arsenal-m30c5-factory-capture.html'
-      - 'scripts/smoke-arsenal-m30c5-candidate-visual.mjs'
-      - 'scripts/smoke-arsenal-m30c5-runtime-visual.mjs'
-      - 'tests/arsenal-m30c4-*.test.mjs'
-      - 'tests/arsenal-m30c5-*.test.mjs'
-      - 'tests/arsenal-m30-*.test.mjs'
-      - 'tests/weapon-r870-p08-polish.test.mjs'
-      - 'tests/weapon-r870-p09-identity.test.mjs'
-      - 'tests/weapon-r870-p12-rear-family.test.mjs'
-      - 'tests/weapon-r870-p13-proportions.test.mjs'
-      - 'tests/weapon-r870-p14-*.test.mjs'
-      - 'tests/weapon-r870-p15-*.test.mjs'
-      - 'tests/weapon-r870-p16-*.test.mjs'
-      - 'src/arsenal-r870-p07-capture.ts'
-      - 'arsenal-r870-p07-capture.html'
-      - 'scripts/smoke-arsenal-r870-p07-visual.mjs'
-      - '.github/workflows/arsenal-m30.yml'
+  workflow_call:
+  workflow_dispatch:
 permissions:
   contents: read
   actions: read

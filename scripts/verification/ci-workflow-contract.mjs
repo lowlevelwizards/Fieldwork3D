@@ -11,6 +11,8 @@ const paths={
  loadout:'.github/workflows/loadout-prep-l2-critical.yml',
  physical:'.github/workflows/f6-physical-equipment-critical.yml',
  arsenal:'.github/workflows/arsenal-m2-mount-inventory.yml',
+ arsenalM30:'.github/workflows/arsenal-m30.yml',
+ glockArt:'.github/workflows/glock-family-art.yml',
  d3retail:'.github/workflows/d3-14d2-retail-recovery.yml',
  d3departure:'.github/workflows/d3-17c-departure.yml',
  d3join:'.github/workflows/d3-17d-door-join.yml',
@@ -99,6 +101,32 @@ export function validateWorkflowContracts(wf){
   '--d329-cancellation-door-witness',
   '--d315b4-blind22'])
   must('d3release',contract);
+ // A4: M30 production and Glock art browser acceptance are single
+ // source-selected reusable CI jobs. Original smoke and evidence are retained.
+ must('ci','--test tests/ci-weapon-visual-routing.test.mjs');
+ for(const [name,job,output] of [
+  ['arsenalM30','arsenal-m30-visual','arsenalM30'],
+  ['glockArt','glock-family-visual','glockArt']]){
+  must('ci',job+':');
+  must('ci','uses: ./.github/workflows/'+paths[name].split('/').at(-1));
+  must('ci','needs.specialist-routing.outputs.'+output);
+  must(name,'workflow_call:');
+  must(name,'workflow_dispatch:');
+ }
+ const m30Triggers=wf.arsenalM30.slice(0,wf.arsenalM30.indexOf('jobs:'));
+ assert.ok(!m30Triggers.includes('  pull_request:'),
+  'M30 still creates independent main PR runs');
+ const glockTriggers=wf.glockArt.slice(0,wf.glockArt.indexOf('jobs:'));
+ assert.ok(glockTriggers.includes('branches-ignore: [main]'),
+  'Glock must keep non-main PRs but not duplicate main PR runs');
+ for(const smoke of ['smoke-arsenal-m30-shotgun-visual.mjs',
+  'smoke-arsenal-m30c3-modular-visual.mjs',
+  'smoke-arsenal-m30c4-runtime-visual.mjs',
+  'smoke-arsenal-m30c5-runtime-visual.mjs',
+  'arsenal-m30-physical-visual-smoke'])
+  must('arsenalM30',smoke);
+ must('glockArt','smoke-consolidation-p9-arsenal.mjs');
+ must('glockArt','beretta-m9-art-review');
  must('arsenal','smoke-arsenal-m25-visual.mjs');
  must('arsenal','audit-pages-release-checkpoint.mjs');
  must('architecture','breach-critical-suite.mjs');
