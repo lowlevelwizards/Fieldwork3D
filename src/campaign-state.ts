@@ -103,6 +103,12 @@ export type CampaignReport={
  id:string;contractId:string;day:number;outcome:'success'|'failure';
  grade:string;elapsed:number;participatingIds:string[];casualties:string[];
  objective:boolean;events:CareerEvent[];
+ /** Optional OC outcome metadata. Legacy results remain unchanged. */
+ disposition?:import('./breach-operation-outcomes.ts').OperationDisposition;
+ objectiveSecured?:boolean;
+ extractedIds?:string[];leftBehindIds?:string[];
+ /** Actual optional evidence physically recovered, not merely discovered. */
+ intelRecovered?:number;
  performance?:OperatorPerformance[];gains?:SkillGains[];
  flashUsed?:number;
  /** D10: optional evidence-only incident closeout; no extra score rule. */
@@ -379,6 +385,20 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
  const evacuated=new Set(r.evacuatedIds??[]);
  const gainedSkills:SkillGains[]=[];
  const careerEvents:CareerEvent[]=[];
+ // Withdrawal is not an automatic fatality. Record custody and recovery
+ // facts separately from the existing combat medical authority.
+ if(r.disposition==='withdrawn')for(const id of participants)
+  careerEvents.push({id:r.id+'-'+id+'-withdrawal',day:c.day,
+   operatorId:id,operationId:r.id,kind:'withdrawal',
+   detail:'Withdrew from '+contract.title});
+ for(const id of r.evacuatedIds??[])if(participants.has(id))
+  careerEvents.push({id:r.id+'-'+id+'-evacuated',day:c.day,
+   operatorId:id,operationId:r.id,kind:'casualty-evacuated',
+   detail:'Physically evacuated from '+contract.title});
+ for(const id of r.leftBehindIds??[])if(participants.has(id))
+  careerEvents.push({id:r.id+'-'+id+'-unrecovered',day:c.day,
+   operatorId:id,operationId:r.id,kind:'unrecovered',
+   detail:'Not recovered at extraction during '+contract.title});
  const operators=c.operators.map(o=>{
   if(!participants.has(o.id)){
    const recoveryDays=Math.max(0,o.recoveryDays-1);
@@ -480,9 +500,13 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   return recordWeaponRounds(w,actual,c.day,r.id);
  });
  return {...c,day,
-  // No intel reward for failures; replayed reports cannot grant it twice.
+  // Primary mission rewards retain their established contract; additional
+  // recovered evidence is awarded even after an organized withdrawal.
+  // This settlement is protected by the existing appliedResults ID gate.
   intelligence:Math.min(9,campaignIntelBalance(c)+
-   (r.outcome==='success'?(contract.kind==='intel'?2:1):0)),
+   (r.outcome==='success'?(contract.kind==='intel'?2:1):0)+
+   (Number.isFinite(r.intelRecovered)?Math.max(0,Math.min(6,
+     Math.floor(r.intelRecovered??0))):0)),
   funds:c.funds+gained+(departmentCycle?.receipt.operatingSupport??0),
   ...(departmentCycle?{dispatchDepartment:departmentCycle.state}:{}),
   operators:developed,regionalPressure:pressure,
