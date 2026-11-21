@@ -15,16 +15,36 @@ export function validateWorkflowContracts(wf){
  const must=(file,needle)=>assert.ok(wf[file].includes(needle),file+' missing '+needle);
  const no=(file,needle)=>assert.ok(!wf[file].includes(needle),file+' still contains '+needle);
  assert.ok(wf.ci.length<10000,'Primary CI has regrown into an obsolete branch gate catalog');
- no('ci',"startsWith(github.head_ref");
+ const verifyOnly=wf.ci.split('\n  verify:')[1]?.split('\n  full-regression:')[0]||'';
+ assert.ok(verifyOnly&&!verifyOnly.includes('startsWith(github.head_ref'),
+  'Primary fixed-clock selector must not be branch-name gated');
  must('ci','ci-regression-plan.mjs --run');
  must('ci','ci-regression-plan.mjs --check');
  must('ci','ci-workflow-contract.mjs');
+ must('ci','ci-workflow-inventory.mjs --check');
  must('ci','--test tests/ci-regression-plan.test.mjs');
  must('ci','npm test');
  must('ci','npm run build');
  must('ci','audit-pages-release-checkpoint.mjs');
  assert.equal(wf.ci.split('audit-pages-release-checkpoint.mjs').length-1,1,
   'Single release checkpoint must not be duplicated in primary CI');
+ // The specialized gates are reusable jobs under the single PR CI orchestrator.
+ // Keep their manual dispatch for focused acceptance, but never re-add a
+ // separate pull_request trigger (which multiplies skipped workflow runs).
+ must('ci','architecture-integration:');
+ must('ci','browser-acceptance:');
+ must('ci','uses: ./.github/workflows/architecture-refactor-critical.yml');
+ must('ci','uses: ./.github/workflows/closeout-stage6-browser.yml');
+ for(const workflow of ['architecture','browser']){
+  must(workflow,'workflow_call:');
+  must(workflow,'workflow_dispatch:');
+  no(workflow,'  pull_request:');
+ }
+ for(const prefix of ['refactor/','feature/release1-','feature/release2-',
+  'feature/release3-','feature/release4-','feature/release5-','feature/release6-'])
+  must('ci',`startsWith(github.head_ref, '${prefix}')`);
+ for(const prefix of ['refactor/closeout-stage6-','refactor/consolidation-'])
+  must('ci',`startsWith(github.head_ref, '${prefix}')`);
  must('architecture','breach-critical-suite.mjs');
  must('architecture','package-a-closeout-suite.mjs --run');
  must('architecture',"startsWith(github.head_ref, 'refactor/consolidation-')");
