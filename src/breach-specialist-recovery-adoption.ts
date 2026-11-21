@@ -6,6 +6,8 @@
 import type {Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import type {RouteSource} from './breach-route-transition.ts';
+import {finiteRecoveryPoint,finiteRecoveryRoute,makeRecoveryProposal}
+ from './breach-recovery-adoption-shared.ts';
 import {evaluateRecoveryProposal,RECOVERY_SOURCE_POLICY,
  type RecoveryAdoptionProof,type RecoveryDecision,type RecoveryOwner,
  type RecoveryClearance,type RecoverySourcePolicy}
@@ -73,7 +75,6 @@ const certificates:Readonly<Record<SpecialistOwner,
  'portal-handoff':['verified-world-join','door-managed-prefix',
   'oriented-squeeze']
 };
-const finite=(p:Pt)=>Number.isFinite(p.x)&&Number.isFinite(p.y);
 const ownerName:Record<SpecialistOwner,RecoveryOwner>={
  'door-episode':'door','door-contact':'door',
  'generated-stack':'squad','narrow-exit':'door',
@@ -121,7 +122,7 @@ export function evaluateSpecialistRecoveryAdoption(
   c.certificate==='post-physical-escape'&&
   c.escapedBody===true;
  const contextEligible=c.eligible&&rightOwner&&validCertificate&&
-  finite(goal)&&finite(a.p)&&
+  finiteRecoveryPoint(goal)&&finiteRecoveryPoint(a.p)&&
   (deliberateEscape||!!order&&order.kind==='move')&&
   (!generatedOwner||order?.kind==='move'&&!!order.stackDoorId)&&
   (!narrowOwner||a.squeeze)&&
@@ -132,7 +133,7 @@ export function evaluateSpecialistRecoveryAdoption(
  // leaf-overlap escape. No invented virtual waypoint or GO completion.
  const acceptsEmpty=isEmpty&&deliberateEscape&&
   source==='door-leaf-escape'&&c.operation==='replace';
- const preflight=route.every(finite)&&
+ const preflight=finiteRecoveryRoute(route)&&
   (route.length>0||acceptsEmpty);
  const precedenceOwner=ownerName[owner];
  const policy=contextPolicy(source,owner,c.certificate);
@@ -148,20 +149,11 @@ export function evaluateSpecialistRecoveryAdoption(
    progress:c.useful?'pass':'fail'
   }
  };
- const proposal={
+ const proposal=makeRecoveryProposal(a,s,{
   source,operation:c.operation,policy,
-  actorId:a.id,orderId:c.orderIdAtSelection,
-  orderKind:order?.kind??null,
-  authoredGoal:order?.kind==='move'?order.p:null,
-  goalKey:a.routeGoalKey,from:a.p,prior:a.nav,next:route,
-  seconds:s.seconds,blockedSeconds:a.blockedTime,
-  blocker:a.lastBlocker??null,owner:precedenceOwner,
-  doorId:a.doorTraversal?.doorId??null,
-  retryRouteAt:a.retryRouteAt,
-  lastRepairAt:a.lastNavRepairAt,
-  recoveryAttempts:a.recoveryAttempts,
-  evidence:proof.evidence
- };
+  orderIdAtSelection:c.orderIdAtSelection,route,
+  owner:precedenceOwner,evidence:proof.evidence
+ });
  // R1 deliberately exempts post-escape nav invalidation; *R3* demands
  // witnessed physical escape and matching source/certificate before it.
  let decision=evaluateRecoveryProposal(proposal,currentOrderId);
