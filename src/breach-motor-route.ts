@@ -252,7 +252,9 @@ export function restoreRepeatedDoorEscapeRoute(
  const rejoinProof=authorizeSpecialistRecovery(a,s,rejoinSource,
    rejoined,goal,'portal-handoff','verified-world-join');
  if(!rejoinProof)return false;
- setTransientRoute(s,a,rejoined,rejoinSource,rejoinProof);
+ setTransientRoute(s,a,rejoined,
+   usedLocalStage?'door-escape-local-portal':'door-escape-world-rejoin',
+   rejoinProof);
  finishDoorEscapeRejoin(a);
  a.lastNavRepairAt=s.seconds;provisionalRouteAccepted(a);
  return true;
