@@ -207,7 +207,8 @@ export function assembleSession(index=0,siteSeed?:number,
     semanticAudioEvents:[],nextSemanticAudioId:1,
     missionType:resolveMissionKind(site,missionOverride,encounterContext.mission),
     holdTime:0,rescue:null,captureTarget:null,captureSecured:false,
-    intelCarrierId:null,optionalIntel:generateOptionalIntel(site),intelGather:null};
+    intelCarrierId:null,optionalIntel:generateOptionalIntel(site),intelGather:null,
+    extractedOperators:[],pendingExtractionIds:[]};
   if(state.missionType==='capture'){
     // Respect the mission-specific target role from the actual encounter.
     // Fallback to the legacy first defender for older saved/practice maps.
