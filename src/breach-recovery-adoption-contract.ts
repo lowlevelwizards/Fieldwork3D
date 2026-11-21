@@ -131,7 +131,8 @@ export function evaluateRecoveryProposal(
 }
 export type RecoveryShadowRecord={
  proposal:RecoveryProposal;decision:RecoveryDecision;
- actual:'adopted'|'observed-prepend';
+ actual:'adopted'|'observed-prepend'|'rejection-witness';
+ rejectionWitnessReason?:string;
  /** Advisory discrepancy; never blocks the real motor. */
  differsFromActual:boolean;
 };
