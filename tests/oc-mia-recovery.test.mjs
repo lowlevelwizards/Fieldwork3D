@@ -119,6 +119,10 @@ test('OC9 fixed-step rescue cannot win by proximity, only real casualty custody'
   'unsecured downed body touching exit cannot complete mission');
  assert.equal(verifiedMissingPersonRecovery(s),null);
  assert.equal(takeCivilianCustody(casualty,carrier,'carry'),true);
+ // The real order executor deliberately drops unplanned custody. A carrier
+ // must retain an active EVACUATE node until the mission acknowledges exit.
+ carrier.plan.push({id:s.nextId++,kind:'evacuate',patientId:casualty.id,
+   transportMode:'carry',p:{...exit},transportPath:[]});
  for(let i=0;i<45&&s.phase==='running';i++)stepSession(s,1/60);
  assert.equal(s.phase,'won',
   'physical carry custody inside exit must complete without remote wins; '+
