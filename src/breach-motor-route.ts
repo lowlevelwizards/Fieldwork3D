@@ -479,7 +479,8 @@ export function prepareMotorRoute(
     // Empty query results are legitimate and must still reach the
     // known-shove, first-portal and negative-cache fallback chain.
     if(initialDecision.kind!=='reject')
-      setTransientRoute(s,a,initialRoute,initialSource,
+      setTransientRoute(s,a,initialRoute,
+        a.side==='blue'?'initial-intel':'initial-enemy',
         initialDecision.proof??undefined);
     if(!a.nav.length&&a.side==='blue'){
       // A known small object that the player drew THROUGH is a contextual
