@@ -5,6 +5,7 @@ import {requestIndividualExtraction,commitIndividualExtractions,canConcludeWithd
 import {optionalIntelRecovered,advanceOptionalIntel}
  from '../src/breach-optional-intel.ts';
 import {newSession,toggling,stepSession} from '../src/breach-game.ts';
+import {MissionRecorder} from '../src/breach-replay.ts';
 const friend=(id,x,health=4)=>({
  id,name:id.toUpperCase(),side:'blue',health,p:{x,y:0},
  carriedById:null,carryingId:null,surrendered:false,plan:[],path:[]
@@ -100,4 +101,22 @@ test('OC10 actual 60 Hz mission tick retires an arrived squad member',()=>{
    'retired actor stays at the real gate; no off-map teleport');
  assert.equal(s.battleEvents.some(e=>e.meta?.action==='individual-extraction'),true,
    'authoritative fixed-step emits a real archival extraction event');
+});
+
+test('OC10 replay has the actor before extraction but not in later live frames',()=>{
+ const s=newSession(0,78220,'floor-plan','standard','clear');
+ const recorder=new MissionRecorder();
+ recorder.capture(s,true);
+ const rook=s.operators.find(a=>a.id==='rook');
+ rook.p={...s.scenario.extract};rook.plan.length=0;rook.path.length=0;
+ s.started=true;s.phase='planning';s.withdrawalRequested=true;
+ assert.equal(requestIndividualExtraction(s,'rook'),true);
+ toggling(s);stepSession(s,1/60);
+ recorder.capture(s,true);
+ assert.equal(recorder.frames[0].actors.some(a=>a.id==='rook'),true,
+  'the historical scene still has the member');
+ assert.equal(recorder.frames.at(-1).actors.some(a=>a.id==='rook'),false,
+  'later frames must not leave a ghost actor in the combat scene');
+ assert.equal(s.extractedOperators.some(a=>a.id==='rook'),true,
+  'the original full career record was archived separately');
 });
