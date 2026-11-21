@@ -103,6 +103,10 @@ const entryLandingModule=entryLandingWitnessEnabled?
 const queueMotionWitnessEnabled=process.argv.includes('--queue-motion-witness');
 const queueMotionModule=queueMotionWitnessEnabled?
  await import('../src/breach-queue-trace.ts'):null;
+// D3.33 strictly opt-in, read-only 3-second generated WAIT gate census.
+const d333WaitGatesEnabled=process.argv.includes('--d333-wait-gates');
+const d333YieldModule=d333WaitGatesEnabled?
+ await import('../src/breach-passage-yield.ts'):null;
 const g2Fresh22=process.argv.includes('--g2-fresh-22');
 const d314bClearanceProbe=process.argv.includes('--d314b-clearance-probe');
 const d314cFrontProbe=process.argv.includes('--d314c-front-probe');
@@ -247,7 +251,7 @@ function run(site,seed,kind){
  const quiet={...site,training:true,enemies:[],encounter:undefined};
  const session=newSession(0,seed,'full-view',site.scale??'small','intel',quiet,
   {enableCivilians:false});
- const entryLandingEvidence=[],queueMotionEvidence=[];
+ const entryLandingEvidence=[],queueMotionEvidence=[],d333WaitGates=[];
  try{
   const initialD329Doors=d329CancellationDoorWitness?
    new Map(session.doors.map(d=>[d.id,{id:d.id,open:!!d.open,
@@ -376,6 +380,36 @@ function run(site,seed,kind){
    }finally{
     if(grid)setRouteGridAuditObserver(null);
     if(recordRoute)setTransientRouteObserver(null);
+   }
+   // D3.33 P7 forensic only, original Townhouse live Session. Never
+   // move actors, edit plans, imply arrival or alter motor eligibility.
+   if(d333WaitGatesEnabled&&kind==='entry'&&seed===9568385&&
+      tick%180===0&&d333WaitGates.length<20){
+     const lead=actors.find(a=>a.id==='rook'),
+      ash=actors.find(a=>a.id==='ash'),
+      door=session.doors.find(d=>d.id==='FRONT'),
+      order=ash?.plan[0],next=ash?.plan[1];
+     if(lead&&ash){
+      const gap=dist(lead.p,ash.p);
+      d333WaitGates.push({time:round(session.seconds),gap:round(gap),
+       lead:{pos:{...lead.p},order:lead.plan[0]?.kind??null,
+        entryDoorId:lead.plan[0]?.entryDoorId??null,
+        blocker:lead.lastBlocker,blocked:round(lead.blockedTime),
+        episode:lead.doorTraversal?.doorId??null,
+        phase:lead.doorTraversal?.phase??null},
+       ash:{pos:{...ash.p},order:order?.kind??null,
+        duration:order?.duration??null,doorId:order?.doorId??null,
+        next:next?.kind??null,nextDoor:next?.entryDoorId??null,
+        stopped:ash.stopped,health:ash.health,
+        traversal:!!ash.traversal,pending:!!ash.traversalPending},
+       front:door?{open:door.open,fraction:round(door.openFraction??0),
+        locked:!!door.locked,heldBy:door.heldBy??null,
+        angular:round(door.angularVelocity??0),jammed:!!door.jammed,
+        wedged:!!door.wedged,
+        budget:door.open?
+         round(d333YieldModule.openingYieldBudget(session,door,ash.id)):null
+       }:null});
+     }
    }
    // D3.29B: only after an actual, authoritatively failed order, capture
    // the motor-selected leaf at the SAME failure tick. The final chosen
@@ -1459,6 +1493,7 @@ function run(site,seed,kind){
    ...(d327GarageProbe?{d327GarageEvidence}:{}),
    ...(entryLandingWitnessEnabled?{entryLandingEvidence}:{}),
    ...(queueMotionWitnessEnabled?{queueMotionEvidence}:{}),
+   ...(d333WaitGatesEnabled&&kind==='entry'?{d333WaitGates}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
    doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({

@@ -65,10 +65,11 @@ test('D3.33 real Townhouse 9568385 generated ENTRY improves physical arrivals',(
  const report=JSON.parse(execFileSync(process.execPath,[
   '--experimental-strip-types','scripts/audit-r7-squad-execution.mjs',
   '1','2700','--site-index=1','--audit-seed=9568385',
-  '--audit-scale=standard','--progress','--queue-motion-witness'
+  '--audit-scale=standard','--progress','--queue-motion-witness','--d333-wait-gates'
  ],{cwd:root,maxBuffer:18*1024*1024,timeout:120000,encoding:'utf8'}));
  const mode=report.rows[0].modes.find(m=>m.mode==='entry');
  const rook=mode.operators.find(o=>o.id==='rook');
+ console.log('D333_LIVE_WAIT_GATES',JSON.stringify(mode.d333WaitGates??[]));
  console.log('D333_LIVE_QUEUE_MOTION',JSON.stringify({
   events:mode.queueMotionEvidence?.length??0,
   yielded:mode.queueMotionEvidence?.filter(e=>
