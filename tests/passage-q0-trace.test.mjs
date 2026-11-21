@@ -4,7 +4,7 @@ import {QueueMotionAudit,listenQueueMotion,noteQueueMotion}
  from '../src/breach-queue-trace.ts';
 test('Q0 attribution is opt-in, source-labelled and bounded',()=>{
  const s={seconds:0,operators:[{id:'a',side:'blue',health:4,
-  p:{x:20,y:35},motorPause:'passage',lastBlocker:'clear',velocity:0}],
+  p:{x:20,y:35},plan:[],motorPause:'passage',lastBlocker:'clear',velocity:0}],
   doors:[{id:'D',a:{x:0,y:0},b:{x:40,y:0}}]};
  const q=new QueueMotionAudit(),slots=new Map([['a',[{doorId:'D',fromSide:1,rank:0}]]]);
  listenQueueMotion(s,e=>q.event(e));
