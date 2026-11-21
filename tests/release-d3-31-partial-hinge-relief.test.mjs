@@ -4,6 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateSite} from '../src/breach-site.ts';
+import {newSession} from '../src/breach-game.ts';
 import {doorWouldStrikeActors} from '../src/breach-door.ts';
 import {doorLeafSegment,OPERATOR_RADIUS} from '../src/breach-core.ts';
 import {openingSweepThreatens,upcomingOpeningSweep}
@@ -14,7 +15,10 @@ const p=(x,y)=>({x,y});
 test('D3.31 archive: physical Townhouse FRONT at 0.931 still threatens its own lead',()=>{
  const site=generateSite(13946496,'small',undefined,{mission:'intel'},
   {archetype:'townhouse'});
- const door=site.doors.find(d=>d.id==='FRONT');
+ const quiet={...site,training:true,enemies:[],encounter:undefined};
+ const session=newSession(0,13946496,'full-view',site.scale??'small',
+  'intel',quiet,{enableCivilians:false});
+ const door=session.doors.find(d=>d.id==='FRONT');
  assert.ok(door&&door.kind==='hinged');
  // Exact body from the 45-second frozen witness: Rook stayed at this
  // almost unchanged coordinate, while this same hinge was stationary.
@@ -34,7 +38,7 @@ test('D3.31 archive: physical Townhouse FRONT at 0.931 still threatens its own l
  const locked={...stopped,locked:true};
  assert.equal(openingSweepThreatens(locked,body),false,
   'locked leaf grants no movement or geometry exemption');
- assert.deepEqual(site.doors.find(d=>d.id==='FRONT'),door,
+ assert.deepEqual(session.doors.find(d=>d.id==='FRONT'),door,
   'pure predicates do not modify the actual map door');
 });
 
