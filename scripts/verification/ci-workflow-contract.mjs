@@ -70,13 +70,11 @@ export function validateWorkflowContracts(wf){
   if(name!=='loadout')assert.ok(!triggers.includes('  pull_request:'),
    name+' still has an independent PR trigger');
  }
- // A3: D3 physical/historical acceptance still exists and is called exactly
- // once from source-selected main CI, not five unrelated workflow runs.
+ // A3: physical movement PR verification has one current, witnessed
+ // D3.30 + frozen D3.15B4 release gate. Obsolete earlier cohorts remain
+ // individually runnable (including their non-main PR historical entry).
  must('ci','--test tests/ci-movement-routing.test.mjs');
  for(const [name,job,output] of [
-  ['d3retail','d3-retail-physical','movementRetail'],
-  ['d3departure','d3-departure-physical','movementDeparture'],
-  ['d3join','d3-door-join-physical','movementJoin'],
   ['d3recovery','d3-recovery-critical','movementRecovery'],
   ['d3release','d3-main-physical-checkpoint','movementRelease']]){
   must('ci',job+':');
@@ -84,12 +82,23 @@ export function validateWorkflowContracts(wf){
   must('ci','needs.specialist-routing.outputs.'+output);
   must(name,'workflow_call:');
   must(name,'workflow_dispatch:');
-  const triggers=wf[name].slice(0,wf[name].indexOf('jobs:'));
-  assert.ok(!triggers.includes('branches: [main]'),name+' still has separate main PR trigger');
-  if(['d3retail','d3departure','d3join'].includes(name))
-   assert.ok(triggers.includes('branches-ignore: [main]'),name+' lost non-main PR compatibility');
-  else assert.ok(!triggers.includes('  pull_request:'),name+' still launches main PR');
  }
+ for(const name of ['d3retail','d3departure','d3join']){
+  no('ci','uses: ./.github/workflows/'+paths[name].split('/').at(-1));
+  must(name,'workflow_call:');
+  must(name,'workflow_dispatch:');
+  must(name,'branches-ignore: [main]');
+ }
+ for(const contract of [
+  'tests/release-d3-14d2-retail-rehearsal.test.mjs',
+  'tests/release-d3-17c-physical-departure.test.mjs',
+  'tests/release-d3-17d-door-route-join.test.mjs',
+  'tests/ci-d3-physical-truth.test.mjs',
+  'scripts/verify-d3-30-mainline.mjs',
+  'scripts/verification/ci-d3-physical-truth.mjs',
+  '--d329-cancellation-door-witness',
+  '--d315b4-blind22'])
+  must('d3release',contract);
  must('arsenal','smoke-arsenal-m25-visual.mjs');
  must('arsenal','audit-pages-release-checkpoint.mjs');
  must('architecture','breach-critical-suite.mjs');
