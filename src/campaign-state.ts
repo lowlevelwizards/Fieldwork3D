@@ -505,7 +505,7 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   // This settlement is protected by the existing appliedResults ID gate.
   intelligence:Math.min(9,campaignIntelBalance(c)+
    (r.outcome==='success'?(contract.kind==='intel'?2:1):0)+
-   (Number.isFinite(r.intelRecovered)?Math.max(0,Math.min(6,
+   (typeof r.intelRecovered==='number'&&Number.isFinite(r.intelRecovered)?Math.max(0,Math.min(6,
      Math.floor(r.intelRecovered??0))):0)),
   funds:c.funds+gained+(departmentCycle?.receipt.operatingSupport??0),
   ...(departmentCycle?{dispatchDepartment:departmentCycle.state}:{}),
