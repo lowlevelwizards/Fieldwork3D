@@ -1,6 +1,6 @@
 /** D3.32 P3: real Clinic D9 body-release acceptance, 45s at 60Hz.
  * Same frozen seed, real motor, original goals and unchanged doors.
- * Success requires Rook's REAL physical arrival, not an empty plan,
+ * Success requires ALL FOUR genuine physical arrivals, not an empty plan,
  * queued follower release, a synthetic completion or a collision waiver.
  */
 import test from 'node:test';
@@ -32,9 +32,12 @@ test('D3.32 P3 Clinic D9: genuinely arrived lead after fully swept open-leaf rej
  assert.equal(report.summary.corruptedPlans,0);
  assert.equal(report.summary.exceptions,0);
  assert.equal(run?.operators.length,4);
- assert.ok(run.arrivals>=2,'at least one additional genuine physical arrival');
- assert.equal(rook?.outcome,'arrived',
-  'must free and actually complete Rook, not just hide a waiting follower');
- assert.ok(!pending.some(id=>id==='ash'),
-  'previously arrived Ash must not regress');
+ assert.equal(run.arrivals,4,
+  'all four original player-authored Clinic destinations require real feet');
+ assert.deepEqual(pending,[],'no hidden queue or no-route pending operator');
+ for(const id of ['rook','moss','ash','vale']){
+  const operator=run.operators.find(a=>a.id===id);
+  assert.equal(operator?.outcome,'arrived',id+' must physically arrive');
+  assert.equal(operator.failedOrders,0,id+' must retain truthful orders');
+ }
 });

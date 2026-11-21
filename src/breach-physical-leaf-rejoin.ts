@@ -53,6 +53,35 @@ export function relevantStableOpenLeaf(from:Pt,doors:readonly Door[],
  }
  return best;
 }
+/** D3.32 P3C: a REAL blocked authored stride may rejoin an existing
+ * physical route before a 0.85-second stall, but only at a locally
+ * obstructing, STABLE fully-open leaf. No new motor or route authority.
+ * A moving/partial/held door, another pending maneuver, or a generated
+ * ENTRY/STACK keeps its existing ownership and timing.
+ */
+export function earlyStableOpenLeafForBlockedAuthoredMove(
+ a:TeamActor,goal:Pt,doors:readonly Door[],now:number,
+ physicallyDenied:boolean
+):Door|null{
+ const order=a.plan[0],tail=a.nav.at(-1);
+ if(!physicallyDenied||a.side!=='blue'||order?.kind!=='move'||
+    order.entryDoorId||order.stackDoorId||
+    d(order.p,goal)>.5||a.nav.length<2||!tail||d(tail,goal)>3||
+    a.lastBlocker!=='door'||a.blockedTime<.35||
+    a.blockedTime>=.85||now-a.lastNavRepairAt<.65||
+    now<a.retryRouteAt||a.squeeze||a.traversal||
+    a.traversalPending||a.autoSidestep||a.fireRetreatTarget||
+    a.doorTraversal?.maneuver==='outside-leaf')return null;
+ const leaf=relevantStableOpenLeaf(a.p,doors,
+   a.doorTraversal?.doorId??null);
+ if(!leaf||leaf.locked||leaf.jammed||leaf.wedged||leaf.heldBy||
+    (leaf.openFraction??0)<.98||
+    Math.abs(leaf.angularVelocity??0)>=.08||
+    pointToSegment(a.p,doorLeafSegment(leaf))>=OPERATOR_RADIUS+16)
+  return null;
+ return leaf;
+}
+
 /** Direct later transient node first, THEN a bounded library of full-body
  * stage points around the *actual* open aperture. At most TWO cold
  * A* connectors, only from a swept-clear stage to an existing nav node.

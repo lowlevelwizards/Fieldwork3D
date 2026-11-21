@@ -51,7 +51,8 @@ import {eligibleFrameActorDetour} from './breach-frame-actor-recovery.ts';
 import {shouldProbeStationaryCollisionRoute}
  from './breach-recovery-proposal-gate.ts';
 import {claimPhysicalLeafRejoin,relevantStableOpenLeaf,
- selectPhysicalOpenLeafRejoin} from './breach-physical-leaf-rejoin.ts';
+ selectPhysicalOpenLeafRejoin,earlyStableOpenLeafForBlockedAuthoredMove}
+ from './breach-physical-leaf-rejoin.ts';
 import {routeWithNormalWorld,coldFineMotorWorldRoute}
  from './breach-squeeze-route.ts';
 import {claimRepeatedFurnitureDeparture,
@@ -719,7 +720,15 @@ export function resolveMotorCollision(
     // no special door opening, and the normal R2 adoption gate remains.
     const earlyFollowOnLeaf=shouldProbeEarlyFollowOnOpenLeaf(
       a,p,s.doors,s.seconds,!closed&&!blocking&&!traversable);
-    if((repair==='replan'||repair==='report'||earlyFollowOnLeaf)&&
+    // D3.32 P3C: do not wait for a visible .85s stall when an
+    // ordinary authored MOVE has already met a fully-open solid leaf.
+    // A cold physical rejoin still needs a complete swept motor route
+    // and the same R3 specialist adoption contract.
+    const earlyStableLeaf=earlyStableOpenLeafForBlockedAuthoredMove(
+      a,p,s.doors,s.seconds,
+      !closed&&!blocking&&!traversable&&!doorContact?.advanced);
+    if((repair==='replan'||repair==='report'||earlyFollowOnLeaf||
+        !!earlyStableLeaf)&&
        s.seconds>=a.retryRouteAt&&!ownsDoorManeuverRoute(a)){
       a.lastNavRepairAt=s.seconds;
       // R2.1: when the actor ITSELF blocks a stationary partial hinge,
@@ -750,10 +759,10 @@ export function resolveMotorCollision(
       // actions. Do not fire on normal movement, active squeeze/traverse
       // or a still-swinging panel. Failed probes never alter navigation.
       if(a.side==='blue'&&a.plan[0]?.kind==='move'&&a.nav.length>=2&&
-         a.blockedTime>=1.8&&
+         (a.blockedTime>=1.8||!!earlyStableLeaf)&&
          (a.lastBlocker==='furniture'||a.lastBlocker==='door'||
           a.lastBlocker==='wall')){
-        const leaf=relevantStableOpenLeaf(a.p,s.doors,
+        const leaf=earlyStableLeaf??relevantStableOpenLeaf(a.p,s.doors,
           a.doorTraversal?.doorId??null);
         if(leaf&&claimPhysicalLeafRejoin(a,leaf,p,s.seconds,
              world.revision,s.doors)){
