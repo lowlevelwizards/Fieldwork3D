@@ -1883,7 +1883,11 @@ function mission(s:Session,dt:number){
     }
   }
   if(team(s).every(a=>a.health<=0)&&!canConcludeWithdrawal(s)){
-    s.phase='lost';s.report=['OPERATION FAILED','ALL OPERATORS LOST'];return;
+    s.phase='lost';
+    const safe=s.extractedOperators?.length??0;
+    s.report=['OPERATION FAILED',safe?
+      'REMAINING SQUAD LOST · '+safe+' ALREADY EXTRACTED':
+      'ALL OPERATORS LOST'];return;
   }
   const capturePerson=s.missionType==='capture'&&s.captureTarget?
     enemies(s).find(a=>a.id===s.captureTarget):undefined;
@@ -2027,6 +2031,20 @@ function mission(s:Session,dt:number){
     return prisoner.surrendered&&prisoner.restrained===true&&
       (prisoner.escortLeaderId===a.id||atBody);
   };
+  // A physically departed primary-intel courier still owns the dossier.
+  // Once all remaining mobile operators have evacuated, this is a real
+  // objective success, not an arbitrary failure because the courier no
+  // longer exists in the live motor array.
+  if(s.mission==='extract'&&s.missionType==='intel'&&
+    s.extractedOperators?.some(a=>a.id===s.intelCarrierId&&a.health>0)&&
+    canConcludeWithdrawal(s)){
+    s.mission='done';s.phase='won';
+    s.report=['OPERATION COMPLETE','INTEL COURIER EXTRACTED',
+      'REMAINING SQUAD ACCOUNTED FOR'];
+    notify(s,'INTELLIGENCE SECURED — EXTRACTION COMPLETE');
+    battleEvent(s,'objective',null,s.scenario.extract,'MISSION COMPLETE');
+    return;
+  }
   if(s.mission==='extract'&&team(s).some(a=>a.health>0&&
     near(a.p,s.scenario.extract,37)&&
     validLivingCaptureExtraction(a)&&
