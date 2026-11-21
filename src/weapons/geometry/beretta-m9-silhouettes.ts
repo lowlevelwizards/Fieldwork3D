@@ -34,7 +34,7 @@ export const M9_ART={
 const SLIDE_REAR=-8.86;
 const SLIDE_BOTTOM=.34,SLIDE_TOP=3.17;
 const SLIDE_DEPTH=3.03,UPPER_SLIDE_DEPTH=2.42;
-const FRAME_DEPTH=2.62,RAIL_DEPTH=.55;
+const FRAME_DEPTH=2.62;
 const BARREL_Y=2.48,BARREL_RADIUS=1.02;
 /** One shared 2-sided minimal accent; never created/disposed per-model/frame. */
 const SAFETY_RED=new THREE.MeshBasicMaterial({
