@@ -12,6 +12,7 @@ import {tacticalIcon} from './tactical-icons.ts';
 import type {createBreachUiElements} from './breach-ui-elements.ts';
 import type {CampaignMode} from '../breach-app-mode.ts';
 import type {CampaignState} from '../campaign-state.ts';
+import type {TransportCandidate} from '../breach-transport-candidate.ts';
 import type {DispatchIncidentContext} from '../dispatch-incident-context.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,rangeTrialLabel,type RangeTrial} from '../equipment-training-diagnostics.ts';
@@ -56,7 +57,7 @@ export type TacticalSessionPresentation={
  ui:ReturnType<typeof createBreachUiElements>;
  siteIdentityOutput:HTMLOutputElement;rangeTelemetry:HTMLElement;
  lastRangeTrial:RangeTrial|null;
- medicalCandidate:()=>TeamActor|null;casualty:TeamActor|null;
+ medicalCandidate:()=>TeamActor|null;casualty:TransportCandidate|null;
  paletteTether:HTMLElement;paintOperatorAccent:(node:HTMLElement,id:string)=>void;
  colorFor:(id:string)=>string;
  fieldLightButton:HTMLButtonElement|null;nvgButton:HTMLButtonElement|null;
@@ -87,7 +88,7 @@ export type TacticalToolbarPorts={
  showWeaponChooser:()=>void;hideWeaponChooser:()=>void;
  selectUnit:(id:string)=>void;cancelTargeting:()=>void;
  showUiHelp:(text:string,duration?:number)=>void;updateHud:()=>void;
- medicalCandidate:()=>TeamActor|null;casualtyCandidate:()=>TeamActor|null;
+ medicalCandidate:()=>TeamActor|null;casualtyCandidate:()=>TransportCandidate|null;
  invalidateFog:()=>void;
  setRangeTrial:(trial:RangeTrial|null)=>void;
  resetMission:()=>void;restartRange:()=>void;
@@ -577,9 +578,10 @@ export function createTacticalHudController(
    [dragButton,'DRAG'],[carryButton,'CARRY'],[retrieveButton,'RECOVER']
   ] as const){
    if(!button)continue;
-   button.hidden=!casualty;
-   button.disabled=!casualty||state.phase!=='planning'||replaying;
-   writeDomText(button,casualty?mode+' · '+casualty.name.toUpperCase():mode);
+   const available=!!casualty&&(mode!=='RECOVER'||casualty.kind==='squad');
+   button.hidden=!available;
+   button.disabled=!available||state.phase!=='planning'||replaying;
+   writeDomText(button,available?mode+' · '+casualty!.name.toUpperCase():mode);
   }
   if(fieldLightButton){
    const selectedActor=friendly.find(a=>a.id===selected);
@@ -957,14 +959,14 @@ optionalIntelButton.addEventListener('click',()=>{
  port.updateHud();
 });
 medicalButton.insertAdjacentElement('afterend',optionalIntelButton);
-function casualtyActionButton(label:string,action:(target:TeamActor)=>void){
+function casualtyActionButton(label:string,action:(target:TransportCandidate)=>void){
  const button=document.createElement('button');button.type='button';
  button.className=port.ui.loadout.className;button.textContent=label;
  button.hidden=true;
  button.addEventListener('click',()=>{
   if(port.state.phase!=='planning'||port.replaying)return;
   const patient=port.casualtyCandidate();
-  if(patient)action(patient);
+  if(patient&&(label!=='RECOVER'||patient.kind==='squad'))action(patient);
   port.updateHud();
  });
  medicalButton!.insertAdjacentElement('afterend',button);
