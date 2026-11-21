@@ -7,10 +7,10 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Fixed-clock transient route acquisition and backoff. This never
  * rewrites the player-authored PlanNode[] or grants collision authority.
  */
-import {OPERATOR_RADIUS,doorLeafSegment,doorCenter,pointToSegment,type Pt}
+import {OPERATOR_RADIUS,doorLeafSegment,doorCenter,doorBlocksSegment,pointToSegment,type Pt}
  from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
-import {pressDoorOnBodyAttempt,crossesDoorThreshold} from './breach-door.ts';
+import {pressDoorOnBodyAttempt,crossesDoorThreshold,canAutoOpenEnRoute} from './breach-door.ts';
 import {sessionDoorPressurePolicy}
  from './breach-door-pressure-frame.ts';
 import {recordDoorManeuverContact,tryGoalCompleteDoorHandoffAfterEscape}
@@ -577,7 +577,19 @@ export function prepareMotorRoute(
         const stage=selectColdStaleLeafPortalStage(a.p,p,local,
           point=>bodyClear(point,s.doors,OPERATOR_RADIUS,world),
           sweep,
-          (from,to)=>routeToNextOperableDoor(from,to,s.doors,world));
+          (from,to)=>routeToNextOperableDoor(from,to,s.doors,world),
+          // The established portal planner returns a prefix ending at
+          // the FIRST future operable door. It is not a collision waiver:
+          // the only unswept chord must be stopped by exactly one real,
+          // unsecured door leaf; every other solid body obstruction
+          // remains tested by the same full-body solver.
+          (from,to)=>s.doors.some(door=>
+            !door.locked&&!door.jammed&&!door.wedged&&!door.heldBy&&
+            (door.openFraction??(door.open?1:0))<.72&&
+            canAutoOpenEnRoute({kind:'move'},door.id)&&
+            doorBlocksSegment(door,{a:from,b:to})&&
+            sweptBodyClear(from,to,s.doors.filter(d=>d!==door),
+              OPERATOR_RADIUS,world)));
         if(stage.length){
           // Retire a stale *transient* episode ONLY once all route/body
           // evidence exists. The existing acquisition gate still owns
