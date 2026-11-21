@@ -38,7 +38,8 @@ import {TacticalFeedback,type FeedbackPoint} from './tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './contextual-teaching.ts';
 import {recoveryAdviceFor} from './recovery-guidance.ts';
-import {team,isSeen,missionText,operationBriefing,type Session,type TeamActor} from '../breach-game.ts';
+import {team,isSeen,missionText,operationBriefing,nearbyOptionalIntel,
+ planOptionalIntelGather,type Session,type TeamActor} from '../breach-game.ts';
 import {injuryOf,WEAPONS} from '../breach-combat.ts';
 import {magazineAlert} from '../arsenal/live-magazine-capacity.ts';
 import {executionStatus} from '../breach-execution-state.ts';
@@ -553,6 +554,17 @@ export function createTacticalHudController(
   paintOperatorAccent(ui.quickStates,selected);
   paintOperatorAccent(ui.context,selected);
   paintOperatorAccent(paletteTether,selected);
+  const intelButton=ui.tacticalHud.querySelector<HTMLButtonElement>('#optionalIntelGather');
+  if(intelButton){
+    const available=state.optionalIntel?.some(i=>i.discovered&&i.collectedBy===null);
+    const target=available?nearbyOptionalIntel(state,selected):null;
+    intelButton.hidden=!state.started||replaying||!available;
+    intelButton.disabled=!target||!!state.intelGather||
+      (state.phase!=='planning'&&state.phase!=='running');
+    writeDomText(intelButton,state.intelGather?
+      'GATHERING INTEL · '+Math.min(100,Math.floor(state.intelGather.elapsed/1.2*100))+'%':
+      target?'GATHER INTEL · '+target.kind.toUpperCase():'INTEL · APPROACH MARKER');
+  }
   if(medicalButton){
    const patient=medicalCandidate();
    medicalButton.disabled=!patient||state.phase!=='planning'||replaying;
@@ -931,6 +943,20 @@ medicalButton.addEventListener('click',()=>{
  port.updateHud();
 });
 port.ui.loadout.insertAdjacentElement('afterend',medicalButton);
+const optionalIntelButton=document.createElement('button');
+optionalIntelButton.type='button';
+optionalIntelButton.id='optionalIntelGather';
+optionalIntelButton.className=port.ui.loadout.className;
+optionalIntelButton.hidden=true;
+optionalIntelButton.textContent='GATHER INTEL';
+optionalIntelButton.title='Recover physically discovered optional evidence when within reach';
+optionalIntelButton.addEventListener('click',()=>{
+ if(port.replaying)return;
+ if(!planOptionalIntelGather(port.state,port.selected))
+  port.showUiHelp('MOVE BESIDE A DISCOVERED INTELLIGENCE MARKER FIRST',3400);
+ port.updateHud();
+});
+medicalButton.insertAdjacentElement('afterend',optionalIntelButton);
 function casualtyActionButton(label:string,action:(target:TeamActor)=>void){
  const button=document.createElement('button');button.type='button';
  button.className=port.ui.loadout.className;button.textContent=label;
