@@ -1,18 +1,7 @@
 name: After Action V5 — Focused Browser Acceptance
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/after-action-v5-critical.yml'
-      - 'index.html'
-      - 'src/breach-style.css'
-      - 'src/breach-after-action-*.ts'
-      - 'src/breach-operations.ts'
-      - 'src/breach-mission-reporting.ts'
-      - 'src/ui/breach-after-action-*.ts'
-      - 'scripts/smoke-after-action-v5.mjs'
-      - 'tests/after-action-v5-*.test.mjs'
-      - 'tests/after-action-v6-*.test.mjs'
+  workflow_call:
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -20,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   browser-smoke:
-    if: ${{ startsWith(github.head_ref, 'feat/after-action-v5-') || startsWith(github.head_ref, 'feature/after-action-v6-') || startsWith(github.head_ref, 'fix/after-action-v6-mobile-') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/ci-after-action-') || startsWith(github.head_ref, 'feat/after-action-v5-') || startsWith(github.head_ref, 'feature/after-action-v6-') || startsWith(github.head_ref, 'fix/after-action-v6-mobile-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
