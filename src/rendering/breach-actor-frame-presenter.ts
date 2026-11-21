@@ -9,6 +9,8 @@ import {createCivilianRig,updateCivilianRig,disposeCivilianRig,type CivilianRig}
  from '../breach-civilian-visuals.ts';
 export type FrameActorVisual={
  root:THREE.Group;status:THREE.Mesh;contactShadows:THREE.Mesh[];
+ /** External flashlight cone: not a child of the actor root. */
+ beam?:THREE.Mesh;
  side?:string;
 };
 export type ActorSceneReconciliationHost<T extends FrameActorVisual>={
@@ -31,6 +33,9 @@ export function reconcileSceneActorLifetimes<T extends FrameActorVisual>(
      continue;
    }
    object.root.visible=false;object.status.visible=false;
+   // Departed friendlies and hidden actors must not leave an orphaned
+   // flashlight beam in the scene after their character rig disappears.
+   if(object.beam)object.beam.visible=false;
    for(const shadow of object.contactShadows)shadow.visible=false;
  }
  const present=host.civilianIds;present.clear();

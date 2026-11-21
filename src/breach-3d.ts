@@ -817,6 +817,8 @@ export class TacticalScene3D{
   private readonly pixelTextures=new PixelTextureLibrary();
   private pixelTexturesEnabled=true;
   private boxGeometryCache=new Map<string,THREE.BoxGeometry>();
+  /** OC3 tiny world props. Session owns locations and disclosure, not meshes. */
+  private readonly optionalEvidenceMeshes=new Map<string,THREE.Group>();
   private sharedBoxGeometries=new Set<THREE.BufferGeometry>();
   private windowPaneMaterial:THREE.MeshStandardMaterial|null=null;
   private readonly wearMaterials=new Map<string,THREE.MeshBasicMaterial>();
@@ -1074,6 +1076,39 @@ export class TacticalScene3D{
       }
     });
   }
+  /** Iconic low-poly dossier, communications set or laptop; at most six.
+   * Entirely observational: neither raycast targets nor collection state
+   * is stored on the scene graph. Do not animate in the main game loop. */
+  private syncOptionalEvidenceMeshes(s:Session,replaying:boolean):void{
+    for(const item of s.optionalIntel??[]){
+      let group=this.optionalEvidenceMeshes.get(item.id);
+      const exposed=!replaying&&item.discovered&&item.collectedBy===null;
+      if(!group&&exposed){
+        group=new THREE.Group();
+        group.name='optional-intel:'+item.id;
+        const shell=this.solid(0x555b45,.88);
+        const detail=this.solid(0xdfc792,.89);
+        const dark=this.solid(0x303d3a,.86);
+        if(item.kind==='documents'){
+          this.box(group,0,1.8,0,13,2.5,9,shell,false);
+          this.box(group,0,3.2,-1,11,1,7,detail,false);
+          this.box(group,0,3.8,-3,6,.7,1,dark,false);
+        }else if(item.kind==='communications'){
+          this.box(group,0,4.5,0,9,8,7,dark,false);
+          this.box(group,0,8.7,-.7,7,1.8,5,shell,false);
+          this.box(group,2.4,13.5,-1.5,1.5,9,1.5,detail,false);
+          this.box(group,-2.5,5.5,-3.6,1.8,1.8,1.2,detail,false);
+        }else{
+          this.box(group,0,1.6,0,14,2.3,9,dark,false);
+          this.box(group,0,5,-3.8,13,7,1.8,shell,false);
+          this.box(group,0,5,-4.9,10,4,.9,detail,false);
+        }
+        this.root.add(group);
+        this.optionalEvidenceMeshes.set(item.id,group);
+      }
+      if(group){group.visible=exposed;group.position.set(item.p.x,0,item.p.y);}
+    }
+  }
   private box(parent:THREE.Object3D,x:number,y:number,z:number,
     w:number,h:number,d:number,material:THREE.Material,cast=true){
     const key=w+':'+h+':'+d;
@@ -1157,6 +1192,8 @@ export class TacticalScene3D{
     this.frameDoorsById.clear();
     this.frameActorNeighborhood.clear();
     this.displayedSite=site;
+    // The site root is retired below; never retain stale meshes from it.
+    this.optionalEvidenceMeshes.clear();
     this.staticBatches.clear();
     this.repeatedFixtures.clear();
     this.fixtureLights.reset();
@@ -1830,6 +1867,9 @@ export class TacticalScene3D{
       // Instanced repeated furniture follows the same physical transform.
       this.repeatedFixtures.sync(index,true);
     }
+    // Evidence meshes are visual only; current-session discovery gates
+    // visibility. Historical replay never borrows live future pickups.
+    this.syncOptionalEvidenceMeshes(s,!!replay||!!replayDisclosurePolicy);
     // Personal replay (including non-bodycam operator views) reads only
     // historically observed panes. The global replay reads its exact frame.
     // Scrubbing cannot inherit future breakage from a previous seek.

@@ -144,7 +144,10 @@ test('V4-2: new summary is permanent and populated only from authoritative debri
  assert.match(debrief,/const stats=debrief\(state\)/);
  assert.match(debrief,/summary\?\.setAttribute\('data-outcome'/);
  assert.match(debrief,/stats\.shots>0\?stats\.accuracy/);
- assert.match(debrief,/stats\.survived\+' \/ '\+team\(state\)\.length/);
+ assert.match(debrief,/stats\.survived\+' \/ '\+stats\.squad\.length/);
+ // A fully evacuated operator is absent from the live motor array but
+ // remains part of the actual historical squad and survivor denominator.
+ assert.doesNotMatch(debrief,/stats\.survived\+' \/ '\+team\(state\)\.length/);
  assert.match(debrief,/stats\.objective/);
  assert.match(ui,/selectedOperator:null/);
  assert.match(ui,/fw-v4-squad-active/);

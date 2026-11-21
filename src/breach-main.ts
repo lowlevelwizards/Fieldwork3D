@@ -30,6 +30,7 @@ import {pickTacticalTarget,insertTacticalRouteWaypoint} from './breach-tactical-
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {reconcileTacticalUiSelection} from './ui/tactical-selection-presentation.ts';
 import {nearestEligibleActor} from './ui/tactical-nearest-actor.ts';
+import {nearestTransportCandidate} from './breach-transport-candidate.ts';
 
 
 
@@ -736,10 +737,7 @@ let dragButton:HTMLButtonElement|null=null;
 let carryButton:HTMLButtonElement|null=null;
 let retrieveButton:HTMLButtonElement|null=null;
 function casualtyCandidate(id:string){
- const squad=team(state);
- const operator=squad.find(o=>o.id===id&&o.health>0);
- if(!operator)return null;
- return nearestEligibleActor(squad,operator.p,o=>o.health<=0&&!o.surrendered);
+ return nearestTransportCandidate(state,id,p=>liveVisibility(state,p));
 }
 function medicalCandidate(id:string,origin?:Pt){
  const squad=team(state);
@@ -767,6 +765,12 @@ function medicalCandidate(id:string,origin?:Pt){
 }
 
 function updateHud(){
+  // An individually extracted member no longer exists in live command space.
+  // Preserve replay's independent camera/observer selection.
+  if(!replaying&&!team(state).some(a=>a.id===selected)){
+    const next=team(state).find(a=>a.health>0);
+    if(next)selected=next.id;
+  }
   appFlow.observePhase(state.phase);
   if(state.phase!=='planning')targeting.reset();
   // Read-only reconciliation prevents stale waypoint/WATCH UI following
@@ -1423,7 +1427,8 @@ const campaignFlow=createBreachCampaignFlow({
   getMode:()=>appFlow.mode,setMode:mode=>{appFlow.setMode(mode);},
   getIntel:()=>selectedIntelMode,setIntel:value=>{selectedIntelMode=value;},
   getScale:()=>requestedSiteScale,setScale:value=>{requestedSiteScale=value;},
-  getSession:()=>state,isReplaying:()=>replaying,siteSize:ui.siteSize,siteSettings:ui.siteSettings,
+  getSession:()=>state,getSelected:()=>selected,isReplaying:()=>replaying,
+  siteSize:ui.siteSize,siteSettings:ui.siteSettings,
   briefingRoster:ui.briefingRoster,refreshHud:updateHud,
   randomSeed:randomSiteSeed,
   resetContract:job=>reset(0,job.seed,job.kind,undefined,job.risk,
