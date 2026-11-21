@@ -159,7 +159,7 @@ export function campaignSquadPresent(c:Pick<CampaignState,'operators'|'squadIds'
  return c.squadIds.length===4&&new Set(c.squadIds).size===4&&
   c.squadIds.every(id=>{
    const o=c.operators.find(member=>member.id===id);
-   return !!o&&o.status!=='lost'&&o.status!=='retired';
+   return !!o&&o.status!=='lost'&&o.status!=='retired'&&o.recoveryDays===0;
   });
 }
 export function reconContract(c:CampaignState,id:string):CampaignState{
