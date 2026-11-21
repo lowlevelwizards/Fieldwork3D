@@ -311,4 +311,20 @@ test('D3.33 frozen Rook: a clear teammate gap must produce a genuine narrow moto
   readiness:next,moved:continued,after:rook.p,squeeze:rook.squeeze
  }));
  assert.ok(continued>.70,'next truly legal narrow step must survive handoff');
+ const frames=[];
+ for(let step=3;step<=10;step++){
+  const old={...rook.p};game.seconds+=1/60;
+  const embedded=releaseEmbeddedMotorActor(rook,rook.plan[0].p,
+   game.doors,1/60,sessionWorldGeometry(game),game.seconds);
+  const result=embedded?'embedded-escape':
+   prepareMotorRoute(rook,rook.plan[0].p,1/60,game,port);
+  const clearance=bodyClear(rook.p,game.doors,OPERATOR_RADIUS,
+   sessionWorldGeometry(game));
+  frames.push({step,embedded,result,position:{...rook.p},
+   moved:Math.hypot(rook.p.x-old.x,rook.p.y-old.y),
+   fullBodyClear:clearance,squeeze:rook.squeeze,
+   leafGap:pointToSegment(rook.p,doorLeafSegment(front)),
+   nav:rook.nav.length});
+ }
+ console.log('D333_NARROW_BOUNDARY_10',JSON.stringify(frames));
 });
