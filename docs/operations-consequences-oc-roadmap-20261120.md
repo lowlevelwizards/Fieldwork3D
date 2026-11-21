@@ -55,7 +55,8 @@ A mission is an operation with independent tactical, human, intelligence and cam
 ## OC7 — Intel improves future briefings
 - Existing `campaignIntelBalance`, `reconContract`, `contractObjectiveIntel` and `setObjectiveIntelLevel` already spend earned intel to improve future objective-location confidence.
 - Preserve approximate vs confirmed uncertainty and prevent architectural full-view from leaking unobserved enemies.
-- Future expansion: tactical entry leads, weapons estimates, targeted intel chains, enemy relocation and mission-specific followups.
+- Two or more physically recovered side-intel items on a failed mission create a linked, approximate-intel follow-up contract using the existing campaign contract pipeline.
+- Future expansion: tactical entry leads, weapons estimates, longer targeted intel chains, and enemy relocation.
 - Do not assert those prospective systems are implemented before their own contracts and acceptance checks.
 
 ## OC8 — Acceptance / release gates

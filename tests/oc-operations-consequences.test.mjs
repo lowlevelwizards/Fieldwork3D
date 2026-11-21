@@ -77,6 +77,15 @@ test('OC6 withdrawn operations keep verified partial intel, but never double rew
  assert.equal(next.history.at(-1).disposition,'withdrawn');
  assert.equal(next.history.at(-1).intelRecovered,2);
  assert.ok(next.journal.some(e=>e.kind==='casualty-evacuated'));
+ const followup=next.contracts.find(k=>k.followUpOf===job.id);
+ assert.ok(followup,'two real recovered intel pieces generate an actionable follow-up');
+ assert.equal(followup.objectiveIntel,'approximate',
+  'follow-up is more informed, not omniscient');
+ assert.ok(followup.description.includes('physically recovered intelligence'));
  assert.deepEqual(resolveOperation(next,report),next,'one operation id, one reward');
  assert.deepEqual(c,acceptContract(base,job.id),'pure settlement');
+ const withoutEvidence=resolveOperation(c,{...report,id:'no-evidence-'+job.id,
+  intelRecovered:0});
+ assert.equal(withoutEvidence.contracts.some(k=>k.followUpOf===job.id),false,
+  'failure with no recovered evidence must not invent a new lead');
 });

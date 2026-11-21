@@ -53,8 +53,7 @@ export function debrief(s:Session){
   const recoveredIntel=optionalIntelRecovered(s);
   const casualties=own.filter(a=>a.health<=0).length;
   const casualtyCare=stabilizationSummary(own);
-  const evacuated=own.filter(a=>a.health<=0&&
-   near(a.p,s.scenario.extract,47)).map(a=>a.id);
+  const evacuated=operationOutcome.evacuatedCasualtyIds;
   const shots=own.reduce((t,a)=>t+a.shots,0);
   const hits=own.reduce((t,a)=>t+a.hits,0);
   const target=enemies(s).find(e=>e.id===s.captureTarget);

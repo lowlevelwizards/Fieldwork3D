@@ -479,13 +479,24 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   (pressure[contract.region]??0)+(r.outcome==='success'?-1:1)));
  const followupKind:Partial<Record<OperationKind,OperationKind>>={
   intel:'capture',capture:'hold',clear:'rescue',rescue:'hold'};
- const nextKind=r.outcome==='success'?followupKind[contract.kind]:undefined;
+ // Actionable evidence can expose a response opportunity despite a failed
+ // primary objective. Never invent a lead from merely discovered/abandoned
+ // material: only the reconciled physically recovered count qualifies.
+ const leadRecovered=typeof r.intelRecovered==='number'&&
+   Number.isFinite(r.intelRecovered)&&r.intelRecovered>=2;
+ const nextKind=r.outcome==='success'?followupKind[contract.kind]:
+   leadRecovered?(contract.kind==='intel'?'capture':'intel'):undefined;
  if(nextKind){
   const template=CONTRACTS.find(k=>k.kind===nextKind)!;
   const followup:Contract={id:contract.id+'-followup-'+nextKind,
    followUpOf:contract.id,seed:hash(contract.seed^day^0x69e433a1)||1,
    kind:nextKind,scale:contract.scale,region:contract.region,
-   title:template.title,description:template.description,
+   title:leadRecovered&&r.outcome==='failure'?
+     'Recovered Lead: '+template.title:template.title,
+   description:leadRecovered&&r.outcome==='failure'?
+     'A prior operation ended without its primary objective, but physically recovered '+
+     'intelligence identified this follow-up opportunity. '+template.description:
+     template.description,
    risk:Math.min(3,contract.risk+1) as 1|2|3,
    intel:'scouted',objectiveIntel:'approximate',
    reward:contract.reward+180,deadline:day+3,status:'available'};
