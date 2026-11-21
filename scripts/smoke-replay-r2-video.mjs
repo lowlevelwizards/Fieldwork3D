@@ -16,7 +16,7 @@ try{
     await new Promise(r=>setTimeout(r,180));
   }
   if(!ready)throw Error('Vite replay smoke server did not start');
-  browser=await chromium.launch({headless:true,args:[
+  browser=await chromium.launch({headless:true,channel:'chromium',args:[
     '--use-gl=angle','--use-angle=swiftshader',
     '--enable-unsafe-swiftshader'
   ]});
@@ -36,29 +36,44 @@ try{
     document.querySelector('#phase')?.textContent==='PLANNING'&&
     !!document.querySelector('#breach3dCanvas'),null,{timeout:60000});
   await page.locator('#play').click();
-  // Give the recorder an actual multi-second operation before entering film.
-  await page.waitForTimeout(2600);
-  await page.evaluate(()=>{
-    const trigger=document.querySelector('#watchReplay');
-    if(!(trigger instanceof HTMLButtonElement))throw Error('Missing replay entry');
-    trigger.click();
-  });
-  await page.waitForFunction(()=>
-    document.querySelector('#replayPanel')?.hidden===false,null,
-    {timeout:12000});
-  // Software WebGL in headless CI can fall below 2 FPS. Validate the same
-  // real replay recording and compositor using the fast Floor Plan renderer;
-  // hardware-accelerated 3D export still requires a separate device check.
-  await page.evaluate(()=>{
-    const view=document.querySelector('#replayView');
-    if(!(view instanceof HTMLButtonElement))throw Error('Missing replay view');
-    view.click();view.click(); // ISO → TOP → PLAN2D
-    if(!view.textContent?.toLowerCase().includes('plan2d'))
-      throw Error('Could not switch replay to Floor Plan');
-    const sound=document.querySelector('#replaySound');
-    if(!(sound instanceof HTMLButtonElement))throw Error('Missing replay sound');
-    if(sound.textContent?.includes('ON'))sound.click();
-  });
+  // V4+ permits Full Replay only after debrief or via a saved historical
+  // film. Record real simulation time, save its archive, and enter it through
+  // player-visible Replay Library; no hidden legacy debrief click.
+  await page.waitForFunction(()=>{
+    const parts=(document.querySelector('#clock')?.textContent??'00:00')
+      .split(':').map(Number);
+    return parts.length===2&&parts.every(Number.isFinite)&&
+      parts[0]*60+parts[1]>=2;
+  },null,{timeout:40000});
+  await page.waitForFunction(()=>document.querySelector('#saveReplayDebrief')?.
+    disabled===false,null,{timeout:20000});
+  await page.evaluate(()=>document.querySelector('#saveReplayDebrief')?.click());
+  await page.waitForFunction(()=>document.querySelector('#saveReplayDebrief')?.
+    textContent==='REPLAY SAVED',null,{timeout:20000});
+  await page.evaluate(()=>document.querySelector('#openReplayLibrary')?.click());
+  await page.locator('#replayLibraryList .replay-library-watch').first()
+    .waitFor({state:'visible',timeout:20000});
+  await page.locator('#replayLibraryList .replay-library-watch').first().click();
+  await page.locator('#replayPanel').waitFor({state:'visible',timeout:30000});
+  // On slow software WebGL, Floor Plan makes the same actual recorded
+  // compositor deterministic without pretending to measure iPhone FPS.
+  await page.locator('#replayViewTrigger').click();
+  await page.locator('#replayViewChoices [data-view-choice="plan2d"]').click();
+  if((await page.locator('#replayQuickView').inputValue())!=='plan2d')
+    throw Error('Could not switch saved replay to real Floor Plan');
+  // First export is genuinely video-only. Sound now lives in the advanced
+  // Precise Timing group, while video export lives under SAVE / SHARE.
+  await page.locator('#replayMore').click();
+  const precision=page.locator('details[data-replay-group="precision"]');
+  if(!await precision.evaluate(el=>el.open))
+    await precision.locator('summary').click();
+  const replaySound=page.locator('#replaySound');
+  if((await replaySound.textContent())?.includes('ON'))await replaySound.click();
+  if(!(await replaySound.textContent())?.includes('OFF'))
+    throw Error('Could not switch off audio for video-only capture');
+  await page.locator('#replayShareToggle').click();
+  if(!await page.locator('#replayExportVideo').isVisible())
+    throw Error('Replay video export is missing from SAVE / SHARE');
   const support=await page.evaluate(()=>({
     recorder:typeof MediaRecorder!=='undefined',
     stream:typeof HTMLCanvasElement.prototype.captureStream==='function'
@@ -68,11 +83,7 @@ try{
   // Subscribe BEFORE starting. Short replay films can auto-stop and
   // download before an arbitrary sleep or a manual STOP click.
   const downloadPromise=page.waitForEvent('download',{timeout:20000});
-  await page.evaluate(()=>{
-    const trigger=document.querySelector('#replayExportVideo');
-    if(!(trigger instanceof HTMLButtonElement))throw Error('Missing video button');
-    trigger.click();
-  });
+  await page.locator('#replayExportVideo').click();
   await page.waitForFunction(()=>
     document.querySelector('#replayExportVideo')?.textContent==='STOP VIDEO',
     null,{timeout:12000});
@@ -136,9 +147,12 @@ try{
   // Now verify that audio-enabled capture actually attaches an audio track
   // and yields a second playable file, rather than silently exporting mute.
   await page.locator('#replayMore').click();
-  await page.locator('#replaySound').click();
-  if(!(await page.locator('#replaySound').textContent())?.includes('ON'))
-    throw Error('Unable to enable replay audio');
+  if(!await precision.evaluate(el=>el.open))
+    await precision.locator('summary').click();
+  await replaySound.click();
+  if(!(await replaySound.textContent())?.includes('ON'))
+    throw Error('Unable to enable real replay audio');
+  await page.locator('#replayShareToggle').click();
   const withAudio=page.waitForEvent('download',{timeout:25000});
   await page.locator('#replayExportVideo').click();
   await page.waitForFunction(()=>

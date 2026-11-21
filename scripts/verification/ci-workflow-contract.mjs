@@ -17,6 +17,9 @@ const paths={
  replayR2:'.github/workflows/replay-r2-ui-smoke.yml',
  replayR43b:'.github/workflows/replay-r43b-bodycam-ui.yml',
  replayR44:'.github/workflows/replay-r44-squad-entry.yml',
+ replayR2Video:'.github/workflows/replay-r2-video-smoke.yml',
+ replayR3Library:'.github/workflows/replay-r3-library-smoke.yml',
+ replayR43Visual:'.github/workflows/replay-r43-bodycam-qa.yml',
  debrief1:'.github/workflows/after-action-v4-stage1.yml',
  debrief2:'.github/workflows/after-action-v4-stage2.yml',
  debrief3:'.github/workflows/after-action-v4-stage3.yml',
@@ -191,6 +194,23 @@ export function validateWorkflowContracts(wf){
   must('replayRouter','uses: ./.github/workflows/'+paths[name].split('/').at(-1));
  }
  must('replayR43b','smoke-replay-r43b-indoor-entry.mjs');
+ // A6b: same nested replay dispatcher owns archive, video and original
+ // 3D bodycam visual evidence, with no independent main PR workflow runs.
+ must('ci','--test tests/ci-replay-legacy-routing.test.mjs');
+ for(const [key,smoke] of [
+  ['replayR2Video','smoke-replay-r2-video.mjs'],
+  ['replayR3Library','smoke-replay-r3-library.mjs'],
+  ['replayR43Visual','smoke-replay-r43-bodycam.mjs']]){
+  must(key,'workflow_call:');
+  must(key,'workflow_dispatch:');
+  no(key,'  pull_request:');
+  must(key,smoke);
+  must('replayRouter','fromJSON(inputs.lanes).'+key);
+  must('replayRouter','uses: ./.github/workflows/'+paths[key].split('/').at(-1));
+ }
+ must('replayR43Visual','replay-r43-bodycam-screenshots');
+ must('replayR3Library','IndexedDB save/reload/watch/delete');
+ must('replayR2Video','Chromium replay video + sound integration smoke');
  must('replayR44','tests/replay-r44-real-session.test.mjs');
  must('arsenal','smoke-arsenal-m25-visual.mjs');
  must('arsenal','audit-pages-release-checkpoint.mjs');

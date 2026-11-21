@@ -1,15 +1,7 @@
 name: Replay R3 — Durable Library Browser Smoke
 on:
-  pull_request:
-    paths:
-      - 'src/breach-replay-archive.ts'
-      - 'src/breach-replay-motion.ts'
-      - 'src/breach-replay-library.ts'
-      - 'src/breach-replay-portable.ts'
-      - 'src/breach-main.ts'
-      - 'index.html'
-      - 'scripts/smoke-replay-r3-library.mjs'
-      - '.github/workflows/replay-r3-library-smoke.yml'
+  workflow_call:
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -17,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   library-smoke:
-    if: ${{ startsWith(github.head_ref, 'feature/replay-r3-library-') || startsWith(github.head_ref, 'feature/replay-r3-portable-') || startsWith(github.head_ref, 'feature/replay-ux-v2-release-c-') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/ci-replay-archive-visual-') || startsWith(github.head_ref, 'feature/replay-r3-library-') || startsWith(github.head_ref, 'feature/replay-r3-portable-') || startsWith(github.head_ref, 'feature/replay-ux-v2-release-c-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 11
     steps:
