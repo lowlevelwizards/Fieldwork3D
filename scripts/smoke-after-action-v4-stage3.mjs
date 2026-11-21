@@ -139,14 +139,26 @@ try{
      'Full record rebuilt the WebGL canvas '+label);
    await root.locator('.fw-v4-record-back').click();
    await root.locator('[data-after-tab="combat"]').click();
+   // Current V6 defaults Combat to 3D. Its viewer is intentionally visible,
+   // but the original Squad canvas must be reused rather than duplicated.
+   await visibleCanvas().waitFor({state:'attached',timeout:60000});
+   check(await root.locator('.fw-v4-model-canvas').count()===1&&
+     await page.evaluate(()=>window.__v4Stage3Canvas===
+       document.querySelector('#v4-stage3-qa .fw-v4-model-canvas')),
+     'Default Combat 3D must reuse exactly one Squad renderer '+label);
+   // Switching to the authoritative 2D paper view must detach the live
+   // canvas while keeping the WebGL context cached for a subsequent 3D opt-in.
+   await root.locator('.fw-v4-inspection-switch .fw-v3-small-button')
+     .filter({hasText:'2D'}).click();
    check(await root.locator('.fw-v4-model-canvas').count()===0,
-     'Hidden Squad tab left active canvas in DOM '+label);
-   await root.locator('.fw-v3-combat-figure .fw-v3-small-button')
+     'Combat 2D left the WebGL canvas mounted '+label);
+   await root.locator('.fw-v4-inspection-switch .fw-v3-small-button')
      .filter({hasText:'3D'}).click();
    await visibleCanvas().waitFor({state:'attached',timeout:60000});
-   check(await page.evaluate(()=>window.__v4Stage3Canvas===
-     document.querySelector('#v4-stage3-qa .fw-v4-model-canvas')),
-     'Combat 3D created a second renderer '+label);
+   check(await root.locator('.fw-v4-model-canvas').count()===1&&
+     await page.evaluate(()=>window.__v4Stage3Canvas===
+       document.querySelector('#v4-stage3-qa .fw-v4-model-canvas')),
+     'Combat paper-to-3D rebuilt or duplicated renderer '+label);
    await root.locator('[data-after-tab="squad"]').click();
    check(await page.evaluate(()=>window.__v4Stage3Canvas===
      document.querySelector('#v4-stage3-qa .fw-v4-model-canvas')),
