@@ -179,7 +179,8 @@ export function selectColdStaleLeafPortalStage(
  from:Pt,goal:Pt,leaf:Door,
  stand:(p:Pt)=>boolean,
  sweep:(a:Pt,b:Pt)=>boolean,
- portal:(a:Pt,b:Pt)=>Pt[]
+ portal:(a:Pt,b:Pt)=>Pt[],
+ certifiedTerminalDoorContact:(a:Pt,b:Pt)=>boolean
 ):Pt[]{
  if(!leaf.open||leaf.kind==='sliding'||leaf.kind==='shutter'||
     leaf.locked||leaf.jammed||leaf.wedged||leaf.heldBy||
@@ -201,8 +202,15 @@ export function selectColdStaleLeafPortalStage(
    probes++;
    if(prefix.length&&prefix.length<=28&&d(stage,prefix[0])<=96){
     let previous=stage,length=d(from,stage),legal=true;
-    for(const point of prefix){
-     if(!stand(point)||!sweep(previous,point)){
+    for(let i=0;i<prefix.length;i++){
+     const point=prefix[i];
+     // The EXISTING first-operable-door planner ends immediately after
+     // its one proven, still-CLOSED physical leaf. Every other prefix leg
+     // must be truly swept-clear. The final leg can only target the
+     // verified single door the normal motor will touch and OPEN.
+     const clear=stand(point)&&sweep(previous,point);
+     if(!clear&&(i!==prefix.length-1||
+         !certifiedTerminalDoorContact(previous,point))){
       legal=false;break;
      }
      length+=d(previous,point);previous=point;
