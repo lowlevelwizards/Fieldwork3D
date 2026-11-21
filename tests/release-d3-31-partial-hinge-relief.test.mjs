@@ -19,7 +19,8 @@ test('D3.31 archive: physical Townhouse FRONT at 0.931 still threatens its own l
  const session=newSession(0,13946496,'full-view',site.scale??'small',
   'intel',quiet,{enableCivilians:false});
  const door=session.doors.find(d=>d.id==='FRONT');
- assert.ok(door&&door.kind==='hinged');
+ assert.ok(door&&(!door.kind||door.kind==='hinged'),
+  'physical hinged FRONT may use legacy undefined kind');
  // Exact body from the 45-second frozen witness: Rook stayed at this
  // almost unchanged coordinate, while this same hinge was stationary.
  const body=p(264.2860269792871,98.59131269382668);
