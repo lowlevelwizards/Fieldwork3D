@@ -6,6 +6,8 @@ import {optionalIntelRecovered,advanceOptionalIntel}
  from '../src/breach-optional-intel.ts';
 import {newSession,toggling,stepSession} from '../src/breach-game.ts';
 import {MissionRecorder} from '../src/breach-replay.ts';
+import {reconcileSceneActorLifetimes}
+ from '../src/rendering/breach-actor-frame-presenter.ts';
 const friend=(id,x,health=4)=>({
  id,name:id.toUpperCase(),side:'blue',health,p:{x,y:0},
  carriedById:null,carryingId:null,surrendered:false,plan:[],path:[]
@@ -120,4 +122,19 @@ test('OC10 replay has the actor before extraction but not in later live frames',
   'later frames must not leave a ghost actor in the combat scene');
  assert.equal(s.extractedOperators.some(a=>a.id==='rook'),true,
   'the original full career record was archived separately');
+});
+
+test('OC10 departed friendly hides body, status, flashlight beam and shadows',()=>{
+ const fake=()=>({visible:true});
+ const actor={side:'blue',root:fake(),status:fake(),
+  beam:fake(),contactShadows:[fake(),fake()]};
+ const host={scene:{},actors:new Map([['rook',actor]]),
+  civilianRigs:new Map(),actorIds:new Set(),civilianIds:new Set()};
+ reconcileSceneActorLifetimes({operators:[],civilians:[]},host,false,null);
+ assert.equal(actor.root.visible,false);
+ assert.equal(actor.status.visible,false);
+ assert.equal(actor.beam.visible,false,'flashlight cannot remain after actor exit');
+ assert.ok(actor.contactShadows.every(x=>x.visible===false));
+ assert.equal(host.actors.has('rook'),true,
+  'retained rig can be reconstructed by prior historical replay');
 });
