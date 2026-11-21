@@ -1,13 +1,6 @@
 name: Closeout Stage 6 — Browser Integration Acceptance
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/**'
-      - 'scripts/**'
-      - 'tests/**'
-      - 'src/**'
-      - 'docs/consolidation-package-a-*.md'
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
