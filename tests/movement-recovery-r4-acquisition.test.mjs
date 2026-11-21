@@ -186,7 +186,8 @@ test('R4 fails closed for invalid query source, stale GO, nonfinite, or short-ro
   [{certificate:'enemy-cached-query'},'wrong-source-certificate'],
   [{eligible:false},'not-authorized'],
   [{orderIdAtSelection:38},'stale-order'],
-  [{goal:p(120,0)},'not-authored-goal'],
+  [{source:'initial-portal-recovery',
+    certificate:'first-operable-door-prefix',goal:p(120,0)},'not-authored-goal'],
   [{route:[p(Infinity,0)]},'nonfinite-route'],
   [{initialRouteAbsent:false},'wrong-route-shape']
  ];
