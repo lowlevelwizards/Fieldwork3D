@@ -37,6 +37,7 @@ jobs:
         run: |
           node --test tests/ci-regression-plan.test.mjs
           node --test tests/ci-specialist-routing.test.mjs
+          node --test tests/ci-movement-routing.test.mjs
           node scripts/verification/ci-regression-plan.mjs --check
           node scripts/verification/ci-workflow-inventory.mjs --check
           node scripts/verification/ci-workflow-contract.mjs
