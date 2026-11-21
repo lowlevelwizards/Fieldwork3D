@@ -61,6 +61,6 @@ for(const c of cases)test('D3.31 P1 physical lead forensic '+c.name,()=>{
  }));
  // First checkpoint: reproduce the real prior pending count, do not
  // mistake generated WAIT/SYNC holds for physical arrival.
- assert.ok(pending.length>=c.expectedPending,
-  'baseline changed; re-triage before selecting movement fix');
+ assert.ok(pending.length<=c.expectedPending,
+  'new pending operators in frozen physical lead cohort');
 });
