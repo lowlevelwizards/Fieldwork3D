@@ -107,6 +107,8 @@ const queueMotionModule=queueMotionWitnessEnabled?
 const d333WaitGatesEnabled=process.argv.includes('--d333-wait-gates');
 const d333YieldModule=d333WaitGatesEnabled?
  await import('../src/breach-passage-yield.ts'):null;
+const d333MotorWitness=d333WaitGatesEnabled?
+ await import('../src/breach-actor-motor.ts'):null;
 const g2Fresh22=process.argv.includes('--g2-fresh-22');
 const d314bClearanceProbe=process.argv.includes('--d314b-clearance-probe');
 const d314cFrontProbe=process.argv.includes('--d314c-front-probe');
@@ -252,6 +254,7 @@ function run(site,seed,kind){
  const session=newSession(0,seed,'full-view',site.scale??'small','intel',quiet,
   {enableCivilians:false});
  const entryLandingEvidence=[],queueMotionEvidence=[],d333WaitGates=[];
+ const d333WaitAttemptSummary={};
  try{
   const initialD329Doors=d329CancellationDoorWitness?
    new Map(session.doors.map(d=>[d.id,{id:d.id,open:!!d.open,
@@ -369,6 +372,14 @@ function run(site,seed,kind){
    passage:0,opening:0,lastRetries:a.recoveryAttempts,
    retries:0,badWindows:0
   }));
+  if(d333MotorWitness&&kind==='entry'&&seed===9568385)
+   d333MotorWitness.listenGeneratedWaitYield(session,e=>{
+    const key=e.actor+':'+e.reason;
+    const prior=d333WaitAttemptSummary[key];
+    if(prior){prior.count++;prior.last=round(e.time);}
+    else d333WaitAttemptSummary[key]={count:1,first:round(e.time),
+     last:round(e.time)};
+   });
   if(planned.accepted){enableD32MotorDoorWitness(true);toggling(session);}
   for(let tick=0;tick<ticks&&planned.accepted;tick++){
    if(tick===Math.max(0,ticks-180))
@@ -1493,7 +1504,7 @@ function run(site,seed,kind){
    ...(d327GarageProbe?{d327GarageEvidence}:{}),
    ...(entryLandingWitnessEnabled?{entryLandingEvidence}:{}),
    ...(queueMotionWitnessEnabled?{queueMotionEvidence}:{}),
-   ...(d333WaitGatesEnabled&&kind==='entry'?{d333WaitGates}:{}),
+   ...(d333WaitGatesEnabled&&kind==='entry'?{d333WaitGates,d333WaitAttemptSummary}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
    doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({
@@ -1565,6 +1576,7 @@ function run(site,seed,kind){
  }finally{
   entryLandingModule?.setEntryLandingWitness(null);
   queueMotionModule?.listenQueueMotion(session,null);
+  d333MotorWitness?.listenGeneratedWaitYield(session,null);
   setRouteGridAuditObserver(null);
   setTransientRouteObserver(null);
   enableD32MotorDoorWitness(false);activateSite(null);

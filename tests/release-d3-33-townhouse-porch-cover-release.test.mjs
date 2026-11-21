@@ -70,6 +70,7 @@ test('D3.33 real Townhouse 9568385 generated ENTRY improves physical arrivals',(
  const mode=report.rows[0].modes.find(m=>m.mode==='entry');
  const rook=mode.operators.find(o=>o.id==='rook');
  console.log('D333_LIVE_WAIT_GATES',JSON.stringify(mode.d333WaitGates??[]));
+ console.log('D333_LIVE_WAIT_REJECTIONS',JSON.stringify(mode.d333WaitAttemptSummary??{}));
  console.log('D333_LIVE_QUEUE_MOTION',JSON.stringify({
   events:mode.queueMotionEvidence?.length??0,
   yielded:mode.queueMotionEvidence?.filter(e=>
