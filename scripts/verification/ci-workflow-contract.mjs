@@ -19,6 +19,7 @@ export function validateWorkflowContracts(wf){
  must('ci','ci-regression-plan.mjs --run');
  must('ci','ci-regression-plan.mjs --check');
  must('ci','ci-workflow-contract.mjs');
+ must('ci','ci-workflow-inventory.mjs --check');
  must('ci','--test tests/ci-regression-plan.test.mjs');
  must('ci','npm test');
  must('ci','npm run build');
