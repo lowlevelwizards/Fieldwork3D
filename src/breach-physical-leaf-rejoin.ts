@@ -13,7 +13,6 @@ import {OPERATOR_RADIUS,doorCenter,doorLeafSegment,pointToSegment}
 import {physicalDoorPoseKey} from './breach-recovery-proposal-gate.ts';
 import {fullBodyMotorStrideClear} from './breach-stack-micro-corner.ts';
 import {joinsExistingMotorRoute} from './breach-recovery-route-validation.ts';
-import {doorLeafBypass} from './breach-door-leaf-bypass.ts';
 const d=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const copy=(p:Pt):Pt=>({x:p.x,y:p.y});
 type Witness={orderId:number;doorId:string;anchor:Pt;goal:Pt;
@@ -128,22 +127,38 @@ export function selectPhysicalOpenLeafRejoin(
     candidate.index,[candidate.point,...path],sweep,maxTravel);
   if(result.length)return result;
  }
- // D3.32 P3: a leaf may be fully open and yet its solid tip obstructs
- // the original coarse first chord (Clinic D9). Only AFTER the existing
- // direct/staged/world joins have failed, consider the established bounded
- // leaf-tip bypass. A candidate must end at an EXISTING transient node,
- // preserve the remaining route and certify the entire full-body sweep.
- // No new order, hinge motion, endpoint credit or change to collision law.
- // A partial/moving opening cannot trigger this cold supplemental path.
- if((door.openFraction??0)>=.98)
-  for(const i of joinIndices){
-   const join=original[i];
-   if(d(from,join)>maxTravel||!bodyClear(join))continue;
-   const prefix=doorLeafBypass(from,join,door,sweep);
-   if(!prefix.length||d(prefix[prefix.length-1],join)>3)continue;
-   const result=joinsExistingMotorRoute(from,goal,original,i,
-     prefix,sweep,maxTravel);
-   if(result.length)return result;
-  }
+ // D3.32 P3: the frozen Clinic D9 witness has a LEGAL two-leg
+ // full-body departure while the direct (old) grid chord strikes the
+ // fully-open solid leaf. Existing center/portal stages above may miss
+ // a short diagonal sidestep along that leaf. Probe only cold, near a
+ // stable unowned leaf after those first alternatives fail.
+ //
+ // Each proposed pair [sidestep, EXISTING original[i]] must be swept
+ // end-to-end by the same physical clearance law; the unchanged tail
+ // stays attached. This never moves a body, changes a GO, awards arrival,
+ // alters the hinge, touches right-of-way or bypasses the collision motor.
+ if((door.openFraction??0)>=.98&&
+    Math.abs(door.angularVelocity??0)<.16&&
+    !door.locked&&!door.jammed&&!door.wedged&&!door.heldBy&&
+    pointToSegment(from,doorLeafSegment(door))<OPERATOR_RADIUS+16&&
+    !sweep(from,original[0])){
+  const toward=Math.atan2(goal.y-from.y,goal.x-from.x);
+  for(const radius of [16,24,32,42])
+   for(const turn of [-Math.PI/6,Math.PI/6,0,-Math.PI/3,
+      Math.PI/3,-Math.PI/2,Math.PI/2]){
+    const theta=toward+turn;
+    const stage={x:from.x+Math.cos(theta)*radius,
+     y:from.y+Math.sin(theta)*radius};
+    if(!bodyClear(stage)||
+       !fullBodyMotorStrideClear(from,stage,sweep))continue;
+    for(const i of joinIndices){
+     const join=original[i];
+     if(d(stage,join)>maxTravel||!bodyClear(join))continue;
+     const verified=joinsExistingMotorRoute(from,goal,original,i,
+       [stage,join],sweep,maxTravel);
+     if(verified.length)return verified;
+    }
+   }
+ }
  return [];
 }
