@@ -12,7 +12,7 @@ on:
         description: JSON suite selection for manual physical audits
         required: true
         type: string
-        default: '{"release7":true,"doorD5":true,"doorD2D3":true}'
+        default: '{"release7":true,"doorD5":true,"doorD2D3":true,"passageQ5":true,"performanceP28":true}'
 permissions:
   contents: read
 jobs:
@@ -29,5 +29,15 @@ jobs:
   door-d2d3:
     if: ${{ fromJSON(inputs.lanes).doorD2D3 }}
     uses: ./.github/workflows/door-traversal-d2-d3.yml
+    permissions:
+      contents: read
+  passageQ5:
+    if: ${{ fromJSON(inputs.lanes).passageQ5 }}
+    uses: ./.github/workflows/passage-q5-matrix.yml
+    permissions:
+      contents: read
+  performanceP28:
+    if: ${{ fromJSON(inputs.lanes).performanceP28 }}
+    uses: ./.github/workflows/performance-p2-8-critical.yml
     permissions:
       contents: read

@@ -477,6 +477,43 @@ export const movementDoorSpecs=[
       "tests/door-traversal-d3.test.mjs",
       ".github/workflows/door-traversal-d2-d3.yml"
     ]
+  },
+  {
+    "key": "passageQ5",
+    "workflow": "passage-q5-matrix.yml",
+    "paths": [
+      "src/breach-door-test-cases.ts",
+      "src/breach-door.ts",
+      "src/breach-door-kick-cover.ts",
+      "src/breach-order-door.ts",
+      "src/breach-squeeze-gate.ts",
+      "src/breach-motor-collision.ts",
+      "src/worldgen/doorway-clutter-repair.ts",
+      "src/breach-2d-route-overlays.ts",
+      "src/breach-2d-projected-overlays.ts",
+      "src/ui/passage-rank-badges.ts",
+      "src/breach-passage-visual-ranks.ts",
+      "tests/passage-q5-live-blockers.test.mjs",
+      "src/door-range-q5-benchmark.ts",
+      "src/door-test-range-main.ts",
+      "door-test-range.html",
+      "tests/passage-q5-approaches.test.mjs",
+      "scripts/audit-passage-q5.mjs",
+      ".github/workflows/passage-q5-matrix.yml"
+    ]
+  },
+  {
+    "key": "performanceP28",
+    "workflow": "performance-p2-8-critical.yml",
+    "paths": [
+      "src/breach-navigation.ts",
+      "src/breach-world-context.ts",
+      "src/breach-motor-collision.ts",
+      "src/breach-actor-motor.ts",
+      "tests/performance-p2-8-sweep-broadphase.test.mjs",
+      "tests/performance-p2-8-cover-los.test.mjs",
+      ".github/workflows/performance-p2-8-critical.yml"
+    ]
   }
 ];
 const movementDoorInfrastructure=/^(?:\.github\/workflows\/(?:ci|movement-door-acceptance)\.yml|scripts\/verification\/ci-(?:specialist-routing|workflow-contract)\.mjs|tests\/ci-movement-door-routing\.test\.mjs)$/;
