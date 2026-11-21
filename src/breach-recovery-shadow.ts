@@ -40,7 +40,8 @@ export function observeRecoveryProposal(
  try{
   const order=a.plan[0];
   const proposal:RecoveryProposal={
-   source,operation,policy:RECOVERY_SOURCE_POLICY[source],
+   source,operation,
+    policy:verified?.policyOverride??RECOVERY_SOURCE_POLICY[source],
    actorId:a.id,orderId:order?.id??null,
    orderKind:order?.kind??null,
    authoredGoal:order?.kind==='move'?copy(order.p):null,
