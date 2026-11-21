@@ -13,6 +13,10 @@ const paths={
  arsenal:'.github/workflows/arsenal-m2-mount-inventory.yml',
  arsenalM30:'.github/workflows/arsenal-m30.yml',
  glockArt:'.github/workflows/glock-family-art.yml',
+ replayRouter:'.github/workflows/replay-mobile-acceptance.yml',
+ replayR2:'.github/workflows/replay-r2-ui-smoke.yml',
+ replayR43b:'.github/workflows/replay-r43b-bodycam-ui.yml',
+ replayR44:'.github/workflows/replay-r44-squad-entry.yml',
  debrief1:'.github/workflows/after-action-v4-stage1.yml',
  debrief2:'.github/workflows/after-action-v4-stage2.yml',
  debrief3:'.github/workflows/after-action-v4-stage3.yml',
@@ -167,6 +171,27 @@ export function validateWorkflowContracts(wf){
  }
  must('debrief3',"startsWith(github.head_ref, 'refactor/ci-after-action-')");
  must('debrief6',"startsWith(github.head_ref, 'refactor/ci-after-action-')");
+ // A6a: one nested reusable dispatch for historical replay mobile lanes.
+ must('ci','--test tests/ci-replay-mobile-routing.test.mjs');
+ must('ci','replay-mobile-acceptance:');
+ must('ci','needs.specialist-routing.outputs.replayMobileAny');
+ must('ci','needs.specialist-routing.outputs.replayMobileJSON');
+ must('ci','uses: ./.github/workflows/replay-mobile-acceptance.yml');
+ must('replayRouter','workflow_call:');
+ no('replayRouter','  pull_request:');
+ for(const [name,key,smoke] of [
+  ['replayR2','replayR2','smoke-replay-r2-ui.mjs'],
+  ['replayR43b','replayR43b','smoke-replay-r43b-bodycam-ui.mjs'],
+  ['replayR44','replayR44','smoke-replay-r44-entry-mobile.mjs']]){
+  must(name,'workflow_call:');
+  must(name,'workflow_dispatch:');
+  no(name,'  pull_request:');
+  must(name,smoke);
+  must('replayRouter','fromJSON(inputs.lanes).'+key);
+  must('replayRouter','uses: ./.github/workflows/'+paths[name].split('/').at(-1));
+ }
+ must('replayR43b','smoke-replay-r43b-indoor-entry.mjs');
+ must('replayR44','tests/replay-r44-real-session.test.mjs');
  must('arsenal','smoke-arsenal-m25-visual.mjs');
  must('arsenal','audit-pages-release-checkpoint.mjs');
  must('architecture','breach-critical-suite.mjs');

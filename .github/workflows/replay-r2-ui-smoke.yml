@@ -1,24 +1,7 @@
 name: Replay R2 — Mobile UI Compact Smoke
 on:
-  pull_request:
-    paths:
-      - 'index.html'
-      - 'src/breach-style.css'
-      - 'src/breach-main.ts'
-      - 'src/breach-replay-cinematic-director.ts'
-      - 'src/breach-replay-director-intent.ts'
-      - 'src/breach-replay-director-events.ts'
-      - 'src/breach-replay-director-shots.ts'
-      - 'src/breach-replay-director-scheduler.ts'
-      - 'tests/replay-r7-director.test.mjs'
-      - 'src/breach-replay-speed.ts'
-      - 'src/breach-camera-occlusion.ts'
-      - 'tests/replay-r7-speed.test.mjs'
-      - 'tests/replay-r7-cutaway.test.mjs'
-      - 'src/breach-3d.ts'
-      - 'tests/replay-r5-direct-viewer.test.mjs'
-      - 'scripts/smoke-replay-r2-ui.mjs'
-      - '.github/workflows/replay-r2-ui-smoke.yml'
+  workflow_call:
+  workflow_dispatch:
 permissions:
   contents: read
   actions: read
@@ -27,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   replay-ui:
-    if: ${{ startsWith(github.head_ref, 'feature/replay-r2-mobile-ui-') || startsWith(github.head_ref, 'feature/replay-r3-') || startsWith(github.head_ref, 'feature/replay-r41-') || startsWith(github.head_ref, 'feature/replay-r42-') || startsWith(github.head_ref, 'feature/replay-r42b-') || startsWith(github.head_ref, 'feature/replay-r42c-') || startsWith(github.head_ref, 'feature/replay-ux-v2-') || startsWith(github.head_ref, 'feature/replay-r5-') || startsWith(github.head_ref, 'feature/replay-r6-') || startsWith(github.head_ref, 'feature/replay-r7-') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'feature/replay-r2-mobile-ui-') || startsWith(github.head_ref, 'feature/replay-r3-') || startsWith(github.head_ref, 'feature/replay-r41-') || startsWith(github.head_ref, 'feature/replay-r42-') || startsWith(github.head_ref, 'feature/replay-r42b-') || startsWith(github.head_ref, 'feature/replay-r42c-') || startsWith(github.head_ref, 'feature/replay-ux-v2-') || startsWith(github.head_ref, 'feature/replay-r5-') || startsWith(github.head_ref, 'feature/replay-r6-') || startsWith(github.head_ref, 'feature/replay-r7-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

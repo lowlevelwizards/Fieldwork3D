@@ -1,0 +1,27 @@
+name: Replay mobile shared acceptance
+on:
+  workflow_call:
+    inputs:
+      lanes:
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  r2-mobile:
+    if: ${{ fromJSON(inputs.lanes).replayR2 }}
+    uses: ./.github/workflows/replay-r2-ui-smoke.yml
+    permissions:
+      contents: read
+      actions: read
+  r43b-bodycam:
+    if: ${{ fromJSON(inputs.lanes).replayR43b }}
+    uses: ./.github/workflows/replay-r43b-bodycam-ui.yml
+    permissions:
+      contents: read
+  r44-squad-entry:
+    if: ${{ fromJSON(inputs.lanes).replayR44 }}
+    uses: ./.github/workflows/replay-r44-squad-entry.yml
+    permissions:
+      contents: read

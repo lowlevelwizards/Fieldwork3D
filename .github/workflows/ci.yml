@@ -40,6 +40,7 @@ jobs:
           node --test tests/ci-movement-routing.test.mjs
           node --test tests/ci-weapon-visual-routing.test.mjs
           node --test tests/ci-after-action-routing.test.mjs
+          node --test tests/ci-replay-mobile-routing.test.mjs
           node scripts/verification/ci-regression-plan.mjs --check
           node scripts/verification/ci-workflow-inventory.mjs --check
           node scripts/verification/ci-workflow-contract.mjs
@@ -109,8 +110,7 @@ jobs:
     permissions:
       contents: read
 
-  # A2: one fast affected-file selector owns legacy equipment/Arsenal PR
-  # dispatch. Unrelated PRs no longer create three independent workflow runs.
+
   specialist-routing:
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
@@ -129,6 +129,8 @@ jobs:
       debriefV44: ${{ steps.owners.outputs.debriefV44 }}
       debriefV45: ${{ steps.owners.outputs.debriefV45 }}
       debriefV5: ${{ steps.owners.outputs.debriefV5 }}
+      replayMobileAny: ${{ steps.owners.outputs.replayMobileAny }}
+      replayMobileJSON: ${{ steps.owners.outputs.replayMobileJSON }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -162,9 +164,7 @@ jobs:
       contents: read
       actions: read
 
-  # A3: one current witnessed physical truth gate supersedes three obsolete
-  # historical arrival snapshots; specialized forensic workflows stay manual.
-  # The D3.18 focused contract remains a separate reusable acceptance lane.
+
   d3-recovery-critical:
     needs: specialist-routing
     if: ${{ needs.specialist-routing.outputs.movementRecovery == 'true' }}
@@ -179,8 +179,7 @@ jobs:
     permissions:
       contents: read
 
-  # A4: source-selected production weapon art and WebGL verification.
-  # Their exact visual smoke commands and artifact upload remain in callees.
+
   arsenal-m30-visual:
     needs: specialist-routing
     if: ${{ needs.specialist-routing.outputs.arsenalM30 == 'true' }}
@@ -196,8 +195,7 @@ jobs:
     permissions:
       contents: read
 
-  # A5: original path + branch eligible After Action browser jobs.
-  # Only the relevant stage runs; manual forensic workflows remain intact.
+
 
   debrief-v4-navigation:
     needs: specialist-routing
@@ -240,3 +238,14 @@ jobs:
     uses: ./.github/workflows/after-action-v5-critical.yml
     permissions:
       contents: read
+
+  # A6a: nested source-selected Replay mobile browser jobs.
+  replay-mobile-acceptance:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.replayMobileAny == 'true' }}
+    uses: ./.github/workflows/replay-mobile-acceptance.yml
+    with:
+      lanes: ${{ needs.specialist-routing.outputs.replayMobileJSON }}
+    permissions:
+      contents: read
+      actions: read
