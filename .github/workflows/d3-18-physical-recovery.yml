@@ -1,11 +1,6 @@
 name: D3.18 targeted physical recovery and performance acceptance
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'src/breach-*.ts'
-      - 'tests/release-d3-18*.test.mjs'
-      - '.github/workflows/d3-18-physical-recovery.yml'
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
