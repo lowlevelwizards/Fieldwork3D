@@ -36,8 +36,10 @@ export function renderStructuredMissionDetails(input:{
  const {name,stats,recorder,campaign,campaignMode,
   incident,operationsLogged,phase}=input;
  const root=make('article','fw-v5-mission-details');
+ const disposition=stats.operationOutcome.disposition;
  root.append(make('div','fw-v5-mission-heading',
-   (phase==='won'?'MISSION COMPLETE':'MISSION FAILED')+
+   (phase==='won'?'MISSION COMPLETE':disposition==='withdrawn'?
+     'SQUAD WITHDRAWN':'MISSION FAILED')+
    ' · '+name.toUpperCase()));
  if(incident)root.append(section('DISPATCH INCIDENT',[
   ['CALL REFERENCE',incident.reference],['ASSIGNMENT',incident.title],
@@ -49,7 +51,18 @@ export function renderStructuredMissionDetails(input:{
    ['TIME',timelineTime(stats.time)],
    ['OBJECTIVE',stats.objective?'SECURED':'NOT COMPLETED'],
    ['SURVIVORS',String(stats.survived)+' / '+stats.squad.length],
-   ['CASUALTIES',String(stats.casualties)]
+   ['CASUALTIES',String(stats.casualties)],
+   ['EXTRACTED',String(stats.operationOutcome.extractedOperatorIds.length)],
+   ['EVACUATED CASUALTIES',String(stats.operationOutcome.evacuatedCasualtyIds.length)],
+   ['LEFT BEHIND',String(stats.operationOutcome.leftBehindOperatorIds.length)]
+ ]));
+ if(stats.optionalIntel.total>0)root.append(section('OPTIONAL INTELLIGENCE',[
+   ['DISCOVERED',String(stats.optionalIntel.discovered)+' / '+stats.optionalIntel.total],
+   ['COLLECTED · FINAL',String(stats.optionalIntel.collected)],
+   ['PHYSICALLY RECOVERED',String(stats.optionalIntel.recovered)],
+   ['CAMPAIGN CREDIT',campaignMode==='mission'?
+     String(stats.optionalIntel.recovered)+' INTEL BEFORE RESOURCE CAP':
+     'QUICK PLAY · SCORE ONLY']
  ]));
  if(stats.scoreComponents?.length){
   const breakdown=make('section','fw-v5-mission-section fw-v5-score-breakdown');
