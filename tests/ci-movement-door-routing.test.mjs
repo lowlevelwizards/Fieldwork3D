@@ -214,3 +214,21 @@ test('A7b preserve independently executed live/frozen body cohorts and strict fl
  }
  assert.match(workflow('d3-25-physical-acceptance.yml'),/feature\/d3-25-entry-stall-witness-20261118/);
 });
+
+test('A7b nested historical cohorts have distinct non-cancelling concurrency groups',()=>{
+ const groups=[
+  ['d3-17e-recovery.yml','d317e-recovery-'],
+  ['d3-15-coordinated-release.yml','d315-coordinated-'],
+  ['d3-25-physical-acceptance.yml','d325-physical-']
+ ];
+ const seen=new Set();
+ for(const [file,prefix] of groups){
+  const source=workflow(file);
+  const line=source.split('\n').find(x=>x.startsWith('  group: '));
+  assert.ok(line?.startsWith('  group: '+prefix),file);
+  assert.ok(!line.includes('github.workflow'),file+' must not inherit caller workflow name');
+  assert.ok(!seen.has(line),'Shared concurrency key between physical audits: '+file);
+  assert.match(source,/cancel-in-progress:/);
+  seen.add(line);
+ }
+});

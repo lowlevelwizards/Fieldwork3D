@@ -159,6 +159,15 @@ export function validateWorkflowContracts(wf){
   must('movementDoorRouter','uses: ./.github/workflows/'+paths[key].split('/').at(-1));
  }
  must('physical25','feature/d3-25-entry-stall-witness-20261118');
+ // A7b sibling reusable workflows must never share a caller-derived
+ // concurrency group: doing so cancels an actual 11/22-site physical audit.
+ for(const [key,prefix] of [
+  ['recovery17e','d317e-recovery-'],
+  ['coordinated15','d315-coordinated-'],
+  ['physical25','d325-physical-']]){
+  must(key,'group: '+prefix);
+  no(key,'group: ${{ github.workflow }}');
+ }
  // A7c retains full real Q5 approach matrix and measured sweep broadphase.
  for(const [key,marker] of [
   ['passageQ5','audit-passage-q5.mjs --extended --strict'],
