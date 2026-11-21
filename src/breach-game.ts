@@ -402,7 +402,9 @@ export type Session=Omit<TacticalState,'operators'> & {
   captureTarget:string|null;captureSecured:boolean;
   intelCarrierId:string|null;
   /** Player-requested organized withdrawal; never a primary-objective win. */
-  withdrawalRequested?:boolean;};
+  withdrawalRequested?:boolean;
+  /** Set only after the actual GO-time physical extraction gate. */
+  withdrawalCompleted?:boolean;};
 // The elective enemy-planning budget is mission-local and never serialized.
 /** Planning authority for GO-time ordering; never edits PlanNode[].
  * A new GO after a tactical pause recomputes the remaining crossing
@@ -2003,6 +2005,7 @@ function mission(s:Session,dt:number){
   // GO-time physical gate. All surviving mobile members must be at the
   // actual extraction point. Downed friends remain accounted for separately.
   if(canConcludeWithdrawal(s)){
+    s.withdrawalCompleted=true;
     s.phase='lost';
     s.report=['ORGANIZED WITHDRAWAL','PRIMARY OBJECTIVE '+
       (s.mission==='extract'?'SECURED':'INCOMPLETE')];
