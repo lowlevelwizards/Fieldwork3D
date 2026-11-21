@@ -31,11 +31,11 @@ on:
       - feature/loadout-l213-release-e-20261119
       - feature/loadout-l212-e1-carry-undo-20261119
       - feature/loadout-l212-e2-layout-copy-20261119
+  workflow_call:
   pull_request:
     branches:
       - feature/loadout-l212-f2-field-consumption-20261119
       - feature/loadout-l213-f4-after-action-readiness-20261119
-      - main
   workflow_dispatch:
 concurrency:
   group: loadout-prep-l2-${{ github.ref }}

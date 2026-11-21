@@ -8,6 +8,9 @@ const paths={
  ci:'.github/workflows/ci.yml',
  architecture:'.github/workflows/architecture-refactor-critical.yml',
  browser:'.github/workflows/closeout-stage6-browser.yml',
+ loadout:'.github/workflows/loadout-prep-l2-critical.yml',
+ physical:'.github/workflows/f6-physical-equipment-critical.yml',
+ arsenal:'.github/workflows/arsenal-m2-mount-inventory.yml',
  pages:'.github/workflows/pages.yml'
 };
 const read=path=>readFileSync(path,'utf8');
@@ -45,6 +48,25 @@ export function validateWorkflowContracts(wf){
   must('ci',`startsWith(github.head_ref, '${prefix}')`);
  for(const prefix of ['refactor/closeout-stage6-','refactor/consolidation-'])
   must('ci',`startsWith(github.head_ref, '${prefix}')`);
+ // A2: three high-volume specialist suites are routed by file ownership
+ // rather than independently fired for every PR targeting main.
+ must('ci','specialist-routing:');
+ must('ci','ci-specialist-routing.mjs --github-output');
+ must('ci','--test tests/ci-specialist-routing.test.mjs');
+ for(const [name,job] of [['loadout','loadout-domain'],
+  ['physical','physical-equipment-domain'],['arsenal','arsenal-mount-domain']]){
+  must('ci',job+':');
+  must('ci','uses: ./.github/workflows/'+paths[name].split('/').at(-1));
+  must(name,'workflow_call:');
+  must(name,'workflow_dispatch:');
+  const triggers=wf[name].slice(0,wf[name].indexOf('jobs:'));
+  assert.ok(!/^\s+- main\s*$/m.test(triggers),
+   name+' still triggers every main PR');
+  if(name!=='loadout')assert.ok(!triggers.includes('  pull_request:'),
+   name+' still has an independent PR trigger');
+ }
+ must('arsenal','smoke-arsenal-m25-visual.mjs');
+ must('arsenal','audit-pages-release-checkpoint.mjs');
  must('architecture','breach-critical-suite.mjs');
  must('architecture','package-a-closeout-suite.mjs --run');
  must('architecture',"startsWith(github.head_ref, 'refactor/consolidation-')");
