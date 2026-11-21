@@ -172,9 +172,11 @@ export function buildM9Appearance(id:M9AppearanceId,
   [a.gripRear-.06,a.heel+.52],
   [a.straightGrip?-8.50:-9.12,-5.18],
   [a.straightGrip?-7.95:-8.16,-3.35],
-  // D7: blunt two-facet swept tang, no shovel-like pinched triangular tip.
-  [-8.20,-2.37],[-10.15,-.75],[-11.18,-.42],
-  [-11.40,-.24],[-11.12,-.08],[-9.20,-.02]
+  // D8: shortened, substantially thicker swept frame tang. Blunt rather
+  // than razor-ended: the upper lip returns directly into the frame web.
+  // Same six silhouette stations as D7 (zero added triangles).
+  [-8.20,-2.37],[-9.83,-.87],[-10.44,-.59],
+  [-10.65,-.36],[-10.55,.06],[-9.20,.04]
  ];
  // Large curved-octagonal hole is genuine through-Z geometry; the lower
  // guard remains thick enough to read at game scale without becoming a box.
@@ -279,14 +281,15 @@ export function buildM9Appearance(id:M9AppearanceId,
  tip.userData.m9MuzzleCrown=true;
  tip.castShadow=false;root.add(tip);
 
- // D7: compact aft-curling hammer; broad head and short rising neck.
- // The nine silhouette stations replace the tall narrow D6 antenna read.
+ // D8: horizontal, rearward-hooked hammer head instead of an upright tab.
+ // Same nine stations and one mesh; crown is lower, heavier and raked
+ // backward as a recognizable small silhouette at gameplay distance.
  const hammer:Outline=[
-  [-8.82,2.45],[-9.06,2.76],[-9.20,3.18],
-  [-9.56,3.57],[-9.78,3.61],[-9.65,3.94],
-  [-9.36,4.02],[-9.14,3.83],[-8.95,3.33]
+  [-8.88,2.45],[-9.17,2.92],[-9.27,3.28],
+  [-9.75,3.43],[-10.03,3.62],[-9.91,3.83],
+  [-9.60,3.85],[-9.20,3.60],[-8.98,3.15]
  ];
- const hammerMesh=addOutline(root,'receiver',id,n++,hammer,1.04,slideMaterial);
+ const hammerMesh=addOutline(root,'receiver',id,n++,hammer,1.05,slideMaterial);
  hammerMesh.userData.m9Hammer=true;
 
  // Oversize, uncomplicated rear and front sights.
@@ -307,17 +310,18 @@ export function buildM9Appearance(id:M9AppearanceId,
  if(showDetails){
   // D6: factory panels are large side-plane facets, not extruded slabs.
   // Five landmarks follow the actual frame sweep on each *distinct* grip.
-  // D7: visibly angled frame-following panel silhouettes. Classic 92
-  // leans farther aft at the heel; the A3's Vertec grip stays straighter.
-  // Five points each, so this correction costs ZERO additional triangles.
+  // D8: one extra meaningful side facet on each panel's front and rear
+  // contour, read as an intentional convex grip rather than a dark slab.
+  // Keep two *planar* sides batched in ONE mesh (no ornamental bevel).
+  // Classic is swept/rounded; the A3's Vertec grip remains visibly straighter.
   const gripPanel:Outline=a.straightGrip?[
-   [-7.70,-2.12],[-5.12,-2.16],
-   [a.gripFront-.58,a.heel+.82],
-   [a.gripRear+.62,a.heel+.66],[-8.20,-4.50]
+   [-7.70,-2.12],[-5.19,-2.17],[-5.55,-5.12],
+   [a.gripFront-.59,a.heel+.82],
+   [a.gripRear+.63,a.heel+.66],[-8.35,-5.12]
   ]:[
-   [-8.03,-2.12],[-5.18,-2.19],
-   [a.gripFront-.88,a.heel+.86],
-   [a.gripRear+.67,a.heel+.64],[-8.99,-4.92]
+   [-8.02,-2.12],[-5.25,-2.19],[-6.00,-5.12],
+   [a.gripFront-.89,a.heel+.84],
+   [a.gripRear+.66,a.heel+.66],[-9.16,-5.20]
   ];
   const panelVertices:number[]=[],panelIndices:number[]=[];
   const panelTriangles=THREE.ShapeUtils.triangulateShape(
@@ -431,7 +435,7 @@ export function buildM9Appearance(id:M9AppearanceId,
   guardOpening:true,actualOpenTop:true,
   barrelRadius:BARREL_RADIUS,barrelY:BARREL_Y,
   muzzleWrapEndX:a.nose+.08,
-  upperBridgeFrontX:-.98,beavertailRearX:-11.40,
+  upperBridgeFrontX:-.98,beavertailRearX:-10.65,
   upperRoofInset:.14,lowerSlideTopY:2.16,
   frontWrapDepth:1.35,
   serrationBottomY:.70,serrationTopY:2.04,
