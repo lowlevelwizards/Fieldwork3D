@@ -87,11 +87,13 @@ export function evaluateRouteAcquisition(c:AcquisitionCandidate):AcquisitionDeci
  // approach and each PIE arc point. Those are legitimate authored
  // movement executions even though their PlanNode is not MOVE and
  // a PIE step can differ from its final authored arc destination.
- if(source==='initial-intel'&&!order)
+ if((source==='initial-intel'||source==='shove-stage')&&!order)
   return reject('not-authored-goal');
+ // A confirmed nearby shove crossing can be required by a DOOR/SYNC
+ // approach or PIE arc step too. It is always the EXECUTED motor target,
+ // not necessarily the PlanNode's remote position, that must be retained.
  const needsMove=source==='forced-door-shortcut'||
-   source==='shove-stage'||source==='initial-portal-recovery'||
-   source==='motor-cold-fine-world';
+   source==='initial-portal-recovery'||source==='motor-cold-fine-world';
  if(needsMove&&(order?.kind!=='move'||!near(order.p,goal)))
   return reject('not-authored-goal');
  const initial=source==='initial-intel'||source==='initial-enemy';
