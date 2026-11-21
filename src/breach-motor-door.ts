@@ -19,6 +19,8 @@ import {selfBlockingHingeRelief} from './breach-door-traversal-maneuver.ts';
 import {shouldStageForOpening,mayManipulateOpening,claimOpeningIntent}
  from './breach-door-opening-ownership.ts';
 import {releaseDoorHandContact} from './breach-door-hand-contact.ts';
+import {hasRepeatedPhysicalLeafEscapeEvidence}
+ from './breach-door-escape-rejoin.ts';
 import {openingFootwork,setOpeningFootstep,queueOpeningFootstep,clearOpeningFootwork,
   openingSweepThreatens,stoppedHighPartialEntryStrike,
   upcomingOpeningSweep,selectGuidedOpeningStep}
@@ -153,7 +155,9 @@ export function handleMotorDoor(
     if(episodeDoor&&d(a.p,doorCenter(episodeDoor))<80&&
        ((episodeDoor.openFraction??0)<.72||
         sameGeneratedEntry&&
-        stoppedHighPartialEntryStrike(episodeDoor,a.p)))
+        stoppedHighPartialEntryStrike(episodeDoor,a.p)&&
+        hasRepeatedPhysicalLeafEscapeEvidence(
+          a,s.seconds,p,episodeDoor.id)))
       doorAhead=episodeDoor;
   }
   if(doorAhead){
@@ -172,7 +176,9 @@ export function handleMotorDoor(
       a.doorTraversal?.doorId===doorAhead.id&&
       a.doorTraversal.authoredOrderId===pendingDoor.id;
     const highPartialEntry=generatedEntryOwner&&
-      stoppedHighPartialEntryStrike(doorAhead,a.p);
+      stoppedHighPartialEntryStrike(doorAhead,a.p)&&
+      hasRepeatedPhysicalLeafEscapeEvidence(
+        a,s.seconds,p,doorAhead.id);
     const threatens=a.side==='blue'&&doorAhead.open&&
       (openingSweepThreatens(doorAhead,a.p)||highPartialEntry);
     const ownerRelief=!follower&&a.side==='blue'&&
