@@ -85,7 +85,7 @@ export function validateWorkflowContracts(wf){
   must(name,'workflow_call:');
   must(name,'workflow_dispatch:');
   const triggers=wf[name].slice(0,wf[name].indexOf('jobs:'));
-  assert.ok(!/branches: \\[main\\]/.test(triggers),name+' still has separate main PR trigger');
+  assert.ok(!triggers.includes('branches: [main]'),name+' still has separate main PR trigger');
   if(['d3retail','d3departure','d3join'].includes(name))
    assert.ok(triggers.includes('branches-ignore: [main]'),name+' lost non-main PR compatibility');
   else assert.ok(!triggers.includes('  pull_request:'),name+' still launches main PR');
