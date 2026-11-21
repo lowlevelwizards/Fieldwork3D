@@ -6,9 +6,7 @@ on:
       - feature/f6-physical-interactions-stages-3-4-20261119
       - feature/f6-physical-interactions-stage-3-wedge-20261119
       - feature/f6-physical-interactions-release-f-20261119
-  pull_request:
-    branches:
-      - main
+  workflow_call:
   workflow_dispatch:
 concurrency:
   group: f6-physical-${{ github.ref }}
