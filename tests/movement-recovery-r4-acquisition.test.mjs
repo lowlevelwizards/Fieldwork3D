@@ -56,6 +56,23 @@ test('R4 ordinary initial intel accepts a route as provisional, never arrival',(
  a.plan[0].id=41;
  assert.equal(acquisitionProgress(a).state,'superseded');
 });
+test('R4 accepts active DOOR/SYNC and intermediate PIE path queries, not only MOVE',()=>{
+ const s=session();
+ for(const [kind,target] of [
+   ['door',p(15,0)],['sync',p(20,0)],['pie',p(5,10)]
+ ]){
+  const a=actor();
+  a.plan=[{id:40,kind,p:p(100,0)}];
+  const result=authorizeRouteAcquisition(query(a,s,'initial-intel',{
+    goal:target,route:[p(4,3),target]
+  }));
+  assert.equal(result.kind,'adopt',
+   kind+' is physically moved by existing order executor');
+  assert.equal(acquisitionProgress(a).state,'provisional');
+  assert.deepEqual(a.plan[0].p,p(100,0),
+   'temporary PIE arc steps must never rewrite the authored destination');
+ }
+});
 test('R4 empty initial search remains a negative query and preserves fallback chain',()=>{
  const a=actor(),s=session(),events=[];
  const result=authorizeRouteAcquisition(query(a,s,'initial-intel',{route:[]}));
