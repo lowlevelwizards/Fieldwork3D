@@ -11,6 +11,7 @@ import {attributableCivilianHarm} from './breach-civilian-harm.ts';
 import {assessDispatchForce} from './dispatch-force-review.ts';
 import {captureVitalStatus} from './breach-capture-vitals.ts';
 import {deriveOperationOutcome} from './breach-operation-outcomes.ts';
+import {optionalIntelRecovered} from './breach-optional-intel.ts';
 
 const near=(a:Pt,b:Pt,range:number)=>Math.hypot(a.x-b.x,a.y-b.y)<=range;
 
@@ -49,6 +50,7 @@ export function missionText(s:Session){
 export function debrief(s:Session){
   const own=team(s);
   const operationOutcome=deriveOperationOutcome(s);
+  const recoveredIntel=optionalIntelRecovered(s);
   const casualties=own.filter(a=>a.health<=0).length;
   const casualtyCare=stabilizationSummary(own);
   const evacuated=own.filter(a=>a.health<=0&&
@@ -89,6 +91,7 @@ export function debrief(s:Session){
     outcome:s.phase==='won'?'success':'failure',
     disposition:operationOutcome.disposition,
     evacuatedCasualties:operationOutcome.evacuatedCasualtyIds.length,
+    recoveredIntel:recoveredIntel.length,
     kind:s.missionType as OperationKind,
     elapsed:Math.floor(s.seconds),casualties,teamSize:own.length,
     shots,hits,objective:operationOutcome.objectiveSecured,
@@ -101,6 +104,11 @@ export function debrief(s:Session){
       near(a.p,s.scenario.extract,47)).length,
   },true);
   return {result:s.phase,operationOutcome,
+    optionalIntel:{total:s.optionalIntel?.length??0,
+      discovered:s.optionalIntel?.filter(i=>i.discovered).length??0,
+      collected:s.optionalIntel?.filter(i=>i.collectedBy!==null).length??0,
+      recovered:recoveredIntel.length,
+      itemIds:recoveredIntel.map(i=>i.id)},
     time:Math.floor(s.seconds),casualties,
     stabilizedCasualties:casualtyCare.stabilized,
     criticalCasualties:casualtyCare.critical,
