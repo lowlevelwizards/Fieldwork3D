@@ -36,7 +36,7 @@ A mission is an operation with independent tactical, human, intelligence and cam
 ## OC4 — Wounded recovery
 - Reuse existing treatment, real injury, drag and carry orders.
 - The report distinguishes stabilized, critical, actually evacuated, and left behind. Extraction alone does not prove survival or permanent death.
-- Career journals record physical casualty evacuation and unrecovered status independently. An unrecovered downed member moves to a nondeployable MIA archive with explicit unconfirmed fate; it never automatically heals or becomes confirmed killed.
+- Career journals record physical casualty evacuation and unrecovered status independently. An unrecovered downed member moves to a nondeployable MIA archive with explicit unconfirmed fate; it never automatically heals or becomes confirmed killed. The squad cannot deploy with a missing assigned member: preflight requires a replacement.
 - Future expansions: explicit on-site recovery and roster reinstatement for MIA personnel, confidence-aware post-op medical triage, and recovery incidents. The current archive is safe but recovery is not faked. No automatic permadeath from ambiguous downed state.
 
 ## OC5 — Score and report

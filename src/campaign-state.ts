@@ -151,6 +151,14 @@ export function contractObjectiveIntel(c:Contract):ObjectiveIntelLevel{
  return c.objectiveIntel??(c.followUpOf?'approximate':'unknown');
 }
 export const campaignIntelBalance=(c:CampaignState)=>Math.max(0,c.intelligence??0);
+/** MIA personnel are not secretly deployable after medical recovery time passes. */
+export function campaignSquadPresent(c:Pick<CampaignState,'operators'|'squadIds'>):boolean{
+ return c.squadIds.length===4&&new Set(c.squadIds).size===4&&
+  c.squadIds.every(id=>{
+   const o=c.operators.find(member=>member.id===id);
+   return !!o&&o.status!=='lost'&&o.status!=='retired';
+  });
+}
 export function reconContract(c:CampaignState,id:string):CampaignState{
  const job=c.contracts.find(k=>k.id===id);
  if(!job||job.status!=='available'||c.activeContractId)return c;

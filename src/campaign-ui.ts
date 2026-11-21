@@ -65,7 +65,7 @@ import {quoteCampaignSquadRefill,quoteCampaignOperatorRefill}
 import {FIELD_STOCK_PACKS,FIELD_STOCK_LIMIT}
  from './equipment-campaign-field-stock.ts';
 import {FieldInventoryUndoHistory} from './equipment-field-undo.ts';
-import {campaignIntelBalance,contractObjectiveIntel} from './campaign-state.ts';
+import {campaignIntelBalance,contractObjectiveIntel,campaignSquadPresent} from './campaign-state.ts';
 import {projectOperationsSummary} from './ui/campaign/operations-summary.ts';
 import './campaign-style.css';
 import './ui/campaign-uxr-workspaces.css';
@@ -2801,7 +2801,9 @@ export class CampaignScreen{
   for(const member of assigned){
    const person=node('div','campaign-preflight-member');
    person.append(node('strong','',member.callsign),node('span','',
-    member.weapon.toUpperCase()+' · '+(member.recoveryDays>0?
+    member.weapon.toUpperCase()+' · '+(member.status==='lost'?
+     'MISSING · FATE UNCONFIRMED':member.status==='retired'?
+     'RETIRED':member.recoveryDays>0?
      'RECOVERING '+member.recoveryDays+' DAYS':'READY')));
    roster.append(person);
   }
@@ -2810,6 +2812,8 @@ export class CampaignScreen{
   const cautions:string[]=[];
   if(assigned.length<4)cautions.push('Only '+assigned.length+' of 4 squad slots filled');
   if(assigned.some(p=>p.recoveryDays>0))cautions.push('Assigned operator still recovering');
+  if(!campaignSquadPresent(campaign))cautions.push(
+   'Missing or retired operator must be replaced before deployment');
   if(campaign.supplies.ammo<60)cautions.push('Low ammunition stock for future resupply');
   if(campaign.supplies.medical===0)cautions.push('No spare medical kits in stock');
   if(cautions.length){
@@ -2817,7 +2821,8 @@ export class CampaignScreen{
    warnings.append(node('strong','','READINESS ADVISORIES'));
    for(const warning of cautions)warnings.append(node('p','',warning));
    const repairActions=node('div','campaign-preflight-fix-actions');
-   const needsSquad=assigned.length<4||assigned.some(p=>p.recoveryDays>0);
+   const needsSquad=!campaignSquadPresent(campaign)||
+     assigned.some(p=>p.recoveryDays>0);
    const needsSupply=campaign.supplies.ammo<60||campaign.supplies.medical===0;
    const fix=(tab:'personnel'|'logistics')=>{
     dismiss();
@@ -2840,6 +2845,8 @@ export class CampaignScreen{
    dismiss();
    this.handlers.chooseContract(contract.id);
   },'campaign-primary');
+  deploy.disabled=!campaignSquadPresent(campaign);
+  if(deploy.disabled)deploy.title='Replace missing or retired personnel in the squad first';
   const dismiss=()=>{
    overlay.remove();
    prior?.focus({preventScroll:true});

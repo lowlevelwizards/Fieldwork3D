@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import {requestWithdrawal,canConcludeWithdrawal,deriveOperationOutcome}
  from '../src/breach-operation-outcomes.ts';
 import {assessOperation} from '../src/breach-operations.ts';
-import {newCampaign,acceptContract,resolveOperation,campaignIntelBalance}
+import {newCampaign,acceptContract,resolveOperation,campaignIntelBalance,
+ campaignSquadPresent}
  from '../src/campaign-state.ts';
 
 const person=(id,x,health=4)=>({id,side:'blue',health,p:{x,y:0}});
@@ -74,6 +75,9 @@ test('OC4 unrecovered casualty becomes MIA, not healed or declared dead',()=>{
  const result=resolveOperation(c,report);
  const moss=result.operators.find(o=>o.id==='moss');
  assert.equal(moss.status,'lost','missing cannot deploy or self-heal');
+ assert.equal(campaignSquadPresent(c),true);
+ assert.equal(campaignSquadPresent(result),false,
+  'deployment must block an assigned missing veteran');
  assert.equal(moss.missingSinceOperationId,report.id,'fate remains explicit');
  assert.equal(result.journal.filter(e=>e.kind==='withdrawal'&&
   e.operatorId==='moss').length,0,'missing casualty did not withdraw');

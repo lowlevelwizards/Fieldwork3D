@@ -16,7 +16,7 @@ import {requestWithdrawal} from './breach-operation-outcomes.ts';
 import type {OperationRecord} from './breach-operations.ts';
 import {loadOperationHistory,appendOperationHistory} from './breach-persistence.ts';
 import {careerEventsForOperation} from './campaign-history.ts';
-import {resolveOperation,tacticalSlotOperator,type CampaignReport}
+import {resolveOperation,tacticalSlotOperator,campaignSquadPresent,type CampaignReport}
   from './campaign-state.ts';
 import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
  purchaseFieldStock,
@@ -434,6 +434,11 @@ function showCampaignHome(){
 }
 function deployCampaignContract(){
  if(!model.campaign?.activeContractId)return;
+ if(!campaignSquadPresent(model.campaign)){
+  void showFieldworkNotice('Squad incomplete',
+   'Missing or retired personnel cannot deploy. Assign an available replacement in Personnel.');
+  showCampaignHome();return;
+ }
  preGoPrep.close();
  const job=model.campaign.contracts.find(k=>k.id===model.campaign!.activeContractId);
  if(!job)return;
