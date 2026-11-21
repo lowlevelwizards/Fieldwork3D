@@ -20,7 +20,7 @@ The weapon must read as a Beretta 92/M9 against the existing Glock family *witho
 | B1 | `m9UnifiedFrontShell` | Reprofile the *existing* 12-station U: rounded/octagonal beveled cheeks, tapered lower nose, more inward front-facing shoulder. Maintain real barrel channel. No side posts | Same 12-station shell, same 1 mesh |
 | B2 | `m9UnifiedFrontShell` roof/sight | Replace box-like roof bridge with five broad sloped quad faces, narrow upper Z corners from ±1.21 to ±.97; stubby connected sight top Y3.94 | Same number of crown and sight faces, same mesh |
 | B3 | `railProfile:Outline` A3 only | One more worthwhile profile station; extend embedded span X2.35–6.35, lower visible rail face Y−1.40 with blended sloping ends | Still one A3-only mesh, no rail teeth/slots |
-| C1 | `GlockViewport.useTightArtFraming / quarter` | M9-only fit multiplier .83 (from .89); quarter preset compensated by .89 zoom. Side/top/opposite presets return to correct fit. No change to ordinary Glock defaults | No GPU resource cost, still demand-render |
+| C1 | `GlockViewport.useTightArtFraming / quarter` | M9-only fit multiplier .83 (from .89); quarter preset receives .89 extra zoom **only on wide stages (aspect ≥1.15)**. Portrait stage keeps the safe fit so the nearer muzzle does not clip. Side/top/opposite presets return to correct fit. No change to ordinary Glock defaults | No GPU resource cost, still demand-render |
 | C2 | `arsenal.css` M9 mobile block | Limit portrait art viewport to near-square `min(104vw,60dvh,520px)`, centered in the screen, eliminating giant empty grey area. Preserve 44px controls and pinch/drag | Scoped to `.arsenal-m9-inspector` |
 
 ## Focused acceptance and regressions
