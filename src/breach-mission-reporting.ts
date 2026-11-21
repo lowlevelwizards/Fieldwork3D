@@ -10,6 +10,7 @@ import {stabilizationSummary} from './breach-casualty-status.ts';
 import {attributableCivilianHarm} from './breach-civilian-harm.ts';
 import {assessDispatchForce} from './dispatch-force-review.ts';
 import {captureVitalStatus} from './breach-capture-vitals.ts';
+import {deriveOperationOutcome} from './breach-operation-outcomes.ts';
 
 const near=(a:Pt,b:Pt,range:number)=>Math.hypot(a.x-b.x,a.y-b.y)<=range;
 
@@ -25,7 +26,8 @@ export function operationBriefing(s:Session){
 export function missionText(s:Session){
  if(s.site?.training)return 'TRAINING · '+s.site.name+' · PRACTICE';
   if(s.phase==='won')return 'COMPLETE — OPERATION SUCCESS';
-  if(s.phase==='lost')return 'MISSION FAILED';
+  if(s.phase==='lost')return s.withdrawalRequested?'SQUAD WITHDRAWN':'MISSION FAILED';
+  if(s.withdrawalRequested)return 'WITHDRAWAL ORDERED • MOVE MOBILE SQUAD TO EXTRACTION';
   if(s.mission==='clear')return s.missionType==='capture'?
     'TAKE TARGET ALIVE · RESTRAIN OR TREAT IF DOWN':
     'CLEAR HOSTILES • SECURE OBJECTIVE';
@@ -46,6 +48,7 @@ export function missionText(s:Session){
 }
 export function debrief(s:Session){
   const own=team(s);
+  const operationOutcome=deriveOperationOutcome(s);
   const casualties=own.filter(a=>a.health<=0).length;
   const casualtyCare=stabilizationSummary(own);
   const evacuated=own.filter(a=>a.health<=0&&
@@ -84,9 +87,11 @@ export function debrief(s:Session){
   const forceReview=assessDispatchForce(s.civilianHarmEvents,s.battleEvents);
   const assessment=assessOperation({
     outcome:s.phase==='won'?'success':'failure',
+    disposition:operationOutcome.disposition,
+    evacuatedCasualties:operationOutcome.evacuatedCasualtyIds.length,
     kind:s.missionType as OperationKind,
     elapsed:Math.floor(s.seconds),casualties,teamSize:own.length,
-    shots,hits,objective:s.mission==='done',
+    shots,hits,objective:operationOutcome.objectiveSecured,
     targetSurrendered:target?.surrendered??false,
     captureOutcome:s.missionType==='capture'?captureOutcome:undefined,
     civilianInjured,civilianDown,
@@ -95,7 +100,8 @@ export function debrief(s:Session){
     extracted:own.filter(a=>a.health>0&&
       near(a.p,s.scenario.extract,47)).length,
   },true);
-  return {result:s.phase,time:Math.floor(s.seconds),casualties,
+  return {result:s.phase,operationOutcome,
+    time:Math.floor(s.seconds),casualties,
     stabilizedCasualties:casualtyCare.stabilized,
     criticalCasualties:casualtyCare.critical,
     evacuatedCasualties:evacuated,
@@ -105,7 +111,7 @@ export function debrief(s:Session){
     civilianPlayerDown:attributable.down,
     kills:own.reduce((t,a)=>t+a.kills,0),
     pauses:s.timesPaused,variant:s.scenario.name,
-    objective:s.mission==='done',
+    objective:operationOutcome.objectiveSecured,
     type:s.missionType,
     grade:assessment.grade,score:assessment.score,
     scoreComponents:assessment.scoreComponents,
