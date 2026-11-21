@@ -13,7 +13,8 @@ import type {PlanNode} from './breach-plan.ts';
 import {openingYieldBudget,commitOpeningYield,MAX_OPENING_YIELD_TRAVEL}
  from './breach-passage-yield.ts';
 import {noteQueueMotion} from './breach-queue-trace.ts';
-import {witnessedGeneratedEntryStillness}
+import {witnessedGeneratedEntryStillness,
+ observeGeneratedEntryPhysicalStillness}
  from './breach-generated-entry-stillness.ts';
 import {releaseEmbeddedMotorActor} from './breach-locomotion-clearance.ts';
 import {localDetourWaypointTolerance,completePreciseLocalDetour}
@@ -124,7 +125,14 @@ export function advanceActorMotor(
  // profiler as the parent operator total. No additional work in normal play.
  // One authoritative observation before any route/door/queue early return.
  // No navigation or hinge force is produced by this D1 foundation.
- if(a.side==='blue')syncDoorTraversalEpisode(a,s.doors,s.seconds);
+ if(a.side==='blue'){
+  syncDoorTraversalEpisode(a,s.doors,s.seconds);
+  // D3.33 P6: observe REAL body stillness at every 60Hz authoritative
+  // tick, even when rejected routing temporarily populates a.nav.
+  // Only the existing no-nav recovery route may act on this read-only
+  // evidence; this does not itself move anybody.
+  observeGeneratedEntryPhysicalStillness(a,s.seconds);
+ }
  const traversalStart=profile?beginMotorCpuMeasurement():0;
  // Do not interrupt a continuous physical traversal with route search.
  if(advanceMotorTraversal(a,s,dt,hooks)){

@@ -12,29 +12,45 @@ type LeadStillEpisode={orderId:number;doorId:string;since:number;
 const episodes=new WeakMap<TeamActor,LeadStillEpisode>();
 const gap=(x:Pt,y:Pt)=>Math.hypot(x.x-y.x,x.y-y.y);
 
-/** One original generated ENTRY MOVE, same physical leaf and 1.25 seconds
- * of continuous no-nav/no-body-movement. A new order, active nav,
- * different doorway, actual movement or gap in sample frames resets it.
- * Never caches a false-positive across changed physical movement. */
-export function witnessedGeneratedEntryStillness(
- peer:TeamActor,doorId:string,now:number
-):boolean{
+/** Each real 60Hz motor tick supplies a physical-position sample.
+ * A transient route proposal can be repeatedly rejected before motion,
+ * briefly populating nav. That is NOT evidence that the body moved.
+ * Measure real continuous stillness independently from route occupancy;
+ * only the existing no-nav motor branch may ACT on the completed witness.
+ *
+ * Never grants an arrival, collision authority, route, or movement.
+ */
+export function observeGeneratedEntryPhysicalStillness(
+ peer:TeamActor,now:number
+):void{
  const order=peer.plan[0],episode=peer.doorTraversal;
- if(order?.kind!=='move'||order.entryDoorId!==doorId||
-    episode?.doorId!==doorId||
-    episode.maneuver!=='grab-and-hold'||peer.nav.length){
-  episodes.delete(peer);return false;
+ if(order?.kind!=='move'||!order.entryDoorId||
+    episode?.doorId!==order.entryDoorId||
+    episode.maneuver!=='grab-and-hold'){
+  episodes.delete(peer);return;
  }
- const old=episodes.get(peer);
+ const doorId=order.entryDoorId,old=episodes.get(peer);
  if(!old||old.orderId!==order.id||old.doorId!==doorId||
     now<old.lastAt||now-old.lastAt>.18||
     gap(peer.p,old.last)>.20||gap(peer.p,old.anchor)>1){
   episodes.set(peer,{orderId:order.id,doorId,
    since:now,lastAt:now,anchor:{...peer.p},last:{...peer.p}});
-  return false;
+  return;
  }
  old.lastAt=now;old.last={...peer.p};
- return now-old.since>=1.25;
+}
+
+/** Read a body-truth witness for the very same generated entry.
+ * A transient nav array is not a physical displacement. Callers have no
+ * permission to move unless their own motor/door collision gates pass.
+ */
+export function witnessedGeneratedEntryStillness(
+ peer:TeamActor,doorId:string,now:number
+):boolean{
+ observeGeneratedEntryPhysicalStillness(peer,now);
+ const recorded=episodes.get(peer);
+ return !!recorded&&recorded.doorId===doorId&&
+  now-recorded.since>=1.25;
 }
 
 /** The same generated ENTRY may own at most six previously swept, real

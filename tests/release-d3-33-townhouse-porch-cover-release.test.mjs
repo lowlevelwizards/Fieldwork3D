@@ -11,7 +11,8 @@ import {relieveGeneratedEntryWaitCollision} from '../src/breach-actor-motor.ts';
 import {prepareMotorRoute} from '../src/breach-motor-route.ts';
 import {releaseEmbeddedMotorActor}
  from '../src/breach-locomotion-clearance.ts';
-import {witnessedGeneratedEntryStillness}
+import {witnessedGeneratedEntryStillness,
+ observeGeneratedEntryPhysicalStillness}
  from '../src/breach-generated-entry-stillness.ts';
 import {generateSite} from '../src/breach-site.ts';
 import {newSession} from '../src/breach-game.ts';
@@ -327,4 +328,28 @@ test('D3.33 frozen Rook: a clear teammate gap must produce a genuine narrow moto
    nav:rook.nav.length});
  }
  console.log('D333_NARROW_BOUNDARY_10',JSON.stringify(frames));
+});
+test('D3.33 P6: intermittent transient routes cannot erase physically witnessed 1.25s stillness',()=>{
+ const actor={p:{x:581.3765,y:552.1088},nav:[],
+  plan:[{id:133,kind:'move',entryDoorId:'FRONT',p:{x:493,y:544.88}}],
+  doorTraversal:{doorId:'FRONT',maneuver:'grab-and-hold'}};
+ for(let tick=0;tick<=78;tick++){
+  // The path planner can populate and drop transient routing while the
+  // body NEVER physically moves. The same order/door remains active.
+  actor.nav=tick%3?[{x:576,y:576}]:[];
+  observeGeneratedEntryPhysicalStillness(actor,tick/60);
+ }
+ actor.nav=[];
+ assert.equal(witnessedGeneratedEntryStillness(actor,'FRONT',79/60),true,
+  'physical stillness survives failed transient A* proposals');
+ actor.p={x:actor.p.x-.3,y:actor.p.y};
+ observeGeneratedEntryPhysicalStillness(actor,80/60);
+ assert.equal(witnessedGeneratedEntryStillness(actor,'FRONT',81/60),false,
+  'a genuine 0.3-unit physical step invalidates the stale stillness');
+ for(let tick=82;tick<=164;tick++)
+  observeGeneratedEntryPhysicalStillness(actor,tick/60);
+ assert.equal(witnessedGeneratedEntryStillness(actor,'FRONT',165/60),true);
+ actor.plan[0].id++;
+ assert.equal(witnessedGeneratedEntryStillness(actor,'FRONT',166/60),false,
+  'a new authored order must get its own 1.25-second observation');
 });
