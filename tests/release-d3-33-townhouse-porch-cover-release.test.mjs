@@ -70,10 +70,10 @@ test('D3.33 real Townhouse 9568385 generated ENTRY improves physical arrivals',(
  const mode=report.rows[0].modes.find(m=>m.mode==='entry');
  const rook=mode.operators.find(o=>o.id==='rook');
  console.log('D333_LIVE_QUEUE_MOTION',JSON.stringify({
-  events:run.queueMotionEvidence?.length??0,
-  yielded:run.queueMotionEvidence?.filter(e=>
+  events:mode.queueMotionEvidence?.length??0,
+  yielded:mode.queueMotionEvidence?.filter(e=>
    e.source==='opening-leaf-yield')?.slice(0,14)??[],
-  sources:run.queueMotionEvidence?.reduce((r,e)=>{
+  sources:mode.queueMotionEvidence?.reduce((r,e)=>{
    r[e.source]=(r[e.source]??0)+1;return r;
   },{})??{}
  }));
@@ -217,5 +217,5 @@ test('D3.33 inspect unchanged production-generated FRONT wait activation flags',
  const after=snapshot();
  console.log('D333_LIVE_GENERATED_WAIT_FLAGS',JSON.stringify({before,after}));
  assert.equal(after.length,4);
- assert.ok(after.some(a=>a.plan[0]?.kind==='wait'));
+ assert.ok(after.some(a=>a.plan.some(n=>n.kind==='wait'&&n.doorId==='FRONT'&&n.duration===0)),'generated WAIT is queued after stack/sync');
 });
