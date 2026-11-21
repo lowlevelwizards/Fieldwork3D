@@ -76,6 +76,20 @@ export function takeRepeatedDoorEscapeRoute(
  old.nextProbeAt=seconds+2;
  return old.priorRoute;
 }
+/** D3.31: read-only corroboration for high-partial generated ENTRY relief.
+ * Repeatedly clearing the SAME real leaf with the SAME authored MOVE
+ * is a stronger stuck-body witness than proximity or angle alone.
+ * Never fabricate an escape, allocate an attempt or extend its lifetime.
+ */
+export function hasRepeatedPhysicalLeafEscapeEvidence(
+ actor:TeamActor,seconds:number,goal:Pt,doorId:string
+):boolean{
+ const prior=episodes.get(actor),order=actor.plan[0];
+ return !!prior&&order?.kind==='move'&&prior.orderId===order.id&&
+   prior.doorId===doorId&&prior.goalX===goal.x&&
+   prior.goalY===goal.y&&prior.observations>=3&&
+   seconds-prior.lastAt<=2&&gap(actor.p,prior.anchor)<24;
+}
 export function finishDoorEscapeRejoin(actor:TeamActor):void{
  episodes.delete(actor);
 }
