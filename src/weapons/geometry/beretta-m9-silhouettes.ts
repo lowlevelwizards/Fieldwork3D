@@ -45,18 +45,17 @@ const SAFETY_RED=new THREE.MeshBasicMaterial({
 const M9A3_GRIP_PANEL=AR_MUTED_FDE.clone();
 M9A3_GRIP_PANEL.color.multiplyScalar(.59);
 
-/** D8: cast-toy Beretta muzzle. Same 12-station U cross-section as D7,
- * but with a more rounded OCTAGONAL shoulder and undercut lower cheeks.
- * The short roof cap narrows as it rises into the integrated front sight.
- * One connected, unroofed shell and no extra meshes; +X muzzle, +Y up.
+/** D9: one ten-station cast U-shell: broad cheeks, not layered rings.
+ * The six-sided exposed barrel and real open upper channel stay intact.
+ * Crown and sight remain in this SAME geometry; never ornamental posts.
  */
 function m9UnifiedFrontShell(nose:number):THREE.BufferGeometry{
+ // Ten essential contours: two large cheeks and one open inner channel.
  const yz:readonly (readonly [number,number])[]=[
-  [-1.16,3.34],[-1.48,2.91],[-1.56,2.20],
-  [-1.39,1.69],[-1.12,1.24],
-  [1.12,1.24],[1.39,1.69],[1.56,2.20],
-  [1.48,2.91],[1.16,3.34],
-  [1.06,1.69],[-1.06,1.69]
+  [-1.14,3.28],[-1.50,2.87],[-1.50,1.72],
+  [-1.17,1.30],[1.17,1.30],
+  [1.50,1.72],[1.50,2.87],[1.14,3.28],
+  [.99,1.76],[-.99,1.76]
  ];
  const vertices:number[]=[];
  type V=readonly [number,number,number];
@@ -67,13 +66,10 @@ function m9UnifiedFrontShell(nose:number):THREE.BufferGeometry{
   tri(a,b,c);tri(a,c,d);
  };
  const rear=nose-1.27,front=nose+.08;
- // Stronger chamfer at the front: retreat the underside 0.22 art units
- // and pinch only outer cheeks by 8% toward the crown. The inner opening
- // stays full-width to clear the unchanged chunky six-sided barrel.
+ // One bold undercut, no redundant tiny bevel tier.
  const facePoint=(z:number,y:number):V=>{
-  const t=THREE.MathUtils.clamp((y-1.24)/2.10,0,1);
-  return [front-.22*(1-t),y,
-   Math.abs(z)>1.12?z*(1-.08*t):z];
+  const t=THREE.MathUtils.clamp((y-1.30)/1.98,0,1);
+  return [front-.16*(1-t),y,Math.abs(z)>1.10?z*(1-.045*t):z];
  };
  // Contour orientation controls outer wall facing. No rear cap is needed:
  // it is seated inside the existing open rails.
@@ -97,14 +93,12 @@ function m9UnifiedFrontShell(nose:number):THREE.BufferGeometry{
    (b[2]-a[2])*(c[1]-a[1]);
   if(faceX>0)tri(a,b,c);else tri(a,c,b);
  }
- // Crown slopes inward into one broad cast nose, rather than a square
- // horizontal beam on top of two detached-looking posts. The lower
- // section intersects the upper cheek vertices; no additional geometry.
- const x0=nose-.60,x1=nose+.06,y0=3.30,y1=3.61;
- const lower:V[]=[[x0,y0,-1.21],[x1,y0,-1.21],
-  [x1,y0,1.21],[x0,y0,1.21]];
- const upper:V[]=[[x0,y1,-.97],[x1,y1,-.97],
-  [x1,y1,.97],[x0,y1,.97]];
+ // Stubby roof physically overlaps both upper U-shell cheeks.
+ const x0=nose-.57,x1=nose+.06,y0=3.24,y1=3.52;
+ const lower:V[]=[[x0,y0,-1.16],[x1,y0,-1.16],
+  [x1,y0,1.16],[x0,y0,1.16]];
+ const upper:V[]=[[x0,y1,-.91],[x1,y1,-.91],
+  [x1,y1,.91],[x0,y1,.91]];
  quad(upper[0],upper[3],upper[2],upper[1]); // slim flat crown
  quad(lower[1],upper[1],upper[2],lower[2]); // chamfered muzzle face
  quad(lower[3],upper[3],upper[0],lower[0]); // rear
@@ -112,11 +106,11 @@ function m9UnifiedFrontShell(nose:number):THREE.BufferGeometry{
  quad(lower[2],upper[2],upper[3],lower[3]); // right chamfer
  // Stubby front sight stays part of this same contiguous art mesh.
  // Four broad faces and one top; no independent sight box.
- const sx0=nose-.39,sx1=nose+.01,by=y1,ty=3.94;
- const lo:V[]=[[sx0,by,-.56],[sx1,by,-.56],
-  [sx1,by,.56],[sx0,by,.56]];
- const hi:V[]=[[sx0+.055,ty,-.38],[sx1-.055,ty,-.38],
-  [sx1-.055,ty,.38],[sx0+.055,ty,.38]];
+ const sx0=nose-.42,sx1=nose+.01,by=y1,ty=3.88;
+ const lo:V[]=[[sx0,by,-.47],[sx1,by,-.47],
+  [sx1,by,.47],[sx0,by,.47]];
+ const hi:V[]=[[sx0+.05,ty,-.34],[sx1-.05,ty,-.34],
+  [sx1-.05,ty,.34],[sx0+.05,ty,.34]];
  quad(hi[0],hi[3],hi[2],hi[1]);
  for(let i=0;i<4;i++){
   const j=(i+1)%4;
@@ -169,26 +163,26 @@ export function buildM9Appearance(id:M9AppearanceId,
  // body, guard, and swept butt stay ONE contiguous lower silhouette.
  const outer:Outline=[
   [-9.07,.44],[6.71,.44],[6.71,-.28],[5.92,-.70],
-  [1.58,-.70],[1.52,-3.10],
-  [.97,-3.65],[.22,-3.85],[-1.96,-3.84],
-  [-2.82,-3.57],[-4.15,-4.06],
-  [a.gripFront+.43,a.heel+1.03],
+  [1.58,-.70],[1.52,-3.08],
+  [.94,-3.62],[.22,-3.84],[-1.96,-3.80],
+  [-2.83,-3.53],[-4.15,-4.06],
+  [a.gripFront+(a.straightGrip ? .15 : .33),a.heel+1.03],
   [a.gripFront-.05,a.heel+.32],[a.gripRear+.50,a.heel],
   [a.gripRear-.06,a.heel+.52],
-  [a.straightGrip?-8.50:-9.12,-5.18],
+  [a.straightGrip?-8.73:-9.12,-5.18],
   [a.straightGrip?-7.95:-8.16,-3.35],
-  // D8: shortened, substantially thicker swept frame tang. Blunt rather
-  // than razor-ended: the upper lip returns directly into the frame web.
-  // Same six silhouette stations as D7 (zero added triangles).
-  [-8.20,-2.37],[-9.83,-.87],[-10.44,-.59],
-  [-10.65,-.36],[-10.55,.06],[-9.20,.04]
+  // D9: short, thick beavertail rooted in the continuous rear frame.
+  [-8.20,-2.37],[-9.36,-1.04],[-10.00,-.71],
+  [-10.23,-.49],[-10.13,-.12],[-9.20,.04]
  ];
  // Large curved-octagonal hole is genuine through-Z geometry; the lower
  // guard remains thick enough to read at game scale without becoming a box.
+ // The guard opening remains real; its front and top are a
+ // continuous, thick web, with no sliver gap in muzzle-quarter view.
  const opening:Outline=[
-  [-2.69,-1.30],[.78,-1.30],[1.08,-1.80],
-  [.93,-2.43],[.34,-3.19],[-1.94,-3.21],
-  [-2.78,-2.82],[-2.96,-2.13]
+  [-2.64,-1.38],[.72,-1.38],[1.02,-1.78],
+  [.78,-2.41],[.18,-3.02],[-1.89,-3.04],
+  [-2.72,-2.74],[-2.89,-2.10]
  ];
  const localFrame=frameMaterial.clone();localFrame.side=THREE.DoubleSide;
  const frame=addProfileFrame(root,'receiver',id,n++,outer,opening,
@@ -286,13 +280,12 @@ export function buildM9Appearance(id:M9AppearanceId,
  tip.userData.m9MuzzleCrown=true;
  tip.castShadow=false;root.add(tip);
 
- // D8: horizontal, rearward-hooked hammer head instead of an upright tab.
- // Same nine stations and one mesh; crown is lower, heavier and raked
- // backward as a recognizable small silhouette at gameplay distance.
+ // D9: root stations overlap the sloped rear slide by design.
+ // One short thick nine-station horizontal hook, not a floating tab.
  const hammer:Outline=[
-  [-8.88,2.45],[-9.17,2.92],[-9.27,3.28],
-  [-9.75,3.43],[-10.03,3.62],[-9.91,3.83],
-  [-9.60,3.85],[-9.20,3.60],[-8.98,3.15]
+  [-8.18,2.16],[-8.14,2.68],[-8.56,3.35],
+  [-9.36,3.75],[-9.89,3.80],[-10.03,3.56],
+  [-9.61,3.45],[-8.95,3.22],[-8.47,2.16]
  ];
  const hammerMesh=addOutline(root,'receiver',id,n++,hammer,1.05,slideMaterial);
  hammerMesh.userData.m9Hammer=true;
@@ -313,20 +306,17 @@ export function buildM9Appearance(id:M9AppearanceId,
  floorplate.userData.m9HeelContact=true;
 
  if(showDetails){
-  // D6: factory panels are large side-plane facets, not extruded slabs.
-  // Five landmarks follow the actual frame sweep on each *distinct* grip.
-  // D8: one extra meaningful side facet on each panel's front and rear
-  // contour, read as an intentional convex grip rather than a dark slab.
-  // Keep two *planar* sides batched in ONE mesh (no ornamental bevel).
-  // Classic is swept/rounded; the A3's Vertec grip remains visibly straighter.
+  // D9: six bold flat stations follow each actual outer grip rake.
+  // The back/heel are INSIDE the frame instead of pasted-on slabs.
+  // M9 is visibly swept; A3 keeps its straighter Vertec distinction.
   const gripPanel:Outline=a.straightGrip?[
-   [-7.70,-2.12],[-5.19,-2.17],[-5.55,-5.12],
-   [a.gripFront-.59,a.heel+.82],
-   [a.gripRear+.63,a.heel+.66],[-8.35,-5.12]
+   [-7.60,-2.10],[-5.42,-2.19],[-5.94,-5.11],
+   [-6.39,a.heel+.80],
+   [a.gripRear+.59,a.heel+.69],[-7.95,-5.12]
   ]:[
-   [-8.02,-2.12],[-5.25,-2.19],[-6.00,-5.12],
-   [a.gripFront-.89,a.heel+.84],
-   [a.gripRear+.66,a.heel+.66],[-9.16,-5.20]
+   [-7.80,-2.13],[-5.46,-2.23],[-6.11,-5.14],
+   [-7.02,a.heel+.81],
+   [a.gripRear+.59,a.heel+.70],[-8.60,-5.16]
   ];
   const panelVertices:number[]=[],panelIndices:number[]=[];
   const panelTriangles=THREE.ShapeUtils.triangulateShape(
@@ -440,7 +430,7 @@ export function buildM9Appearance(id:M9AppearanceId,
   guardOpening:true,actualOpenTop:true,
   barrelRadius:BARREL_RADIUS,barrelY:BARREL_Y,
   muzzleWrapEndX:a.nose+.08,
-  upperBridgeFrontX:-.98,beavertailRearX:-10.65,
+  upperBridgeFrontX:-.98,beavertailRearX:-10.23,
   upperRoofInset:.14,lowerSlideTopY:2.16,
   frontWrapDepth:1.35,
   serrationBottomY:.70,serrationTopY:2.04,
