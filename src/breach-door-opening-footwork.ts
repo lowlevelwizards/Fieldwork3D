@@ -39,10 +39,22 @@ export function upcomingOpeningSweep(door:Door):number{
  const fraction=door.openFraction??0;
  return Math.min(Math.max(1,door.pushTarget??1),fraction+.17);
 }
+/** The first .72 opening is enough for some approaches but NOT a
+ * blanket clearance for the operator actually trapped in the remaining
+ * self-blocked sweep. Townhouse FRONT's physically stopped .931 leaf
+ * repeatedly escaped and reacquired the same unsafe route for 40 seconds.
+ * Offer the existing swept clearance footstep only when the STILL-OPENING
+ * hinge's upcoming sweep would hit THIS actual body. After .72 the leaf
+ * must be stationary; a normally moving, open passage stays untouched.
+ */
 export function openingSweepThreatens(door:Door,position:Pt):boolean{
+ const fraction=door.openFraction??0;
+ const highPartial=fraction>=.72&&fraction<.98&&
+   Math.abs(door.angularVelocity??0)<.16;
  return door.open&&!door.locked&&!door.wedged&&!door.heldBy&&
-   (door.openFraction??0)<.72&&
-   doorWouldStrikeActors(door,upcomingOpeningSweep(door),[position],OPERATOR_RADIUS);
+   (fraction<.72||highPartial)&&
+   doorWouldStrikeActors(door,upcomingOpeningSweep(door),
+     [position],OPERATOR_RADIUS);
 }
 export function selectGuidedOpeningStep(a:TeamActor,s:Session,
  door:Door,goal:Pt):Pt|null{
