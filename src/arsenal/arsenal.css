@@ -1029,6 +1029,16 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
   font-size:11px;padding:7px 9px}
  .arsenal-m9-inspector .arsenal-wb-utility-actions{gap:5px}
  .arsenal-m9-inspector .arsenal-wb-back{padding:7px 10px}
- .arsenal-m9-inspector .arsenal-wb-main{gap:4px;padding:5px 0}
+ .arsenal-m9-inspector .arsenal-wb-main{
+  gap:8px;padding:8px 0 14px;justify-content:center
+ }
+ /* D8: portrait screens previously enclosed a wide pistol in a very
+  * tall empty grey slab. A near-square stage uses the available space
+  * for the actual miniature. Only the Beretta art inspector changes. */
+ .arsenal-m9-inspector .arsenal-wb-main>.arsenal-wb-stage{
+  flex:0 1 auto;width:100%;
+  height:min(104vw,60dvh,520px);
+  min-height:min(240px,45dvh)
+ }
  .arsenal-m9-inspector .arsenal-wb-head h2{font-size:23px}
 }
