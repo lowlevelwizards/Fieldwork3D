@@ -173,3 +173,24 @@ export function evaluateSpecialistRecoveryAdoption(
   decision.verdict==='exempt')&&preflight&&contextEligible,
   decision,proof};
 }
+
+/** Compact preflight for existing selector call sites. The selectors own
+ * physical verification and retry-claim consumption; false means no write.
+ * Call BEFORE committing specialist episode/queue state changes.
+ */
+export function authorizeSpecialistRecovery(
+ actor:TeamActor,session:Session,source:SpecialistRecoverySource,
+ route:readonly Pt[],goal:Pt,owner:SpecialistOwner,
+ certificate:SpecialistCertificate,
+ options:{operation?:'replace'|'prepend';escapedBody?:boolean}={}
+):RecoveryAdoptionProof|null{
+ const result=evaluateSpecialistRecoveryAdoption({
+  actor,session,source,route,goal,owner,certificate,
+  operation:options.operation??'replace',
+  escapedBody:options.escapedBody,
+  orderIdAtSelection:actor.plan[0]?.id??null,
+  eligible:true,clearanceVerified:true,
+  cooldownClaimed:true,recurrenceClaimed:true,useful:true
+ });
+ return result.accepted?result.proof:null;
+}
