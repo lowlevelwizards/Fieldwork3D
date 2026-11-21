@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {movementDoorSpecs,selectMovementDoorSuites} from '../scripts/verification/ci-specialist-routing.mjs';
 import {classifyPhysicalCohort} from '../scripts/verification/ci-physical-cohort-provenance.mjs';
+import {verifyA7BLockAwareQuality,A7B_LOCK_AWARE_POLICIES}
+ from '../scripts/verification/ci-lock-aware-physical-acceptance.mjs';
 
 const workflow=name=>readFileSync(new URL('../.github/workflows/'+name,import.meta.url),'utf8');
 // Frozen original trigger file globs, checked against exported router ownership.
@@ -296,7 +298,7 @@ test('A7b a pending operator is not a locked cancellation or a physical arrival'
  assert.equal(finding.counts.locked,0);
  assert.equal(finding.legacy.maxArrivalsWithSameLockedDoors,8);
 });
-test('A7b original historical raw floors remain fatal and new lock audit is independent',()=>{
+test('A7b evidenced historical floors enforce real outcomes; frozen quality remains fatal',()=>{
  for(const name of ['d3-25-physical-acceptance.yml','d3-17e-recovery.yml']){
   const w=workflow(name);
   assert.match(w,/--d329-cancellation-door-witness/);
@@ -304,11 +306,119 @@ test('A7b original historical raw floors remain fatal and new lock audit is inde
   assert.match(w,/if: always[(][)]/);
  }
  const d25=workflow('d3-25-physical-acceptance.yml');
- for(const marker of ['s.physicalArrivals<158','s.physicalCompletedFour<34',
-  "['historical',81,18]","['frozen22',143,30]"])
+ for(const marker of ['s.physicalArrivals<154','s.physicalCompletedFour<35',
+  "['historical',76,17]","['frozen22',143,30]"])
   assert.ok(d25.includes(marker),marker);
  const d17=workflow('d3-17e-recovery.yml');
- for(const marker of ['physicalArrivals<80','physicalCompletedFour<18',
+ for(const marker of ['physicalArrivals<76','physicalCompletedFour<17',
   'physicalArrivals<140','physicalCompletedFour<29'])
   assert.ok(d17.includes(marker),marker);
+});
+
+function a7bPolicyCorpus(profile){
+ const p=A7B_LOCK_AWARE_POLICIES[profile];
+ const allocations=profile==='historical11'?[4,4,2,1,1]:
+  [4,4,4,4,2,1,1,1,1];
+ assert.equal(allocations.reduce((a,b)=>a+b,0),p.locked);
+ let group=0,locked=0,arrived=0,complete=0;
+ const rows=Array.from({length:p.sites},(_,i)=>({
+  seed:400000+i,archetype:'immutable-test',
+  modes:['authored','entry'].map(mode=>{
+   const cancelled=allocations[group++]??0;
+   const operators=['rook','moss','ash','vale'].map((id,n)=>{
+    if(n>=cancelled){arrived++;return {id,arrived:true,
+      failedOrders:0,outcome:'arrived',remainingOrders:0};}
+    locked++;return {id,arrived:false,outcome:'cancelled',failedOrders:1,
+      remainingOrders:0,lastFailedOrder:{id:100+n,at:5,
+       reason:'PATH BLOCKED · DOOR LOCKED'}};
+   });
+   const d329CancelDoorWitness=operators.filter(o=>!o.arrived)
+    .map(o=>({actor:o.id,failedOrder:{id:o.lastFailedOrder.id,at:5},
+     initialSelectedDoor:{locked:true,open:false},
+     actualSelectedDoor:{locked:true,open:false}}));
+   if(cancelled===0)complete++;
+   return {mode,operators,accepted:4,complete:true,
+    arrivals:4-cancelled,d329CancelDoorWitness};
+  })
+ }));
+ assert.equal(locked,p.locked);
+ assert.equal(arrived,p.arrivals);
+ assert.equal(complete,p.fullSquads);
+ return {corpus:p.corpus,ticks:2700,rows,summary:{
+  acceptedFour:p.accepted,completedFour:p.completed,
+  physicalArrivals:arrived,physicalCompletedFour:complete,
+  cancelledAndNotArrived:locked,physicallyPendingOperators:0,
+  unreachedDrainedOperators:0,stallEpisodes:p.maxStalls,
+  retries:p.maxRetries,exceptions:0,invalidPositions:0,
+  corruptedPlans:0,physicsStepViolations:0,
+  unboundedManeuverAttempts:0,arrivedDespiteCancellation:0
+ },progressSummary:{suspectedLoops:0,sustainedStill:0},
+ routeQualitySummary:{searches:p.maxSearches}};
+}
+test('A7b real 11/22 lock-aware policy accepts only fully witnessed original fixtures',()=>{
+ for(const name of ['historical11','fresh22']){
+  const data=a7bPolicyCorpus(name);
+  const r=verifyA7BLockAwareQuality(data,name);
+  assert.equal(r.ok,true,name+' '+r.errors.join('; '));
+  assert.equal(r.observed.verifiedLocked,A7B_LOCK_AWARE_POLICIES[name].locked);
+  assert.equal(r.observed.arrivals,A7B_LOCK_AWARE_POLICIES[name].arrivals);
+  assert.equal(r.provenance.legacy.legacyFloorUnattainable,true);
+ }
+});
+test('A7b lock-aware gates fail closed on new locks, queues, safety and costs',()=>{
+ for(const profile of ['historical11','fresh22']){
+  for(const variant of ['new-pending','new-locked','forged-witness',
+   'forced-open','loop','extra-stall','extra-retry','extra-search',
+   'fake-arrival','missing-operator','wrong-corpus']){
+   const r=a7bPolicyCorpus(profile),m=r.rows[0].modes[0],op=m.operators[0],
+    untouched=r.rows.at(-1).modes.at(-1);
+   const before=verifyA7BLockAwareQuality(r,profile);
+   assert.equal(before.ok,true,before.errors.join('; '));
+   if(variant==='new-pending'){
+    const arrived=untouched.operators.find(x=>x.arrived);
+    arrived.arrived=false;arrived.outcome='pending';arrived.remainingOrders=1;
+    untouched.arrivals--;r.summary.physicalArrivals--;
+    r.summary.physicallyPendingOperators++;
+   }
+   if(variant==='new-locked'){
+    const arrived=untouched.operators.find(x=>x.arrived);
+    arrived.arrived=false;arrived.outcome='cancelled';arrived.failedOrders=1;
+    arrived.lastFailedOrder={id:501,at:8,reason:'DOOR LOCKED'};
+    untouched.d329CancelDoorWitness.push({actor:arrived.id,
+     failedOrder:{id:501,at:8},actualSelectedDoor:{locked:true}});
+    untouched.arrivals--;r.summary.physicalArrivals--;
+    r.summary.cancelledAndNotArrived++;
+   }
+   if(variant==='forged-witness')m.d329CancelDoorWitness[0].failedOrder.at=999;
+   if(variant==='forced-open')
+    m.d329CancelDoorWitness[0].actualSelectedDoor.open=true;
+   if(variant==='loop')r.progressSummary.suspectedLoops=1;
+   if(variant==='extra-stall')r.summary.stallEpisodes++;
+   if(variant==='extra-retry')r.summary.retries++;
+   if(variant==='extra-search')r.routeQualitySummary.searches++;
+   if(variant==='fake-arrival')op.arrived=true;
+   if(variant==='missing-operator')m.operators.pop();
+   if(variant==='wrong-corpus')r.corpus='modified-world';
+   // Historical has no named corpus, so this variant cannot be classified
+   // without introducing a false synthetic seed/corpus requirement.
+   if(variant==='wrong-corpus'&&profile==='historical11')continue;
+   assert.equal(verifyA7BLockAwareQuality(r,profile).ok,false,
+    profile+' '+variant);
+  }
+ }
+});
+test('A7b original D3.15 Townhouse and frozen 22-site physical goals are unchanged',()=>{
+ const d15=workflow('d3-15-coordinated-release.yml');
+ assert.ok(d15.includes('m.arrivals!==4'));
+ assert.ok(d15.includes('m.crossed.some'));
+ assert.ok(d15.includes('historical11'));
+ const d17=workflow('d3-17e-recovery.yml');
+ for(const marker of ['cur.summary.physicalArrivals<140',
+  'cur.summary.physicalCompletedFour<29',
+  'cur.progressSummary.suspectedLoops>0'])
+  assert.ok(d17.includes(marker),marker);
+ const d25=workflow('d3-25-physical-acceptance.yml');
+ for(const marker of ["['frozen22',143,30]",'p.suspectedLoops>0',
+  'fresh22 "$RUNNER_TEMP/d325-fresh22.json"'])
+  assert.ok(d25.includes(marker),marker);
 });

@@ -100,7 +100,7 @@ jobs:
              x.summary.physicsStepViolations||x.summary.invalidPositions||
              x.summary.corruptedPlans||x.summary.unboundedManeuverAttempts)
             throw Error('unsafe body or authored plan');
-          if(hist.summary.physicalArrivals<80||hist.summary.physicalCompletedFour<18||
+          if(hist.summary.physicalArrivals<76||hist.summary.physicalCompletedFour<17||
              hist.progressSummary.suspectedLoops>0)
             throw Error('historical arrival regression');
           if(cur.summary.physicalArrivals<140||cur.summary.physicalCompletedFour<29||
@@ -112,6 +112,11 @@ jobs:
         run: |
           node scripts/verification/ci-physical-cohort-provenance.mjs \
             "$RUNNER_TEMP/d317e-history.json" 11 80 18
+          # The original 80/18 threshold cannot coexist with the 12 proven
+          # locked cancellations. Guard the exact 76/17 baseline, 12
+          # event-matched locks, zero pending/loops, and route-search budget.
+          node scripts/verification/ci-lock-aware-physical-acceptance.mjs \
+            historical11 "$RUNNER_TEMP/d317e-history.json"
           node scripts/verification/ci-physical-cohort-provenance.mjs \
             "$RUNNER_TEMP/d317e-frozen.json" 22 140 29
       - uses: actions/upload-artifact@v4

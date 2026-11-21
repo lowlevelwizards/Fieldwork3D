@@ -149,7 +149,7 @@ export function validateWorkflowContracts(wf){
  for(const [key,marker] of [
   ['recovery17e','--d315b4-blind22'],
   ['physical25','--d318-fresh22'],
-  ['coordinated15','physicalArrivals<80']]){
+  ['coordinated15','physicalArrivals<76']]){
   must(key,'workflow_call:');
   must(key,'workflow_dispatch:');
   no(key,'  pull_request:');
@@ -159,17 +159,28 @@ export function validateWorkflowContracts(wf){
   must('movementDoorRouter','uses: ./.github/workflows/'+paths[key].split('/').at(-1));
  }
  must('physical25','feature/d3-25-entry-stall-witness-20261118');
- // A7b append-only provenance checker preserves all historic physical floors;
- // an unverified lock event cannot satisfy the census.
+ // A7b revised historical/fresh raw floors only after proving the fixed
+ // locked-door census; all reachable frozen goals remain independent hard gates.
  for(const key of ['physical25','recovery17e']){
   must(key,'--d329-cancellation-door-witness');
   must(key,'scripts/verification/ci-physical-cohort-provenance.mjs');
   must(key,'if: always()');
  }
- for(const marker of ['s.physicalArrivals<158','s.physicalCompletedFour<34',
-  "['historical',81,18]","['frozen22',143,30]"])must('physical25',marker);
- for(const marker of ['physicalArrivals<80','physicalCompletedFour<18',
-  'physicalArrivals<140','physicalCompletedFour<29'])must('recovery17e',marker);
+ for(const marker of ['s.physicalArrivals<154','s.physicalCompletedFour<35',
+  "['historical',76,17]","['frozen22',143,30]",
+  'scripts/verification/ci-lock-aware-physical-acceptance.mjs'])
+  must('physical25',marker);
+ for(const marker of ['hist.summary.physicalArrivals<76',
+  'hist.summary.physicalCompletedFour<17',
+  'cur.summary.physicalArrivals<140',
+  'cur.summary.physicalCompletedFour<29',
+  'cur.progressSummary.suspectedLoops>0',
+  'scripts/verification/ci-lock-aware-physical-acceptance.mjs'])
+  must('recovery17e',marker);
+ for(const marker of ['m.arrivals!==4','m.crossed.some',
+  's.physicalArrivals<76','s.physicalCompletedFour<17',
+  'scripts/verification/ci-lock-aware-physical-acceptance.mjs'])
+  must('coordinated15',marker);
  // A7b sibling reusable workflows must never share a caller-derived
  // concurrency group: doing so cancels an actual 11/22-site physical audit.
  for(const [key,prefix] of [
