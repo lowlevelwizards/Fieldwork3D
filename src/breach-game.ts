@@ -1790,7 +1790,7 @@ function mission(s:Session,dt:number){
   if(s.site?.training){advanceTrainingTrial(s);return;}
   if(s.optionalIntel.length){
     const gathered=advanceOptionalIntel(s,dt,(from,to)=>
-      unobstructed(from,to,s));
+      unobstructed(from,to,s,false));
     if(gathered){
       const finder=team(s).find(a=>a.id===gathered.collectedBy);
       if(finder){
@@ -2217,10 +2217,10 @@ export function nearestDoor(s:Session,p:Pt):Door|null{
 
 /** UI queries only genuinely discovered, physically accessible evidence. */
 export function nearbyOptionalIntel(s:Session,operatorId:string):OptionalIntelItem|null{
- return eligibleOptionalIntel(s,operatorId,(from,to)=>unobstructed(from,to,s));
+ return eligibleOptionalIntel(s,operatorId,(from,to)=>unobstructed(from,to,s,false));
 }
 /** Queues a timed GO-time pickup, never claims an instant collection. */
 export function planOptionalIntelGather(s:Session,operatorId:string):boolean{
  if(s.site?.training||!s.started)return false;
- return beginOptionalIntelGather(s,operatorId,(from,to)=>unobstructed(from,to,s));
+ return beginOptionalIntelGather(s,operatorId,(from,to)=>unobstructed(from,to,s,false));
 }
