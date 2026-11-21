@@ -1,4 +1,4 @@
-# Campaign Operations & Consequences — OC1–OC9
+# Campaign Operations & Consequences — OC1–OC10
 
 ## Player-facing design
 A mission is an operation with independent tactical, human, intelligence and campaign consequences. Primary objective failure does not erase rescued comrades or recovered intelligence. An organized retreat is allowed after the squad has actually deployed and started a mission, but never teleports personnel out. The player chooses how long to remain under threat to gather evidence or rescue casualties. Quick Play stays independent of campaign persistence.
@@ -18,10 +18,11 @@ A mission is an operation with independent tactical, human, intelligence and cam
 
 ## OC2 — Voluntary withdrawal
 - A contextual Settings control lets Campaign and Quick Play withdraw or cancel; a dashed WITHDRAW destination marker stays visible in Floor Plan and projected 3D views while the command is active.
-- The entire still-mobile squad must reach physical extraction before a requested withdrawal resolves.
+- The still-mobile squad can close out together by physically reaching extraction, or individually queue exits after arriving at the gate. The next fixed GO tick rechecks the position before a member is permanently removed from active combat and archived for reporting.
 - Downed operator locations and the actual carriers of evidence are preserved. Nothing is teleported.
 - Keep ordinary objective-dependent extraction rules and outcomes unchanged when withdrawal is not requested.
-- Later improvement: per-person extraction service and tactical escort/transport route authoring at the exit.
+- An EXTRACT SELECTED control queues an irreversible departure while paused in withdrawal mode; it never teleports, and carrying operators must release the casualty at the zone or complete squad extraction together.
+- Already extracted people disappear from live AI, shots, movement, selection and fog, but remain in the replay/career/score and as verified couriers of recovered intel. Cancelling withdrawal cannot restore an evacuated character.
 
 ## OC3 — Optional intelligence
 - Deterministic 2–6 small pickups depending on map room count; no new worldgen RNG.
@@ -79,8 +80,13 @@ A mission is an operation with independent tactical, human, intelligence and cam
 - A lost veteran cannot deploy, and a rescued veteran cannot redeploy until medical recovery completes. Personnel/briefing explain the recovery requirement.
 - Never duplicate careers, rewards, journals, follow-up cases or operator identity on repeated reports or imports.
 
+## OC10 — Individual physical extraction
+- The player selects an actual mobile operator at extraction, orders EXTRACT SELECTED while paused, then presses GO. The authoritative fixed-tick retires the actor at that exact position; moving away from the gate before GO cancels that pending order safely.
+- Extracted actor snapshots remain in full mission/debrief/career accounting but are not in the active actor array. The archived courier retains any optional or primary intelligence held on departure; a real extracted primary intel courier can complete the objective after remaining squad accountability.
+- The team can still withdraw with a downed casualty left behind, but those people remain missing rather than being teleported to safety. A carrier holding another patient cannot leave individually; preserve joint casualty-transport authority.
+
 ## Remaining scope / hard release gates
-- Individual asynchronous squad extraction and secure removal from live AI/physics/replay remain a distinct integration stage; position-based individual closeout is not a substitute for removing an actor from play.
+- Browser QA should confirm the live scene and replay smoothly retire individual operator rigs without selection flicker; no per-frame extraction workarounds.
 - Rich casualty prognosis, usable contextual civilian medical care and permanent-death evidence remain for their own medical stage.
 - AI escalation during searches, strategic enemy relocation, equipment-drop economy and deeper branching intelligence remain future campaign expansions.
 - All latest OC9 code must pass TypeScript, relevant mission tests and browser acceptance before merge. Never silence unrelated failing CI by changing frozen gameplay fingerprints or deploying into an active Pages queue.
