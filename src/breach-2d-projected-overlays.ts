@@ -388,6 +388,15 @@ function renderProjectedPlans(){
       draw.restore();
     }
   }
+  if(!replaying&&state.withdrawalRequested){
+    const exit=worldToScreen(state.scenario.extract,9);
+    draw.save();draw.strokeStyle='#b9ddca';draw.lineWidth=2;
+    draw.setLineDash([6,5]);draw.beginPath();
+    draw.arc(exit.x,exit.y,20,0,Math.PI*2);draw.stroke();
+    draw.setLineDash([]);draw.fillStyle='#d8f2df';
+    draw.font='700 12px "Saira Condensed",sans-serif';draw.textAlign='center';
+    draw.fillText('WITHDRAW',exit.x,exit.y-27);draw.restore();
+  }
   if(!replaying&&state.mission==='secure'){
     const bounds=approximateObjectiveBounds(state);
     if(bounds){

@@ -84,6 +84,15 @@ function missionMarkers(){
     draw.fillText('INTEL',item.p.x,item.p.y-12);
     draw.restore();
   }
+  if(!replaying&&state.withdrawalRequested){
+    const exit=state.scenario.extract;
+    draw.save();draw.strokeStyle='#b9ddca';draw.lineWidth=2.5;
+    draw.setLineDash([5,5]);draw.beginPath();
+    draw.arc(exit.x,exit.y,33,0,Math.PI*2);draw.stroke();
+    draw.setLineDash([]);draw.fillStyle='#d8f2df';
+    draw.font='700 12px "Work Sans",sans-serif';draw.textAlign='center';
+    draw.fillText('WITHDRAW',exit.x,exit.y-40);draw.restore();
+  }
   if(state.rescue&&!state.civilians.some(c=>c.rescueTarget)&&
      objectiveLocationKnown(state,replaying,replayKnowledge.omniscient)&&
      presentUnrecordedRescueMarker(state,replaying&&replayKnowledge.omniscient,

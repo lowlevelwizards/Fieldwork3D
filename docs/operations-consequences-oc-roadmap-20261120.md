@@ -17,7 +17,7 @@ A mission is an operation with independent tactical, human, intelligence and cam
 - Do not infer death from zero HP. Incapacitated and missing are distinct from confirmed death.
 
 ## OC2 — Voluntary withdrawal
-- A contextual Settings control lets Campaign and Quick Play withdraw or cancel.
+- A contextual Settings control lets Campaign and Quick Play withdraw or cancel; a dashed WITHDRAW destination marker stays visible in Floor Plan and projected 3D views while the command is active.
 - The entire still-mobile squad must reach physical extraction before a requested withdrawal resolves.
 - Downed operator locations and the actual carriers of evidence are preserved. Nothing is teleported.
 - Keep ordinary objective-dependent extraction rules and outcomes unchanged when withdrawal is not requested.
