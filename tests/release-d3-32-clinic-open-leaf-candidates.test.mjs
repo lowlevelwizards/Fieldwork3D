@@ -7,12 +7,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateSite} from '../src/breach-site.ts';
 import {newSession} from '../src/breach-game.ts';
-import {OPERATOR_RADIUS,doorLeafSegment,pointToSegment}
+import {OPERATOR_RADIUS,doorLeafSegment,pointToSegment,doorBlocksSegment}
  from '../src/breach-core.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {sweptBodyClear,bodyClear} from '../src/breach-navigation.ts';
 import {routeWithSqueezeWorld,routeWithSqueezeIntel,routeToNextOperableDoor} from '../src/breach-squeeze-route.ts';
 import {selectColdStaleLeafPortalStage} from '../src/breach-physical-leaf-rejoin.ts';
+import {canAutoOpenEnRoute} from '../src/breach-door.ts';
 
 test('D3.32 Clinic D9: old chord blocked, two swept full-body legs clear',()=>{
  const site=generateSite(14490156,'standard',undefined,
@@ -146,16 +147,29 @@ test('D3.32 P3B full-body cold open-leaf portal-stage is real and guarded',()=>{
  const sweep=(a,b)=>sweptBodyClear(a,b,s.doors,OPERATOR_RADIUS,world);
  const stand=p=>bodyClear(p,s.doors,OPERATOR_RADIUS,world);
  const portal=(a,b)=>routeToNextOperableDoor(a,b,s.doors,world);
+ const terminal=(a,b)=>s.doors.some(door=>
+  !door.locked&&!door.jammed&&!door.wedged&&!door.heldBy&&
+  (door.openFraction??(door.open?1:0))<.72&&
+  canAutoOpenEnRoute({kind:'move'},door.id)&&
+  doorBlocksSegment(door,{a,b})&&
+  sweptBodyClear(a,b,s.doors.filter(d=>d!==door),
+    OPERATOR_RADIUS,world));
  const route=selectColdStaleLeafPortalStage(from,goal,d9,
-  stand,sweep,portal);
+  stand,sweep,portal,terminal);
  console.log('D332_VALE_COLD_STAGE',JSON.stringify({
   length:route.length,first:route[0],last:route.at(-1)}));
  assert.ok(route.length>=2,'physically joined to existing door portal');
  let previous=from;
- for(const point of route){
-  assert.ok(stand(point),'all staged waypoints are standable');
-  assert.equal(sweep(previous,point),true,
-   'all motor segments retain full-body collision authority');
+ for(let i=0;i<route.length;i++){
+  const point=route[i];
+  if(i<route.length-1){
+   assert.ok(stand(point),'ordinary waypoints are standable');
+   assert.equal(sweep(previous,point),true,
+    'all departure and intermediate motor segments are fully swept');
+  }else{
+   assert.ok(stand(point)&&sweep(previous,point)||terminal(previous,point),
+    'only final leg may contact the one real operable door');
+  }
   previous=point;
  }
  for(const blocked of [
@@ -165,13 +179,16 @@ test('D3.32 P3B full-body cold open-leaf portal-stage is real and guarded',()=>{
  ]){
   const invalid={...d9,...blocked};
   assert.deepEqual(
-   selectColdStaleLeafPortalStage(from,goal,invalid,stand,sweep,portal),
+   selectColdStaleLeafPortalStage(from,goal,invalid,stand,sweep,portal,terminal),
    [],JSON.stringify(blocked));
  }
  assert.deepEqual(
-  selectColdStaleLeafPortalStage(from,goal,d9,stand,()=>false,portal),
+  selectColdStaleLeafPortalStage(from,goal,d9,stand,()=>false,portal,terminal),
   [],'no path through blocked first strides');
  assert.deepEqual(
-  selectColdStaleLeafPortalStage(from,goal,d9,stand,sweep,()=>[]),
+  selectColdStaleLeafPortalStage(from,goal,d9,stand,sweep,()=>[],terminal),
   [],'a staging footstep without an operable-door prefix has no authority');
+ assert.deepEqual(
+  selectColdStaleLeafPortalStage(from,goal,d9,stand,sweep,portal,()=>false),
+  [],'cannot invent a pass through the final closed leaf');
 });
