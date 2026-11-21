@@ -49,7 +49,7 @@ test('A5 historical branch guards and shared-source stage selection',()=>{
   }
  }
  for(const head of ['feature/weapon-polish','refactor/movement-recovery-r2',
-  'feature/after-action-v4-stag3-wrong'])
+  'feature/after-action-v4ish-stag3-wrong'])
   assert.ok(Object.values(selectAfterActionSuites(
    ['src/ui/breach-after-action-panel.ts'],head)).every(v=>v===false),head);
 });
