@@ -9,7 +9,7 @@ import {fileURLToPath} from 'node:url';
 import {proposeShallowCoverRelease} from '../src/breach-static-cover-release.ts';
 import {relieveGeneratedEntryWaitCollision} from '../src/breach-actor-motor.ts';
 import {generateSite} from '../src/breach-site.ts';
-import {newSession} from '../src/breach-game.ts';
+import {newSession,planSquadEntry,toggling} from '../src/breach-game.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {OPERATOR_RADIUS,pointToSegment,doorLeafSegment} from '../src/breach-core.ts';
 import {doorWouldStrikeActors,doorSwingBlocked} from '../src/breach-door.ts';
@@ -65,10 +65,18 @@ test('D3.33 real Townhouse 9568385 generated ENTRY improves physical arrivals',(
  const report=JSON.parse(execFileSync(process.execPath,[
   '--experimental-strip-types','scripts/audit-r7-squad-execution.mjs',
   '1','2700','--site-index=1','--audit-seed=9568385',
-  '--audit-scale=standard','--progress'
+  '--audit-scale=standard','--progress','--queue-motion-witness'
  ],{cwd:root,maxBuffer:18*1024*1024,timeout:120000,encoding:'utf8'}));
  const mode=report.rows[0].modes.find(m=>m.mode==='entry');
  const rook=mode.operators.find(o=>o.id==='rook');
+ console.log('D333_LIVE_QUEUE_MOTION',JSON.stringify({
+  events:run.queueMotionEvidence?.length??0,
+  yielded:run.queueMotionEvidence?.filter(e=>
+   e.source==='opening-leaf-yield')?.slice(0,14)??[],
+  sources:run.queueMotionEvidence?.reduce((r,e)=>{
+   r[e.source]=(r[e.source]??0)+1;return r;
+  },{})??{}
+ }));
  console.log('D333_TOWNHOUSE_ENTRY',JSON.stringify({
   arrivals:mode.arrivals,rook:{
    outcome:rook.outcome,remaining:rook.remaining,
@@ -190,4 +198,24 @@ test('D3.33 exact frozen follower WAIT physically yields from Rook without alter
  assert.ok(gap(ash.p)>gap(before)+.025,'the follower physically separates from lead');
  assert.deepEqual(ash.plan.map(n=>n.id),orderIds,'WAIT and authored ENTRY untouched');
  assert.equal(rook.p.x,positions.rook.x,'cannot teleport or shift blocked lead');
+});
+
+test('D3.33 inspect unchanged production-generated FRONT wait activation flags',()=>{
+ const site=generateSite(9568385,'standard',undefined,
+  {mission:'intel'},{archetype:'townhouse'});
+ const quiet={...site,training:true,enemies:[],encounter:undefined};
+ const session=newSession(0,9568385,'full-view',site.scale??'standard',
+  'intel',quiet,{enableCivilians:false});
+ assert.equal(planSquadEntry(session,'FRONT'),true);
+ const snapshot=()=>session.operators.filter(a=>a.side==='blue')
+  .map(a=>({id:a.id,stopped:a.stopped,blockedTime:a.blockedTime,
+   plan:a.plan.slice(0,3).map(n=>({id:n.id,kind:n.kind,
+    doorId:n.doorId??null,entryDoorId:n.entryDoorId??null,
+    duration:n.duration??null}))}));
+ const before=snapshot();
+ toggling(session);
+ const after=snapshot();
+ console.log('D333_LIVE_GENERATED_WAIT_FLAGS',JSON.stringify({before,after}));
+ assert.equal(after.length,4);
+ assert.ok(after.some(a=>a.plan[0]?.kind==='wait'));
 });
