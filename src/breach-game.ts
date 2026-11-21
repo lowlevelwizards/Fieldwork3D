@@ -1,7 +1,7 @@
 import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
-import {canConcludeWithdrawal} from './breach-operation-outcomes.ts';
+import {canConcludeWithdrawal,commitIndividualExtractions,deployedTeam} from './breach-operation-outcomes.ts';
 import {observeOptionalIntel,beginOptionalIntelGather,advanceOptionalIntel,
  type OptionalIntelItem,type OptionalIntelGather,eligibleOptionalIntel}
  from './breach-optional-intel.ts';
@@ -408,6 +408,10 @@ export type Session=Omit<TacticalState,'operators'> & {
   withdrawalRequested?:boolean;
   /** Set only after the actual GO-time physical extraction gate. */
   withdrawalCompleted?:boolean;
+  /** Archived by the 60 Hz mission tick; excluded from all live AI/motor. */
+  extractedOperators?:TeamActor[];
+  /** Selected individual physical exit commands await the next GO tick. */
+  pendingExtractionIds?:string[];
   /** A named MIA casualty-recovery mission, not a second objective authority. */
   missingRecoveryTargetId?:string;
   optionalIntel:OptionalIntelItem[];
@@ -1790,6 +1794,15 @@ function mission(s:Session,dt:number){
   // The equipment range is an intentionally open-ended live simulation.
   // It cannot accidentally complete a Campaign mission or generate a debrief.
   if(s.site?.training){advanceTrainingTrial(s);return;}
+  if(s.withdrawalRequested){
+    const departed=commitIndividualExtractions(s);
+    for(const member of departed){
+      notify(s,member.name+' EXTRACTED FROM THE OPERATION');
+      battleEvent(s,'objective',member,member.p,
+        member.name+' EXTRACTED',
+        {action:'individual-extraction',contributorId:member.id});
+    }
+  }
   if(s.optionalIntel.length){
     const gathered=advanceOptionalIntel(s,dt,(from,to)=>
       unobstructed(from,to,s,false));
@@ -1807,7 +1820,7 @@ function mission(s:Session,dt:number){
   // drops it at their final observed location for another operator to
   // recover; a different teammate cannot magically extract it.
   if(s.missionType==='intel'&&s.mission==='extract'&&s.intelCarrierId){
-    const courier=team(s).find(a=>a.id===s.intelCarrierId);
+    const courier=deployedTeam(s).find(a=>a.id===s.intelCarrierId);
     if(!courier||courier.health<=0){
       if(courier)s.scenario.objective=clone(courier.p);
       s.intelCarrierId=null;s.mission='secure';s.holdTime=0;
@@ -1869,7 +1882,7 @@ function mission(s:Session,dt:number){
       }
     }
   }
-  if(team(s).every(a=>a.health<=0)){
+  if(team(s).every(a=>a.health<=0)&&!canConcludeWithdrawal(s)){
     s.phase='lost';s.report=['OPERATION FAILED','ALL OPERATORS LOST'];return;
   }
   const capturePerson=s.missionType==='capture'&&s.captureTarget?
