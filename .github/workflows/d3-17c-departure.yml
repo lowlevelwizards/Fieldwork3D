@@ -1,6 +1,8 @@
 name: D3.17C physical departure acceptance
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/breach-d317c-micro-departure.ts'
       - 'src/breach-route-recurrence.ts'
