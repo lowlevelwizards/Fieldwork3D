@@ -13,6 +13,7 @@ import {OPERATOR_RADIUS,doorCenter,doorLeafSegment,pointToSegment}
 import {physicalDoorPoseKey} from './breach-recovery-proposal-gate.ts';
 import {fullBodyMotorStrideClear} from './breach-stack-micro-corner.ts';
 import {joinsExistingMotorRoute} from './breach-recovery-route-validation.ts';
+import {doorLeafBypass} from './breach-door-leaf-bypass.ts';
 const d=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const copy=(p:Pt):Pt=>({x:p.x,y:p.y});
 type Witness={orderId:number;doorId:string;anchor:Pt;goal:Pt;
@@ -127,5 +128,22 @@ export function selectPhysicalOpenLeafRejoin(
     candidate.index,[candidate.point,...path],sweep,maxTravel);
   if(result.length)return result;
  }
+ // D3.32 P3: a leaf may be fully open and yet its solid tip obstructs
+ // the original coarse first chord (Clinic D9). Only AFTER the existing
+ // direct/staged/world joins have failed, consider the established bounded
+ // leaf-tip bypass. A candidate must end at an EXISTING transient node,
+ // preserve the remaining route and certify the entire full-body sweep.
+ // No new order, hinge motion, endpoint credit or change to collision law.
+ // A partial/moving opening cannot trigger this cold supplemental path.
+ if((door.openFraction??0)>=.98)
+  for(const i of joinIndices){
+   const join=original[i];
+   if(d(from,join)>maxTravel||!bodyClear(join))continue;
+   const prefix=doorLeafBypass(from,join,door,sweep);
+   if(!prefix.length||d(prefix[prefix.length-1],join)>3)continue;
+   const result=joinsExistingMotorRoute(from,goal,original,i,
+     prefix,sweep,maxTravel);
+   if(result.length)return result;
+  }
  return [];
 }
