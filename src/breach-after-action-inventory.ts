@@ -6,6 +6,7 @@
  * No simulated spending, restock or inferred film outcomes occur here.
  */
 import type {Session} from './breach-game.ts';
+import {deployedTeam} from './breach-operation-outcomes.ts';
 import type {MissionRecorder} from './breach-replay.ts';
 import type {CampaignState} from './campaign-state.ts';
 import {tacticalSlotOperator} from './campaign-state.ts';
@@ -37,7 +38,7 @@ export type AfterActionInventoryCloseout={
  source:'live-closeout';
 };
 type RecorderEvidence=Pick<MissionRecorder,'manifest'|'frames'>;
-type MissionEvidence=Pick<Session,'operators'|'phase'>;
+type MissionEvidence=Pick<Session,'operators'|'extractedOperators'|'phase'>;
 const usable=(n:number|undefined):number=>
  typeof n==='number'&&Number.isFinite(n)?Math.max(0,Math.floor(n)):0;
 const qty=(initial:number|null,end:number):CloseoutQuantity=>({
@@ -62,7 +63,10 @@ export function buildAfterActionInventoryCloseout(input:{
  // A late or truncated recording cannot establish actual initial stock.
  const hasStart=!!first&&first.t>=0&&first.t<=.06;
  const startById=new Map((hasStart?first.actors:[]).map(actor=>[actor.id,actor]));
- const operators=session.operators.filter(a=>a.side==='blue').map(actor=>{
+ // The live simulation intentionally removes physically extracted members.
+ // Include their archived snapshots in the same read-only equipment closeout,
+ // otherwise after-action falsely reports a smaller issued team.
+ const operators=deployedTeam(session).map(actor=>{
   const initial=startById.get(actor.id);
   const currentField=actor.equipment?
    initialField(actor.equipment.fieldInventory,actor.equipment):undefined;
