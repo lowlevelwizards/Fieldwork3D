@@ -159,6 +159,17 @@ export function validateWorkflowContracts(wf){
   must('movementDoorRouter','uses: ./.github/workflows/'+paths[key].split('/').at(-1));
  }
  must('physical25','feature/d3-25-entry-stall-witness-20261118');
+ // A7b append-only provenance checker preserves all historic physical floors;
+ // an unverified lock event cannot satisfy the census.
+ for(const key of ['physical25','recovery17e']){
+  must(key,'--d329-cancellation-door-witness');
+  must(key,'scripts/verification/ci-physical-cohort-provenance.mjs');
+  must(key,'if: always()');
+ }
+ for(const marker of ['s.physicalArrivals<158','s.physicalCompletedFour<34',
+  "['historical',81,18]","['frozen22',143,30]"])must('physical25',marker);
+ for(const marker of ['physicalArrivals<80','physicalCompletedFour<18',
+  'physicalArrivals<140','physicalCompletedFour<29'])must('recovery17e',marker);
  // A7b sibling reusable workflows must never share a caller-derived
  // concurrency group: doing so cancels an actual 11/22-site physical audit.
  for(const [key,prefix] of [

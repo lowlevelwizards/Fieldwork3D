@@ -44,7 +44,7 @@ jobs:
       - name: Independent 22-site 45s physical safety and arrival gain
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
-            22 2700 --d318-fresh22 --progress --route-quality \
+            22 2700 --d318-fresh22 --progress --route-quality --d329-cancellation-door-witness \
             > "$RUNNER_TEMP/d325-fresh22.json"
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
@@ -64,6 +64,11 @@ jobs:
              p.suspectedLoops>1||q.searches>10800)
             throw Error('D3.25 physical/CPU regression or missing real Townhouse arrival gain');
           NODE
+      - name: Verify event-matched 176-operator locked-door census and obsolete raw floors
+        if: always()
+        run: |
+          node scripts/verification/ci-physical-cohort-provenance.mjs \
+            "$RUNNER_TEMP/d325-fresh22.json" 22 158 34
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -81,9 +86,9 @@ jobs:
       - name: Historical 11 and frozen 22 physical outcome guard
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
-            11 2700 --progress --route-quality > "$RUNNER_TEMP/d325-historical.json"
+            11 2700 --progress --route-quality --d329-cancellation-door-witness > "$RUNNER_TEMP/d325-historical.json"
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
-            22 2700 --d315b4-blind22 --progress --route-quality > "$RUNNER_TEMP/d325-frozen22.json"
+            22 2700 --d315b4-blind22 --progress --route-quality --d329-cancellation-door-witness > "$RUNNER_TEMP/d325-frozen22.json"
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           for(const [name,minArrivals,minSquads] of [
@@ -100,6 +105,13 @@ jobs:
               throw Error('D3.25 frozen or historical physical regression: '+name);
           }
           NODE
+      - name: Verify exact historical and frozen lock evidence after legacy acceptance
+        if: always()
+        run: |
+          node scripts/verification/ci-physical-cohort-provenance.mjs \
+            "$RUNNER_TEMP/d325-historical.json" 11 81 18
+          node scripts/verification/ci-physical-cohort-provenance.mjs \
+            "$RUNNER_TEMP/d325-frozen22.json" 22 143 30
       - uses: actions/upload-artifact@v4
         if: always()
         with:

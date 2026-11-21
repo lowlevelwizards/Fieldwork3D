@@ -80,11 +80,11 @@ jobs:
       - name: Historical 11-site body truth
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
-            11 2700 --progress --route-quality > "$RUNNER_TEMP/d317e-history.json"
+            11 2700 --progress --route-quality --d329-cancellation-door-witness > "$RUNNER_TEMP/d317e-history.json"
       - name: Frozen tenth 22-site physical truth and actual route-search cost
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
-            22 2700 --d315b4-blind22 --progress --route-quality \
+            22 2700 --d315b4-blind22 --progress --route-quality --d329-cancellation-door-witness \
             > "$RUNNER_TEMP/d317e-frozen.json"
       - name: Physical and performance safety assertions
         run: |
@@ -107,6 +107,13 @@ jobs:
              cur.progressSummary.suspectedLoops>0)
             throw Error('frozen physical-goal or loop regression');
           NODE
+      - name: Independently verify historical and frozen lock/collision provenance
+        if: always()
+        run: |
+          node scripts/verification/ci-physical-cohort-provenance.mjs \
+            "$RUNNER_TEMP/d317e-history.json" 11 80 18
+          node scripts/verification/ci-physical-cohort-provenance.mjs \
+            "$RUNNER_TEMP/d317e-frozen.json" 22 140 29
       - uses: actions/upload-artifact@v4
         if: always()
         with:

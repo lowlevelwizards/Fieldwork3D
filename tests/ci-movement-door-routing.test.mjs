@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {movementDoorSpecs,selectMovementDoorSuites} from '../scripts/verification/ci-specialist-routing.mjs';
+import {classifyPhysicalCohort} from '../scripts/verification/ci-physical-cohort-provenance.mjs';
 
 const workflow=name=>readFileSync(new URL('../.github/workflows/'+name,import.meta.url),'utf8');
 // Frozen original trigger file globs, checked against exported router ownership.
@@ -231,4 +232,83 @@ test('A7b nested historical cohorts have distinct non-cancelling concurrency gro
   assert.match(source,/cancel-in-progress:/);
   seen.add(line);
  }
+});
+
+function a7bPhysicalFixture(){
+ const actors=()=>['rook','moss','ash','vale'].map(id=>({
+  id,arrived:true,outcome:'arrived',remainingOrders:0,failedOrders:0
+ }));
+ return {ticks:2700,rows:[{seed:123,archetype:'test',
+  modes:['authored','entry'].map(mode=>({
+   mode,accepted:4,arrivals:4,operators:actors(),d329CancelDoorWitness:[]
+  }))}],summary:{physicalArrivals:8,physicalCompletedFour:2,
+  cancelledAndNotArrived:0,physicallyPendingOperators:0,
+  unreachedDrainedOperators:0,exceptions:0,physicsStepViolations:0,
+  invalidPositions:0,corruptedPlans:0,unboundedManeuverAttempts:0,
+  arrivedDespiteCancellation:0},progressSummary:{suspectedLoops:0}};
+}
+function a7bCancelOne(report){
+ const mode=report.rows[0].modes[0],op=mode.operators[0],id=10,at=4.25;
+ Object.assign(op,{arrived:false,outcome:'cancelled',failedOrders:1,
+  lastFailedOrder:{id,at,reason:'PATH BLOCKED · DOOR LOCKED'}});
+ mode.arrivals--;report.summary.physicalArrivals--;
+ report.summary.physicalCompletedFour--;
+ report.summary.cancelledAndNotArrived++;
+ mode.d329CancelDoorWitness.push({actor:op.id,failedOrder:{id,at},
+  initialSelectedDoor:{locked:true,open:false},
+  actualSelectedDoor:{locked:true,open:false}});
+ return mode;
+}
+test('A7b provenance derives an impossible historical raw floor only from proven locked doors',()=>{
+ const r=a7bPhysicalFixture();a7bCancelOne(r);
+ const result=classifyPhysicalCohort(r,{sites:1,legacyArrivals:8,legacyFullSquads:2});
+ assert.equal(result.ok,true,result.errors.join('; '));
+ assert.equal(result.counts.verifiedLocked,1);
+ assert.equal(result.counts.arrivals,7);
+ assert.equal(result.legacy.maxArrivalsWithSameLockedDoors,7);
+ assert.equal(result.legacy.legacyFloorUnattainable,true);
+ assert.equal(result.legacy.rawArrivalDeficit,1);
+});
+test('A7b missing, mismatched, and unsafe lock witnesses fail closed',()=>{
+ for(const variant of ['no-witness','wrong-actor','wrong-time','no-lock',
+  'forced-open','fake-arrived','safety','summary-drift']){
+  const r=a7bPhysicalFixture(),mode=a7bCancelOne(r),op=mode.operators[0],
+   witness=mode.d329CancelDoorWitness[0];
+  if(variant==='no-witness')mode.d329CancelDoorWitness=[];
+  if(variant==='wrong-actor')witness.actor='nobody';
+  if(variant==='wrong-time')witness.failedOrder.at+=0.2;
+  if(variant==='no-lock')witness.actualSelectedDoor.locked=false;
+  if(variant==='forced-open')witness.actualSelectedDoor.open=true;
+  if(variant==='fake-arrived')op.arrived=true;
+  if(variant==='safety')r.summary.physicsStepViolations=1;
+  if(variant==='summary-drift')r.summary.physicalArrivals++;
+  assert.equal(classifyPhysicalCohort(r,{sites:1,legacyArrivals:8}).ok,false,variant);
+ }
+});
+test('A7b a pending operator is not a locked cancellation or a physical arrival',()=>{
+ const r=a7bPhysicalFixture(),mode=r.rows[0].modes[0],op=mode.operators[0];
+ op.arrived=false;op.outcome='pending';op.remainingOrders=1;
+ mode.arrivals--;r.summary.physicalArrivals--;r.summary.physicalCompletedFour--;
+ r.summary.physicallyPendingOperators++;
+ const finding=classifyPhysicalCohort(r,{sites:1,legacyArrivals:8,requireNoPending:true});
+ assert.equal(finding.ok,false);
+ assert.equal(finding.counts.pending,1);
+ assert.equal(finding.counts.locked,0);
+ assert.equal(finding.legacy.maxArrivalsWithSameLockedDoors,8);
+});
+test('A7b original historical raw floors remain fatal and new lock audit is independent',()=>{
+ for(const name of ['d3-25-physical-acceptance.yml','d3-17e-recovery.yml']){
+  const w=workflow(name);
+  assert.match(w,/--d329-cancellation-door-witness/);
+  assert.match(w,/ci-physical-cohort-provenance[.]mjs/);
+  assert.match(w,/if: always[(][)]/);
+ }
+ const d25=workflow('d3-25-physical-acceptance.yml');
+ for(const marker of ['s.physicalArrivals<158','s.physicalCompletedFour<34',
+  "['historical',81,18]","['frozen22',143,30]"])
+  assert.ok(d25.includes(marker),marker);
+ const d17=workflow('d3-17e-recovery.yml');
+ for(const marker of ['physicalArrivals<80','physicalCompletedFour<18',
+  'physicalArrivals<140','physicalCompletedFour<29'])
+  assert.ok(d17.includes(marker),marker);
 });
