@@ -1,5 +1,7 @@
 import {setTransientRoute,prependTransientLeg}
  from './breach-route-transition.ts';
+import {evaluateOrdinaryRecoveryAdoption}
+ from './breach-ordinary-recovery-adoption.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 7: authoritative body-collision response and recovery.
  * A full-radius swept motion is preferred; squeeze is only a physical
@@ -41,7 +43,6 @@ import {shouldProbeCircularFullBodyLane,alternateFullBodyLaneFromCycle,
  noteCircularWorldRoute,ownsCircularWorldRoute}
  from './breach-cycle-lane-recovery.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
-import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
 import {firstFullBodyMotorStrideClear,usefulFullBodyRecoveryRoute}
  from './breach-recovery-route-validation.ts';
 import {eligibleFrameActorDetour} from './breach-frame-actor-recovery.ts';
@@ -77,6 +78,8 @@ export function resolveMotorCollision(
  profile?:((section:string,elapsedMs:number)=>void),
  clearingDoorId?:string):boolean{
  const world=sessionWorldGeometry(s);
+ // R2: keep the original authored-order identity across any route search.
+ const orderIdAtSelection=a.plan[0]?.id??null;
   // Allies may brush and pass one another: their bodies never hard-block
   // authored routes. Only an opposing actor is a physical traffic barrier.
   // The friendly steering routine is an exact no-op unless a teammate
@@ -351,11 +354,18 @@ export function resolveMotorCollision(
       // from a repeatedly revisited physical anchor. Keep ordinary
       // collision, glide, world recovery and original order available;
       // crucially, do not reset recoveryAttempts without actual progress.
-      if(allowPhysicalRouteReissue(a,'full-body-lane',p,fullLane,s.seconds)){
+      const fullLaneAdoption=evaluateOrdinaryRecoveryAdoption({
+        actor:a,session:s,source:'full-body-lane',operation:'replace',
+        goal:p,route:fullLane,orderIdAtSelection,eligible:true,
+        certificate:'first-full-body-stride',watchSafe:true,useful:true,
+        retry:'normal-lane-window',recurrence:'full-body-lane'
+      });
+      if(fullLaneAdoption.accepted){
         const side=beginAutoSidestep(a.p,next,fullLane[0],a.heading,p,
           s.seconds,canAutoSidestep);
         if(side)a.autoSidestep=side;
-        setTransientRoute(s,a,fullLane,'full-body-lane');
+        setTransientRoute(s,a,fullLane,'full-body-lane',
+          fullLaneAdoption.proof);
         provisionalRouteAccepted(a);
         // Precise landing avoids discarding a chosen swept corner before
         // the operator physically reaches it.
@@ -535,14 +545,26 @@ export function resolveMotorCollision(
       watchClearanceAllowed(a.p,candidate,p,
         !!a.aimInstruction&&a.aimInstruction.mode!=='free',
         (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world))&&
-      (!a.nav.length||d(candidate,a.nav[0])>12)){
-      const side=beginAutoSidestep(a.p,next,candidate,a.heading,p,
-        s.seconds,canAutoSidestep);
-      if(side)a.autoSidestep=side;
-      prependTransientLeg(s,a,candidate,'local-detour');
-      notePreciseLocalDetour(a,candidate);
-      a.lastNavRepairAt=s.seconds;
-      return true;
+      (!a.nav.length||d(candidate,a.nav[0])>12)&&
+      sweptBodyClear(a.p,candidate,s.doors,OPERATOR_RADIUS,world)){
+      // Local side paths now have the same explicit, non-authoring gate
+      // as the verified lane / connector recovery families.
+      const localAdoption=evaluateOrdinaryRecoveryAdoption({
+        actor:a,session:s,source:'local-detour',operation:'prepend',
+        goal:p,route:[candidate,...a.nav],orderIdAtSelection,
+        eligible:true,certificate:'swept-local-detour',
+        watchSafe:true,useful:true,
+        retry:'hysteretic-detour',recurrence:'none'
+      });
+      if(localAdoption.accepted){
+        const side=beginAutoSidestep(a.p,next,candidate,a.heading,p,
+          s.seconds,canAutoSidestep);
+        if(side)a.autoSidestep=side;
+        prependTransientLeg(s,a,candidate,'local-detour',localAdoption.proof);
+        notePreciseLocalDetour(a,candidate);
+        a.lastNavRepairAt=s.seconds;
+        return true;
+      }
     }
   }
   // A moving red/blue body can reject the final coupled frame even when
@@ -567,15 +589,22 @@ export function resolveMotorCollision(
     if(candidate&&d(candidate,a.p)>3&&d(candidate,p)<d(a.p,p)+12&&
        usefulFullBodyRecoveryRoute(a.p,a.nav,[candidate,...a.nav],
          sweep,a.blockedTime)&&
-       sweep(candidate,next)&&
+       sweep(candidate,next)&&sweep(a.p,candidate)&&
        watchClearanceAllowed(a.p,candidate,p,
-         !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)&&
-       allowPhysicalRouteReissue(a,'frame-actor-detour',p,
-         [candidate,...a.nav],s.seconds)){
-      prependTransientLeg(s,a,candidate,'local-detour');
-      notePreciseLocalDetour(a,candidate);
-      provisionalRouteAccepted(a);
-      return true;
+         !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)){
+      const frameAdoption=evaluateOrdinaryRecoveryAdoption({
+        actor:a,session:s,source:'local-detour',operation:'prepend',
+        goal:p,route:[candidate,...a.nav],orderIdAtSelection,
+        eligible:true,certificate:'swept-local-detour',
+        watchSafe:true,useful:true,
+        retry:'cold-frame-detour',recurrence:'frame-actor-detour'
+      });
+      if(frameAdoption.accepted){
+        prependTransientLeg(s,a,candidate,'local-detour',frameAdoption.proof);
+        notePreciseLocalDetour(a,candidate);
+        provisionalRouteAccepted(a);
+        return true;
+      }
     }
   }
   if(!closed&&!blocking&&traversable){
@@ -785,12 +814,21 @@ export function resolveMotorCollision(
         // the normal recovery budget when an identical connector recurs.
         if(usefulFullBodyRecoveryRoute(a.p,a.nav,connected,
              (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
-             a.blockedTime)&&
-           allowPhysicalRouteReissue(a,'blocked-leg-connector',p,
-             connected,s.seconds)){
-          setTransientRoute(s,a,connected,'blocked-leg-connector');
-          provisionalRouteAccepted(a);
-          return true;
+             a.blockedTime)){
+          const connectorAdoption=evaluateOrdinaryRecoveryAdoption({
+            actor:a,session:s,source:'blocked-leg-connector',
+            operation:'replace',goal:p,route:connected,
+            orderIdAtSelection,eligible:true,
+            certificate:'first-full-body-stride',watchSafe:true,
+            useful:true,retry:'collision-retry',
+            recurrence:'blocked-leg-connector'
+          });
+          if(connectorAdoption.accepted){
+            setTransientRoute(s,a,connected,'blocked-leg-connector',
+              connectorAdoption.proof);
+            provisionalRouteAccepted(a);
+            return true;
+          }
         }
       }
       // Once actual collision is observed, repair against real geometry,
@@ -813,14 +851,34 @@ export function resolveMotorCollision(
       // World/intel collision replans share one source-independent
       // stationary recurrence family. An unchanged near-anchor detour is
       // not physical progress and must not repeatedly replace the route.
-      if(materiallyDifferentRoute(a.nav,repaired)&&
-         allowPhysicalRouteReissue(a,'collision-replan',p,repaired,s.seconds)){
-        setTransientRoute(s,a,repaired,'collision-world-replan');adopted=true;
-      }else if(a.side==='blue'){
+      if(materiallyDifferentRoute(a.nav,repaired)){
+        const worldAdoption=evaluateOrdinaryRecoveryAdoption({
+          actor:a,session:s,source:'collision-world-replan',
+          operation:'replace',goal:p,route:repaired,
+          orderIdAtSelection,eligible:true,
+          // Trusted routing is an adoption candidate, not physical passage.
+          certificate:'world-route-selected',watchSafe:true,
+          useful:true,retry:'collision-retry',recurrence:'collision-replan'
+        });
+        if(worldAdoption.accepted){
+          setTransientRoute(s,a,repaired,'collision-world-replan',
+            worldAdoption.proof);adopted=true;
+        }
+      }
+      if(!adopted&&a.side==='blue'){
         const known=routeWithSqueezeIntel(s.intel,a.p,p);
-        if(materiallyDifferentRoute(a.nav,known)&&
-           allowPhysicalRouteReissue(a,'collision-replan',p,known,s.seconds)){
-          setTransientRoute(s,a,known,'collision-intel-replan');adopted=true;
+        if(materiallyDifferentRoute(a.nav,known)){
+          const intelAdoption=evaluateOrdinaryRecoveryAdoption({
+            actor:a,session:s,source:'collision-intel-replan',
+            operation:'replace',goal:p,route:known,
+            orderIdAtSelection,eligible:true,
+            certificate:'known-intel-route-selected',watchSafe:true,
+            useful:true,retry:'collision-retry',recurrence:'collision-replan'
+          });
+          if(intelAdoption.accepted){
+            setTransientRoute(s,a,known,'collision-intel-replan',
+              intelAdoption.proof);adopted=true;
+          }
         }
       }
       if(adopted){

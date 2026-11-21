@@ -3,6 +3,8 @@
  * selection, player orders, or any persistent actor state.
  */
 import type {Session,TeamActor} from './breach-game.ts';
+import type {RecoveryAdoptionProof}
+ from './breach-recovery-adoption-contract.ts';
 import {observeD328EntryRoute} from './breach-d328-entry-loop.ts';
 import {hasRecoveryProposalObserver,observeRecoveryProposal}
  from './breach-recovery-shadow.ts';
@@ -50,18 +52,22 @@ function report(s:Session,a:TeamActor,source:RouteSource,next:readonly Pt[],
 /** Assign exactly the proposed transient route; zero extra allocations
  * when no offline observer is installed. */
 export function setTransientRoute(
- s:Session,a:TeamActor,route:Pt[],source:RouteSource):void{
+ s:Session,a:TeamActor,route:Pt[],source:RouteSource,
+ verified?:RecoveryAdoptionProof):void{
  if(listener)report(s,a,source,route);
  if(route.length)observeD328EntryRoute(a,source,route[0],s.seconds);
  if(hasRecoveryProposalObserver())
-  observeRecoveryProposal(s,a,source,route,'replace','adopted');
+  observeRecoveryProposal(s,a,source,route,'replace','adopted',
+   undefined,verified);
  a.nav=route;
 }
 export function prependTransientLeg(
- s:Session,a:TeamActor,leg:Pt,source:RouteSource):void{
+ s:Session,a:TeamActor,leg:Pt,source:RouteSource,
+ verified?:RecoveryAdoptionProof):void{
  if(listener)report(s,a,source,[leg,...a.nav]);
  if(hasRecoveryProposalObserver())
-  observeRecoveryProposal(s,a,source,[leg,...a.nav],'prepend','adopted');
+  observeRecoveryProposal(s,a,source,[leg,...a.nav],
+   'prepend','adopted',undefined,verified);
  a.nav.unshift(leg);
 }
 

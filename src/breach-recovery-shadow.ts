@@ -7,7 +7,8 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {RouteSource} from './breach-route-transition.ts';
 import {RECOVERY_SOURCE_POLICY,UNKNOWN_RECOVERY_EVIDENCE,
  shadowRecoveryDecision,type RecoveryRouteOperation,
- type RecoveryOwner,type RecoveryShadowRecord,type RecoveryProposal}
+ type RecoveryOwner,type RecoveryShadowRecord,type RecoveryProposal,
+ type RecoveryAdoptionProof}
  from './breach-recovery-adoption-contract.ts';
 
 let observer:((record:RecoveryShadowRecord)=>void)|null=null;
@@ -31,7 +32,8 @@ const ownerFor=(a:TeamActor,source:RouteSource):RecoveryOwner=>{
 export function observeRecoveryProposal(
  s:Session,a:TeamActor,source:RouteSource,
  next:readonly Pt[],operation:RecoveryRouteOperation,
- actual:RecoveryShadowRecord['actual'],reason?:string
+ actual:RecoveryShadowRecord['actual'],reason?:string,
+ verified?:RecoveryAdoptionProof
 ):void{
  const fn=observer;
  if(!fn)return;
@@ -46,14 +48,15 @@ export function observeRecoveryProposal(
    prior:a.nav.map(copy),next:next.map(copy),
    seconds:s.seconds,blockedSeconds:a.blockedTime,
    blocker:a.lastBlocker??null,
-   owner:ownerFor(a,source),doorId:a.doorTraversal?.doorId??null,
+   owner:verified?.owner??ownerFor(a,source),
+   doorId:a.doorTraversal?.doorId??null,
    retryRouteAt:a.retryRouteAt,
    lastRepairAt:a.lastNavRepairAt,
    recoveryAttempts:a.recoveryAttempts,
    // A preexisting route writer adoption is NOT proof of clearance,
    // productive real motion, or cooldown eligibility. R2 selectors
    // will submit explicit evidence after validating on the live motor.
-   evidence:{...UNKNOWN_RECOVERY_EVIDENCE}
+   evidence:verified?{...verified.evidence}:{...UNKNOWN_RECOVERY_EVIDENCE}
   };
   const event=shadowRecoveryDecision(proposal,actual);
   if(reason&&actual==='rejection-witness')
