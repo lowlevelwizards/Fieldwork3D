@@ -69,8 +69,19 @@ try{
    await inspector.waitFor({timeout:15000});
    await inspector.locator('.glock-wb-canvas canvas').waitFor({timeout:20000});
    const inspectorStage=await inspector.locator('.glock-wb-canvas').boundingBox();
-   assert.ok(inspectorStage&&inspectorStage.height>=viewport.height*.55,
-    'art-only inspector dedicates most of phone/desktop height to real WebGL');
+   assert.ok(inspectorStage,'real inspector WebGL stage exists');
+   if(viewport.width<500){
+    assert.ok(inspectorStage.height>=viewport.width*.85&&
+     inspectorStage.height<=viewport.height*.65,
+     'D8 portrait inspector uses a near-square art stage without giant blank panel');
+    const screen=await inspector.boundingBox();
+    assert.ok(screen&&inspectorStage.y>=screen.y&&
+     inspectorStage.y+inspectorStage.height<=screen.y+screen.height,
+     'art viewport stays inside safe-height overlay on phone');
+   }else{
+    assert.ok(inspectorStage.height>=viewport.height*.55,
+     'desktop inspector retains its full-height 3D art study');
+   }
    // D6: SIDE is selected before the user touches the orbit controls.
    assert.equal(await inspector.getByRole('button',{name:'SIDE',exact:true}).getAttribute('aria-pressed'),'true');
    assert.equal(await inspector.getByRole('button',{name:'3/4 VIEW'}).getAttribute('aria-pressed'),'false');
