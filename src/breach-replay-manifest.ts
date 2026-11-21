@@ -3,7 +3,6 @@
  * releases must not silently rewrite historical floor plans.
  */
 import type {Session} from './breach-game.ts';
-import {deployedTeam} from './breach-operation-outcomes.ts';
 import type {Site} from './breach-site.ts';
 import {copySitePowerState} from './equipment-site-power.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
@@ -43,7 +42,9 @@ export function captureReplayManifest(s:Session,
     // First executed frame may be AFTER a real individual evacuation.
     // Keep the deployed actor's identity in the manifest even though their
     // later frame body is intentionally absent from active simulation.
-    actors:deployedTeam(s).map(a=>({
+    // Include retained evacuated friendlies WITHOUT dropping live red-side
+    // identities; archived members were removed from operators on GO.
+    actors:[...s.operators,...(s.extractedOperators??[])].map(a=>({
       id:a.id,name:a.name,side:a.side,
       appearanceSeed:a.appearanceSeed,weapon:a.weapon,
       equipment:a.equipment?structuredClone(a.equipment):undefined,
