@@ -25,13 +25,14 @@ function setup(){
   globalThis.document.hidden=false;
   const canvas=new Canvas();
   const releases=[],movements=[],selection=[],modes=[];
-  let unit=false,armed=false,planning=true,is3D=true;
+  let unit=false,armed=false,evacArmed=false,planning=true,is3D=true;
   const controller=createBreachCanvasGestureController(canvas);
   controller.install({
     is3D:()=>is3D,
     isPlanning:()=>planning,
     isLooking:()=>false,
     targetArmed:()=>armed,
+    isEvacArmed:()=>evacArmed,
     world:e=>({x:e.clientX,y:e.clientY}),
     aimWorld:e=>({x:e.clientX,y:e.clientY}),
     pick:()=>unit?{kind:'operator',owner:'rook',corePx:20,distancePx:0}:null,
@@ -57,6 +58,7 @@ function setup(){
     canvas,controller,releases,movements,selection,modes,
     unit:value=>{unit=value;},
     armed:value=>{armed=value;},
+    evac:value=>{evacArmed=value;},
     planning:value=>{planning=value;},
     mode3D:value=>{is3D=value;},
     cleanup:()=>{
@@ -170,5 +172,20 @@ test('armed target drag previews instead of panning and multi-touch never target
     assert.equal(s.controller.activePointers.get(1).mode,'cameraMulti');
     pointer(s.canvas,'pointerup',2,100,100);
     assert.equal(s.controller.activePointers.get(1).mode,'cameraOrbit');
+  }finally{s.cleanup();}
+});
+
+test('evacuation finger-drawn path remains a transport route, not a camera orbit',()=>{
+  const s=setup();
+  try{
+    s.evac(true);
+    pointer(s.canvas,'pointerdown',1,40,40);
+    pointer(s.canvas,'pointermove',1,80,90);
+    assert.equal(s.controller.activePointers.get(1).mode,'targetPreview');
+    assert.ok(s.movements.includes('route'));
+    assert.ok(!s.movements.includes('orbit'),
+      'DRAG/CARRY path authoring must not become a 3D camera gesture');
+    pointer(s.canvas,'pointerup',1,80,90);
+    assert.equal(s.releases[0].mode,'targetPreview');
   }finally{s.cleanup();}
 });
