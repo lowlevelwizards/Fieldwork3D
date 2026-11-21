@@ -101,7 +101,7 @@ test('R3 permits empty nav ONLY after physically witnessed leaf escape',()=>{
   'door-leaf-escape','physical-escape','post-physical-escape',
   {route:[],escapedBody:false}));
  assert.equal(unwitnessed.accepted,false);
- assert.equal(unwitnessed.decision.reason,'ineligible');
+ assert.equal(unwitnessed.decision.reason,'empty-route');
  const other=evaluateSpecialistRecoveryAdoption(candidate(a,s,
   'door-escape-swept-rejoin','physical-escape','swept-full-body',
   {route:[]}));
