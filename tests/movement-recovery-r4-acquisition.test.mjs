@@ -71,6 +71,11 @@ test('R4 accepts active DOOR/SYNC and intermediate PIE path queries, not only MO
   assert.equal(acquisitionProgress(a).state,'provisional');
   assert.deepEqual(a.plan[0].p,p(100,0),
    'temporary PIE arc steps must never rewrite the authored destination');
+  const staged=authorizeRouteAcquisition(query(a,s,'shove-stage',{
+    goal:target,route:[p(4,3),target]
+  }));
+  assert.equal(staged.kind,'adopt',
+   kind+' can have a known shove staging before the live motor target');
  }
 });
 test('R4 empty initial search remains a negative query and preserves fallback chain',()=>{
