@@ -1,8 +1,8 @@
-import {failedGeneratedStackSyncMember}
- from './breach-generated-sync-dropout.ts';
 /** Fixed-step SYNC, RELOAD and FLASH handlers, retaining authored timing.
  * Stable callbacks delegate game-owned events and order completion.
  */
+import {failedGeneratedStackSyncMember}
+ from './breach-generated-sync-dropout.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import type {Pt} from './breach-core.ts';

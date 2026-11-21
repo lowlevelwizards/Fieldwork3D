@@ -1,11 +1,11 @@
-import {failedGeneratedStackSyncMember}
- from '../src/breach-generated-sync-dropout.ts';
 /** D3.34: exact physical frozen Retail standard generated ENTRY,
  * not a synthetic plan-completion or a disabled doorway collision test.
  * The lead's STACK goal becomes covered by the already-open solid D1
  * leaf. Recover using only a real swept alternative same-side stack
  * stance, then execute the unchanged SYNC and ENTRY plan.
  */
+import {failedGeneratedStackSyncMember}
+ from '../src/breach-generated-sync-dropout.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
@@ -130,6 +130,7 @@ test('D3.34 split generated SYNC only after actual locked failed STACK',()=>{
   {lastFailedOrder:{...trapped.lastFailedOrder,reason:'RETRY'}},
   {lastFailedOrder:{...trapped.lastFailedOrder,kind:'tool'}},
   {plan:[sync]},{side:'red'},
+  {lastFailedOrder:{...trapped.lastFailedOrder,id:-20}},
   {p:{x:207,y:179}},{plan:[{...sync,syncCode:'B2'},generated]}
  ])assert.equal(failedGeneratedStackSyncMember({...trapped,...patch},'B1'),
    false,JSON.stringify(patch));
@@ -155,9 +156,24 @@ test('D3.34 Retail: Rook physically completes STACK and advances real ENTRY',()=
   'physicsStepViolations','corruptedPlans'])
   assert.equal(report.summary[field],0,field);
  assert.equal(run?.operators.length,4);
- assert.ok(run?.arrivals>=1,'must improve at least one genuine physical arrival');
- assert.equal(rook?.outcome,'arrived',
-  'the exact original Rook stack/entry must arrive with real body motion');
+ assert.equal(run?.arrivals,3,
+  'the three physically capable operators must arrive; the locked member does not');
+ assert.deepEqual(run.operators.filter(o=>o.outcome==='pending'),[],
+  'there must be no hidden still-pending generated entry operator');
+ for(const id of ['rook','moss','vale']){
+  const actor=run.operators.find(o=>o.id===id);
+  assert.ok(actor?.arrived,id+' must physically reach the original ENTRY GO');
+  assert.equal(actor.outcome,'arrived',id+' has genuine arrived outcome');
+  assert.equal(actor.failedOrders,0,id+' original orders were not cancelled');
+  assert.ok(actor.remaining<=5,id+' finishes at its authored destination');
+ }
+ const ash=run.operators.find(o=>o.id==='ash');
+ assert.equal(ash?.outcome,'cancelled',
+  'blocked fourth operator must remain a genuinely failed order');
+ assert.equal(ash?.failedOrders,1);
+ assert.match(ash?.lastFailedOrder?.reason??'',/DOOR LOCKED/,
+  'physical lock cancellation stays visible and unrelaxed');
+ assert.equal(ash?.arrived,false,'no false arrival for the failed member');
  assert.ok((run.routeTransitions?.byActor?.['rook:generated-entry-settle']??0)>0,
-  'real cold generated stack target settle must run through ordinary motor');
+  'cold physically verified generated stack stance was adopted by the real motor');
 });

@@ -25,7 +25,7 @@ export function failedGeneratedStackSyncMember(
     n.syncCode!==code||a.syncReady===code||
     !failure||failure.kind!=='move'||
     !/DOOR LOCKED/.test(failure.reason)||
-    failure.id>=n.id||
+    failure.id>=n.id||n.id-failure.id>8||
     a.blockedTime<3||
     (a.lastBlocker!=='door'&&a.lastBlocker!=='route')||
     Math.hypot(a.p.x-n.p.x,a.p.y-n.p.y)<8)return false;
