@@ -4,7 +4,8 @@ import {newCampaign,acceptContract,resolveOperation,readCampaign,
  campaignSquadPresent} from '../src/campaign-state.ts';
 import {installMissingPersonRecovery,verifiedMissingPersonRecovery}
  from '../src/breach-missing-recovery.ts';
-import {newSession} from '../src/breach-game.ts';
+import {newSession,stepSession} from '../src/breach-game.ts';
+import {takeCivilianCustody} from '../src/breach-civilian-transport.ts';
 
 const missingReport=(c,job)=>({
  id:'mia-'+job.id,contractId:job.id,day:c.day,outcome:'failure',
@@ -95,4 +96,26 @@ test('OC9 failed recovery cannot reinstate, but grants a linked retry',()=>{
    k.recoveryOperatorId==='moss');
  assert.ok(retry,'failed transport must leave a second attempt');
  assert.deepEqual(resolveOperation(next,bogus),next);
+});
+
+test('OC9 fixed-step rescue cannot win by proximity, only real casualty custody',()=>{
+ const s=newSession(0,90019,'floor-plan','standard','rescue');
+ assert.equal(installMissingPersonRecovery(s,'moss'),true);
+ const casualty=s.civilians.find(c=>c.rescueTarget);
+ const carrier=s.operators.find(a=>a.id==='rook');
+ assert.ok(casualty&&carrier);
+ const exit={...s.scenario.extract};
+ casualty.p={...exit};casualty.priorP={...exit};
+ carrier.p={...exit};carrier.priorP={...exit};
+ carrier.plan.length=0;carrier.path.length=0;
+ s.started=true;s.phase='running';s.mission='extract';
+ stepSession(s,1/60);
+ assert.equal(s.phase,'running',
+  'unsecured downed body touching exit cannot complete mission');
+ assert.equal(verifiedMissingPersonRecovery(s),null);
+ assert.equal(takeCivilianCustody(casualty,carrier,'carry'),true);
+ stepSession(s,1/60);
+ assert.equal(s.phase,'won','transport custody at real exit can finish rescue');
+ assert.deepEqual(verifiedMissingPersonRecovery(s),{
+  operatorId:'moss',carrierId:'rook'});
 });
