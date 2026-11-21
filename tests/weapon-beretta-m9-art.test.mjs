@@ -228,7 +228,7 @@ test('D4 rear bridge is physically longer, narrower and angled above the broad s
    const skirt=m.children.find(x=>x.userData.m9BroadLowerSlide);
    assert.ok(upper&&skirt,'two authored volumes, not one generic extrusion');
    const ub=bounds(upper),lb=bounds(skirt),lm=m.userData.m9ArtLandmarks;
-   assert.ok(ub.max.x>=-1.3,'upper extends to the trigger zone');
+   assert.ok(ub.max.x>=-1.40,'shortened upper stays near the trigger zone');
    assert.ok(lb.max.z-lb.min.z>ub.max.z-ub.min.z+.4,
     'upper is visibly thinner across the top/three-quarter view');
    assert.ok(lm.beavertailRearX<=-10.2,'D8 short blunt tang still projects past slide rear');
@@ -485,12 +485,12 @@ test('D7 posterior tang, reprofiled upper transition and integrated A3 rail',()=
   try{
    const lm=m.userData.m9ArtLandmarks;
    assert.equal(lm.beavertailRearX,-10.23);
-   assert.equal(lm.upperBridgeFrontX,-.98);
+   assert.equal(lm.upperBridgeFrontX,-1.36);
    const upper=m.children.find(x=>x.userData.m9NarrowUpperBridge);
    const up=upper.geometry.getAttribute('position');
    assert.ok(Array.from({length:up.count},(_,i)=>[up.getX(i),up.getY(i)])
-    .some(([x,y])=>Math.abs(x+.98)<.005&&Math.abs(y-1.96)<.005),
-    'rear upper break includes a deliberate lower bevel station');
+    .some(([x,y])=>Math.abs(x+1.36)<.005&&Math.abs(y-2.90)<.005),
+    'one compact front lip eliminates the previous tall diagonal upper wedge');
    const frame=m.children.find(x=>x.userData.m9IntegratedFrame);
    assert.ok(bounds(frame).min.x<=-10.22,'shortened thick tang connected');
    if(id==='beretta-m9a3'){
@@ -694,6 +694,23 @@ test('D10 muzzle face remains open, with no second ring in front of barrel',()=>
    assert.ok(behindBridge>0,'integral sight bridge set behind front rim');
    assert.ok(bounds(wrap).max.y>=3.94&&bounds(wrap).max.y<=3.96,
     'one short substantial front sight');
+  }finally{clearM9Appearance(m);}
+ }
+});
+
+test('D10 barrel exposure begins at a compact single-chamfer breech lip',()=>{
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const m=buildM9Appearance(id);
+  try{
+   const upper=m.children.find(x=>x.userData.m9NarrowUpperBridge);
+   const p=upper.geometry.getAttribute('position');
+   const pts=Array.from({length:p.count},(_,i)=>[p.getX(i),p.getY(i)]);
+   assert.ok(pts.some(([x,y])=>Math.abs(x+1.36)<.005&&Math.abs(y-2.90)<.005),
+    'one short near-vertical front lip instead of the diagonal ramp');
+   assert.ok(pts.some(([x,y])=>Math.abs(x+1.55)<.005&&Math.abs(y-3.17)<.005),
+    'one compact upper chamfer ends at the barrel exposure');
+   assert.ok(!pts.some(([x,y])=>Math.abs(x+1.34)<.005&&Math.abs(y-2.73)<.005),
+    'remove the old extra middle station responsible for triangular lump');
   }finally{clearM9Appearance(m);}
  }
 });
