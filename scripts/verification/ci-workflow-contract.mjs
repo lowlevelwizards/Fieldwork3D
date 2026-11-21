@@ -25,6 +25,23 @@ export function validateWorkflowContracts(wf){
  must('ci','audit-pages-release-checkpoint.mjs');
  assert.equal(wf.ci.split('audit-pages-release-checkpoint.mjs').length-1,1,
   'Single release checkpoint must not be duplicated in primary CI');
+ // The specialized gates are reusable jobs under the single PR CI orchestrator.
+ // Keep their manual dispatch for focused acceptance, but never re-add a
+ // separate pull_request trigger (which multiplies skipped workflow runs).
+ must('ci','architecture-integration:');
+ must('ci','browser-acceptance:');
+ must('ci','uses: ./.github/workflows/architecture-refactor-critical.yml');
+ must('ci','uses: ./.github/workflows/closeout-stage6-browser.yml');
+ for(const workflow of ['architecture','browser']){
+  must(workflow,'workflow_call:');
+  must(workflow,'workflow_dispatch:');
+  no(workflow,'  pull_request:');
+ }
+ for(const prefix of ['refactor/','feature/release1-','feature/release2-',
+  'feature/release3-','feature/release4-','feature/release5-','feature/release6-'])
+  must('ci',`startsWith(github.head_ref, '${prefix}')`);
+ for(const prefix of ['refactor/closeout-stage6-','refactor/consolidation-'])
+  must('ci',`startsWith(github.head_ref, '${prefix}')`);
  must('architecture','breach-critical-suite.mjs');
  must('architecture','package-a-closeout-suite.mjs --run');
  must('architecture',"startsWith(github.head_ref, 'refactor/consolidation-')");
