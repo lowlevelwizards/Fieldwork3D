@@ -15,7 +15,10 @@ export type IntelCollector={id:string;side:string;health:number;p:Pt};
 type IntelMission={
  optionalIntel:OptionalIntelItem[];
  intelGather?:OptionalIntelGather|null;
- operators:IntelCollector[];scenario:{extract:Pt};
+ operators:IntelCollector[];
+ /** Already exited couriers still own the evidence they physically carried. */
+ extractedOperators?:IntelCollector[];
+ scenario:{extract:Pt};
  phase:string;seconds:number;
 };
 
@@ -89,7 +92,8 @@ export function advanceOptionalIntel(s:IntelMission,dt:number,
  // Lost couriers leave a tangible, observed object for another real pickup.
  for(const item of s.optionalIntel){
   if(item.collectedBy===null)continue;
-  const carrier=s.operators.find(a=>a.id===item.collectedBy);
+  const carrier=s.operators.find(a=>a.id===item.collectedBy)??
+    s.extractedOperators?.find(a=>a.id===item.collectedBy);
   if(!carrier||carrier.health<=0){
    if(carrier)item.p={...carrier.p};
    item.collectedBy=null;
@@ -112,7 +116,10 @@ export function advanceOptionalIntel(s:IntelMission,dt:number,
 }
 /** No remote rewards: only evidence carried by a mobile extracted operator. */
 export function optionalIntelRecovered(s:IntelMission):OptionalIntelItem[]{
- const holders=new Set(s.operators.filter(a=>a.side==='blue'&&a.health>0&&
-  near(a.p,s.scenario.extract,37)).map(a=>a.id));
+ const holders=new Set([
+   ...s.operators.filter(a=>a.side==='blue'&&a.health>0&&
+     near(a.p,s.scenario.extract,37)),
+   ...(s.extractedOperators??[]).filter(a=>a.side==='blue'&&a.health>0)
+  ].map(a=>a.id));
  return s.optionalIntel.filter(i=>i.collectedBy!==null&&holders.has(i.collectedBy));
 }
