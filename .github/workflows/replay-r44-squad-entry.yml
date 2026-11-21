@@ -1,15 +1,7 @@
 name: Replay R4.4 — Squad Entry Critical
 on:
-  pull_request:
-    paths:
-      - 'index.html'
-      - 'src/breach-main.ts'
-      - 'src/breach-style.css'
-      - 'src/breach-replay-squad-entry.ts'
-      - 'tests/replay-r44-squad-entry.test.mjs'
-      - 'tests/replay-r44-real-session.test.mjs'
-      - 'scripts/smoke-replay-r44-entry-mobile.mjs'
-      - '.github/workflows/replay-r44-squad-entry.yml'
+  workflow_call:
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -17,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   entry-analysis:
-    if: ${{ startsWith(github.head_ref, 'feature/replay-r44-') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'feature/replay-r44-') || startsWith(github.head_ref, 'refactor/ci-replay-mobile-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 7
     steps:

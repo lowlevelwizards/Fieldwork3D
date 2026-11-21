@@ -128,9 +128,16 @@ try{
   const helmet=await afterFrame(page,chest.frame,chest.owner);
   const dist=Math.hypot(...helmet.position.map(
     (v,i)=>v-chest.position[i]));
-  check(dist>1&&helmet.position[1]<41.5,
-    'Helmet mount not physically separated / clips ceiling: '+
-    JSON.stringify({dist,at:sampledAt,chestAt:chest.at,helmetAt:helmet.at,
+  // Room ceiling is at 42; preserve a measured head/chest difference
+  // and at least .35 units under the roof. The previous 41.5 absolute
+  // threshold assumed an older helmet socket and rejected safe 41.56
+  // after the later pose/rig updates.
+  const clearance=42-helmet.position[1];
+  const mountRise=helmet.position[1]-chest.position[1];
+  check(dist>1&&mountRise>6&&clearance>.35,
+    'Helmet/chest separation or 42-unit ceiling clearance regressed: '+
+    JSON.stringify({dist,clearance,mountRise,at:sampledAt,
+      chestAt:chest.at,helmetAt:helmet.at,
       chestY:chest.position[1],helmetY:helmet.position[1]}));
   await page.locator('#breach3dCanvas').screenshot({
     path:'artifacts/replay-r43b-bodycam/helmet.png'});

@@ -243,6 +243,100 @@ export function selectAfterActionSuites(paths=[],headRef=''){
  }));
 }
 
+/** A6a: exact replay R2 UI / R4.3b Bodycam / R4.4 entry path and
+ * branch ownership. Existing current replay director checks remain separate.
+ */
+export const replayMobileSpecs=[
+ {
+  "key": "replayR2",
+  "workflow": "replay-r2-ui-smoke.yml",
+  "paths": [
+   "index.html",
+   "src/breach-style.css",
+   "src/breach-main.ts",
+   "src/breach-replay-cinematic-director.ts",
+   "src/breach-replay-director-intent.ts",
+   "src/breach-replay-director-events.ts",
+   "src/breach-replay-director-shots.ts",
+   "src/breach-replay-director-scheduler.ts",
+   "tests/replay-r7-director.test.mjs",
+   "src/breach-replay-speed.ts",
+   "src/breach-camera-occlusion.ts",
+   "tests/replay-r7-speed.test.mjs",
+   "tests/replay-r7-cutaway.test.mjs",
+   "src/breach-3d.ts",
+   "tests/replay-r5-direct-viewer.test.mjs",
+   "scripts/smoke-replay-r2-ui.mjs",
+   ".github/workflows/replay-r2-ui-smoke.yml"
+  ],
+  "prefixes": [
+   "feature/replay-r2-mobile-ui-",
+   "feature/replay-r3-",
+   "feature/replay-r41-",
+   "feature/replay-r42-",
+   "feature/replay-r42b-",
+   "feature/replay-r42c-",
+   "feature/replay-ux-v2-",
+   "feature/replay-r5-",
+   "feature/replay-r6-",
+   "feature/replay-r7-"
+  ]
+ },
+ {
+  "key": "replayR43b",
+  "workflow": "replay-r43b-bodycam-ui.yml",
+  "paths": [
+   "index.html",
+   "src/breach-main.ts",
+   "src/breach-style.css",
+   "src/breach-replay-bodycam-controls.ts",
+   "src/breach-replay-bodycam.ts",
+   "src/breach-replay-personal-visibility.ts",
+   "src/breach-replay-window-knowledge.ts",
+   "src/breach-replay-video.ts",
+   "src/breach-replay-archive.ts",
+   "src/breach-replay.ts",
+   "src/breach-3d.ts",
+   "scripts/smoke-replay-r43b-video.mjs",
+   "scripts/smoke-replay-r43b-bodycam-ui.mjs",
+   "scripts/smoke-replay-r43b-moving-scene.mjs",
+   "scripts/smoke-replay-r43b-indoor-entry.mjs",
+   ".github/workflows/replay-r43b-bodycam-ui.yml"
+  ],
+  "prefixes": [
+   "feature/replay-r43b-"
+  ]
+ },
+ {
+  "key": "replayR44",
+  "workflow": "replay-r44-squad-entry.yml",
+  "paths": [
+   "index.html",
+   "src/breach-main.ts",
+   "src/breach-style.css",
+   "src/breach-replay-squad-entry.ts",
+   "tests/replay-r44-squad-entry.test.mjs",
+   "tests/replay-r44-real-session.test.mjs",
+   "scripts/smoke-replay-r44-entry-mobile.mjs",
+   ".github/workflows/replay-r44-squad-entry.yml"
+  ],
+  "prefixes": [
+   "feature/replay-r44-"
+  ]
+ }
+];
+const replayMobileProbe='refactor/ci-replay-mobile-';
+export function selectReplayMobileSuites(paths=[],headRef=''){
+ const files=[...new Set(paths)].sort();
+ return Object.fromEntries(replayMobileSpecs.map(spec=>{
+  const probe=headRef.startsWith(replayMobileProbe)&&
+   ['replayR43b','replayR44'].includes(spec.key);
+  const eligible=probe||spec.prefixes.some(prefix=>headRef.startsWith(prefix));
+  return [spec.key,eligible&&files.some(file=>spec.paths.some(glob=>
+   afterActionPathMatches(glob,file)))];
+ }));
+}
+
 function changedFiles(){
  const base=process.env.CI_BASE_REF;
  assert.ok(base&&/^[\w./-]+$/.test(base),'Missing or unsafe PR base');
@@ -261,10 +355,12 @@ function main(){
  const movement=selectMovementSuites(paths);
  const weapons=selectWeaponVisualSuites(paths);
  const debrief=selectAfterActionSuites(paths,process.env.CI_HEAD_REF||process.env.GITHUB_HEAD_REF||'');
- console.log('Specialist CI routing',JSON.stringify({...result,movement,weapons,debrief}));
+ const replay=selectReplayMobileSuites(paths,process.env.CI_HEAD_REF||process.env.GITHUB_HEAD_REF||'');
+ const replayMobileAny=Object.values(replay).some(Boolean);
+ console.log('Specialist CI routing',JSON.stringify({...result,movement,weapons,debrief,replay}));
  if(args.includes('--github-output')){
   assert.ok(process.env.GITHUB_OUTPUT,'GITHUB_OUTPUT missing');
-  appendFileSync(process.env.GITHUB_OUTPUT,[...Object.entries(result.selected),...Object.entries(movement),...Object.entries(weapons),...Object.entries(debrief)]
+  appendFileSync(process.env.GITHUB_OUTPUT,[...Object.entries(result.selected),...Object.entries(movement),...Object.entries(weapons),...Object.entries(debrief),['replayMobileAny',replayMobileAny],['replayMobileJSON',JSON.stringify(replay)]]
    .map(([name,enabled])=>name+'='+String(enabled)).join('\n')+'\n');
  }
 }

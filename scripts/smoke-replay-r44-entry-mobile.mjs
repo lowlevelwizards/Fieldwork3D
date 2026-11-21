@@ -42,13 +42,28 @@ try{
     textContent==='PLANNING'&&!!document.querySelector('#breach3dCanvas'),
     null,{timeout:60000});
   await page.locator('#play').click();
-  let open=false;
-  for(let i=0;i<9&&!open;i++){
-    await page.waitForTimeout(550);
-    await page.evaluate(()=>document.querySelector('#watchReplay')?.click());
-    open=await page.locator('#replayPanel').isVisible();
-  }
-  check(open,'Cannot review a real recorded mission');
+  // V4+ requires an authorized debrief or saved-library replay; clicking
+  // the hidden legacy #watchReplay is not a player-visible entry path.
+  // Preserve a genuinely recorded mission and inspect it through the
+  // actual library UI, with no fabricated crossings or phase overrides.
+  await page.waitForFunction(()=>{
+    const parts=(document.querySelector('#clock')?.textContent??'00:00')
+      .split(':').map(Number);
+    return parts.length===2&&parts.every(Number.isFinite)&&
+      parts[0]*60+parts[1]>=2;
+  },null,{timeout:40000});
+  await page.waitForFunction(()=>document.querySelector('#saveReplayDebrief')?.
+    disabled===false,null,{timeout:20000});
+  await page.evaluate(()=>document.querySelector('#saveReplayDebrief')?.click());
+  await page.waitForFunction(()=>document.querySelector('#saveReplayDebrief')?.
+    textContent==='REPLAY SAVED',null,{timeout:20000});
+  await page.evaluate(()=>document.querySelector('#openReplayLibrary')?.click());
+  await page.locator('#replayLibraryList .replay-library-watch').first()
+    .waitFor({state:'visible',timeout:20000});
+  await page.locator('#replayLibraryList .replay-library-watch').first().click();
+  await page.locator('#replayPanel').waitFor({state:'visible',timeout:30000});
+  check(await page.locator('#replayPanel').isVisible(),
+    'Saved real mission was not playable from its Replay Library');
   await page.locator('#replayFeedToggle').click();
   check(await page.locator('#replayFeedPanel').isVisible(),
     'Events tab failed to open');

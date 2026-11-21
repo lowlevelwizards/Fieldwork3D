@@ -19,7 +19,11 @@ try{
     await new Promise(resolve=>setTimeout(resolve,200));
   }
   assert(ready,'Vite did not start for Bodycam video QA');
-  browser=await chromium.launch({headless:true,args:[
+  // Full Chromium uses the modern headless compositor; Playwright's
+  // headless shell can accept 2D canvas frames but emit zero encoded
+  // MediaRecorder chunks in software-WebGL CI. Decode and pixel checks
+  // below remain mandatory (no fake blobs or synthetic success).
+  browser=await chromium.launch({headless:true,channel:'chromium',args:[
     '--use-gl=angle','--use-angle=swiftshader',
     '--enable-unsafe-swiftshader'
   ]});
