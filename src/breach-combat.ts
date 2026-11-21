@@ -69,5 +69,6 @@ export type BattleEvent={id:number;t:number;kind:'shot'|'wound'|'down'|'flash'|
     'suspect-searched'|'weapon-secured'|'suspect-escort'|'suspect-escort-stop'|'capture-target-released'|
     'suspect-escape'|'suspect-rearm-attempt'|'suspect-rearmed'|'suspect-armed-secondary'|
     'capture-vitals-checked'|'capture-target-deceased'|
-    'optional-intel-recovered'|'withdrawal-complete';
+    'optional-intel-recovered'|'withdrawal-complete'|
+    'individual-extraction';
     objectId?:string;targetId?:string;contributorId?:string};};
