@@ -34,6 +34,7 @@ test('OC2 withdrawal request is reversible intent, never instant extraction',()=
 test('OC1 classifies withdrawal, secured objectives and unrecovered personnel separately',()=>{
  const s=state();
  s.withdrawalRequested=true;
+ s.withdrawalCompleted=true;
  s.phase='lost';
  s.mission='extract';
  s.operators[0].p.x=100;
@@ -47,6 +48,8 @@ test('OC1 classifies withdrawal, secured objectives and unrecovered personnel se
  assert.deepEqual(deriveOperationOutcome(s).evacuatedCasualtyIds,['ash']);
  assert.deepEqual(deriveOperationOutcome({...s,phase:'won'}).leftBehindOperatorIds,[]);
  assert.equal(deriveOperationOutcome({...s,phase:'won'}).disposition,'completed');
+ assert.equal(deriveOperationOutcome({...s,withdrawalCompleted:false}).disposition,
+  'failed','a requested withdrawal is not a completed evacuation');
 });
 
 test('OC1 score rewards actual casualty evacuation and nonbinary withdrawal grade',()=>{
