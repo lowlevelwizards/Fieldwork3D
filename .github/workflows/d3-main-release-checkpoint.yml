@@ -28,7 +28,16 @@ jobs:
             tests/release-d3-12a-swept-parity.test.mjs \
             tests/release-d3-12b-squeeze-parity.test.mjs \
             tests/door-traversal-d4-physics.test.mjs \
-            tests/passage-q5-approaches.test.mjs
+            tests/passage-q5-approaches.test.mjs \
+            tests/release-d3-14d2-retail-rehearsal.test.mjs \
+            tests/release-d3-14c2-cycle-world-lane.test.mjs \
+            tests/release-d3-14b2-narrow-leaf-exit.test.mjs \
+            tests/release-d3-17c-physical-departure.test.mjs \
+            tests/release-d3-17b-route-recurrence.test.mjs \
+            tests/release-d3-17a-loop-forensics.test.mjs \
+            tests/release-d3-15b4-motor-micro-corner.test.mjs \
+            tests/release-d3-17d-door-route-join.test.mjs \
+            tests/ci-d3-physical-truth.test.mjs
       - name: TypeScript and deployable Pages build
         run: |
           npm run build
@@ -38,10 +47,33 @@ jobs:
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --d329-cancellation-door-witness --progress --route-quality > "$RUNNER_TEMP/release45.json"
           node scripts/verify-d3-30-mainline.mjs "$RUNNER_TEMP/release45.json"
+      - name: Frozen 176-body lock provenance, pending orders, loop recovery and exact physical waypoints
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 22 2700 \
+            --d315b4-blind22 --progress --route-transitions --d329-cancellation-door-witness \
+            --trace-cases=13919313:entry:ash,14136777:entry:ash,14462973:authored:ash \
+            > "$RUNNER_TEMP/frozen22.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 \
+            --site-index=9 --audit-seed=14462973 --audit-scale=standard \
+            --progress --route-transitions --d329-cancellation-door-witness \
+            --trace-actor=ash --trace-mode=authored \
+            > "$RUNNER_TEMP/court.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 \
+            --site-index=3 --audit-seed=5412896 --audit-scale=small \
+            --progress --route-transitions \
+            --trace-actor=rook --trace-mode=authored \
+            > "$RUNNER_TEMP/retail.json"
+          node scripts/verification/ci-d3-physical-truth.mjs \
+            "$RUNNER_TEMP/release45.json" "$RUNNER_TEMP/frozen22.json" \
+            "$RUNNER_TEMP/court.json" "$RUNNER_TEMP/retail.json"
       - name: Retain full physical acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: d3-main-release-45s
-          path: ${{ runner.temp }}/release45.json
+          path: |
+            ${{ runner.temp }}/release45.json
+            ${{ runner.temp }}/frozen22.json
+            ${{ runner.temp }}/court.json
+            ${{ runner.temp }}/retail.json
           if-no-files-found: ignore
