@@ -105,6 +105,7 @@ function recordCompletedOperation(){
     grade:stats.grade,elapsed:stats.time,
     disposition:stats.operationOutcome.disposition,
     objectiveSecured:stats.operationOutcome.objectiveSecured,
+    intelRecovered:stats.optionalIntel.recovered,
     extractedIds:stats.operationOutcome.extractedOperatorIds.map(careerId),
     leftBehindIds:stats.operationOutcome.leftBehindOperatorIds.map(careerId),
     ...(isDispatchPilot(currentCampaign)?
