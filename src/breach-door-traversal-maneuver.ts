@@ -1,5 +1,7 @@
 import {provisionalRouteAccepted} from './breach-movement-recovery.ts';
 import {setTransientRoute,noteDoorHandoffRejection} from './breach-route-transition.ts';
+import {authorizeSpecialistRecovery}
+ from './breach-specialist-recovery-adoption.ts';
 import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
 import {completePortalRouteToAuthoredGoal} from './breach-door-maneuver-handoff.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld,routeWithNormalWorld}
@@ -139,12 +141,15 @@ export function preferShortPhysicalEntry(
  if(shortest>direct*1.65+20||
     (slowOrMisrouted?shortest>existing*1.22+12:
       shortest+12>=existing))return false;
+ const shortProof=authorizeSpecialistRecovery(a,s,'door-short-entry',
+   candidate,goal,'door-episode','swept-full-body');
+ if(!shortProof)return false;
  episode.waypoints=candidate.map(clone);
  episode.waypointIndex=0;
  episode.maneuver='outside-leaf';
  episode.phase='clear-leaf';
  episode.lastTransitionAt=s.seconds;
- setTransientRoute(s,a,candidate.map(clone),'door-short-entry');
+ setTransientRoute(s,a,candidate.map(clone),'door-short-entry',shortProof);
  provisionalRouteAccepted(a);
  return true;
 }
@@ -198,6 +203,12 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
  const leafToken=door.id+':'+Math.round((door.openFraction??0)*6);
  if(!allowPhysicalRouteReissue(a,'door-rehearsal',episode.destination,
     chosen,s.seconds,leafToken))return false;
+ const rehearsalSource=whole.length?'door-rehearsal-world':
+   joined.length?'door-rehearsal-joined-waypoint':'door-rehearsal';
+ const rehearsalProof=authorizeSpecialistRecovery(a,s,rehearsalSource,
+   chosen,episode.destination,'door-episode',
+   whole.length||joined.length?'verified-world-join':'swept-full-body');
+ if(!rehearsalProof)return false;
  // A rejected repeat must not consume the existing maneuver retry budget.
  episode.maneuverAttempts++;
  episode.selectedLeafFraction=door.openFraction??0;
@@ -208,8 +219,7 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
  episode.phase='clear-leaf';
  episode.lastTransitionAt=s.seconds;
  setTransientRoute(s,a,chosen.map(clone),
-   whole.length?'door-rehearsal-world':
-   joined.length?'door-rehearsal-joined-waypoint':'door-rehearsal');
+   rehearsalSource,rehearsalProof);
  a.autoSidestep=beginAutoSidestep(a.p,next,chosen[0],
   a.heading,episode.destination,s.seconds,canAutoSidestep);
  provisionalRouteAccepted(a);
@@ -309,6 +319,9 @@ export function tryGoalCompleteDoorHandoffAfterEscape(
  }
  // Only a fully continuous route toward the actual original goal is
  // permitted to replace the route being recovered after the real escape.
+ const joinedProof=authorizeSpecialistRecovery(a,s,'door-rehearsal',route,
+   goal,'door-episode','verified-world-join');
+ if(!joinedProof)return false;
  e.maneuverAttempts++;
  e.selectedLeafFraction=door.openFraction??0;
  e.nextManeuverAt=s.seconds+1.5;
@@ -318,7 +331,7 @@ export function tryGoalCompleteDoorHandoffAfterEscape(
  e.maneuver='outside-leaf';
  e.phase='clear-leaf';
  e.lastTransitionAt=s.seconds;
- setTransientRoute(s,a,route,'door-rehearsal');
+ setTransientRoute(s,a,route,'door-rehearsal',joinedProof);
  provisionalRouteAccepted(a);
  return true;
 }
@@ -347,12 +360,15 @@ export function recoverDoorApproachDrift(a:TeamActor,s:Session):boolean{
  const world=sessionWorldGeometry(s);
  if(!sweptBodyClear(a.p,staging,s.doors,OPERATOR_RADIUS,world))
   return false;
+ const driftProof=authorizeSpecialistRecovery(a,s,'door-drift',
+   [staging],e.destination,'door-episode','swept-full-body');
+ if(!driftProof)return false;
  e.driftRecoveries++;
  e.nextManeuverAt=s.seconds+1.5;
  e.maneuver='outside-leaf';
  e.waypoints=[clone(staging)];
  e.waypointIndex=0;
- setTransientRoute(s,a,[clone(staging)],'door-drift');
+ setTransientRoute(s,a,[clone(staging)],'door-drift',driftProof);
  provisionalRouteAccepted(a);
  a.squeeze=false;a.squeezeTime=0;
  return true;
