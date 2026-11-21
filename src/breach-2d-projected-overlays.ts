@@ -375,6 +375,19 @@ function renderProjectedPlans(){
     }
     draw.strokeStyle='#f0cd96';draw.lineWidth=3;draw.stroke();
   }
+  if(!replaying){
+    for(const item of state.optionalIntel??[]){
+      if(!item.discovered||item.collectedBy)continue;
+      const at=worldToScreen(item.p,7);
+      draw.save();draw.fillStyle='#343f34';draw.strokeStyle='#e0cb94';
+      draw.lineWidth=2;
+      draw.fillRect(at.x-10,at.y-7,20,14);
+      draw.strokeRect(at.x-10,at.y-7,20,14);
+      draw.fillStyle='#f1dfb0';draw.font='700 11px "Saira Condensed",sans-serif';
+      draw.textAlign='center';draw.fillText('INTEL',at.x,at.y-14);
+      draw.restore();
+    }
+  }
   if(!replaying&&state.mission==='secure'){
     const bounds=approximateObjectiveBounds(state);
     if(bounds){
