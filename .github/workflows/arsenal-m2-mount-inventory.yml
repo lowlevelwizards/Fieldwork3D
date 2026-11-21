@@ -2,8 +2,7 @@ name: Arsenal M2.0–M2.5 physical mount contracts (feature)
 on:
   push:
     branches: [feat/arsenal-m2-mount-inventory]
-  pull_request:
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
