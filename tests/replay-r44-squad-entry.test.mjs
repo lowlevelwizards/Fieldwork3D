@@ -85,8 +85,11 @@ test('featured entries rank actual recorded operator crossings, not unused doors
 });
 test('event drawer exposes a bounded operator-crossing review, not a HUD dock',()=>{
   const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+  // This live replay UI was extracted from the monolithic breach-main.
+  // Preserve both the real Events panel identity and its crossing source.
+  const controller=readFileSync(new URL(
+    '../src/ui/breach-replay-analysis-controller.ts',import.meta.url),'utf8');
   assert.ok(html.includes('id="replaySquadEntryPanel"'));
-  assert.ok(main.includes('featuredReplaySquadEntries('));
-  assert.ok(main.includes('function renderReplaySquadEntries()'));
+  assert.ok(controller.includes('featuredReplaySquadEntries('));
+  assert.ok(controller.includes('function renderReplaySquadEntries()'));
 });
