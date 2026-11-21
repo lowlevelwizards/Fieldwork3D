@@ -11,6 +11,8 @@ import {openingSweepThreatens,stoppedHighPartialEntryStrike,
  selectGuidedOpeningStep,upcomingOpeningSweep}
  from '../src/breach-door-opening-footwork.ts';
 import {shouldStageForOpening} from '../src/breach-door-opening-ownership.ts';
+import {hasRepeatedPhysicalLeafEscapeEvidence,noteRepeatedDoorLeafEscape}
+ from '../src/breach-door-escape-rejoin.ts';
 const p=(x,y)=>({x,y});
 
 test('D3.31 archive: physical Townhouse FRONT at 0.931 still threatens its own lead',()=>{
@@ -60,4 +62,27 @@ test('D3.31 ordinary fully open passage stays independent of manipulation-owner'
   plan:[{kind:'move',id:1,p:p(50,50)}],p:body};
  assert.equal(shouldStageForOpening(s,a,door),false,
   'follower rank and WAIT gate are unchanged for an open aperture');
+});
+
+test('D3.31 high-partial ENTRY requires three witnessed same-order leaf escapes',()=>{
+ const goal=p(360,102.08),a={
+  id:'rook',side:'blue',p:p(264.28,98.59),
+  plan:[{id:10,kind:'move',p:goal,entryDoorId:'FRONT'}],
+  nav:[p(288,144),p(320,128),goal]
+ };
+ assert.equal(hasRepeatedPhysicalLeafEscapeEvidence(a,5,goal,'FRONT'),false);
+ noteRepeatedDoorLeafEscape(a,5,goal,'FRONT',a.nav);
+ assert.equal(hasRepeatedPhysicalLeafEscapeEvidence(a,5,goal,'FRONT'),false);
+ noteRepeatedDoorLeafEscape(a,6,goal,'FRONT',a.nav);
+ assert.equal(hasRepeatedPhysicalLeafEscapeEvidence(a,6,goal,'FRONT'),false);
+ noteRepeatedDoorLeafEscape(a,7,goal,'FRONT',a.nav);
+ assert.equal(hasRepeatedPhysicalLeafEscapeEvidence(a,7,goal,'FRONT'),true);
+ assert.equal(hasRepeatedPhysicalLeafEscapeEvidence(a,7,goal,'D2'),false,
+  'a different door can never borrow this episode');
+ assert.equal(hasRepeatedPhysicalLeafEscapeEvidence(a,9.1,goal,'FRONT'),false,
+  'old physical escape proof expires');
+ assert.equal(hasRepeatedPhysicalLeafEscapeEvidence(a,7,p(361,102.08),'FRONT'),false);
+ a.plan[0].id=11;
+ assert.equal(hasRepeatedPhysicalLeafEscapeEvidence(a,7,goal,'FRONT'),false,
+  'a new authored order cannot borrow the former escape evidence');
 });
