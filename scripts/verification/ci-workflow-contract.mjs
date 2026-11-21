@@ -32,6 +32,10 @@ const paths={
  d3join:'.github/workflows/d3-17d-door-join.yml',
  d3recovery:'.github/workflows/d3-18-physical-recovery.yml',
  d3release:'.github/workflows/d3-main-release-checkpoint.yml',
+ movementDoorRouter:'.github/workflows/movement-door-acceptance.yml',
+ release7:'.github/workflows/release7-critical.yml',
+ doorD5:'.github/workflows/door-traversal-d5.yml',
+ doorD2D3:'.github/workflows/door-traversal-d2-d3.yml',
  pages:'.github/workflows/pages.yml'
 };
 const read=path=>readFileSync(path,'utf8');
@@ -115,6 +119,27 @@ export function validateWorkflowContracts(wf){
   '--d329-cancellation-door-witness',
   '--d315b4-blind22'])
   must('d3release',contract);
+ // A7a: live R7 and D2/D3/D5 exact physical acceptance, now nested under CI.
+ must('ci','--test tests/ci-movement-door-routing.test.mjs');
+ must('ci','movement-door-acceptance:');
+ must('ci','needs.specialist-routing.outputs.movementDoorAny');
+ must('ci','needs.specialist-routing.outputs.movementDoorJSON');
+ must('ci','uses: ./.github/workflows/movement-door-acceptance.yml');
+ must('movementDoorRouter','workflow_call:');
+ must('movementDoorRouter','workflow_dispatch:');
+ no('movementDoorRouter','  pull_request:');
+ for(const [name,key,marker] of [
+  ['release7','release7','scripts/audit-r7-squad-execution.mjs 11 900'],
+  ['doorD5','doorD5','scripts/audit-door-traversal-baseline.mjs 4 1800'],
+  ['doorD2D3','doorD2D3','scripts/audit-door-traversal-baseline.mjs 4 900']]){
+  must(name,'workflow_call:');
+  must(name,'workflow_dispatch:');
+  no(name,'  pull_request:');
+  must(name,'  push:');
+  must(name,marker);
+  must('movementDoorRouter','fromJSON(inputs.lanes).'+key);
+  must('movementDoorRouter','uses: ./.github/workflows/'+paths[name].split('/').at(-1));
+ }
  // A4: M30 production and Glock art browser acceptance are single
  // source-selected reusable CI jobs. Original smoke and evidence are retained.
  must('ci','--test tests/ci-weapon-visual-routing.test.mjs');

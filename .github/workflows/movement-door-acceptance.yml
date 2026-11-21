@@ -1,0 +1,33 @@
+name: A7 movement and door physical acceptance
+on:
+  workflow_call:
+    inputs:
+      lanes:
+        description: Source-selected original R7 and door physical cohorts
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      lanes:
+        description: JSON suite selection for manual physical audits
+        required: true
+        type: string
+        default: '{"release7":true,"doorD5":true,"doorD2D3":true}'
+permissions:
+  contents: read
+jobs:
+  release7:
+    if: ${{ fromJSON(inputs.lanes).release7 }}
+    uses: ./.github/workflows/release7-critical.yml
+    permissions:
+      contents: read
+  door-d5:
+    if: ${{ fromJSON(inputs.lanes).doorD5 }}
+    uses: ./.github/workflows/door-traversal-d5.yml
+    permissions:
+      contents: read
+  door-d2d3:
+    if: ${{ fromJSON(inputs.lanes).doorD2D3 }}
+    uses: ./.github/workflows/door-traversal-d2-d3.yml
+    permissions:
+      contents: read

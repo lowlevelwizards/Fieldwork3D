@@ -3,17 +3,7 @@ on:
   push:
     branches:
       - 'feature/door-traversal-d2-d3-*'
-  pull_request:
-    paths:
-      - 'src/breach-door-traversal-maneuver.ts'
-      - 'src/breach-door-traversal-episode.ts'
-      - 'src/breach-door-pressure-frame.ts'
-      - 'src/breach-door.ts'
-      - 'src/breach-motor-collision.ts'
-      - 'src/breach-motor-route.ts'
-      - 'tests/door-traversal-d2.test.mjs'
-      - 'tests/door-traversal-d3.test.mjs'
-      - '.github/workflows/door-traversal-d2-d3.yml'
+  workflow_call:
   workflow_dispatch:
 concurrency:
   group: door-maneuvers-${{ github.ref }}

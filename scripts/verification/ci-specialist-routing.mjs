@@ -425,6 +425,69 @@ export function selectReplayDirectorReset(paths=[]){
   afterActionPathMatches(glob,file)));
 }
 
+/** A7a: original R7 and D2/D3/D5 main-PR path contracts.
+ * Retain source-owned live motor audits and original feature push/manual use.
+ * Changing the router or its contract runs all lanes fail-closed.
+ */
+export const movementDoorSpecs=[
+  {
+    "key": "release7",
+    "workflow": "release7-critical.yml",
+    "paths": [
+      "scripts/audit-r7-squad-execution.mjs",
+      "scripts/audit-squad-entry-b.mjs",
+      "src/breach-passage.ts",
+      "src/breach-door.ts",
+      "src/breach-door-leaf-bypass.ts",
+      "src/breach-door-pressure-arbitration.ts",
+      "src/breach-motor-door.ts",
+      "src/breach-motor-collision.ts",
+      "src/breach-motor-route.ts",
+      "tests/release7-*.test.mjs",
+      "src/breach-game.ts",
+      "src/breach-entry-lanes.ts",
+      "tests/squad-entry-b-*.test.mjs",
+      ".github/workflows/release7-critical.yml"
+    ]
+  },
+  {
+    "key": "doorD5",
+    "workflow": "door-traversal-d5.yml",
+    "paths": [
+      "src/breach-door.ts",
+      "src/breach-motor-door.ts",
+      "src/breach-motor-route.ts",
+      "src/breach-motor-collision.ts",
+      "src/breach-door-pressure-frame.ts",
+      "tests/door-traversal-d5-motor.test.mjs",
+      ".github/workflows/door-traversal-d5.yml"
+    ]
+  },
+  {
+    "key": "doorD2D3",
+    "workflow": "door-traversal-d2-d3.yml",
+    "paths": [
+      "src/breach-door-traversal-maneuver.ts",
+      "src/breach-door-traversal-episode.ts",
+      "src/breach-door-pressure-frame.ts",
+      "src/breach-door.ts",
+      "src/breach-motor-collision.ts",
+      "src/breach-motor-route.ts",
+      "tests/door-traversal-d2.test.mjs",
+      "tests/door-traversal-d3.test.mjs",
+      ".github/workflows/door-traversal-d2-d3.yml"
+    ]
+  }
+];
+const movementDoorInfrastructure=/^(?:\.github\/workflows\/(?:ci|movement-door-acceptance)\.yml|scripts\/verification\/ci-(?:specialist-routing|workflow-contract)\.mjs|tests\/ci-movement-door-routing\.test\.mjs)$/;
+export function selectMovementDoorSuites(paths=[]){
+ const files=[...new Set(paths)].sort();
+ const infrastructure=files.some(file=>movementDoorInfrastructure.test(file));
+ return Object.fromEntries(movementDoorSpecs.map(spec=>[
+  spec.key,infrastructure||files.some(file=>spec.paths.some(glob=>afterActionPathMatches(glob,file)))
+ ]));
+}
+
 function changedFiles(){
  const base=process.env.CI_BASE_REF;
  assert.ok(base&&/^[\w./-]+$/.test(base),'Missing or unsafe PR base');
@@ -447,11 +510,13 @@ function main(){
  const replayLegacy=selectReplayLegacySuites(paths,process.env.CI_HEAD_REF||process.env.GITHUB_HEAD_REF||'');
  const replayDirectorReset=selectReplayDirectorReset(paths);
  const replayMobileAny=[...Object.values(replay),...Object.values(replayLegacy),replayDirectorReset].some(Boolean);
+ const movementDoor=selectMovementDoorSuites(paths);
+ const movementDoorAny=Object.values(movementDoor).some(Boolean);
  const replayAll={...replay,...replayLegacy,replayDirectorReset};
  console.log('Specialist CI routing',JSON.stringify({...result,movement,weapons,debrief,replay,replayLegacy,replayDirectorReset}));
  if(args.includes('--github-output')){
   assert.ok(process.env.GITHUB_OUTPUT,'GITHUB_OUTPUT missing');
-  appendFileSync(process.env.GITHUB_OUTPUT,[...Object.entries(result.selected),...Object.entries(movement),...Object.entries(weapons),...Object.entries(debrief),['replayMobileAny',replayMobileAny],['replayMobileJSON',JSON.stringify(replayAll)]]
+  appendFileSync(process.env.GITHUB_OUTPUT,[...Object.entries(result.selected),...Object.entries(movement),...Object.entries(weapons),...Object.entries(debrief),['replayMobileAny',replayMobileAny],['replayMobileJSON',JSON.stringify(replayAll)],['movementDoorAny',movementDoorAny],['movementDoorJSON',JSON.stringify(movementDoor)]]
    .map(([name,enabled])=>name+'='+String(enabled)).join('\n')+'\n');
  }
 }

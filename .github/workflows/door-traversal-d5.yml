@@ -2,15 +2,7 @@ name: D5 consolidated motor critical acceptance
 on:
   push:
     branches: ['feature/door-traversal-d5-*']
-  pull_request:
-    paths:
-      - 'src/breach-door.ts'
-      - 'src/breach-motor-door.ts'
-      - 'src/breach-motor-route.ts'
-      - 'src/breach-motor-collision.ts'
-      - 'src/breach-door-pressure-frame.ts'
-      - 'tests/door-traversal-d5-motor.test.mjs'
-      - '.github/workflows/door-traversal-d5.yml'
+  workflow_call:
   workflow_dispatch:
 concurrency:
   group: door-d5-${{ github.ref }}
