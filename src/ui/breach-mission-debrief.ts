@@ -3,7 +3,7 @@
  * This renderer owns only the after-action panel's DOM.
  */
 import type {CampaignMode} from '../breach-app-mode.ts';
-import {debrief,team,type Session} from '../breach-game.ts';
+import {debrief,type Session} from '../breach-game.ts';
 import {sessionIntelligenceReview} from '../briefing/briefing-after-action.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
 import type {CampaignState} from '../campaign-state.ts';
@@ -53,7 +53,8 @@ export function renderMissionDebrief(input:{
     // reconstructed from the (possibly incomplete) replay evidence.
     const outcome=root?.querySelector<HTMLElement>('#afterActionOutcome');
     if(outcome)outcome.textContent=state.phase==='won'?
-      'MISSION COMPLETE':'MISSION FAILED';
+      'MISSION COMPLETE':stats.operationOutcome.disposition==='withdrawn'?
+      'SQUAD WITHDRAWN':'MISSION FAILED';
     const summary=root?.querySelector<HTMLElement>('#afterActionSummary');
     summary?.setAttribute('data-outcome',state.phase==='won'?'complete':'failed');
     const missionName=root?.querySelector<HTMLElement>('#afterActionMissionName');
@@ -65,7 +66,7 @@ export function renderMissionDebrief(input:{
         String(seconds%60).padStart(2,'0');
     }
     ui.debriefGrade.textContent=stats.grade+' · '+stats.score;
-    ui.debriefSurvivors.textContent=stats.survived+' / '+team(state).length;
+    ui.debriefSurvivors.textContent=stats.survived+' / '+stats.squad.length;
     ui.debriefAccuracy.textContent=stats.shots>0?stats.accuracy+'%':'—';
     ui.debriefObjective.textContent=stats.objective?
      'OBJECTIVE SECURED':'OBJECTIVE NOT COMPLETED';
@@ -79,7 +80,9 @@ export function renderMissionDebrief(input:{
         stats.survived+' / '+stats.squad.length+' SURVIVED',
         wounded?String(wounded)+' WOUNDED'+(heavy?' · '+heavy+' HEAVY':''):
           'NO SURVIVOR WOUNDS',
-        ...(down?[down+' INCAPACITATED']:[])
+        ...(down?[down+' INCAPACITATED']:[]),
+        ...(stats.optionalIntel.total?
+          [stats.optionalIntel.recovered+' / '+stats.optionalIntel.total+' INTEL RECOVERED']:[])
       ].join(' · ');
     }
     // Keep the historical binding for older tools but retire the enormous
@@ -87,7 +90,9 @@ export function renderMissionDebrief(input:{
     ui.debriefStats.textContent=
       'GRADE '+stats.grade+' · SCORE '+stats.score+
       ' · TIME '+stats.time+'s · '+stats.survived+
-      ' SURVIVORS · '+stats.shots+' SHOTS';
+      ' SURVIVORS · '+stats.shots+' SHOTS'+
+      (stats.optionalIntel.total?' · INTEL '+stats.optionalIntel.recovered+
+       '/'+stats.optionalIntel.total:'');
     const structured=root?.querySelector<HTMLElement>(
       '#afterActionMissionDetails');
     if(structured)structured.replaceChildren(renderStructuredMissionDetails({

@@ -1,6 +1,10 @@
 import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
+import {canConcludeWithdrawal,commitIndividualExtractions,deployedTeam} from './breach-operation-outcomes.ts';
+import {observeOptionalIntel,beginOptionalIntelGather,advanceOptionalIntel,
+ type OptionalIntelItem,type OptionalIntelGather,eligibleOptionalIntel}
+ from './breach-optional-intel.ts';
 import {coverTargetToken} from './worldgen/site-object-identity.ts';
 export {setStrafe,planPieAt,planPie,editPie,insertPlanNode,planWaitAt,planWait,planSync,planHoldClear,planReload,planReloadAt,planSwitchWeaponAt} from './breach-plan-utility-commands.ts';
 import {legalMoveRoute,knownTraversal,knownShoveCrossing} from './breach-known-route-authoring.ts';
@@ -399,7 +403,19 @@ export type Session=Omit<TacticalState,'operators'> & {
   operationDossier?:OperationDossierV1;
   rescue:RescueEscort|null;
   captureTarget:string|null;captureSecured:boolean;
-  intelCarrierId:string|null;};
+  intelCarrierId:string|null;
+  /** Player-requested organized withdrawal; never a primary-objective win. */
+  withdrawalRequested?:boolean;
+  /** Set only after the actual GO-time physical extraction gate. */
+  withdrawalCompleted?:boolean;
+  /** Archived by the 60 Hz mission tick; excluded from all live AI/motor. */
+  extractedOperators?:TeamActor[];
+  /** Selected individual physical exit commands await the next GO tick. */
+  pendingExtractionIds?:string[];
+  /** A named MIA casualty-recovery mission, not a second objective authority. */
+  missingRecoveryTargetId?:string;
+  optionalIntel:OptionalIntelItem[];
+  intelGather:OptionalIntelGather|null;};
 // The elective enemy-planning budget is mission-local and never serialized.
 /** Planning authority for GO-time ordering; never edits PlanNode[].
  * A new GO after a tactical pause recomputes the remaining crossing
@@ -1662,6 +1678,10 @@ function observe(s:Session){
     const rescueSubject=s.missionType==='rescue'?
       s.civilians.find(c=>c.rescueTarget):undefined;
     const actualObjective=rescueSubject?.p??s.scenario.objective;
+    // Optional evidence is only discovered by genuine team observation;
+    // full-view architecture never pre-reveals its location.
+    if(s.optionalIntel.length)observeOptionalIntel(s.optionalIntel,p=>
+      team(s).some(a=>observerPointVisible(s,a,p)));
     if(s.objectiveIntel){
       const observed=team(s).some(a=>
         observerPointVisible(s,a,actualObjective));
@@ -1774,11 +1794,33 @@ function mission(s:Session,dt:number){
   // The equipment range is an intentionally open-ended live simulation.
   // It cannot accidentally complete a Campaign mission or generate a debrief.
   if(s.site?.training){advanceTrainingTrial(s);return;}
+  if(s.withdrawalRequested){
+    const departed=commitIndividualExtractions(s);
+    for(const member of departed){
+      notify(s,member.name+' EXTRACTED FROM THE OPERATION');
+      battleEvent(s,'objective',member,member.p,
+        member.name+' EXTRACTED',
+        {action:'individual-extraction',contributorId:member.id});
+    }
+  }
+  if(s.optionalIntel.length){
+    const gathered=advanceOptionalIntel(s,dt,(from,to)=>
+      unobstructed(from,to,s,false));
+    if(gathered){
+      const finder=team(s).find(a=>a.id===gathered.collectedBy);
+      if(finder){
+        notify(s,finder.name+' RECOVERED OPTIONAL INTELLIGENCE');
+        battleEvent(s,'intel',finder,gathered.p,'OPTIONAL INTELLIGENCE COLLECTED',
+          {action:'optional-intel-recovered',objectId:gathered.id,
+           contributorId:finder.id});
+      }
+    }
+  }
   // Intel is an actual carried mission item. An incapacitated courier
   // drops it at their final observed location for another operator to
   // recover; a different teammate cannot magically extract it.
   if(s.missionType==='intel'&&s.mission==='extract'&&s.intelCarrierId){
-    const courier=team(s).find(a=>a.id===s.intelCarrierId);
+    const courier=deployedTeam(s).find(a=>a.id===s.intelCarrierId);
     if(!courier||courier.health<=0){
       if(courier)s.scenario.objective=clone(courier.p);
       s.intelCarrierId=null;s.mission='secure';s.holdTime=0;
@@ -1840,8 +1882,12 @@ function mission(s:Session,dt:number){
       }
     }
   }
-  if(team(s).every(a=>a.health<=0)){
-    s.phase='lost';s.report=['OPERATION FAILED','ALL OPERATORS LOST'];return;
+  if(team(s).every(a=>a.health<=0)&&!canConcludeWithdrawal(s)){
+    s.phase='lost';
+    const safe=s.extractedOperators?.length??0;
+    s.report=['OPERATION FAILED',safe?
+      'REMAINING SQUAD LOST · '+safe+' ALREADY EXTRACTED':
+      'ALL OPERATORS LOST'];return;
   }
   const capturePerson=s.missionType==='capture'&&s.captureTarget?
     enemies(s).find(a=>a.id===s.captureTarget):undefined;
@@ -1985,7 +2031,37 @@ function mission(s:Session,dt:number){
     return prisoner.surrendered&&prisoner.restrained===true&&
       (prisoner.escortLeaderId===a.id||atBody);
   };
-  if(s.mission==='extract'&&team(s).some(a=>a.health>0&&
+  // A physically departed primary-intel courier still owns the dossier.
+  // Once all remaining mobile operators have evacuated, this is a real
+  // objective success, not an arbitrary failure because the courier no
+  // longer exists in the live motor array.
+  if(s.mission==='extract'&&s.missionType==='intel'&&
+    s.extractedOperators?.some(a=>a.id===s.intelCarrierId&&a.health>0)&&
+    canConcludeWithdrawal(s)){
+    s.mission='done';s.phase='won';
+    s.report=['OPERATION COMPLETE','INTEL COURIER EXTRACTED',
+      'REMAINING SQUAD ACCOUNTED FOR'];
+    notify(s,'INTELLIGENCE SECURED — EXTRACTION COMPLETE');
+    battleEvent(s,'objective',null,s.scenario.extract,'MISSION COMPLETE');
+    return;
+  }
+  // If every living participant has individually evacuated, basic clear/
+  // hold objectives have genuinely secured their exit without leaving an
+  // actor behind to touch the zone a second time.
+  if(s.mission==='extract'&&
+    (s.missionType==='clear'||s.missionType==='hold')&&
+    !team(s).some(a=>a.health>0)&&
+    (s.extractedOperators?.length??0)>0&&canConcludeWithdrawal(s)){
+    s.mission='done';s.phase='won';
+    s.report=['OPERATION COMPLETE','SQUAD EXTRACTED',
+      'PRIMARY OBJECTIVE SECURED'];
+    notify(s,'SQUAD EXTRACTION COMPLETE');
+    battleEvent(s,'objective',null,s.scenario.extract,'MISSION COMPLETE');
+    return;
+  }
+  if(s.mission==='extract'&&
+    (!s.withdrawalRequested||canConcludeWithdrawal(s))&&
+    team(s).some(a=>a.health>0&&
     near(a.p,s.scenario.extract,37)&&
     validLivingCaptureExtraction(a)&&
     (s.missionType!=='intel'||s.intelCarrierId===a.id)&&
@@ -1995,6 +2071,18 @@ function mission(s:Session,dt:number){
       'EXTRACTION COMPLETE'];
     notify(s,'MISSION COMPLETE');
     battleEvent(s,'objective',null,s.scenario.extract,'MISSION COMPLETE');
+    return;
+  }
+  // GO-time physical gate. All surviving mobile members must be at the
+  // actual extraction point. Downed friends remain accounted for separately.
+  if(canConcludeWithdrawal(s)){
+    s.withdrawalCompleted=true;
+    s.phase='lost';
+    s.report=['ORGANIZED WITHDRAWAL','PRIMARY OBJECTIVE '+
+      (s.mission==='extract'?'SECURED':'INCOMPLETE')];
+    notify(s,'SQUAD WITHDRAWN — OPERATION CLOSED');
+    battleEvent(s,'objective',null,s.scenario.extract,
+      'SQUAD WITHDRAWN',{action:'withdrawal-complete'});
   }
 }
 function stepFlashbangs(s:Session,h:number){
@@ -2174,4 +2262,14 @@ export function nearestDoor(s:Session,p:Pt):Door|null{
     if(distance<best){best=distance;nearest=door;}
   }
   return nearest;
+}
+
+/** UI queries only genuinely discovered, physically accessible evidence. */
+export function nearbyOptionalIntel(s:Session,operatorId:string):OptionalIntelItem|null{
+ return eligibleOptionalIntel(s,operatorId,(from,to)=>unobstructed(from,to,s,false));
+}
+/** Queues a timed GO-time pickup, never claims an instant collection. */
+export function planOptionalIntelGather(s:Session,operatorId:string):boolean{
+ if(s.site?.training||!s.started)return false;
+ return beginOptionalIntelGather(s,operatorId,(from,to)=>unobstructed(from,to,s,false));
 }

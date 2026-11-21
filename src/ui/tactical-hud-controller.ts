@@ -12,6 +12,8 @@ import {tacticalIcon} from './tactical-icons.ts';
 import type {createBreachUiElements} from './breach-ui-elements.ts';
 import type {CampaignMode} from '../breach-app-mode.ts';
 import type {CampaignState} from '../campaign-state.ts';
+import type {TransportCandidate} from '../breach-transport-candidate.ts';
+import {nearestEligibleActor} from './tactical-nearest-actor.ts';
 import type {DispatchIncidentContext} from '../dispatch-incident-context.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,rangeTrialLabel,type RangeTrial} from '../equipment-training-diagnostics.ts';
@@ -38,7 +40,8 @@ import {TacticalFeedback,type FeedbackPoint} from './tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './contextual-teaching.ts';
 import {recoveryAdviceFor} from './recovery-guidance.ts';
-import {team,isSeen,missionText,operationBriefing,type Session,type TeamActor} from '../breach-game.ts';
+import {team,isSeen,missionText,operationBriefing,nearbyOptionalIntel,
+ planOptionalIntelGather,type Session,type TeamActor} from '../breach-game.ts';
 import {injuryOf,WEAPONS} from '../breach-combat.ts';
 import {magazineAlert} from '../arsenal/live-magazine-capacity.ts';
 import {executionStatus} from '../breach-execution-state.ts';
@@ -48,6 +51,14 @@ import {ExecutionNoticeFeed,locateNoticeOrder} from './execution-feedback.ts';
 import {createTacticalInteractionState,
  type TacticalInteractionState} from '../breach-tactical-interaction-state.ts';
 
+/** Separate medical-kit retrieval from DRAG/CARRY targeting: a nearby
+ * unconscious civilian cannot hide the RECOVER action for a downed teammate. */
+function recoverableSquadmate(s:Session,selected:string):TeamActor|null{
+ const friendly=team(s),actor=friendly.find(o=>o.id===selected&&o.health>0);
+ return actor?nearestEligibleActor(friendly,actor.p,o=>
+  o.id!==actor.id&&o.health<=0&&!o.surrendered):null;
+}
+
 /** A6: read-only HUD presentation snapshot. No command or navigation authority. */
 export type TacticalSessionPresentation={
  state:Session;mode:CampaignMode;replaying:boolean;selected:string;
@@ -55,7 +66,7 @@ export type TacticalSessionPresentation={
  ui:ReturnType<typeof createBreachUiElements>;
  siteIdentityOutput:HTMLOutputElement;rangeTelemetry:HTMLElement;
  lastRangeTrial:RangeTrial|null;
- medicalCandidate:()=>TeamActor|null;casualty:TeamActor|null;
+ medicalCandidate:()=>TeamActor|null;casualty:TransportCandidate|null;
  paletteTether:HTMLElement;paintOperatorAccent:(node:HTMLElement,id:string)=>void;
  colorFor:(id:string)=>string;
  fieldLightButton:HTMLButtonElement|null;nvgButton:HTMLButtonElement|null;
@@ -86,7 +97,7 @@ export type TacticalToolbarPorts={
  showWeaponChooser:()=>void;hideWeaponChooser:()=>void;
  selectUnit:(id:string)=>void;cancelTargeting:()=>void;
  showUiHelp:(text:string,duration?:number)=>void;updateHud:()=>void;
- medicalCandidate:()=>TeamActor|null;casualtyCandidate:()=>TeamActor|null;
+ medicalCandidate:()=>TeamActor|null;casualtyCandidate:()=>TransportCandidate|null;
  invalidateFog:()=>void;
  setRangeTrial:(trial:RangeTrial|null)=>void;
  resetMission:()=>void;restartRange:()=>void;
@@ -553,6 +564,17 @@ export function createTacticalHudController(
   paintOperatorAccent(ui.quickStates,selected);
   paintOperatorAccent(ui.context,selected);
   paintOperatorAccent(paletteTether,selected);
+  const intelButton=ui.tacticalHud.querySelector<HTMLButtonElement>('#optionalIntelGather');
+  if(intelButton){
+    const available=state.optionalIntel?.some(i=>i.discovered&&i.collectedBy===null);
+    const target=available?nearbyOptionalIntel(state,selected):null;
+    intelButton.hidden=!state.started||replaying||!available;
+    intelButton.disabled=!target||!!state.intelGather||
+      (state.phase!=='planning'&&state.phase!=='running');
+    writeDomText(intelButton,state.intelGather?
+      'GATHERING INTEL · '+Math.min(100,Math.floor(state.intelGather.elapsed/1.2*100))+'%':
+      target?'GATHER INTEL · '+target.kind.toUpperCase():'INTEL · APPROACH MARKER');
+  }
   if(medicalButton){
    const patient=medicalCandidate();
    medicalButton.disabled=!patient||state.phase!=='planning'||replaying;
@@ -565,9 +587,11 @@ export function createTacticalHudController(
    [dragButton,'DRAG'],[carryButton,'CARRY'],[retrieveButton,'RECOVER']
   ] as const){
    if(!button)continue;
-   button.hidden=!casualty;
-   button.disabled=!casualty||state.phase!=='planning'||replaying;
-   writeDomText(button,casualty?mode+' · '+casualty.name.toUpperCase():mode);
+   const person=mode==='RECOVER'?recoverableSquadmate(state,selected):casualty;
+   const available=!!person;
+   button.hidden=!available;
+   button.disabled=!available||state.phase!=='planning'||replaying;
+   writeDomText(button,person?mode+' · '+person.name.toUpperCase():mode);
   }
   if(fieldLightButton){
    const selectedActor=friendly.find(a=>a.id===selected);
@@ -931,13 +955,28 @@ medicalButton.addEventListener('click',()=>{
  port.updateHud();
 });
 port.ui.loadout.insertAdjacentElement('afterend',medicalButton);
-function casualtyActionButton(label:string,action:(target:TeamActor)=>void){
+const optionalIntelButton=document.createElement('button');
+optionalIntelButton.type='button';
+optionalIntelButton.id='optionalIntelGather';
+optionalIntelButton.className=port.ui.loadout.className;
+optionalIntelButton.hidden=true;
+optionalIntelButton.textContent='GATHER INTEL';
+optionalIntelButton.title='Recover physically discovered optional evidence when within reach';
+optionalIntelButton.addEventListener('click',()=>{
+ if(port.replaying)return;
+ if(!planOptionalIntelGather(port.state,port.selected))
+  port.showUiHelp('MOVE BESIDE A DISCOVERED INTELLIGENCE MARKER FIRST',3400);
+ port.updateHud();
+});
+medicalButton.insertAdjacentElement('afterend',optionalIntelButton);
+function casualtyActionButton(label:string,action:(target:{id:string})=>void){
  const button=document.createElement('button');button.type='button';
  button.className=port.ui.loadout.className;button.textContent=label;
  button.hidden=true;
  button.addEventListener('click',()=>{
   if(port.state.phase!=='planning'||port.replaying)return;
-  const patient=port.casualtyCandidate();
+  const patient=label==='RECOVER'?recoverableSquadmate(port.state,port.selected):
+    port.casualtyCandidate();
   if(patient)action(patient);
   port.updateHud();
  });

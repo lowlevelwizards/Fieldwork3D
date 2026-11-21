@@ -67,7 +67,14 @@ try{
    const setup=page.getByRole('dialog',{name:'Quick Play mission setup'});
    await setup.waitFor({state:'visible',timeout:60000});
    // Current Quick Play keeps building toggles and seed under Advanced.
-   await setup.locator('details.fw-quick-config-advanced > summary').click();
+   const advanced=setup.locator('details.fw-quick-config-advanced');
+   if(!(await advanced.evaluate(element=>element.open)))
+    await advanced.locator(':scope > summary').click();
+   // UI.5A moved building toggles into their own nested disclosure.
+   // Opening Advanced alone does not make the NONE control accessible.
+   const buildings=setup.locator('details.fw-quick-config-building-details');
+   if(!(await buildings.evaluate(element=>element.open)))
+    await buildings.locator(':scope > summary').click();
    await setup.getByRole('button',{name:'NONE',exact:true}).click();
    await setup.locator('input[type="checkbox"][value="retail"]').check();
    await setup.getByRole('spinbutton',{name:'Seed, blank for random'})

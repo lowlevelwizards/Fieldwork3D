@@ -36,6 +36,7 @@ import {stageMagazines,magazineSpace,type MagazineLocation}
 import {initialEquipmentLoadout,readEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
  type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
 import {progressOperator,type OperatorPerformance,type SkillGains} from './campaign-progression.ts';
+import {assessCampaignAftercare,aftercareDescription} from './campaign-casualty-aftercare.ts';
 import {readKitPresets,nextPresetId,MAX_KIT_PRESETS,type EquipmentPreset} from './equipment-presets.ts';
 import {initialArmorIntegrity,type ArmorIntegrity} from './equipment-armor.ts';
 import {clampFlashUse} from './equipment-supply.ts';
@@ -79,7 +80,10 @@ export type CampaignOperator={
  skills:ShootingSkills;experience:ShootingSkills;aptitudes:ShootingSkills;
  trait:string;distinctions:string[];
  missions:number;successful:number;injuries:number;recoveryDays:number;
- status:'available'|'reserve'|'lost'|'retired';weapon:'carbine'|'smg'|'rifle'|'shotgun';
+ status:'available'|'reserve'|'lost'|'retired';
+ /** Unrecovered casualty; unconfirmed fate, not a confirmed death. */
+ missingSinceOperationId?:string;
+ weapon:'carbine'|'smg'|'rifle'|'shotgun';
  magazine:number;reserve:number;shotsFired:number;joinedDay:number;
  loadout:EquipmentLoadout;armorCondition:ArmorIntegrity;
  medicalSupplies:FieldMedicalSupplies;
@@ -94,6 +98,8 @@ export type Contract={
  region:string;title:string;description:string;risk:1|2|3;
  intel:'floor-plan'|'unknown'|'scouted';reward:number;deadline:number;
  status:'available'|'accepted'|'completed'|'failed'|'expired';followUpOf?:string;
+ /** Explicit mission to physically recover a named missing veteran. */
+ recoveryOperatorId?:string;
  /** Optional recon outcome, independent of floor-plan intelligence. */
  objectiveIntel?:ObjectiveIntelLevel;
  /** D8: optional authored incident; missing on all pre-D8 contracts. */
@@ -103,6 +109,15 @@ export type CampaignReport={
  id:string;contractId:string;day:number;outcome:'success'|'failure';
  grade:string;elapsed:number;participatingIds:string[];casualties:string[];
  objective:boolean;events:CareerEvent[];
+ /** Optional OC outcome metadata. Legacy results remain unchanged. */
+ disposition?:import('./breach-operation-outcomes.ts').OperationDisposition;
+ objectiveSecured?:boolean;
+ missingRecoveredId?:string;missingRecoveredBy?:string;
+ extractedIds?:string[];leftBehindIds?:string[];
+ /** Actual optional evidence physically recovered, not merely discovered. */
+ intelRecovered?:number;
+ /** Only the couriers who physically extracted with verified optional evidence. */
+ intelRecoveryBy?:Record<string,number>;
  performance?:OperatorPerformance[];gains?:SkillGains[];
  flashUsed?:number;
  /** D10: optional evidence-only incident closeout; no extra score rule. */
@@ -140,6 +155,14 @@ export function contractObjectiveIntel(c:Contract):ObjectiveIntelLevel{
  return c.objectiveIntel??(c.followUpOf?'approximate':'unknown');
 }
 export const campaignIntelBalance=(c:CampaignState)=>Math.max(0,c.intelligence??0);
+/** MIA personnel are not secretly deployable after medical recovery time passes. */
+export function campaignSquadPresent(c:Pick<CampaignState,'operators'|'squadIds'>):boolean{
+ return c.squadIds.length===4&&new Set(c.squadIds).size===4&&
+  c.squadIds.every(id=>{
+   const o=c.operators.find(member=>member.id===id);
+   return !!o&&o.status!=='lost'&&o.status!=='retired'&&o.recoveryDays===0;
+  });
+}
 export function reconContract(c:CampaignState,id:string):CampaignState{
  const job=c.contracts.find(k=>k.id===id);
  if(!job||job.status!=='available'||c.activeContractId)return c;
@@ -285,6 +308,8 @@ export function readCampaign(raw:string|null):CampaignState|null{
    if(report.dispatchCareer!==undefined&&
      (parsedRules?.template!=='dispatch'||
       !validDispatchCareerReceipt(report.dispatchCareer)))return null;
+   if(report.missingRecoveredId!==undefined&&
+     typeof report.missingRecoveredId!=='string')return null;
    if(report?.dispatchForce!==undefined&&
 
      (parsedRules?.template!=='dispatch'||
@@ -293,6 +318,9 @@ export function readCampaign(raw:string|null):CampaignState|null{
   for(const contract of c.contracts){
    if(!contract||typeof contract.id!=='string'||!Number.isInteger(contract.seed)||
      !CONTRACTS.some(k=>k.kind===contract.kind)||
+     (contract.recoveryOperatorId!==undefined&&
+       (typeof contract.recoveryOperatorId!=='string'||
+        !c.operators.some(o=>o.id===contract.recoveryOperatorId)))||
      (contract.objectiveIntel!==undefined&&
        !(['unknown','approximate','confirmed'] as string[]).includes(contract.objectiveIntel))||
      (contract.dispatchCase!==undefined&&
@@ -361,6 +389,9 @@ export function acceptContract(c:CampaignState,id:string):CampaignState{
  if(c.activeContractId)return c;
  const found=c.contracts.find(k=>k.id===id&&k.status==='available'&&k.deadline>=c.day);
  if(!found)return c;
+ if(found.recoveryOperatorId&&!c.operators.some(o=>
+   o.id===found.recoveryOperatorId&&o.status==='lost'&&
+   !!o.missingSinceOperationId))return c;
  return {...c,activeContractId:id,contracts:c.contracts.map(k=>
   k.id===id?{...k,status:'accepted' as const}:k)};
 }
@@ -376,9 +407,39 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
  const participants=new Set(r.participatingIds);
  const casualties=new Set(r.casualties);
  const stabilized=new Set(r.stabilizedIds??[]);
+ const critical=new Set(r.criticalIds??[]);
  const evacuated=new Set(r.evacuatedIds??[]);
+ const missing=new Set(r.leftBehindIds??[]);
  const gainedSkills:SkillGains[]=[];
  const careerEvents:CareerEvent[]=[];
+ // Withdrawal is not an automatic fatality. Record custody and recovery
+ // facts separately from the existing combat medical authority.
+ if(r.disposition==='withdrawn')for(const id of new Set([
+   ...(r.extractedIds??[]),...(r.evacuatedIds??[])]))if(participants.has(id))
+  careerEvents.push({id:r.id+'-'+id+'-withdrawal',day:c.day,
+   operatorId:id,operationId:r.id,kind:'withdrawal',
+   detail:'Withdrew from '+contract.title});
+ for(const id of r.evacuatedIds??[])if(participants.has(id))
+  careerEvents.push({id:r.id+'-'+id+'-evacuated',day:c.day,
+   operatorId:id,operationId:r.id,kind:'casualty-evacuated',
+   detail:'Physically evacuated from '+contract.title});
+ // Successful extraction, not a desk pickup, confers service credit.
+ for(const [id,raw] of Object.entries(r.intelRecoveryBy??{})){
+  if(!participants.has(id)||typeof raw!=='number'||!Number.isFinite(raw)||raw<=0)continue;
+  const count=Math.min(6,Math.floor(raw));
+  if(count===0)continue;
+  careerEvents.push({id:r.id+'-'+id+'-intel-extracted',day:c.day,
+   operatorId:id,operationId:r.id,kind:'intel-recovered',
+   detail:'Carried '+count+' verified intelligence item'+(count===1?'':'s')+
+     ' out of '+contract.title});
+ }
+ for(const id of r.leftBehindIds??[])if(participants.has(id))
+  careerEvents.push({id:r.id+'-'+id+'-unrecovered',day:c.day,
+   operatorId:id,operationId:r.id,
+   kind:casualties.has(id)?'operator-missing':'unrecovered',
+   detail:casualties.has(id)?
+     'Missing after '+contract.title+'; fate unconfirmed':
+     'Not recovered at extraction during '+contract.title});
  const operators=c.operators.map(o=>{
   if(!participants.has(o.id)){
    const recoveryDays=Math.max(0,o.recoveryDays-1);
@@ -393,18 +454,40 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   if(performance?.injuryStage)careerEvents.push({id:r.id+'-'+o.id+'-wound',
    day:c.day,operatorId:o.id,operationId:r.id,kind:'wounded',
    detail:'Wounded during '+contract.title});
-  const base={...o,medicalSupplies:r.medicalRemaining?.[o.id]?
+  const unrecoveredCasualty=missing.has(o.id)&&casualties.has(o.id);
+  const aftercare=assessCampaignAftercare({
+   downed:casualties.has(o.id),evacuated:evacuated.has(o.id),
+   leftBehind:unrecoveredCasualty,stabilized:stabilized.has(o.id),
+   critical:critical.has(o.id),
+   structured:r.stabilizedIds!==undefined||r.criticalIds!==undefined,
+   injuryStage:performance?.injuryStage??0
+  });
+  if(casualties.has(o.id)&&evacuated.has(o.id))careerEvents.push({
+    id:r.id+'-'+o.id+'-aftercare',day:c.day,operatorId:o.id,
+    operationId:r.id,kind:'casualty-aftercare',
+    detail:aftercareDescription(aftercare)});
+  const base={...o,
+   // Missing is not recovered, discharged or confirmed dead. Preserve the
+   // veteran until a future verified recovery pathway exists.
+   ...(unrecoveredCasualty?{
+      status:'lost' as const,missingSinceOperationId:r.id}:{}),
+   medicalSupplies:r.medicalRemaining?.[o.id]?
    normalizedMedicalSupplies(r.medicalRemaining[o.id],kitMedicalSupplies(o.loadout)):
    o.medicalSupplies,missions:o.missions+1,
    successful:o.successful+(r.outcome==='success'?1:0),
-   recoveryDays:Math.max(0,o.recoveryDays-1,
-    casualties.has(o.id)?(r.stabilizedIds===undefined?2:
-      evacuated.has(o.id)?stabilized.has(o.id)?2:3:
-      stabilized.has(o.id)?3:5):0)};
+   // Exactly one day passes at settlement; severity comes from physical
+   // custody and real end-state triage, never narrative-only reports.
+   recoveryDays:Math.max(0,o.recoveryDays-1,aftercare.recoveryDays)};
   const progressed=performance?
    progressOperator(base,performance,r.outcome==='success'):null;
   if(progressed)gainedSkills.push(progressed.gains);
-  const current=progressed?.operator??base;
+  // Progression is the owner of skills/ammo. Its historical fallback
+  // subtracts another day from recovery; preserve this operation's already
+  // settled one-day passage and stronger verified medical prognosis.
+  const current=progressed?{
+    ...progressed.operator,
+    recoveryDays:Math.max(base.recoveryDays,progressed.operator.recoveryDays)
+  }:base;
   // The reporter's actual surviving magazines are already restored above,
   // before physical carrier validation. Legacy reports leave the kit alone.
   const settled=r.fieldRemaining?.[o.id]===undefined?null:
@@ -424,6 +507,17 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   {key:'precision-specialist',label:'Precision Specialist',test:(o:CampaignOperator)=>o.skills.precision>=.7},
   {key:'recoil-specialist',label:'Weapon Control Specialist',test:(o:CampaignOperator)=>o.skills.recoilControl>=.7}
  ];
+ // Even a won mission cannot recover an unrelated veteran. Only the
+ // accepted rescue contract and the mission's custody-certified ID qualify.
+ const rescuedId=r.outcome==='success'&&contract.recoveryOperatorId&&
+   r.missingRecoveredId===contract.recoveryOperatorId&&
+   c.operators.some(o=>o.id===r.missingRecoveredId&&o.status==='lost'&&
+    !!o.missingSinceOperationId)?r.missingRecoveredId:null;
+ if(rescuedId)careerEvents.push({id:r.id+'-'+rescuedId+'-recovered',
+   day:c.day,operatorId:rescuedId,operationId:r.id,kind:'operator-recovered',
+   ...(r.missingRecoveredBy&&participants.has(r.missingRecoveredBy)?
+      {otherOperatorId:r.missingRecoveredBy}:{}),
+   detail:'Physically evacuated during '+contract.title+'; critical care required'});
  const developed=operators.map(o=>{
   if(!participants.has(o.id))return o;
   const distinctions=[...o.distinctions];
@@ -450,6 +544,9 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   }
   return {...o,distinctions};
  });
+ const settledOperators=rescuedId?developed.map(o=>o.id===rescuedId?
+   {...o,status:'reserve' as const,missingSinceOperationId:undefined,
+    recoveryDays:Math.max(o.recoveryDays,6),injuries:Math.max(o.injuries,2)}:o):developed;
  const day=c.day+1;
  const contracts=c.contracts.map(k=>k.id===r.contractId?
   {...k,status:r.outcome==='success'?'completed' as const:'failed' as const}:
@@ -459,18 +556,70 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   (pressure[contract.region]??0)+(r.outcome==='success'?-1:1)));
  const followupKind:Partial<Record<OperationKind,OperationKind>>={
   intel:'capture',capture:'hold',clear:'rescue',rescue:'hold'};
- const nextKind=r.outcome==='success'?followupKind[contract.kind]:undefined;
+ // Actionable evidence can expose a response opportunity despite a failed
+ // primary objective. Never invent a lead from merely discovered/abandoned
+ // material: only the reconciled physically recovered count qualifies.
+ const leadRecovered=typeof r.intelRecovered==='number'&&
+   Number.isFinite(r.intelRecovered)&&r.intelRecovered>=2;
+ const nextKind=r.outcome==='success'?followupKind[contract.kind]:
+   leadRecovered?(contract.kind==='intel'?'capture':'intel'):undefined;
  if(nextKind){
   const template=CONTRACTS.find(k=>k.kind===nextKind)!;
   const followup:Contract={id:contract.id+'-followup-'+nextKind,
    followUpOf:contract.id,seed:hash(contract.seed^day^0x69e433a1)||1,
    kind:nextKind,scale:contract.scale,region:contract.region,
-   title:template.title,description:template.description,
+   title:leadRecovered&&r.outcome==='failure'?
+     'Recovered Lead: '+template.title:template.title,
+   description:leadRecovered&&r.outcome==='failure'?
+     'A prior operation ended without its primary objective, but physically recovered '+
+     'intelligence identified this follow-up opportunity. '+template.description:
+     template.description,
    risk:Math.min(3,contract.risk+1) as 1|2|3,
    intel:'scouted',objectiveIntel:'approximate',
    reward:contract.reward+180,deadline:day+3,status:'available'};
   contracts.push(c.rules?.template==='dispatch'?assignDispatchCase(followup,
    contracts.map(k=>k.dispatchCase?.incidentId).filter((id):id is string=>!!id)):followup);
+ }
+ // Every downed operator left behind creates a dedicated casualty-recovery
+ // operation. This is NOT a scripted victory: the player must transport the
+ // body through the real rescue/carry/drag simulation to extraction.
+ for(const id of [...missing].sort()){
+  if(!casualties.has(id)||!participants.has(id))continue;
+  const person=c.operators.find(o=>o.id===id);
+  if(!person||person.status==='lost'||person.status==='retired')continue;
+  const recovery:Contract={
+   id:contract.id+'-mia-'+id,followUpOf:contract.id,
+   recoveryOperatorId:id,
+   seed:hash(contract.seed^day^person.appearanceSeed)||1,
+   kind:'rescue',scale:contract.scale,region:contract.region,
+   title:'Recover '+person.callsign,
+   description:'Operator '+person.callsign+' is missing and incapacitated. '+
+     'Locate and physically carry or drag them to extraction. '+
+     'Their medical outcome is unresolved until the body is recovered.',
+   risk:contract.risk,intel:'scouted',objectiveIntel:'approximate',
+   reward:Math.max(150,Math.floor(contract.reward*.65)),
+   deadline:day+6,status:'available'};
+  contracts.push(c.rules?.template==='dispatch'?assignDispatchCase(recovery,
+   contracts.map(k=>k.dispatchCase?.incidentId).filter((x):x is string=>!!x)):
+   recovery);
+ }
+ // A failed attempt leaves the MIA unresolved; preserve another chance
+ // without allowing unlimited duplicate contracts from debrief retries.
+ if(contract.recoveryOperatorId&&!rescuedId){
+  const missingOperator=c.operators.find(o=>o.id===contract.recoveryOperatorId&&
+    o.status==='lost'&&!!o.missingSinceOperationId);
+  if(missingOperator){
+   const retry:Contract={...contract,
+    id:contract.id+'-retry-'+day,followUpOf:contract.id,
+    seed:hash(contract.seed^day^0x72a5)||1,
+    title:'Recovery Follow-up: '+missingOperator.callsign,
+    description:'Previous recovery attempt did not verify evacuation. '+
+      'Re-establish physical custody and extract the missing operator.',
+    deadline:day+6,status:'available'};
+   contracts.push(c.rules?.template==='dispatch'?assignDispatchCase(retry,
+    contracts.map(k=>k.dispatchCase?.incidentId).filter((x):x is string=>!!x)):
+    retry);
+  }
  }
  // The appliedResults gate above prevents replay/debrief double charging.
  const serials=c.inventory.serializedWeapons?.map(w=>{
@@ -480,12 +629,16 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   return recordWeaponRounds(w,actual,c.day,r.id);
  });
  return {...c,day,
-  // No intel reward for failures; replayed reports cannot grant it twice.
+  // Primary mission rewards retain their established contract; additional
+  // recovered evidence is awarded even after an organized withdrawal.
+  // This settlement is protected by the existing appliedResults ID gate.
   intelligence:Math.min(9,campaignIntelBalance(c)+
-   (r.outcome==='success'?(contract.kind==='intel'?2:1):0)),
+   (r.outcome==='success'?(contract.kind==='intel'?2:1):0)+
+   (typeof r.intelRecovered==='number'&&Number.isFinite(r.intelRecovered)?Math.max(0,Math.min(6,
+     Math.floor(r.intelRecovered??0))):0)),
   funds:c.funds+gained+(departmentCycle?.receipt.operatingSupport??0),
   ...(departmentCycle?{dispatchDepartment:departmentCycle.state}:{}),
-  operators:developed,regionalPressure:pressure,
+  operators:settledOperators,regionalPressure:pressure,
   inventory:{...c.inventory,serializedWeapons:serials},
   supplies:{...c.supplies,flash:Math.max(0,(c.supplies.flash??4)-clampFlashUse(r.flashUsed))},
   activeContractId:null,
