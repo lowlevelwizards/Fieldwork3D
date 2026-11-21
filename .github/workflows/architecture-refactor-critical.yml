@@ -1,7 +1,6 @@
 name: Breach Architecture — Critical Integration
 on:
-  pull_request:
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
