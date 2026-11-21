@@ -203,8 +203,8 @@ test('A7b preserve independently executed live/frozen body cohorts and strict fl
  const router=workflow('movement-door-acceptance.yml');
  const runs=[
   ['recovery17e','d3-17e-recovery.yml',['--d315b4-blind22','11 2700','22 2700','physicalArrivals<140','physicsStepViolations']],
-  ['physical25','d3-25-physical-acceptance.yml',['--d318-fresh22','--d315b4-blind22','physicalArrivals<158','physicalCompletedFour<34']],
-  ['coordinated15','d3-15-coordinated-release.yml',['m.arrivals!==4','physicalArrivals<80','--site-index=8']]
+  ['physical25','d3-25-physical-acceptance.yml',['--d318-fresh22','--d315b4-blind22','physicalArrivals<154','physicalCompletedFour<35']],
+  ['coordinated15','d3-15-coordinated-release.yml',['m.arrivals!==4','physicalArrivals<76','--site-index=8']]
  ];
  for(const [key,file,evidence] of runs){
   const source=workflow(file);
