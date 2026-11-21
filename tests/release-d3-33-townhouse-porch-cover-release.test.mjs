@@ -7,12 +7,14 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {proposeShallowCoverRelease} from '../src/breach-static-cover-release.ts';
-import {relieveGeneratedEntryWaitCollision} from '../src/breach-actor-motor.ts';
+import {relieveGeneratedEntryWaitCollision,listenD333MotorStage}
+ from '../src/breach-actor-motor.ts';
 import {prepareMotorRoute} from '../src/breach-motor-route.ts';
 import {witnessedGeneratedEntryStillness}
  from '../src/breach-generated-entry-stillness.ts';
 import {generateSite} from '../src/breach-site.ts';
-import {newSession} from '../src/breach-game.ts';
+import {newSession,stepSession,planSquadEntry,toggling}
+ from '../src/breach-game.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {OPERATOR_RADIUS,pointToSegment,doorLeafSegment} from '../src/breach-core.ts';
 import {doorWouldStrikeActors,doorSwingBlocked} from '../src/breach-door.ts';
@@ -291,4 +293,36 @@ test('D3.33 frozen Rook: a clear teammate gap must produce a genuine narrow moto
  assert.equal(game.doors.find(d=>d.id==='FRONT').locked,false);
  assert.ok(moved<=.750001,'never exceed one actual fixed-step body stride');
  assert.ok(moved>=.74,'post-clearance motor must take its genuine swept step');
+});
+
+test('D3.33 original Townhouse lead: identify stage consuming fixed physical motor frames',()=>{
+ const site=generateSite(9568385,'standard',undefined,
+  {mission:'intel'},{archetype:'townhouse'});
+ const quiet={...site,training:true,enemies:[],encounter:undefined};
+ const session=newSession(0,9568385,'full-view',site.scale??'standard',
+  'intel',quiet,{enableCivilians:false});
+ assert.equal(planSquadEntry(session,'FRONT'),true,'exact generated entry');
+ const count={},samples={};
+ listenD333MotorStage(session,e=>{
+  if(e.actor!=='rook'||e.time<7||e.time>16)return;
+  count[e.stage]=(count[e.stage]??0)+1;
+  if(!samples[e.stage]||e.time>samples[e.stage].time+.7)
+   samples[e.stage]=e;
+ });
+ try{
+  toggling(session);
+  for(let tick=0;tick<960;tick++)stepSession(session,1/60);
+ }finally{
+  listenD333MotorStage(session,null);
+ }
+ const rook=session.operators.find(a=>a.id==='rook'),
+  ash=session.operators.find(a=>a.id==='ash');
+ console.log('D333_LIVE_MOTOR_STAGES',JSON.stringify({
+  count,samples,rook:{p:rook.p,blocked:rook.blockedTime,
+   lastBlocker:rook.lastBlocker,nav:rook.nav.length,
+   episode:rook.doorTraversal,plan:rook.plan.slice(0,2)},
+  ash:{p:ash.p,plan:ash.plan.slice(0,2)},
+  gap:Math.hypot(rook.p.x-ash.p.x,rook.p.y-ash.p.y)
+ }));
+ assert.ok((count.start??0)>10,'actual 60Hz motor must run');
 });
