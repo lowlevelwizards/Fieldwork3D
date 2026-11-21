@@ -15,7 +15,9 @@ export function validateWorkflowContracts(wf){
  const must=(file,needle)=>assert.ok(wf[file].includes(needle),file+' missing '+needle);
  const no=(file,needle)=>assert.ok(!wf[file].includes(needle),file+' still contains '+needle);
  assert.ok(wf.ci.length<10000,'Primary CI has regrown into an obsolete branch gate catalog');
- no('ci',"startsWith(github.head_ref");
+ const verifyOnly=wf.ci.split('\n  verify:')[1]?.split('\n  full-regression:')[0]||'';
+ assert.ok(verifyOnly&&!verifyOnly.includes('startsWith(github.head_ref'),
+  'Primary fixed-clock selector must not be branch-name gated');
  must('ci','ci-regression-plan.mjs --run');
  must('ci','ci-regression-plan.mjs --check');
  must('ci','ci-workflow-contract.mjs');
