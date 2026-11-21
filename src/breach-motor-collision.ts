@@ -506,10 +506,10 @@ export function resolveMotorCollision(
         const rejoined=sweptRejoinExistingRoute(a.p,p,a.nav,
           (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
         if(rejoined.length){
-          a.lastNavRepairAt=s.seconds;
           const r3Specialist3=authorizeSpecialistRecovery(a,s,'door-escape-swept-rejoin',rejoined,p,
             'physical-escape','swept-full-body');
           if(r3Specialist3){
+          a.lastNavRepairAt=s.seconds;
           setTransientRoute(s,a,rejoined,'door-escape-swept-rejoin',r3Specialist3);
           provisionalRouteAccepted(a);
           return true;
