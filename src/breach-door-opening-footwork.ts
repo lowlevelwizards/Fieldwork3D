@@ -39,14 +39,36 @@ export function upcomingOpeningSweep(door:Door):number{
  const fraction=door.openFraction??0;
  return Math.min(Math.max(1,door.pushTarget??1),fraction+.17);
 }
+/** Ordinary opening and explicit DOOR footwork retains its original .72
+ * threshold. High-partial self-clearance is a separate generated-ENTRY
+ * exception, never a generic policy for authored MOVE or other doors.
+ */
 export function openingSweepThreatens(door:Door,position:Pt):boolean{
  return door.open&&!door.locked&&!door.wedged&&!door.heldBy&&
    (door.openFraction??0)<.72&&
-   doorWouldStrikeActors(door,upcomingOpeningSweep(door),[position],OPERATOR_RADIUS);
+   doorWouldStrikeActors(door,upcomingOpeningSweep(door),
+     [position],OPERATOR_RADIUS);
+}
+/** D3.31: a currently active GENERATED ENTRY on its own physical leaf
+ * may need a swept stance adjustment after the broad aperture is open.
+ * Positive only for a stationary, self-striking 72–98% hinge: this
+ * function itself grants no hand, rotation, body motion or order rights.
+ */
+export function stoppedHighPartialEntryStrike(
+ door:Door,position:Pt
+):boolean{
+ const fraction=door.openFraction??0;
+ return door.open&&!door.locked&&!door.jammed&&!door.wedged&&
+   !door.heldBy&&fraction>=.72&&fraction<.98&&
+   Math.abs(door.angularVelocity??0)<.16&&
+   doorWouldStrikeActors(door,upcomingOpeningSweep(door),
+     [position],OPERATOR_RADIUS);
 }
 export function selectGuidedOpeningStep(a:TeamActor,s:Session,
- door:Door,goal:Pt):Pt|null{
- if(!openingSweepThreatens(door,a.p))return null;
+ door:Door,goal:Pt,allowHighPartialEntry=false):Pt|null{
+ if(!openingSweepThreatens(door,a.p)&&
+    !(allowHighPartialEntry&&stoppedHighPartialEntryStrike(door,a.p)))
+  return null;
  const world=sessionWorldGeometry(s);
  const fraction=upcomingOpeningSweep(door);
  const futureLeaf=doorLeafSegment({...door,openFraction:fraction});

@@ -398,7 +398,8 @@ export function recordDoorManeuverContact(
  * genuine door-collision retry after the existing blocked-time threshold.
  */
 export function selfBlockingHingeRelief(
- a:TeamActor,s:Session,goal:Pt,onlyDoor?:Door
+ a:TeamActor,s:Session,goal:Pt,onlyDoor?:Door,
+ allowHighPartialEntry=false
 ):Pt|null{
  const world=sessionWorldGeometry(s);
  const otherPositions=s.operators.filter(other=>other!==a&&other.health>0)
@@ -410,7 +411,11 @@ export function selfBlockingHingeRelief(
   const fraction=door.openFraction??(door.open?1:0);
   if(!door.open||door.kind==='sliding'||door.kind==='shutter'||
      door.locked||door.wedged||door.heldBy||
-     fraction<.15||fraction>=.72||
+     // Default back to the original .72 limit for all ordinary
+     // collision and authored-door callers. Only the generated entry
+     // owner of THIS leaf may opt into the 72–98% self-strike case.
+     fraction<.15||(fraction>=.72&&
+       (!allowHighPartialEntry||fraction>=.98))||
      Math.abs(door.angularVelocity??0)>.16)continue;
   const leaf=doorLeafSegment(door);
   const initial=pointToSegment(a.p,leaf);

@@ -19,8 +19,11 @@ import {selfBlockingHingeRelief} from './breach-door-traversal-maneuver.ts';
 import {shouldStageForOpening,mayManipulateOpening,claimOpeningIntent}
  from './breach-door-opening-ownership.ts';
 import {releaseDoorHandContact} from './breach-door-hand-contact.ts';
+import {hasRepeatedPhysicalLeafEscapeEvidence}
+ from './breach-door-escape-rejoin.ts';
 import {openingFootwork,setOpeningFootstep,queueOpeningFootstep,clearOpeningFootwork,
-  openingSweepThreatens,upcomingOpeningSweep,selectGuidedOpeningStep}
+  openingSweepThreatens,stoppedHighPartialEntryStrike,
+  upcomingOpeningSweep,selectGuidedOpeningStep}
  from './breach-door-opening-footwork.ts';
 
 /** D3.2.5: an opened hinge that has STOPPED well below its target may
@@ -143,8 +146,18 @@ export function handleMotorDoor(
   if(!doorAhead&&a.side==='blue'&&pendingDoor?.kind==='move'&&
      a.doorTraversal?.authoredOrderId===pendingDoor.id){
     const episodeDoor=s.doors.find(d=>d.id===a.doorTraversal!.doorId);
-    if(episodeDoor&&(episodeDoor.openFraction??0)<.72&&
-       d(a.p,doorCenter(episodeDoor))<80)
+    // Keep the current physical leaf in scope only for the SAME
+    // generated ENTRY and authored order. An ordinary authored MOVE
+    // is never entitled to high-partial swing clearance by proximity.
+    const sameGeneratedEntry=!!episodeDoor&&
+      pendingDoor.entryDoorId===episodeDoor.id&&
+      a.doorTraversal?.doorId===episodeDoor.id;
+    if(episodeDoor&&d(a.p,doorCenter(episodeDoor))<80&&
+       ((episodeDoor.openFraction??0)<.72||
+        sameGeneratedEntry&&
+        stoppedHighPartialEntryStrike(episodeDoor,a.p)&&
+        hasRepeatedPhysicalLeafEscapeEvidence(
+          a,s.seconds,p,episodeDoor.id)))
       doorAhead=episodeDoor;
   }
   if(doorAhead){
@@ -157,8 +170,17 @@ export function handleMotorDoor(
       (doorAhead.openFraction??0)>=.15&&
       (doorAhead.openFraction??0)<.72&&
       Math.abs(doorAhead.angularVelocity??0)<.16;
+    const generatedEntryOwner=a.side==='blue'&&
+      pendingDoor?.kind==='move'&&
+      pendingDoor.entryDoorId===doorAhead.id&&
+      a.doorTraversal?.doorId===doorAhead.id&&
+      a.doorTraversal.authoredOrderId===pendingDoor.id;
+    const highPartialEntry=generatedEntryOwner&&
+      stoppedHighPartialEntryStrike(doorAhead,a.p)&&
+      hasRepeatedPhysicalLeafEscapeEvidence(
+        a,s.seconds,p,doorAhead.id);
     const threatens=a.side==='blue'&&doorAhead.open&&
-      openingSweepThreatens(doorAhead,a.p);
+      (openingSweepThreatens(doorAhead,a.p)||highPartialEntry);
     const ownerRelief=!follower&&a.side==='blue'&&
       pendingDoor?.kind==='move'&&
       (stopped&&a.actionTimer>=1.5||threatens);
@@ -200,8 +222,10 @@ export function handleMotorDoor(
       if(staged.attempts<5&&s.seconds>=staged.nextAt&&
          (follower||ownerRelief)){
         const retreat=threatens?
-          selectGuidedOpeningStep(a,s,doorAhead,p)||
-            (stopped?selfBlockingHingeRelief(a,s,p,doorAhead):null):
+          selectGuidedOpeningStep(a,s,doorAhead,p,highPartialEntry)||
+            (stopped||highPartialEntry?
+              selfBlockingHingeRelief(a,s,p,doorAhead,
+                highPartialEntry):null):
           selfBlockingHingeRelief(a,s,p,doorAhead);
         staged.nextAt=s.seconds+1.1;
         if(retreat){
