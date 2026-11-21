@@ -50,6 +50,41 @@ const frozen=[
       "tests/door-traversal-d3.test.mjs",
       ".github/workflows/door-traversal-d2-d3.yml"
     ]
+  },
+  {
+    "key": "passageQ5",
+    "paths": [
+      "src/breach-door-test-cases.ts",
+      "src/breach-door.ts",
+      "src/breach-door-kick-cover.ts",
+      "src/breach-order-door.ts",
+      "src/breach-squeeze-gate.ts",
+      "src/breach-motor-collision.ts",
+      "src/worldgen/doorway-clutter-repair.ts",
+      "src/breach-2d-route-overlays.ts",
+      "src/breach-2d-projected-overlays.ts",
+      "src/ui/passage-rank-badges.ts",
+      "src/breach-passage-visual-ranks.ts",
+      "tests/passage-q5-live-blockers.test.mjs",
+      "src/door-range-q5-benchmark.ts",
+      "src/door-test-range-main.ts",
+      "door-test-range.html",
+      "tests/passage-q5-approaches.test.mjs",
+      "scripts/audit-passage-q5.mjs",
+      ".github/workflows/passage-q5-matrix.yml"
+    ]
+  },
+  {
+    "key": "performanceP28",
+    "paths": [
+      "src/breach-navigation.ts",
+      "src/breach-world-context.ts",
+      "src/breach-motor-collision.ts",
+      "src/breach-actor-motor.ts",
+      "tests/performance-p2-8-sweep-broadphase.test.mjs",
+      "tests/performance-p2-8-cover-los.test.mjs",
+      ".github/workflows/performance-p2-8-critical.yml"
+    ]
   }
 ];
 const keys=frozen.map(x=>x.key);
@@ -99,4 +134,27 @@ test('A7a original feature push/manual and physical measurements cannot disappea
  for(const marker of ['feature/door-traversal-d2-d3-','audit-door-traversal-baseline.mjs 4 900',
   'audit-door-traversal-baseline.mjs 4 1800','tests/doorway-right-of-way-session.test.mjs'])
   assert.ok(d2.includes(marker),marker);
+});
+
+test('A7c preserve strict passage motor geometry and real performance broadphase',()=>{
+ const router=workflow('movement-door-acceptance.yml');
+ const q5=workflow('passage-q5-matrix.yml'),perf=workflow('performance-p2-8-critical.yml');
+ for(const [key,file,content] of [
+  ['passageQ5','passage-q5-matrix.yml',q5],
+  ['performanceP28','performance-p2-8-critical.yml',perf]]){
+  assert.match(content,/^  workflow_call:$/m);
+  assert.match(content,/^  workflow_dispatch:$/m);
+  assert.doesNotMatch(content,/^  pull_request:$/m);
+  assert.ok(router.includes('fromJSON(inputs.lanes).'+key));
+  assert.ok(router.includes('uses: ./.github/workflows/'+file));
+ }
+ for(const needle of ['feature/passage-q5-','audit-passage-q5.mjs --extended --strict',
+  'audit-passage-q5.mjs --release-a --extended --strict',
+  'tests/passage-q5-live-blockers.test.mjs','tests/passage-q5-approaches.test.mjs'])
+  assert.ok(q5.includes(needle),needle);
+ for(const needle of ['tests/performance-p2-8-sweep-broadphase.test.mjs',
+  'tests/performance-p2-8-cover-los.test.mjs','tests/performance-p2-7-live-routing.test.mjs',
+  "retreat belongs|idle doorway occupancy|single furniture-side obstruction",
+  'npm run check && npx vite build'])
+  assert.ok(perf.includes(needle),needle);
 });
