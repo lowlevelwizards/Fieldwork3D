@@ -1,4 +1,6 @@
 import {setTransientRoute,noteDoorHandoffRejection,hasTransientRouteObserver} from './breach-route-transition.ts';
+import {authorizeRouteAcquisition}
+ from './breach-route-acquisition-adoption.ts';
 import {authorizeSpecialistRecovery}
  from './breach-specialist-recovery-adoption.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
@@ -304,7 +306,19 @@ export function refreshRouteAfterForcedDoor(a:TeamActor,goal:Pt,s:Session):boole
   const candidate=routeWithNormalWorld(a.p,goal,s.doors,
     sessionWorldGeometry(s));
   if(!forcedDoorShortcutWorthTaking(a.p,a.nav,candidate))continue;
-  setTransientRoute(s,a,candidate,'forced-door-shortcut');
+  // A broken latch is not a physical waiver. The existing phase claim
+  // still limits unsuccessful expensive route searches.
+  const shortcut=authorizeRouteAcquisition({
+    actor:a,session:s,source:'forced-door-shortcut',goal,
+    route:candidate,orderIdAtSelection:order.id,
+    certificate:'broken-latch-world-shortcut',eligible:true,
+    physicalProof:sweptBodyClear(a.p,candidate[0],s.doors,
+      OPERATOR_RADIUS,sessionWorldGeometry(s)),
+    initialRouteAbsent:false
+  });
+  if(shortcut.kind!=='adopt')continue;
+  setTransientRoute(s,a,candidate,'forced-door-shortcut',
+    shortcut.proof??undefined);
   a.retryRouteAt=0;
   return true;
  }
@@ -314,6 +328,7 @@ export type MotorRouteReadiness='ready'|'handled'|'unavailable';
 export function prepareMotorRoute(
  a:TeamActor,p:Pt,dt:number,s:Session,hooks:ActorMotorHooks):MotorRouteReadiness{
   const goalKey=Math.round(p.x*2)+':'+Math.round(p.y*2);
+  const acquisitionOrderId=a.plan[0]?.id??null;
   if(a.routeGoalKey!==goalKey){
     a.autoSidestep=null;
     a.routeGoalKey=goalKey;a.retryRouteAt=0;a.recoveryAttempts=0;
@@ -382,9 +397,19 @@ export function prepareMotorRoute(
     if(a.fireRetreatTarget&&d(p,a.fireRetreatTarget)<.5&&
        goalDistance>=.9&&goalDistance<=12&&
        sweptBodyClear(a.p,p,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))){
-      setTransientRoute(s,a,[{...p}],'fire-retreat');
-      provisionalRouteAccepted(a);
-      return 'ready';
+      const fireRoute=[{...p}];
+      const fireDecision=authorizeRouteAcquisition({
+        actor:a,session:s,source:'fire-retreat',goal:p,
+        route:fireRoute,orderIdAtSelection:acquisitionOrderId,
+        certificate:'swept-fire-lane',eligible:true,
+        physicalProof:true,initialRouteAbsent:true
+      });
+      if(fireDecision.kind==='adopt'){
+        setTransientRoute(s,a,fireRoute,'fire-retreat',
+          fireDecision.proof??undefined);
+        provisionalRouteAccepted(a);
+        return 'ready';
+      }
     }
     if(s.seconds<a.retryRouteAt){
       // C3: a backoff is still REAL time stationary with an active MOVE.
@@ -412,12 +437,21 @@ export function prepareMotorRoute(
       const world=sessionWorldGeometry(s);
       const fine=coldFineMotorWorldRoute(a.p,p,s.doors,world);
       if(fine.length){
-        setTransientRoute(s,a,fine,'motor-cold-fine-world');
-        markD326FineMotorRoute(a);
-        notePreciseLocalDetour(a,fine[0]);
-        provisionalRouteAccepted(a);
-        a.lastNavRepairAt=s.seconds;
-        return 'ready';
+        const coldDecision=authorizeRouteAcquisition({
+          actor:a,session:s,source:'motor-cold-fine-world',
+          goal:p,route:fine,orderIdAtSelection:acquisitionOrderId,
+          certificate:'cold-fine-full-body',eligible:true,
+          physicalProof:true,initialRouteAbsent:true
+        });
+        if(coldDecision.kind==='adopt'){
+          setTransientRoute(s,a,fine,'motor-cold-fine-world',
+            coldDecision.proof??undefined);
+          markD326FineMotorRoute(a);
+          notePreciseLocalDetour(a,fine[0]);
+          provisionalRouteAccepted(a);
+          a.lastNavRepairAt=s.seconds;
+          return 'ready';
+        }
       }
     }
     // D3.17E6: replay a short *negative* result only if the prior
@@ -433,9 +467,21 @@ export function prepareMotorRoute(
        a.retryRouteAt=s.seconds+.6;
        return 'unavailable';
     }
-    setTransientRoute(s,a,a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
-      hooks.cachedEnemyRoute(s,a.p,p,true),
-      a.side==='blue'?'initial-intel':'initial-enemy');
+    const initialSource=a.side==='blue'?'initial-intel':'initial-enemy';
+    const initialRoute=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
+      hooks.cachedEnemyRoute(s,a.p,p,true);
+    const initialDecision=authorizeRouteAcquisition({
+      actor:a,session:s,source:initialSource,goal:p,route:initialRoute,
+      orderIdAtSelection:acquisitionOrderId,
+      certificate:a.side==='blue'?'known-intel-query':'enemy-cached-query',
+      eligible:true,physicalProof:false,initialRouteAbsent:true
+    });
+    // Empty query results are legitimate and must still reach the
+    // known-shove, first-portal and negative-cache fallback chain.
+    if(initialDecision.kind!=='reject')
+      setTransientRoute(s,a,initialRoute,
+        a.side==='blue'?'initial-intel':'initial-enemy',
+        initialDecision.proof??undefined);
     if(!a.nav.length&&a.side==='blue'){
       // A known small object that the player drew THROUGH is a contextual
       // crossing, not a permanently impassable destination. Approach its
@@ -453,8 +499,18 @@ export function prepareMotorRoute(
           y:obstacle.y-uy*setback};
         const path=d(a.p,staging)<5?[]:
           routeWithSqueezeWorld(a.p,staging,s.doors,sessionWorldGeometry(s));
-        if(d(a.p,staging)<5||path.length)
-          setTransientRoute(s,a,[...path,p],'shove-stage');
+        if(d(a.p,staging)<5||path.length){
+          const stagingRoute=[...path,p];
+          const stageDecision=authorizeRouteAcquisition({
+            actor:a,session:s,source:'shove-stage',goal:p,
+            route:stagingRoute,orderIdAtSelection:acquisitionOrderId,
+            certificate:'known-shove-crossing',eligible:true,
+            physicalProof:false,initialRouteAbsent:true
+          });
+          if(stageDecision.kind==='adopt')
+            setTransientRoute(s,a,stagingRoute,'shove-stage',
+              stageDecision.proof??undefined);
+        }
       }
     }
     // D3.18C Garage: an actor with NO transient nav never reaches the
@@ -468,8 +524,17 @@ export function prepareMotorRoute(
       const prefix=routeToNextOperableDoor(a.p,p,s.doors,
         sessionWorldGeometry(s));
       if(prefix.length){
-        setTransientRoute(s,a,prefix,'initial-portal-recovery');
-        provisionalRouteAccepted(a);
+        const portalDecision=authorizeRouteAcquisition({
+          actor:a,session:s,source:'initial-portal-recovery',
+          goal:p,route:prefix,orderIdAtSelection:acquisitionOrderId,
+          certificate:'first-operable-door-prefix',eligible:true,
+          physicalProof:false,initialRouteAbsent:true
+        });
+        if(portalDecision.kind==='adopt'){
+          setTransientRoute(s,a,prefix,'initial-portal-recovery',
+            portalDecision.proof??undefined);
+          provisionalRouteAccepted(a);
+        }
       }
     }
     if(!a.nav.length){
