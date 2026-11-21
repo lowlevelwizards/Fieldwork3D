@@ -59,8 +59,8 @@ export function validateWorkflowContracts(wf){
   must('ci','uses: ./.github/workflows/'+paths[name].split('/').at(-1));
   must(name,'workflow_call:');
   must(name,'workflow_dispatch:');
-  const triggers=wf[name].split('\\njobs:')[0];
-  assert.ok(!/^[ \\t]+- main[ \\t]*$/m.test(triggers),
+  const triggers=wf[name].slice(0,wf[name].indexOf('jobs:'));
+  assert.ok(!/^\s+- main\s*$/m.test(triggers),
    name+' still triggers every main PR');
   if(name!=='loadout')assert.ok(!triggers.includes('  pull_request:'),
    name+' still has an independent PR trigger');
