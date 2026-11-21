@@ -546,14 +546,26 @@ export function resolveMotorCollision(
       watchClearanceAllowed(a.p,candidate,p,
         !!a.aimInstruction&&a.aimInstruction.mode!=='free',
         (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world))&&
-      (!a.nav.length||d(candidate,a.nav[0])>12)){
-      const side=beginAutoSidestep(a.p,next,candidate,a.heading,p,
-        s.seconds,canAutoSidestep);
-      if(side)a.autoSidestep=side;
-      prependTransientLeg(s,a,candidate,'local-detour');
-      notePreciseLocalDetour(a,candidate);
-      a.lastNavRepairAt=s.seconds;
-      return true;
+      (!a.nav.length||d(candidate,a.nav[0])>12)&&
+      sweptBodyClear(a.p,candidate,s.doors,OPERATOR_RADIUS,world)){
+      // Local side paths now have the same explicit, non-authoring gate
+      // as the verified lane / connector recovery families.
+      const localAdoption=evaluateOrdinaryRecoveryAdoption({
+        actor:a,session:s,source:'local-detour',operation:'prepend',
+        goal:p,route:[candidate,...a.nav],orderIdAtSelection,
+        eligible:true,certificate:'swept-local-detour',
+        watchSafe:true,useful:true,
+        retry:'hysteretic-detour',recurrence:'none'
+      });
+      if(localAdoption.accepted){
+        const side=beginAutoSidestep(a.p,next,candidate,a.heading,p,
+          s.seconds,canAutoSidestep);
+        if(side)a.autoSidestep=side;
+        prependTransientLeg(s,a,candidate,'local-detour',localAdoption.proof);
+        notePreciseLocalDetour(a,candidate);
+        a.lastNavRepairAt=s.seconds;
+        return true;
+      }
     }
   }
   // A moving red/blue body can reject the final coupled frame even when
@@ -581,12 +593,20 @@ export function resolveMotorCollision(
        sweep(candidate,next)&&
        watchClearanceAllowed(a.p,candidate,p,
          !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)&&
-       allowPhysicalRouteReissue(a,'frame-actor-detour',p,
-         [candidate,...a.nav],s.seconds)){
-      prependTransientLeg(s,a,candidate,'local-detour');
-      notePreciseLocalDetour(a,candidate);
-      provisionalRouteAccepted(a);
-      return true;
+       true){
+      const frameAdoption=evaluateOrdinaryRecoveryAdoption({
+        actor:a,session:s,source:'local-detour',operation:'prepend',
+        goal:p,route:[candidate,...a.nav],orderIdAtSelection,
+        eligible:true,certificate:'swept-local-detour',
+        watchSafe:true,useful:true,
+        retry:'cold-frame-detour',recurrence:'frame-actor-detour'
+      });
+      if(frameAdoption.accepted){
+        prependTransientLeg(s,a,candidate,'local-detour',frameAdoption.proof);
+        notePreciseLocalDetour(a,candidate);
+        provisionalRouteAccepted(a);
+        return true;
+      }
     }
   }
   if(!closed&&!blocking&&traversable){
