@@ -111,10 +111,8 @@ export function selectWeaponVisualSuites(paths=[]){
    patterns.some(pattern=>pattern.test(file)))]));
 }
 
-/** A5: original After Action V4/V5 main-target PR path patterns and
- * historical head-branch eligibility. Shared source files may match several
- * suites, but no stage runs for unrelated branches. The dedicated CI refactor
- * branch exercises persistent-3D and V5 live browser paths.
+/** A5: exact original path globs and stage eligibility. No independent
+ * per-stage main PR Actions runs, and no broadened general PR browser tests.
  */
 export const afterActionSpecs=[
  {
@@ -229,44 +227,17 @@ export const afterActionSpecs=[
  }
 ];
 const debriefAcceptancePrefix='refactor/ci-after-action-';
-const afterActionEscape=part=>part.replace(/[|\\{}()[\]^$+?.]/g,'\\function changedFiles(){');
+const afterActionEscape=part=>part.replace(/[|\\{}()[\]^$+?.]/g,'\\$&');
 export function afterActionPathMatches(glob,path){
- const pattern=new RegExp('^'+glob.split('*').map(afterActionEscape).join('[^/]*')+'
- const base=process.env.CI_BASE_REF;
- assert.ok(base&&/^[\w./-]+$/.test(base),'Missing or unsafe PR base');
- const result=spawnSync('git',['diff','--name-only','--diff-filter=ACMRTD',
-  'origin/'+base+'...HEAD'],{encoding:'utf8'});
- if(result.error)throw result.error;
- if(result.status!==0)throw Error('Cannot classify PR diff: '+result.stderr);
- return result.stdout.trim().split('\n').filter(Boolean);
-}
-
-function main(){
- const args=process.argv.slice(2);
- const at=args.indexOf('--files');
- const paths=at<0?changedFiles():args.slice(at+1).filter(x=>!x.startsWith('--'));
- const result=selectSpecialists(paths);
- const movement=selectMovementSuites(paths);
- const weapons=selectWeaponVisualSuites(paths);
- const debrief=selectAfterActionSuites(paths,process.env.CI_HEAD_REF||process.env.GITHUB_HEAD_REF||'');
- const debrief=selectAfterActionSuites(paths,process.env.CI_HEAD_REF||process.env.GITHUB_HEAD_REF||'');
- console.log('Specialist CI routing',JSON.stringify({...result,movement,weapons,debrief}));
- if(args.includes('--github-output')){
-  assert.ok(process.env.GITHUB_OUTPUT,'GITHUB_OUTPUT missing');
-  appendFileSync(process.env.GITHUB_OUTPUT,[...Object.entries(result.selected),...Object.entries(movement),...Object.entries(weapons),...Object.entries(debrief)]
-   .map(([name,enabled])=>name+'='+String(enabled)).join('\n')+'\n');
- }
-}
-if(process.argv[1]&&new URL(import.meta.url).pathname===process.argv[1])main();
-);
+ const pattern=new RegExp('^'+glob.split('*').map(afterActionEscape).join('[^/]*')+'$');
  return pattern.test(path);
 }
 export function selectAfterActionSuites(paths=[],headRef=''){
  const files=[...new Set(paths)].sort();
  return Object.fromEntries(afterActionSpecs.map(spec=>{
-  const liveProbe=headRef.startsWith(debriefAcceptancePrefix)&&
+  const probe=headRef.startsWith(debriefAcceptancePrefix)&&
    ['debriefV43','debriefV5'].includes(spec.key);
-  const eligible=spec.prefixes.some(prefix=>headRef.startsWith(prefix))||liveProbe;
+  const eligible=spec.prefixes.some(prefix=>headRef.startsWith(prefix))||probe;
   return [spec.key,eligible&&files.some(file=>spec.paths.some(glob=>
    afterActionPathMatches(glob,file)))];
  }));
@@ -289,6 +260,7 @@ function main(){
  const result=selectSpecialists(paths);
  const movement=selectMovementSuites(paths);
  const weapons=selectWeaponVisualSuites(paths);
+ const debrief=selectAfterActionSuites(paths,process.env.CI_HEAD_REF||process.env.GITHUB_HEAD_REF||'');
  console.log('Specialist CI routing',JSON.stringify({...result,movement,weapons,debrief}));
  if(args.includes('--github-output')){
   assert.ok(process.env.GITHUB_OUTPUT,'GITHUB_OUTPUT missing');
