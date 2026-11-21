@@ -37,6 +37,7 @@ jobs:
         run: |
           node --test tests/ci-regression-plan.test.mjs
           node scripts/verification/ci-regression-plan.mjs --check
+          node scripts/verification/ci-workflow-inventory.mjs --check
           node scripts/verification/ci-workflow-contract.mjs
       # E1: one source-owned regression selector for EVERY PR, including
       # historical feature branches. Specialized art/browser gates remain
