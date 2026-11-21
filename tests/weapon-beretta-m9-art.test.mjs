@@ -132,7 +132,7 @@ test('C1 caricature: the exposed round barrel is a real visible object, not a pa
    const barrels=m.children.filter(x=>x.userData.m9ExposedBarrel);
    const sideRails=m.children.filter(x=>x.userData.m9OpenSlideRail);
    assert.equal(barrels.length,1);
-   assert.equal(sideRails.length,2);
+   assert.equal(sideRails.length,1,'one real U-channel replaces two disconnected rails');
    const barrel=bounds(barrels[0]);
    const rail=bounds(sideRails[0]);
    assert.ok(barrel.max.y>rail.max.y+.9,
@@ -158,7 +158,7 @@ test('C1 caricature: grip is swept and broad; classic curvature differs from Ver
   try{
    const panels=m.children.filter(x=>x.userData.m9GripPanel);
    assert.equal(panels.length,1,'two planar panels batched in one mesh');
-   assert.ok(panels.every(p=>bounds(p).max.y>=-2.25&&bounds(p).max.y<=-2.0),
+   assert.ok(panels.every(p=>bounds(p).max.y>=-2.10&&bounds(p).max.y<=-1.90),
     'grip panels sit high while following swept frame');
    assert.equal(m.children.filter(x=>x.userData.m9DecockerBatched).length,1,
     'two large safety paddles share dark slide detail batch');
@@ -386,7 +386,7 @@ test('D5 flat front dust cover and visible M9A3-only rail/control cues',()=>{
   try{
    const frame=m.children.find(x=>x.userData.m9IntegratedFrame);
    const p=frame.geometry.getAttribute('position');
-   const frameXs=[1.58,5.92].map(x=>{
+   const frameXs=[1.10,5.92].map(x=>{
     const ys=[];
     for(let i=0;i<p.count;i++)
      if(Math.abs(p.getX(i)-x)<.005&&p.getY(i)<0)ys.push(p.getY(i));
@@ -553,7 +553,7 @@ test('D8 mobile inspection framing is constrained and Glock remains unaffected',
   'Glock workbench uses the unmodified shared default fit multiplier');
 });
 
-test('D8 visible geometry uses fewer polygons than ornamental alternatives',()=>{
+test('D10 visible geometry is simplified without wasting silhouette polygons',()=>{
  for(const {id} of M9_APPEARANCE_REFERENCES){
   const m=buildM9Appearance(id);
   try{
@@ -575,10 +575,10 @@ test('D8 visible geometry uses fewer polygons than ornamental alternatives',()=>
     const y=npos.getY(i),x=npos.getX(i),z=Math.abs(npos.getZ(i));
     if(y<1.32&&z>1.05&&x<M9_ART[id].nose-.12)lowerRearward++;
     if(y>3.25&&z>.9&&x>M9_ART[id].nose-.06)upperForward++;
-    if(y>2&&y<3&&z>1.35)cheekCount++;
+    if(y>=1.60&&y<=3.60&&z>1.30)cheekCount++;
    }
    assert.ok(lowerRearward&&upperForward&&cheekCount,
-    'front shell has a shaped lower undercut, projecting shoulder and rounded cheeks');
+    'front shell has a broad flat lower plate, strong upper shoulders and simple cheeks');
    if(id==='beretta-m9a3'){
     const rail=m.children.find(x=>x.userData.m9AccessoryRail);
     assert.ok(bounds(rail).min.y<=-1.39,'A3 rail has real depth from profile');
