@@ -16,6 +16,7 @@ function job(yaml,name){
 }
 const prefixes=body=>[...body.matchAll(/startsWith\(github\.head_ref, '([^']+)'\)/g)]
  .map(match=>match[1]).sort();
+const jobGuard=(yaml,name)=>job(yaml,name).split('\n').find(line=>/^    if: /.test(line))||'';
 
 test('specialist acceptance can be called or dispatched but cannot create separate PR runs',()=>{
  for(const [name,source] of [['architecture',architecture],['browser',browser]]){
@@ -38,9 +39,9 @@ test('CI dispatches each specialist exactly once through its reusable workflow',
 });
 
 test('the caller preserves all historical architecture and browser branch guards',()=>{
- assert.deepEqual(prefixes(job(ci,'architecture-integration')),prefixes(job(architecture,'critical')));
- assert.deepEqual(prefixes(job(ci,'browser-acceptance')),prefixes(job(browser,'tactical-flow')));
- assert.deepEqual(prefixes(job(ci,'browser-acceptance')),prefixes(job(browser,'replay-and-lab')));
+ assert.deepEqual(prefixes(jobGuard(ci,'architecture-integration')),prefixes(jobGuard(architecture,'critical')));
+ assert.deepEqual(prefixes(jobGuard(ci,'browser-acceptance')),prefixes(jobGuard(browser,'tactical-flow')));
+ assert.deepEqual(prefixes(jobGuard(ci,'browser-acceptance')),prefixes(jobGuard(browser,'replay-and-lab')));
 });
 
 test('manual forensic and WebGL acceptance remain available',()=>{
