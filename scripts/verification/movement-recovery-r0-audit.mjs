@@ -13,6 +13,8 @@ export const BASE_COMMIT='fe2489f3a430aa170478bb4cb2d7b412961ccb1e';
 // The live ledger rows below intentionally follow R2's reviewed line moves.
 /** Pre-R3 reviewed live anchors; R0 original historical snapshot stays intact. */
 export const R2_REVIEWED_WRITER_LINES=Object.freeze({"src/breach-motor-collision.ts":[201,221,264,303,327,346,367,496,509,563,603,660,700,730,750,779,827,864,879],"src/breach-motor-route.ts":[80,102,187,218,230,281,359,389,410,431,445],"src/breach-door-traversal-maneuver.ts":[147,210,321,355]});
+/** R3 live route-writer line anchors before R4 acquisition integration. */
+export const R3_REVIEWED_ROUTE_WRITER_LINES=Object.freeze([86,113,202,238,255,307,385,415,436,457,471]);
 export const R0_CORE_ORIGINAL_LINES=Object.freeze([198,218,261,300,324,343,358,486,499,542,575,631,671,701,721,750,791,818,823]);
 const C='src/breach-motor-collision.ts';
 const R='src/breach-motor-route.ts';
@@ -44,17 +46,17 @@ export const FROZEN_WRITERS=Object.freeze({
   [918,'set','collision-intel-replan','ordinary','allowPhysicalRouteReissue','material difference + recurrence']
  ],
  [R]:[
-  [86,'set','door-leaf-escape','escape','coldSweptEntryEscapeJoin','physical leaf escape join'],
-  [113,'set','door-leaf-escape','escape','restoreAfterOpenLeafEscape','first-leg full-body sweep'],
-  [202,'set','door-escape-future-portal','door','claimColdFuturePortalProbe','bounded first portal approach'],
-  [238,'set','door-squeeze-leaf-exit','squeeze','claimNarrowLeafExitProbe','narrow leaf-exit selector'],
-  [255,'set','door-escape-local-portal/door-escape-world-rejoin','escape','restoreRepeatedDoorEscapeRoute','swept route join or local stage'],
-  [307,'set','forced-door-shortcut','door','forcedDoorShortcutWorthTaking','door phase + length improvement'],
-  [385,'set','fire-retreat','acquire','sweptBodyClear','short full-body retreat'],
-  [415,'set','motor-cold-fine-world','cold','claimD326ColdFineProbe','fine-grid full-body route'],
-  [436,'set','initial-intel/initial-enemy','acquire','prepareMotorRoute','initial known-intel/enemy route'],
-  [457,'set','shove-stage','acquire','knownShoveCrossing','world staging path + original goal'],
-  [471,'set','initial-portal-recovery','acquire','routeToNextOperableDoor','first operable-door prefix']
+  [88,'set','door-leaf-escape','escape','coldSweptEntryEscapeJoin','physical leaf escape join'],
+  [115,'set','door-leaf-escape','escape','restoreAfterOpenLeafEscape','first-leg full-body sweep'],
+  [204,'set','door-escape-future-portal','door','claimColdFuturePortalProbe','bounded first portal approach'],
+  [240,'set','door-squeeze-leaf-exit','squeeze','claimNarrowLeafExitProbe','narrow leaf-exit selector'],
+  [257,'set','door-escape-local-portal/door-escape-world-rejoin','escape','restoreRepeatedDoorEscapeRoute','swept route join or local stage'],
+  [320,'set','forced-door-shortcut','door','forcedDoorShortcutWorthTaking','door phase + length improvement'],
+  [408,'set','fire-retreat','acquire','sweptBodyClear','short full-body retreat'],
+  [447,'set','motor-cold-fine-world','cold','claimD326ColdFineProbe','fine-grid full-body route'],
+  [482,'set','initial-intel/initial-enemy','acquire','prepareMotorRoute','initial known-intel/enemy route'],
+  [511,'set','shove-stage','acquire','knownShoveCrossing','world staging path + original goal'],
+  [534,'set','initial-portal-recovery','acquire','routeToNextOperableDoor','first operable-door prefix']
  ],
  [D]:[
   [152,'set','door-short-entry','door','preferShortPhysicalEntry','physical short-entry selector'],
@@ -119,7 +121,7 @@ export function scanWriters(source,allowed){
    fail('writer args at '+lineOf(source,m.index));
   // R2 may add a fifth, explicit typed adoption evidence argument.
   // Other unreviewed fifth arguments must not silently enter the ledger.
-  if(args.length===5&&!/^(?:(?:fullLane|local|frame|connector|world|intel)Adoption\.proof|(?:short|rehearsal|joined|drift|staged|worldEscape|future|narrow|rejoin)Proof|r3Specialist[0-7]|r3EscapeProof)$/.test(args[4]))
+  if(args.length===5&&!/^(?:(?:fullLane|local|frame|connector|world|intel)Adoption\.proof|(?:short|rehearsal|joined|drift|staged|worldEscape|future|narrow|rejoin)Proof|r3Specialist[0-7]|r3EscapeProof|(?:shortcut|fireDecision|coldDecision|initialDecision|stageDecision|portalDecision)\.proof\?\?undefined)$/.test(args[4]))
    fail('unreviewed adoption proof at '+lineOf(source,m.index));
   const sources=[...args[3].matchAll(/'([^']+)'/g)].map(x=>x[1])
    .filter(x=>allowed.has(x));
