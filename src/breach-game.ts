@@ -1,6 +1,7 @@
 import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
+import {canConcludeWithdrawal} from './breach-operation-outcomes.ts';
 import {coverTargetToken} from './worldgen/site-object-identity.ts';
 export {setStrafe,planPieAt,planPie,editPie,insertPlanNode,planWaitAt,planWait,planSync,planHoldClear,planReload,planReloadAt,planSwitchWeaponAt} from './breach-plan-utility-commands.ts';
 import {legalMoveRoute,knownTraversal,knownShoveCrossing} from './breach-known-route-authoring.ts';
@@ -399,7 +400,9 @@ export type Session=Omit<TacticalState,'operators'> & {
   operationDossier?:OperationDossierV1;
   rescue:RescueEscort|null;
   captureTarget:string|null;captureSecured:boolean;
-  intelCarrierId:string|null;};
+  intelCarrierId:string|null;
+  /** Player-requested organized withdrawal; never a primary-objective win. */
+  withdrawalRequested?:boolean;};
 // The elective enemy-planning budget is mission-local and never serialized.
 /** Planning authority for GO-time ordering; never edits PlanNode[].
  * A new GO after a tactical pause recomputes the remaining crossing
@@ -1995,6 +1998,17 @@ function mission(s:Session,dt:number){
       'EXTRACTION COMPLETE'];
     notify(s,'MISSION COMPLETE');
     battleEvent(s,'objective',null,s.scenario.extract,'MISSION COMPLETE');
+    return;
+  }
+  // GO-time physical gate. All surviving mobile members must be at the
+  // actual extraction point. Downed friends remain accounted for separately.
+  if(canConcludeWithdrawal(s)){
+    s.phase='lost';
+    s.report=['ORGANIZED WITHDRAWAL','PRIMARY OBJECTIVE '+
+      (s.mission==='extract'?'SECURED':'INCOMPLETE')];
+    notify(s,'SQUAD WITHDRAWN — OPERATION CLOSED');
+    battleEvent(s,'objective',null,s.scenario.extract,
+      'SQUAD WITHDRAWN',{action:'withdrawal-complete'});
   }
 }
 function stepFlashbangs(s:Session,h:number){
