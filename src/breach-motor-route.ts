@@ -43,7 +43,8 @@ import {claimD326ColdFineProbe,markD326FineMotorRoute}
  from './breach-d326-fine-route-gate.ts';
 import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
 import {proposeShallowCoverRelease} from './breach-static-cover-release.ts';
-import {witnessedGeneratedEntryStillness}
+import {witnessedGeneratedEntryStillness,
+ readGeneratedEntryPinch,noteGeneratedEntryPinch,ownsLiveGeneratedEntryPinch}
  from './breach-generated-entry-stillness.ts';
 import {claimPhysicalLeafRejoin,relevantStableOpenLeaf,
  selectColdStaleLeafPortalStage} from './breach-physical-leaf-rejoin.ts';
@@ -330,8 +331,6 @@ export function refreshRouteAfterForcedDoor(a:TeamActor,goal:Pt,s:Session):boole
  }
  return false;
 }
-type EntryPinch={orderId:number;doorId:string;at:Pt;since:number;steps:number};
-const entryPinches=new WeakMap<TeamActor,EntryPinch>();
 export type MotorRouteReadiness='ready'|'handled'|'unavailable';
 export function prepareMotorRoute(
  a:TeamActor,p:Pt,dt:number,s:Session,hooks:ActorMotorHooks):MotorRouteReadiness{
@@ -369,11 +368,9 @@ export function prepareMotorRoute(
         // Continue only an already physically certified six-stride
         // release episode; otherwise require measured 1.25s stillness
         // under this SAME generated door and original authored order.
-        const previous=entryPinches.get(a);
-        const continuingEpisode=!!previous&&a.squeeze&&
-          previous.orderId===entry.id&&previous.doorId===leaf.id&&
-          previous.steps<6&&s.seconds-previous.since<2&&
-          d(a.p,previous.at)<5;
+        const previous=readGeneratedEntryPinch(a);
+        const continuingEpisode=ownsLiveGeneratedEntryPinch(
+          a,leaf.id,s.seconds);
         if(continuingEpisode||
            witnessedGeneratedEntryStillness(a,leaf.id,s.seconds)){
         const world=sessionWorldGeometry(s);
@@ -408,7 +405,7 @@ export function prepareMotorRoute(
           if(mayContinue&&separated&&
              sweptProfileClear(a.p,proposed,s.doors,yaw,'squeeze',world)){
             const old=continuing?first:undefined;
-            entryPinches.set(a,old?
+            noteGeneratedEntryPinch(a,old?
               {...old,steps:old.steps+1}:
               {orderId:entry.id,doorId:leaf.id,at:clone(a.p),
                since:s.seconds,steps:1});

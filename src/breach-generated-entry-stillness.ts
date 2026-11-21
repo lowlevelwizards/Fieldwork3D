@@ -36,3 +36,27 @@ export function witnessedGeneratedEntryStillness(
  old.lastAt=now;old.last={...peer.p};
  return now-old.since>=1.25;
 }
+
+/** The same generated ENTRY may own at most six previously swept, real
+ * narrow-body exit strides. This is an ownership witness, NOT clearance.
+ * Motor route and embedded-cover fallback share it to avoid undoing an
+ * earlier physically certified step during the next fixed frame. */
+export type GeneratedEntryPinch={orderId:number;doorId:string;
+ at:Pt;since:number;steps:number};
+const pinches=new WeakMap<TeamActor,GeneratedEntryPinch>();
+export const readGeneratedEntryPinch=(a:TeamActor)=>
+ pinches.get(a);
+export function noteGeneratedEntryPinch(a:TeamActor,e:GeneratedEntryPinch):void{
+ pinches.set(a,e);
+}
+export function ownsLiveGeneratedEntryPinch(
+ a:TeamActor,doorId:string,now:number
+):boolean{
+ const e=pinches.get(a),order=a.plan[0],episode=a.doorTraversal;
+ return !!e&&a.squeeze&&order?.kind==='move'&&
+  order.id===e.orderId&&order.entryDoorId===doorId&&
+  episode?.doorId===doorId&&
+  episode.maneuver==='grab-and-hold'&&e.doorId===doorId&&
+  e.steps<6&&now>=e.since&&now-e.since<2&&
+  gap(a.p,e.at)<5;
+}

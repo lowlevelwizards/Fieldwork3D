@@ -32,25 +32,6 @@ import {recoverDoorApproachDrift,preferShortPhysicalEntry} from './breach-door-t
 import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
  from './breach-motor-cpu-probe.ts';
 
-/** D3.33 forensic only: an opt-in, read-only motor stage trace.
- * Ordinary gameplay never installs a listener. The exact witness records
- * which authoritative stage owns a legitimately blocked generated ENTRY.
- */
-export type D333MotorStage={actor:string;time:number;stage:string;
- nav:number;blocker:string;blocked:number;episode:string|null;
- squeeze:boolean;position:Pt};
-const d333Observers=new WeakMap<Session,(x:D333MotorStage)=>void>();
-export function listenD333MotorStage(s:Session,
- cb:((x:D333MotorStage)=>void)|null):void{
- if(cb)d333Observers.set(s,cb);else d333Observers.delete(s);
-}
-function d333Stage(s:Session,a:TeamActor,stage:string):void{
- const cb=d333Observers.get(s);
- if(cb)cb({actor:a.id,time:s.seconds,stage,
-  nav:a.nav.length,blocker:a.lastBlocker,blocked:a.blockedTime,
-  episode:a.doorTraversal?.doorId??null,squeeze:a.squeeze,
-  position:{...a.p}});
-}
 /** D3.33 P5: physical yield from one GENERATED zero-duration WAIT whose
  * already-open threshold's stalled lead is genuinely overlapping this
  * follower. The same fixed-step authoritative motor owns every movement;
@@ -144,21 +125,17 @@ export function advanceActorMotor(
  // One authoritative observation before any route/door/queue early return.
  // No navigation or hinge force is produced by this D1 foundation.
  if(a.side==='blue')syncDoorTraversalEpisode(a,s.doors,s.seconds);
- d333Stage(s,a,'start');
  const traversalStart=profile?beginMotorCpuMeasurement():0;
  // Do not interrupt a continuous physical traversal with route search.
  if(advanceMotorTraversal(a,s,dt,hooks)){
-  d333Stage(s,a,'advance-traversal');
   if(profile)profile('motor-traversal',finishMotorCpuMeasurement(traversalStart));
   return true;
  }
- if(releaseEmbeddedMotorActor(a,p,s.doors,dt,sessionWorldGeometry(s))){
-  d333Stage(s,a,'embedded-release');
+ if(releaseEmbeddedMotorActor(a,p,s.doors,dt,sessionWorldGeometry(s),s.seconds)){
   if(profile)profile('motor-traversal',finishMotorCpuMeasurement(traversalStart));
   return true;
  }
  if(prepareMotorTraversal(a,p,dt,s,hooks)){
-  d333Stage(s,a,'prepare-traversal');
   if(profile)profile('motor-traversal',finishMotorCpuMeasurement(traversalStart));
   return true;
  }
@@ -167,13 +144,9 @@ export function advanceActorMotor(
  // Recover an operator who wandered far sideways while still committed
  // to the same doorway. One full-radius swept staging correction per
  // episode; never touch authored LOOK/WATCH or the global route graph.
- if(a.side==='blue'&&recoverDoorApproachDrift(a,s)){
-  d333Stage(s,a,'door-drift');return true;
- }
+ if(a.side==='blue'&&recoverDoorApproachDrift(a,s))return true;
  const routeStart=profile?beginMotorCpuMeasurement():0;
- d333Stage(s,a,'before-route');
  const readiness=prepareMotorRoute(a,p,dt,s,hooks);
- d333Stage(s,a,'after-route-'+readiness);
  if(profile)profile('motor-route',finishMotorCpuMeasurement(routeStart));
  if(readiness==='handled')return true;
  if(readiness==='unavailable')return false;
