@@ -3,7 +3,7 @@
  * This renderer owns only the after-action panel's DOM.
  */
 import type {CampaignMode} from '../breach-app-mode.ts';
-import {debrief,team,type Session} from '../breach-game.ts';
+import {debrief,type Session} from '../breach-game.ts';
 import {sessionIntelligenceReview} from '../briefing/briefing-after-action.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
 import type {CampaignState} from '../campaign-state.ts';
@@ -66,7 +66,7 @@ export function renderMissionDebrief(input:{
         String(seconds%60).padStart(2,'0');
     }
     ui.debriefGrade.textContent=stats.grade+' · '+stats.score;
-    ui.debriefSurvivors.textContent=stats.survived+' / '+team(state).length;
+    ui.debriefSurvivors.textContent=stats.survived+' / '+stats.squad.length;
     ui.debriefAccuracy.textContent=stats.shots>0?stats.accuracy+'%':'—';
     ui.debriefObjective.textContent=stats.objective?
      'OBJECTIVE SECURED':'OBJECTIVE NOT COMPLETED';
