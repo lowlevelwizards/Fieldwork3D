@@ -7,7 +7,8 @@ import {generateSite} from '../src/breach-site.ts';
 import {newSession} from '../src/breach-game.ts';
 import {doorWouldStrikeActors} from '../src/breach-door.ts';
 import {doorLeafSegment,OPERATOR_RADIUS} from '../src/breach-core.ts';
-import {openingSweepThreatens,upcomingOpeningSweep}
+import {openingSweepThreatens,stoppedHighPartialEntryStrike,
+ selectGuidedOpeningStep,upcomingOpeningSweep}
  from '../src/breach-door-opening-footwork.ts';
 import {shouldStageForOpening} from '../src/breach-door-opening-ownership.ts';
 const p=(x,y)=>({x,y});
@@ -29,15 +30,18 @@ test('D3.31 archive: physical Townhouse FRONT at 0.931 still threatens its own l
  assert.equal(doorWouldStrikeActors(stopped,
   Math.min(1,.931+.025),[body],OPERATOR_RADIUS),true,
   'frozen physical body itself prevented the rest of the hinge opening');
- assert.equal(openingSweepThreatens(stopped,body),true,
-  '0.72 is not a physical release when the remaining leaf hits this body');
+ assert.equal(openingSweepThreatens(stopped,body),false,
+  'ordinary movement keeps its original .72 opening policy');
+ assert.equal(stoppedHighPartialEntryStrike(stopped,body),true,
+  'only an exact generated ENTRY can opt into self-striking near-open relief');
  const alreadyOpen={...stopped,openFraction:1.0};
  assert.equal(openingSweepThreatens(alreadyOpen,body),false);
+ assert.equal(stoppedHighPartialEntryStrike(alreadyOpen,body),false);
  const swinging={...stopped,angularVelocity:.4};
- assert.equal(openingSweepThreatens(swinging,body),false,
+ assert.equal(stoppedHighPartialEntryStrike(swinging,body),false,
   'do not stage against a normally moving open leaf');
  const locked={...stopped,locked:true};
- assert.equal(openingSweepThreatens(locked,body),false,
+ assert.equal(stoppedHighPartialEntryStrike(locked,body),false,
   'locked leaf grants no movement or geometry exemption');
  assert.deepEqual(session.doors.find(d=>d.id==='FRONT'),door,
   'pure predicates do not modify the actual map door');
