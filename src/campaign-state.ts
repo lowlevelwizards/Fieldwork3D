@@ -562,6 +562,47 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   contracts.push(c.rules?.template==='dispatch'?assignDispatchCase(followup,
    contracts.map(k=>k.dispatchCase?.incidentId).filter((id):id is string=>!!id)):followup);
  }
+ // Every downed operator left behind creates a dedicated casualty-recovery
+ // operation. This is NOT a scripted victory: the player must transport the
+ // body through the real rescue/carry/drag simulation to extraction.
+ for(const id of [...missing].sort()){
+  if(!casualties.has(id)||!participants.has(id))continue;
+  const person=c.operators.find(o=>o.id===id);
+  if(!person||person.status==='lost'||person.status==='retired')continue;
+  const recovery:Contract={
+   id:contract.id+'-mia-'+id,followUpOf:contract.id,
+   recoveryOperatorId:id,
+   seed:hash(contract.seed^day^person.appearanceSeed)||1,
+   kind:'rescue',scale:contract.scale,region:contract.region,
+   title:'Recover '+person.callsign,
+   description:'Operator '+person.callsign+' is missing and incapacitated. '+
+     'Locate and physically carry or drag them to extraction. '+
+     'Their medical outcome is unresolved until the body is recovered.',
+   risk:contract.risk,intel:'scouted',objectiveIntel:'approximate',
+   reward:Math.max(150,Math.floor(contract.reward*.65)),
+   deadline:day+6,status:'available'};
+  contracts.push(c.rules?.template==='dispatch'?assignDispatchCase(recovery,
+   contracts.map(k=>k.dispatchCase?.incidentId).filter((x):x is string=>!!x)):
+   recovery);
+ }
+ // A failed attempt leaves the MIA unresolved; preserve another chance
+ // without allowing unlimited duplicate contracts from debrief retries.
+ if(contract.recoveryOperatorId&&!rescuedId){
+  const missingOperator=c.operators.find(o=>o.id===contract.recoveryOperatorId&&
+    o.status==='lost'&&!!o.missingSinceOperationId);
+  if(missingOperator){
+   const retry:Contract={...contract,
+    id:contract.id+'-retry-'+day,followUpOf:contract.id,
+    seed:hash(contract.seed^day^0x72a5)||1,
+    title:'Recovery Follow-up: '+missingOperator.callsign,
+    description:'Previous recovery attempt did not verify evacuation. '+
+      'Re-establish physical custody and extract the missing operator.',
+    deadline:day+6,status:'available'};
+   contracts.push(c.rules?.template==='dispatch'?assignDispatchCase(retry,
+    contracts.map(k=>k.dispatchCase?.incidentId).filter((x):x is string=>!!x)):
+    retry);
+  }
+ }
  // The appliedResults gate above prevents replay/debrief double charging.
  const serials=c.inventory.serializedWeapons?.map(w=>{
   const owner=c.operators.find(o=>o.weaponSerialId===w.id&&participants.has(o.id));
