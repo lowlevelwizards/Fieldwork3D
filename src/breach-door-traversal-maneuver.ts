@@ -219,7 +219,9 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
  episode.phase='clear-leaf';
  episode.lastTransitionAt=s.seconds;
  setTransientRoute(s,a,chosen.map(clone),
-   rehearsalSource,rehearsalProof);
+   whole.length?'door-rehearsal-world':
+   joined.length?'door-rehearsal-joined-waypoint':'door-rehearsal',
+   rehearsalProof);
  a.autoSidestep=beginAutoSidestep(a.p,next,chosen[0],
   a.heading,episode.destination,s.seconds,canAutoSidestep);
  provisionalRouteAccepted(a);
