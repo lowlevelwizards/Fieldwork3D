@@ -12,7 +12,7 @@ import {undoCampaignCarryGear,copyCampaignCarryLayout} from './campaign-state.ts
 import type {CampaignMode} from './breach-app-mode.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {team,debrief} from './breach-game.ts';
-import {requestWithdrawal,deployedTeam} from './breach-operation-outcomes.ts';
+import {requestWithdrawal,deployedTeam,requestIndividualExtraction} from './breach-operation-outcomes.ts';
 import {installMissingPersonRecovery} from './breach-missing-recovery.ts';
 import type {OperationRecord} from './breach-operations.ts';
 import {loadOperationHistory,appendOperationHistory} from './breach-persistence.ts';
@@ -61,7 +61,7 @@ export type CampaignFlowHooks={
  getMode:()=>CampaignMode;setMode:(value:CampaignMode)=>void;
  getIntel:()=>IntelMode;setIntel:(value:IntelMode)=>void;
  getScale:()=>SiteScale;setScale:(value:SiteScale)=>void;
- getSession:()=>Session;isReplaying:()=>boolean;
+ getSession:()=>Session;getSelected:()=>string;isReplaying:()=>boolean;
  siteSize:HTMLButtonElement;siteSettings:HTMLElement;briefingRoster:HTMLElement;
  refreshHud:()=>void;randomSeed:()=>number;
  resetContract:(job:CampaignState['contracts'][number])=>void;
@@ -168,10 +168,24 @@ function recordCompletedOperation(){
      !state.started||!['running','planning'].includes(state.phase))return;
   if(state.withdrawalRequested){
    state.withdrawalRequested=false;
-   showFieldworkActionFeedback('Withdrawal cancelled; mission continues');
+   if(state.pendingExtractionIds)state.pendingExtractionIds.length=0;
+   showFieldworkActionFeedback('Withdrawal cancelled; already-extracted personnel remain evacuated');
   }else if(requestWithdrawal(state)){
    showFieldworkActionFeedback('Withdrawal ordered — move all mobile operators to extraction');
   }
+  config.refreshHud();
+ });
+ const extractSelected=document.createElement('button');
+ extractSelected.type='button';extractSelected.id='campaignExtractSelectedButton';
+ extractSelected.textContent='EXTRACT SELECTED';
+ extractSelected.title='Queue the selected operator to exit permanently, after reaching extraction and pressing GO';
+ config.siteSettings.append(extractSelected);
+ extractSelected.addEventListener('click',()=>{
+  const state=config.getSession();
+  if(config.isReplaying()||!['mission','quick'].includes(config.getMode())||
+    !requestIndividualExtraction(state,config.getSelected())){
+   showFieldworkActionFeedback('SELECT A MOBILE OPERATOR AT EXTRACTION; RELEASE CARRIED CASUALTIES FIRST');
+  }else showFieldworkActionFeedback('INDIVIDUAL EXTRACTION QUEUED — PRESS GO');
   config.refreshHud();
  });
  const backButton=document.createElement('button');
