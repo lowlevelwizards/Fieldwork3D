@@ -162,3 +162,55 @@ export function selectPhysicalOpenLeafRejoin(
  }
  return [];
 }
+
+
+/** D3.32 P3B: a physically clear actor may have no normal or intel route
+ * because a stable OPEN leaf interrupts the starting grid cell. A short
+ * same-body swept departure can restore the EXISTING first-operable-door
+ * prefix (not the authored destination). Called cold only after the
+ * ordinary acquisition and portal fallback have returned no route.
+ *
+ * No body movement, door interaction, lock override or route adoption
+ * occurs here. Both the departure and every prefix link are checked
+ * against the same live physical collision law. The normal motor will
+ * subsequently execute every selected stride and operate any later door.
+ */
+export function selectColdStaleLeafPortalStage(
+ from:Pt,goal:Pt,leaf:Door,
+ stand:(p:Pt)=>boolean,
+ sweep:(a:Pt,b:Pt)=>boolean,
+ portal:(a:Pt,b:Pt)=>Pt[]
+):Pt[]{
+ if(!leaf.open||leaf.kind==='sliding'||leaf.kind==='shutter'||
+    leaf.locked||leaf.jammed||leaf.wedged||leaf.heldBy||
+    (leaf.openFraction??0)<.98||
+    Math.abs(leaf.angularVelocity??0)>=.16||
+    pointToSegment(from,doorLeafSegment(leaf))>=OPERATOR_RADIUS+16||
+    !stand(from)||d(from,goal)<30)return [];
+ // A small fixed compass library, not dynamic grid/A* at 60Hz. Favor
+ // truly local 8-unit footsteps before larger 16/24-unit departures.
+ // Never spend more than four cold portal searches on one claim.
+ let probes=0;
+ for(const radius of [8,16,24])
+  for(const theta of [0,Math.PI/4,-Math.PI/4,Math.PI/2,
+    -Math.PI/2,Math.PI,3*Math.PI/4,-3*Math.PI/4]){
+   const stage={x:from.x+Math.cos(theta)*radius,
+     y:from.y+Math.sin(theta)*radius};
+   if(!stand(stage)||!sweep(from,stage))continue;
+   const prefix=portal(stage,goal);
+   probes++;
+   if(prefix.length&&prefix.length<=28&&d(stage,prefix[0])<=96){
+    let previous=stage,length=d(from,stage),legal=true;
+    for(const point of prefix){
+     if(!stand(point)||!sweep(previous,point)){
+      legal=false;break;
+     }
+     length+=d(previous,point);previous=point;
+    }
+    if(legal&&length<=d(from,goal)*2.5+90)
+     return [stage,...prefix.map(copy)];
+   }
+   if(probes>=4)return [];
+  }
+ return [];
+}
