@@ -23,6 +23,8 @@ export type RecoveryEvidence={
  eligibility:RecoveryProof;clearance:RecoveryProof;cooldown:RecoveryProof;
  recurrence:RecoveryProof;progress:RecoveryProof;
 };
+/** Explicit strategy evidence passed to the R1 observer only after R2 gates it. */
+export type RecoveryAdoptionProof={evidence:RecoveryEvidence;owner:RecoveryOwner};
 export type RecoverySourcePolicy={
  family:RecoveryFamily;intent:RecoveryIntent;priority:0|1|2|3|4|5;
  clearance:RecoveryClearance;progress:RecoveryProgress;
