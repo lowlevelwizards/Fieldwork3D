@@ -149,6 +149,12 @@ test('V4-5 structured outcome is authoritative while pacing is observational and
    grade:'B',score:81,time:95,objective:true,
    survived:3,shots:40,hits:19,accuracy:47.5,
    casualties:1,pauses:5,rescueStatus:'none',
+   // Modern mission closeout is authoritative, not guessed from replay text.
+   operationOutcome:{disposition:'completed',
+    extractedOperatorIds:[],evacuatedCasualtyIds:[],
+    leftBehindOperatorIds:[]},
+   optionalIntel:{total:0,discovered:0,collected:0,recovered:0},
+   civilianContact:{frightened:0,secured:0,restrained:0,escorted:0},
    squad:[{name:'ROOK',survived:true,injury:false,fired:12},
     {name:'MOSS',survived:true,injury:true,fired:8},
     {name:'ASH',survived:false,injury:true,fired:2}]
