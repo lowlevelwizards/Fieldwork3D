@@ -1,13 +1,7 @@
 name: Replay R4.3 — Bodycam iPhone Visual QA
 on:
-  pull_request:
-    paths:
-      - 'src/breach-replay-bodycam.ts'
-      - 'src/breach-3d.ts'
-      - 'src/breach-main.ts'
-      - 'src/breach-operator-rig.ts'
-      - 'scripts/smoke-replay-r43-bodycam.mjs'
-      - '.github/workflows/replay-r43-bodycam-qa.yml'
+  workflow_call:
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -15,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   bodycam-qa:
-    if: ${{ startsWith(github.head_ref, 'feature/replay-r43-') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/ci-replay-archive-visual-') || startsWith(github.head_ref, 'feature/replay-r43-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:

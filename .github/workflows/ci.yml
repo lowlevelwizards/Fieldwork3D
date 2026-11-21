@@ -41,6 +41,7 @@ jobs:
           node --test tests/ci-weapon-visual-routing.test.mjs
           node --test tests/ci-after-action-routing.test.mjs
           node --test tests/ci-replay-mobile-routing.test.mjs
+          node --test tests/ci-replay-legacy-routing.test.mjs
           node scripts/verification/ci-regression-plan.mjs --check
           node scripts/verification/ci-workflow-inventory.mjs --check
           node scripts/verification/ci-workflow-contract.mjs

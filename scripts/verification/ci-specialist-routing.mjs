@@ -337,6 +337,70 @@ export function selectReplayMobileSuites(paths=[],headRef=''){
  }));
 }
 
+/** A6b: legacy replay video, portable library and original Bodycam QA.
+ * Exact old PR path globs and historical feature heads remain authoritative.
+ */
+export const replayLegacySpecs=[
+ {
+  "key": "replayR2Video",
+  "workflow": "replay-r2-video-smoke.yml",
+  "paths": [
+   "src/breach-replay-video.ts",
+   "src/breach-replay-audio.ts",
+   "src/breach-main.ts",
+   "index.html",
+   "scripts/smoke-replay-r2-video.mjs",
+   ".github/workflows/replay-r2-video-smoke.yml"
+  ],
+  "prefixes": [
+   "feature/replay-r2-audio-"
+  ]
+ },
+ {
+  "key": "replayR3Library",
+  "workflow": "replay-r3-library-smoke.yml",
+  "paths": [
+   "src/breach-replay-archive.ts",
+   "src/breach-replay-motion.ts",
+   "src/breach-replay-library.ts",
+   "src/breach-replay-portable.ts",
+   "src/breach-main.ts",
+   "index.html",
+   "scripts/smoke-replay-r3-library.mjs",
+   ".github/workflows/replay-r3-library-smoke.yml"
+  ],
+  "prefixes": [
+   "feature/replay-r3-library-",
+   "feature/replay-r3-portable-",
+   "feature/replay-ux-v2-release-c-"
+  ]
+ },
+ {
+  "key": "replayR43Visual",
+  "workflow": "replay-r43-bodycam-qa.yml",
+  "paths": [
+   "src/breach-replay-bodycam.ts",
+   "src/breach-3d.ts",
+   "src/breach-main.ts",
+   "src/breach-operator-rig.ts",
+   "scripts/smoke-replay-r43-bodycam.mjs",
+   ".github/workflows/replay-r43-bodycam-qa.yml"
+  ],
+  "prefixes": [
+   "feature/replay-r43-"
+  ]
+ }
+];
+export function selectReplayLegacySuites(paths=[],headRef=''){
+ const files=[...new Set(paths)].sort();
+ return Object.fromEntries(replayLegacySpecs.map(spec=>{
+  const eligible=headRef.startsWith('refactor/ci-replay-archive-visual-')||
+    spec.prefixes.some(prefix=>headRef.startsWith(prefix));
+  return [spec.key,eligible&&files.some(file=>spec.paths.some(glob=>
+   afterActionPathMatches(glob,file)))];
+ }));
+}
+
 function changedFiles(){
  const base=process.env.CI_BASE_REF;
  assert.ok(base&&/^[\w./-]+$/.test(base),'Missing or unsafe PR base');
@@ -356,11 +420,13 @@ function main(){
  const weapons=selectWeaponVisualSuites(paths);
  const debrief=selectAfterActionSuites(paths,process.env.CI_HEAD_REF||process.env.GITHUB_HEAD_REF||'');
  const replay=selectReplayMobileSuites(paths,process.env.CI_HEAD_REF||process.env.GITHUB_HEAD_REF||'');
- const replayMobileAny=Object.values(replay).some(Boolean);
- console.log('Specialist CI routing',JSON.stringify({...result,movement,weapons,debrief,replay}));
+ const replayLegacy=selectReplayLegacySuites(paths,process.env.CI_HEAD_REF||process.env.GITHUB_HEAD_REF||'');
+ const replayMobileAny=[...Object.values(replay),...Object.values(replayLegacy)].some(Boolean);
+ const replayAll={...replay,...replayLegacy};
+ console.log('Specialist CI routing',JSON.stringify({...result,movement,weapons,debrief,replay,replayLegacy}));
  if(args.includes('--github-output')){
   assert.ok(process.env.GITHUB_OUTPUT,'GITHUB_OUTPUT missing');
-  appendFileSync(process.env.GITHUB_OUTPUT,[...Object.entries(result.selected),...Object.entries(movement),...Object.entries(weapons),...Object.entries(debrief),['replayMobileAny',replayMobileAny],['replayMobileJSON',JSON.stringify(replay)]]
+  appendFileSync(process.env.GITHUB_OUTPUT,[...Object.entries(result.selected),...Object.entries(movement),...Object.entries(weapons),...Object.entries(debrief),['replayMobileAny',replayMobileAny],['replayMobileJSON',JSON.stringify(replayAll)]]
    .map(([name,enabled])=>name+'='+String(enabled)).join('\n')+'\n');
  }
 }

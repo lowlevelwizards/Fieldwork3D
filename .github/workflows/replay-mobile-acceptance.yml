@@ -25,3 +25,21 @@ jobs:
     uses: ./.github/workflows/replay-r44-squad-entry.yml
     permissions:
       contents: read
+
+  r2-video-export:
+    if: ${{ fromJSON(inputs.lanes).replayR2Video }}
+    uses: ./.github/workflows/replay-r2-video-smoke.yml
+    permissions:
+      contents: read
+
+  r3-portable-library:
+    if: ${{ fromJSON(inputs.lanes).replayR3Library }}
+    uses: ./.github/workflows/replay-r3-library-smoke.yml
+    permissions:
+      contents: read
+
+  r43-original-bodycam:
+    if: ${{ fromJSON(inputs.lanes).replayR43Visual }}
+    uses: ./.github/workflows/replay-r43-bodycam-qa.yml
+    permissions:
+      contents: read
