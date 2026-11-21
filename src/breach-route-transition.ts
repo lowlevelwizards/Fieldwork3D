@@ -4,6 +4,8 @@
  */
 import type {Session,TeamActor} from './breach-game.ts';
 import {observeD328EntryRoute} from './breach-d328-entry-loop.ts';
+import {hasRecoveryProposalObserver,observeRecoveryProposal}
+ from './breach-recovery-shadow.ts';
 import {doorLeafSegment,type Pt} from './breach-core.ts';
 export type RouteSource=
  'initial-intel'|'initial-enemy'|'shove-stage'|'fire-retreat'|
@@ -51,11 +53,15 @@ export function setTransientRoute(
  s:Session,a:TeamActor,route:Pt[],source:RouteSource):void{
  if(listener)report(s,a,source,route);
  if(route.length)observeD328EntryRoute(a,source,route[0],s.seconds);
+ if(hasRecoveryProposalObserver())
+  observeRecoveryProposal(s,a,source,route,'replace','adopted');
  a.nav=route;
 }
 export function prependTransientLeg(
  s:Session,a:TeamActor,leg:Pt,source:RouteSource):void{
  if(listener)report(s,a,source,[leg,...a.nav]);
+ if(hasRecoveryProposalObserver())
+  observeRecoveryProposal(s,a,source,[leg,...a.nav],'prepend','adopted');
  a.nav.unshift(leg);
 }
 
@@ -64,6 +70,9 @@ export function prependTransientLeg(
 export function observeTransientPrepend(
  s:Session,a:TeamActor,leg:Pt,source:RouteSource):void{
  if(listener)report(s,a,source,[leg,...a.nav]);
+ if(hasRecoveryProposalObserver())
+  observeRecoveryProposal(s,a,source,[leg,...a.nav],
+   'observed-prepend','observed-prepend');
 }
 
 /** D3.13G: offline-only rejection diagnostics. Does not write actor state,
@@ -72,6 +81,9 @@ export function noteDoorHandoffRejection(
  s:Session,a:TeamActor,reason:string
 ):void{
  if(listener)report(s,a,'door-handoff-reject',a.nav,reason);
+ if(hasRecoveryProposalObserver())
+  observeRecoveryProposal(s,a,'door-handoff-reject',a.nav,
+   'replace','rejection-witness',reason);
 }
 
 /** Zero-impact offline audit switch; the gameplay motor never installs it. */
