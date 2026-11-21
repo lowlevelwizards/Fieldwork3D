@@ -431,6 +431,18 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
   const returnButton=document.getElementById('campaignReturnButton') as HTMLButtonElement|null;
   if(returnButton)returnButton.disabled=
     campaignMission&&config.getSession().phase==='running';
+  const withdrawButton=document.getElementById('campaignWithdrawButton') as HTMLButtonElement|null;
+  if(withdrawButton){
+    const live=config.getSession(),active=(campaignMission||quickPlay)&&
+      live.started&&!config.isReplaying()&&
+      (live.phase==='running'||live.phase==='planning');
+    withdrawButton.hidden=!active;
+    withdrawButton.textContent=live.withdrawalRequested?
+      'CANCEL WITHDRAWAL':'WITHDRAW SQUAD';
+    withdrawButton.title=live.withdrawalRequested?
+      'Cancel the withdrawal order; resume the mission':
+      'Preserve partial results by physically returning surviving operators to extraction';
+  }
   ui.intelMode.textContent='NEXT SITE INTEL · '+
     config.getIntel().replaceAll('-', ' ').toUpperCase();
   ui.intelMode.disabled=campaignMission||training||config.isReplaying();
