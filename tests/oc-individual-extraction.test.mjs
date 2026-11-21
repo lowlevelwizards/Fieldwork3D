@@ -90,7 +90,7 @@ test('OC10 actual 60 Hz mission tick retires an arrived squad member',()=>{
  const s=newSession(0,78219,'floor-plan','standard','clear');
  const rook=s.operators.find(a=>a.id==='rook');
  const at={...s.scenario.extract};
- rook.p={...at};rook.plan.length=0;rook.path.length=0;
+ rook.p={...at};rook.priorP={...at};rook.plan.length=0;rook.path.length=0;
  s.started=true;s.phase='planning';s.withdrawalRequested=true;
  assert.equal(requestIndividualExtraction(s,'rook'),true);
  toggling(s);
@@ -108,7 +108,8 @@ test('OC10 replay has the actor before extraction but not in later live frames',
  const recorder=new MissionRecorder();
  recorder.capture(s,true);
  const rook=s.operators.find(a=>a.id==='rook');
- rook.p={...s.scenario.extract};rook.plan.length=0;rook.path.length=0;
+ rook.p={...s.scenario.extract};rook.priorP={...s.scenario.extract};
+ rook.plan.length=0;rook.path.length=0;
  s.started=true;s.phase='planning';s.withdrawalRequested=true;
  assert.equal(requestIndividualExtraction(s,'rook'),true);
  toggling(s);stepSession(s,1/60);
