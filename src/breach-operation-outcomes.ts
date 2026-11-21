@@ -61,7 +61,10 @@ export function requestIndividualExtraction(s:Pick<Session,
  * the actual gate, so no active AI, shots, sight or path can reference a
  * "departed" combatant in the following simulation phase. */
 export function commitIndividualExtractions(s:Session):TeamActor[]{
- if(!s.withdrawalRequested||!s.pendingExtractionIds?.length)return [];
+ // Never retire a live actor from planning, replay, or terminal presentation.
+ // The mission phase owner calls this only after GO on the fixed step.
+ if(s.phase!=='running'||!s.withdrawalRequested||
+   !s.pendingExtractionIds?.length)return [];
  const queue=[...s.pendingExtractionIds];
  s.pendingExtractionIds.length=0;
  const archive=s.extractedOperators??(s.extractedOperators=[]);
