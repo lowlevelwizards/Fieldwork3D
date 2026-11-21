@@ -54,6 +54,31 @@ export function mayHandoffOpenedDoorOrder(
 // every 60Hz tick. A transient settle is execution-only, never an authored
 // waypoint or an excuse to shift a teammate who is already stationary.
 const settledMoveTargets=new WeakMap<TeamActor,{nodeId:number;point:Pt}>();
+/** D3.34: a GENERATED STACK's original world coordinate can become
+ * physically occupied by its newly opened real leaf. A completed, validated
+ * alternative standing point is the ONLY allowed pose for the immediately
+ * linked generated SYNC gate. Nothing rewrites either authored node,
+ * globally changes sync tolerances or marks a squad ENTRY as arrived.
+ * A player-issued SYNC never obtains this actor-local proof.
+ */
+type GeneratedStackSyncAnchor={
+ syncId:number;syncCode:string;doorId:string;
+ original:Pt;point:Pt;
+};
+const generatedStackSyncAnchors=new WeakMap<TeamActor,GeneratedStackSyncAnchor>();
+export function validGeneratedStackSyncAnchor(
+ n:PlanNode,a:TeamActor,
+ proof:GeneratedStackSyncAnchor|undefined,
+ physicallyStandable:(p:Pt)=>boolean
+):Pt|null{
+ if(n.kind!=='sync'||!n.syncCode||!proof||
+    a.plan[0]?.id!==n.id||proof.syncId!==n.id||
+    proof.syncCode!==n.syncCode||
+    d(n.p,proof.original)>.5||a.side!=='blue'||
+    !physicallyStandable(proof.point))return null;
+ return proof.point;
+}
+
 const entrySettleProbe=new WeakMap<TeamActor,{nodeId:number;nextAt:number}>();
 // Optional audit-only provenance. Off in the live game, never participates in
 // choosing a destination, modifying an order or moving the physical motor.
@@ -169,6 +194,13 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
   }
   const settledAt=!!retained&&near(a.p,retained,3.5)&&
     friendlyPeers.every(peer=>d(a.p,peer)>=14);
+  const generatedSyncPoint=n.kind==='sync'?
+    validGeneratedStackSyncAnchor(n,a,generatedStackSyncAnchors.get(a),
+      point=>bodyClear(point,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))):
+    null;
+  const arrivedAtLinkedGeneratedSync=!!generatedSyncPoint&&
+    near(a.p,generatedSyncPoint,3.5)&&
+    bodyClear(a.p,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s));
   // C2: only the generated ENTRY endpoint may move to a physically
   // verified nearby interior position. No authored MOVE target is changed.
   const probe=entrySettleProbe.get(a);
@@ -228,6 +260,16 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
   if(newlySettled){
     settledMoveTargets.set(a,{nodeId:n.id,
       point:{...newlySettled}});
+    if(stackSettle&&n.kind==='move'&&n.stackDoorId){
+      const following=a.plan[1];
+      if(following?.kind==='sync'&&following.syncCode&&
+         d(following.p,n.p)<.5)
+        generatedStackSyncAnchors.set(a,{
+          syncId:following.id,syncCode:following.syncCode,
+          doorId:n.stackDoorId,original:{...n.p},
+          point:{...stackSettle}
+        });
+    }
     if(entryLandingWitness&&n.kind==='move'&&n.entryDoorId)
       entryLandingWitness({actorId:a.id,seconds:s.seconds,orderId:n.id,
         entryDoorId:n.entryDoorId,from:{...a.p},originalGoal:{...n.p},
@@ -249,7 +291,7 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
     move(a,settle,dt,s,.72);
     return true;
   }
-  const at=settledAt||near(a.p,n.p,5)||(
+  const at=settledAt||arrivedAtLinkedGeneratedSync||near(a.p,n.p,5)||(
     n.kind==='move'&&nearOccupiedFriendlyGoal(a.p,n.p,
       friendlyPeers,(from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))));
   if(at&&retained)settledMoveTargets.delete(a);
@@ -308,7 +350,7 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
         e.surrendered&&e.restrained===true&&e.escortLeaderId===a.id)??null:null;
     const escortScale=escortWalkMultiplier(a,escorted);
     const prisonerScale=physicalEscortWalkMultiplier(a,escortedSuspect);
-    move(a,n.p,dt,s,(running?1.40:distantTemplateStack?1:
+    move(a,generatedSyncPoint??n.p,dt,s,(running?1.40:distantTemplateStack?1:
       templateEntry?.90:cautious?.70:1)*Math.min(escortScale,prisonerScale));
     // Unmodified movement follows its route, while an explicit fixed STRAFE
     // or PIE/TRACK instruction persists until LOOK releases it.
