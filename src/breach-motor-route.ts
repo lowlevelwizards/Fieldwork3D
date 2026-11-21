@@ -41,6 +41,8 @@ import {coldSweptEntryEscapeJoin} from './breach-d325-escape-join.ts';
 import {claimD326ColdFineProbe,markD326FineMotorRoute}
  from './breach-d326-fine-route-gate.ts';
 import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
+import {claimPhysicalLeafRejoin,relevantStableOpenLeaf,
+ selectColdStaleLeafPortalStage} from './breach-physical-leaf-rejoin.ts';
 
 /** After an ACTUAL swept door overlap escape, prefer one physical
  * world-truth connector past a STABLE fully-open leaf. Otherwise a
@@ -534,6 +536,67 @@ export function prepareMotorRoute(
           setTransientRoute(s,a,prefix,'initial-portal-recovery',
             portalDecision.proof??undefined);
           provisionalRouteAccepted(a);
+        }
+      }
+    }
+
+    // D3.32 P3B: a genuinely route-less authored MOVE can be stranded
+    // beside a fully OPEN solid leaf while an old, remote door traversal
+    // episode protects the wrong hinge (frozen Clinic D9/D10). Only after
+    // the ordinary intel/shove/portal requests fail, probe ONE cold,
+    // full-body-swept departure to the EXISTING next operable door prefix.
+    // The local leaf must be physically touching this body, the old owner
+    // must be remote, settled, and without active hand or maneuver.
+    // Neither the player GO nor the actual doorway collision is skipped.
+    if(!a.nav.length&&a.side==='blue'&&a.plan[0]?.kind==='move'&&
+       !a.plan[0].entryDoorId&&!a.plan[0].stackDoorId&&
+       !a.traversal&&!a.traversalPending&&!a.squeeze&&
+       !a.autoSidestep&&!a.fireRetreatTarget){
+      const episode=a.doorTraversal;
+      const local=relevantStableOpenLeaf(a.p,s.doors);
+      const oldDoor=episode&&s.doors.find(door=>door.id===episode.doorId);
+      const hand=a.doorHandContact;
+      if(episode&&oldDoor&&local&&episode.doorId!==local.id&&
+         episode.authoredOrderId===a.plan[0].id&&
+         episode.waypoints.length===0&&!episode.handContact&&
+         (!hand||hand.releasedAt!==null)&&
+         oldDoor.open&&(oldDoor.openFraction??0)>=.98&&
+         Math.abs(oldDoor.angularVelocity??0)<.16&&
+         d(a.p,doorCenter(oldDoor))>66&&
+         pointToSegment(a.p,doorLeafSegment(oldDoor))>
+           OPERATOR_RADIUS+20&&
+         local.open&&(local.openFraction??0)>=.98&&
+         !local.locked&&!local.jammed&&!local.wedged&&!local.heldBy&&
+         pointToSegment(a.p,doorLeafSegment(local))<
+           OPERATOR_RADIUS+16&&
+         claimPhysicalLeafRejoin(a,local,p,s.seconds,
+           sessionWorldGeometry(s).revision,s.doors)){
+        const world=sessionWorldGeometry(s);
+        const sweep=(from:Pt,to:Pt)=>
+          sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
+        const stage=selectColdStaleLeafPortalStage(a.p,p,local,
+          point=>bodyClear(point,s.doors,OPERATOR_RADIUS,world),
+          sweep,
+          (from,to)=>routeToNextOperableDoor(from,to,s.doors,world));
+        if(stage.length){
+          // Retire a stale *transient* episode ONLY once all route/body
+          // evidence exists. The existing acquisition gate still owns
+          // authorization and restores that episode on rejection.
+          a.doorTraversal=null;
+          const decision=authorizeRouteAcquisition({
+            actor:a,session:s,source:'initial-portal-recovery',goal:p,
+            route:stage,orderIdAtSelection:acquisitionOrderId,
+            certificate:'first-operable-door-prefix',
+            eligible:true,physicalProof:true,initialRouteAbsent:true
+          });
+          if(decision.kind==='adopt'){
+            setTransientRoute(s,a,stage,'initial-portal-recovery',
+              decision.proof??undefined);
+            provisionalRouteAccepted(a);
+            a.lastNavRepairAt=s.seconds;
+            return 'ready';
+          }
+          a.doorTraversal=episode;
         }
       }
     }
