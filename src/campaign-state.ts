@@ -36,6 +36,7 @@ import {stageMagazines,magazineSpace,type MagazineLocation}
 import {initialEquipmentLoadout,readEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
  type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
 import {progressOperator,type OperatorPerformance,type SkillGains} from './campaign-progression.ts';
+import {assessCampaignAftercare,aftercareDescription} from './campaign-casualty-aftercare.ts';
 import {readKitPresets,nextPresetId,MAX_KIT_PRESETS,type EquipmentPreset} from './equipment-presets.ts';
 import {initialArmorIntegrity,type ArmorIntegrity} from './equipment-armor.ts';
 import {clampFlashUse} from './equipment-supply.ts';
@@ -406,6 +407,7 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
  const participants=new Set(r.participatingIds);
  const casualties=new Set(r.casualties);
  const stabilized=new Set(r.stabilizedIds??[]);
+ const critical=new Set(r.criticalIds??[]);
  const evacuated=new Set(r.evacuatedIds??[]);
  const missing=new Set(r.leftBehindIds??[]);
  const gainedSkills:SkillGains[]=[];
@@ -453,6 +455,17 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
    day:c.day,operatorId:o.id,operationId:r.id,kind:'wounded',
    detail:'Wounded during '+contract.title});
   const unrecoveredCasualty=missing.has(o.id)&&casualties.has(o.id);
+  const aftercare=assessCampaignAftercare({
+   downed:casualties.has(o.id),evacuated:evacuated.has(o.id),
+   leftBehind:unrecoveredCasualty,stabilized:stabilized.has(o.id),
+   critical:critical.has(o.id),
+   structured:r.stabilizedIds!==undefined||r.criticalIds!==undefined,
+   injuryStage:performance?.injuryStage??0
+  });
+  if(casualties.has(o.id)&&evacuated.has(o.id))careerEvents.push({
+    id:r.id+'-'+o.id+'-aftercare',day:c.day,operatorId:o.id,
+    operationId:r.id,kind:'casualty-aftercare',
+    detail:aftercareDescription(aftercare)});
   const base={...o,
    // Missing is not recovered, discharged or confirmed dead. Preserve the
    // veteran until a future verified recovery pathway exists.
@@ -462,14 +475,19 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
    normalizedMedicalSupplies(r.medicalRemaining[o.id],kitMedicalSupplies(o.loadout)):
    o.medicalSupplies,missions:o.missions+1,
    successful:o.successful+(r.outcome==='success'?1:0),
-   recoveryDays:Math.max(0,o.recoveryDays-1,
-    casualties.has(o.id)?(r.stabilizedIds===undefined?2:
-      evacuated.has(o.id)?stabilized.has(o.id)?2:3:
-      stabilized.has(o.id)?3:5):0)};
+   // Exactly one day passes at settlement; severity comes from physical
+   // custody and real end-state triage, never narrative-only reports.
+   recoveryDays:Math.max(0,o.recoveryDays-1,aftercare.recoveryDays)};
   const progressed=performance?
    progressOperator(base,performance,r.outcome==='success'):null;
   if(progressed)gainedSkills.push(progressed.gains);
-  const current=progressed?.operator??base;
+  // Progression is the owner of skills/ammo. Its historical fallback
+  // subtracts another day from recovery; preserve this operation's already
+  // settled one-day passage and stronger verified medical prognosis.
+  const current=progressed?{
+    ...progressed.operator,
+    recoveryDays:Math.max(base.recoveryDays,progressed.operator.recoveryDays)
+  }:base;
   // The reporter's actual surviving magazines are already restored above,
   // before physical carrier validation. Legacy reports leave the kit alone.
   const settled=r.fieldRemaining?.[o.id]===undefined?null:
