@@ -73,6 +73,8 @@ import {claimD327ColdPassage,coldExactPassageWorldRoute}
 import {claimD328EntryLoopProbe,d328DistinctFullBodyAlternative,
  noteD328FineOwnership,ownsD328FineRoute}
  from './breach-d328-entry-loop.ts';
+import {shouldProbeEarlyFollowOnOpenLeaf}
+ from './breach-d331-follow-on-open-leaf.ts';
 
 export function resolveMotorCollision(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
@@ -710,8 +712,15 @@ export function resolveMotorCollision(
       pointToSegment(desiredMove,doorLeafSegment(door))<OPERATOR_RADIUS+12);
     const repair=recoveryAction(a.lastBlocker,a.blockedTime,
       s.seconds-a.lastNavRepairAt,a.recoveryAttempts,{doorMoving});
-    if((repair==='replan'||repair==='report')&&s.seconds>=a.retryRouteAt&&
-       !ownsDoorManeuverRoute(a)){
+    // D3.31: After a real generated ENTRY, a later fully OPEN leaf
+    // may still obstruct this body's coarse navigation. Permit the
+    // SAME physical-world recovery after .35s of actual door contact
+    // instead of accumulating a new .85s stall. No route is conjured,
+    // no special door opening, and the normal R2 adoption gate remains.
+    const earlyFollowOnLeaf=shouldProbeEarlyFollowOnOpenLeaf(
+      a,p,s.doors,s.seconds,!closed&&!blocking&&!traversable);
+    if((repair==='replan'||repair==='report'||earlyFollowOnLeaf)&&
+       s.seconds>=a.retryRouteAt&&!ownsDoorManeuverRoute(a)){
       a.lastNavRepairAt=s.seconds;
       // R2.1: when the actor ITSELF blocks a stationary partial hinge,
       // a tiny fully swept step can free the opening before a broad A*.
