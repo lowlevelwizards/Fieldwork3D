@@ -1216,7 +1216,8 @@ export class CampaignScreen{
      'DAY '+earned.day+' · UNIT RECOGNITION: '+earned.name));
   }
   const highlights=c.journal.filter(e=>
-   ['wounded','first-deployment','first-success','objective','intel','down','distinction']
+   ['wounded','first-deployment','first-success','objective','intel','down','distinction',
+    'operator-missing','operator-recovered','casualty-evacuated']
     .includes(e.kind)).slice(-6).reverse();
   if(highlights.length){
    const timeline=node('details','campaign-career-timeline');
@@ -2757,6 +2758,12 @@ export class CampaignScreen{
    add('LOCATION',contract.region);
    add('RISK',['','LOW','MODERATE','HIGH'][contract.risk]);
    add('REWARD / DEADLINE',contract.reward+' CR · DAY '+contract.deadline);
+  }
+  if(contract.recoveryOperatorId){
+   const patient=campaign.operators.find(o=>o.id===contract.recoveryOperatorId);
+   add('MISSING OPERATOR',
+    (patient?.callsign??'UNKNOWN')+
+    ' · MUST DRAG OR CARRY TO EXTRACTION · MEDICAL FATE UNCONFIRMED');
   }
   add('OBJECTIVE WHEREABOUTS',({
    unknown:'Unknown · team must search the building',

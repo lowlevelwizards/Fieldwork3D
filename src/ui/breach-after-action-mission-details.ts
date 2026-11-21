@@ -64,6 +64,13 @@ export function renderStructuredMissionDetails(input:{
      String(stats.optionalIntel.recovered)+' INTEL BEFORE RESOURCE CAP':
      'QUICK PLAY · SCORE ONLY']
  ]));
+ if(stats.missingPersonRecovery)root.append(section('MISSING OPERATOR RECOVERY',[
+   ['CAREER ID',stats.missingPersonRecovery.operatorId],
+   ['RECOVERED BY',stats.squad.find(a=>a.id===stats.missingPersonRecovery!.carrierId)?.name??
+     stats.missingPersonRecovery.carrierId],
+   ['TRANSPORT','PHYSICAL CUSTODY VERIFIED'],
+   ['MEDICAL', 'POST-EVACUATION TREATMENT REQUIRED']
+ ]));
  if(stats.scoreComponents?.length){
   const breakdown=make('section','fw-v5-mission-section fw-v5-score-breakdown');
   breakdown.append(make('h3','','SCORE EXPLANATION'));

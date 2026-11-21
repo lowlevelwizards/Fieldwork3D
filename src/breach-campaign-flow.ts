@@ -13,6 +13,7 @@ import type {CampaignMode} from './breach-app-mode.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {team,debrief} from './breach-game.ts';
 import {requestWithdrawal} from './breach-operation-outcomes.ts';
+import {installMissingPersonRecovery} from './breach-missing-recovery.ts';
 import type {OperationRecord} from './breach-operations.ts';
 import {loadOperationHistory,appendOperationHistory} from './breach-persistence.ts';
 import {careerEventsForOperation} from './campaign-history.ts';
@@ -105,6 +106,9 @@ function recordCompletedOperation(){
     grade:stats.grade,elapsed:stats.time,
     disposition:stats.operationOutcome.disposition,
     objectiveSecured:stats.operationOutcome.objectiveSecured,
+    ...(stats.missingPersonRecovery?{
+      missingRecoveredId:stats.missingPersonRecovery.operatorId,
+      missingRecoveredBy:careerId(stats.missingPersonRecovery.carrierId)}:{}),
     intelRecovered:stats.optionalIntel.recovered,
     intelRecoveryBy:Object.fromEntries(members.flatMap(member=>{
       const n=state.optionalIntel.filter(item=>item.collectedBy===member.id&&
@@ -448,6 +452,12 @@ function deployCampaignContract(){
  model.scale=deployment.scale;
  config.siteSize.textContent='MAP SIZE · '+model.scale.toUpperCase();
  config.resetContract(job);
+ if(job.recoveryOperatorId&&
+    !installMissingPersonRecovery(config.getSession(),job.recoveryOperatorId)){
+  void showFieldworkNotice('Recovery mission unavailable',
+   'Unable to establish a transportable casualty at this site.');
+  showCampaignHome();return;
+ }
  setObjectiveIntelLevel(config.getSession(),contractObjectiveIntel(job));
  // Capture AFTER reset: the reset pathway invalidates prior mission state.
  deployedIncident=deployedDispatchIncident(model.campaign,job.id);

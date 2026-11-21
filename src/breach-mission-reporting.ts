@@ -11,6 +11,7 @@ import {attributableCivilianHarm} from './breach-civilian-harm.ts';
 import {assessDispatchForce} from './dispatch-force-review.ts';
 import {captureVitalStatus} from './breach-capture-vitals.ts';
 import {deriveOperationOutcome} from './breach-operation-outcomes.ts';
+import {verifiedMissingPersonRecovery} from './breach-missing-recovery.ts';
 import {optionalIntelRecovered} from './breach-optional-intel.ts';
 
 const near=(a:Pt,b:Pt,range:number)=>Math.hypot(a.x-b.x,a.y-b.y)<=range;
@@ -29,6 +30,7 @@ export function missionText(s:Session){
   if(s.phase==='won')return 'COMPLETE — OPERATION SUCCESS';
   if(s.phase==='lost')return s.withdrawalCompleted?'SQUAD WITHDRAWN':'MISSION FAILED';
   if(s.withdrawalRequested)return 'WITHDRAWAL ORDERED • MOVE MOBILE SQUAD TO EXTRACTION';
+  if(s.missingRecoveryTargetId)return 'RECOVER MISSING OPERATOR · DRAG OR CARRY TO EXTRACTION';
   if(s.mission==='clear')return s.missionType==='capture'?
     'TAKE TARGET ALIVE · RESTRAIN OR TREAT IF DOWN':
     'CLEAR HOSTILES • SECURE OBJECTIVE';
@@ -50,6 +52,7 @@ export function missionText(s:Session){
 export function debrief(s:Session){
   const own=team(s);
   const operationOutcome=deriveOperationOutcome(s);
+  const missingPersonRecovery=verifiedMissingPersonRecovery(s);
   const recoveredIntel=optionalIntelRecovered(s);
   const casualties=own.filter(a=>a.health<=0).length;
   const casualtyCare=stabilizationSummary(own);
@@ -103,6 +106,7 @@ export function debrief(s:Session){
       near(a.p,s.scenario.extract,47)).length,
   },true);
   return {result:s.phase,operationOutcome,
+    missingPersonRecovery,
     optionalIntel:{total:s.optionalIntel?.length??0,
       discovered:s.optionalIntel?.filter(i=>i.discovered).length??0,
       collected:s.optionalIntel?.filter(i=>i.collectedBy!==null).length??0,

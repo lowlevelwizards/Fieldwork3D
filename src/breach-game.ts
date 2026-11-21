@@ -408,6 +408,8 @@ export type Session=Omit<TacticalState,'operators'> & {
   withdrawalRequested?:boolean;
   /** Set only after the actual GO-time physical extraction gate. */
   withdrawalCompleted?:boolean;
+  /** A named MIA casualty-recovery mission, not a second objective authority. */
+  missingRecoveryTargetId?:string;
   optionalIntel:OptionalIntelItem[];
   intelGather:OptionalIntelGather|null;};
 // The elective enemy-planning budget is mission-local and never serialized.
