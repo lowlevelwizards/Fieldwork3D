@@ -29,7 +29,8 @@ export function missionText(s:Session){
  if(s.site?.training)return 'TRAINING · '+s.site.name+' · PRACTICE';
   if(s.phase==='won')return 'COMPLETE — OPERATION SUCCESS';
   if(s.phase==='lost')return s.withdrawalCompleted?'SQUAD WITHDRAWN':'MISSION FAILED';
-  if(s.withdrawalRequested)return 'WITHDRAWAL ORDERED • MOVE MOBILE SQUAD TO EXTRACTION';
+  if(s.withdrawalRequested)return 'WITHDRAWAL · '+
+    (s.extractedOperators?.length??0)+' EXTRACTED • MOVE REMAINING SQUAD TO EXIT';
   if(s.missingRecoveryTargetId)return 'RECOVER MISSING OPERATOR · DRAG OR CARRY TO EXTRACTION';
   if(s.mission==='clear')return s.missionType==='capture'?
     'TAKE TARGET ALIVE · RESTRAIN OR TREAT IF DOWN':
