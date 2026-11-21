@@ -87,3 +87,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
+
+  # Consolidated PR dispatch: these reusable gates no longer create separate
+  # mostly-skipped workflow runs on every ordinary pull request. Their manual
+  # workflow_dispatch entry points and exact test jobs remain intact.
+  architecture-integration:
+    if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'refactor/') || startsWith(github.head_ref, 'feature/release1-') || startsWith(github.head_ref, 'feature/release2-') || startsWith(github.head_ref, 'feature/release3-') || startsWith(github.head_ref, 'feature/release4-') || startsWith(github.head_ref, 'feature/release5-') || startsWith(github.head_ref, 'feature/release6-')) }}
+    uses: ./.github/workflows/architecture-refactor-critical.yml
+    permissions:
+      contents: read
+      actions: read
+
+  browser-acceptance:
+    if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'refactor/closeout-stage6-') || startsWith(github.head_ref, 'refactor/consolidation-') || startsWith(github.head_ref, 'feature/release1-') || startsWith(github.head_ref, 'feature/release2-') || startsWith(github.head_ref, 'feature/release3-') || startsWith(github.head_ref, 'feature/release4-') || startsWith(github.head_ref, 'feature/release5-') || startsWith(github.head_ref, 'feature/release6-')) }}
+    uses: ./.github/workflows/closeout-stage6-browser.yml
+    permissions:
+      contents: read
