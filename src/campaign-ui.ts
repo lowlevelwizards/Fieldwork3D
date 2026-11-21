@@ -2820,7 +2820,7 @@ export class CampaignScreen{
   if(assigned.length<4)cautions.push('Only '+assigned.length+' of 4 squad slots filled');
   if(assigned.some(p=>p.recoveryDays>0))cautions.push('Assigned operator still recovering');
   if(!campaignSquadPresent(campaign))cautions.push(
-   'Missing or retired operator must be replaced before deployment');
+   'Four ready operators required. Replace missing, retired or recovering personnel.');
   if(campaign.supplies.ammo<60)cautions.push('Low ammunition stock for future resupply');
   if(campaign.supplies.medical===0)cautions.push('No spare medical kits in stock');
   if(cautions.length){
@@ -2853,7 +2853,7 @@ export class CampaignScreen{
    this.handlers.chooseContract(contract.id);
   },'campaign-primary');
   deploy.disabled=!campaignSquadPresent(campaign);
-  if(deploy.disabled)deploy.title='Replace missing or retired personnel in the squad first';
+  if(deploy.disabled)deploy.title='Assign four ready operators; missing, retired, and recovering personnel cannot deploy';
   const dismiss=()=>{
    overlay.remove();
    prior?.focus({preventScroll:true});
