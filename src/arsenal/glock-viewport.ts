@@ -135,15 +135,22 @@ export class GlockViewport{
   this.model=buildSidearmPreview(id,{monochrome:clay,customization});
   this.scene.add(this.model);this.fit();this.draw();
  }
- side(){this.yaw=0;this.pitch=0;this.draw();}
- opposite(){this.yaw=Math.PI;this.pitch=0;this.draw();}
- top(){this.yaw=0;this.pitch=1.38;this.draw();}
+ side(){this.yaw=0;this.pitch=0;if(this.tightArt)this.fit();this.draw();}
+ opposite(){this.yaw=Math.PI;this.pitch=0;if(this.tightArt)this.fit();this.draw();}
+ top(){this.yaw=0;this.pitch=1.38;if(this.tightArt)this.fit();this.draw();}
  /** Scoped Beretta art-only framing; default Glock editor remains unchanged. */
  useTightArtFraming(){
-  this.tightArt=true;this.fitMultiplier=.89;this.fit();this.draw();
+  // D8: larger readable pistol in the side-on Beretta inspector only.
+  // The standard Glock workbench and user-controlled drag/pinch are unchanged.
+  this.tightArt=true;this.fitMultiplier=.83;this.fit();this.draw();
  }
  quarter(){
-  this.yaw=.52;this.pitch=.23;this.fit();this.draw();
+  this.yaw=.52;this.pitch=.23;this.fit();
+  // Perspective foreshortening makes this specific art-only preset appear
+  // disproportionately tiny on portrait phones. Restore its visual scale
+  // without changing the shared orbit controls or Glock viewport zoom.
+  if(this.tightArt)this.radius=THREE.MathUtils.clamp(this.radius*.89,14,120);
+  this.draw();
  }
  reset(){this.yaw=0;this.pitch=0;this.fit();this.draw();}
  // Coalesce touch/mouse orbit updates into the display cadence.
