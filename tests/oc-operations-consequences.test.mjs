@@ -75,6 +75,8 @@ test('OC4 unrecovered casualty becomes MIA, not healed or declared dead',()=>{
  const moss=result.operators.find(o=>o.id==='moss');
  assert.equal(moss.status,'lost','missing cannot deploy or self-heal');
  assert.equal(moss.missingSinceOperationId,report.id,'fate remains explicit');
+ assert.equal(result.journal.filter(e=>e.kind==='withdrawal'&&
+  e.operatorId==='moss').length,0,'missing casualty did not withdraw');
  assert.ok(result.journal.some(e=>e.kind==='operator-missing'&&
   e.operatorId==='moss'&&e.detail.includes('unconfirmed')));
  assert.equal(result.operators.find(o=>o.id==='rook').status,'available');

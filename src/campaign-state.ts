@@ -393,7 +393,8 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
  const careerEvents:CareerEvent[]=[];
  // Withdrawal is not an automatic fatality. Record custody and recovery
  // facts separately from the existing combat medical authority.
- if(r.disposition==='withdrawn')for(const id of participants)
+ if(r.disposition==='withdrawn')for(const id of new Set([
+   ...(r.extractedIds??[]),...(r.evacuatedIds??[])]))if(participants.has(id))
   careerEvents.push({id:r.id+'-'+id+'-withdrawal',day:c.day,
    operatorId:id,operationId:r.id,kind:'withdrawal',
    detail:'Withdrew from '+contract.title});
