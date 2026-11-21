@@ -27,7 +27,7 @@ A mission is an operation with independent tactical, human, intelligence and cam
 - Deterministic 2–6 small pickups depending on map room count; no new worldgen RNG.
 - Physically plausible room spots with a simple cover clearance check; primary objective location excluded.
 - Operator cone and actual unobstructed sight required to discover, regardless of floor-plan or full-view architectural mode.
-- Once discovered, evidence appears in Floor Plan and 3D projected tactical overlays, not in clean bodycam/replay.
+- Once discovered, evidence appears in Floor Plan and 3D projected tactical overlays, plus small chunky three-dimensional dossier/radio/laptop props; never in a historical replay without its own evidence.
 - One explicit GATHER INTEL command when the selected operator is in real contact, taking 1.2s of fixed-step uninterrupted presence.
 - The collecting operator holds the actual item. Incapacitation drops the item at their physical location, allowing a different operator to recover it.
 - Only living carriers physically within the extraction radius are credited. Collected evidence not extracted is not campaign-awarded. Replay content from past builds has no fabricated pickups.
