@@ -15,6 +15,8 @@ export const BASE_COMMIT='fe2489f3a430aa170478bb4cb2d7b412961ccb1e';
 export const R2_REVIEWED_WRITER_LINES=Object.freeze({"src/breach-motor-collision.ts":[201,221,264,303,327,346,367,496,509,563,603,660,700,730,750,779,827,864,879],"src/breach-motor-route.ts":[80,102,187,218,230,281,359,389,410,431,445],"src/breach-door-traversal-maneuver.ts":[147,210,321,355]});
 /** R3 live route-writer line anchors before R4 acquisition integration. */
 export const R3_REVIEWED_ROUTE_WRITER_LINES=Object.freeze([86,113,202,238,255,307,385,415,436,457,471]);
+/** Frozen source writer offsets before D3.31 physical-quality changes. */
+export const D330_PRE_QUALITY_WRITER_LINES=Object.freeze([203,223,266,308,336,359,381,513,531,586,626,686,730,764,785,817,866,903,918]);
 export const R0_CORE_ORIGINAL_LINES=Object.freeze([198,218,261,300,324,343,358,486,499,542,575,631,671,701,721,750,791,818,823]);
 const C='src/breach-motor-collision.ts';
 const R='src/breach-motor-route.ts';
@@ -25,25 +27,25 @@ const P='src/breach-motor-passage.ts';
 // These are observed safeguards, NOT R1-approved recovery contracts.
 export const FROZEN_WRITERS=Object.freeze({
  [C]:[
-  [203,'set','motor-micro-departure','cold','claimColdMotorMicroDeparture','short full-body + WATCH'],
-  [223,'set','motor-cold-fine-world','cold','claimD326ColdFineProbe','fine-grid full-body + WATCH'],
-  [266,'set','motor-exact-passage','cold','claimD327ColdPassage','world route + first-leg WATCH'],
-  [308,'set','d328-entry-fine-world','stack','claimD328EntryLoopProbe','distinct full-route + WATCH'],
-  [336,'set','lane-cycle-world','door','shouldProbeCircularFullBodyLane','alternate route selector'],
-  [359,'set','lane-cycle-world','stack','shouldProbeDoorlessStackLane','alternate route selector'],
-  [381,'set','full-body-lane','ordinary','allowPhysicalRouteReissue','first-stride + full-body sweep + WATCH'],
-  [513,'set','door-escape-swept-rejoin','escape','sweptRejoinExistingRoute','full-body rejoin sweep'],
-  [531,'set','door-leaf-escape','clear','escapeOpenDoorOverlap','physical overlap escape; clear nav'],
-  [586,'prepend','local-detour','actor','recoveryAction','local continuation + WATCH'],
-  [626,'prepend','local-detour','actor','eligibleFrameActorDetour','first-stride + continuation + WATCH'],
-  [686,'set','stack-micro-corner','stack','claimStackMicroAttempt','full-body micro-corner'],
-  [730,'prepend','self-hinge-relief','door','selfBlockingHingeRelief','hinge-relief selector'],
-  [764,'set','open-leaf-local-rejoin','door','claimPhysicalLeafRejoin','physical leaf rejoin + WATCH'],
-  [785,'set','cold-micro-departure','cold','claimRepeatedFurnitureDeparture','verified departure + WATCH'],
-  [817,'set','entry-squeeze-departure','squeeze','claimM2EntrySqueezeProbe','narrow profile + WATCH'],
-  [866,'set','blocked-leg-connector','ordinary','allowPhysicalRouteReissue','first-stride full-body'],
-  [903,'set','collision-world-replan','ordinary','allowPhysicalRouteReissue','material difference + recurrence'],
-  [918,'set','collision-intel-replan','ordinary','allowPhysicalRouteReissue','material difference + recurrence']
+  [205,'set','motor-micro-departure','cold','claimColdMotorMicroDeparture','short full-body + WATCH'],
+  [225,'set','motor-cold-fine-world','cold','claimD326ColdFineProbe','fine-grid full-body + WATCH'],
+  [268,'set','motor-exact-passage','cold','claimD327ColdPassage','world route + first-leg WATCH'],
+  [310,'set','d328-entry-fine-world','stack','claimD328EntryLoopProbe','distinct full-route + WATCH'],
+  [338,'set','lane-cycle-world','door','shouldProbeCircularFullBodyLane','alternate route selector'],
+  [361,'set','lane-cycle-world','stack','shouldProbeDoorlessStackLane','alternate route selector'],
+  [383,'set','full-body-lane','ordinary','allowPhysicalRouteReissue','first-stride + full-body sweep + WATCH'],
+  [515,'set','door-escape-swept-rejoin','escape','sweptRejoinExistingRoute','full-body rejoin sweep'],
+  [533,'set','door-leaf-escape','clear','escapeOpenDoorOverlap','physical overlap escape; clear nav'],
+  [588,'prepend','local-detour','actor','recoveryAction','local continuation + WATCH'],
+  [628,'prepend','local-detour','actor','eligibleFrameActorDetour','first-stride + continuation + WATCH'],
+  [688,'set','stack-micro-corner','stack','claimStackMicroAttempt','full-body micro-corner'],
+  [739,'prepend','self-hinge-relief','door','selfBlockingHingeRelief','hinge-relief selector'],
+  [773,'set','open-leaf-local-rejoin','door','claimPhysicalLeafRejoin','physical leaf rejoin + WATCH'],
+  [794,'set','cold-micro-departure','cold','claimRepeatedFurnitureDeparture','verified departure + WATCH'],
+  [826,'set','entry-squeeze-departure','squeeze','claimM2EntrySqueezeProbe','narrow profile + WATCH'],
+  [875,'set','blocked-leg-connector','ordinary','allowPhysicalRouteReissue','first-stride full-body'],
+  [912,'set','collision-world-replan','ordinary','allowPhysicalRouteReissue','material difference + recurrence'],
+  [927,'set','collision-intel-replan','ordinary','allowPhysicalRouteReissue','material difference + recurrence']
  ],
  [R]:[
   [88,'set','door-leaf-escape','escape','coldSweptEntryEscapeJoin','physical leaf escape join'],
