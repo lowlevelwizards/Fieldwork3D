@@ -10,6 +10,9 @@ import type {Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
 import {materiallyDifferentRoute} from './breach-movement-recovery.ts';
+import {finiteRecoveryPoint,finiteRecoveryRoute,recoveryDistance,
+ makeRecoveryProposal,recordAdoptionWitness,readAdoptionWitness}
+ from './breach-recovery-adoption-shared.ts';
 import {evaluateRecoveryProposal,RECOVERY_SOURCE_POLICY,
  type RecoveryAdoptionProof,type RecoveryDecision,type RecoveryOwner}
  from './breach-recovery-adoption-contract.ts';
@@ -54,25 +57,19 @@ const certificates:Readonly<Record<OrdinaryRecoverySource,OrdinaryPhysicalCertif
  'collision-world-replan':'world-route-selected',
  'collision-intel-replan':'known-intel-route-selected'
 };
-const finite=(p:Pt)=>Number.isFinite(p.x)&&Number.isFinite(p.y);
-const gap=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
-const last=new WeakMap<TeamActor,{
- source:OrdinaryRecoverySource;orderId:number|null;
- from:Pt;goal:Pt;first:Pt;adoptedAt:number
-}>();
-/** Snapshot evaluated only on request, not on every motor tick. Acceptance
- * never claims successful travel; only real later feet can confirm it. */
+/** R5: project the latest shared on-demand witness to the stable R2 API.
+ * R2 and R4 no longer retain independent, potentially conflicting records.
+ */
 export function ordinaryRecoveryProgress(actor:TeamActor):null|{
  source:OrdinaryRecoverySource;status:'provisional'|'foot-progress'|'superseded';
  traveled:number;remaining:number;adoptedAt:number
 }{
- const prior=last.get(actor);if(!prior)return null;
- const order=actor.plan[0]?.id??null;
- const traveled=gap(actor.p,prior.from);
- return {source:prior.source,
-  status:order!==prior.orderId?'superseded':
-   traveled>=.3?'foot-progress':'provisional',
-  traveled,remaining:gap(actor.p,prior.goal),adoptedAt:prior.adoptedAt};
+ const w=readAdoptionWitness(actor,'ordinary');
+ if(!w)return null;
+ return {source:w.source as OrdinaryRecoverySource,
+  status:w.state==='moved'?'foot-progress':
+   w.state==='superseded'?'superseded':'provisional',
+  traveled:w.distance,remaining:w.remaining,adoptedAt:w.selectedAt};
 }
 /** New R2 adoption authority: all ordinary selectors must pass this gate
  * AFTER their existing exact geometry/route/target checks, BEFORE writing
@@ -91,7 +88,7 @@ export function evaluateOrdinaryRecoveryAdoption(
   a.doorTraversal.maneuver==='outside-leaf'&&
   a.doorTraversal.waypoints.length>0&&
   a.nav.length>0&&
-  a.doorTraversal.waypoints.some(pt=>gap(pt,a.nav[0])<3)&&
+  a.doorTraversal.waypoints.some(pt=>recoveryDistance(pt,a.nav[0])<3)&&
   s.seconds-a.doorTraversal.lastProgressAt<1.8;
  const owner:RecoveryOwner=a.traversal||a.traversalPending?'traversal':
   ownsOutsideLeaf?'door':'none';
@@ -109,14 +106,14 @@ export function evaluateOrdinaryRecoveryAdoption(
     c.retry==='cold-frame-detour'?
      s.seconds-a.lastNavRepairAt<=.08:false;
  const prepared=c.eligible&&signature&&
-   finite(goal)&&route.length>0&&route.every(finite);
+   finiteRecoveryPoint(goal)&&route.length>0&&finiteRecoveryRoute(route);
  // M2: a new route tail is NOT useful if its physically blocked first
  // waypoint is unchanged. The 3-unit tolerance matches the established
  // full-body first-stride route validation; the door/STACK special
  // recoveries are deliberately excluded from this generic rule.
  const staleFirstLeg=a.blockedTime>=1.25&&a.nav.length>0&&
-   route.length>0&&gap(route[0],a.nav[0])<3&&
-   gap(a.p,a.nav[0])>.5;
+   route.length>0&&recoveryDistance(route[0],a.nav[0])<3&&
+   recoveryDistance(a.p,a.nav[0])>.5;
  const productive=c.useful&&materiallyDifferentRoute(a.nav,route)&&
    !staleFirstLeg;
  const evidence={
@@ -126,18 +123,12 @@ export function evaluateOrdinaryRecoveryAdoption(
   recurrence:'pass' as const,
   progress:productive?'pass' as const:'fail' as const
  };
- const proposal={
-  source,operation:c.operation,policy:RECOVERY_SOURCE_POLICY[source],
-  actorId:a.id,orderId:c.orderIdAtSelection,
-  orderKind:a.plan[0]?.kind??null,
-  authoredGoal:a.plan[0]?.kind==='move'?a.plan[0].p:null,
-  goalKey:a.routeGoalKey,from:a.p,prior:a.nav,next:route,
-  seconds:s.seconds,blockedSeconds:a.blockedTime,
-  blocker:a.lastBlocker??null,owner,
-  doorId:a.doorTraversal?.doorId??null,
-  retryRouteAt:a.retryRouteAt,lastRepairAt:a.lastNavRepairAt,
-  recoveryAttempts:a.recoveryAttempts,evidence
- };
+ const proposal=makeRecoveryProposal(a,s,{
+  source,operation:c.operation,
+  policy:RECOVERY_SOURCE_POLICY[source],
+  orderIdAtSelection:c.orderIdAtSelection,
+  route,owner,evidence
+ });
  let decision=evaluateRecoveryProposal(proposal,currentOrder);
  let recurrenceOk=true;
  if(decision.verdict==='would-adopt'&&c.recurrence!=='none'){
@@ -149,10 +140,8 @@ export function evaluateOrdinaryRecoveryAdoption(
    },currentOrder);
  }
  const accepted=decision.verdict==='would-adopt'&&recurrenceOk;
- if(accepted){
-  last.set(a,{source,orderId:currentOrder,from:{...a.p},
-   goal:{...goal},first:{...route[0]},adoptedAt:s.seconds});
- }
+ if(accepted)
+  recordAdoptionWitness(a,'ordinary',source,goal,s.seconds);
  return {accepted,decision,proof:{evidence:{
   ...evidence,recurrence:recurrenceOk?'pass':'fail'
  },owner}};
