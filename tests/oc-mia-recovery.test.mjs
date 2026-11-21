@@ -6,6 +6,7 @@ import {installMissingPersonRecovery,verifiedMissingPersonRecovery}
  from '../src/breach-missing-recovery.ts';
 import {newSession,stepSession} from '../src/breach-game.ts';
 import {takeCivilianCustody} from '../src/breach-civilian-transport.ts';
+import {casualtyTrailingPosition} from '../src/breach-casualty-transport.ts';
 
 const missingReport=(c,job)=>({
  id:'mia-'+job.id,contractId:job.id,day:c.day,outcome:'failure',
@@ -105,7 +106,11 @@ test('OC9 fixed-step rescue cannot win by proximity, only real casualty custody'
  const carrier=s.operators.find(a=>a.id==='rook');
  assert.ok(casualty&&carrier);
  const exit={...s.scenario.extract};
- casualty.p={...exit};casualty.priorP={...exit};
+ // Keep the carried patient a real carry-gap away from the operator.
+ // Placing two hard bodies in exactly the same coordinates creates a
+ // physically impossible initial overlap before the mission gate runs.
+ const carriedAt=casualtyTrailingPosition(exit,exit,carrier.heading,'carry');
+ casualty.p={...carriedAt};casualty.priorP={...carriedAt};
  carrier.p={...exit};carrier.priorP={...exit};
  carrier.plan.length=0;carrier.path.length=0;
  s.started=true;s.phase='running';s.mission='extract';
@@ -114,8 +119,12 @@ test('OC9 fixed-step rescue cannot win by proximity, only real casualty custody'
   'unsecured downed body touching exit cannot complete mission');
  assert.equal(verifiedMissingPersonRecovery(s),null);
  assert.equal(takeCivilianCustody(casualty,carrier,'carry'),true);
- stepSession(s,1/60);
- assert.equal(s.phase,'won','transport custody at real exit can finish rescue');
+ for(let i=0;i<45&&s.phase==='running';i++)stepSession(s,1/60);
+ assert.equal(s.phase,'won',
+  'physical carry custody inside exit must complete without remote wins; '+
+  'mission='+s.mission+', carrier='+JSON.stringify(carrier.p)+
+  ', patient='+JSON.stringify(casualty.p)+
+  ', custody='+String(casualty.carriedById)+', carrierHealth='+carrier.health);
  assert.deepEqual(verifiedMissingPersonRecovery(s),{
   operatorId:'moss',carrierId:'rook'});
 });
