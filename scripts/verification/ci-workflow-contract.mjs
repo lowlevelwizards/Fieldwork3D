@@ -36,6 +36,8 @@ const paths={
  release7:'.github/workflows/release7-critical.yml',
  doorD5:'.github/workflows/door-traversal-d5.yml',
  doorD2D3:'.github/workflows/door-traversal-d2-d3.yml',
+ passageQ5:'.github/workflows/passage-q5-matrix.yml',
+ performanceP28:'.github/workflows/performance-p2-8-critical.yml',
  pages:'.github/workflows/pages.yml'
 };
 const read=path=>readFileSync(path,'utf8');
@@ -140,6 +142,19 @@ export function validateWorkflowContracts(wf){
   must('movementDoorRouter','fromJSON(inputs.lanes).'+key);
   must('movementDoorRouter','uses: ./.github/workflows/'+paths[name].split('/').at(-1));
  }
+ // A7c retains full real Q5 approach matrix and measured sweep broadphase.
+ for(const [key,marker] of [
+  ['passageQ5','audit-passage-q5.mjs --extended --strict'],
+  ['performanceP28','tests/performance-p2-8-sweep-broadphase.test.mjs']]){
+  must(key,'workflow_call:');
+  must(key,'workflow_dispatch:');
+  no(key,'  pull_request:');
+  must(key,marker);
+  must('movementDoorRouter','fromJSON(inputs.lanes).'+key);
+  must('movementDoorRouter','uses: ./.github/workflows/'+paths[key].split('/').at(-1));
+ }
+ must('passageQ5','--release-a --extended --strict');
+ must('performanceP28','tests/performance-p2-7-live-routing.test.mjs');
  // A4: M30 production and Glock art browser acceptance are single
  // source-selected reusable CI jobs. Original smoke and evidence are retained.
  must('ci','--test tests/ci-weapon-visual-routing.test.mjs');
