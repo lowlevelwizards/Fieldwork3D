@@ -83,9 +83,15 @@ export function evaluateRouteAcquisition(c:AcquisitionCandidate):AcquisitionDeci
  if(source==='initial-enemy'&&blue||
     source!=='initial-enemy'&&source!=='fire-retreat'&&!blue)
   return reject('wrong-actor');
+ // Route acquisition is also used by the LIVE DOOR and SYNC
+ // approach and each PIE arc point. Those are legitimate authored
+ // movement executions even though their PlanNode is not MOVE and
+ // a PIE step can differ from its final authored arc destination.
+ if(source==='initial-intel'&&!order)
+  return reject('not-authored-goal');
  const needsMove=source==='forced-door-shortcut'||
    source==='shove-stage'||source==='initial-portal-recovery'||
-   source==='motor-cold-fine-world'||source==='initial-intel';
+   source==='motor-cold-fine-world';
  if(needsMove&&(order?.kind!=='move'||!near(order.p,goal)))
   return reject('not-authored-goal');
  const initial=source==='initial-intel'||source==='initial-enemy';
