@@ -43,3 +43,9 @@ jobs:
     uses: ./.github/workflows/replay-r43-bodycam-qa.yml
     permissions:
       contents: read
+  # A6c is intentionally NOT gated by historical feature head prefix.
+  r-director-reset:
+    if: ${{ fromJSON(inputs.lanes).replayDirectorReset }}
+    uses: ./.github/workflows/replay-director-reset.yml
+    permissions:
+      contents: read

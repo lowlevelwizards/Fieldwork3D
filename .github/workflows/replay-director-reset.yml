@@ -1,19 +1,7 @@
 name: Replay director clean-slate shoulder tests
 on:
-  pull_request:
-    paths:
-      - 'src/breach-replay-director-reset.ts'
-      - 'src/breach-replay-*-controller.ts'
-      - 'src/breach-main.ts'
-      - 'src/breach-replay-camera-controller.ts'
-      - 'src/breach-replay-director-controller.ts'
-      - 'src/breach-replay-director-subject-timeline.ts'
-      - 'index.html'
-      - 'tests/replay-director-cam.test.mjs'
-      - 'tests/replay-director-reset.test.mjs'
-      - 'tests/replay-*-controller-20261109.test.mjs'
-      - 'tests/replay-lifecycle-controller-20261109.test.mjs'
-      - '.github/workflows/replay-director-reset.yml'
+  workflow_call:
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
