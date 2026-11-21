@@ -76,7 +76,7 @@ try{
    check(await root.locator('[data-after-squad-model]').count()===1,
      'Squad historical lineup missing '+label);
    if(width<=700&&height>=481){
-     const positions=await page.evaluate(()=>{
+     const initial=await page.evaluate(()=>{
        const root=document.querySelector('#v4-stage3-qa');
        const body=root.querySelector('#afterActionBody').getBoundingClientRect();
        const model=root.querySelector('.fw-v4-squad-model').getBoundingClientRect();
@@ -86,16 +86,46 @@ try{
          rankBottom:Math.max(...rows.map(row=>row.getBoundingClientRect().bottom)),
          scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth};
      });
-     check(positions.modelTop>=0&&
-       positions.modelBottom<=positions.bodyBottom+2&&
-       positions.rankBottom<=positions.bodyBottom+2&&
-       positions.scrollWidth<=positions.viewport+2,
-       'Initial real 3D lineup and all ranks must be in the phone viewport '+
-         label+' '+JSON.stringify(positions));
+     // V6 moved to one real scroll owner rather than shrinking a WebGL
+     // viewer below useful size on a 320px phone. Require all four ranked
+     // choices at the top and no horizontal clipping; then prove the full
+     // mounted model can be scrolled into view, not merely present in DOM.
+     check(initial.rankBottom<=initial.bodyBottom+8&&
+       initial.scrollWidth<=initial.viewport+2,
+       'Initial phone ranks clipped or horizontal overflow '+
+         label+' '+JSON.stringify(initial));
    }
    await root.screenshot({
      path:'artifacts/after-action-v4-stage3/initial-'+label+'.png'
    });
+   if(width<=700&&height>=481){
+     const old=await page.evaluate(()=>{
+       const root=document.querySelector('#v4-stage3-qa');
+       const body=root.querySelector('#afterActionBody');
+       return {scrollTop:body.scrollTop,
+         modelBottom:root.querySelector('.fw-v4-squad-model').getBoundingClientRect().bottom,
+         bodyBottom:body.getBoundingClientRect().bottom};
+     });
+     await root.locator('.fw-v4-squad-model').scrollIntoViewIfNeeded();
+     const visible=await page.evaluate(()=>{
+       const root=document.querySelector('#v4-stage3-qa');
+       const body=root.querySelector('#afterActionBody');
+       const viewport=body.getBoundingClientRect();
+       const model=root.querySelector('.fw-v4-squad-model').getBoundingClientRect();
+       return {modelTop:model.top,modelBottom:model.bottom,
+         bodyTop:viewport.top,bodyBottom:viewport.bottom,
+         scrollTop:body.scrollTop,scrollHeight:body.scrollHeight,
+         clientHeight:body.clientHeight};
+     });
+     check(visible.modelTop>=visible.bodyTop-2&&
+       visible.modelBottom<=visible.bodyBottom+2&&
+       (old.modelBottom<=old.bodyBottom+2||visible.scrollTop>old.scrollTop),
+       'Retained WebGL viewer not fully reachable in phone debrief scroll '+
+         label+' '+JSON.stringify({old,visible}));
+     await root.screenshot({
+       path:'artifacts/after-action-v4-stage3/model-visible-'+label+'.png'
+     });
+   }
    await root.locator('.fw-v4-rank-row')
      .filter({hasText:'MOSS'}).click();
    check(await page.evaluate(()=>window.__v4Stage3Canvas===
