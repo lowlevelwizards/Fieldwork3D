@@ -1,4 +1,4 @@
-# Campaign Operations & Consequences — OC1–OC10
+# Campaign Operations & Consequences — OC1–OC11
 
 ## Player-facing design
 A mission is an operation with independent tactical, human, intelligence and campaign consequences. Primary objective failure does not erase rescued comrades or recovered intelligence. An organized retreat is allowed after the squad has actually deployed and started a mission, but never teleports personnel out. The player chooses how long to remain under threat to gather evidence or rescue casualties. Quick Play stays independent of campaign persistence.
@@ -84,6 +84,12 @@ A mission is an operation with independent tactical, human, intelligence and cam
 - The player selects an actual mobile operator at extraction, orders EXTRACT SELECTED while paused, then presses GO. The authoritative fixed-tick retires the actor at that exact position; moving away from the gate before GO cancels that pending order safely.
 - Extracted actor snapshots remain in full mission/debrief/career accounting but are not in the active actor array. The archived courier retains any optional or primary intelligence held on departure; a real extracted primary intel courier can complete the objective after remaining squad accountability.
 - The team can still withdraw with a downed casualty left behind, but those people remain missing rather than being teleported to safety. A carrier holding another patient cannot leave individually; preserve joint casualty-transport authority.
+
+## OC11 — Evidence-limited casualty aftercare
+- A physically evacuated casualty now receives a bounded post-operation recovery estimate based on the authoritative stabilized/critical medical state. Critical evacuated cases require longer aftercare than unverified cases; stabilized cases return sooner, but never instantly.
+- For legacy mission results with no structured clinical information, preserve a conservative two-day fallback rather than fabricating historical trauma evidence.
+- A single campaign day passes per settlement, even if the skills/ammo progression adapter also processes the surviving operator. A recorded casualty aftercare journal event explains the prognosis without declaring survival probability or confirmed death.
+- Missing/downed people remain nondeployable under the independent MIA system. Longer-lived consequences, persistent injuries, infection, death confirmation, and possible medical incidents require separate clinical authority and are not simulated by this read-only estimate.
 
 ## Remaining scope / hard release gates
 - Browser QA should confirm the live scene and replay smoothly retire individual operator rigs without selection flicker; no per-frame extraction workarounds.
