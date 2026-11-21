@@ -48,15 +48,35 @@ try{
     window.__fieldworkBodycamQa.indoorEntryReview());
   check(entry?.spreadSeconds!==null&&entry?.crossings.length===4,
     'No four-operator recorded threshold flow');
-  let entered=false;
-  for(let i=0;i<9&&!entered;i++){
-    await page.evaluate(()=>document.querySelector('#watchReplay')?.click());
-    entered=await page.locator('#replayPanel').isVisible();
-    if(!entered)await page.waitForTimeout(350);
-  }
-  check(entered,'Indoor mission replay could not be opened');
+  // V4+ authorizes historical playback through debrief or a saved Replay
+  // Library film. Keep the authentic operator movement/crossing evidence;
+  // never click a hidden debrief-only control or force a terminal mission.
+  await page.waitForFunction(()=>{
+    const parts=(document.querySelector('#clock')?.textContent??'00:00')
+      .split(':').map(Number);
+    return parts.length===2&&parts.every(Number.isFinite)&&
+      parts[0]*60+parts[1]>=2;
+  },null,{timeout:40000});
+  await page.waitForFunction(()=>document.querySelector('#saveReplayDebrief')?.
+    disabled===false,null,{timeout:20000});
+  await page.evaluate(()=>document.querySelector('#saveReplayDebrief')?.click());
+  await page.waitForFunction(()=>document.querySelector('#saveReplayDebrief')?.
+    textContent==='REPLAY SAVED',null,{timeout:20000});
+  await page.evaluate(()=>document.querySelector('#openReplayLibrary')?.click());
+  await page.locator('#replayLibraryList .replay-library-watch').first()
+    .waitFor({state:'visible',timeout:20000});
+  await page.locator('#replayLibraryList .replay-library-watch').first().click();
+  await page.locator('#replayPanel').waitFor({state:'visible',timeout:30000});
   await page.locator('#replayMore').click();
-  await page.locator('#replayBodycam').click();
+  // V6 uses the live DIRECT operator strip, not the hidden compatibility
+  // #replayBodycam control. Select the same Rook film in both visual tests.
+  await page.locator(
+    '#replayInspectActorButtons [data-follow-actor="rook"]').click();
+  const directBodycam=page.locator('#replayDirectBodycam');
+  check(await directBodycam.isVisible()&&
+    await directBodycam.isEnabled(),
+    'Recorded indoor entry lacks an authorized direct Bodycam');
+  await directBodycam.click();
   await page.waitForFunction(()=>window.__fieldworkBodycamQa?.
     diagnostic()?.active===true,null,{timeout:30000});
   const seek=async t=>{
@@ -91,7 +111,7 @@ try{
   const drift=distance(approach.position,rewound.position);
   check(drift<.01&&distance(approach.direction,rewound.direction)<.001,
     'Interior camera rewind drifted');
-  await page.locator('#replayBodycamMount').click();
+  await page.locator('#replayDirectMount').click();
   const helmet=await diagnostics(page);
   await page.waitForFunction(previous=>{
     const d=window.__fieldworkBodycamQa.diagnostic();
