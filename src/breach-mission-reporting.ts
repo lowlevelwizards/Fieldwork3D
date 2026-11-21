@@ -10,7 +10,7 @@ import {stabilizationSummary} from './breach-casualty-status.ts';
 import {attributableCivilianHarm} from './breach-civilian-harm.ts';
 import {assessDispatchForce} from './dispatch-force-review.ts';
 import {captureVitalStatus} from './breach-capture-vitals.ts';
-import {deriveOperationOutcome} from './breach-operation-outcomes.ts';
+import {deriveOperationOutcome,deployedTeam} from './breach-operation-outcomes.ts';
 import {verifiedMissingPersonRecovery} from './breach-missing-recovery.ts';
 import {optionalIntelRecovered} from './breach-optional-intel.ts';
 
@@ -50,7 +50,7 @@ export function missionText(s:Session){
     'RETURN TO EXTRACTION OUTSIDE';
 }
 export function debrief(s:Session){
-  const own=team(s);
+  const own=deployedTeam(s);
   const operationOutcome=deriveOperationOutcome(s);
   const missingPersonRecovery=verifiedMissingPersonRecovery(s);
   const recoveredIntel=optionalIntelRecovered(s);
@@ -102,8 +102,7 @@ export function debrief(s:Session){
     civilianInjured,civilianDown,
     civilianPlayerInjured:attributable.injured,
     civilianPlayerDown:attributable.down,
-    extracted:own.filter(a=>a.health>0&&
-      near(a.p,s.scenario.extract,47)).length,
+    extracted:operationOutcome.extractedOperatorIds.length,
   },true);
   return {result:s.phase,operationOutcome,
     missingPersonRecovery,
