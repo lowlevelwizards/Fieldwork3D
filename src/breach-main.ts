@@ -30,6 +30,7 @@ import {pickTacticalTarget,insertTacticalRouteWaypoint} from './breach-tactical-
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {reconcileTacticalUiSelection} from './ui/tactical-selection-presentation.ts';
 import {nearestEligibleActor} from './ui/tactical-nearest-actor.ts';
+import {nearestTransportCandidate} from './breach-transport-candidate.ts';
 
 
 
@@ -736,10 +737,7 @@ let dragButton:HTMLButtonElement|null=null;
 let carryButton:HTMLButtonElement|null=null;
 let retrieveButton:HTMLButtonElement|null=null;
 function casualtyCandidate(id:string){
- const squad=team(state);
- const operator=squad.find(o=>o.id===id&&o.health>0);
- if(!operator)return null;
- return nearestEligibleActor(squad,operator.p,o=>o.health<=0&&!o.surrendered);
+ return nearestTransportCandidate(state,id,p=>liveVisibility(state,p));
 }
 function medicalCandidate(id:string,origin?:Pt){
  const squad=team(state);
