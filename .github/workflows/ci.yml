@@ -36,6 +36,7 @@ jobs:
       - name: Verify CI workflow and regression ownership
         run: |
           node --test tests/ci-regression-plan.test.mjs
+          node --test tests/ci-specialist-routing.test.mjs
           node scripts/verification/ci-regression-plan.mjs --check
           node scripts/verification/ci-workflow-inventory.mjs --check
           node scripts/verification/ci-workflow-contract.mjs
