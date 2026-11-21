@@ -122,6 +122,12 @@ jobs:
       movementRelease: ${{ steps.owners.outputs.movementRelease }}
       arsenalM30: ${{ steps.owners.outputs.arsenalM30 }}
       glockArt: ${{ steps.owners.outputs.glockArt }}
+      debriefV41: ${{ steps.owners.outputs.debriefV41 }}
+      debriefV42: ${{ steps.owners.outputs.debriefV42 }}
+      debriefV43: ${{ steps.owners.outputs.debriefV43 }}
+      debriefV44: ${{ steps.owners.outputs.debriefV44 }}
+      debriefV45: ${{ steps.owners.outputs.debriefV45 }}
+      debriefV5: ${{ steps.owners.outputs.debriefV5 }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -130,6 +136,7 @@ jobs:
         name: Resolve changed-file specialist owners (fail closed on unknown)
         env:
           CI_BASE_REF: ${{ github.base_ref }}
+          CI_HEAD_REF: ${{ github.head_ref }}
         run: node scripts/verification/ci-specialist-routing.mjs --github-output
 
   loadout-domain:
@@ -185,5 +192,50 @@ jobs:
     needs: specialist-routing
     if: ${{ needs.specialist-routing.outputs.glockArt == 'true' }}
     uses: ./.github/workflows/glock-family-art.yml
+    permissions:
+      contents: read
+
+  # A5: original path + branch eligible After Action browser jobs.
+  # Only the relevant stage runs; manual forensic workflows remain intact.
+
+  debrief-v4-navigation:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.debriefV41 == 'true' }}
+    uses: ./.github/workflows/after-action-v4-stage1.yml
+    permissions:
+      contents: read
+
+  debrief-v4-summary:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.debriefV42 == 'true' }}
+    uses: ./.github/workflows/after-action-v4-stage2.yml
+    permissions:
+      contents: read
+
+  debrief-v4-persistent3d:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.debriefV43 == 'true' }}
+    uses: ./.github/workflows/after-action-v4-stage3.yml
+    permissions:
+      contents: read
+
+  debrief-v4-forensic:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.debriefV44 == 'true' }}
+    uses: ./.github/workflows/after-action-v4-stage4.yml
+    permissions:
+      contents: read
+
+  debrief-v4-timeline:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.debriefV45 == 'true' }}
+    uses: ./.github/workflows/after-action-v4-stage5.yml
+    permissions:
+      contents: read
+
+  debrief-v5-browser:
+    needs: specialist-routing
+    if: ${{ needs.specialist-routing.outputs.debriefV5 == 'true' }}
+    uses: ./.github/workflows/after-action-v5-critical.yml
     permissions:
       contents: read
