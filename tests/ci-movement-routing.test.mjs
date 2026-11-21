@@ -3,61 +3,73 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {selectMovementSuites} from '../scripts/verification/ci-specialist-routing.mjs';
 
-const source=name=>readFileSync(new URL('../.github/workflows/'+name,import.meta.url),'utf8');
-const keys=['movementRetail','movementDeparture','movementJoin','movementRecovery','movementRelease'];
-const on=paths=>Object.entries(selectMovementSuites(paths)).filter(([,v])=>v).map(([key])=>key).sort();
+const workflow=name=>readFileSync(new URL('../.github/workflows/'+name,import.meta.url),'utf8');
+const selected=paths=>Object.entries(selectMovementSuites(paths))
+ .filter(([,enabled])=>enabled).map(([name])=>name).sort();
 
-test('A3 no-source and unrelated art edits schedule no D3 physical workflows',()=>{
- for(const files of [[],['docs/notes.md'],['src/weapons/geometry/beretta-m9-silhouettes.ts']]){
-  assert.deepEqual(on(files),[],files.join(','));
- }
+test('A3 documentation and unrelated weapons edits do not run D3 physical suites',()=>{
+ for(const files of [[],['docs/notes.md'],
+  ['src/weapons/geometry/beretta-m9-silhouettes.ts']])
+  assert.deepEqual(selected(files),[]);
 });
-test('A3 exact old D3 path ownership preserved on source and test edits',()=>{
- assert.deepEqual(on(['src/breach-route-transition.ts']),[...keys].sort());
- assert.deepEqual(on(['src/breach-motor-collision.ts']),
-  ['movementDeparture','movementRecovery','movementRelease'].sort());
- assert.deepEqual(on(['src/breach-door-traversal-maneuver.ts']),
-  ['movementRetail','movementJoin','movementRecovery','movementRelease'].sort());
- assert.deepEqual(on(['src/breach-retail-rehearsal-recovery.ts']),
-  ['movementRetail','movementRecovery','movementRelease'].sort());
- assert.deepEqual(on(['tests/release-d3-17c-physical-departure.test.mjs']),
-  ['movementDeparture','movementRelease'].sort());
- assert.deepEqual(on(['tests/release-d3-18-physical-recovery.test.mjs']),
-  ['movementRecovery','movementRelease'].sort());
- assert.deepEqual(on(['scripts/audit-r7-squad-execution.mjs']),['movementRelease']);
- assert.deepEqual(on(['.github/workflows/d3-17d-door-join.yml']),['movementJoin']);
+test('A3 all D3 movement source variants get modern D3.30 + frozen22 physical truth',()=>{
+ for(const file of ['src/breach-route-transition.ts','src/breach-motor-collision.ts',
+  'src/breach-d317c-micro-departure.ts','src/breach-door-traversal-maneuver.ts'])
+  assert.deepEqual(selected([file]),['movementRecovery','movementRelease'],file);
 });
-test('A3 D3 path selection deterministic regardless of input order',()=>{
- const paths=['src/breach-route-transition.ts','tests/release-d3-17d-door-route-join.test.mjs','src/breach-route-transition.ts'];
- assert.deepEqual(selectMovementSuites(paths),selectMovementSuites([...paths].reverse()));
+test('A3 legacy workflow and test changes cannot escape current D3 release ownership',()=>{
+ for(const file of [
+  '.github/workflows/d3-14d2-retail-recovery.yml',
+  '.github/workflows/d3-17c-departure.yml',
+  '.github/workflows/d3-17d-door-join.yml',
+  '.github/workflows/d3-main-release-checkpoint.yml',
+  'tests/release-d3-17d-door-route-join.test.mjs',
+  'scripts/lib/d3-30-physical-gate.mjs',
+  'scripts/verification/ci-d3-physical-truth.mjs',
+  'tests/ci-d3-physical-truth.test.mjs'
+ ])assert.ok(selected([file]).includes('movementRelease'),file);
+ assert.deepEqual(selected(['.github/workflows/d3-18-physical-recovery.yml']),
+  ['movementRecovery','movementRelease']);
 });
-test('A3 CI callers keep all five physical D3 verification lanes',()=>{
- const ci=source('ci.yml');
- for(const [name,job,filename] of [
-  ['movementRetail','d3-retail-physical','d3-14d2-retail-recovery.yml'],
-  ['movementDeparture','d3-departure-physical','d3-17c-departure.yml'],
-  ['movementJoin','d3-door-join-physical','d3-17d-door-join.yml'],
-  ['movementRecovery','d3-recovery-critical','d3-18-physical-recovery.yml'],
-  ['movementRelease','d3-main-physical-checkpoint','d3-main-release-checkpoint.yml']
+test('A3 exact path selection deterministic and deduplicated',()=>{
+ const files=['src/breach-route-transition.ts','tests/release-d3-17c-physical-departure.test.mjs',
+  'src/breach-route-transition.ts'];
+ assert.deepEqual(selectMovementSuites(files),selectMovementSuites([...files].reverse()));
+});
+test('A3 only current D3 physical truth and focused recovery called on main PR',()=>{
+ const ci=workflow('ci.yml');
+ for(const [job,output,filename] of [
+  ['d3-recovery-critical','movementRecovery','d3-18-physical-recovery.yml'],
+  ['d3-main-physical-checkpoint','movementRelease','d3-main-release-checkpoint.yml']
  ]){
-  assert.ok(ci.includes(job+':'));
+  assert.ok(ci.includes('  '+job+':'),job);
+  assert.ok(ci.includes('needs.specialist-routing.outputs.'+output));
   assert.ok(ci.includes('uses: ./.github/workflows/'+filename));
-  assert.ok(ci.includes('needs.specialist-routing.outputs.'+name));
-  assert.ok(ci.includes('steps.owners.outputs.'+name));
-  assert.equal((ci.match(new RegExp('uses: \\.\\/\\.github\\/workflows\\/'+filename.replaceAll('.','\\.'),'g'))||[]).length,1);
-  const yaml=source(filename);
-  assert.match(yaml,/^  workflow_call:$/m);
-  assert.match(yaml,/^  workflow_dispatch:$/m);
-  const trigger=yaml.slice(0,yaml.indexOf('\njobs:'));
-  assert.doesNotMatch(trigger,/branches: \[main\]/);
-  if(['d3-14d2-retail-recovery.yml','d3-17c-departure.yml','d3-17d-door-join.yml'].includes(filename))
-   assert.match(trigger,/branches-ignore: \[main\]/);
-  else assert.doesNotMatch(trigger,/  pull_request:/);
+  assert.ok(ci.includes('steps.owners.outputs.'+output));
+ }
+ for(const old of ['d3-14d2-retail-recovery.yml','d3-17c-departure.yml',
+  'd3-17d-door-join.yml']){
+  assert.ok(!ci.includes('uses: ./.github/workflows/'+old),old);
+  const specialist=workflow(old);
+  assert.match(specialist,/^  workflow_call:$/m);
+  assert.match(specialist,/^  workflow_dispatch:$/m);
+  assert.match(specialist,/branches-ignore: \[main\]/);
  }
 });
-test('A3 manual physical cohorts and exact release evidence remain available',()=>{
- assert.match(source('d3-17c-departure.yml'),/frozen-cohorts:/);
- assert.match(source('d3-17d-door-join.yml'),/physical-cohort:/);
- assert.match(source('d3-18-physical-recovery.yml'),/if: github.event_name == 'workflow_dispatch'/);
- assert.match(source('d3-main-release-checkpoint.yml'),/release-checkpoint:/);
+test('A3 modern main release preserves historic focused tests and real motor audits',()=>{
+ const main=workflow('d3-main-release-checkpoint.yml');
+ for(const path of [
+  'tests/release-d3-14d2-retail-rehearsal.test.mjs',
+  'tests/release-d3-17c-physical-departure.test.mjs',
+  'tests/release-d3-17d-door-route-join.test.mjs',
+  'tests/ci-d3-physical-truth.test.mjs',
+  'scripts/verify-d3-30-mainline.mjs',
+  'scripts/verification/ci-d3-physical-truth.mjs',
+  '--d315b4-blind22','--d329-cancellation-door-witness',
+  '--site-index=9','--site-index=3',
+  'd3-main-release-45s'
+ ])assert.ok(main.includes(path),path);
+ const d318=workflow('d3-18-physical-recovery.yml');
+ assert.match(d318,/^  workflow_call:$/m);
+ assert.match(d318,/^  workflow_dispatch:$/m);
 });
