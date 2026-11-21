@@ -410,7 +410,10 @@ export function selfBlockingHingeRelief(
   const fraction=door.openFraction??(door.open?1:0);
   if(!door.open||door.kind==='sliding'||door.kind==='shutter'||
      door.locked||door.wedged||door.heldBy||
-     fraction<.15||fraction>=.72||
+     // A stopped 93%-open leaf can still collide with its own opener.
+     // Its remaining physical sweep needs the SAME fully swept relief
+     // as an early hinge; never relax collision or force rotation.
+     fraction<.15||fraction>=.98||
      Math.abs(door.angularVelocity??0)>.16)continue;
   const leaf=doorLeafSegment(door);
   const initial=pointToSegment(a.p,leaf);
