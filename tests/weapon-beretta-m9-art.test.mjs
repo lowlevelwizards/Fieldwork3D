@@ -48,10 +48,10 @@ test('M9 family: two genuinely 3D art-only models, not issued Glock IDs',()=>{
    const stats=count(m);
    const isA3=ref.id==='beretta-m9a3';
    assert.ok(stats.meshes<=(isA3?15:14),
-     'D8 retain 14/15-mesh art economy '+JSON.stringify(stats));
-   assert.ok(stats.triangles<=(isA3?400:376),
-     'D8: limited visible silhouette triangle spend '+JSON.stringify(stats));
-   console.log('BERETTA_D8_ART_BUDGET '+JSON.stringify({id:ref.id,...stats}));
+     'D9 retains 14/15-mesh art economy '+JSON.stringify(stats));
+   assert.ok(stats.triangles<=(isA3?394:370),
+     'D9: trim nose facets while preserving silhouette '+JSON.stringify(stats));
+   console.log('BERETTA_D9_ART_BUDGET '+JSON.stringify({id:ref.id,...stats}));
     }finally{
    clearM9Appearance(m);
    assert.equal(m.children.length,0);
@@ -225,9 +225,9 @@ test('D4 rear bridge is physically longer, narrower and angled above the broad s
    assert.ok(ub.max.x>=-1.3,'upper extends to the trigger zone');
    assert.ok(lb.max.z-lb.min.z>ub.max.z-ub.min.z+.4,
     'upper is visibly thinner across the top/three-quarter view');
-   assert.ok(lm.beavertailRearX<=-10.6,'D8 short blunt tang still projects past slide rear');
+   assert.ok(lm.beavertailRearX<=-10.2,'D8 short blunt tang still projects past slide rear');
    const frame=m.children.find(x=>x.userData.m9IntegratedFrame);
-   assert.ok(bounds(frame).min.x<=-10.64,'blunt tang is part of connected frame');
+   assert.ok(bounds(frame).min.x<=-10.22,'blunt tang is part of connected frame');
   }finally{clearM9Appearance(m);}
  }
 });
@@ -241,7 +241,7 @@ test('D4 muzzle U-wrap is physically open, carries sight and exposes projecting 
    const b=bounds(wrap[0]),barrel=m.children.find(x=>x.userData.m9ExposedBarrel);
    assert.ok(b.max.x<a.barrelEnd-.20,'barrel visibly projects past slide nose');
    assert.ok(sideRay(m,4.4,2.8)>0,'exposed barrel shows behind front shell');
-   assert.ok(b.max.z-b.min.z>=3.08,'full three-dimensional chamfered muzzle cheeks');
+   assert.ok(b.max.z-b.min.z>=2.98,'full three-dimensional chamfered muzzle cheeks');
    assert.equal(sideRay(m,4.4,3.63),0,'no cosmetic full-width slide roof');
    const nose=m.children.filter(x=>x.userData.m9UnifiedNose);
    assert.equal(nose.length,1,'integrated front U-wrap and front sight');
@@ -349,10 +349,10 @@ test('D5 rear hammer is tall/slim and grip panels rake backwards',()=>{
   const m=buildM9Appearance(id);
   try{
    const hammer=m.children.find(x=>x.userData.m9Hammer),b=bounds(hammer);
-   assert.ok(b.max.y>=3.82&&b.max.y<=3.87,
-    'D8 hooked hammer shorter than prior upright tab');
-   assert.ok(b.max.x-b.min.x>=1.14&&b.max.x-b.min.x<=1.18,
-    'D8 hammer head turns rearward with wider horizontal crown');
+   assert.ok(b.max.y>=3.78&&b.max.y<=3.82,
+    'D9 hammer head short and rooted');
+   assert.ok(b.max.x-b.min.x>=1.86&&b.max.x-b.min.x<=1.92,
+    'D9 broad hammer hook rooted in slide');
    assert.ok(b.max.z-b.min.z<=1.10,'compact top-view hammer thickness');
    const panels=m.children.filter(x=>x.userData.m9GripPanelBatch);
    assert.equal(panels.length,1,'two factory grip faces batched');
@@ -454,14 +454,14 @@ test('D7 chamfered muzzle cheek and undercut: reuse one U mesh and no front post
    const points=[];
    for(let i=0;i<p.count;i++)
     points.push({x:p.getX(i),y:p.getY(i),z:Math.abs(p.getZ(i))});
-   const bottomFace=points.filter(v=>v.y>=1.22&&v.y<=1.26&&v.x>xFront-.5);
+   const bottomFace=points.filter(v=>v.y>=1.28&&v.y<=1.32&&v.x>xFront-.5);
    assert.ok(bottomFace.length,'lower muzzle nose has real front triangles');
-   assert.ok(bottomFace.every(v=>v.x<xFront-.19),
+   assert.ok(bottomFace.every(v=>v.x<xFront-.13),
     'bottom face is set back: no tall rectangular front posts');
-   const upperCheek=points.filter(v=>Math.abs(v.y-3.34)<.01&&v.z>1.04);
+   const upperCheek=points.filter(v=>Math.abs(v.y-3.28)<.01&&v.z>1.04);
    assert.ok(upperCheek.length>=2,'chamfered crown shoulders exist');
    assert.ok(Math.max(...upperCheek.map(v=>v.z))-
-    Math.min(...upperCheek.map(v=>v.z))>=.07,
+    Math.min(...upperCheek.map(v=>v.z))>=.04,
     'front roof cheeks taper inward without adding bevel meshes');
    assert.equal(m.children.filter(x=>x.userData.m9FrontWrapCrown).length,1);
    assert.equal(m.children.filter(x=>x.userData.m9AttachedFrontSight).length,1);
@@ -478,7 +478,7 @@ test('D7 posterior tang, reprofiled upper transition and integrated A3 rail',()=
   const m=buildM9Appearance(id);
   try{
    const lm=m.userData.m9ArtLandmarks;
-   assert.equal(lm.beavertailRearX,-10.65);
+   assert.equal(lm.beavertailRearX,-10.23);
    assert.equal(lm.upperBridgeFrontX,-.98);
    const upper=m.children.find(x=>x.userData.m9NarrowUpperBridge);
    const up=upper.geometry.getAttribute('position');
@@ -486,7 +486,7 @@ test('D7 posterior tang, reprofiled upper transition and integrated A3 rail',()=
     .some(([x,y])=>Math.abs(x+.98)<.005&&Math.abs(y-1.96)<.005),
     'rear upper break includes a deliberate lower bevel station');
    const frame=m.children.find(x=>x.userData.m9IntegratedFrame);
-   assert.ok(bounds(frame).min.x<=-10.64,'shortened thick tang connected');
+   assert.ok(bounds(frame).min.x<=-10.22,'shortened thick tang connected');
    if(id==='beretta-m9a3'){
     const rail=m.children.find(x=>x.userData.m9AccessoryRail);
     assert.equal(rail.userData.m9IntegralDustCoverRail,true);
@@ -561,13 +561,13 @@ test('D8 visible geometry uses fewer polygons than ornamental alternatives',()=>
    assert.ok(bounds(barrel).max.x>bounds(nose).max.x+.20,
     'barrel visibly extends through the wrapped front cap');
    assert.ok(bounds(hammer).max.y<3.88,'no tall hammer antenna');
-   assert.equal(lm.beavertailRearX,-10.65,'shorter, thicker swept tang');
+   assert.equal(lm.beavertailRearX,-10.23,'shorter, thicker swept tang');
    assert.equal(panels.geometry.index.count,24,'exactly six triangular panel facets each side? eight total triangles');
    const npos=nose.geometry.getAttribute('position');
    let lowerRearward=0,upperForward=0,cheekCount=0;
    for(let i=0;i<npos.count;i++){
     const y=npos.getY(i),x=npos.getX(i),z=Math.abs(npos.getZ(i));
-    if(y<1.26&&z>1.05&&x<M9_ART[id].nose-.12)lowerRearward++;
+    if(y<1.32&&z>1.05&&x<M9_ART[id].nose-.12)lowerRearward++;
     if(y>3.25&&z>.9&&x>M9_ART[id].nose-.06)upperForward++;
     if(y>2&&y<3&&z>1.35)cheekCount++;
    }
@@ -579,6 +579,73 @@ test('D8 visible geometry uses fewer polygons than ornamental alternatives',()=>
    }else{
     assert.equal(m.children.filter(x=>x.userData.m9AccessoryRail).length,0);
    }
+  }finally{clearM9Appearance(m);}
+ }
+});
+
+test('D9 hammer has REAL common solid contact with the rear slide',()=>{
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const m=buildM9Appearance(id);
+  try{
+   const hammer=m.children.find(x=>x.userData.m9Hammer);
+   const slide=m.children.find(x=>x.userData.m9NarrowUpperBridge);
+   assert.ok(bounds(hammer).intersectsBox(bounds(slide)));
+   assert.ok(sideRay(hammer,-8.26,2.20)>0,'hammer root overlaps rear body');
+   assert.ok(sideRay(slide,-8.26,2.20)>0,'slide occupies SAME root position');
+   assert.ok(bounds(hammer).max.y<3.85,'short, thick hooked crown');
+  }finally{clearM9Appearance(m);}
+ }
+});
+
+test('D9 trigger guard front web is solid and the hole remains physically empty',()=>{
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const m=buildM9Appearance(id);
+  try{
+   const frame=m.children.find(x=>x.userData.m9IntegratedFrame);
+   assert.ok(sideRay(frame,1.33,-1.72)>0,'front pillar continuous');
+   assert.ok(sideRay(frame,.50,-1.02)>0,'top guard bridge continuous');
+   assert.equal(sideRay(frame,-.3,-2.3),0,'negative-space guard opening intact');
+  }finally{clearM9Appearance(m);}
+ }
+});
+
+test('D9 grip panels never cross the outer frame edge at any contour segment',()=>{
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const m=buildM9Appearance(id);
+  try{
+   const frame=m.children.find(x=>x.userData.m9IntegratedFrame);
+   const panel=m.children.find(x=>x.userData.m9GripPanelBatch);
+   const p=panel.geometry.getAttribute('position');
+   assert.equal(p.count,12,'two planar six-station panels');
+   for(let i=0;i<6;i++){
+    const j=(i+1)%6;
+    for(let k=1;k<10;k++){
+     const t=k/10,x=p.getX(i)*(1-t)+p.getX(j)*t;
+     const y=p.getY(i)*(1-t)+p.getY(j)*t;
+     assert.ok(sideRay(frame,x,y)>0,
+      id+' panel edge cannot overhang outer frame at '+x+','+y);
+    }
+   }
+  }finally{clearM9Appearance(m);}
+ }
+});
+
+test('D9 clean ten-station nose cuts triangles and preserves open barrel',()=>{
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const m=buildM9Appearance(id);
+  try{
+   const nose=m.children.find(x=>x.userData.m9UnifiedNose);
+   const barrel=m.children.find(x=>x.userData.m9ExposedBarrel);
+   assert.ok(nose&&barrel);
+   assert.ok(bounds(barrel).max.x>=bounds(nose).max.x+.2);
+   assert.equal(sideRay(m,4.4,3.63),0,'real upper channel still open');
+   const p=nose.geometry.getAttribute('position'),floor=[];
+   for(let i=0;i<p.count;i++)
+    if(Math.abs(p.getY(i)-1.30)<.01)floor.push(p.getX(i));
+   assert.ok(floor.length>=4&&Math.max(...floor)-Math.min(...floor)>1,
+    'broad cast underside rather than layered muzzle rings');
+   assert.ok(count(m).triangles<=(id==='beretta-m9a3'?394:370),
+    'count actually emitted face triangles');
   }finally{clearM9Appearance(m);}
  }
 });
