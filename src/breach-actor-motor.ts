@@ -76,7 +76,28 @@ export function relieveGeneratedEntryWaitCollision(
    peer.blockedTime>=1.25&&
    (peer.lastBlocker==='route'||peer.lastBlocker==='door')&&
    d(a.p,peer.p)<OPERATOR_RADIUS*2+1);
- if(!leaders.length)return witnessGeneratedWaitYield(s,a,'no-eligible-stalled-lead');
+ if(!leaders.length){
+  // Pure, opt-in diagnostic: explain which of the existing immutable
+  // same-door eligibility facts vetoed the stalled lead. No different
+  // motor policy or accepted movement is introduced here.
+  if(!waitYieldForensics.has(s))return false;
+  const peer=s.operators.find(x=>x.id==='rook');
+  if(!peer)return witnessGeneratedWaitYield(s,a,'no-lead:rook-missing');
+  const why=[
+   ...(peer===a?['same-actor']:[]),
+   ...(peer.health<=0?['dead']:[]),
+   ...(peer.side!==a.side?['wrong-side']:[]),
+   ...(peer.plan[0]?.kind!=='move'?['not-moving']:[]),
+   ...(peer.plan[0]?.entryDoorId!==n.doorId?['wrong-entry']:[]),
+   ...(peer.doorTraversal?.doorId!==n.doorId?['wrong-episode']:[]),
+   ...(peer.blockedTime<1.25?['not-stalled']:[]),
+   ...(peer.lastBlocker!=='route'&&peer.lastBlocker!=='door'?
+    ['wrong-blocker']:[]),
+   ...(d(a.p,peer.p)>=OPERATOR_RADIUS*2+1?['not-overlapping']:[])
+  ];
+  return witnessGeneratedWaitYield(s,a,
+   'no-lead:'+(why.join('+')||'inconsistent-census'));
+ }
  leaders.sort((x,y)=>d(x.p,a.p)-d(y.p,a.p)||x.id.localeCompare(y.id));
  const lead=leaders[0],old={...a.p},world=sessionWorldGeometry(s);
  // Only an actual overlap at this same threshold, never a remote crowd.
