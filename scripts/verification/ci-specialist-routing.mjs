@@ -47,6 +47,70 @@ export function selectSpecialists(paths=[]){
  return {files,selected,matched};
 }
 
+/** Exact legacy D3 pull_request path ownership, retained while the five
+ * physical cohorts move under one CI workflow run. The patterns mirror the
+ * former path filters; manual forensic workflows remain available.
+ */
+const movementPaths={
+ movementRecovery:[
+  /^src\/breach-[^/]*\.ts$/,
+  /^tests\/release-d3-18[^/]*\.test\.mjs$/,
+  /^\.github\/workflows\/d3-18-physical-recovery\.yml$/
+ ],
+ movementRelease:[
+  /^src\/breach-[^/]*\.ts$/,
+  /^scripts\/audit-r7-squad-execution\.mjs$/,
+  /^scripts\/verification\/ci-d3-physical-truth\.mjs$/,
+  /^scripts\/lib\/d3-(?:17a-loop-incidents|30-physical-gate)\.mjs$/,
+  /^tests\/release-d3-[^/]*\.test\.mjs$/,
+  /^tests\/ci-d3-physical-truth\.test\.mjs$/,
+  /^\.github\/workflows\/d3-(?:14d2-retail-recovery|17c-departure|17d-door-join|18-physical-recovery|main-release-checkpoint)\.yml$/
+ ]
+};
+export function selectMovementSuites(paths=[]){
+ const files=[...new Set(paths)].sort();
+ return Object.fromEntries(Object.entries(movementPaths).map(([name,patterns])=>
+  [name,files.some(file=>patterns.some(pattern=>pattern.test(file)))]));
+}
+
+/** A4: preserve original M3.0 production geometry and Glock-family art PR
+ * path ownership without creating separate top-level main PR workflow runs.
+ * These routes are additive to M2 equipment/weapon verification: no tests
+ * or real-WebGL visual acceptance are removed.
+ */
+const weaponVisualPaths={
+ arsenalM30:[
+  /^src\/breach-weapon-geometry\.ts$/,
+  /^src\/weapons\/geometry\//,
+  /^src\/arsenal\//,
+  /^scripts\/audit-weapon-production-m30\.mjs$/,
+  /^scripts\/smoke-arsenal-(?:m30|r870-p07)[^/]*\.mjs$/,
+  /^arsenal-m30[^/]*\.html$/,
+  /^src\/arsenal-m30[^/]*\.ts$/,
+  /^src\/arsenal-r870-p07-capture\.ts$/,
+  /^arsenal-r870-p07-capture\.html$/,
+  /^tests\/arsenal-m30(?:c4|c5)?-[^/]*\.test\.mjs$/,
+  /^tests\/weapon-r870-p(?:08|09|12|13|14|15|16)-[^/]*\.test\.mjs$/,
+  /^\.github\/workflows\/arsenal-m30\.yml$/
+ ],
+ glockArt:[
+  /^src\/weapons\/geometry\/(?:glock-family-silhouettes|beretta-m9-silhouettes|sidearm-preview)\.ts$/,
+  /^src\/arsenal\/(?:glock-gallery|gallery-main|preview-job-queue|gallery-browser-controls|gallery-chrome|m9-inspector)\.ts$/,
+  /^src\/arsenal\/arsenal\.css$/,
+  /^src\/(?:secondary-equipment|equipment-loadouts)\.ts$/,
+  /^tests\/(?:weapon-glock-family-art|weapon-beretta-m9-art|secondary-s1-s3-foundation|consolidation-p(?:9-arsenal-preview|10-arsenal-controls|11-arsenal-chrome)|performance-p3-preview-hotpaths)\.test\.mjs$/,
+  /^scripts\/smoke-consolidation-p9-arsenal\.mjs$/,
+  /^\.github\/workflows\/glock-family-art\.yml$/
+ ]
+};
+const weaponVisualInfrastructure=/^(?:package(?:-lock)?\.json|vite\.config\.[^/]+|tsconfig(?:\.[^/]+)?\.json|\.github\/workflows\/ci\.yml|scripts\/verification\/ci-(?:specialist-routing|workflow-contract)\.mjs|tests\/ci-weapon-visual-routing\.test\.mjs)$/;
+export function selectWeaponVisualSuites(paths=[]){
+ const files=[...new Set(paths)].sort();
+ return Object.fromEntries(Object.entries(weaponVisualPaths).map(([name,patterns])=>
+  [name,files.some(file=>weaponVisualInfrastructure.test(file)||
+   patterns.some(pattern=>pattern.test(file)))]));
+}
+
 function changedFiles(){
  const base=process.env.CI_BASE_REF;
  assert.ok(base&&/^[\w./-]+$/.test(base),'Missing or unsafe PR base');
@@ -62,10 +126,12 @@ function main(){
  const at=args.indexOf('--files');
  const paths=at<0?changedFiles():args.slice(at+1).filter(x=>!x.startsWith('--'));
  const result=selectSpecialists(paths);
- console.log('Specialist CI routing',JSON.stringify(result));
+ const movement=selectMovementSuites(paths);
+ const weapons=selectWeaponVisualSuites(paths);
+ console.log('Specialist CI routing',JSON.stringify({...result,movement,weapons}));
  if(args.includes('--github-output')){
   assert.ok(process.env.GITHUB_OUTPUT,'GITHUB_OUTPUT missing');
-  appendFileSync(process.env.GITHUB_OUTPUT,Object.entries(result.selected)
+  appendFileSync(process.env.GITHUB_OUTPUT,[...Object.entries(result.selected),...Object.entries(movement),...Object.entries(weapons)]
    .map(([name,enabled])=>name+'='+String(enabled)).join('\n')+'\n');
  }
 }

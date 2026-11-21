@@ -1,6 +1,8 @@
 name: D3.17D utility waypoint join physics acceptance
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/breach-d317d-door-route-join.ts'
       - 'src/breach-door-traversal-maneuver.ts'

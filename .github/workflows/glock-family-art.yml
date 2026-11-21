@@ -1,6 +1,8 @@
 name: Glock family art gate
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/weapons/geometry/glock-family-silhouettes.ts'
       - 'src/arsenal/glock-gallery.ts'
@@ -25,7 +27,7 @@ on:
       - '.github/workflows/glock-family-art.yml'
   workflow_dispatch:
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: glock-family-art-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   focused-art:
