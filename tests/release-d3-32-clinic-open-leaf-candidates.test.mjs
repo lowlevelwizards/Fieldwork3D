@@ -12,6 +12,7 @@ import {OPERATOR_RADIUS,doorLeafSegment,pointToSegment}
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {sweptBodyClear,bodyClear} from '../src/breach-navigation.ts';
 import {routeWithSqueezeWorld,routeWithSqueezeIntel,routeToNextOperableDoor} from '../src/breach-squeeze-route.ts';
+import {selectColdStaleLeafPortalStage} from '../src/breach-physical-leaf-rejoin.ts';
 
 test('D3.32 Clinic D9: old chord blocked, two swept full-body legs clear',()=>{
  const site=generateSite(14490156,'standard',undefined,
@@ -118,4 +119,59 @@ test('D3.32 Clinic Vale: classify physically clear cold route departures',()=>{
   safe,worldStarts:worldStarts.slice(0,12),
   portalStarts:portalStarts.slice(0,12),intelStarts}));
  assert.ok(stand(from));
+});
+
+
+test('D3.32 P3B full-body cold open-leaf portal-stage is real and guarded',()=>{
+ const site=generateSite(14490156,'standard',undefined,
+  {mission:'intel'},{archetype:'clinic'});
+ const quiet={...site,training:true,enemies:[],encounter:undefined};
+ const s=newSession(0,14490156,'full-view',site.scale??'standard',
+  'intel',quiet,{enableCivilians:false});
+ // Real physical pose and final static angle in the frozen Clinic run.
+ const fractions=new Map([['FRONT',1.55],['D3',1],['D8',1],
+   ['D9',1.55],['D10',1],['SERVICE',1],
+   ['COURT-1',1],['COURT-2',1]]);
+ for(const door of s.doors){
+  const f=fractions.get(door.id);
+  if(f!==undefined)Object.assign(door,{
+   open:true,openFraction:f,pushTarget:f,
+   angularVelocity:0,heldBy:null});
+ }
+ const d9=s.doors.find(d=>d.id==='D9');
+ assert.ok(d9);
+ const from={x:430.32069912069454,y:278.5743135306611};
+ const goal={x:315.5,y:585};
+ const world=sessionWorldGeometry(s);
+ const sweep=(a,b)=>sweptBodyClear(a,b,s.doors,OPERATOR_RADIUS,world);
+ const stand=p=>bodyClear(p,s.doors,OPERATOR_RADIUS,world);
+ const portal=(a,b)=>routeToNextOperableDoor(a,b,s.doors,world);
+ const route=selectColdStaleLeafPortalStage(from,goal,d9,
+  stand,sweep,portal);
+ console.log('D332_VALE_COLD_STAGE',JSON.stringify({
+  length:route.length,first:route[0],last:route.at(-1)}));
+ assert.ok(route.length>=2,'physically joined to existing door portal');
+ let previous=from;
+ for(const point of route){
+  assert.ok(stand(point),'all staged waypoints are standable');
+  assert.equal(sweep(previous,point),true,
+   'all motor segments retain full-body collision authority');
+  previous=point;
+ }
+ for(const blocked of [
+  {open:false},{openFraction:.97},{locked:true},{jammed:true},
+  {wedged:true},{heldBy:'enemy'},{angularVelocity:.3},
+  {kind:'sliding'}
+ ]){
+  const invalid={...d9,...blocked};
+  assert.deepEqual(
+   selectColdStaleLeafPortalStage(from,goal,invalid,stand,sweep,portal),
+   [],JSON.stringify(blocked));
+ }
+ assert.deepEqual(
+  selectColdStaleLeafPortalStage(from,goal,d9,stand,()=>false,portal),
+  [],'no path through blocked first strides');
+ assert.deepEqual(
+  selectColdStaleLeafPortalStage(from,goal,d9,stand,sweep,()=>[]),
+  [],'a staging footstep without an operable-door prefix has no authority');
 });
