@@ -49,8 +49,6 @@ const SOURCE_CERT:Readonly<Record<AcquisitionSource,AcquisitionCertificate>>={
 };
 const finite=(p:Pt):boolean=>Number.isFinite(p.x)&&Number.isFinite(p.y);
 const near=(a:Pt,b:Pt,tol=.5):boolean=>Math.hypot(a.x-b.x,a.y-b.y)<=tol;
-const whole=(source:AcquisitionSource):boolean=>
- source==='initial-intel'||source==='initial-enemy';
 const owner=(source:AcquisitionSource):RecoveryOwner=>
  source==='initial-portal-recovery'||source==='forced-door-shortcut'?
  'door':'none';
@@ -70,7 +68,7 @@ const witness=new WeakMap<TeamActor,{
  * It must NEVER be reported as success or physical progress.
  */
 export function evaluateRouteAcquisition(c:AcquisitionCandidate):AcquisitionDecision{
- const {actor:a,session:s,source,route,goal}=c;
+ const {actor:a,source,route,goal}=c;
  const reject=(reason:AcquisitionRejection):AcquisitionDecision=>({
   kind:'reject',reason,proof:null
  });
@@ -91,8 +89,7 @@ export function evaluateRouteAcquisition(c:AcquisitionCandidate):AcquisitionDeci
  if(needsMove&&(order?.kind!=='move'||!near(order.p,goal)))
   return reject('not-authored-goal');
  const initial=source==='initial-intel'||source==='initial-enemy';
- if(initial!==c.initialRouteAbsent&&
-    (initial||source!=='forced-door-shortcut'))
+ if(c.initialRouteAbsent===(source==='forced-door-shortcut'))
   return reject('wrong-route-shape');
  if(!initial&&source!=='forced-door-shortcut'&&a.nav.length>0)
   return reject('protected-owner');
