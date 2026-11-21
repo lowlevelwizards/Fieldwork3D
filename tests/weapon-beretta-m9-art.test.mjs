@@ -537,8 +537,10 @@ test('D8 mobile inspection framing is constrained and Glock remains unaffected',
   'mobile portrait inspector stops wasting a screen-tall grey panel');
  assert.match(viewport,/this\.tightArt=true;this\.fitMultiplier=\.83/,
   'more readable default Beretta without changing the Glock editor');
- assert.match(viewport,/if\(this\.tightArt\)this\.radius=THREE\.MathUtils\.clamp\(this\.radius\*\.89,14,120\)/,
-  'quarter preset has Beretta-only perspective compensation');
+ assert.match(viewport,/if\(this\.tightArt&&aspect>=1\.15\)/,
+  'quarter preset only zooms on wide Beretta canvases');
+ assert.match(viewport,/this\.radius=THREE\.MathUtils\.clamp\(this\.radius\*\.89,14,120\)/,
+  'wide screens still receive limited Beretta-only quarter compensation');
  assert.match(inspector,/viewport\.useTightArtFraming\(\);viewport\.side\(\)/,
   'default camera remains SIDE on both models');
  assert.match(viewport,/private fitMultiplier=1;/,
