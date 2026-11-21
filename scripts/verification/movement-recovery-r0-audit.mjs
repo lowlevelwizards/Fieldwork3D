@@ -9,6 +9,9 @@ import {dirname,resolve,join} from 'node:path';
 import {createHash} from 'node:crypto';
 export const ROOT=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 export const BASE_COMMIT='fe2489f3a430aa170478bb4cb2d7b412961ccb1e';
+// Preserve the R0 snapshot's ORIGINAL motor collision line anchors.
+// The live ledger rows below intentionally follow R2's reviewed line moves.
+export const R0_CORE_ORIGINAL_LINES=Object.freeze([198,218,261,300,324,343,358,486,499,542,575,631,671,701,721,750,791,818,823]);
 const C='src/breach-motor-collision.ts';
 const R='src/breach-motor-route.ts';
 const D='src/breach-door-traversal-maneuver.ts';
@@ -18,25 +21,25 @@ const P='src/breach-motor-passage.ts';
 // These are observed safeguards, NOT R1-approved recovery contracts.
 export const FROZEN_WRITERS=Object.freeze({
  [C]:[
-  [198,'set','motor-micro-departure','cold','claimColdMotorMicroDeparture','short full-body + WATCH'],
-  [218,'set','motor-cold-fine-world','cold','claimD326ColdFineProbe','fine-grid full-body + WATCH'],
-  [261,'set','motor-exact-passage','cold','claimD327ColdPassage','world route + first-leg WATCH'],
-  [300,'set','d328-entry-fine-world','stack','claimD328EntryLoopProbe','distinct full-route + WATCH'],
-  [324,'set','lane-cycle-world','door','shouldProbeCircularFullBodyLane','alternate route selector'],
-  [343,'set','lane-cycle-world','stack','shouldProbeDoorlessStackLane','alternate route selector'],
-  [358,'set','full-body-lane','ordinary','allowPhysicalRouteReissue','first-stride + full-body sweep + WATCH'],
-  [486,'set','door-escape-swept-rejoin','escape','sweptRejoinExistingRoute','full-body rejoin sweep'],
-  [499,'set','door-leaf-escape','clear','escapeOpenDoorOverlap','physical overlap escape; clear nav'],
-  [542,'prepend','local-detour','actor','recoveryAction','local continuation + WATCH'],
-  [575,'prepend','local-detour','actor','eligibleFrameActorDetour','first-stride + continuation + WATCH'],
-  [631,'set','stack-micro-corner','stack','claimStackMicroAttempt','full-body micro-corner'],
-  [671,'prepend','self-hinge-relief','door','selfBlockingHingeRelief','hinge-relief selector'],
-  [701,'set','open-leaf-local-rejoin','door','claimPhysicalLeafRejoin','physical leaf rejoin + WATCH'],
-  [721,'set','cold-micro-departure','cold','claimRepeatedFurnitureDeparture','verified departure + WATCH'],
+  [201,'set','motor-micro-departure','cold','claimColdMotorMicroDeparture','short full-body + WATCH'],
+  [221,'set','motor-cold-fine-world','cold','claimD326ColdFineProbe','fine-grid full-body + WATCH'],
+  [264,'set','motor-exact-passage','cold','claimD327ColdPassage','world route + first-leg WATCH'],
+  [303,'set','d328-entry-fine-world','stack','claimD328EntryLoopProbe','distinct full-route + WATCH'],
+  [327,'set','lane-cycle-world','door','shouldProbeCircularFullBodyLane','alternate route selector'],
+  [346,'set','lane-cycle-world','stack','shouldProbeDoorlessStackLane','alternate route selector'],
+  [367,'set','full-body-lane','ordinary','allowPhysicalRouteReissue','first-stride + full-body sweep + WATCH'],
+  [496,'set','door-escape-swept-rejoin','escape','sweptRejoinExistingRoute','full-body rejoin sweep'],
+  [509,'set','door-leaf-escape','clear','escapeOpenDoorOverlap','physical overlap escape; clear nav'],
+  [563,'prepend','local-detour','actor','recoveryAction','local continuation + WATCH'],
+  [603,'prepend','local-detour','actor','eligibleFrameActorDetour','first-stride + continuation + WATCH'],
+  [660,'set','stack-micro-corner','stack','claimStackMicroAttempt','full-body micro-corner'],
+  [700,'prepend','self-hinge-relief','door','selfBlockingHingeRelief','hinge-relief selector'],
+  [730,'set','open-leaf-local-rejoin','door','claimPhysicalLeafRejoin','physical leaf rejoin + WATCH'],
+  [779,'set','cold-micro-departure','cold','claimRepeatedFurnitureDeparture','verified departure + WATCH'],
   [750,'set','entry-squeeze-departure','squeeze','claimM2EntrySqueezeProbe','narrow profile + WATCH'],
-  [791,'set','blocked-leg-connector','ordinary','allowPhysicalRouteReissue','first-stride full-body'],
-  [818,'set','collision-world-replan','ordinary','allowPhysicalRouteReissue','material difference + recurrence'],
-  [823,'set','collision-intel-replan','ordinary','allowPhysicalRouteReissue','material difference + recurrence']
+  [827,'set','blocked-leg-connector','ordinary','allowPhysicalRouteReissue','first-stride full-body'],
+  [864,'set','collision-world-replan','ordinary','allowPhysicalRouteReissue','material difference + recurrence'],
+  [879,'set','collision-intel-replan','ordinary','allowPhysicalRouteReissue','material difference + recurrence']
  ],
  [R]:[
   [80,'set','door-leaf-escape','escape','coldSweptEntryEscapeJoin','physical leaf escape join'],
@@ -110,7 +113,12 @@ export function scanWriters(source,allowed){
   if(prefix.startsWith('//')||prefix.startsWith('*')||
      prefix.startsWith('import ')||prefix.startsWith('export function'))continue;
   const args=parseCall(source,source.indexOf('(',m.index));
-  if(args.length!==4)fail('writer args at '+lineOf(source,m.index));
+  if(args.length!==4&&args.length!==5)
+   fail('writer args at '+lineOf(source,m.index));
+  // R2 may add a fifth, explicit typed adoption evidence argument.
+  // Other unreviewed fifth arguments must not silently enter the ledger.
+  if(args.length===5&&!/^(?:fullLane|local|frame|connector|world|intel)Adoption\.proof$/.test(args[4]))
+   fail('unreviewed adoption proof at '+lineOf(source,m.index));
   const sources=[...args[3].matchAll(/'([^']+)'/g)].map(x=>x[1])
    .filter(x=>allowed.has(x));
   if(!sources.length)fail('route source missing at '+lineOf(source,m.index));
