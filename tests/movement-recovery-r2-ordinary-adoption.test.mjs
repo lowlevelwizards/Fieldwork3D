@@ -101,7 +101,7 @@ test('R2: physical blockage, tail churn and missing first-step proof are rejecte
   route:[]
  }));
  assert.equal(empty.accepted,false);
- assert.equal(empty.decision.reason,'ineligible');
+ assert.equal(empty.decision.reason,'empty-route');
 });
 
 test('R2: stale authored GO, active traversal and retry cooldown cannot adopt',()=>{
