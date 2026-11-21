@@ -42,4 +42,13 @@ test('Main branch automatically deploys the Vite build to GitHub Pages',()=>{
   assert.match(workflow,/npm run build/);
   assert.match(workflow,/path: dist/);
   assert.match(workflow,/actions\/deploy-pages@v4/);
+  assert.match(workflow,/actions: read/,
+    'GitHub Pages artifact listing needs Actions read permission');
+  const upload=workflow.indexOf('uses: actions/upload-pages-artifact@v3');
+  const gate=workflow.indexOf('name: Wait for Pages artifact API visibility');
+  const publish=workflow.indexOf('uses: actions/deploy-pages@v4');
+  assert.ok(upload>=0&&gate>upload&&publish>gate,
+    'must wait for same-attempt uploaded artifact before deploying');
+  assert.match(workflow,/gh api --method GET/);
+  assert.match(workflow,/grep -Fxq/);
 });
