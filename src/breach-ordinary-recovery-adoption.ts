@@ -9,6 +9,7 @@
 import type {Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
+import {materiallyDifferentRoute} from './breach-movement-recovery.ts';
 import {evaluateRecoveryProposal,RECOVERY_SOURCE_POLICY,
  type RecoveryAdoptionProof,type RecoveryDecision,type RecoveryOwner}
  from './breach-recovery-adoption-contract.ts';
@@ -107,14 +108,23 @@ export function evaluateOrdinaryRecoveryAdoption(
     s.seconds-a.lastNavRepairAt>=.65:
     c.retry==='cold-frame-detour'?
      s.seconds-a.lastNavRepairAt<=.08:false;
- const prepared=c.eligible&&signature&&legalCertificate&&
+ const prepared=c.eligible&&signature&&
    finite(goal)&&route.length>0&&route.every(finite);
+ // M2: a new route tail is NOT useful if its physically blocked first
+ // waypoint is unchanged. The 3-unit tolerance matches the established
+ // full-body first-stride route validation; the door/STACK special
+ // recoveries are deliberately excluded from this generic rule.
+ const staleFirstLeg=a.blockedTime>=1.25&&a.nav.length>0&&
+   route.length>0&&gap(route[0],a.nav[0])<3&&
+   gap(a.p,a.nav[0])>.5;
+ const productive=c.useful&&materiallyDifferentRoute(a.nav,route)&&
+   !staleFirstLeg;
  const evidence={
   eligibility:prepared?'pass' as const:'fail' as const,
   clearance:legalCertificate&&c.watchSafe?'pass' as const:'fail' as const,
   cooldown:retryReady?'pass' as const:'fail' as const,
   recurrence:'pass' as const,
-  progress:c.useful?'pass' as const:'fail' as const
+  progress:productive?'pass' as const:'fail' as const
  };
  const proposal={
   source,operation:c.operation,policy:RECOVERY_SOURCE_POLICY[source],
