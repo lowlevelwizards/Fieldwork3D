@@ -168,20 +168,44 @@ export function verifyCourtPhysicalTruth(report){
    ashJoined:mode?.routeTransitions?.byActor?.['ash:door-rehearsal-joined-waypoint']??0}};
 }
 
-export function verifyCurrentD3PhysicalRelease(historical,frozen,court){
+export function verifyRetailPhysicalTruth(report){
+ const errors=[];
+ const s=goodPhysicalSummary(report,errors,'retail');
+ if(report?.rows?.length!==1||report.rows[0]?.seed!==5412896||
+    report.rows[0]?.archetype!=='retail'||report.ticks!==2700)
+  errors.push('changed exact retail world');
+ const mode=report?.rows?.[0]?.modes?.find(x=>x.mode==='authored');
+ const rook=mode?.operators?.find(x=>x.id==='rook');
+ const sources=mode?.routeTransitions?.byActor??{};
+ const recovered=['door-rehearsal-world','door-escape-local-portal',
+  'door-escape-world-rejoin','door-escape-swept-rejoin']
+  .reduce((sum,key)=>sum+(sources['rook:'+key]??0),0);
+ if(!rook?.arrived||rook.failedOrders||rook.remainingOrders||
+    mode.arrivals!==4||recovered<1)
+  errors.push('retail Rook or squad lost physically verified portal recovery');
+ if(report.progressSummary?.suspectedLoops)
+  errors.push('retail has movement loops');
+ return {ok:errors.length===0,errors,
+  observed:{arrivals:mode?.arrivals??0,rescueSources:recovered}};
+}
+
+export function verifyCurrentD3PhysicalRelease(historical,frozen,court,retail){
  const main=verifyD330Mainline(historical);
  const wide=verifyFrozenD315B4(frozen);
  const focused=verifyCourtPhysicalTruth(court);
- return {ok:main.ok&&wide.ok&&focused.ok,
-  mainline:main,frozen:wide,court:focused};
+ const retailTruth=verifyRetailPhysicalTruth(retail);
+ return {ok:main.ok&&wide.ok&&focused.ok&&retailTruth.ok,
+  mainline:main,frozen:wide,court:focused,retail:retailTruth};
 }
 
 if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]){
- const [historical,frozen,court]=process.argv.slice(2);
- assert.ok(historical&&frozen&&court,'Expected 11-site, frozen22 and COURT-1 JSON paths');
+ const [historical,frozen,court,retail]=process.argv.slice(2);
+ assert.ok(historical&&frozen&&court&&retail,
+  'Expected 11-site, frozen22, COURT-1 and retail JSON paths');
  const result=verifyCurrentD3PhysicalRelease(...[historical,frozen,court]
   .map(path=>JSON.parse(fs.readFileSync(path,'utf8'))));
  console.log('Current D3 physical truth',JSON.stringify(result,null,2));
  if(!result.ok)throw Error('D3 physical gate: '+[
-  ...result.mainline.errors,...result.frozen.errors,...result.court.errors].join('; '));
+  ...result.mainline.errors,...result.frozen.errors,...result.court.errors,
+  ...result.retail.errors].join('; '));
 }
