@@ -443,6 +443,14 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
       'Cancel the withdrawal order; resume the mission':
       'Preserve partial results by physically returning surviving operators to extraction';
   }
+  const individualExit=document.getElementById('campaignExtractSelectedButton') as HTMLButtonElement|null;
+  if(individualExit){
+   const s=config.getSession();
+   individualExit.hidden=!(campaignMission||quickPlay)||config.isReplaying()||
+     !s.started||s.phase!=='planning'||!s.withdrawalRequested;
+   individualExit.textContent='EXTRACT SELECTED'+
+     ((s.pendingExtractionIds?.length??0)?' · '+s.pendingExtractionIds!.length+' QUEUED':'');
+  }
   ui.intelMode.textContent='NEXT SITE INTEL · '+
     config.getIntel().replaceAll('-', ' ').toUpperCase();
   ui.intelMode.disabled=campaignMission||training||config.isReplaying();
