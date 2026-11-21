@@ -16,7 +16,7 @@ type IntelMission={
  optionalIntel:OptionalIntelItem[];
  intelGather?:OptionalIntelGather|null;
  operators:IntelCollector[];scenario:{extract:Pt};
- phase:string;
+ phase:string;seconds:number;
 };
 
 const near=(a:Pt,b:Pt,r:number)=>
@@ -106,7 +106,7 @@ export function advanceOptionalIntel(s:IntelMission,dt:number,
  action.elapsed+=Math.max(0,dt);
  if(action.elapsed<1.2)return null;
  item.collectedBy=actor.id;
- item.collectedAt=(item.collectedAt??0)+1;
+ item.collectedAt=s.seconds;
  s.intelGather=null;
  return item;
 }
