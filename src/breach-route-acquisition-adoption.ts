@@ -5,6 +5,9 @@
  */
 import type {Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
+import {finiteRecoveryPoint,finiteRecoveryRoute,
+ recoveryDistance,recordAdoptionWitness,readAdoptionWitness}
+ from './breach-recovery-adoption-shared.ts';
 import {RECOVERY_SOURCE_POLICY,
  type RecoveryAdoptionProof,type RecoveryOwner,type RecoverySourcePolicy}
  from './breach-recovery-adoption-contract.ts';
@@ -47,8 +50,7 @@ const SOURCE_CERT:Readonly<Record<AcquisitionSource,AcquisitionCertificate>>={
  'forced-door-shortcut':'broken-latch-world-shortcut',
  'motor-cold-fine-world':'cold-fine-full-body'
 };
-const finite=(p:Pt):boolean=>Number.isFinite(p.x)&&Number.isFinite(p.y);
-const near=(a:Pt,b:Pt,tol=.5):boolean=>Math.hypot(a.x-b.x,a.y-b.y)<=tol;
+const near=(a:Pt,b:Pt,tol=.5):boolean=>recoveryDistance(a,b)<=tol;
 const owner=(source:AcquisitionSource):RecoveryOwner=>
  source==='initial-portal-recovery'||source==='forced-door-shortcut'?
  'door':'none';
@@ -59,10 +61,6 @@ const clearance:Record<AcquisitionSource,RecoverySourcePolicy['clearance']>={
  'forced-door-shortcut':'existing-route',
  'motor-cold-fine-world':'full-body'
 };
-const witness=new WeakMap<TeamActor,{
- source:AcquisitionSource;orderId:number|null;at:Pt;
- goal:Pt;selectedAt:number;negative:boolean
-}>();
 /** No route/actor mutation. In R4, 'no-route' must still be recorded as
  * a legitimate failed normal query so shove/portal/backoff can execute.
  * It must NEVER be reported as success or physical progress.
@@ -77,7 +75,8 @@ export function evaluateRouteAcquisition(c:AcquisitionCandidate):AcquisitionDeci
  if(!c.eligible)return reject('not-authorized');
  const order=a.plan[0],orderId=order?.id??null;
  if(orderId!==c.orderIdAtSelection)return reject('stale-order');
- if(!finite(a.p)||!finite(goal)||!route.every(finite))
+ if(!finiteRecoveryPoint(a.p)||!finiteRecoveryPoint(goal)||
+    !finiteRecoveryRoute(route))
   return reject('nonfinite-route');
  const blue=a.side==='blue';
  if(source==='initial-enemy'&&blue||
@@ -155,23 +154,17 @@ export function evaluateRouteAcquisition(c:AcquisitionCandidate):AcquisitionDeci
 export function authorizeRouteAcquisition(c:AcquisitionCandidate):
  AcquisitionDecision{
  const decision=evaluateRouteAcquisition(c);
- if(decision.kind!=='reject'){
-  witness.set(c.actor,{
-   source:c.source,orderId:c.orderIdAtSelection,
-   at:{...c.actor.p},goal:{...c.goal},
-   selectedAt:c.session.seconds,negative:decision.kind==='no-route'
-  });
- }
+ if(decision.kind!=='reject')
+  recordAdoptionWitness(c.actor,'acquisition',c.source,
+   c.goal,c.session.seconds,decision.kind==='no-route');
  return decision;
 }
 export function acquisitionProgress(a:TeamActor):null|{
  source:AcquisitionSource;state:'no-route'|'provisional'|'moved'|'superseded';
  distance:number;selectedAt:number
 }{
- const prior=witness.get(a);
- if(!prior)return null;
- const moved=Math.hypot(a.p.x-prior.at.x,a.p.y-prior.at.y);
- const state=a.plan[0]?.id!==prior.orderId?'superseded':
-  prior.negative?'no-route':moved>=.3?'moved':'provisional';
- return {source:prior.source,state,distance:moved,selectedAt:prior.selectedAt};
+ const w=readAdoptionWitness(a,'acquisition');
+ if(!w)return null;
+ return {source:w.source as AcquisitionSource,state:w.state,
+  distance:w.distance,selectedAt:w.selectedAt};
 }
