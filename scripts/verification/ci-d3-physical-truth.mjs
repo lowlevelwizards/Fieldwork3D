@@ -199,10 +199,10 @@ export function verifyCurrentD3PhysicalRelease(historical,frozen,court,retail){
 }
 
 if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]){
- const [historical,frozen,court,retail]=process.argv.slice(2);
- assert.ok(historical&&frozen&&court&&retail,
+ const files=process.argv.slice(2);
+ assert.equal(files.length,4,
   'Expected 11-site, frozen22, COURT-1 and retail JSON paths');
- const result=verifyCurrentD3PhysicalRelease(...[historical,frozen,court]
+ const result=verifyCurrentD3PhysicalRelease(...files
   .map(path=>JSON.parse(fs.readFileSync(path,'utf8'))));
  console.log('Current D3 physical truth',JSON.stringify(result,null,2));
  if(!result.ok)throw Error('D3 physical gate: '+[
