@@ -7,6 +7,8 @@ import {optionalIntelRecovered,advanceOptionalIntel}
 import {newSession,toggling,stepSession} from '../src/breach-game.ts';
 import {MissionRecorder} from '../src/breach-replay.ts';
 import {buildAfterActionReport} from '../src/breach-after-action-report.ts';
+import {buildAfterActionInventoryCloseout}
+ from '../src/breach-after-action-inventory.ts';
 import {reconcileSceneActorLifetimes}
  from '../src/rendering/breach-actor-frame-presenter.ts';
 const friend=(id,x,health=4)=>({
@@ -132,6 +134,12 @@ test('OC10 replay has the actor before extraction but not in later live frames',
  assert.ok(historical,'evacuated operators remain in squad ranking');
  assert.notEqual(historical.status,'unknown',
   'structured evacuation plus actual prior frame preserves verified condition');
+ const inventory=buildAfterActionInventoryCloseout({
+   session:s,recorder,mode:'quick'});
+ assert.equal(inventory.operators.length,4,
+  'after-action inventory includes evacuated and still-deployed members');
+ assert.ok(inventory.operators.some(a=>a.id==='rook'&&a.condition==='active'));
+
 });
 
 test('OC10 departed friendly hides body, status, flashlight beam and shadows',()=>{
