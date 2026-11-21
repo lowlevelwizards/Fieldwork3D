@@ -71,12 +71,14 @@ test('OC6 withdrawn operations keep verified partial intel, but never double rew
   participatingIds:['rook','moss'],casualties:['moss'],
   stabilizedIds:['moss'],evacuatedIds:['moss'],extractedIds:['rook'],
   leftBehindIds:[],objective:false,objectiveSecured:false,
-  intelRecovered:2,events:[]};
+  intelRecovered:2,intelRecoveryBy:{rook:2},events:[]};
  const next=resolveOperation(c,report);
  assert.equal(campaignIntelBalance(next),Math.min(9,before+2));
  assert.equal(next.history.at(-1).disposition,'withdrawn');
  assert.equal(next.history.at(-1).intelRecovered,2);
  assert.ok(next.journal.some(e=>e.kind==='casualty-evacuated'));
+ assert.equal(next.journal.filter(e=>e.kind==='intel-recovered'&&
+  e.operatorId==='rook').length,1,'one evidence recovery career credit');
  const followup=next.contracts.find(k=>k.followUpOf===job.id);
  assert.ok(followup,'two real recovered intel pieces generate an actionable follow-up');
  assert.equal(followup.objectiveIntel,'approximate',

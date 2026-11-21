@@ -106,6 +106,11 @@ function recordCompletedOperation(){
     disposition:stats.operationOutcome.disposition,
     objectiveSecured:stats.operationOutcome.objectiveSecured,
     intelRecovered:stats.optionalIntel.recovered,
+    intelRecoveryBy:Object.fromEntries(members.flatMap(member=>{
+      const n=state.optionalIntel.filter(item=>item.collectedBy===member.id&&
+        stats.optionalIntel.itemIds.includes(item.id)).length;
+      return n?[[careerId(member.id),n]]:[];
+    })),
     extractedIds:stats.operationOutcome.extractedOperatorIds.map(careerId),
     leftBehindIds:stats.operationOutcome.leftBehindOperatorIds.map(careerId),
     ...(isDispatchPilot(currentCampaign)?

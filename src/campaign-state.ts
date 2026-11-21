@@ -109,6 +109,8 @@ export type CampaignReport={
  extractedIds?:string[];leftBehindIds?:string[];
  /** Actual optional evidence physically recovered, not merely discovered. */
  intelRecovered?:number;
+ /** Only the couriers who physically extracted with verified optional evidence. */
+ intelRecoveryBy?:Record<string,number>;
  performance?:OperatorPerformance[];gains?:SkillGains[];
  flashUsed?:number;
  /** D10: optional evidence-only incident closeout; no extra score rule. */
@@ -395,6 +397,16 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   careerEvents.push({id:r.id+'-'+id+'-evacuated',day:c.day,
    operatorId:id,operationId:r.id,kind:'casualty-evacuated',
    detail:'Physically evacuated from '+contract.title});
+ // Successful extraction, not a desk pickup, confers service credit.
+ for(const [id,raw] of Object.entries(r.intelRecoveryBy??{})){
+  if(!participants.has(id)||typeof raw!=='number'||!Number.isFinite(raw)||raw<=0)continue;
+  const count=Math.min(6,Math.floor(raw));
+  if(count===0)continue;
+  careerEvents.push({id:r.id+'-'+id+'-intel-extracted',day:c.day,
+   operatorId:id,operationId:r.id,kind:'intel-recovered',
+   detail:'Carried '+count+' verified intelligence item'+(count===1?'':'s')+
+     ' out of '+contract.title});
+ }
  for(const id of r.leftBehindIds??[])if(participants.has(id))
   careerEvents.push({id:r.id+'-'+id+'-unrecovered',day:c.day,
    operatorId:id,operationId:r.id,kind:'unrecovered',

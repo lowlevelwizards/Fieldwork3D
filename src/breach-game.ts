@@ -1795,7 +1795,7 @@ function mission(s:Session,dt:number){
       const finder=team(s).find(a=>a.id===gathered.collectedBy);
       if(finder){
         notify(s,finder.name+' RECOVERED OPTIONAL INTELLIGENCE');
-        battleEvent(s,'intel',finder,gathered.p,'OPTIONAL INTELLIGENCE RECOVERED',
+        battleEvent(s,'intel',finder,gathered.p,'OPTIONAL INTELLIGENCE COLLECTED',
           {action:'optional-intel-recovered',objectId:gathered.id,
            contributorId:finder.id});
       }

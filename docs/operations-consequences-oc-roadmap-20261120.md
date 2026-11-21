@@ -49,7 +49,7 @@ A mission is an operation with independent tactical, human, intelligence and cam
 ## OC6 — Campaign continuity
 - Existing save schema v1 remains compatible through optional report fields.
 - The single `resolveOperation` authority adds recovered intel even from failed operations. Existing intel capacity of 9 and exactly-once result-ID gate remain.
-- Withdrawal and recovery events enter actual operator career journals.
+- Withdrawal, verified intel couriers and physical casualty recovery enter actual operator career journals; merely collected evidence does not earn extraction service credit.
 - Existing medical recovery and field-inventory settlement remain authoritative.
 
 ## OC7 — Intel improves future briefings
