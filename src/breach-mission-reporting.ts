@@ -3,7 +3,6 @@
  * replay. Isolated from frame/render state to keep reporting truthful.
  */
 import type {Session} from './breach-game.ts';
-import type {Pt} from './breach-core.ts';
 import {team,enemies} from './breach-session-selectors.ts';
 import {operationBrief,assessOperation,type OperationKind} from './breach-operations.ts';
 import {stabilizationSummary} from './breach-casualty-status.ts';
@@ -14,7 +13,6 @@ import {deriveOperationOutcome,deployedTeam} from './breach-operation-outcomes.t
 import {verifiedMissingPersonRecovery} from './breach-missing-recovery.ts';
 import {optionalIntelRecovered} from './breach-optional-intel.ts';
 
-const near=(a:Pt,b:Pt,range:number)=>Math.hypot(a.x-b.x,a.y-b.y)<=range;
 
 export function operationBriefing(s:Session){
   const brief=operationBrief(s.missionType);
