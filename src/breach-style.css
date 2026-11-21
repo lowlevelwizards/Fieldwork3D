@@ -4203,3 +4203,13 @@ body.nvg-selected-view #breach3dCanvas{
  .fw-f4-inventory-tile{padding:5px}
  .fw-f4-team-row{grid-template-columns:minmax(0,1fr)}
 }
+
+/* A5 short-phone after-action acceptance: keep a real, readable four-rig
+   WebGL lineup fully inspectable within the 227px V6 scrolling content pane.
+   Apply only to the unselected overview, not the full operator record. */
+@media(max-width:360px) and (min-height:481px) and (max-height:620px){
+ .fw-v5-workspace .fw-v4-squad:not(.fw-v4-has-selection)
+ .fw-v4-squad-focus .fw-v4-squad-model{
+  height:200px;min-height:170px
+ }
+}

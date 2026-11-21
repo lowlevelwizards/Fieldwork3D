@@ -1,16 +1,6 @@
 name: After Action V4 — Stage 2 Summary and Squad Acceptance
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/after-action-v4-stage2.yml'
-      - 'index.html'
-      - 'src/breach-style.css'
-      - 'src/breach-after-action-report.ts'
-      - 'src/ui/breach-after-action-*.ts'
-      - 'src/ui/breach-mission-debrief.ts'
-      - 'scripts/smoke-after-action-v3.mjs'
-      - 'tests/after-action-v4-stage2-hierarchy.test.mjs'
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read

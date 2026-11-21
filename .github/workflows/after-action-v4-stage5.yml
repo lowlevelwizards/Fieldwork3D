@@ -1,16 +1,6 @@
 name: After Action V4 — Stage 5 Interactive Timeline and Details
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/after-action-v4-stage5.yml'
-      - 'index.html'
-      - 'src/breach-style.css'
-      - 'src/breach-after-action-timeline.ts'
-      - 'src/ui/breach-after-action-*.ts'
-      - 'src/ui/breach-mission-debrief.ts'
-      - 'scripts/smoke-after-action-v4-stage5.mjs'
-      - 'tests/after-action-v4-stage5-timeline.test.mjs'
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read

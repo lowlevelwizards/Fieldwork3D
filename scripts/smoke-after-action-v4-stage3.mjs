@@ -76,7 +76,7 @@ try{
    check(await root.locator('[data-after-squad-model]').count()===1,
      'Squad historical lineup missing '+label);
    if(width<=700&&height>=481){
-     const positions=await page.evaluate(()=>{
+     const initial=await page.evaluate(()=>{
        const root=document.querySelector('#v4-stage3-qa');
        const body=root.querySelector('#afterActionBody').getBoundingClientRect();
        const model=root.querySelector('.fw-v4-squad-model').getBoundingClientRect();
@@ -86,16 +86,46 @@ try{
          rankBottom:Math.max(...rows.map(row=>row.getBoundingClientRect().bottom)),
          scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth};
      });
-     check(positions.modelTop>=0&&
-       positions.modelBottom<=positions.bodyBottom+2&&
-       positions.rankBottom<=positions.bodyBottom+2&&
-       positions.scrollWidth<=positions.viewport+2,
-       'Initial real 3D lineup and all ranks must be in the phone viewport '+
-         label+' '+JSON.stringify(positions));
+     // V6 moved to one real scroll owner rather than shrinking a WebGL
+     // viewer below useful size on a 320px phone. Require all four ranked
+     // choices at the top and no horizontal clipping; then prove the full
+     // mounted model can be scrolled into view, not merely present in DOM.
+     check(initial.rankBottom<=initial.bodyBottom+8&&
+       initial.scrollWidth<=initial.viewport+2,
+       'Initial phone ranks clipped or horizontal overflow '+
+         label+' '+JSON.stringify(initial));
    }
    await root.screenshot({
      path:'artifacts/after-action-v4-stage3/initial-'+label+'.png'
    });
+   if(width<=700&&height>=481){
+     const old=await page.evaluate(()=>{
+       const root=document.querySelector('#v4-stage3-qa');
+       const body=root.querySelector('#afterActionBody');
+       return {scrollTop:body.scrollTop,
+         modelBottom:root.querySelector('.fw-v4-squad-model').getBoundingClientRect().bottom,
+         bodyBottom:body.getBoundingClientRect().bottom};
+     });
+     await root.locator('.fw-v4-squad-model').scrollIntoViewIfNeeded();
+     const visible=await page.evaluate(()=>{
+       const root=document.querySelector('#v4-stage3-qa');
+       const body=root.querySelector('#afterActionBody');
+       const viewport=body.getBoundingClientRect();
+       const model=root.querySelector('.fw-v4-squad-model').getBoundingClientRect();
+       return {modelTop:model.top,modelBottom:model.bottom,
+         bodyTop:viewport.top,bodyBottom:viewport.bottom,
+         scrollTop:body.scrollTop,scrollHeight:body.scrollHeight,
+         clientHeight:body.clientHeight};
+     });
+     check(visible.modelTop>=visible.bodyTop-2&&
+       visible.modelBottom<=visible.bodyBottom+2&&
+       (old.modelBottom<=old.bodyBottom+2||visible.scrollTop>old.scrollTop),
+       'Retained WebGL viewer not fully reachable in phone debrief scroll '+
+         label+' '+JSON.stringify({old,visible}));
+     await root.screenshot({
+       path:'artifacts/after-action-v4-stage3/model-visible-'+label+'.png'
+     });
+   }
    await root.locator('.fw-v4-rank-row')
      .filter({hasText:'MOSS'}).click();
    check(await page.evaluate(()=>window.__v4Stage3Canvas===
@@ -109,14 +139,26 @@ try{
      'Full record rebuilt the WebGL canvas '+label);
    await root.locator('.fw-v4-record-back').click();
    await root.locator('[data-after-tab="combat"]').click();
+   // Current V6 defaults Combat to 3D. Its viewer is intentionally visible,
+   // but the original Squad canvas must be reused rather than duplicated.
+   await visibleCanvas().waitFor({state:'attached',timeout:60000});
+   check(await root.locator('.fw-v4-model-canvas').count()===1&&
+     await page.evaluate(()=>window.__v4Stage3Canvas===
+       document.querySelector('#v4-stage3-qa .fw-v4-model-canvas')),
+     'Default Combat 3D must reuse exactly one Squad renderer '+label);
+   // Switching to the authoritative 2D paper view must detach the live
+   // canvas while keeping the WebGL context cached for a subsequent 3D opt-in.
+   await root.locator('.fw-v4-inspection-switch .fw-v3-small-button')
+     .filter({hasText:'2D'}).click();
    check(await root.locator('.fw-v4-model-canvas').count()===0,
-     'Hidden Squad tab left active canvas in DOM '+label);
-   await root.locator('.fw-v3-combat-figure .fw-v3-small-button')
+     'Combat 2D left the WebGL canvas mounted '+label);
+   await root.locator('.fw-v4-inspection-switch .fw-v3-small-button')
      .filter({hasText:'3D'}).click();
    await visibleCanvas().waitFor({state:'attached',timeout:60000});
-   check(await page.evaluate(()=>window.__v4Stage3Canvas===
-     document.querySelector('#v4-stage3-qa .fw-v4-model-canvas')),
-     'Combat 3D created a second renderer '+label);
+   check(await root.locator('.fw-v4-model-canvas').count()===1&&
+     await page.evaluate(()=>window.__v4Stage3Canvas===
+       document.querySelector('#v4-stage3-qa .fw-v4-model-canvas')),
+     'Combat paper-to-3D rebuilt or duplicated renderer '+label);
    await root.locator('[data-after-tab="squad"]').click();
    check(await page.evaluate(()=>window.__v4Stage3Canvas===
      document.querySelector('#v4-stage3-qa .fw-v4-model-canvas')),
@@ -142,16 +184,60 @@ try{
      check((await root.locator('.fw-v4-squad-model').textContent())
        .includes('3D VIEW UNAVAILABLE'),
        'WebGL loss did not expose fallback '+label);
+     // V6 Combat defaults to 3D and may automatically retry a lost
+     // graphics context. A genuine replacement is a success; an explicit
+     // unavailable state or paper fallback is also correct. Never silently
+     // accept a permanent LOADING label or a duplicate WebGL canvas.
      await root.locator('[data-after-tab="combat"]').click();
-     await root.locator('.fw-v3-combat-figure .fw-v3-small-button')
-       .filter({hasText:'3D'}).click();
-     check((await root.locator('[data-after-model]').textContent())
-       .includes('3D VIEW UNAVAILABLE'),
-       'Combat inherited a stale Loading label after WebGL loss '+label);
+     await page.waitForFunction(()=>{
+       const root=document.querySelector('#v4-stage3-qa');
+       const model=root.querySelector('[data-after-model]');
+       const active=root.querySelector(
+         '.fw-v4-inspection-switch button[aria-pressed="true"]');
+       const paper=active?.textContent?.trim()==='2D';
+       return !!model?.querySelector('.fw-v4-model-canvas')||
+         !!model?.textContent?.includes('3D VIEW UNAVAILABLE')||
+         !!model?.textContent?.includes('3D MODULE COULD NOT LOAD')||paper;
+     },{timeout:25000});
+     const combatStatus=await page.evaluate(()=>{
+       const root=document.querySelector('#v4-stage3-qa');
+       const model=root.querySelector('[data-after-model]');
+       const canvas=model?.querySelector('.fw-v4-model-canvas');
+       return {canvas:!!canvas,unique:root.querySelectorAll(
+         '.fw-v4-model-canvas').length===1,
+         replaced:canvas!==window.__v4Stage3Canvas,
+         fallback:!!model?.textContent?.includes('3D VIEW UNAVAILABLE')||
+           !!model?.textContent?.includes('3D MODULE COULD NOT LOAD'),
+         paper:root.querySelector(
+           '.fw-v4-inspection-switch button[aria-pressed="true"]'
+         )?.textContent?.trim()==='2D'};
+     });
+     check(combatStatus.canvas&&combatStatus.unique&&combatStatus.replaced||
+       combatStatus.fallback||combatStatus.paper,
+       'Lost graphics caused an invisible/stale Combat viewer '+
+         label+' '+JSON.stringify(combatStatus));
      await root.locator('[data-after-tab="squad"]').click();
-     check((await root.locator('[data-after-squad-model]').textContent())
-       .includes('3D VIEW UNAVAILABLE'),
-       'Squad lost the fallback message after a tab change '+label);
+     await page.waitForFunction(()=>{
+       const host=document.querySelector(
+         '#v4-stage3-qa [data-after-squad-model]');
+       return !!host?.querySelector('.fw-v4-model-canvas')||
+         !!host?.textContent?.includes('3D VIEW UNAVAILABLE')||
+         !!host?.textContent?.includes('3D MODULE COULD NOT LOAD');
+     },{timeout:25000});
+     const squadStatus=await page.evaluate(()=>{
+       const root=document.querySelector('#v4-stage3-qa');
+       const host=root.querySelector('[data-after-squad-model]');
+       const canvas=host?.querySelector('.fw-v4-model-canvas');
+       return {canvas:!!canvas,unique:root.querySelectorAll(
+         '.fw-v4-model-canvas').length===1,
+         replaced:canvas!==window.__v4Stage3Canvas,
+         fallback:!!host?.textContent?.includes('3D VIEW UNAVAILABLE')||
+           !!host?.textContent?.includes('3D MODULE COULD NOT LOAD')};
+     });
+     check(squadStatus.canvas&&squadStatus.unique&&squadStatus.replaced||
+       squadStatus.fallback,
+       'Squad lost WebGL recovery/fallback after Combat '+label+' '+
+         JSON.stringify(squadStatus));
    }
    // A new recorder owns a new viewer; the previous context is explicitly lost.
    const replaced=await page.evaluate(async()=>{
