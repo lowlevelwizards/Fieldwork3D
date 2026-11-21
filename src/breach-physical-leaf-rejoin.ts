@@ -53,6 +53,35 @@ export function relevantStableOpenLeaf(from:Pt,doors:readonly Door[],
  }
  return best;
 }
+/** D3.32 P3C: a REAL blocked authored stride may rejoin an existing
+ * physical route before a 0.85-second stall, but only at a locally
+ * obstructing, STABLE fully-open leaf. No new motor or route authority.
+ * A moving/partial/held door, another pending maneuver, or a generated
+ * ENTRY/STACK keeps its existing ownership and timing.
+ */
+export function earlyStableOpenLeafForBlockedAuthoredMove(
+ a:TeamActor,goal:Pt,doors:readonly Door[],now:number,
+ physicallyDenied:boolean
+):Door|null{
+ const order=a.plan[0],tail=a.nav.at(-1);
+ if(!physicallyDenied||a.side!=='blue'||order?.kind!=='move'||
+    order.entryDoorId||order.stackDoorId||
+    d(order.p,goal)>.5||a.nav.length<2||!tail||d(tail,goal)>3||
+    a.lastBlocker!=='door'||a.blockedTime<.35||
+    a.blockedTime>=.85||now-a.lastNavRepairAt<.65||
+    now<a.retryRouteAt||a.squeeze||a.traversal||
+    a.traversalPending||a.autoSidestep||a.fireRetreatTarget||
+    a.doorTraversal?.maneuver==='outside-leaf')return null;
+ const leaf=relevantStableOpenLeaf(a.p,doors,
+   a.doorTraversal?.doorId??null);
+ if(!leaf||leaf.locked||leaf.jammed||leaf.wedged||leaf.heldBy||
+    (leaf.openFraction??0)<.98||
+    Math.abs(leaf.angularVelocity??0)>=.08||
+    pointToSegment(a.p,doorLeafSegment(leaf))>=OPERATOR_RADIUS+16)
+  return null;
+ return leaf;
+}
+
 /** Direct later transient node first, THEN a bounded library of full-body
  * stage points around the *actual* open aperture. At most TWO cold
  * A* connectors, only from a swept-clear stage to an existing nav node.
@@ -127,5 +156,98 @@ export function selectPhysicalOpenLeafRejoin(
     candidate.index,[candidate.point,...path],sweep,maxTravel);
   if(result.length)return result;
  }
+ // D3.32 P3: the frozen Clinic D9 witness has a LEGAL two-leg
+ // full-body departure while the direct (old) grid chord strikes the
+ // fully-open solid leaf. Existing center/portal stages above may miss
+ // a short diagonal sidestep along that leaf. Probe only cold, near a
+ // stable unowned leaf after those first alternatives fail.
+ //
+ // Each proposed pair [sidestep, EXISTING original[i]] must be swept
+ // end-to-end by the same physical clearance law; the unchanged tail
+ // stays attached. This never moves a body, changes a GO, awards arrival,
+ // alters the hinge, touches right-of-way or bypasses the collision motor.
+ if((door.openFraction??0)>=.98&&
+    Math.abs(door.angularVelocity??0)<.16&&
+    !door.locked&&!door.jammed&&!door.wedged&&!door.heldBy&&
+    pointToSegment(from,doorLeafSegment(door))<OPERATOR_RADIUS+16&&
+    !sweep(from,original[0])){
+  const toward=Math.atan2(goal.y-from.y,goal.x-from.x);
+  for(const radius of [16,24,32,42])
+   for(const turn of [-Math.PI/6,Math.PI/6,0,-Math.PI/3,
+      Math.PI/3,-Math.PI/2,Math.PI/2]){
+    const theta=toward+turn;
+    const stage={x:from.x+Math.cos(theta)*radius,
+     y:from.y+Math.sin(theta)*radius};
+    if(!bodyClear(stage)||
+       !fullBodyMotorStrideClear(from,stage,sweep))continue;
+    for(const i of joinIndices){
+     const join=original[i];
+     if(d(stage,join)>maxTravel||!bodyClear(join))continue;
+     const verified=joinsExistingMotorRoute(from,goal,original,i,
+       [stage,join],sweep,maxTravel);
+     if(verified.length)return verified;
+    }
+   }
+ }
+ return [];
+}
+
+
+/** D3.32 P3B: a physically clear actor may have no normal or intel route
+ * because a stable OPEN leaf interrupts the starting grid cell. A short
+ * same-body swept departure can restore the EXISTING first-operable-door
+ * prefix (not the authored destination). Called cold only after the
+ * ordinary acquisition and portal fallback have returned no route.
+ *
+ * No body movement, door interaction, lock override or route adoption
+ * occurs here. Both the departure and every prefix link are checked
+ * against the same live physical collision law. The normal motor will
+ * subsequently execute every selected stride and operate any later door.
+ */
+export function selectColdStaleLeafPortalStage(
+ from:Pt,goal:Pt,leaf:Door,
+ stand:(p:Pt)=>boolean,
+ sweep:(a:Pt,b:Pt)=>boolean,
+ portal:(a:Pt,b:Pt)=>Pt[],
+ certifiedTerminalDoorContact:(a:Pt,b:Pt)=>boolean
+):Pt[]{
+ if(!leaf.open||leaf.kind==='sliding'||leaf.kind==='shutter'||
+    leaf.locked||leaf.jammed||leaf.wedged||leaf.heldBy||
+    (leaf.openFraction??0)<.98||
+    Math.abs(leaf.angularVelocity??0)>=.16||
+    pointToSegment(from,doorLeafSegment(leaf))>=OPERATOR_RADIUS+16||
+    !stand(from)||d(from,goal)<30)return [];
+ // A small fixed compass library, not dynamic grid/A* at 60Hz. Favor
+ // truly local 8-unit footsteps before larger 16/24-unit departures.
+ // Never spend more than four cold portal searches on one claim.
+ let probes=0;
+ for(const radius of [8,16,24])
+  for(const theta of [0,Math.PI/4,-Math.PI/4,Math.PI/2,
+    -Math.PI/2,Math.PI,3*Math.PI/4,-3*Math.PI/4]){
+   const stage={x:from.x+Math.cos(theta)*radius,
+     y:from.y+Math.sin(theta)*radius};
+   if(!stand(stage)||!sweep(from,stage))continue;
+   const prefix=portal(stage,goal);
+   probes++;
+   if(prefix.length&&prefix.length<=28&&d(stage,prefix[0])<=96){
+    let previous=stage,length=d(from,stage),legal=true;
+    for(let i=0;i<prefix.length;i++){
+     const point=prefix[i];
+     // The EXISTING first-operable-door planner ends immediately after
+     // its one proven, still-CLOSED physical leaf. Every other prefix leg
+     // must be truly swept-clear. The final leg can only target the
+     // verified single door the normal motor will touch and OPEN.
+     const clear=stand(point)&&sweep(previous,point);
+     if(!clear&&(i!==prefix.length-1||
+         !certifiedTerminalDoorContact(previous,point))){
+      legal=false;break;
+     }
+     length+=d(previous,point);previous=point;
+    }
+    if(legal&&length<=d(from,goal)*2.5+90)
+     return [stage,...prefix.map(copy)];
+   }
+   if(probes>=4)return [];
+  }
  return [];
 }
