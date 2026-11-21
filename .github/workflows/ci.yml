@@ -17,8 +17,6 @@ concurrency:
   group: fieldwork-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# A9: tests belong to changed source domains, not historical branch-name gates.
-# All historical test files remain executable through npm test / Full.
 jobs:
   verify:
     if: ${{ github.event_name == 'pull_request' || inputs.suite == 'critical' }}
@@ -38,6 +36,7 @@ jobs:
           node --test tests/ci-regression-plan.test.mjs
           node --test tests/ci-specialist-routing.test.mjs
           node --test tests/ci-movement-routing.test.mjs
+          node --test tests/ci-movement-door-routing.test.mjs
           node --test tests/ci-weapon-visual-routing.test.mjs
           node --test tests/ci-after-action-routing.test.mjs
           node --test tests/ci-replay-mobile-routing.test.mjs
@@ -46,9 +45,6 @@ jobs:
           node scripts/verification/ci-regression-plan.mjs --check
           node scripts/verification/ci-workflow-inventory.mjs --check
           node scripts/verification/ci-workflow-contract.mjs
-      # E1: one source-owned regression selector for EVERY PR, including
-      # historical feature branches. Specialized art/browser gates remain
-      # independent checks when their files or workflows require them.
       - name: Fixed-clock affected-domain and architecture regression shards
         env:
           CI_BASE_REF: ${{ github.base_ref }}
@@ -64,7 +60,6 @@ jobs:
       - name: Production typecheck, build and build-stamp integrity
         run: npm run build
 
-  # Opt-in historical full suite, separate from bounded PR validation.
   full-regression:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.suite == 'full' }}
     runs-on: ubuntu-latest
@@ -80,8 +75,6 @@ jobs:
       - name: Typecheck and production build
         run: npm run build
 
-  # Release safety is a deliberate, independently executable checkpoint;
-  # pending Pages deployment should not make ordinary PR test jobs red.
   release-checkpoint:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.suite == 'release' }}
     runs-on: ubuntu-latest
@@ -96,9 +89,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
 
-  # Consolidated PR dispatch: these reusable gates no longer create separate
-  # mostly-skipped workflow runs on every ordinary pull request. Their manual
-  # workflow_dispatch entry points and exact test jobs remain intact.
   architecture-integration:
     if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'refactor/') || startsWith(github.head_ref, 'feature/release1-') || startsWith(github.head_ref, 'feature/release2-') || startsWith(github.head_ref, 'feature/release3-') || startsWith(github.head_ref, 'feature/release4-') || startsWith(github.head_ref, 'feature/release5-') || startsWith(github.head_ref, 'feature/release6-')) }}
     uses: ./.github/workflows/architecture-refactor-critical.yml
@@ -123,6 +113,8 @@ jobs:
       arsenal: ${{ steps.owners.outputs.arsenal }}
       movementRecovery: ${{ steps.owners.outputs.movementRecovery }}
       movementRelease: ${{ steps.owners.outputs.movementRelease }}
+      movementDoorAny: ${{ steps.owners.outputs.movementDoorAny }}
+      movementDoorJSON: ${{ steps.owners.outputs.movementDoorJSON }}
       arsenalM30: ${{ steps.owners.outputs.arsenalM30 }}
       glockArt: ${{ steps.owners.outputs.glockArt }}
       debriefV41: ${{ steps.owners.outputs.debriefV41 }}
@@ -181,6 +173,16 @@ jobs:
     permissions:
       contents: read
 
+
+  # A7a: one domain dispatch retains all original R7/door physical jobs.
+  movement-door-acceptance:
+    needs: specialist-routing
+    if: ${{ github.event_name == 'pull_request' && needs.specialist-routing.outputs.movementDoorAny == 'true' }}
+    uses: ./.github/workflows/movement-door-acceptance.yml
+    with:
+      lanes: ${{ needs.specialist-routing.outputs.movementDoorJSON }}
+    permissions:
+      contents: read
 
   arsenal-m30-visual:
     needs: specialist-routing
@@ -241,7 +243,6 @@ jobs:
     permissions:
       contents: read
 
-  # A6a: nested source-selected Replay mobile browser jobs.
   replay-mobile-acceptance:
     needs: specialist-routing
     if: ${{ needs.specialist-routing.outputs.replayMobileAny == 'true' }}

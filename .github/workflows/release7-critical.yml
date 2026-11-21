@@ -3,22 +3,7 @@ on:
   push:
     branches:
       - 'feature/release7-squad-reliability-*'
-  pull_request:
-    paths:
-      - 'scripts/audit-r7-squad-execution.mjs'
-      - 'scripts/audit-squad-entry-b.mjs'
-      - 'src/breach-passage.ts'
-      - 'src/breach-door.ts'
-      - 'src/breach-door-leaf-bypass.ts'
-      - 'src/breach-door-pressure-arbitration.ts'
-      - 'src/breach-motor-door.ts'
-      - 'src/breach-motor-collision.ts'
-      - 'src/breach-motor-route.ts'
-      - 'tests/release7-*.test.mjs'
-      - 'src/breach-game.ts'
-      - 'src/breach-entry-lanes.ts'
-      - 'tests/squad-entry-b-*.test.mjs'
-      - '.github/workflows/release7-critical.yml'
+  workflow_call:
   workflow_dispatch:
 concurrency:
   group: release7-${{ github.ref }}
