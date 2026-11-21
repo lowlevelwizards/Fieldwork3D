@@ -43,6 +43,8 @@ import {claimD326ColdFineProbe,markD326FineMotorRoute}
  from './breach-d326-fine-route-gate.ts';
 import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
 import {proposeShallowCoverRelease} from './breach-static-cover-release.ts';
+import {witnessedGeneratedEntryStillness}
+ from './breach-generated-entry-stillness.ts';
 import {claimPhysicalLeafRejoin,relevantStableOpenLeaf,
  selectColdStaleLeafPortalStage} from './breach-physical-leaf-rejoin.ts';
 
@@ -355,14 +357,25 @@ export function prepareMotorRoute(
        entry.entryDoorId&&episode?.doorId===entry.entryDoorId&&
        episode.authoredOrderId===entry.id&&
        episode.maneuver==='grab-and-hold'&&
-       !a.traversal&&!a.traversalPending&&
-       a.blockedTime>=1.5){
+       !a.traversal&&!a.traversalPending){
       const leaf=s.doors.find(door=>door.id===entry.entryDoorId&&
         door.open&&!door.locked&&!door.jammed&&!door.wedged&&
         !door.heldBy&&(door.openFraction??0)>=.95&&
         Math.abs(door.angularVelocity??0)<.16&&
         pointToSegment(a.p,doorLeafSegment(door))<OPERATOR_RADIUS+20);
       if(leaf){
+        // A real frozen body is eligible even when earlier motor stages
+        // reset transient blockedTime / lastBlocker before routing.
+        // Continue only an already physically certified six-stride
+        // release episode; otherwise require measured 1.25s stillness
+        // under this SAME generated door and original authored order.
+        const previous=entryPinches.get(a);
+        const continuingEpisode=!!previous&&a.squeeze&&
+          previous.orderId===entry.id&&previous.doorId===leaf.id&&
+          previous.steps<6&&s.seconds-previous.since<2&&
+          d(a.p,previous.at)<5;
+        if(continuingEpisode||
+           witnessedGeneratedEntryStillness(a,leaf.id,s.seconds)){
         const world=sessionWorldGeometry(s);
         // The immutable Townhouse witness has a real TWO-SIDED pinch:
         // 8-unit full shoulders intersect the porch post while the
@@ -372,11 +385,8 @@ export function prepareMotorRoute(
         // Enforce the normal squeeze-profile collision oracle, actor
         // separation, and a maximum of six <=0.75-unit motor strides.
         // This never completes a plan or authorizes wall/door ghosting.
-        const first=entryPinches.get(a);
-        const continuing=!!first&&a.squeeze&&
-          first.orderId===entry.id&&first.doorId===leaf.id&&
-          first.steps<6&&s.seconds-first.since<2&&
-          d(a.p,first.at)<5;
+        const first=previous;
+        const continuing=continuingEpisode;
         if(!bodyClear(a.p,s.doors,OPERATOR_RADIUS,world)){
           const theta=Math.atan2(p.y-a.p.y,p.x-a.p.x);
           const length=Math.min(.75,dt*45);
@@ -420,6 +430,7 @@ export function prepareMotorRoute(
           // full-radius route acquisition and crossing succeed.
           return 'handled';
         }
+        } // End only the verified, stable generated-entry pinch.
       }
     }
     // D3.10B: after real retries have established a known, immovable

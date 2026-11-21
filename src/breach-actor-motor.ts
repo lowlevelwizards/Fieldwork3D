@@ -13,6 +13,8 @@ import type {PlanNode} from './breach-plan.ts';
 import {openingYieldBudget,commitOpeningYield,MAX_OPENING_YIELD_TRAVEL}
  from './breach-passage-yield.ts';
 import {noteQueueMotion} from './breach-queue-trace.ts';
+import {witnessedGeneratedEntryStillness}
+ from './breach-generated-entry-stillness.ts';
 import {releaseEmbeddedMotorActor} from './breach-locomotion-clearance.ts';
 import {localDetourWaypointTolerance,completePreciseLocalDetour}
  from './breach-motor-local-detour.ts';
@@ -41,36 +43,6 @@ import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
  * inside the lead's physical body. The follower, never the lead's arrival
  * counter, moves by <=0.55 units at 60Hz to release the overlap.
  */
-/** Real 60Hz no-progress witness; unlike the transient blocker flag this
- * survives motor stage ordering. NEVER classify a normally advancing lead
- * as stalled, and never retain evidence across authored-order or door change.
- */
-type LeadStillEpisode={orderId:number;doorId:string;since:number;
- lastAt:number;anchor:Pt;last:Pt};
-const leadStillEpisodes=new WeakMap<TeamActor,LeadStillEpisode>();
-function witnessedGeneratedEntryStillness(
- peer:TeamActor,doorId:string,now:number
-):boolean{
- const order=peer.plan[0],episode=peer.doorTraversal;
- if(order?.kind!=='move'||order.entryDoorId!==doorId||
-    episode?.doorId!==doorId||
-    episode.maneuver!=='grab-and-hold'||peer.nav.length){
-  leadStillEpisodes.delete(peer);return false;
- }
- const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
- const previous=leadStillEpisodes.get(peer);
- if(!previous||previous.orderId!==order.id||
-    previous.doorId!==doorId||
-    now<previous.lastAt||now-previous.lastAt>.18||
-    dist(peer.p,previous.last)>.20||
-    dist(peer.p,previous.anchor)>1){
-  leadStillEpisodes.set(peer,{orderId:order.id,doorId,
-   since:now,lastAt:now,anchor:{...peer.p},last:{...peer.p}});
-  return false;
- }
- previous.lastAt=now;previous.last={...peer.p};
- return now-previous.since>=1.25;
-}
 export function relieveGeneratedEntryWaitCollision(
  s:Session,a:TeamActor,n:PlanNode,dt:number
 ):boolean{

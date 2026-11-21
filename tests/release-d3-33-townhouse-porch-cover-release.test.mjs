@@ -9,6 +9,8 @@ import {fileURLToPath} from 'node:url';
 import {proposeShallowCoverRelease} from '../src/breach-static-cover-release.ts';
 import {relieveGeneratedEntryWaitCollision} from '../src/breach-actor-motor.ts';
 import {prepareMotorRoute} from '../src/breach-motor-route.ts';
+import {witnessedGeneratedEntryStillness}
+ from '../src/breach-generated-entry-stillness.ts';
 import {generateSite} from '../src/breach-site.ts';
 import {newSession} from '../src/breach-game.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
@@ -266,7 +268,17 @@ test('D3.33 frozen Rook: a clear teammate gap must produce a genuine narrow moto
   maneuver:'grab-and-hold',authoredOrderId:10};
  rook.nav=[];rook.blockedTime=35.7;rook.retryRouteAt=0;
  ash.p={x:560,y:575};moss.p={x:604,y:507};vale.p={x:575,y:480};
- const initial={...rook.p};game.seconds=20;
+ const initial={...rook.p};
+ // Rook is not granted a recovery on the very first fixed frame.
+ let proven=false;
+ for(let tick=0;tick<90;tick++){
+  game.seconds=tick/60;
+  const eligible=witnessedGeneratedEntryStillness(rook,'FRONT',game.seconds);
+  if(tick===0)assert.equal(eligible,false,'not a same-frame stall');
+  proven ||= eligible;
+ }
+ assert.equal(proven,true,'frozen Rook really stayed still for 1.25 seconds');
+ game.seconds=90/60;
  const port={notify:()=>{},hear:()=>{},battleEvent:()=>{},
   cachedEnemyRoute:()=>[],knownShoveCrossing:()=>null,
   ensurePassageSchedule:()=>new Map()};
@@ -278,4 +290,5 @@ test('D3.33 frozen Rook: a clear teammate gap must produce a genuine narrow moto
  }));
  assert.equal(game.doors.find(d=>d.id==='FRONT').locked,false);
  assert.ok(moved<=.750001,'never exceed one actual fixed-step body stride');
+ assert.ok(moved>=.74,'post-clearance motor must take its genuine swept step');
 });
