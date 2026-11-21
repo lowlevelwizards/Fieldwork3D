@@ -94,7 +94,7 @@ export function relieveGeneratedEntryWaitCollision(
    peer.plan[0].entryDoorId===n.doorId&&
    peer.doorTraversal?.doorId===n.doorId&&
    d(a.p,peer.p)<clearance&&
-   witnessedGeneratedEntryStillness(peer,n.doorId,s.seconds));
+   witnessedGeneratedEntryStillness(peer,leaf.id,s.seconds));
  if(!leaders.length)return false;
  leaders.sort((x,y)=>d(x.p,a.p)-d(y.p,a.p)||x.id.localeCompare(y.id));
  const lead=leaders[0],old={...a.p},world=sessionWorldGeometry(s);

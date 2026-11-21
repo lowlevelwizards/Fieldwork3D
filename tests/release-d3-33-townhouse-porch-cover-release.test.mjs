@@ -8,6 +8,7 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {proposeShallowCoverRelease} from '../src/breach-static-cover-release.ts';
 import {relieveGeneratedEntryWaitCollision} from '../src/breach-actor-motor.ts';
+import {prepareMotorRoute} from '../src/breach-motor-route.ts';
 import {generateSite} from '../src/breach-site.ts';
 import {newSession} from '../src/breach-game.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
@@ -215,4 +216,39 @@ test('D3.33 authored WAIT never receives generated-entry yield entitlement',()=>
  const original={...ash.p};
  assert.equal(relieveGeneratedEntryWaitCollision(game,ash,wait,1/60),false);
  assert.deepEqual(ash.p,original);
+});
+
+test('D3.33 frozen Rook: a clear teammate gap must produce a genuine narrow motor step',()=>{
+ const site=generateSite(9568385,'standard',undefined,
+  {mission:'intel'},{archetype:'townhouse'});
+ const quiet={...site,training:true,enemies:[],encounter:undefined};
+ const game=newSession(0,9568385,'full-view',site.scale??'standard',
+  'intel',quiet,{enableCivilians:false});
+ const front=game.doors.find(d=>d.id==='FRONT');
+ assert.ok(front);
+ Object.assign(front,{open:true,openFraction:.998,pushTarget:.998,
+  angularVelocity:0,heldBy:null,locked:false,jammed:false,wedged:false});
+ const rook=game.operators.find(a=>a.id==='rook');
+ const ash=game.operators.find(a=>a.id==='ash');
+ const moss=game.operators.find(a=>a.id==='moss');
+ const vale=game.operators.find(a=>a.id==='vale');
+ assert.ok(rook&&ash&&moss&&vale);
+ rook.p={x:581.3764972628228,y:552.1087958808527};
+ rook.plan=[{id:10,kind:'move',p:{x:493,y:544.88},entryDoorId:'FRONT'}];
+ rook.doorTraversal={doorId:'FRONT',phase:'blocked',
+  maneuver:'grab-and-hold',authoredOrderId:10};
+ rook.nav=[];rook.blockedTime=35.7;rook.retryRouteAt=0;
+ ash.p={x:560,y:575};moss.p={x:604,y:507};vale.p={x:575,y:480};
+ const initial={...rook.p};game.seconds=20;
+ const port={notify:()=>{},hear:()=>{},battleEvent:()=>{},
+  cachedEnemyRoute:()=>[],knownShoveCrossing:()=>null,
+  ensurePassageSchedule:()=>new Map()};
+ const result=prepareMotorRoute(rook,rook.plan[0].p,1/60,game,port);
+ const moved=Math.hypot(rook.p.x-initial.x,rook.p.y-initial.y);
+ console.log('D333_FROZEN_LEAD_CLEAR_GAP',JSON.stringify({
+  status:result,moved,initial,after:rook.p,
+  squeeze:rook.squeeze,blocker:rook.lastBlocker,blocked:rook.blockedTime
+ }));
+ assert.equal(game.doors.find(d=>d.id==='FRONT').locked,false);
+ assert.ok(moved<=.750001,'never exceed one actual fixed-step body stride');
 });
