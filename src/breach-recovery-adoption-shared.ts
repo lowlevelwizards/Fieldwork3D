@@ -5,7 +5,7 @@
 import type {Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import type {RouteSource} from './breach-route-transition.ts';
-import type {RecoveryAdoptionProof,RecoveryEvidence,RecoveryOwner,
+import type {RecoveryEvidence,RecoveryOwner,
  RecoveryProposal,RecoveryRouteOperation,RecoverySourcePolicy}
  from './breach-recovery-adoption-contract.ts';
 
