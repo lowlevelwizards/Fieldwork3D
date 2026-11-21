@@ -16,7 +16,7 @@ import {bodyClear,sweptBodyClear} from '../src/breach-navigation.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {routeWithNormalWorld} from '../src/breach-squeeze-route.ts';
 import {selectPhysicalEntrySettle} from '../src/breach-entry-target-settle.ts';
-import {eligibleGeneratedStackSettle}
+import {eligibleGeneratedStackSettle,validGeneratedStackSyncAnchor}
  from '../src/breach-order-movement.ts';
 const root=fileURLToPath(new URL('../',import.meta.url));
 
@@ -87,6 +87,29 @@ test('D3.34 generated stack settle never claims ordinary MOVE or active hinge',(
    JSON.stringify(patch));
  assert.equal(eligibleGeneratedStackSettle(a,{...n,stackDoorId:undefined},door),
   false,'player MOVE cannot borrow a generated stack fallback');
+});
+
+test('D3.34 linked generated SYNC accepts only the same full-body safe stance',()=>{
+ const original={x:206,y:185},point={x:201.4078,y:173.9134};
+ const sync={id:5,kind:'sync',p:original,syncCode:'B1'};
+ const actor={side:'blue',plan:[sync],p:point};
+ const proof={syncId:5,syncCode:'B1',doorId:'D1',
+   original,point};
+ assert.deepEqual(validGeneratedStackSyncAnchor(
+   sync,actor,proof,()=>true),point);
+ assert.equal(validGeneratedStackSyncAnchor(
+   {...sync,id:6},actor,proof,()=>true),null);
+ assert.equal(validGeneratedStackSyncAnchor(
+   {...sync,syncCode:'OTHER'},actor,proof,()=>true),null);
+ assert.equal(validGeneratedStackSyncAnchor(
+   {...sync,p:{x:246,y:185}},actor,proof,()=>true),null);
+ assert.equal(validGeneratedStackSyncAnchor(
+   sync,actor,proof,()=>false),null,
+   'a later obstructed landing cannot declare any SYNC ready');
+ assert.equal(validGeneratedStackSyncAnchor(
+   sync,{...actor,side:'red'},proof,()=>true),null);
+ assert.equal(validGeneratedStackSyncAnchor(
+   sync,{...actor,plan:[]},proof,()=>true),null);
 });
 
 test('D3.34 Retail: Rook physically completes STACK and advances real ENTRY',()=>{
