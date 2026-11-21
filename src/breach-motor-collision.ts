@@ -1,5 +1,7 @@
 import {setTransientRoute,prependTransientLeg}
  from './breach-route-transition.ts';
+import {evaluateOrdinaryRecoveryAdoption}
+ from './breach-ordinary-recovery-adoption.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 7: authoritative body-collision response and recovery.
  * A full-radius swept motion is preferred; squeeze is only a physical
@@ -77,6 +79,8 @@ export function resolveMotorCollision(
  profile?:((section:string,elapsedMs:number)=>void),
  clearingDoorId?:string):boolean{
  const world=sessionWorldGeometry(s);
+ // R2: keep the original authored-order identity across any route search.
+ const orderIdAtSelection=a.plan[0]?.id??null;
   // Allies may brush and pass one another: their bodies never hard-block
   // authored routes. Only an opposing actor is a physical traffic barrier.
   // The friendly steering routine is an exact no-op unless a teammate
@@ -351,11 +355,18 @@ export function resolveMotorCollision(
       // from a repeatedly revisited physical anchor. Keep ordinary
       // collision, glide, world recovery and original order available;
       // crucially, do not reset recoveryAttempts without actual progress.
-      if(allowPhysicalRouteReissue(a,'full-body-lane',p,fullLane,s.seconds)){
+      const fullLaneAdoption=evaluateOrdinaryRecoveryAdoption({
+        actor:a,session:s,source:'full-body-lane',operation:'replace',
+        goal:p,route:fullLane,orderIdAtSelection,eligible:true,
+        certificate:'first-full-body-stride',watchSafe:true,useful:true,
+        retry:'normal-lane-window',recurrence:'full-body-lane'
+      });
+      if(fullLaneAdoption.accepted){
         const side=beginAutoSidestep(a.p,next,fullLane[0],a.heading,p,
           s.seconds,canAutoSidestep);
         if(side)a.autoSidestep=side;
-        setTransientRoute(s,a,fullLane,'full-body-lane');
+        setTransientRoute(s,a,fullLane,'full-body-lane',
+          fullLaneAdoption.proof);
         provisionalRouteAccepted(a);
         // Precise landing avoids discarding a chosen swept corner before
         // the operator physically reaches it.
