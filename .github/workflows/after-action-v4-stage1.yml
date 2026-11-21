@@ -1,16 +1,6 @@
 name: After Action V4 — Stage 1 Navigation Acceptance
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/after-action-v4-stage1.yml'
-      - 'src/breach-app-flow.ts'
-      - 'src/breach-main.ts'
-      - 'src/breach-after-action-replay-navigation.ts'
-      - 'src/ui/breach-after-action-*.ts'
-      - 'src/breach-style.css'
-      - 'scripts/smoke-after-action-v3.mjs'
-      - 'tests/after-action-v4-stage1-navigation.test.mjs'
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
