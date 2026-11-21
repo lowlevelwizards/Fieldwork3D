@@ -97,6 +97,8 @@ export type Contract={
  region:string;title:string;description:string;risk:1|2|3;
  intel:'floor-plan'|'unknown'|'scouted';reward:number;deadline:number;
  status:'available'|'accepted'|'completed'|'failed'|'expired';followUpOf?:string;
+ /** Explicit mission to physically recover a named missing veteran. */
+ recoveryOperatorId?:string;
  /** Optional recon outcome, independent of floor-plan intelligence. */
  objectiveIntel?:ObjectiveIntelLevel;
  /** D8: optional authored incident; missing on all pre-D8 contracts. */
@@ -109,6 +111,7 @@ export type CampaignReport={
  /** Optional OC outcome metadata. Legacy results remain unchanged. */
  disposition?:import('./breach-operation-outcomes.ts').OperationDisposition;
  objectiveSecured?:boolean;
+ missingRecoveredId?:string;missingRecoveredBy?:string;
  extractedIds?:string[];leftBehindIds?:string[];
  /** Actual optional evidence physically recovered, not merely discovered. */
  intelRecovered?:number;
@@ -304,6 +307,8 @@ export function readCampaign(raw:string|null):CampaignState|null{
    if(report.dispatchCareer!==undefined&&
      (parsedRules?.template!=='dispatch'||
       !validDispatchCareerReceipt(report.dispatchCareer)))return null;
+   if(report.missingRecoveredId!==undefined&&
+     typeof report.missingRecoveredId!=='string')return null;
    if(report?.dispatchForce!==undefined&&
 
      (parsedRules?.template!=='dispatch'||
@@ -312,6 +317,9 @@ export function readCampaign(raw:string|null):CampaignState|null{
   for(const contract of c.contracts){
    if(!contract||typeof contract.id!=='string'||!Number.isInteger(contract.seed)||
      !CONTRACTS.some(k=>k.kind===contract.kind)||
+     (contract.recoveryOperatorId!==undefined&&
+       (typeof contract.recoveryOperatorId!=='string'||
+        !c.operators.some(o=>o.id===contract.recoveryOperatorId)))||
      (contract.objectiveIntel!==undefined&&
        !(['unknown','approximate','confirmed'] as string[]).includes(contract.objectiveIntel))||
      (contract.dispatchCase!==undefined&&
@@ -380,6 +388,9 @@ export function acceptContract(c:CampaignState,id:string):CampaignState{
  if(c.activeContractId)return c;
  const found=c.contracts.find(k=>k.id===id&&k.status==='available'&&k.deadline>=c.day);
  if(!found)return c;
+ if(found.recoveryOperatorId&&!c.operators.some(o=>
+   o.id===found.recoveryOperatorId&&o.status==='lost'&&
+   !!o.missingSinceOperationId))return c;
  return {...c,activeContractId:id,contracts:c.contracts.map(k=>
   k.id===id?{...k,status:'accepted' as const}:k)};
 }
@@ -478,6 +489,17 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   {key:'precision-specialist',label:'Precision Specialist',test:(o:CampaignOperator)=>o.skills.precision>=.7},
   {key:'recoil-specialist',label:'Weapon Control Specialist',test:(o:CampaignOperator)=>o.skills.recoilControl>=.7}
  ];
+ // Even a won mission cannot recover an unrelated veteran. Only the
+ // accepted rescue contract and the mission's custody-certified ID qualify.
+ const rescuedId=r.outcome==='success'&&contract.recoveryOperatorId&&
+   r.missingRecoveredId===contract.recoveryOperatorId&&
+   c.operators.some(o=>o.id===r.missingRecoveredId&&o.status==='lost'&&
+    !!o.missingSinceOperationId)?r.missingRecoveredId:null;
+ if(rescuedId)careerEvents.push({id:r.id+'-'+rescuedId+'-recovered',
+   day:c.day,operatorId:rescuedId,operationId:r.id,kind:'operator-recovered',
+   ...(r.missingRecoveredBy&&participants.has(r.missingRecoveredBy)?
+      {otherOperatorId:r.missingRecoveredBy}:{}),
+   detail:'Physically evacuated during '+contract.title+'; critical care required'});
  const developed=operators.map(o=>{
   if(!participants.has(o.id))return o;
   const distinctions=[...o.distinctions];
@@ -504,6 +526,9 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   }
   return {...o,distinctions};
  });
+ const settledOperators=rescuedId?developed.map(o=>o.id===rescuedId?
+   {...o,status:'reserve' as const,missingSinceOperationId:undefined,
+    recoveryDays:Math.max(o.recoveryDays,6),injuries:Math.max(o.injuries,2)}:o):developed;
  const day=c.day+1;
  const contracts=c.contracts.map(k=>k.id===r.contractId?
   {...k,status:r.outcome==='success'?'completed' as const:'failed' as const}:
@@ -554,7 +579,7 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
      Math.floor(r.intelRecovered??0))):0)),
   funds:c.funds+gained+(departmentCycle?.receipt.operatingSupport??0),
   ...(departmentCycle?{dispatchDepartment:departmentCycle.state}:{}),
-  operators:developed,regionalPressure:pressure,
+  operators:settledOperators,regionalPressure:pressure,
   inventory:{...c.inventory,serializedWeapons:serials},
   supplies:{...c.supplies,flash:Math.max(0,(c.supplies.flash??4)-clampFlashUse(r.flashUsed))},
   activeContractId:null,
