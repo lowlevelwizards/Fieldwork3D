@@ -154,25 +154,6 @@ jobs:
   # A3: one current witnessed physical truth gate supersedes three obsolete
   # historical arrival snapshots; specialized forensic workflows stay manual.
   # The D3.18 focused contract remains a separate reusable acceptance lane.
-
-
-    if: ${{ needs.specialist-routing.outputs.movementRetail == 'true' }}
-    uses: ./.github/workflows/d3-14d2-retail-recovery.yml
-    permissions:
-      contents: read
-
-
-    if: ${{ needs.specialist-routing.outputs.movementDeparture == 'true' }}
-    uses: ./.github/workflows/d3-17c-departure.yml
-    permissions:
-      contents: read
-
-
-    if: ${{ needs.specialist-routing.outputs.movementJoin == 'true' }}
-    uses: ./.github/workflows/d3-17d-door-join.yml
-    permissions:
-      contents: read
-
   d3-recovery-critical:
     needs: specialist-routing
     if: ${{ needs.specialist-routing.outputs.movementRecovery == 'true' }}
