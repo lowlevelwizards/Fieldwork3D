@@ -304,7 +304,7 @@ export function resolveMotorCollision(
              !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)){
           const r3Specialist0=authorizeSpecialistRecovery(a,s,'d328-entry-fine-world',alternative,p,
             'generated-stack','verified-world-join');
-          if(!r3Specialist0)return true;
+          if(r3Specialist0){
           setTransientRoute(s,a,alternative,'d328-entry-fine-world',r3Specialist0);
           markD326FineMotorRoute(a);
           noteD328FineOwnership(a,s.seconds);
@@ -313,6 +313,7 @@ export function resolveMotorCollision(
           a.lastNavRepairAt=s.seconds;
           a.squeeze=false;a.squeezeTime=0;
           return true;
+          }
         }
       }
       // D3.14C2: after 3 genuine repeated departures from nearly
@@ -331,12 +332,13 @@ export function resolveMotorCollision(
         if(alternative.length){
           const r3Specialist1=authorizeSpecialistRecovery(a,s,'lane-cycle-world',alternative,p,
             'door-episode','swept-full-body');
-          if(!r3Specialist1)return true;
+          if(r3Specialist1){
           setTransientRoute(s,a,alternative,'lane-cycle-world',r3Specialist1);
           noteCircularWorldRoute(a,s.seconds);
           provisionalRouteAccepted(a);
           a.squeeze=false;a.squeezeTime=0;
           return true;
+          }
         }
       }
       // D3.15B2: a real generated STACK move can cycle between the same
@@ -353,12 +355,13 @@ export function resolveMotorCollision(
         if(worldTail.length){
           const r3Specialist2=authorizeSpecialistRecovery(a,s,'lane-cycle-world',worldTail,p,
             'generated-stack','verified-world-join');
-          if(!r3Specialist2)return true;
+          if(r3Specialist2){
           setTransientRoute(s,a,worldTail,'lane-cycle-world',r3Specialist2);
           noteCircularWorldRoute(a,s.seconds);
           provisionalRouteAccepted(a);
           a.squeeze=false;a.squeezeTime=0;
           return true;
+          }
         }
       }
       // D3.17B2: don't reissue a byte-for-byte equivalent side excursion
@@ -506,10 +509,11 @@ export function resolveMotorCollision(
           a.lastNavRepairAt=s.seconds;
           const r3Specialist3=authorizeSpecialistRecovery(a,s,'door-escape-swept-rejoin',rejoined,p,
             'physical-escape','swept-full-body');
-          if(!r3Specialist3)return true;
+          if(r3Specialist3){
           setTransientRoute(s,a,rejoined,'door-escape-swept-rejoin',r3Specialist3);
           provisionalRouteAccepted(a);
           return true;
+          }
         }
       }
       // G2B: only three repeated REAL leaf overlaps on this same
@@ -678,13 +682,14 @@ export function resolveMotorCollision(
       if(sideRoute.length){
         const r3Specialist4=authorizeSpecialistRecovery(a,s,'stack-micro-corner',sideRoute,p,
             'generated-stack','swept-full-body');
-          if(!r3Specialist4)return true;
+          if(r3Specialist4){
           setTransientRoute(s,a,sideRoute,'stack-micro-corner',r3Specialist4);
         notePreciseLocalDetour(a,sideRoute[0]);
         noteCircularWorldRoute(a,s.seconds);
         a.lastNavRepairAt=s.seconds;
         provisionalRouteAccepted(a);
         return true;
+        }
       }
     }
     if(a.side==='blue'&&a.lastBlocker==='furniture'){
@@ -721,11 +726,12 @@ export function resolveMotorCollision(
         if(relief){
           const r3Specialist5=authorizeSpecialistRecovery(a,s,'self-hinge-relief',[relief,...a.nav],p,
             'door-contact','swept-full-body',{operation:'prepend'});
-          if(!r3Specialist5)return true;
+          if(r3Specialist5){
           prependTransientLeg(s,a,relief,'self-hinge-relief',r3Specialist5);
           a.recoveryAttempts++;
           a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
           return true;
+          }
         }
       }
       // D3.17E3-5: an actual stationary body at a stable open leaf may
@@ -754,12 +760,13 @@ export function resolveMotorCollision(
                  s.doors,OPERATOR_RADIUS,world))){
             const r3Specialist6=authorizeSpecialistRecovery(a,s,'open-leaf-local-rejoin',physical,p,
             'door-contact','verified-world-join');
-          if(!r3Specialist6)return true;
+          if(r3Specialist6){
           setTransientRoute(s,a,physical,'open-leaf-local-rejoin',r3Specialist6);
             notePreciseLocalDetour(a,physical[0]);
             a.lastNavRepairAt=s.seconds;
             a.retryRouteAt=s.seconds+.65;
             return true;
+            }
           }
         }
       }
@@ -806,12 +813,13 @@ export function resolveMotorCollision(
             !!a.aimInstruction&&a.aimInstruction.mode!=='free',narrow)){
           const r3Specialist7=authorizeSpecialistRecovery(a,s,'entry-squeeze-departure',route,p,
             'narrow-exit','oriented-squeeze');
-          if(!r3Specialist7)return true;
+          if(r3Specialist7){
           setTransientRoute(s,a,route,'entry-squeeze-departure',r3Specialist7);
           notePreciseLocalDetour(a,route[0]);
           a.lastNavRepairAt=s.seconds;
           provisionalRouteAccepted(a);
           return true;
+          }
         }
       }
       // D3.17E2: route changes are not physical progress. After repeated
