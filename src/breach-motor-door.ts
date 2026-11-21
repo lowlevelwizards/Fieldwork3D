@@ -143,8 +143,15 @@ export function handleMotorDoor(
   if(!doorAhead&&a.side==='blue'&&pendingDoor?.kind==='move'&&
      a.doorTraversal?.authoredOrderId===pendingDoor.id){
     const episodeDoor=s.doors.find(d=>d.id===a.doorTraversal!.doorId);
-    if(episodeDoor&&(episodeDoor.openFraction??0)<.72&&
-       d(a.p,doorCenter(episodeDoor))<80)
+    // A real, same-order episode at a stationary high-partial leaf
+    // may still be self-blocked after the broad .72 passage threshold.
+    // Keep that door in physical opening/footwork scope ONLY when its
+    // actual upcoming swing would strike THIS actor. Townhouse FRONT
+    // .931 repeatedly cleared a tiny overlap then lost this door owner.
+    // The follow-on correction still needs an ordinary full-body sweep.
+    if(episodeDoor&&d(a.p,doorCenter(episodeDoor))<80&&
+       ((episodeDoor.openFraction??0)<.72||
+        openingSweepThreatens(episodeDoor,a.p)))
       doorAhead=episodeDoor;
   }
   if(doorAhead){
