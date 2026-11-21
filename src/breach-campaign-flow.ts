@@ -12,7 +12,7 @@ import {undoCampaignCarryGear,copyCampaignCarryLayout} from './campaign-state.ts
 import type {CampaignMode} from './breach-app-mode.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {team,debrief} from './breach-game.ts';
-import {requestWithdrawal} from './breach-operation-outcomes.ts';
+import {requestWithdrawal,deployedTeam} from './breach-operation-outcomes.ts';
 import {installMissingPersonRecovery} from './breach-missing-recovery.ts';
 import type {OperationRecord} from './breach-operations.ts';
 import {loadOperationHistory,appendOperationHistory} from './breach-persistence.ts';
@@ -96,7 +96,7 @@ function recordCompletedOperation(){
     (state.phase!=='won'&&state.phase!=='lost'))return;
   recordedOperation=state;
   if(config.getMode()==='mission'&&currentCampaign?.activeContractId){
-   const members=team(state);
+   const members=deployedTeam(state);
    const careerId=(slotId:string)=>tacticalSlotOperator(currentCampaign!,slotId)?.id??slotId;
    const mapping=Object.fromEntries(members.map(a=>[a.id,careerId(a.id)]));
    const stats=debrief(state);
