@@ -38,13 +38,13 @@ export function requestWithdrawal(s:Pick<Session,
 }
 
 export function deriveOperationOutcome(s:Pick<Session,
- 'phase'|'mission'|'operators'|'scenario'|'withdrawalRequested'>):OperationOutcome{
+ 'phase'|'mission'|'operators'|'scenario'|'withdrawalCompleted'>):OperationOutcome{
  const friendly=s.operators.filter(a=>a.side==='blue');
  const extracted=friendly.filter(a=>a.health>0&&inExtraction(s,a.p));
  const evacuated=friendly.filter(a=>a.health<=0&&inExtraction(s,a.p));
  const accounted=new Set([...extracted,...evacuated].map(a=>a.id));
  const disposition:OperationDisposition=s.phase==='won'?'completed':
-   s.withdrawalRequested&&s.phase==='lost'?'withdrawn':
+   s.withdrawalCompleted===true&&s.phase==='lost'?'withdrawn':
    friendly.every(a=>a.health<=0)?'overwhelmed':'failed';
  return {disposition,objectiveSecured:s.mission==='extract'||s.mission==='done',
    extractedOperatorIds:extracted.map(a=>a.id),
