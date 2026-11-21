@@ -401,6 +401,30 @@ export function selectReplayLegacySuites(paths=[],headRef=''){
  }));
 }
 
+/** A6c: replay director reset is branch-agnostic. Unlike the legacy
+ * replay visual cohorts, every relevant main PR must retain the original
+ * deterministic shoulder and replay-controller verification.
+ */
+export const replayDirectorResetPaths=[
+ "src/breach-replay-director-reset.ts",
+ "src/breach-replay-*-controller.ts",
+ "src/breach-main.ts",
+ "src/breach-replay-camera-controller.ts",
+ "src/breach-replay-director-controller.ts",
+ "src/breach-replay-director-subject-timeline.ts",
+ "index.html",
+ "tests/replay-director-cam.test.mjs",
+ "tests/replay-director-reset.test.mjs",
+ "tests/replay-*-controller-20261109.test.mjs",
+ "tests/replay-lifecycle-controller-20261109.test.mjs",
+ ".github/workflows/replay-director-reset.yml"
+];
+export function selectReplayDirectorReset(paths=[]){
+ const files=[...new Set(paths)].sort();
+ return files.some(file=>replayDirectorResetPaths.some(glob=>
+  afterActionPathMatches(glob,file)));
+}
+
 function changedFiles(){
  const base=process.env.CI_BASE_REF;
  assert.ok(base&&/^[\w./-]+$/.test(base),'Missing or unsafe PR base');
@@ -421,9 +445,10 @@ function main(){
  const debrief=selectAfterActionSuites(paths,process.env.CI_HEAD_REF||process.env.GITHUB_HEAD_REF||'');
  const replay=selectReplayMobileSuites(paths,process.env.CI_HEAD_REF||process.env.GITHUB_HEAD_REF||'');
  const replayLegacy=selectReplayLegacySuites(paths,process.env.CI_HEAD_REF||process.env.GITHUB_HEAD_REF||'');
- const replayMobileAny=[...Object.values(replay),...Object.values(replayLegacy)].some(Boolean);
- const replayAll={...replay,...replayLegacy};
- console.log('Specialist CI routing',JSON.stringify({...result,movement,weapons,debrief,replay,replayLegacy}));
+ const replayDirectorReset=selectReplayDirectorReset(paths);
+ const replayMobileAny=[...Object.values(replay),...Object.values(replayLegacy),replayDirectorReset].some(Boolean);
+ const replayAll={...replay,...replayLegacy,replayDirectorReset};
+ console.log('Specialist CI routing',JSON.stringify({...result,movement,weapons,debrief,replay,replayLegacy,replayDirectorReset}));
  if(args.includes('--github-output')){
   assert.ok(process.env.GITHUB_OUTPUT,'GITHUB_OUTPUT missing');
   appendFileSync(process.env.GITHUB_OUTPUT,[...Object.entries(result.selected),...Object.entries(movement),...Object.entries(weapons),...Object.entries(debrief),['replayMobileAny',replayMobileAny],['replayMobileJSON',JSON.stringify(replayAll)]]

@@ -20,6 +20,7 @@ const paths={
  replayR2Video:'.github/workflows/replay-r2-video-smoke.yml',
  replayR3Library:'.github/workflows/replay-r3-library-smoke.yml',
  replayR43Visual:'.github/workflows/replay-r43-bodycam-qa.yml',
+ replayDirectorReset:'.github/workflows/replay-director-reset.yml',
  debrief1:'.github/workflows/after-action-v4-stage1.yml',
  debrief2:'.github/workflows/after-action-v4-stage2.yml',
  debrief3:'.github/workflows/after-action-v4-stage3.yml',
@@ -208,6 +209,24 @@ export function validateWorkflowContracts(wf){
   must('replayRouter','fromJSON(inputs.lanes).'+key);
   must('replayRouter','uses: ./.github/workflows/'+paths[key].split('/').at(-1));
  }
+ // A6c: unlike historical feature-only replay jobs, the shoulder
+ // invariants remain active on EVERY source-owned PR branch.
+ must('ci','--test tests/ci-replay-director-routing.test.mjs');
+ must('replayDirectorReset','workflow_call:');
+ must('replayDirectorReset','workflow_dispatch:');
+ no('replayDirectorReset','  pull_request:');
+ must('replayRouter','fromJSON(inputs.lanes).replayDirectorReset');
+ must('replayRouter','uses: ./.github/workflows/replay-director-reset.yml');
+ for(const t of [
+  'tests/replay-director-reset.test.mjs',
+  'tests/replay-director-cam.test.mjs',
+  'tests/replay-director-r101-shoulder-invariant.test.mjs',
+  'tests/replay-bodycam-controller-20261109.test.mjs',
+  'tests/replay-camera-controller-20261109.test.mjs',
+  'tests/replay-knowledge-controller-20261109.test.mjs',
+  'tests/replay-lifecycle-controller-20261109.test.mjs',
+  'tests/replay-playback-controller-20261109.test.mjs'])
+  must('replayDirectorReset',t);
  must('replayR43Visual','replay-r43-bodycam-screenshots');
  must('replayR3Library','IndexedDB save/reload/watch/delete');
  must('replayR2Video','Chromium replay video + sound integration smoke');
