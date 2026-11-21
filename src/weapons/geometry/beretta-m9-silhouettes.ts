@@ -310,9 +310,9 @@ export function buildM9Appearance(id:M9AppearanceId,
   // The back/heel are INSIDE the frame instead of pasted-on slabs.
   // M9 is visibly swept; A3 keeps its straighter Vertec distinction.
   const gripPanel:Outline=a.straightGrip?[
-   [-7.86,-2.10],[-5.42,-2.19],[-5.94,-5.11],
+   [-7.60,-2.10],[-5.42,-2.19],[-5.94,-5.11],
    [-6.39,a.heel+.80],
-   [a.gripRear+.59,a.heel+.69],[-8.15,-5.12]
+   [a.gripRear+.59,a.heel+.69],[-7.95,-5.12]
   ]:[
    [-7.80,-2.13],[-5.46,-2.23],[-6.11,-5.14],
    [-7.02,a.heel+.81],
