@@ -249,6 +249,7 @@ function main(){
  const movement=selectMovementSuites(paths);
  const weapons=selectWeaponVisualSuites(paths);
  const debrief=selectAfterActionSuites(paths,process.env.CI_HEAD_REF||process.env.GITHUB_HEAD_REF||'');
+ const debrief=selectAfterActionSuites(paths,process.env.CI_HEAD_REF||process.env.GITHUB_HEAD_REF||'');
  console.log('Specialist CI routing',JSON.stringify({...result,movement,weapons,debrief}));
  if(args.includes('--github-output')){
   assert.ok(process.env.GITHUB_OUTPUT,'GITHUB_OUTPUT missing');
@@ -288,10 +289,10 @@ function main(){
  const result=selectSpecialists(paths);
  const movement=selectMovementSuites(paths);
  const weapons=selectWeaponVisualSuites(paths);
- console.log('Specialist CI routing',JSON.stringify({...result,movement,weapons}));
+ console.log('Specialist CI routing',JSON.stringify({...result,movement,weapons,debrief}));
  if(args.includes('--github-output')){
   assert.ok(process.env.GITHUB_OUTPUT,'GITHUB_OUTPUT missing');
-  appendFileSync(process.env.GITHUB_OUTPUT,[...Object.entries(result.selected),...Object.entries(movement),...Object.entries(weapons)]
+  appendFileSync(process.env.GITHUB_OUTPUT,[...Object.entries(result.selected),...Object.entries(movement),...Object.entries(weapons),...Object.entries(debrief)]
    .map(([name,enabled])=>name+'='+String(enabled)).join('\n')+'\n');
  }
 }
