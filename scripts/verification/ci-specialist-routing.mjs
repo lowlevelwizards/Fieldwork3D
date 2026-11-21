@@ -47,6 +47,44 @@ export function selectSpecialists(paths=[]){
  return {files,selected,matched};
 }
 
+/** Exact legacy D3 pull_request path ownership, retained while the five
+ * physical cohorts move under one CI workflow run. The patterns mirror the
+ * former path filters; manual forensic workflows remain available.
+ */
+const movementPaths={
+ movementRetail:[
+  /^src\/breach-(?:retail-rehearsal-recovery|door-traversal-maneuver|route-transition)\.ts$/,
+  /^tests\/release-d3-14d2-retail-rehearsal\.test\.mjs$/,
+  /^\.github\/workflows\/d3-14d2-retail-recovery\.yml$/
+ ],
+ movementDeparture:[
+  /^src\/breach-(?:d317c-micro-departure|route-recurrence|motor-collision|route-transition)\.ts$/,
+  /^tests\/release-d3-17c-physical-departure\.test\.mjs$/,
+  /^\.github\/workflows\/d3-17c-departure\.yml$/
+ ],
+ movementJoin:[
+  /^src\/breach-(?:d317d-door-route-join|door-traversal-maneuver|route-transition)\.ts$/,
+  /^tests\/release-d3-17d-door-route-join\.test\.mjs$/,
+  /^\.github\/workflows\/d3-17d-door-join\.yml$/
+ ],
+ movementRecovery:[
+  /^src\/breach-[^/]*\.ts$/,
+  /^tests\/release-d3-18[^/]*\.test\.mjs$/,
+  /^\.github\/workflows\/d3-18-physical-recovery\.yml$/
+ ],
+ movementRelease:[
+  /^src\/breach-[^/]*\.ts$/,
+  /^scripts\/audit-r7-squad-execution\.mjs$/,
+  /^tests\/release-d3-[^/]*\.test\.mjs$/,
+  /^\.github\/workflows\/d3-main-release-checkpoint\.yml$/
+ ]
+};
+export function selectMovementSuites(paths=[]){
+ const files=[...new Set(paths)].sort();
+ return Object.fromEntries(Object.entries(movementPaths).map(([name,patterns])=>
+  [name,files.some(file=>patterns.some(pattern=>pattern.test(file)))]));
+}
+
 function changedFiles(){
  const base=process.env.CI_BASE_REF;
  assert.ok(base&&/^[\w./-]+$/.test(base),'Missing or unsafe PR base');
@@ -62,10 +100,11 @@ function main(){
  const at=args.indexOf('--files');
  const paths=at<0?changedFiles():args.slice(at+1).filter(x=>!x.startsWith('--'));
  const result=selectSpecialists(paths);
- console.log('Specialist CI routing',JSON.stringify(result));
+ const movement=selectMovementSuites(paths);
+ console.log('Specialist CI routing',JSON.stringify({...result,movement}));
  if(args.includes('--github-output')){
   assert.ok(process.env.GITHUB_OUTPUT,'GITHUB_OUTPUT missing');
-  appendFileSync(process.env.GITHUB_OUTPUT,Object.entries(result.selected)
+  appendFileSync(process.env.GITHUB_OUTPUT,[...Object.entries(result.selected),...Object.entries(movement)]
    .map(([name,enabled])=>name+'='+String(enabled)).join('\n')+'\n');
  }
 }
