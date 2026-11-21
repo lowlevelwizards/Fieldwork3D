@@ -514,6 +514,46 @@ export const movementDoorSpecs=[
       "tests/performance-p2-8-cover-los.test.mjs",
       ".github/workflows/performance-p2-8-critical.yml"
     ]
+  },
+  {
+    "key": "recovery17e",
+    "workflow": "d3-17e-recovery.yml",
+    "paths": [
+      "src/breach-recovery-proposal-gate.ts",
+      "src/breach-cold-route-cache.ts",
+      "src/breach-motor-collision.ts",
+      "src/breach-motor-route.ts",
+      "src/breach-execution-state.ts",
+      "src/breach-physical-leaf-rejoin.ts",
+      "scripts/report-d3-15b4-blind22.mjs",
+      "tests/release-d3-17e-recovery-accounting.test.mjs",
+      ".github/workflows/d3-17e-recovery.yml"
+    ]
+  },
+  {
+    "key": "physical25",
+    "workflow": "d3-25-physical-acceptance.yml",
+    "paths": [
+      "src/breach-order-wait.ts",
+      "src/breach-motor-route.ts",
+      "src/breach-d325-escape-join.ts",
+      "tests/release-d3-25*.test.mjs",
+      ".github/workflows/d3-25-physical-acceptance.yml"
+    ]
+  },
+  {
+    "key": "coordinated15",
+    "workflow": "d3-15-coordinated-release.yml",
+    "paths": [
+      "src/breach-motor-door.ts",
+      "src/breach-order-movement.ts",
+      "src/breach-entry-coordination.ts",
+      "src/breach-order-wait.ts",
+      "src/breach-motor-collision.ts",
+      "src/breach-stack-micro-corner.ts",
+      "tests/release-d3-15a2-explicit-door-clock.test.mjs",
+      ".github/workflows/d3-15-coordinated-release.yml"
+    ]
   }
 ];
 const movementDoorInfrastructure=/^(?:\.github\/workflows\/(?:ci|movement-door-acceptance)\.yml|scripts\/verification\/ci-(?:specialist-routing|workflow-contract)\.mjs|tests\/ci-movement-door-routing\.test\.mjs)$/;

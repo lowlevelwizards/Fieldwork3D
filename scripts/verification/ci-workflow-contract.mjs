@@ -38,6 +38,9 @@ const paths={
  doorD2D3:'.github/workflows/door-traversal-d2-d3.yml',
  passageQ5:'.github/workflows/passage-q5-matrix.yml',
  performanceP28:'.github/workflows/performance-p2-8-critical.yml',
+ recovery17e:'.github/workflows/d3-17e-recovery.yml',
+ physical25:'.github/workflows/d3-25-physical-acceptance.yml',
+ coordinated15:'.github/workflows/d3-15-coordinated-release.yml',
  pages:'.github/workflows/pages.yml'
 };
 const read=path=>readFileSync(path,'utf8');
@@ -142,6 +145,20 @@ export function validateWorkflowContracts(wf){
   must('movementDoorRouter','fromJSON(inputs.lanes).'+key);
   must('movementDoorRouter','uses: ./.github/workflows/'+paths[name].split('/').at(-1));
  }
+ // A7b keeps historical/fresh physical arrival observations and strict witnesses.
+ for(const [key,marker] of [
+  ['recovery17e','--d315b4-blind22'],
+  ['physical25','--d318-fresh22'],
+  ['coordinated15','physicalArrivals<80']]){
+  must(key,'workflow_call:');
+  must(key,'workflow_dispatch:');
+  no(key,'  pull_request:');
+  must(key,'scripts/audit-r7-squad-execution.mjs');
+  must(key,marker);
+  must('movementDoorRouter','fromJSON(inputs.lanes).'+key);
+  must('movementDoorRouter','uses: ./.github/workflows/'+paths[key].split('/').at(-1));
+ }
+ must('physical25','feature/d3-25-entry-stall-witness-20261118');
  // A7c retains full real Q5 approach matrix and measured sweep broadphase.
  for(const [key,marker] of [
   ['passageQ5','audit-passage-q5.mjs --extended --strict'],

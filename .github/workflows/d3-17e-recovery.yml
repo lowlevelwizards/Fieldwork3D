@@ -1,16 +1,6 @@
 name: D3.17E productive recovery acceptance
 on:
-  pull_request:
-    paths:
-      - 'src/breach-recovery-proposal-gate.ts'
-      - 'src/breach-cold-route-cache.ts'
-      - 'src/breach-motor-collision.ts'
-      - 'src/breach-motor-route.ts'
-      - 'src/breach-execution-state.ts'
-      - 'src/breach-physical-leaf-rejoin.ts'
-      - 'scripts/report-d3-15b4-blind22.mjs'
-      - 'tests/release-d3-17e-recovery-accounting.test.mjs'
-      - '.github/workflows/d3-17e-recovery.yml'
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read

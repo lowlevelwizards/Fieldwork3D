@@ -8,14 +8,8 @@ on:
       - 'src/breach-d325-escape-join.ts'
       - 'tests/release-d3-25*.test.mjs'
       - '.github/workflows/d3-25-physical-acceptance.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'src/breach-order-wait.ts'
-      - 'src/breach-motor-route.ts'
-      - 'src/breach-d325-escape-join.ts'
-      - 'tests/release-d3-25*.test.mjs'
-      - '.github/workflows/d3-25-physical-acceptance.yml'
+  workflow_call:
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:

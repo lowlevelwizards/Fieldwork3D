@@ -85,6 +85,43 @@ const frozen=[
       "tests/performance-p2-8-cover-los.test.mjs",
       ".github/workflows/performance-p2-8-critical.yml"
     ]
+  },
+  {
+    "key": "recovery17e",
+    "paths": [
+      "src/breach-recovery-proposal-gate.ts",
+      "src/breach-cold-route-cache.ts",
+      "src/breach-motor-collision.ts",
+      "src/breach-motor-route.ts",
+      "src/breach-execution-state.ts",
+      "src/breach-physical-leaf-rejoin.ts",
+      "scripts/report-d3-15b4-blind22.mjs",
+      "tests/release-d3-17e-recovery-accounting.test.mjs",
+      ".github/workflows/d3-17e-recovery.yml"
+    ]
+  },
+  {
+    "key": "physical25",
+    "paths": [
+      "src/breach-order-wait.ts",
+      "src/breach-motor-route.ts",
+      "src/breach-d325-escape-join.ts",
+      "tests/release-d3-25*.test.mjs",
+      ".github/workflows/d3-25-physical-acceptance.yml"
+    ]
+  },
+  {
+    "key": "coordinated15",
+    "paths": [
+      "src/breach-motor-door.ts",
+      "src/breach-order-movement.ts",
+      "src/breach-entry-coordination.ts",
+      "src/breach-order-wait.ts",
+      "src/breach-motor-collision.ts",
+      "src/breach-stack-micro-corner.ts",
+      "tests/release-d3-15a2-explicit-door-clock.test.mjs",
+      ".github/workflows/d3-15-coordinated-release.yml"
+    ]
   }
 ];
 const keys=frozen.map(x=>x.key);
@@ -157,4 +194,23 @@ test('A7c preserve strict passage motor geometry and real performance broadphase
   "retreat belongs|idle doorway occupancy|single furniture-side obstruction",
   'npm run check && npx vite build'])
   assert.ok(perf.includes(needle),needle);
+});
+
+test('A7b preserve independently executed live/frozen body cohorts and strict floors',()=>{
+ const router=workflow('movement-door-acceptance.yml');
+ const runs=[
+  ['recovery17e','d3-17e-recovery.yml',['--d315b4-blind22','11 2700','22 2700','physicalArrivals<140','physicsStepViolations']],
+  ['physical25','d3-25-physical-acceptance.yml',['--d318-fresh22','--d315b4-blind22','physicalArrivals<158','physicalCompletedFour<34']],
+  ['coordinated15','d3-15-coordinated-release.yml',['m.arrivals!==4','physicalArrivals<80','--site-index=8']]
+ ];
+ for(const [key,file,evidence] of runs){
+  const source=workflow(file);
+  assert.match(source,/^  workflow_call:$/m);
+  assert.match(source,/^  workflow_dispatch:$/m);
+  assert.doesNotMatch(source,/^  pull_request:$/m);
+  assert.ok(router.includes('fromJSON(inputs.lanes).'+key),key);
+  assert.ok(router.includes('uses: ./.github/workflows/'+file),file);
+  for(const marker of evidence)assert.ok(source.includes(marker),file+' '+marker);
+ }
+ assert.match(workflow('d3-25-physical-acceptance.yml'),/feature\/d3-25-entry-stall-witness-20261118/);
 });
