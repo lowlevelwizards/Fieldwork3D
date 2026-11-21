@@ -2045,7 +2045,23 @@ function mission(s:Session,dt:number){
     battleEvent(s,'objective',null,s.scenario.extract,'MISSION COMPLETE');
     return;
   }
-  if(s.mission==='extract'&&team(s).some(a=>a.health>0&&
+  // If every living participant has individually evacuated, basic clear/
+  // hold objectives have genuinely secured their exit without leaving an
+  // actor behind to touch the zone a second time.
+  if(s.mission==='extract'&&
+    (s.missionType==='clear'||s.missionType==='hold')&&
+    !team(s).some(a=>a.health>0)&&
+    (s.extractedOperators?.length??0)>0&&canConcludeWithdrawal(s)){
+    s.mission='done';s.phase='won';
+    s.report=['OPERATION COMPLETE','SQUAD EXTRACTED',
+      'PRIMARY OBJECTIVE SECURED'];
+    notify(s,'SQUAD EXTRACTION COMPLETE');
+    battleEvent(s,'objective',null,s.scenario.extract,'MISSION COMPLETE');
+    return;
+  }
+  if(s.mission==='extract'&&
+    (!s.withdrawalRequested||canConcludeWithdrawal(s))&&
+    team(s).some(a=>a.health>0&&
     near(a.p,s.scenario.extract,37)&&
     validLivingCaptureExtraction(a)&&
     (s.missionType!=='intel'||s.intelCarrierId===a.id)&&
