@@ -1,4 +1,6 @@
 import {setTransientRoute,noteDoorHandoffRejection,hasTransientRouteObserver} from './breach-route-transition.ts';
+import {authorizeSpecialistRecovery}
+ from './breach-specialist-recovery-adoption.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Fixed-clock transient route acquisition and backoff. This never
  * rewrites the player-authored PlanNode[] or grants collision authority.
@@ -76,10 +78,15 @@ export function restoreAfterOpenLeafEscape(
      at=>bodyClear(at,s.doors,OPERATOR_RADIUS,world),swept,
      (from,to)=>routeWithSqueezeWorld(from,to,s.doors,world));
    if(staged.length){
-    a.lastNavRepairAt=s.seconds;
-    setTransientRoute(s,a,staged,'door-leaf-escape');
-    provisionalRouteAccepted(a);
-    return true;
+    const stagedProof=authorizeSpecialistRecovery(a,s,'door-leaf-escape',
+      staged,goal,'physical-escape','post-physical-escape',
+      {escapedBody:true});
+    if(stagedProof){
+      a.lastNavRepairAt=s.seconds;
+      setTransientRoute(s,a,staged,'door-leaf-escape',stagedProof);
+      provisionalRouteAccepted(a);
+      return true;
+    }
    }
   }
  }
@@ -99,7 +106,11 @@ export function restoreAfterOpenLeafEscape(
  if(!sweptBodyClear(a.p,route[0],s.doors,OPERATOR_RADIUS,world)){
   noteDoorHandoffRejection(s,a,'world:first-leg-not-swept');return false;
  }
- setTransientRoute(s,a,route,'door-leaf-escape');
+ const worldEscapeProof=authorizeSpecialistRecovery(a,s,
+   'door-leaf-escape',route,goal,'physical-escape',
+   'post-physical-escape',{escapedBody:true});
+ if(!worldEscapeProof)return false;
+ setTransientRoute(s,a,route,'door-leaf-escape',worldEscapeProof);
  provisionalRouteAccepted(a);
  return true;
 }
@@ -184,7 +195,11 @@ export function restoreRepeatedDoorEscapeRoute(
      for(const point of prefix){cost+=d(at,point);at=point;}
      if(prefix.length>=2&&sweep(a.p,prefix[0])&&
         d(a.p,prefix[0])<=96&&cost<=d(a.p,goal)*1.9+48){
-       setTransientRoute(s,a,prefix,'door-escape-future-portal');
+       const futureProof=authorizeSpecialistRecovery(a,s,
+         'door-escape-future-portal',prefix,goal,'portal-handoff',
+         'door-managed-prefix');
+       if(!futureProof)return false;
+       setTransientRoute(s,a,prefix,'door-escape-future-portal',futureProof);
        finishDoorEscapeRejoin(a);
        a.lastNavRepairAt=s.seconds;provisionalRouteAccepted(a);
        return true;
@@ -215,8 +230,13 @@ export function restoreRepeatedDoorEscapeRoute(
      const stages=findBoundedNarrowLeafExit(
        a.p,goal,original[0],narrow,sweep,deepLeaf?768:96);
      if(stages.length){
-       setTransientRoute(s,a,[...stages.map(clone),
-         ...original.map(clone)],'door-squeeze-leaf-exit');
+       const narrowRoute=[...stages.map(clone),...original.map(clone)];
+       const narrowProof=authorizeSpecialistRecovery(a,s,
+         'door-squeeze-leaf-exit',narrowRoute,goal,
+         'narrow-exit','oriented-squeeze');
+       if(!narrowProof)return false;
+       setTransientRoute(s,a,narrowRoute,'door-squeeze-leaf-exit',
+         narrowProof);
        ownNarrowExitWaypoints(a,stages,deepLeaf);
        finishDoorEscapeRejoin(a);
        a.lastNavRepairAt=s.seconds;
@@ -227,8 +247,12 @@ export function restoreRepeatedDoorEscapeRoute(
    }
    return false;
  }
- setTransientRoute(s,a,rejoined,
-   usedLocalStage?'door-escape-local-portal':'door-escape-world-rejoin');
+ const rejoinSource=usedLocalStage?
+   'door-escape-local-portal':'door-escape-world-rejoin';
+ const rejoinProof=authorizeSpecialistRecovery(a,s,rejoinSource,
+   rejoined,goal,'portal-handoff','verified-world-join');
+ if(!rejoinProof)return false;
+ setTransientRoute(s,a,rejoined,rejoinSource,rejoinProof);
  finishDoorEscapeRejoin(a);
  a.lastNavRepairAt=s.seconds;provisionalRouteAccepted(a);
  return true;
