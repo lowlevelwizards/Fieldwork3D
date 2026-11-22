@@ -128,7 +128,7 @@ export function certifiedFollowOnPortalPrefix(
  */
 type ForwardLease={
  doorId:string;orderId:number;goal:Pt;route:Pt[];until:number;
- retainedShoves:number;
+ retainedShoves:number;startBlockedTime:number;
 };
 const forwardLeases=new WeakMap<TeamActor,ForwardLease>();
 /** One independent proof survives valid NAV invalidation after THIS actor
@@ -149,7 +149,7 @@ export function noteAcceptedFollowOnPortal(
  w.used=true;
  forwardLeases.set(a,{doorId:w.doorId,orderId:w.orderId,
   goal:{...w.goal},route:a.nav,until:seconds+5,
-  retainedShoves:0});
+  retainedShoves:0,startBlockedTime:a.blockedTime});
  shoveProvenance.set(a,{doorId:w.doorId,orderId:w.orderId,
   goal:{...w.goal},portal:{...w.portal},selectedAt:seconds,
   revision:worldRevision,attempted:false});
@@ -249,7 +249,7 @@ export function noteAcceptedColdBlockedLeafContinuation(
     !Number.isFinite(seconds))return false;
  forwardLeases.set(a,{doorId:oldLeaf.id,orderId:order.id,
    goal:{...goal},route:a.nav,until:seconds+5,
-   retainedShoves:0});
+   retainedShoves:0,startBlockedTime:a.blockedTime});
  return true;
 }
 export function protectedRehearsedFollowOnDoor(
@@ -261,7 +261,7 @@ export function protectedRehearsedFollowOnDoor(
     d(order.p,w.goal)>.5||
     a.nav!==w.route||!a.nav.length||
     !Number.isFinite(seconds)||seconds>=w.until||
-    a.blockedTime>=.18||a.traversal||
+    a.blockedTime>=w.startBlockedTime+.18||a.traversal||
     a.traversalPending||a.autoSidestep||a.fireRetreatTarget){
   forwardLeases.delete(a);return null;
  }
@@ -272,6 +272,10 @@ export function protectedRehearsedFollowOnDoor(
     Math.abs(door.angularVelocity??0)>=.16){
   forwardLeases.delete(a);return null;
  }
+ // A newly accepted route may start after several seconds of genuine
+ // no-route blockage. Keep that measured history: revoke only if a NEW
+ // 0.18s contact episode accumulates after adoption. A real footstep
+ // resets blockedTime by the existing motor, not by this lease setter.
  // Squeeze is a temporary narrow motor stance, not a real obstruction:
  // keep the already certified exact transient NAV until contact, a changed
  // order, a changed route or a different door revokes this brief lease.
