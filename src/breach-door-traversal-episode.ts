@@ -61,7 +61,8 @@ function candidate(actor:TeamActor,doors:readonly Door[],goal:Pt,
  * search when an episode is already active or a distant actor is idle.
  * Probe only at 5Hz when no doorway has been acquired. */
 export function syncDoorTraversalEpisode(
- actor:TeamActor,doors:readonly Door[],seconds:number
+ actor:TeamActor,doors:readonly Door[],seconds:number,
+ alreadyCrossedDoorId:string|null=null
 ):DoorTraversalEpisode|null{
  const order=actor.plan[0];
  const eligible=actor.side==='blue'&&actor.health>0&&
@@ -139,7 +140,12 @@ export function syncDoorTraversalEpisode(
  if(seconds-actor.doorTraversalLastProbeAt<.2)return null;
  actor.doorTraversalLastProbeAt=seconds;
  const door=candidate(actor,doors,order.p,order.entryDoorId);
- if(!door)return null;
+ // D3.35: a short, already physically completed open-leaf rehearsal
+ // may own a certified world prefix toward the NEXT door. No new
+ // episode for the PREVIOUS crossed leaf while that exact transient
+ // route is still actively moving. A real collision immediately drops
+ // the caller's brief hold; existing episodes are NEVER deleted here.
+ if(!door||door.id===alreadyCrossedDoorId)return null;
  const side=signedDoorSide(actor.p,door);
  const fraction=door.openFraction??(door.open?1:0);
  const created:DoorTraversalEpisode={
