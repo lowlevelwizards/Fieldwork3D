@@ -7,7 +7,7 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Fixed-clock transient route acquisition and backoff. This never
  * rewrites the player-authored PlanNode[] or grants collision authority.
  */
-import {OPERATOR_RADIUS,doorLeafSegment,doorCenter,doorBlocksSegment,pointToSegment,type Pt}
+import {OPERATOR_RADIUS,doorLeafSegment,doorCenter,doorBlocksSegment,pointToSegment,type Pt,type Door}
  from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {pressDoorOnBodyAttempt,crossesDoorThreshold,canAutoOpenEnRoute} from './breach-door.ts';
@@ -51,6 +51,9 @@ import {claimColdBlockedOpenLeafContinuation}
  from './breach-d336-stale-open-leaf.ts';
 import {noteAcceptedColdBlockedLeafContinuation}
  from './breach-rehearsed-portal-continuation.ts';
+import {claimStalledGeneratedEntryFarSide,
+ selectCertifiedFarSideEntryLanding}
+ from './breach-d337-entry-service-landing.ts';
 import {claimColdExactExistingRouteRejoin,
  selectColdExactExistingRouteRejoin}
  from './breach-d336-cold-route-rejoin.ts';
@@ -662,6 +665,60 @@ export function prepareMotorRoute(
       }
     }
 
+    // D3.37 Clinic: a GENERATED ENTRY can remain stranded at its
+    // original, already fully-open FRONT leaf after the real hand and
+    // all local staging have ended. The first future-door planner can
+    // return a snapped point *inside* the closed SERVICE leaf capsule
+    // without actually crossing its centerline. NEVER allow a half-door
+    // contact as a phantom route or mutate the original ENTRY order.
+    // Only after genuine no-route retries, the exact stale ENTRY episode,
+    // and an independent all-edges REAL full-body certificate do we
+    // hand off to the next operable door using the existing motor/R4.
+    if(!a.nav.length&&a.side==='blue'&&a.plan[0]?.kind==='move'&&
+       a.plan[0].entryDoorId&&a.lastBlocker==='route'&&
+       a.blockedTime>=3&&a.doorTraversal?.phase==='blocked'&&
+       !a.traversal&&!a.traversalPending){
+      const old=a.doorTraversal;
+      const leaf=s.doors.find(door=>door.id===old.doorId);
+      const world=sessionWorldGeometry(s);
+      if(leaf&&claimStalledGeneratedEntryFarSide(
+          a,p,leaf,s.seconds,world.revision)){
+        const proposed=routeToNextOperableDoor(
+          a.p,p,s.doors,world);
+        const swept=(from:Pt,to:Pt,doors:readonly Door[]) =>
+          sweptBodyClear(from,to,[...doors],OPERATOR_RADIUS,world);
+        const certified=selectCertifiedFarSideEntryLanding(
+          a.p,p,proposed,s.doors,swept,
+          (at,doors)=>bodyClear(at,[...doors],OPERATOR_RADIUS,world),
+          door=>!door.locked&&!door.jammed&&!door.wedged&&
+            !door.heldBy&&(door.openFraction??(door.open?1:0))<.72&&
+            canAutoOpenEnRoute({kind:'move'},door.id));
+        if(certified.length){
+          a.doorTraversal=null; // only now retire proved STALE handless owner
+          const decision=authorizeRouteAcquisition({
+            actor:a,session:s,source:'initial-portal-recovery',goal:p,
+            route:certified,orderIdAtSelection:acquisitionOrderId,
+            certificate:'first-operable-door-prefix',
+            eligible:true,physicalProof:true,initialRouteAbsent:true
+          });
+          if(decision.kind==='adopt'){
+            setTransientRoute(s,a,certified,'initial-portal-recovery',
+              decision.proof??undefined);
+            // Exact selector already proved actual full-radius standing
+            // body and every pre-door stride. Stale narrow FOOTWORK need
+            // not continue after the safe motor NAV is accepted. No foot
+            // movement or blocked-time reset is fabricated here.
+            a.squeeze=false;a.squeezeTime=0;
+            noteAcceptedColdBlockedLeafContinuation(
+              a,leaf,p,s.seconds);
+            provisionalRouteAccepted(a);
+            a.lastNavRepairAt=s.seconds;
+            return 'ready';
+          }
+          a.doorTraversal=old; // R4 denied, old entry owner unchanged.
+        }
+      }
+    }
     // D3.36 Garage Moss: a local D1 episode can remain BLOCKED for
     // many seconds even though the leaf is now fully OPEN, has no hand
     // contact or stage, and the actor has NO route. Ordinary intel and
