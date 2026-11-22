@@ -59,7 +59,7 @@ export function releaseEmbeddedMotorActor(
  // If the real leaf, next stride, or ownership changes, restore the
  // original full-radius cover/wall recovery immediately. No movement
  // and no clearance exemption are granted by this guard.
- const entry=a.plan[0];
+ const entry=a.plan?.[0];
  // D3.33 P13: the generic embedded-cover recovery runs BEFORE
  // prepareMotorRoute in the ONE authoritative actor motor. At the exact
  // Townhouse FRONT, it consumed 2,161 frames while Rook's position
