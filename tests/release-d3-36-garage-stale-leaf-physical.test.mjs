@@ -47,7 +47,7 @@ test('D3.36 stale D1 episode cannot be stolen before true cold route proof',()=>
  assert.equal(protectedRehearsedFollowOnDoor(
   fresh,[door],12.15),'D1',
   'REAL subsequent movement keeps the brief accepted-NAV lease');
- fresh.blockedTime=4.2; // another independent .2s of real obstruction
+ fresh.blockedTime=.2; // new obstruction AFTER genuine motor movement
  assert.equal(protectedRehearsedFollowOnDoor(
   fresh,[door],12.2),null,
   'NEW physical obstruction after route adoption revokes lease');
