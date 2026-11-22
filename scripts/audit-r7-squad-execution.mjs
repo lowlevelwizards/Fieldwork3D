@@ -88,6 +88,15 @@ const d326Fine=d326LastStallProbe?
  await import('../src/breach-squeeze-route.ts'):null;
 const d326Gate=d326LastStallProbe?
  await import('../src/breach-d326-fine-route-gate.ts'):null;
+// D3.36 P2 only: precise, cold, immutable end-state clearance proof for
+// the three remaining original pending operators. It is entirely OFFLINE.
+const d336PhysicalProof=process.argv.includes('--d336-three-body-proof');
+const d336Recovery=d336PhysicalProof?
+ await import('../src/breach-rehearsed-portal-continuation.ts'):null;
+const d336Grid=d336PhysicalProof?
+ await import('../src/breach-d327-exact-motor-grid.ts'):null;
+const d336Door=d336PhysicalProof?
+ await import('../src/breach-door.ts'):null;
 // D3.17E: offline-only, post-run real geometry witness for blocked bodies.
 // It never runs in live movement, advances the simulation, or adopts a route.
 const leafRejoinDiagnostic=process.argv.includes('--leaf-rejoin-diagnostic');
@@ -1379,6 +1388,63 @@ function run(site,seed,kind){
       leaf:leaf?.id??null,nearestOpenLeaves:nearby,
       selectedJoin:physical.slice(0,5),selectedNodeCount:physical.length};
    }):[];
+  // D3.36 P2: do not mistake a coarse route or a one-step free motion
+  // for a viable motor route. All proposed chords use the exact live
+  // full-body sweep; the next operable-door proof must stop at a real,
+  // unlocked, unheld leaf. No proposal moves a body or changes a door.
+  const d336BodyProof=d336PhysicalProof&&(
+    (seed===14191143&&kind==='entry')||
+    (seed===14354241&&kind==='authored'))?
+   actors.filter(a=>a.plan[0]?.kind==='move'&&(
+      seed===14191143?a.id==='ash':a.id==='rook'||a.id==='moss'))
+    .map(actor=>{
+      const goal=actor.plan[0].p,world=sessionWorldGeometry(session);
+      const sweep=(a,b,doors=session.doors)=>sweptBodyClear(a,b,doors,
+        OPERATOR_RADIUS,world);
+      const stand=p=>bodyClear(p,session.doors,OPERATOR_RADIUS,world);
+      const candidate=routeToNextOperableDoor(actor.p,goal,
+        session.doors,world);
+      const certified=d336Recovery.certifiedFollowOnPortalPrefix(
+        actor.p,goal,candidate,session.doors,
+        (a,b,doors)=>sweep(a,b,doors),
+        door=>!door.locked&&!door.jammed&&!door.wedged&&
+          !door.heldBy&&(door.openFraction??(door.open?1:0))<.72&&
+          d336Door.canAutoOpenEnRoute({kind:'move'},door.id));
+      const stage=[];
+      for(const radius of [4,8,12,20])for(let heading=0;heading<16;heading++){
+        const theta=heading*Math.PI/8,
+          point={x:actor.p.x+Math.cos(theta)*radius,
+            y:actor.p.y+Math.sin(theta)*radius};
+        if(!stand(point)||!sweep(actor.p,point))continue;
+        stage.push({radius,heading,point});
+      }
+      // Bounded, independent exact full-body grid connector only to
+      // a known standable original NAV or certified next-door waypoint.
+      // This is feasibility, NEVER an adopted motor recovery.
+      const endpoints=[...actor.nav.slice(1,5),...candidate.slice(0,3),
+        goal].filter((p,i,arr)=>stand(p)&&dist(actor.p,p)<=220&&
+        arr.findIndex(q=>dist(p,q)<.3)===i).slice(0,3);
+      const exactJoins=endpoints.map(target=>{
+        const route=d336Grid.coldExactMotorGridRoute(actor.p,target,
+          stand,(a,b)=>sweep(a,b),
+          {step:4,maxExpansions:2000,padding:100,
+            maxDistance:420,maxWaypoints:100});
+        return {target,count:route.length,first:route[0]??null,
+          last:route.at(-1)??null,
+          firstSwept:route[0]?sweep(actor.p,route[0]):null};
+      });
+      return {actor:actor.id,from:{...actor.p},goal:{...goal},
+        bodyStandable:stand(actor.p),goalStandable:stand(goal),
+        firstNav:actor.nav[0]??null,
+        firstNavSweep:actor.nav[0]?sweep(actor.p,actor.nav[0]):null,
+        portalCount:candidate.length,
+        portalFirst:candidate[0]??null,
+        portalLast:candidate.at(-1)??null,
+        portalFirstSwept:candidate[0]?sweep(actor.p,candidate[0]):null,
+        certifiedCount:certified.length,
+        coldStageCount:stage.length,
+        stage:stage.slice(0,20),exactJoins};
+    }):null;
   // D3.25D: purely hypothetical stepped escape from the ACTUAL
   // end-state position. Never modify actors, doors, route ownership, or
   // physical arrival counts. Each tiny step is certified by the SAME
@@ -1452,6 +1518,7 @@ function run(site,seed,kind){
    ...(d315bRouteProbe?{d315bRouteEvidence}:{}),
    ...(progress?{progressEvidence}:{}),
    ...(leafRejoinDiagnostic?{leafRecoveryEvidence}:{}),
+   ...(d336PhysicalProof?{d336BodyProof}:{}),
    ...(d325Feasibility?{d325Feasibility}:{}),
    ...(d326StallEvidence?{d326StallEvidence}:{}),
    ...(d326LastStallProbe?{d326MicroTrace}:{}),
