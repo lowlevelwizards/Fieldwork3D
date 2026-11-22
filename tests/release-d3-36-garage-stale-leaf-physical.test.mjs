@@ -41,11 +41,16 @@ test('D3.36 stale D1 episode cannot be stolen before true cold route proof',()=>
   fresh,door,goal,12),true,
   'only an adopted nonempty exact route owns temporary old-leaf lease');
  assert.equal(protectedRehearsedFollowOnDoor(
-  fresh,[door],12.1),'D1');
- fresh.blockedTime=.2;
+  fresh,[door],12.1),'D1',
+  'prior stationary blocked seconds are not new contact');
+ fresh.blockedTime=0; // actual motor footstep resets blocked history
+ assert.equal(protectedRehearsedFollowOnDoor(
+  fresh,[door],12.15),'D1',
+  'REAL subsequent movement keeps the brief accepted-NAV lease');
+ fresh.blockedTime=4.2; // another independent .2s of real obstruction
  assert.equal(protectedRehearsedFollowOnDoor(
   fresh,[door],12.2),null,
-  'REAL physical contact immediately revokes the lease');
+  'NEW physical obstruction after route adoption revokes lease');
  const locked={...actor,doorTraversal:{...actor.doorTraversal},
   p:{x:0,y:0}};
  assert.equal(claimColdBlockedOpenLeafContinuation(
