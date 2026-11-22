@@ -12,6 +12,9 @@ import {OPERATOR_RADIUS,doorLeafSegment,pointToSegment}
  from '../src/breach-core.ts';
 import {bodyClear,sweptBodyClear} from '../src/breach-navigation.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
+import {certifiedFollowOnPortalPrefix}
+ from '../src/breach-rehearsed-portal-continuation.ts';
+import {canAutoOpenEnRoute} from '../src/breach-door.ts';
 import {routeWithSqueezeWorld,routeWithNormalWorld,
  routeToNextOperableDoor} from '../src/breach-squeeze-route.ts';
 
@@ -61,12 +64,18 @@ for(const c of fixtures)test('D3.35 P2 '+c.kind+
  for(const stage of roots){
   if(!stand(stage)||!sweep(c.from,stage))continue;
   const route=routeToNextOperableDoor(stage,c.original,session.doors,world);
+  const certified=certifiedFollowOnPortalPrefix(
+    stage,c.original,route,session.doors,
+    (a,b,doors)=>sweptBodyClear(a,b,doors,OPERATOR_RADIUS,world),
+    door=>!door.locked&&!door.jammed&&!door.wedged&&
+      !door.heldBy&&(door.openFraction??(door.open?1:0))<.72&&
+      canAutoOpenEnRoute({kind:'move'},door.id));
   const normal=routeWithNormalWorld(stage,c.original,session.doors,world);
   const exact=routeWithSqueezeWorld(stage,c.original,session.doors,world);
   results.push({
    stage:xy(stage),span:f(d(c.from,stage)),
    leafGap:f(pointToSegment(stage,doorLeafSegment(leaf))),
-   nextPortal:route.length,
+   nextPortal:route.length,certified:certified.length,
    portalFirst:xy(route[0]),portalLast:xy(route.at(-1)),
    firstSweep:route[0]?sweep(stage,route[0]):null,
    portalLength:route.reduce((sum,p,i)=>sum+
@@ -75,6 +84,8 @@ for(const c of fixtures)test('D3.35 P2 '+c.kind+
    worldFirst:xy(exact[0]),worldLast:xy(exact.at(-1))
   });
  }
+ assert.ok(results.some(x=>x.certified>0),
+  'at least one full-body certified future-door route MUST exist');
  console.log('D335_POST_PORTAL_WORLD',JSON.stringify({
   kind:c.kind,seed:c.seed,goal:c.original,from:c.from,
   standFrom:stand(c.from),standPortal:stand(c.portal),

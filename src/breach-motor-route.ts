@@ -41,6 +41,9 @@ import {coldSweptEntryEscapeJoin} from './breach-d325-escape-join.ts';
 import {claimD326ColdFineProbe,markD326FineMotorRoute}
  from './breach-d326-fine-route-gate.ts';
 import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
+import {eligibleRehearsedPortalContinuation,
+ certifiedFollowOnPortalPrefix,noteAcceptedFollowOnPortal}
+ from './breach-rehearsed-portal-continuation.ts';
 import {claimPhysicalLeafRejoin,relevantStableOpenLeaf,
  selectColdStaleLeafPortalStage} from './breach-physical-leaf-rejoin.ts';
 
@@ -472,6 +475,43 @@ export function prepareMotorRoute(
     const initialSource=a.side==='blue'?'initial-intel':'initial-enemy';
     const initialRoute=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
       hooks.cachedEnemyRoute(s,a.p,p,true);
+    // D3.35 P3: the live feet already completed TWO swept rehearsals
+    // across the SAME fully open leaf, yet intel keeps pointing BACK
+    // through that leaf (frozen Garage ENTRY Vale / Warehouse MOVE Rook).
+    // Cold-query a physically connected prefix to the NEXT real operable
+    // door before adopting the third backwards route. The ordinary
+    // motor must still reach and open that leaf; no GO is changed.
+    if(a.side==='blue'&&initialRoute.length){
+      const leaf=eligibleRehearsedPortalContinuation(
+        a,s.doors,p,initialRoute[0],s.seconds);
+      if(leaf){
+        const world=sessionWorldGeometry(s);
+        const proposed=routeToNextOperableDoor(a.p,p,s.doors,world);
+        const verified=certifiedFollowOnPortalPrefix(
+          a.p,p,proposed,s.doors,
+          (from,to,doors)=>sweptBodyClear(from,to,doors,
+            OPERATOR_RADIUS,world),
+          door=>!door.locked&&!door.jammed&&!door.wedged&&
+            !door.heldBy&&(door.openFraction??(door.open?1:0))<.72&&
+            canAutoOpenEnRoute({kind:'move'},door.id));
+        if(verified.length){
+          const decision=authorizeRouteAcquisition({
+            actor:a,session:s,source:'initial-portal-recovery',goal:p,
+            route:verified,orderIdAtSelection:acquisitionOrderId,
+            certificate:'first-operable-door-prefix',eligible:true,
+            physicalProof:true,initialRouteAbsent:true
+          });
+          if(decision.kind==='adopt'){
+            setTransientRoute(s,a,verified,'initial-portal-recovery',
+              decision.proof??undefined);
+            noteAcceptedFollowOnPortal(a);
+            provisionalRouteAccepted(a);
+            a.lastNavRepairAt=s.seconds;
+            return 'ready';
+          }
+        }
+      }
+    }
     const initialDecision=authorizeRouteAcquisition({
       actor:a,session:s,source:initialSource,goal:p,route:initialRoute,
       orderIdAtSelection:acquisitionOrderId,

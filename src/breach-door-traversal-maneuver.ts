@@ -3,6 +3,8 @@ import {setTransientRoute,noteDoorHandoffRejection} from './breach-route-transit
 import {authorizeSpecialistRecovery}
  from './breach-specialist-recovery-adoption.ts';
 import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
+import {noteAcceptedRehearsedPortal}
+ from './breach-rehearsed-portal-continuation.ts';
 import {completePortalRouteToAuthoredGoal} from './breach-door-maneuver-handoff.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld,routeWithNormalWorld}
  from './breach-squeeze-route.ts';
@@ -222,6 +224,11 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
    whole.length?'door-rehearsal-world':
    joined.length?'door-rehearsal-joined-waypoint':'door-rehearsal',
    rehearsalProof);
+ // This is only an observation of the accepted PHYSICALLY SWEPT short
+ // portal, never a claim that it reached the GO or passed another door.
+ if(!whole.length&&!joined.length)
+   noteAcceptedRehearsedPortal(a,door,episode.destination,
+     chosen[chosen.length-1],s.seconds);
  a.autoSidestep=beginAutoSidestep(a.p,next,chosen[0],
   a.heading,episode.destination,s.seconds,canAutoSidestep);
  provisionalRouteAccepted(a);

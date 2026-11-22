@@ -52,8 +52,19 @@ for(const c of cases)test('D3.35 frozen path-cycle forensic '+c.site+
  assert.equal(r.summary.physicsStepViolations,0);
  assert.equal(r.summary.invalidPositions,0);
  assert.equal(r.summary.corruptedPlans,0);
- assert.equal(a.outcome,'pending','exact source-loop still pending in P1');
- assert.ok(a.progressDistance>=c.minTravel,'real feet travel remains measured');
- assert.ok(a.remaining<=c.maxGoalDistance);
- assert.ok(suspect>=3,'high travelled distance with recurrent poor net GO');
+ assert.ok(a.outcome==='pending'||a.outcome==='arrived',
+  'a source loop must only resolve by real physical arrival');
+ assert.equal(a.failedOrders,0,'the original MOVE / ENTRY was not cancelled');
+ if(a.outcome==='pending'){
+  assert.ok(a.progressDistance>=c.minTravel,
+    'real feet travel remains measured for an unresolved loop');
+  assert.ok(a.remaining<=c.maxGoalDistance);
+  assert.ok(suspect>=3,'unresolved route-cycle evidence remains truthful');
+ }else{
+  assert.ok(a.arrived&&a.remaining<=5,
+   'physical recovery must reach the ORIGINAL actual goal');
+  assert.ok((run.routeTransitions?.byActor?.[
+    c.actor+':initial-portal-recovery']??0)>=1,
+    'post-rehearsal world portal was adopted before real arrival');
+ }
 });
