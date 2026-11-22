@@ -197,7 +197,7 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
       // still happens via taps and gestures on the existing route end.
       // planMoveStroke records the entire replacement as one undoable edit.
       const strokeOutcome={clipped:false,endpoint:pt};
-      if(!planMoveStroke(port.state,port.selected,spaced.slice(1),false,true,strokeOutcome))
+      if(!planMoveStroke(port.state,port.selected,spaced.slice(1),false,true,strokeOutcome,true))
         port.rejectAt(pt,'NO WALKABLE STROKE · PREVIOUS ROUTE KEPT');
       else{
         port.selectedActiveWatch=false;

@@ -749,7 +749,8 @@ export function planMove(s:Session,id:string,p:Pt,strafe=false){
  * obstacle and never by exposing geometry still hidden from the player. */
 export type StrokeOutcome={clipped:boolean;endpoint:Pt};
 export function planMoveStroke(s:Session,id:string,points:Pt[],
- strafe=false,replaceExisting=false,outcome?:StrokeOutcome){
+ strafe=false,replaceExisting=false,outcome?:StrokeOutcome,
+ drawnGesture=false){
   const a=party(s,id);if(!a||!canEdit(s))return false;
   // HERE redraw replaces navigation, not sustained WATCH intent. A WATCH
   // attached to an old MOVE waypoint becomes an independent HERE instruction,
@@ -774,10 +775,10 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
   // Window/mantle portals remain legal when the established traversal system
   // explicitly permits them.
   const stroke=points.length>60?[...points.slice(0,59),points.at(-1)!]:points;
-  // Fine genuine drawn strokes have enough sampled turns to describe a
-  // curve. Existing scripted one/two-point entry templates must retain
-  // their original 20-unit authored spacing and arrival behavior.
-  const interiorStep=stroke.length>=4?7:20;
+  // Only the explicit human finger gesture requests tighter spacing.
+  // Scripted squad entry, coordinated movement and existing planning callers
+  // retain their tested physical waypoint geometry regardless of point count.
+  const interiorStep=drawnGesture?7:20;
   const addStrokePoint=(point:Pt):boolean=>{
     if(d(from,point)<3||!legalMoveRoute(s,from,point).length)return false;
     proposed.push({id:s.nextId+proposed.length,kind:'move',p:clone(point),
