@@ -112,8 +112,10 @@ test('D3.37 Clinic SMALL 14191143: Ash physically reaches original ENTRY GO',()=
   ashSourceCount:run?.routeTransitions?.byActor?.[
    'ash:initial-portal-recovery']??0,
   lastAshRoutes:run?.routeTransitions?.events
-   ?.filter(e=>e.actorId==='ash').slice(-16)
+   ?.filter(e=>e.actorId==='ash').slice(-24)
    .map(e=>({t:e.seconds,source:e.source,from:e.position,
+    squeeze:e.squeeze,blockedTime:e.blockedTime,
+    phase:e.doorPhase,maneuver:e.doorManeuver,
     first:e.next?.[0],last:e.next?.at(-1),reason:e.reason}))
  }));
  assert.equal(r.ticks,2700);
