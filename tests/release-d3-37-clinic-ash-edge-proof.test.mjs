@@ -49,7 +49,7 @@ test('D3.37 Clinic Ash: exact immutable first failed portal edge and alternative
    motorFirstStepClear:x.motorFirstStepClear,
    culpritDoors:x.culpritDoors,wallNear:x.wallNear,
    coverNear:x.coverNear})),
-  alternatives:e.alternatives,doors:e.doors,
+  alternatives:e.alternatives,landingTests:e.landingTests,doors:e.doors,
   routeSources:Object.fromEntries(Object.entries(
    run.routeTransitions?.byActor??{}).filter(([k])=>k.startsWith('ash:')))
  }));
