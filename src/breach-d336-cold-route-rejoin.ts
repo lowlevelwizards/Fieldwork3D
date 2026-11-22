@@ -37,7 +37,6 @@ export function claimColdExactExistingRouteRejoin(
     actor.lastBlocker!=='wall'||actor.blockedTime<3||
     actor.squeeze||actor.traversal||actor.traversalPending||
     actor.autoSidestep||actor.fireRetreatTarget||
-    actor.aimInstruction?.mode==='watch'||
     !Number.isFinite(seconds)||!Number.isFinite(worldRevision)||
     firstClear||distance(actor.p,nav[0])>28||
     distance(actor.p,goal)<30||
