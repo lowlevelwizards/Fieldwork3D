@@ -174,10 +174,10 @@ test('A8 rejects pending plans, newly cancelled bodies, loops and compromised 0.
  }
 });
 test('A8 frozen physically UNRECOVERED flagged loop is not a forgiven incident',()=>{
- const r=corpus('frozen22'),a=r.rows[0].modes[0].operators[0];
+ const r=corpus('frozen22'),a=r.rows[7].modes[0].operators[0];
  assert.equal(a.arrived,true);
  a.arrived=false;a.outcome='pending';a.remainingOrders=1;
- r.rows[0].modes[0].arrivals--;
+ r.rows[7].modes[0].arrivals--;
  r.summary.physicalArrivals--;
  r.summary.physicallyPendingOperators++;
  const result=verifyA8PhysicalCohort(r,'frozen22');
