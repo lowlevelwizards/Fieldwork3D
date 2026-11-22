@@ -3,7 +3,7 @@
  */
 import type {EquipmentLoadout} from '../equipment-loadouts.ts';
 import type {MagazineItem} from '../breach-magazines.ts';
-import {FIELD_ITEMS,FIELD_ITEM_IDS,FIELD_CARRY_LOCATIONS,fieldQuantity,initialFieldInventory,
+import {FIELD_ITEMS,FIELD_ITEM_IDS,FIELD_CARRY_LOCATIONS,fieldQuantity,initialFieldInventory,readFieldInventory,
  replaceFieldQuantity,moveFieldStack,fieldCarryReport,autoPackFieldInventory,quoteFieldInventoryCopy,
  type FieldInventory,type FieldItemId,type FieldCarryLocation}
  from '../equipment-field-inventory.ts';
@@ -50,7 +50,7 @@ type PhysicalChoice=
  |{kind:'magazine';id:string;from:FieldCarryLocation};
 export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLElement{
  const {loadout,magazines,onCommit}=options;
- const inventory=loadout.fieldInventory??initialFieldInventory(loadout);
+ const inventory=readFieldInventory(loadout.fieldInventory,loadout);
  const root=document.createElement('section');
  root.className='fw-field-inventory';
  root.setAttribute('aria-label','Physical field inventory');
@@ -581,7 +581,8 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
  advanced.append(advancedLabel);root.append(advanced);
  const future=document.createElement('details');
  future.className='fw-field-inventory-future';
- const futureItems=FIELD_ITEM_IDS.filter(id=>!FIELD_ITEMS[id].usable);
+ const futureItems=FIELD_ITEM_IDS.filter(id=>!FIELD_ITEMS[id].usable&&
+  id!=='zip-tie');
  const futureHeading=document.createElement('summary');
  futureHeading.textContent='FUTURE EQUIPMENT · '+futureItems.length+' NOT YET AVAILABLE';
  future.append(futureHeading);

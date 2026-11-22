@@ -97,6 +97,27 @@ export function autoBeginOptionalIntelGather(s:IntelMission,
      beginOptionalIntelGather(s,actor.id,clear))return true;
  return false;
 }
+/** Ordinary discovered evidence is a walk-over pickup. No hidden timer or
+ * stop order: the existing mission tick grants custody once a living blue
+ * operator physically reaches a clear contact lane. One pickup per tick
+ * keeps event ordering deterministic and avoids duplicate collectors.
+ */
+export function collectProximityOptionalIntel(s:IntelMission,
+ clear:(from:Pt,to:Pt)=>boolean):OptionalIntelItem|null{
+ if(s.phase!=='running')return null;
+ for(const actor of s.operators){
+  if(actor.side!=='blue'||actor.health<=0)continue;
+  for(const item of s.optionalIntel){
+   if(!item.discovered||item.collectedBy!==null||
+      !near(actor.p,item.p,31)||!clear(actor.p,item.p))continue;
+   item.collectedBy=actor.id;
+   item.collectedAt=s.seconds;
+   if(s.intelGather?.itemId===item.id)s.intelGather=null;
+   return item;
+  }
+ }
+ return null;
+}
 export function advanceOptionalIntel(s:IntelMission,dt:number,
  clear:(from:Pt,to:Pt)=>boolean):OptionalIntelItem|null{
  // Lost couriers leave a tangible, observed object for another real pickup.

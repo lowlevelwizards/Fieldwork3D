@@ -12,7 +12,7 @@ import {FIELD_ITEM_IDS,FIELD_ITEMS,fieldQuantity,fieldCarryReport,
  initialFieldInventory,readFieldInventory,
  type FieldInventory,type FieldItemId} from './equipment-field-inventory.ts';
 
-const SETTLED_ITEMS:readonly FieldItemId[]=['wedge','zip-tie'];
+const SETTLED_ITEMS:readonly FieldItemId[]=['wedge'];
 /** Return null when a report is malformed, implies extra stock, or does
  * not fit the existing carrier. Never partially settle an inconsistent kit.
  * Omitted reports are handled by the caller as legacy no-change reports.

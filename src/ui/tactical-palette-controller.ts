@@ -413,18 +413,18 @@ export function createTacticalPaletteController(config:{
       state.civilians,at,mode,state.mission,
       p=>liveVisibility(state,p),
       (from,to)=>sweptBodyClear(from,to,state.doors,
-        mode==='follow'||mode==='stop-following'?1.5:5.5,
+        1.5,
         sessionWorldGeometry(state))):null;
   const civilianAtPlan=civilianContact('secure');
   const rescueAtPlan=civilianContact('follow');
   const followingAtPlan=civilianContact('stop-following');
-  const restraintAtPlan=a.restraintRemaining>0?civilianContact('restrain'):null;
+  const restraintAtPlan=civilianContact('restrain');
   const suspectAtPlan=routeEndCivilianActions?
     nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&
-      team(state).some(observer=>inSight(observer,e,state))&&
-      sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)),
+      !e.surrendered&&team(state).some(observer=>inSight(observer,e,state))&&
+      sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)),
       SUSPECT_CHALLENGE_RANGE):null;
-  const restrainedSuspectAtPlan=routeEndCivilianActions&&a.restraintRemaining>0?
+  const restrainedSuspectAtPlan=routeEndCivilianActions?
     nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&
       e.surrendered&&!e.restrained&&
       liveVisibility(state,e.p)&&
@@ -437,16 +437,16 @@ export function createTacticalPaletteController(config:{
   const looseFirearmAtPlan=routeEndCivilianActions?
     nearestPaletteCandidate(state.droppedFirearms,at,w=>w.status==='loose'&&
       liveVisibility(state,w.p)&&
-      sweptBodyClear(at,w.p,state.doors,5.5,sessionWorldGeometry(state)),34):null;
+      sweptBodyClear(at,w.p,state.doors,1.5,sessionWorldGeometry(state)),58):null;
   const escortableSuspectAtPlan=routeEndCivilianActions?
     nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&e.surrendered&&
-      e.restrained===true&&e.escortLeaderId!==a.id&&
+      e.escortLeaderId!==a.id&&
       liveVisibility(state,e.p)&&
       sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)),
       SUSPECT_CHALLENGE_RANGE):null;
   const followingSuspectAtPlan=routeEndCivilianActions?
     nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&e.surrendered&&
-      e.restrained===true&&!!e.escortLeaderId&&
+      !!e.escortLeaderId&&
       sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)),
       SUSPECT_CHALLENGE_RANGE):null;
   const downedCaptureAtPlan=routeEndCivilianActions&&

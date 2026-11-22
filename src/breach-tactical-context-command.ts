@@ -92,9 +92,9 @@ export function dispatchTacticalContextCommand(input:{
   case 'ctxChallengeSuspect':{
    const from=finalPoint(a);
    const target=enemies(state).filter(e=>e.health>0&&
-      distance(from,e.p)<SUSPECT_CHALLENGE_RANGE&&
+      !e.surrendered&&distance(from,e.p)<SUSPECT_CHALLENGE_RANGE&&
       team(state).some(observer=>inSight(observer,e,state))&&
-      sweptBodyClear(from,e.p,state.doors,5.5,sessionWorldGeometry(state)))
+      sweptBodyClear(from,e.p,state.doors,1.5,sessionWorldGeometry(state)))
      .sort((x,y)=>distance(from,x.p)-distance(from,y.p))[0];
    return finish(!!target&&planSuspectChallenge(state,selected,target.id),
      'SUSPECT CHALLENGE NOT AVAILABLE');
@@ -103,17 +103,17 @@ export function dispatchTacticalContextCommand(input:{
    const at=finalPoint(a);
    const target=enemies(state).filter(e=>e.health>0&&e.surrendered&&
      !e.restrained&&distance(at,e.p)<=34&&liveVisibility(state,e.p)&&
-     sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)))
+     sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)))
      .sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0];
    return finish(!!target&&planSuspectRestraint(state,selected,target.id),
-     'COMPLIANT SUSPECT OR ISSUED RESTRAINT NOT AVAILABLE');
+     'COMPLIANT SUSPECT NOT IN PHYSICAL REACH');
   }
   case 'ctxSearchSuspect':{
    const at=finalPoint(a);
    const target=enemies(state).filter(e=>e.health>0&&e.surrendered&&
      e.restrained===true&&!e.suspectSearched&&distance(at,e.p)<=34&&
      liveVisibility(state,e.p)&&
-     sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)))
+     sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)))
      .sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0];
    return finish(!!target&&planSearchSuspect(state,selected,target.id),
      'RESTRAINED SUSPECT NOT REACHABLE');
@@ -121,8 +121,8 @@ export function dispatchTacticalContextCommand(input:{
   case 'ctxSecureFirearm':{
    const at=finalPoint(a);
    const item=state.droppedFirearms.filter(w=>w.status==='loose'&&
-     distance(at,w.p)<=34&&liveVisibility(state,w.p)&&
-     sweptBodyClear(at,w.p,state.doors,5.5,sessionWorldGeometry(state)))
+     distance(at,w.p)<=58&&liveVisibility(state,w.p)&&
+     sweptBodyClear(at,w.p,state.doors,1.5,sessionWorldGeometry(state)))
      .sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0];
    return finish(!!item&&planSecureDroppedFirearm(state,selected,item.id),
      'LOOSE FIREARM NOT REACHABLE');
@@ -131,7 +131,7 @@ export function dispatchTacticalContextCommand(input:{
   case 'ctxStopEscortSuspect':{
    const at=finalPoint(a),stopping=action==='ctxStopEscortSuspect';
    const candidate=enemies(state).filter(e=>e.health>0&&
-     e.surrendered&&e.restrained===true&&
+     e.surrendered&&
      (stopping?!!e.escortLeaderId:e.escortLeaderId!==a.id)&&
      (!stopping?liveVisibility(state,e.p):true)&&
      distance(at,e.p)<=SUSPECT_CHALLENGE_RANGE&&
@@ -139,7 +139,7 @@ export function dispatchTacticalContextCommand(input:{
      .sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0];
    return finish(!!candidate&&planSuspectEscort(state,selected,
      candidate.id,stopping?'stop':'escort'),
-     'RESTRAINED SUSPECT OUT OF SPEAKING RANGE');
+     'SURRENDERED SUSPECT OUT OF SPEAKING RANGE');
   }
   case 'ctxSecureCivilian':
   case 'ctxFollowCivilian':

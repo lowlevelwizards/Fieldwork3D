@@ -780,16 +780,14 @@ export class CampaignScreen{
    [c.supplies.ammo,'ROUNDS'],
    [c.supplies.medical,'MEDICAL KITS'],
    [c.supplies.flash,'FLASHBANGS'],
-   [c.supplies.wedges,'DOOR WEDGES'],
-   [c.supplies.cuffs,'FLEX CUFF PAIRS']
+   [c.supplies.wedges,'DOOR WEDGES']
   ] as const;
   for(let i=0;i<supplyFacts.length;i++){
    const [count,label]=supplyFacts[i];
    const fact=button('',()=>selectStock(i),'campaign-logistics-stat campaign-uxr-stock-button');
    const needed=label==='ROUNDS'?squadQuote.roundsWanted:
     label==='MEDICAL KITS'?squadQuote.medicalWanted:
-    label==='DOOR WEDGES'?squadQuote.wedgesWanted:
-    label==='FLEX CUFF PAIRS'?squadQuote.cuffsWanted:0;
+    label==='DOOR WEDGES'?squadQuote.wedgesWanted:0;
    if(needed>count)fact.classList.add('is-low');
    fact.setAttribute('aria-label','Select '+label+' · '+count+' in HQ stock');
    fact.append(node('strong','',String(count)),node('span','',label));
@@ -801,8 +799,7 @@ export class CampaignScreen{
   const refillSummary=node('p','campaign-squad-refill-summary',
    squadQuote.roundsIssued+' / '+squadQuote.roundsWanted+' ROUNDS · '+
    squadQuote.medicalIssued+' / '+squadQuote.medicalWanted+' MEDICAL PACKS · '+
-   squadQuote.wedgesIssued+' / '+squadQuote.wedgesWanted+' WEDGES · '+
-   squadQuote.cuffsIssued+' / '+squadQuote.cuffsWanted+' CUFF PAIRS'+
+   squadQuote.wedgesIssued+' / '+squadQuote.wedgesWanted+' WEDGES'+
    (squadQuote.partial?' · PARTIAL / CARRY LIMITED':''));
   squadReplenish.append(refillSummary);
   const rows=node('div','campaign-squad-refill-lines');
@@ -812,8 +809,7 @@ export class CampaignScreen{
     node('span','',
      line.roundsIssued+' / '+line.roundsWanted+' RDS · '+
      line.medicalIssued+' / '+line.medicalWanted+' MED PACKS · '+
-     line.wedgesIssued+' / '+line.wedgesWanted+' WEDGES · '+
-     line.cuffsIssued+' / '+line.cuffsWanted+' CUFFS'+
+     line.wedgesIssued+' / '+line.wedgesWanted+' WEDGES'+
      (line.roundsShort?' · '+line.roundsShort+' RDS SHORT':'')+
      (line.blockedByCarry?' · NOT ENOUGH CARRY SPACE':'')));
    rows.append(chip);
@@ -828,7 +824,7 @@ export class CampaignScreen{
   squadRefill.setAttribute('aria-label',
    'Refill squad using '+squadQuote.cost.ammo+' HQ rounds, '+
    squadQuote.cost.medical+' medical packs, '+squadQuote.cost.wedges+
-   ' door wedges and '+squadQuote.cost.cuffs+' flex cuff pairs');
+   ' door wedges');
   squadRefill.disabled=!squadQuote.available||!squadQuote.changed;
   if(squadRefill.disabled)squadRefill.title=squadQuote.reason??
    'All assigned operators are supplied or HQ reserves are empty';
@@ -843,8 +839,7 @@ export class CampaignScreen{
    ['60 ROUNDS',120,this.handlers.buyAmmo],
    ['MEDICAL KIT',170,this.handlers.buyMedical],
    ['2 FLASHBANGS',150,this.handlers.buyFlash],
-   [FIELD_STOCK_PACKS.wedges.name,FIELD_STOCK_PACKS.wedges.price,this.handlers.buyWedges],
-   [FIELD_STOCK_PACKS.cuffs.name,FIELD_STOCK_PACKS.cuffs.price,this.handlers.buyCuffs]
+   [FIELD_STOCK_PACKS.wedges.name,FIELD_STOCK_PACKS.wedges.price,this.handlers.buyWedges]
   ] as const){
    const price=isDispatchPilot(c)&&effectiveDispatchSetup(c).economy==='unlimited'?
     'NO CHARGE':cost+' CR';
@@ -857,10 +852,7 @@ export class CampaignScreen{
     (label==='2 FLASHBANGS'&&(!!c.activeContractId||c.supplies.flash>998))||
     (label===FIELD_STOCK_PACKS.wedges.name&&
      (!!c.activeContractId||c.supplies.wedges>
-      FIELD_STOCK_LIMIT-FIELD_STOCK_PACKS.wedges.quantity))||
-    (label===FIELD_STOCK_PACKS.cuffs.name&&
-     (!!c.activeContractId||c.supplies.cuffs>
-      FIELD_STOCK_LIMIT-FIELD_STOCK_PACKS.cuffs.quantity));
+      FIELD_STOCK_LIMIT-FIELD_STOCK_PACKS.wedges.quantity));
    if(buy.disabled){
     const why=label==='2 FLASHBANGS'&&!!c.activeContractId?
      'Unavailable during an active deployment':
@@ -868,14 +860,9 @@ export class CampaignScreen{
       'Flashbang reserve at capacity':
      label===FIELD_STOCK_PACKS.wedges.name&&!!c.activeContractId?
       'Finish the active deployment before acquiring field supplies':
-     label===FIELD_STOCK_PACKS.cuffs.name&&!!c.activeContractId?
-      'Finish the active deployment before acquiring field supplies':
      label===FIELD_STOCK_PACKS.wedges.name&&
       c.supplies.wedges>FIELD_STOCK_LIMIT-FIELD_STOCK_PACKS.wedges.quantity?
-      'Door wedge stock full':
-     label===FIELD_STOCK_PACKS.cuffs.name&&
-      c.supplies.cuffs>FIELD_STOCK_LIMIT-FIELD_STOCK_PACKS.cuffs.quantity?
-      'Flex cuff stock full':'Insufficient campaign funds';
+      'Door wedge stock full':'Insufficient campaign funds';
     buy.title=why;
     buy.setAttribute('aria-description',why);
    }
@@ -1718,8 +1705,7 @@ export class CampaignScreen{
     node('p','',
      singleQuote.roundsIssued+' / '+singleQuote.roundsWanted+' ROUNDS FROM HQ · '+
      singleQuote.medicalIssued+' / '+singleQuote.medicalWanted+' MEDICAL PACKS · '+
-     singleQuote.wedgesIssued+' / '+singleQuote.wedgesWanted+' WEDGES · '+
-     singleQuote.cuffsIssued+' / '+singleQuote.cuffsWanted+' CUFF PAIRS'+
+     singleQuote.wedgesIssued+' / '+singleQuote.wedgesWanted+' WEDGES'+
      (singleQuote.roundsShort?' · '+singleQuote.roundsShort+' ROUNDS SHORT':'')+
      (singleQuote.blockedByCarry?' · CARRY SPACE LIMITED':'')));
    const actions=node('div','campaign-kit-refill-actions');
@@ -1729,11 +1715,10 @@ export class CampaignScreen{
    const medicalButton=button('REISSUE '+singleQuote.medicalIssued+' MEDICAL PACK',
     ()=>this.handlers.resupplyMedical(person.id));
    medicalButton.disabled=!!c.activeContractId||singleQuote.medicalIssued<=0;
-   const fieldButton=button('REISSUE '+singleQuote.wedgesIssued+' WEDGES / '+
-    singleQuote.cuffsIssued+' CUFFS',
+   const fieldButton=button('REISSUE '+singleQuote.wedgesIssued+' WEDGES',
     ()=>this.handlers.resupplyField(person.id));
    fieldButton.disabled=!!c.activeContractId||
-    singleQuote.wedgesIssued+singleQuote.cuffsIssued===0;
+    singleQuote.wedgesIssued===0;
    actions.append(ammoButton,medicalButton,fieldButton);
    needs.append(actions);
    readinessPanel.append(needs);
@@ -2251,7 +2236,7 @@ export class CampaignScreen{
    },
    maxFlash:c.squadIds.includes(id)?
     Math.max(0,c.supplies.flash-squadFlashReserved):4,
-   maxWedges:c.supplies.wedges,maxCuffs:c.supplies.cuffs,
+   maxWedges:c.supplies.wedges,
    copyTargets:c.operators.filter(o=>o.id!==id&&
     o.status!=='lost'&&o.status!=='retired').map(o=>({
      id:o.id,name:o.callsign,loadout:o.loadout,magazines:o.magazines

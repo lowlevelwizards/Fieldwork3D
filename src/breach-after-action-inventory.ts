@@ -91,8 +91,7 @@ export function buildAfterActionInventoryCloseout(input:{
   };
   const manifestMismatch=!!currentField&&(
    count(currentField,'flashbang')!==actor.flashCharges||
-   count(currentField,'wedge')!==actor.wedgeRemaining||
-   count(currentField,'zip-tie')!==actor.restraintRemaining);
+   count(currentField,'wedge')!==actor.wedgeRemaining);
   const career=mode==='mission'&&campaign?
    tacticalSlotOperator(campaign,actor.id):undefined;
   const needs:string[]=[];
@@ -107,7 +106,6 @@ export function buildAfterActionInventoryCloseout(input:{
    if(medical(career.medicalSupplies)<medical(capacity))
     needs.push('MEDICAL');
    if(wedges.netUsed!==null&&wedges.netUsed>0)needs.push('WEDGES');
-   if(cuffs.netUsed!==null&&cuffs.netUsed>0)needs.push('FLEX CUFFS');
    if(readiness!=='recovering')
     readiness=needs.length?'replenish':'ready';
   }

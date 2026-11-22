@@ -8,11 +8,12 @@ import {newSession,team,enemies,planSuspectChallenge,
  toggling,stepSession,debrief} from '../src/breach-game.ts';
 import {contextActionChoices} from '../src/ui/context-actions.ts';
 import {activateSite} from '../src/breach-core.ts';
+import {createInteractionOrderHandler} from '../src/breach-order-interactions.ts';
 
 const base={door:false,node:false,flashRemaining:2,
  posture:'stand',pace:'walk',firePolicy:'engage',reserve:30,magazine:30};
 
-test('D9.1 spoken challenge needs low morale AND observed threat pressure',()=>{
+test('D9.1 challenge can win over a shaken suspect but still permits refusal',()=>{
  const s={health:3,surrendered:false,morale:.88,suppression:0,
   injuryStage:0};
  assert.equal(challengeSuspectDecision(s,8),'refuse');
@@ -21,7 +22,7 @@ test('D9.1 spoken challenge needs low morale AND observed threat pressure',()=>{
  assert.equal(challengeSuspectDecision({...s,morale:.44,suppression:.76},8),
   'surrender');
  assert.equal(challengeSuspectDecision({...s,morale:.50,suppression:.9},8),
-  'refuse');
+  'surrender');
  assert.equal(challengeSuspectDecision({...s,lastChallengeAt:8},9),
   'cooldown');
  assert.equal(challengeSuspectDecision({...s,lastChallengeAt:8},
@@ -74,7 +75,8 @@ test('D9.2 order processing is timed and source-limited; no new authority for ar
  const read=path=>readFileSync(new URL('../src/'+path,import.meta.url),'utf8');
  const interactions=read('breach-order-interactions.ts');
  assert.match(interactions,/n.interaction==='challenge-suspect'/);
- assert.match(interactions,/port.inSight\(a,suspect,s\)/);
+ assert.doesNotMatch(interactions,/port.inSight\(a,suspect,s\)/);
+ assert.match(interactions,/rotate\(a,Math.atan2\(suspect.p.y-a.p.y,/);
  assert.match(interactions,/SUSPECT_CHALLENGE_SECONDS/);
  assert.match(interactions,/commitSuspectSurrender\(s,suspect,notify,battleEvent,'challenge',a\.id\)/);
  assert.match(read('breach-tactical-context-command.ts'),/planSuspectChallenge\(state,selected,target.id\)/);
@@ -97,5 +99,41 @@ test('D9.3 surrender scoring remains authoritative in existing debrief',()=>{
   // does not mark the capture objective or complete the mission.
   assert.equal(s.captureSecured,false);
   assert.equal(s.mission,'clear');
+ }finally{activateSite(null);}
+});
+
+test('D15.8 challenge turns a known speaker before judging actual response',()=>{
+ const pt=(x,y)=>({x,y});
+ const site={seed:59127,name:'challenge turn',layout:'corridor',
+  rooms:[{id:'floor',x:80,y:140,w:420,h:160,kind:'room',purpose:'floor',tone:1}],
+  roomCount:1,walls:[],cover:[],doors:[],windows:[],
+  enemies:[pt(315,200)],spawn:[pt(300,200),pt(300,230),
+    pt(300,260),pt(300,290)],entrance:pt(290,200),
+  objective:pt(120,200),extract:pt(470,200),
+  bounds:{minX:0,minY:0,maxX:640,maxY:740}};
+ const s=newSession(0,59127,'full-view','small','hold',site);
+ try{
+  const speaker=team(s)[0],suspect=enemies(s)[0],events=[];
+  speaker.p=pt(300,200);speaker.priorP={...speaker.p};
+  speaker.heading=Math.PI;speaker.velocity=0;
+  suspect.p=pt(315,200);suspect.priorP={...suspect.p};
+  suspect.morale=.3;suspect.suppression=0;
+  const order={id:99127,kind:'interact',p:{...speaker.p},
+    interaction:'challenge-suspect',objectId:'suspect:'+suspect.id};
+  speaker.plan=[order];
+  const interaction=createInteractionOrderHandler({
+   notify:(_s,reason)=>events.push(String(reason)),
+   battleEvent:(_s,kind,_actor,_at,message)=>events.push(kind+':'+message),
+   hear:()=>{},approach:()=>true,
+   inSight:()=>false,liveVisibility:()=>true,movePhysicalProp:()=>false
+  });
+  for(let i=0;i<180&&!suspect.surrendered;i++){
+   s.seconds=i/60;
+   interaction(s,speaker,order,1/60);
+  }
+  assert.equal(suspect.surrendered,true,
+   'an explicit spoken command works even when speaker starts facing away');
+  assert.ok(events.some(x=>x.includes('CHALLENGED')));
+  assert.ok(events.some(x=>x.includes('SURRENDERED')));
  }finally{activateSite(null);}
 });

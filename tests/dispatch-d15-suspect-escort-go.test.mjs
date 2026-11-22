@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newSession,team,enemies,toggling,stepSession,
- planSuspectEscort,planMove} from '../src/breach-game.ts';
+ planSuspectEscort,planSuspectRestraint,planMove} from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
 import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
 import {contextActionChoices} from '../src/ui/context-actions.ts';
 import {physicalFollowGoal} from '../src/breach-follow-physical-policy.ts';
+import {commitSuspectSurrender} from '../src/breach-suspect-compliance.ts';
+import {initialEquipmentLoadout} from '../src/equipment-loadouts.ts';
 const pt=(x,y)=>({x,y});
 const roomSite=()=>({
  seed:51015,name:'D15 custodial walk study',layout:'corridor',
@@ -61,5 +63,56 @@ test('D15.5 CAPTURE cannot win from extraction without the living captive',()=>{
   p.escortLeaderId=a.id;
   stepSession(s,1/60);
   assert.equal(s.phase,'won');
+ }finally{activateSite(null);}
+});
+
+test('D15.8 an unrestrained surrendered suspect can FOLLOW hands-up and STOP',()=>{
+ const s=newSession(0,51015,'full-view','small','capture',roomSite());
+ try{
+  const a=team(s)[0],p=enemies(s)[0];
+  for(const blue of team(s))if(blue!==a)blue.health=0;
+  a.p=pt(300,200);a.priorP={...a.p};a.heading=0;
+  p.p=pt(315,200);p.priorP={...p.p};
+  p.health=3;p.surrendered=true;p.restrained=false;
+  p.suspectEscapeCooldownUntil=100;
+  a.awareness.visualProgress[p.id]=1;
+  assert.equal(planSuspectEscort(s,a.id,p.id,'escort'),true);
+  assert.equal(p.escortLeaderId,null,'planning is not a voiced order yet');
+  toggling(s);
+  for(let i=0;i<150&&s.phase==='running'&&!p.escortLeaderId;i++)
+   stepSession(s,1/60);
+  assert.equal(p.escortLeaderId,a.id);
+  assert.equal(p.restrained,false,'following is not instant arrest');
+  assert.equal(s.captureSecured,false,'the objective still requires RESTRAIN');
+  toggling(s);
+  assert.equal(planSuspectEscort(s,a.id,p.id,'stop'),true);
+  toggling(s);
+  for(let i=0;i<130&&s.phase==='running'&&p.escortLeaderId;i++)
+   stepSession(s,1/60);
+  assert.equal(p.escortLeaderId,null);
+  assert.equal(p.surrendered,true);
+ }finally{activateSite(null);}
+});
+
+test('D15.8 Quick Play capture remains completable without any cuff loadout',()=>{
+ const s=newSession(0,51015,'full-view','small','capture',roomSite());
+ try{
+  const a=team(s)[0],p=enemies(s)[0];
+  for(const blue of team(s))if(blue!==a)blue.health=0;
+  a.p=pt(300,200);a.priorP={...a.p};a.heading=0;
+  p.p=pt(315,200);p.priorP={...p.p};
+  a.equipment=initialEquipmentLoadout();
+  a.restraintRemaining=0;
+  a.awareness.visualProgress[p.id]=1;
+  assert.equal(commitSuspectSurrender(s,p,()=>{},()=>{}),true);
+  assert.equal(planSuspectRestraint(s,a.id,p.id),true);
+  toggling(s);
+  for(let i=0;i<185&&s.phase==='running'&&!p.restrained;i++)
+   stepSession(s,1/60);
+  assert.equal(p.restrained,true,'a stock-free operator completes physical cuffs');
+  assert.equal(a.restraintRemaining,0);
+  for(let i=0;i<5&&s.phase==='running';i++)stepSession(s,1/60);
+  assert.equal(s.captureSecured,true,'capture can progress without gear selection');
+  assert.equal(s.mission,'extract');
  }finally{activateSite(null);}
 });

@@ -2,7 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateOptionalIntel,observeOptionalIntel,beginOptionalIntelGather,
- advanceOptionalIntel,autoBeginOptionalIntelGather,eligibleOptionalIntel,optionalIntelRecovered}
+ advanceOptionalIntel,autoBeginOptionalIntelGather,collectProximityOptionalIntel,
+ eligibleOptionalIntel,optionalIntelRecovered}
  from '../src/breach-optional-intel.ts';
 const rooms=Array.from({length:12},(_,i)=>({
  id:'room'+i,kind:'room',x:(i%4)*120,y:Math.floor(i/4)*120,
@@ -79,4 +80,30 @@ test('OC3 actual courier custody, casualty drop, recovery and extraction',()=>{
  assert.equal(optionalIntelRecovered(s).length,1);
  s.operators[1].health=0;
  assert.equal(optionalIntelRecovered(s).length,0,'downed carrier never scores remote pickup');
+});
+
+test('OC6 walk-over collection is immediate, visible-only and preserves courier custody',()=>{
+ const item=generateOptionalIntel(site)[0];
+ const s={phase:'running',seconds:4.25,optionalIntel:[item],intelGather:null,
+  scenario:{extract:{x:610,y:0}},
+  operators:[soldier('rook',item.p.x+29,item.p.y),
+   soldier('moss',item.p.x+35,item.p.y)]};
+ assert.equal(collectProximityOptionalIntel(s,visible),null,
+  'undiscovered pickups cannot expose hidden evidence');
+ item.discovered=true;
+ assert.equal(collectProximityOptionalIntel(s,()=>false),null,
+  'walls still prevent contact');
+ assert.equal(collectProximityOptionalIntel(s,visible)?.id,item.id,
+  'walking past within reach collects on the same tick');
+ assert.equal(item.collectedBy,'rook');
+ assert.equal(item.collectedAt,4.25);
+ assert.equal(s.intelGather,null,'no timed interaction required');
+ assert.equal(collectProximityOptionalIntel(s,visible),null,
+  'the second operator cannot duplicate collection');
+ s.operators[0].health=0;
+ advanceOptionalIntel(s,1/60,visible);
+ assert.equal(item.collectedBy,null,'a downed courier still drops evidence');
+ s.operators[1].p={...item.p};
+ assert.equal(collectProximityOptionalIntel(s,visible)?.collectedBy,'moss',
+  'another teammate can recover dropped evidence immediately');
 });

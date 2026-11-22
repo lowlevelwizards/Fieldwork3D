@@ -2590,7 +2590,7 @@ export class TacticalScene3D{
         restrained:actor.restrained===true,
         // Escaping unrestrained captives remain visibly upright while
         // moving, rather than gliding on their knees in surrender pose.
-        custodyWalking:actor.restrained===true&&!!actor.escortLeaderId||
+        custodyWalking:actor.surrendered&&!!actor.escortLeaderId||
           actor.surrendered&&actor.suspectEscapeMode==='flee',
         aiming:!actor.traversal&&actor.aim>.20,
         turning:actor.turning,firing:!!firing&&!actor.traversal,

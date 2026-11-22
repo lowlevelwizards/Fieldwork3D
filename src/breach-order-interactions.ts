@@ -6,8 +6,6 @@ import {type Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {setCivilianState} from './breach-civilian-types.ts';
-import {quoteDeployedFieldUse,spendDeployedFieldItem}
- from './equipment-deployed-field-use.ts';
 import {RESTRAINT_CONTACT_SECONDS} from './equipment-interaction-timings.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {canSecureRescuePerson} from './breach-civilian-mission.ts';
@@ -63,14 +61,17 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         n.objectId==='suspect:'+e.id);
       if(!suspect||suspect.health<=0||a.health<=0||
          d(a.p,suspect.p)>SUSPECT_CHALLENGE_RANGE||
-         !port.inSight(a,suspect,s)||
-         !sweptBodyClear(a.p,suspect.p,s.doors,5.5,sessionWorldGeometry(s))){
+         !sweptBodyClear(a.p,suspect.p,s.doors,1.5,sessionWorldGeometry(s))){
         failCurrentOrder(s,a,n,'SUSPECT NOT VISIBLE OR IN SPEAKING RANGE');
         return true;
       }
-      // Fixed GO-time voice duration. Revalidate physical sight on every
-      // tick; no automatic surrender or unseen/through-wall effect.
-      a.velocity=0;a.actionTimer+=dt;
+      // The explicit CHALLENGE first turns the speaker toward the known
+      // suspect. FOV is not a prerequisite for beginning the turn; the
+      // physically unobstructed speaking lane is still checked each tick.
+      a.velocity=0;
+      if(!rotate(a,Math.atan2(suspect.p.y-a.p.y,
+        suspect.p.x-a.p.x),dt,s))return true;
+      a.actionTimer+=dt;
       if(a.actionTimer<SUSPECT_CHALLENGE_SECONDS)return true;
       const decision=challengeSuspectDecision(suspect,s.seconds);
       if(decision==='cooldown'){
@@ -101,7 +102,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         failCurrentOrder(s,a,n,'SUSPECT NOT AVAILABLE FOR RESTRAINT');return true;
       }
       const range=d(a.p,suspect.p);
-      const clear=sweptBodyClear(a.p,suspect.p,s.doors,5.5,
+      const clear=sweptBodyClear(a.p,suspect.p,s.doors,1.5,
         sessionWorldGeometry(s));
       if(range>28&&range<=45&&clear&&d(suspect.p,n.p)<=45&&
          liveVisibility(s,suspect.p)){
@@ -110,18 +111,11 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       if(range>28||!clear){
         failCurrentOrder(s,a,n,'SUSPECT NOT IN PHYSICAL CONTACT');return true;
       }
-      const cuffs=quoteDeployedFieldUse(a,'zip-tie');
-      if(!cuffs.available){
-        failCurrentOrder(s,a,n,'NO ISSUED FLEX CUFFS');return true;
-      }
       a.velocity=0;
       const toward=Math.atan2(suspect.p.y-a.p.y,suspect.p.x-a.p.x);
       if(!rotate(a,toward,dt,s))return true;
       a.actionTimer+=dt;
-      if(a.actionTimer<RESTRAINT_CONTACT_SECONDS+cuffs.accessSeconds)return true;
-      if(!spendDeployedFieldItem(a,'zip-tie')){
-        failCurrentOrder(s,a,n,'RESTRAINT STOCK CHANGED');return true;
-      }
+      if(a.actionTimer<RESTRAINT_CONTACT_SECONDS)return true;
       suspect.restrained=true;suspect.lastCustodyAt=s.seconds;
       // Completing physical cuffs interrupts any pending escape, hand
       // retrieval or partially drawn pistol at the exact GO-time tick.
@@ -145,8 +139,8 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       const suspect=s.operators.find(e=>e.side==='red'&&
         n.objectId==='suspect:'+e.id);
       if(!suspect||suspect.health<=0||suspect.surrendered!==true||
-         suspect.restrained!==true||a.health<=0){
-        failCurrentOrder(s,a,n,'RESTRAINED SUSPECT NOT AVAILABLE');return true;
+         a.health<=0){
+        failCurrentOrder(s,a,n,'COMPLIANT SUSPECT NOT AVAILABLE');return true;
       }
       if(n.interaction==='stop-escorting-suspect'&&!suspect.escortLeaderId){
         failCurrentOrder(s,a,n,'SUSPECT IS NOT FOLLOWING');return true;
@@ -165,6 +159,15 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       // A GO-time custody change belongs to the targeted original actor.
       // No civilian puppet, allegiance mutation, or implicit follow on arrest.
       suspect.escortLeaderId=start?a.id:null;
+      // A spoken command can interrupt an unrestrained escape preparation.
+      // Once following, a poorly supervised suspect can still break away.
+      if(start){
+        suspect.suspectEscapeMode=null;
+        suspect.suspectEscapeWeaponId=null;
+        suspect.suspectEscapeGoal=null;
+        suspect.suspectEscapeStartedAt=-100;
+        suspect.suspectEscapeCooldownUntil=s.seconds+3;
+      }
       suspect.escortGoal=null;
       suspect.lastEscortRouteAt=-100;
       suspect.nav=[];suspect.velocity=0;
@@ -224,14 +227,28 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         failCurrentOrder(s,a,n,'DROPPED FIREARM UNAVAILABLE');return true;
       }
       const distance=d(a.p,weapon.p);
-      const clear=sweptBodyClear(a.p,weapon.p,s.doors,5.5,
+      const clear=sweptBodyClear(a.p,weapon.p,s.doors,1.5,
         sessionWorldGeometry(s));
-      if(distance>28&&distance<=45&&clear&&d(weapon.p,n.p)<=45&&
+      if(distance>34&&distance<=58&&clear&&
          liveVisibility(s,weapon.p)){
-        approach(a,weapon.p,dt,s,.65);return true;
+        // Approach a standable position on the operator's side of the
+        // weapon, not the surrendered owner's occupied body center.
+        const world=sessionWorldGeometry(s);
+        const direction=Math.atan2(a.p.y-weapon.p.y,a.p.x-weapon.p.x);
+        let contact:Pt|null=null;
+        for(const theta of [direction,direction+.65,direction-.65,
+          direction+1.3,direction-1.3]){
+          const p={x:weapon.p.x+Math.cos(theta)*25,
+            y:weapon.p.y+Math.sin(theta)*25};
+          if(world.passable(p,7)&&
+             !s.operators.some(e=>e!==a&&e.health>0&&d(e.p,p)<18)){
+            contact=p;break;
+          }
+        }
+        if(contact){approach(a,contact,dt,s,.65);return true;}
       }
-      if(distance>28||!clear){
-        failCurrentOrder(s,a,n,'WEAPON OUT OF PHYSICAL REACH');return true;
+      if(distance>34||!clear){
+        failCurrentOrder(s,a,n,'NO REACHABLE WEAPON CONTACT');return true;
       }
       a.velocity=0;
       if(!rotate(a,Math.atan2(weapon.p.y-a.p.y,weapon.p.x-a.p.x),dt,s))
@@ -286,7 +303,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         n.interaction==='stop-following-civilian';
       const range=person?d(a.p,person.p):Infinity;
       const clear=!!person&&sweptBodyClear(a.p,person.p,s.doors,
-        voice?1.5:5.5,sessionWorldGeometry(s));
+        1.5,sessionWorldGeometry(s));
       if(!voice&&person&&person.health>0&&range>28&&range<=45&&
          d(person.p,n.p)<=45&&clear&&
          (range<=32||liveVisibility(s,person.p))){
@@ -311,27 +328,20 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       a.velocity=0;
       const bearing=Math.atan2(person.p.y-a.p.y,person.p.x-a.p.x);
       if(!rotate(a,bearing,dt,s))return true;
-      // RESTRAIN is a separate physical job following SECURE. It cannot
-      // manufacture cuffs, bind an uncooperative or rescue civilian, or
-      // spend equipment while planning. Only a completed GO-time contact
-      // removes one actually carried pair of flex cuffs.
+      // RESTRAIN is a universal operator ability. It remains a timed,
+      // physically reached GO action, without optional loadout stock.
       if(n.interaction==='restrain-civilian'){
-        const cuffs=quoteDeployedFieldUse(a,'zip-tie');
         if(person.state!=='compliant'||person.restrained===true||
-           person.rescueTarget||!cuffs.available){
+           person.rescueTarget){
           failCurrentOrder(s,a,n,'RESTRAINT NOT AVAILABLE');return true;
         }
         if(a.actionTimer===0)a.lastCivilianContactAt=s.seconds;
         a.actionTimer+=dt;
-        if(a.actionTimer<RESTRAINT_CONTACT_SECONDS+cuffs.accessSeconds)return true;
-        if(!spendDeployedFieldItem(a,'zip-tie')){
-          failCurrentOrder(s,a,n,'RESTRAINT NOT AVAILABLE');return true;
-        }
+        if(a.actionTimer<RESTRAINT_CONTACT_SECONDS)return true;
         person.restrained=true;
-        // EQA3.16: successful real contact follows current inventory consumption.
         person.lastContactAt=s.seconds;person.lastContactPoint=clone(a.p);
         a.lastCivilianContactAt=s.seconds;
-        notify(s,a.name+' RESTRAINED CIVILIAN · FLEX CUFFS '+a.restraintRemaining);
+        notify(s,a.name+' RESTRAINED CIVILIAN');
         clearCurrentOrderIssue(a);pop(a);return true;
       }
       // Once face-to-face, complete at the authoritative contact. The

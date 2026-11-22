@@ -390,7 +390,7 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
     const escortedSuspect=!running&&n.kind==='move'&&
       !n.entryDoorId&&!n.stackDoorId?
       s.operators.find(e=>e.side==='red'&&e.health>0&&
-        e.surrendered&&e.restrained===true&&e.escortLeaderId===a.id)??null:null;
+        e.surrendered&&e.escortLeaderId===a.id)??null:null;
     const escortScale=escortWalkMultiplier(a,escorted);
     const prisonerScale=physicalEscortWalkMultiplier(a,escortedSuspect);
     move(a,generatedSyncPoint??n.p,dt,s,(running?1.40:distantTemplateStack?1:

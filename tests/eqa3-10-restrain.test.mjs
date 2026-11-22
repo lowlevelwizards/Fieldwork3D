@@ -33,19 +33,19 @@ const session=(walls=[])=>{
  a.p=pt(300,200);a.priorP={...a.p};a.heading=0;a.weaponYaw=0;
  const c=civilian();s.civilians.push(c);return {s,a,c};
 };
-test('EQA3.10 flex cuffs use real physical capacity and no implicit issuance',()=>{
+test('EQA3.10 legacy flex cuffs are inert; restraint is no longer issued stock',()=>{
  const kit=initialEquipmentLoadout();
  assert.equal(equippedRestraintCharges(kit),0);
  const stock={version:1,stacks:[{itemId:'zip-tie',quantity:3,location:'backpack'}]};
  const read=readFieldInventory(stock,kit);
- assert.equal(fieldQuantity(read,'zip-tie'),3);
- assert.equal(FIELD_ITEMS['zip-tie'].usable,true);
+ assert.equal(fieldQuantity(read,'zip-tie'),0);
+ assert.equal(FIELD_ITEMS['zip-tie'].usable,false);
  assert.ok(fieldCarryReport(kit,[],read).valid);
  const issued={...kit,fieldInventory:read};
- assert.equal(equippedRestraintCharges(issued),3);
+ assert.equal(equippedRestraintCharges(issued),0);
  assert.equal(fieldQuantity(readFieldInventory({version:1,
    stacks:[{itemId:'zip-tie',quantity:999,location:'backpack'}]},kit),'zip-tie'),
-   FIELD_ITEMS['zip-tie'].maxPerOperator);
+   0);
 });
 test('EQA3.10 palette selects only compliant, unsecured, nonrescue people',()=>{
  const person=civilian();
@@ -64,22 +64,22 @@ test('EQA3.10 palette selects only compliant, unsecured, nonrescue people',()=>{
   firePolicy:'engage',reserve:0,magazine:10,flashRemaining:0,
   nearRestrainableCivilian:true,restraintsRemaining:2};
  assert.ok(contextActionChoices(options).some(x=>x.id==='ctxRestrainCivilian'));
- assert.ok(!contextActionChoices({...options,restraintsRemaining:0})
+ assert.ok(contextActionChoices({...options,restraintsRemaining:0})
    .some(x=>x.id==='ctxRestrainCivilian'));
 });
-test('EQA3.10 RESTRAIN completes only after physical GO and consumes exactly one cuff',()=>{
+test('EQA3.10 RESTRAIN completes at physical GO without consuming supplies',()=>{
  const {s,a,c}=session();
  try{
-  a.restraintRemaining=2;
+  a.restraintRemaining=0;
   assert.equal(planCivilianInteraction(s,a.id,c.id,'restrain'),true);
   assert.equal(c.restrained,false,'planning must not bind');
-  assert.equal(a.restraintRemaining,2,'planning does not consume');
+  assert.equal(a.restraintRemaining,0,'planning does not issue restraints');
   toggling(s);
   for(let i=0;i<105&&s.phase==='running'&&!c.restrained;i++)
     stepSession(s,1/60);
   assert.equal(c.restrained,true);
   assert.equal(civilianPose(c),'restrained');
-  assert.equal(a.restraintRemaining,1,'physical GO consumes exact-one');
+  assert.equal(a.restraintRemaining,0,'physical GO leaves stock untouched');
   assert.equal(c.state,'compliant','restraint is not a forced FOLLOW');
   assert.equal(c.following,null);
   assert.ok(a.lastCivilianContactAt>=0);
@@ -88,13 +88,13 @@ test('EQA3.10 RESTRAIN completes only after physical GO and consumes exactly one
   c.restrained=false;a.restraintRemaining=0;
   applyReplayFrame(s,film);
   assert.equal(s.civilians.find(x=>x.id===c.id)?.restrained,true);
-  assert.equal(team(s)[0].restraintRemaining,1);
+  assert.equal(team(s)[0].restraintRemaining,0);
  }finally{activateSite(null);}
 });
-test('EQA3.10 zero cuffs, unconscious and rescued people cannot be tied',()=>{
+test('EQA3.10 zero cuffs allow restraint; unconscious and rescue targets do not',()=>{
  const {s,a,c}=session();
  try{
-  assert.equal(planCivilianInteraction(s,a.id,c.id,'restrain'),false);
+  assert.equal(planCivilianInteraction(s,a.id,c.id,'restrain'),true);
   a.restraintRemaining=1;c.rescueTarget=true;
   assert.equal(planCivilianInteraction(s,a.id,c.id,'restrain'),false);
   c.rescueTarget=false;c.health=0;

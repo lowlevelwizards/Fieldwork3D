@@ -74,7 +74,8 @@ export function createOrderExecutor(port:OrderExecutionPort){
   // Still evaluate each living red's confirmed sight exactly once.
   let visibleThreat:TeamActor|undefined,nearestDistance=Infinity;
   for(const e of s.operators){
-    if(e.side!=='red'||e.health<=0||!port.inSight(a,e,s))continue;
+    if(e.side!=='red'||e.health<=0||e.surrendered||
+       !port.inSight(a,e,s))continue;
     const distance=d(a.p,e.p);
     if(!visibleThreat||distance<nearestDistance){
       visibleThreat=e;nearestDistance=distance;
