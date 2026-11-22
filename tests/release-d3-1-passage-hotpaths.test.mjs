@@ -63,6 +63,36 @@ test('D3.1: single-side queue avoids an irrelevant owner readiness pass',()=>{
  assert.equal(step.hold,false);
  assert.ok(planReads<=2,'no extra owner readiness scan for same-direction entry');
 });
+test('D3.1: cached current passage slot cannot authorize replaced or WAIT order',()=>{
+ const door={id:'ENTRY',a:p(80,100),b:p(140,100),
+  open:true,openFraction:1,kind:'hinged'};
+ const lead={id:'lead',side:'blue',health:4,p:p(110,125),
+  blockedTime:0,nav:[],
+  plan:[{kind:'move',id:2,p:p(110,40)}]};
+ const follower={id:'follow',side:'blue',health:4,p:p(110,145),
+  blockedTime:0,nav:[],plan:[{kind:'move',id:3,p:p(110,40)}]};
+ const schedule=new Map([
+  ['lead',[{actorId:'lead',doorId:'ENTRY',fromSide:1,
+   rank:0,eta:1,orderId:1}]],
+  ['follow',[{actorId:'follow',doorId:'ENTRY',fromSide:1,
+   rank:1,eta:2,orderId:3}]]
+ ]);
+ const world={operators:[lead,follower],doors:[door],seconds:0,events:[]};
+ // A GO-time slot from old order #1 is NOT the actor's current #2.
+ const obsolete=coordinatePassage(world,lead,p(110,124),schedule);
+ assert.equal(obsolete.hold,false);
+ assert.equal(obsolete.doorId,null,
+  'an obsolete crossing is not claimed by the cached readiness shortcut');
+ // The same stale slot cannot become ready just by waiting.
+ lead.plan=[{kind:'wait',id:1,p:p(110,40)}];
+ const deliberatelyWaiting=coordinatePassage(world,lead,p(110,124),schedule);
+ assert.equal(deliberatelyWaiting.hold,false);
+ assert.equal(deliberatelyWaiting.doorId,null);
+ // An actually current mover continues under unchanged physical rules.
+ const active=coordinatePassage(world,follower,p(110,144),schedule);
+ assert.equal(active.hold,false);
+ assert.equal(active.doorId,'ENTRY');
+});
 test('D3.1: production motor uses direct fallback, not a stride-sized filtered roster',()=>{
  const src=readFileSync(new URL('../src/breach-motor-door.ts',import.meta.url),'utf8');
  assert.doesNotMatch(src,/automaticCandidates/);
