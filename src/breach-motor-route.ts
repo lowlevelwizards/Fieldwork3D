@@ -665,6 +665,32 @@ export function prepareMotorRoute(
       }
     }
 
+    // D3.37 offline-only: observe exactly WHY a genuine blocked ENTRY
+    // would not claim this exceptional route. No production listener,
+    // changed physics, actor mutation or extra route search.
+    if(hasTransientRouteObserver()&&a.side==='blue'&&
+       a.plan[0]?.entryDoorId&&!a.nav.length&&
+       a.lastBlocker==='route'&&a.blockedTime>=3){
+      const old=a.doorTraversal;
+      const leaf=old?s.doors.find(x=>x.id===old.doorId):null;
+      noteDoorHandoffRejection(s,a,
+        'd337:gate:squeeze='+a.squeeze+
+        ':sidestep='+!!a.autoSidestep+
+        ':entry='+a.plan[0].entryDoorId+
+        ':stack='+!!a.plan[0].stackDoorId+
+        ':order='+a.plan[0].id+
+        ':episodeOrder='+old?.authoredOrderId+
+        ':phase='+old?.phase+
+        ':maneuver='+old?.maneuver+
+        ':waypoints='+old?.waypoints.length+
+        ':hand='+!!old?.handContact+
+        ':held='+!!leaf?.heldBy+
+        ':leafFraction='+leaf?.openFraction+
+        ':leafLocked='+!!leaf?.locked+
+        ':lastProgress='+old?.lastProgressAt+
+        ':attempts='+a.recoveryAttempts+
+        ':retryAt='+a.retryRouteAt);
+    }
     // D3.37 Clinic: a GENERATED ENTRY can remain stranded at its
     // original, already fully-open FRONT leaf after the real hand and
     // all local staging have ended. The first future-door planner can
@@ -693,6 +719,10 @@ export function prepareMotorRoute(
           door=>!door.locked&&!door.jammed&&!door.wedged&&
             !door.heldBy&&(door.openFraction??(door.open?1:0))<.72&&
             canAutoOpenEnRoute({kind:'move'},door.id));
+        if(hasTransientRouteObserver())
+          noteDoorHandoffRejection(s,a,
+            'd337:candidate:proposed='+proposed.length+
+            ':certified='+certified.length);
         if(certified.length){
           a.doorTraversal=null; // only now retire proved STALE handless owner
           const decision=authorizeRouteAcquisition({
