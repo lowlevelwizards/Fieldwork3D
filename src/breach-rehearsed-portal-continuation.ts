@@ -272,6 +272,12 @@ export function protectedRehearsedFollowOnDoor(
     Math.abs(door.angularVelocity??0)>=.16){
   forwardLeases.delete(a);return null;
  }
+ // Only REAL physical foot movement can reset the existing blocked-time
+ // counter. Once the ordinary motor has reset it, use that lower genuine
+ // value as the next obstruction baseline: a later .18s block must revoke
+ // protection immediately, not inherit pre-adoption stationary seconds.
+ if(a.blockedTime<w.startBlockedTime)
+  w.startBlockedTime=a.blockedTime;
  // A newly accepted route may start after several seconds of genuine
  // no-route blockage. Keep that measured history: revoke only if a NEW
  // 0.18s contact episode accumulates after adoption. A real footstep
