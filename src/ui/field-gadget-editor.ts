@@ -3,7 +3,7 @@
  */
 import type {EquipmentLoadout} from '../equipment-loadouts.ts';
 import type {MagazineItem} from '../breach-magazines.ts';
-import {FIELD_ITEMS,FIELD_ITEM_IDS,FIELD_CARRY_LOCATIONS,fieldQuantity,initialFieldInventory,readFieldInventory,
+import {FIELD_ITEMS,FIELD_ITEM_IDS,FIELD_CARRY_LOCATIONS,fieldQuantity,readFieldInventory,
  replaceFieldQuantity,moveFieldStack,fieldCarryReport,autoPackFieldInventory,quoteFieldInventoryCopy,
  type FieldInventory,type FieldItemId,type FieldCarryLocation}
  from '../equipment-field-inventory.ts';
