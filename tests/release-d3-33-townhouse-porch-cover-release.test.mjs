@@ -284,6 +284,17 @@ test('D3.33 frozen Rook: a clear teammate gap must produce a genuine narrow moto
  }
  assert.equal(proven,true,'frozen Rook really stayed still for 1.25 seconds');
  game.seconds=90/60;
+ // The old FULL-radius embedded-cover stage previously captured this
+ // frame and returned true, so the legal narrow route motor never ran.
+ // A legal same-door torso proposal must defer without moving an actor;
+ // the ONE existing route motor will decide peer/collision legality.
+ const beforeEmbedded={...rook.p};
+ const embeddedFirst=releaseEmbeddedMotorActor(rook,rook.plan[0].p,
+  game.doors,1/60,sessionWorldGeometry(game),game.seconds);
+ assert.equal(embeddedFirst,false,
+  'the early embedded-cover fallback must yield to an independently legal narrow body step');
+ assert.deepEqual(rook.p,beforeEmbedded,
+  'handoff cannot teleport or credit a physical arrival');
  const port={notify:()=>{},hear:()=>{},battleEvent:()=>{},
   cachedEnemyRoute:()=>[],knownShoveCrossing:()=>null,
   ensurePassageSchedule:()=>new Map()};
