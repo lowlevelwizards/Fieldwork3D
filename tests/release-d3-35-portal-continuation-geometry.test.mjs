@@ -124,6 +124,13 @@ test('D3.35 P4 crossed open-leaf lease never overrides physical contact/door',()
  assert.equal(protectedRehearsedFollowOnDoor(a,[door],8.06),'FRONT',
   'a still-swept route may lawfully return through the already-open leaf');
  a.p={x:222,y:160};
+ // D3.35 P10 Warehouse: real narrow motor footwork during an already
+ // certified forward prefix is NOT evidence that its old door should
+ // reacquire ownership. Only the exact same nav and no physical block.
+ a.squeeze=true;
+ assert.equal(protectedRehearsedFollowOnDoor(a,[door],8.07),'FRONT',
+  'nonblocked squeeze preserves the exact accepted route ownership');
+ a.squeeze=false;
  const oldNav=a.nav;
  a.nav=[...oldNav];
  assert.equal(protectedRehearsedFollowOnDoor(a,[door],8.1),null,
