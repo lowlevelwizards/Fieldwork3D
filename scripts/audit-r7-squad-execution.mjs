@@ -1376,7 +1376,7 @@ function run(site,seed,kind){
         locked:!!d.locked,open:d.open,
         fraction:round(d.openFraction??0),
         gapFrom:round(pointToSegment(from,doorLeafSegment(d))),
-        gapTo:round(pointToSegment(to,doorLeafSegment(d))}));
+        gapTo:round(pointToSegment(to,doorLeafSegment(d)))}));
       return {index,from,to,length:round(length),
         fullBodySweep:allowed,withoutAllDoors:emptyDoorSweep,
         standableEndpoint:stand(to),
