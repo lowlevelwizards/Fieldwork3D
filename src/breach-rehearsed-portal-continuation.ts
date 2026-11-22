@@ -229,7 +229,7 @@ export function protectedRehearsedFollowOnDoor(
     d(order.p,w.goal)>.5||
     a.nav!==w.route||!a.nav.length||
     !Number.isFinite(seconds)||seconds>=w.until||
-    a.blockedTime>=.18||a.squeeze||a.traversal||
+    a.blockedTime>=.18||a.traversal||
     a.traversalPending||a.autoSidestep||a.fireRetreatTarget){
   forwardLeases.delete(a);return null;
  }
@@ -240,7 +240,7 @@ export function protectedRehearsedFollowOnDoor(
     Math.abs(door.angularVelocity??0)>=.16){
   forwardLeases.delete(a);return null;
  }
- // The certified NEXT-door path can genuinely travel back across the
+ // A temporary narrow-footwork stance (`a.squeeze`) is not a blocked\n // physical step. Preserve this lease while the exact certified NAV is\n // owned and blockedTime remains clear; real contact still revokes it.\n // The certified NEXT-door path can genuinely travel back across the
  // prior open leaf to get around a warehouse exterior wall. Never
  // discard the still-owned, physically swept route just for changing
  // its signed side: actual blockedTime/route ownership decide validity.
