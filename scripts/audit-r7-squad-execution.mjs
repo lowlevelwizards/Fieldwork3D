@@ -1380,21 +1380,21 @@ function run(site,seed,kind){
       return {index,from,to,length:round(length),
         fullBodySweep:allowed,withoutAllDoors:emptyDoorSweep,
         standableEndpoint:stand(to),
-        motorFirstStepClear:d(from,to)>0.3?
-          sweep(from,{x:from.x+(to.x-from.x)*.3/d(from,to),
-           y:from.y+(to.y-from.y)*.3/d(from,to)}):allowed,
+        motorFirstStepClear:dist(from,to)>0.3?
+          sweep(from,{x:from.x+(to.x-from.x)*.3/dist(from,to),
+           y:from.y+(to.y-from.y)*.3/dist(from,to)}):allowed,
         culpritDoors,
         wallNear:world.walls.map((w,i)=>({i,
           gap:round(pointToSegment(mid,w)),a:w.a,b:w.b}))
           .sort((a,b)=>a.gap-b.gap).slice(0,3),
         coverNear:world.cover.map((c,i)=>({i,
           x:c.x,y:c.y,w:c.w,h:c.h,
-          gap:round(d(mid,c))})).sort((a,b)=>a.gap-b.gap).slice(0,3)};
+          gap:round(dist(mid,c))})).sort((a,b)=>a.gap-b.gap).slice(0,3)};
     };
     const edges=(from,path)=>{
       let p=from;
       return path.map((next,i)=>{
-        const edge=describeEdge(p,next,i,d(p,next));
+        const edge=describeEdge(p,next,i,dist(p,next));
         p=next;return edge;
       });
     };
