@@ -125,6 +125,29 @@ const frozen=[
       "scripts/verification/ci-d3-physical-truth.mjs",
       "tests/ci-a8-physical-acceptance.test.mjs"
     ]
+  },
+  {
+    "key": "coordinated15",
+    "paths": [
+      "src/breach-motor-door.ts",
+      "src/breach-order-movement.ts",
+      "src/breach-entry-coordination.ts",
+      "src/breach-order-wait.ts",
+      "src/breach-motor-collision.ts",
+      "src/breach-stack-micro-corner.ts",
+      "tests/release-d3-15a2-explicit-door-clock.test.mjs",
+      ".github/workflows/d3-15-coordinated-release.yml",
+      "src/breach-actor-motor.ts",
+      "src/breach-locomotion-clearance.ts",
+      "src/breach-motor-route.ts",
+      "src/breach-generated-entry-stillness.ts",
+      "src/breach-static-cover-release.ts",
+      "tests/release-d3-40-townhouse-porch-cover-release.test.mjs",
+      "scripts/audit-r7-squad-execution.mjs",
+      "scripts/verification/ci-a8-physical-acceptance.mjs",
+      "scripts/verification/ci-physical-cohort-provenance.mjs",
+      "scripts/verification/ci-lock-aware-physical-acceptance.mjs"
+    ]
   }
 ];
 const keys=frozen.map(x=>x.key);
@@ -258,4 +281,50 @@ test('A8b independent cohort jobs cannot cancel each other through caller concur
  assert.notEqual(g1,g2);
  assert.doesNotMatch(g1,/github\.workflow/);
  assert.doesNotMatch(g2,/github\.workflow/);
+});
+test('A8d D3.15 remains an actual three-fixture 60Hz original-GO 4/4 release gate',()=>{
+ const workflowText=workflow('d3-15-coordinated-release.yml'),
+  router=workflow('movement-door-acceptance.yml');
+ assert.match(workflowText,/^  workflow_call:$/m);
+ assert.match(workflowText,/^  workflow_dispatch:$/m);
+ assert.doesNotMatch(workflowText,/^  pull_request:$/m,
+  'no second independently queued PR physical audit');
+ assert.ok(router.includes('fromJSON(inputs.lanes).coordinated15'));
+ assert.ok(router.includes('uses: ./.github/workflows/d3-15-coordinated-release.yml'));
+ assert.ok(router.includes('"coordinated15":true'),
+  'manual all-suite dispatcher must retain D3.15');
+ for(const needle of [
+  '9473230','9568385','9492261',
+  '--site-index=7','--site-index=1','--site-index=8',
+  '11 2700','m.arrivals!==4','x.remainingOrders',
+  'm.crossed.some(x=>x===null)',
+  'vale:stack-micro-corner',
+  'physicsStepViolations','corruptedPlans',
+  'historical11','ci-a8-physical-acceptance.mjs',
+  '--d329-cancellation-door-witness'
+ ])assert.ok(workflowText.includes(needle),
+   'D3.15 missing original physical proof '+needle);
+ assert.match(workflowText,/d315-coordinated-/);
+ assert.doesNotMatch(workflowText,/group: \$\{\{ github.workflow \}\}/);
+});
+test('A8d actual entry/door/pinch code selects D3.15; unrelated docs do not',()=>{
+ for(const path of [
+  'src/breach-motor-door.ts','src/breach-order-movement.ts',
+  'src/breach-entry-coordination.ts','src/breach-order-wait.ts',
+  'src/breach-motor-collision.ts','src/breach-stack-micro-corner.ts',
+  'src/breach-actor-motor.ts','src/breach-locomotion-clearance.ts',
+  'src/breach-motor-route.ts','src/breach-generated-entry-stillness.ts',
+  'src/breach-static-cover-release.ts',
+  'tests/release-d3-15a2-explicit-door-clock.test.mjs',
+  'tests/release-d3-40-townhouse-porch-cover-release.test.mjs',
+  'scripts/audit-r7-squad-execution.mjs',
+  'scripts/verification/ci-a8-physical-acceptance.mjs',
+  '.github/workflows/d3-15-coordinated-release.yml']){
+  const selected=selectMovementDoorSuites([path]);
+  assert.equal(selected.coordinated15,true,'D3.15 not selected by '+path);
+ }
+ for(const path of ['docs/changelog.md',
+  'src/weapons/geometry/glock-family-silhouettes.ts'])
+  assert.equal(selectMovementDoorSuites([path]).coordinated15,false,
+   'unrelated edit must not launch D3.15 physical cohort: '+path);
 });
