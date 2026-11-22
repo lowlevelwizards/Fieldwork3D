@@ -28,7 +28,7 @@ for(const c of cases)test('D3.36 exact frozen remaining bodies '+c.name,()=>{
   '--experimental-strip-types','scripts/audit-r7-squad-execution.mjs',
   '1','2700','--site-index='+c.index,'--audit-seed='+c.seed,
   '--audit-scale='+c.scale,'--progress','--route-transitions',
-  '--leaf-rejoin-diagnostic',c.extra
+  '--leaf-rejoin-diagnostic','--d336-three-body-proof',c.extra
  ],{cwd:root,encoding:'utf8',timeout:120000,maxBuffer:24*1024*1024});
  const data=JSON.parse(raw),row=data.rows[0],run=row?.modes.find(m=>m.mode===c.mode);
  assert.equal(data.ticks,2700);
@@ -40,7 +40,11 @@ for(const c of cases)test('D3.36 exact frozen remaining bodies '+c.name,()=>{
  for(const key of ['exceptions','invalidPositions','corruptedPlans',
    'physicsStepViolations','unboundedManeuverAttempts'])
   assert.equal(data.summary[key],0,'preserve real-world motor integrity: '+key);
- const witnesses=c.actors.map(name=>{
+ assert.ok(Array.isArray(run.d336BodyProof),
+  'exact physical-body feasibility must be reported');
+ assert.equal(run.d336BodyProof.length,c.actors.length,
+  'all genuinely pending operator centers have independent proof');
+  const witnesses=c.actors.map(name=>{
   const a=run.operators.find(x=>x.id===name);
   assert.ok(a,'frozen original operator still exists: '+name);
   assert.ok(a.outcome==='pending'||a.outcome==='arrived',
@@ -74,6 +78,7 @@ for(const c of cases)test('D3.36 exact frozen remaining bodies '+c.name,()=>{
   case:c.name,seed:c.seed,mode:c.mode,
   arrivals:run.arrivals,pending:run.operators.filter(x=>x.outcome==='pending').map(x=>x.id),
   witnesses,leafRecovery:run.leafRecoveryEvidence??[],
+  bodyProof:run.d336BodyProof??[],
   ...(c.name.startsWith('garage')?{
     garageMotorEvidence:run.d327GarageEvidence?
      {position:run.d327GarageEvidence.position,
