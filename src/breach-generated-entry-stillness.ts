@@ -10,6 +10,23 @@ import type {TeamActor} from './breach-game.ts';
 type LeadStillEpisode={orderId:number;doorId:string;since:number;
  lastAt:number;anchor:Pt;last:Pt};
 const episodes=new WeakMap<TeamActor,LeadStillEpisode>();
+/** Exact-test-only reset census. Disabled in normal gameplay and never
+ * observed by movement/AI. */
+let resetRecording=false;
+const resetCounters=new WeakMap<TeamActor,Record<string,number>>();
+export function enableEntryStillnessResetRecording(enabled:boolean):void{
+ resetRecording=enabled;
+}
+export function entryStillnessResetCensus(a:TeamActor){
+ return {...resetCounters.get(a)};
+}
+function noteReset(a:TeamActor,reason:string):void{
+ if(!resetRecording)return;
+ let c=resetCounters.get(a);
+ if(!c){c={};resetCounters.set(a,c);}
+ c[reason]=(c[reason]??0)+1;
+}
+
 const gap=(x:Pt,y:Pt)=>Math.hypot(x.x-y.x,x.y-y.y);
 
 /** Each real 60Hz motor tick supplies a physical-position sample.
@@ -25,18 +42,21 @@ export function observeGeneratedEntryPhysicalStillness(
 ):void{
  const order=peer.plan[0],episode=peer.doorTraversal;
  if(order?.kind!=='move'||!order.entryDoorId||
-    // Only an actual DIFFERENT door clears the same-order observation.
-    // The authoritative traversal coordinator may transiently retire
-    // or recast this episode during its tick before restoring the
-    // grab-and-hold intent, without moving the physical body at all.
-    // That cannot erase genuine 1.25s body stillness.
     episode&&episode.doorId!==order.entryDoorId){
+  noteReset(peer,order?.kind!=='move'?'not-entry-move':
+   !order.entryDoorId?'missing-entry-door':'other-door-episode');
   episodes.delete(peer);return;
  }
  const doorId=order.entryDoorId,old=episodes.get(peer);
- if(!old||old.orderId!==order.id||old.doorId!==doorId||
-    now<old.lastAt||now-old.lastAt>.18||
-    gap(peer.p,old.last)>.20||gap(peer.p,old.anchor)>1){
+ const reason=!old?'new-sample':
+  old.orderId!==order.id?'new-order':
+  old.doorId!==doorId?'different-door':
+  now<old.lastAt?'time-reversed':
+  now-old.lastAt>.18?'sample-gap':
+  gap(peer.p,old.last)>.20?'instant-physical-step':
+  gap(peer.p,old.anchor)>1?'net-physical-step':null;
+ if(reason){
+  noteReset(peer,reason);
   episodes.set(peer,{orderId:order.id,doorId,
    since:now,lastAt:now,anchor:{...peer.p},last:{...peer.p}});
   return;

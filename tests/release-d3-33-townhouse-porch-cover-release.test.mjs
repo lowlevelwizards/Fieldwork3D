@@ -12,7 +12,8 @@ import {prepareMotorRoute} from '../src/breach-motor-route.ts';
 import {releaseEmbeddedMotorActor}
  from '../src/breach-locomotion-clearance.ts';
 import {witnessedGeneratedEntryStillness,
- observeGeneratedEntryPhysicalStillness,inspectGeneratedEntryStillness}
+ observeGeneratedEntryPhysicalStillness,inspectGeneratedEntryStillness,
+ enableEntryStillnessResetRecording,entryStillnessResetCensus}
  from '../src/breach-generated-entry-stillness.ts';
 import {generateSite} from '../src/breach-site.ts';
 import {newSession,team,planSquadEntry,stepSession,toggling} from '../src/breach-game.ts';
@@ -371,6 +372,7 @@ test('D3.33 P7: read-only live 60Hz Townhouse doorway recovery gate timeline',()
   'original genuine Townhouse generated squad-entry order');
  const rook=actors.find(a=>a.id==='rook'),ash=actors.find(a=>a.id==='ash');
  assert.ok(rook&&ash);
+ enableEntryStillnessResetRecording(true);
  toggling(game);
  const summary={navZero:0,navPresent:0,stillnessAtLeast125:0,
   stillnessWithNavZero:0,entryMoveNoNav:0,firstEligible:null,
@@ -409,7 +411,9 @@ test('D3.33 P7: read-only live 60Hz Townhouse doorway recovery gate timeline',()
    marks.push(mark);
   }
  }
+ enableEntryStillnessResetRecording(false);
  console.log('D333_LIVE_GATE_TIMELINE',JSON.stringify({
+  resets:entryStillnessResetCensus(rook),
   summary,maneuvers,initial:marks.slice(0,4),
   during:marks.filter(x=>x.time>=7&&x.time<=21).filter((_,i)=>i%2===0),
   final:marks.slice(-14),
