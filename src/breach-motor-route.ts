@@ -489,7 +489,7 @@ export function prepareMotorRoute(
         const proposed=routeToNextOperableDoor(a.p,p,s.doors,world);
         const verified=certifiedFollowOnPortalPrefix(
           a.p,p,proposed,s.doors,
-          (from,to,doors)=>sweptBodyClear(from,to,doors,
+          (from,to,doors)=>sweptBodyClear(from,to,[...doors],
             OPERATOR_RADIUS,world),
           door=>!door.locked&&!door.jammed&&!door.wedged&&
             !door.heldBy&&(door.openFraction??(door.open?1:0))<.72&&
