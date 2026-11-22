@@ -299,6 +299,7 @@ function run(site,seed,kind){
   const grid=routeQuality?createD311GridObserver():null;
   const routeWitness=routeTransitions?{counts:{},byActor:{},rejectReasons:{},
    rejectsByActor:{},events:[],ownershipSamples:[],embeddedReleases:[],
+   coldShoveRoutes:[],
    escapeReacquirePairs:0,pairsByDoor:{},pairsByActor:{}}:null;
   // Offline-only evidence: associate one physical LEAF escape with the
   // next immediate reacquisition for the SAME actor and door. A route that
@@ -414,6 +415,40 @@ function run(site,seed,kind){
        retryAt:round(actor.retryRouteAt),
        door:planned.door?.id??null
       });
+   }
+   // D3.35 P7: the exact FIRST real body-owned furniture shove,
+   // now with scene revision already advanced, warrants ONE offline
+   // current-world route feasibility probe. No live motor policy change.
+   if(d335RouteSamples&&routeWitness&&traceActor&&
+      (!traceMode||kind===traceMode)&&
+      routeWitness.coldShoveRoutes.length<2){
+    const actor=actors.find(x=>x.id===traceActor);
+    if(actor&&actor.lastAutoShoveAt>0&&
+       session.seconds-actor.lastAutoShoveAt<1/30){
+     const goal=planned.goals.get(actor.id);
+     if(goal){
+      const world=sessionWorldGeometry(session);
+      const future=routeToNextOperableDoor(actor.p,goal,session.doors,world);
+      const normal=routeWithNormalWorld(actor.p,goal,session.doors,world);
+      const squeeze=routeWithSqueezeWorld(actor.p,goal,session.doors,world);
+      const fine=coldFineMotorWorldRoute(actor.p,goal,session.doors,world);
+      const firstSwept=x=>x.length? sweptBodyClear(actor.p,x[0],
+        session.doors,OPERATOR_RADIUS,world):null;
+      routeWitness.coldShoveRoutes.push({
+       t:round(session.seconds),goal:{...goal},
+       at:{...actor.p},revision:session.objectRevision,
+       door:actor.doorTraversal?.doorId??null,
+       portal:{count:future.length,first:future[0]??null,
+        last:future.at(-1)??null,firstSwept:firstSwept(future)},
+       normal:{count:normal.length,first:normal[0]??null,
+        last:normal.at(-1)??null,firstSwept:firstSwept(normal)},
+       squeeze:{count:squeeze.length,first:squeeze[0]??null,
+        last:squeeze.at(-1)??null,firstSwept:firstSwept(squeeze)},
+       fine:{count:fine.length,first:fine[0]??null,
+        last:fine.at(-1)??null,firstSwept:firstSwept(fine)}
+      });
+     }
+    }
    }
    // D3.29B: only after an actual, authoritatively failed order, capture
    // the motor-selected leaf at the SAME failure tick. The final chosen

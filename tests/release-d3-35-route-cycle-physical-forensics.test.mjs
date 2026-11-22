@@ -50,6 +50,7 @@ for(const c of cases)test('D3.35 frozen path-cycle forensic '+c.site+
   suspectWindows:suspect,windowTrace:windows,
   ownershipSamples:run.routeTransitions?.ownershipSamples??[],
   embeddedReleases:run.routeTransitions?.embeddedReleases??[],
+  coldShoveRoutes:run.routeTransitions?.coldShoveRoutes??[],
   routeTransitions:transitions.slice(0,95)
  }));
  assert.equal(r.summary.physicsStepViolations,0);
