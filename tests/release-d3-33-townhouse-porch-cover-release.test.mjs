@@ -398,7 +398,28 @@ test('D3.33 P7: read-only live 60Hz Townhouse doorway recovery gate timeline',()
   last.x=rook.p.x;last.y=rook.p.y;
   const maneuver=e?.maneuver??'none';maneuvers[maneuver]=(maneuvers[maneuver]??0)+1;
   if(tick%30===0&&(tick>420||tick<120)){
+   const aim=order?.p??rook.p,angle=Math.atan2(aim.y-rook.p.y,aim.x-rook.p.x);
+   const nextPoint={x:rook.p.x+Math.cos(angle)*.75,
+    y:rook.p.y+Math.sin(angle)*.75};
+   const world=sessionWorldGeometry(game),dist=(a,b)=>
+    Math.hypot(a.x-b.x,a.y-b.y);
+   const peers=game.operators.filter(a=>a!==rook&&a.health>0);
+   const gates={pending:!!rook.traversalPending,active:!!rook.traversal,
+    fullBodyClear:bodyClear(rook.p,game.doors,OPERATOR_RADIUS,world),
+    twoSided:twoSidedSqueezePressure(rook.p,nextPoint,game.doors,world),
+    narrowSwept:sweptProfileClear(rook.p,nextPoint,game.doors,
+     squeezeFacing(angle),'squeeze',world),
+    separated:peers.every(peer=>dist(rook.p,peer.p)>=OPERATOR_RADIUS*2+1?
+      pointToSegment(peer.p,{a:rook.p,b:nextPoint})>=OPERATOR_RADIUS*2+1:
+      dist(nextPoint,peer.p)>dist(rook.p,peer.p)+.025),
+    doorHeldBy:front?.heldBy??null,doorOpen:front?.open??null,
+    locked:front?.locked??null,jammed:front?.jammed??null,
+    wedged:front?.wedged??null,
+    omega:Number((front?.angularVelocity??0).toFixed(3)),
+    episodeOwner:rook.doorTraversal?.authoredOrderId??null,
+    activeOrder:order?.id??null};
    const mark={time:Number(now.toFixed(2)),
+    gates,
     rook:{x:Number(rook.p.x.toFixed(3)),y:Number(rook.p.y.toFixed(3))},
     nav:rook.nav.length,order:order?.kind??null,entry:order?.entryDoorId??null,
     maneuver,phase:e?.phase??null,still:w?.age!=null?
