@@ -28,28 +28,8 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   /** Based only on the previously witnessed interruption. */
   resumeReason?:'locked'|'jammed'|'coordinated';};
 export function contextActionChoices(o:ContextOptions):ContextAction[]{
- if(o.resumeAvailable)return [
-  {id:'ctxResumeEntry',label:'RESUME ENTRY',group:'primary',
-   title:o.resumeReason==='coordinated'?
-     'A teammate was stopped at this threshold · deliberately retry your preserved entry':
-     'Previously blocked entry · resolve its obstruction, then deliberately retry'},
-  ...(o.resumeSquadAvailable?[{id:'ctxResumeSquad',label:'RESUME SQUAD',
-    group:'primary' as const,
-    title:'Explicitly restore the previously interrupted same-door squad orders'}]:[]),
-  ...contextActionChoices({...o,resumeAvailable:false,resumeSquadAvailable:false})
- ];
-  if(o.door){
-  const formation:ContextAction[]=o.formationEditable?[
-    {id:'ctxFormationCycle',label:'FORMATION · '+
-      (o.stackFormation??'auto').toUpperCase(),group:'advanced',
-      title:'Choose AUTO, LEFT, RIGHT, SPLIT 2+2 or 45° ANGLED stack; no plan is changed'},
-    {id:'ctxStackTeam',label:'STACK SQUAD',group:'advanced',
-      title:'Queue the squad to physically reachable, distinct '+
-        (o.stackFormation??'auto').toUpperCase()+' stack positions'},
-    {id:'ctxSquadEntry',label:'SQUAD ENTRY',group:'advanced',
-      title:'Plan synchronized entry using the '+
-        (o.stackFormation??'auto').toUpperCase()+' stack layout'}
-  ]:[];
+ // Stack layouts and recovery are automatic AI procedures, not menu actions.
+ if(o.door){
   const doorActions:ContextAction[]=o.doorPartial?[
      {id:'ctxOpen',label:'OPEN MORE',group:'primary',title:'Continue swinging this partially open door'},
      {id:'ctxClose',label:'CLOSE',group:'primary',title:'Swing this door toward its frame'},
@@ -68,7 +48,7 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
      label:method.toUpperCase(),group:'primary' as const,
      title:'Use equipped '+method+' tool at door'})), 
   ];
-  return [...doorActions,...formation];
+  return doorActions;
  }
   return [
     {id:'ctxLook',label:'LOOK',group:'primary',pressed:o.aimLabel==='look',

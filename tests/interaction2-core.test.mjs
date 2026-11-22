@@ -18,8 +18,8 @@ test('selected waypoint retains ownership within a small distance margin',()=>{
   assert.equal(preferSelectedHit([],'rook'),null);
 });
 test('stroke sampling and hit sizes are screen-space, not world zoom dependent',()=>{
-  assert.equal(shouldAppendStrokePoint({x:10,y:10},{x:20,y:10}),false);
-  assert.equal(shouldAppendStrokePoint({x:10,y:10},{x:23,y:10}),true);
+  assert.equal(shouldAppendStrokePoint({x:10,y:10},{x:15,y:10}),false);
+  assert.equal(shouldAppendStrokePoint({x:10,y:10},{x:16,y:10}),true);
   assert.ok(tacticalHitProfile('touch').waypoint>tacticalHitProfile('mouse').waypoint);
   assert.match(gestures,/!\(cb\.isPlanning\(\)&&p\.wasUnit\)/);
   assert.match(gestures,/p\.mode=cb\.is3D\(\)\?'cameraOrbit':'cameraPan'/);

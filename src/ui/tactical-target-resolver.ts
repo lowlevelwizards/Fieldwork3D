@@ -10,6 +10,8 @@ export type TacticalPick={
   haloPx?:number;
   owner?:string;
   nodeId?:number;
+  /** A tracked waypoint anchors WATCH, dragging edits its target only. */
+  watchOrigin?:boolean;
   routeIndex?:number;
   routePoint?:{x:number;y:number};
   doorId?:string;

@@ -2,7 +2,7 @@ import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
 import {canConcludeWithdrawal,commitIndividualExtractions,deployedTeam} from './breach-operation-outcomes.ts';
-import {observeOptionalIntel,beginOptionalIntelGather,advanceOptionalIntel,
+import {observeOptionalIntel,beginOptionalIntelGather,autoBeginOptionalIntelGather,advanceOptionalIntel,
  type OptionalIntelItem,type OptionalIntelGather,eligibleOptionalIntel}
  from './breach-optional-intel.ts';
 import {coverTargetToken} from './worldgen/site-object-identity.ts';
@@ -836,7 +836,7 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
       clipped=true;break;
     }
     previousInput=point;
-    if(d(from,point)<(last?3:20))continue;
+    if(d(from,point)<(last?3:7))continue;
     if(!addStrokePoint(point)){
       // A non-local pathfinding failure must not discard earlier accepted
       // bends or silently jump to the other side of an obstruction.
@@ -1804,6 +1804,8 @@ function mission(s:Session,dt:number){
     }
   }
   if(s.optionalIntel.length){
+    autoBeginOptionalIntelGather(s,(from,to)=>
+      unobstructed(from,to,s,false));
     const gathered=advanceOptionalIntel(s,dt,(from,to)=>
       unobstructed(from,to,s,false));
     if(gathered){

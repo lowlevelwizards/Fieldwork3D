@@ -201,7 +201,7 @@ export function createBreachCanvasGestureController(canvas:HTMLCanvasElement){
     }
     if(p.mode==='node'&&p.moved&&p.nodeId!==null){
       if(!p.dragCommitted)cb.activateEdit(p);
-      p.dragCommitted=true;cb.dragNode(point,false);return;
+      p.dragCommitted=true;cb.dragNode(point,!!p.pick?.watchOrigin);return;
     }
     if(cb.isPlanning()&&p.wasUnit&&p.moved){
       if(!p.dragCommitted)cb.adoptOwner(p);

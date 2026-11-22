@@ -12,7 +12,7 @@ const PEN_PROFILE:TacticalHitProfile=Object.freeze({
   waypoint:30,route:17,reachableDoor:29,dragStart:11
 });
 const TOUCH_PROFILE:TacticalHitProfile=Object.freeze({
-  waypoint:34,route:20,reachableDoor:31,dragStart:13
+  waypoint:34,route:20,reachableDoor:31,dragStart:8
 });
 export function tacticalHitProfile(kind:TacticalPointerKind):TacticalHitProfile{
   return kind==='touch'?TOUCH_PROFILE:kind==='pen'?PEN_PROFILE:MOUSE_PROFILE;
@@ -31,7 +31,7 @@ export function preferSelectedHit<T extends ScreenHitCandidate>(
 }
 /** Sampling gesture points in screen pixels prevents zoom from changing stroke density. */
 export function shouldAppendStrokePoint(
-  last:{x:number;y:number},current:{x:number;y:number},stepPx=12):boolean{
+  last:{x:number;y:number},current:{x:number;y:number},stepPx=6):boolean{
   return Math.hypot(last.x-current.x,last.y-current.y)>=stepPx;
 }
 
