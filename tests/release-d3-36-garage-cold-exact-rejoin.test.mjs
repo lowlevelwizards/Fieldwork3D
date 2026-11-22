@@ -100,7 +100,19 @@ test('D3.36 frozen Garage authored Rook must physically reach his original GO',(
  assert.equal(rook?.outcome,'arrived','no synthetic goal completion');
  assert.equal(rook?.arrived,true);
  assert.equal(rook?.failedOrders,0);
- assert.ok(rook?.remaining<=5,'actual feet within GO tolerance');
+ // D3.22 authoring preserves the clicked (615.6,564.5) in audit truth
+ // but explicitly permits a <=13-unit full-body STANDABLE projection.
+ // Its committed authored MOVE is (608.6,564.5), observed unchanged
+ // in the baseline motor's blocked-route goal and the original NAV tail.
+ // Require BOTH the original mouse-click provenance and actual feet at
+ // the committed full-body-valid GO; do not reinterpret a raw click as a
+ // physically parkable motor target or award a virtual arrival.
+ assert.deepEqual(rook?.goal,{x:615.6,y:564.5},
+  'the original requested click must not be rewritten');
+ assert.ok(rook?.remaining<=13,
+  'the existing bounded full-body authoring projection remains intact');
+ assert.ok(dist(rook?.position,{x:608.6,y:564.5})<=5,
+  'actual feet must park at the original legally committed MOVE target');
  assert.ok((run.routeTransitions?.byActor?.['rook:blocked-leg-connector']??0)>=1,
   'Rook must have been physically rejoined to existing route');
  assert.ok(moss?.outcome==='pending'||moss?.outcome==='arrived',
