@@ -80,6 +80,12 @@ export function selectCertifiedFarSideEntryLanding(
 type ColdClaim={orderId:number;doorId:string;goal:Pt;
  anchor:Pt;revision:number};
 const used=new WeakMap<TeamActor,ColdClaim>();
+/** A lingering squeeze FOOTWORK stance alone is not a collision proof:
+ * this cold claim may consider it, but selectCertifiedFarSideEntryLanding
+ * must independently prove that the actual full-size body and EACH
+ * proposed real motor stride clear before any NAV adoption. Active
+ * traversal, hand, and genuinely blocked hinges stay protected.
+ */
 /** An *existing, physically opened* generated ENTRY leaf has been
  * stationary for multiple seconds after its hand/route completed.
  * One cold attempt per same order, location, and world revision.
@@ -96,7 +102,7 @@ export function claimStalledGeneratedEntryFarSide(
     d(order.p,goal)>.5||actor.nav.length||
     actor.blockedTime<3||actor.lastBlocker!=='route'||
     actor.recoveryAttempts<3||
-    actor.squeeze||actor.traversal||actor.traversalPending||
+    actor.traversal||actor.traversalPending||
     actor.autoSidestep||actor.fireRetreatTarget||
     actor.doorHandContact?.releasedAt===null||
     !episode||episode.doorId!==oldLeaf.id||
