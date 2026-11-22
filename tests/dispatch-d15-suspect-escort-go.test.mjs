@@ -77,7 +77,7 @@ test('D15.8 an unrestrained surrendered suspect can FOLLOW hands-up and STOP',()
   p.suspectEscapeCooldownUntil=100;
   a.awareness.visualProgress[p.id]=1;
   assert.equal(planSuspectEscort(s,a.id,p.id,'escort'),true);
-  assert.equal(p.escortLeaderId,null,'planning is not a voiced order yet');
+  assert.equal(p.escortLeaderId??null,null,'planning is not a voiced order yet');
   toggling(s);
   for(let i=0;i<150&&s.phase==='running'&&!p.escortLeaderId;i++)
    stepSession(s,1/60);

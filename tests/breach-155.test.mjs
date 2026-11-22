@@ -22,19 +22,16 @@ test('155: five mission briefs specify distinct conditions without enemy leaks',
  assert.ok(brief.squad>=4);
  activateSite(null);
 });
-test('155: intelligence recovery takes interrupted time, not instant tap',()=>{
+test('155: intelligence recovery is instant on physical contact and carried to extraction',()=>{
  const s=newSession(0,1),a=team(s)[0];
  enemies(s).forEach(e=>e.health=0);
  a.p={...s.scenario.objective};
- toggling(s);steps(s,45);
- assert.equal(s.mission,'secure');
- assert.ok(s.holdTime>.5);
- a.p={...s.scenario.extract};steps(s,80);
- assert.equal(s.mission,'secure','leaving evidence interrupts recovery');
- assert.ok(s.holdTime<.2);
- a.p={...s.scenario.objective};steps(s,85);
- assert.equal(s.mission,'extract');
+ toggling(s);steps(s,1);
+ assert.equal(s.mission,'extract','physically reached documents are acquired immediately');
+ assert.equal(s.intelCarrierId,a.id,'only the actual collector carries them');
  assert.ok(s.battleEvents.some(e=>e.text==='DOCUMENTS RECOVERED'));
+ a.p={...s.scenario.extract};steps(s,5);
+ assert.equal(s.intelCarrierId,a.id,'moving away never loses carried intel');
  activateSite(null);
 });
 test('155: enemy pressure prevents securing the hold objective',()=>{

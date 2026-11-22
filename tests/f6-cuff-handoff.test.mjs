@@ -16,21 +16,25 @@ const actor=()=>({equipment:kit(),spareMagazines:[],flashCharges:0,
  wedgeRemaining:0,restraintRemaining:1,actionTimer:.85,
  plan:[{kind:'interact',interaction:'restrain-civilian',
  objectId:'civ:person',p:{x:100,y:100}}]});
-test('F6.4: only a real active RESTRAIN order samples finite physical cuff location',()=>{
+test('F6.4: a real RESTRAIN order samples a universal physical contact gesture',()=>{
  const a=actor(),before=structuredClone(a);
  const p=readEquipmentInteraction(a);
  assert.equal(p.item,'zip-tie');
- assert.equal(p.location,'pocket');
- assert.ok(p.duration>RESTRAINT_CONTACT_SECONDS);
+ assert.equal(p.location,'belt');
+ assert.equal(p.duration,RESTRAINT_CONTACT_SECONDS);
  assert.deepEqual(a,before);
  assert.equal(readEquipmentInteraction({...a,actionTimer:0}),null);
- assert.equal(readEquipmentInteraction({...a,restraintRemaining:0}),null);
+ assert.ok(readEquipmentInteraction({...a,restraintRemaining:0}),
+  'restraint motion must not require carried flex cuffs');
  assert.equal(readEquipmentInteraction({...a,plan:[{
   kind:'interact',interaction:'secure-civilian',objectId:'civ:person'}]}),null);
  assert.equal(readEquipmentInteraction({...a,plan:[{
   kind:'interact',interaction:'restrain-civilian',objectId:'bad'}]}),null);
+ assert.ok(readEquipmentInteraction({...a,plan:[{
+  kind:'interact',interaction:'restrain-suspect',objectId:'suspect:target'}]}),
+  'the same universal gesture supports suspect custody');
 });
-test('F6.4: real cuff pair hands off from pocket and returns on failure',()=>{
+test('F6.4: archived physical cuff handoff remains replay-safe on old footage',()=>{
  const root=new THREE.Group(),chest=new THREE.Group(),hip=new THREE.Group(),
   pack=new THREE.Group(),hand=new THREE.Group(),mesh=new THREE.Mesh();
  hip.add(mesh);

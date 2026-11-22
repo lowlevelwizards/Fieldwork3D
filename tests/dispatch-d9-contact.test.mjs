@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {challengeSuspectDecision,commitSuspectSurrender,
  SUSPECT_CHALLENGE_RANGE,SUSPECT_CHALLENGE_COOLDOWN}
  from '../src/breach-suspect-compliance.ts';
-import {newSession,team,enemies,planSuspectChallenge,
+import {newSession,team,enemies,planSuspectChallenge,planWatch,
  toggling,stepSession,debrief} from '../src/breach-game.ts';
 import {contextActionChoices} from '../src/ui/context-actions.ts';
 import {activateSite} from '../src/breach-core.ts';
@@ -135,5 +135,34 @@ test('D15.8 challenge turns a known speaker before judging actual response',()=>
    'an explicit spoken command works even when speaker starts facing away');
   assert.ok(events.some(x=>x.includes('CHALLENGED')));
   assert.ok(events.some(x=>x.includes('SURRENDERED')));
+ }finally{activateSite(null);}
+});
+
+test('D15.8 an explicit WATCH sector wins over passive surrendered-suspect staring',()=>{
+ const pt=(x,y)=>({x,y});
+ const site={seed:59128,name:'passive attention',layout:'corridor',
+  rooms:[{id:'floor',x:80,y:140,w:420,h:160,kind:'room',purpose:'floor',tone:1}],
+  roomCount:1,walls:[],cover:[],doors:[],windows:[],
+  enemies:[pt(315,200)],spawn:[pt(300,200),pt(300,230),
+    pt(300,260),pt(300,290)],entrance:pt(290,200),
+  objective:pt(120,200),extract:pt(470,200),
+  bounds:{minX:0,minY:0,maxX:640,maxY:740}};
+ const s=newSession(0,59128,'full-view','small','hold',site);
+ try{
+  const a=team(s)[0],p=enemies(s)[0];
+  for(const blue of team(s))if(blue!==a)blue.health=0;
+  a.p=pt(300,200);a.priorP={...a.p};
+  a.heading=0;a.weaponYaw=0;a.firePolicy='hold';
+  p.p=pt(315,200);p.priorP={...p.p};
+  p.surrendered=true;p.restrained=false;
+  p.suspectEscapeCooldownUntil=100;
+  a.awareness.visualProgress[p.id]=1;
+  assert.equal(planWatch(s,a.id,pt(300,275),undefined,'here'),true);
+  toggling(s);
+  for(let i=0;i<110&&s.phase==='running';i++)stepSession(s,1/60);
+  const delta=Math.atan2(Math.sin(a.heading-Math.PI/2),
+    Math.cos(a.heading-Math.PI/2));
+  assert.ok(Math.abs(delta)<.45,
+   'operator honors authored WATCH away from compliant suspect');
  }finally{activateSite(null);}
 });
