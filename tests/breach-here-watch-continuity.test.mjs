@@ -94,6 +94,22 @@ test('explicit LOOK supersedes queued WATCH; empty stroke never alters either',(
  }finally{activateSite(null);}
 });
 
+test('manual reroute clears a stale interrupted-entry warning with undo restoration',()=>{
+ const s=session();
+ try{
+  const a=team(s)[0];
+  a.interruptedDoorPlan={sourceOrderId:700,doorId:'FRONT',at:1,
+   reason:'locked',original:[{id:700,kind:'move',p:{x:210,y:210}}]};
+  const saved=structuredClone(a.interruptedDoorPlan);
+  assert.ok(planMove(s,a.id,{x:180,y:125}));
+  assert.equal(a.interruptedDoorPlan,null,
+   'new manual movement supersedes obsolete AI retry affordance');
+  assert.ok(undoPlan(s,a.id));
+  assert.deepEqual(a.interruptedDoorPlan,saved);
+  assert.ok(redoPlan(s,a.id));
+  assert.equal(a.interruptedDoorPlan,null);
+ }finally{activateSite(null);}
+});
 test('normal movement keeps WATCH; running and physical actions interrupt it',()=>{
  assert.equal(interruptsWatch({kind:'move',paceState:'walk'},'walk'),false);
  assert.equal(interruptsWatch({kind:'move'},'run'),true);

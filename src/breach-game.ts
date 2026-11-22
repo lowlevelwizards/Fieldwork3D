@@ -911,6 +911,9 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
   const codes=new Set(replaceExisting?
     a.plan.filter(n=>n.kind==='sync'&&n.syncCode).map(n=>n.syncCode!):[]);
   return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{
+    // A newly drawn path is the player's recovery decision. A historical
+    // interrupted entry must not keep warning after replacement movement.
+    a.interruptedDoorPlan=null;
     if(replaceExisting)a.plan=retainedWatch?[retainedWatch,...expanded]:expanded;
     else a.plan.push(...expanded);
     s.nextId+=expanded.length;

@@ -50,8 +50,8 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
  if(a.interruptedDoorPlan&&(ctx.phase==='planning'||!n))
    return result('blocked','ENTRY INTERRUPTED',
      a.interruptedDoorPlan.reason==='coordinated'?
-       'SQUAD ENTRY HELD · EXPLICIT RESUME REQUIRED':
-       'FAILED ENTRY PRESERVED · RESUME WHEN CLEAR',
+       'SQUAD ENTRY HELD · REPLAN WHEN CLEAR':
+       'FAILED ENTRY · REPLAN WHEN CLEAR',
      id,'entry-interrupted');
  if(ctx.phase==='planning'&&n)
    return result('planned','PLANNED',n.kind.toUpperCase(),id,'planned');

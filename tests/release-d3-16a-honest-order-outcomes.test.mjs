@@ -29,10 +29,24 @@ test('D3.16A: one real locked-door cancel is remembered after queue drains',()=>
   assert.equal(a.failedOrders,1);
   const status=executionStatus(a);
   assert.equal(status.kind,'blocked');
-  assert.equal(status.reason,'order-cancelled');
-  assert.equal(status.label,'ORDERS CANCELLED');
-  assert.match(status.detail,/DOOR LOCKED/);
+  assert.equal(status.reason,'entry-interrupted',
+   'the newer interruption snapshot has a distinct, truthful status');
+  assert.equal(status.label,'ENTRY INTERRUPTED');
+  assert.match(status.detail,/FAILED ENTRY/);
+  assert.ok(a.interruptedDoorPlan?.original.length,
+   'the failure preserves the original route for diagnosis');
   assert.equal(messages.length,1);
+ }finally{activateSite(null);}
+});
+test('D3.16A: cancellation without an interrupted door stays an order cancellation',()=>{
+ const s=newSession(),a=team(s)[0];
+ try{
+  const move={id:16011,kind:'move',p:{x:a.p.x+40,y:a.p.y+40}};
+  a.plan=[move];
+  failCurrentOrder(s,a,move,'NO SAFE ROUTE',()=>{});
+  assert.equal(a.interruptedDoorPlan,null);
+  assert.equal(executionStatus(a).reason,'order-cancelled');
+  assert.equal(executionStatus(a).label,'ORDERS CANCELLED');
  }finally{activateSite(null);}
 });
 test('D3.16A: successful orders never invent a cancellation',()=>{

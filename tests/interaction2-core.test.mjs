@@ -30,11 +30,11 @@ test('only one command long-press controller remains; failed targeting can retry
   assert.doesNotMatch(main,/contextHoldTimer/);
   assert.match(main,/installTouchCommandHelp\(button\)/);
   assert.match(pointer,/if\(accepted\)port\.tacticalFeedback\.emit\(p\.dragCommitted\?'command':'select'/);
-  assert.match(main,/if\(committed\)hudController\.facing\.looking=false/);
+  assert.match(pointer,/if\(committed\)port\.targeting\.reset\(\)/);
   assert.match(pointer,/p\.mode==='targetPreview'\|\|p\.mode==='undecided'/);
   assert.match(pointer,/port\.hudController\.facing\.looking\|\|insideTacticalBounds/);
   assert.doesNotMatch(main,/case 'ctxReleaseWatch'/);
-  assert.match(main,/if\(\!accepted\)rejectAt\(pt,'INVALID SUPPRESSION POINT'\)/);
+  assert.match(pointer,/if\(\!accepted\)port\.rejectAt\(pt,'INVALID SUPPRESSION POINT'\)/);
 });
 test('unchanged palette keeps its position; existing pocket is an explicit candidate',()=>{
   const source=readFileSync(new URL('../src/breach-context-placement.ts',import.meta.url),'utf8');
@@ -51,7 +51,7 @@ test('unchanged palette keeps its position; existing pocket is an explicit candi
     {x:160,y:260,w:120,h:80}),true);
 });
 test('on-map states are armed, accepted or rejected without conflating them',()=>{
-  assert.match(main,/tacticalFeedback\.emit\('armed',/);
+  assert.match(main,/targeting\.toggleFacing\(mode,selectedNode\)/);
   assert.match(main,/tacticalFeedback\.emit\('cancel',/);
   assert.match(pointer,/if\(!accepted\)port\.rejectAt\(pt,'WATCH TARGET UNAVAILABLE'\)/);
 });
