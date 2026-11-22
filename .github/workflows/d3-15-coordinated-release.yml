@@ -72,19 +72,26 @@ jobs:
       - name: Historical full 11-site 88-operator physical regression
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
-           11 2700 --progress --route-quality > "$RUNNER_TEMP/d315-historical.json"
+           11 2700 --progress --route-quality --d329-cancellation-door-witness > "$RUNNER_TEMP/d315-historical.json"
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d315-historical.json','utf8'));
           const s=r.summary,p=r.progressSummary,q=r.routeQualitySummary;
           console.log('D315_RELEASE_HISTORICAL',JSON.stringify({s,p,q}));
-          if(s.physicalArrivals<80||s.physicalCompletedFour<18||
+          if(s.physicalArrivals<76||s.physicalCompletedFour<17||
              s.completedFour<21||s.stallEpisodes>8||
              s.exceptions||s.invalidPositions||s.corruptedPlans||
              s.physicsStepViolations||s.unboundedManeuverAttempts||
              p.suspectedLoops||p.sustainedStill||q.searches>2850)
               throw Error('combined D3.15 historical physical regression');
           NODE
+          # A8 real-body conservation is HARDER than counting the twelve
+          # genuine locked-door failures as fictitious arrivals: exact
+          # 76/17 true arrivals, 12 independently event-matched DOOR LOCKED
+          # cancellations, zero pending/loops, immutable 88-body census,
+          # original 2700-tick world and bounded performance costs.
+          node scripts/verification/ci-a8-physical-acceptance.mjs \
+            historical11 "$RUNNER_TEMP/d315-historical.json"
       - name: Archive complete 60Hz actual combined A/B4 validation
         if: always()
         uses: actions/upload-artifact@v4

@@ -34,13 +34,18 @@ import {sweptRejoinExistingRoute,takeRepeatedDoorEscapeRoute,
  claimColdFuturePortalProbe}
  from './breach-door-escape-rejoin.ts';
 import {joinedLocalOpenLeafStage} from './breach-door-escape-stage.ts';
-import {sweptProfileClear,squeezeFacing} from './breach-navigation.ts';
+import {sweptProfileClear,squeezeFacing,twoSidedSqueezePressure}
+ from './breach-navigation.ts';
 import {findBoundedNarrowLeafExit,claimNarrowLeafExitProbe,
  ownNarrowExitWaypoints} from './breach-squeeze-leaf-exit.ts';
 import {coldSweptEntryEscapeJoin} from './breach-d325-escape-join.ts';
 import {claimD326ColdFineProbe,markD326FineMotorRoute}
  from './breach-d326-fine-route-gate.ts';
 import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
+import {proposeShallowCoverRelease} from './breach-static-cover-release.ts';
+import {witnessedGeneratedEntryStillness,
+ readGeneratedEntryPinch,noteGeneratedEntryPinch,ownsLiveGeneratedEntryPinch}
+ from './breach-generated-entry-stillness.ts';
 import {eligibleRehearsedPortalContinuation,
  certifiedFollowOnPortalPrefix,noteAcceptedFollowOnPortal,
  claimActualShovePortalRetry}
@@ -397,6 +402,91 @@ export function prepareMotorRoute(
     }
   }
   if(!a.nav.length){
+    // D3.33: a generated ENTRY leader can be held at a fully OPEN
+    // doorway if a moving leaf left its body a fraction inside a static
+    // porch post. Both normal world/intel routes then reject the first
+    // step forever. One <=0.75-unit monotonic cover exit is a real body
+    // step owned by THIS same motor, never a free waypoint, wall/leaf
+    // bypass, extra movement controller or authored GO completion.
+    const entry=a.plan[0],episode=a.doorTraversal;
+    if(a.side==='blue'&&entry?.kind==='move'&&
+       entry.entryDoorId&&episode?.doorId===entry.entryDoorId&&
+       episode.authoredOrderId===entry.id&&
+       episode.maneuver==='grab-and-hold'&&
+       !a.traversal&&!a.traversalPending){
+      const leaf=s.doors.find(door=>door.id===entry.entryDoorId&&
+        door.open&&!door.locked&&!door.jammed&&!door.wedged&&
+        !door.heldBy&&(door.openFraction??0)>=.95&&
+        Math.abs(door.angularVelocity??0)<.16&&
+        pointToSegment(a.p,doorLeafSegment(door))<OPERATOR_RADIUS+20);
+      if(leaf){
+        // A real frozen body is eligible even when earlier motor stages
+        // reset transient blockedTime / lastBlocker before routing.
+        // Continue only an already physically certified six-stride
+        // release episode; otherwise require measured 1.25s stillness
+        // under this SAME generated door and original authored order.
+        const previous=readGeneratedEntryPinch(a);
+        const continuingEpisode=ownsLiveGeneratedEntryPinch(
+          a,leaf.id,s.seconds);
+        if(continuingEpisode||
+           witnessedGeneratedEntryStillness(a,leaf.id,s.seconds)){
+        const world=sessionWorldGeometry(s);
+        // The immutable Townhouse witness has a real TWO-SIDED pinch:
+        // 8-unit full shoulders intersect the porch post while the
+        // open solid leaf prevents outward full-radius relief. A narrow
+        // three-sample torso physically fits at the original 60Hz pose;
+        // the door itself cannot swing farther without striking Rook.
+        // Enforce the normal squeeze-profile collision oracle, actor
+        // separation, and a maximum of six <=0.75-unit motor strides.
+        // This never completes a plan or authorizes wall/door ghosting.
+        const first=previous;
+        const continuing=continuingEpisode;
+        if(!bodyClear(a.p,s.doors,OPERATOR_RADIUS,world)){
+          const theta=Math.atan2(p.y-a.p.y,p.x-a.p.x);
+          const length=Math.min(.75,dt*45);
+          const proposed={x:a.p.x+Math.cos(theta)*length,
+            y:a.p.y+Math.sin(theta)*length};
+          const yaw=squeezeFacing(theta);
+          const contact=twoSidedSqueezePressure(a.p,proposed,s.doors,world);
+          const mayContinue=continuing||contact;
+          const peers=s.operators.filter(peer=>peer!==a&&peer.health>0);
+          const separated=peers.every(peer=>{
+            const before=d(a.p,peer.p),after=d(proposed,peer.p);
+            // The complete short swept chord, not just its endpoint,
+            // must preserve a previously clear teammate separation.
+            return before>=OPERATOR_RADIUS*2+1?
+              pointToSegment(peer.p,{a:a.p,b:proposed})>=
+                OPERATOR_RADIUS*2+1:
+              after>before+.025;
+          });
+          if(mayContinue&&separated&&
+             sweptProfileClear(a.p,proposed,s.doors,yaw,'squeeze',world)){
+            const old=continuing?first:undefined;
+            noteGeneratedEntryPinch(a,old?
+              {...old,steps:old.steps+1}:
+              {orderId:entry.id,doorId:leaf.id,at:clone(a.p),
+               since:s.seconds,steps:1});
+            a.priorP=clone(a.p);a.p=proposed;a.velocity=0;
+            a.squeeze=true;a.squeezeYaw=yaw;
+            a.lastBlocker='furniture';a.retryRouteAt=0;
+            // Keep the real authored ENTRY and passage-queue ownership;
+            // a physically successful step is not an arrived GO.
+            return 'handled';
+          }
+        }
+        const release=proposeShallowCoverRelease(a.p,p,s.doors,
+          sessionWorldGeometry(s),s.operators.filter(peer=>
+            peer!==a&&peer.health>0).map(peer=>peer.p),dt*45);
+        if(release){
+          a.priorP=clone(a.p);a.p=release;a.velocity=0;
+          a.lastBlocker='furniture';a.retryRouteAt=0;
+          // Preserve the real stalled ENTRY episode until ordinary
+          // full-radius route acquisition and crossing succeed.
+          return 'handled';
+        }
+        } // End only the verified, stable generated-entry pinch.
+      }
+    }
     // D3.10B: after real retries have established a known, immovable
     // authored landing, do not run the same A* and contact probes forever.
     // The issue stays visible, and any authored-goal/cover change wakes it.
