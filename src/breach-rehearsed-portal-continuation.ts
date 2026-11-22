@@ -113,6 +113,45 @@ export function certifiedFollowOnPortalPrefix(
  if(length>d(from,goal)*2.5+110)return [];
  return route.map(p=>({...p}));
 }
-export function noteAcceptedFollowOnPortal(a:TeamActor):void{
- const w=byActor.get(a);if(w)w.used=true;
+/** D3.35 P4: after the physical actor has begun an accepted cold
+ * next-door route, D1 must not recreate the PREVIOUS open-door episode
+ * solely due to geometric proximity. It was crossed in real physics.
+ * Hold only the same transient route REFERENCE, at most five seconds.
+ * Any physical contact/stall, route replacement, actual order change,
+ * squeeze or later door cancels this preference immediately. Actual
+ * collision and subsequent door interaction remain authoritative.
+ */
+type ForwardLease={
+ doorId:string;orderId:number;goal:Pt;route:Pt[];until:number;
+};
+const forwardLeases=new WeakMap<TeamActor,ForwardLease>();
+export function noteAcceptedFollowOnPortal(a:TeamActor,seconds:number):void{
+ const w=byActor.get(a);
+ if(!w)return;
+ w.used=true;
+ forwardLeases.set(a,{doorId:w.doorId,orderId:w.orderId,
+  goal:{...w.goal},route:a.nav,until:seconds+5});
+}
+export function protectedRehearsedFollowOnDoor(
+ a:TeamActor,doors:readonly Door[],seconds:number
+):string|null{
+ const w=forwardLeases.get(a),order=a.plan[0];
+ if(!w)return null;
+ if(a.side!=='blue'||order?.kind!=='move'||order.id!==w.orderId||
+    d(order.p,w.goal)>.5||
+    a.nav!==w.route||!a.nav.length||
+    !Number.isFinite(seconds)||seconds>=w.until||
+    a.blockedTime>=.18||a.squeeze||a.traversal||
+    a.traversalPending||a.autoSidestep||a.fireRetreatTarget){
+  forwardLeases.delete(a);return null;
+ }
+ const door=doors.find(x=>x.id===w.doorId);
+ if(!door||!door.open||door.locked||door.jammed||
+    door.wedged||door.heldBy||
+    (door.openFraction??0)<.98||
+    Math.abs(door.angularVelocity??0)>=.16||
+    signedDoorSide(a.p,door)*signedDoorSide(w.goal,door)<=0){
+  forwardLeases.delete(a);return null;
+ }
+ return w.doorId;
 }

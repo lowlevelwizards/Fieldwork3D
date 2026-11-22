@@ -12,7 +12,8 @@ import {OPERATOR_RADIUS,doorLeafSegment,pointToSegment}
  from '../src/breach-core.ts';
 import {bodyClear,sweptBodyClear} from '../src/breach-navigation.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
-import {certifiedFollowOnPortalPrefix}
+import {certifiedFollowOnPortalPrefix,noteAcceptedRehearsedPortal,
+ noteAcceptedFollowOnPortal,protectedRehearsedFollowOnDoor}
  from '../src/breach-rehearsed-portal-continuation.ts';
 import {canAutoOpenEnRoute} from '../src/breach-door.ts';
 import {routeWithSqueezeWorld,routeWithNormalWorld,
@@ -93,4 +94,47 @@ for(const c of fixtures)test('D3.35 P2 '+c.kind+
  }));
  assert.ok(session.doors.length>0);
  assert.ok(results.length>0,'the actual portal footprint is physically valid');
+});
+
+
+test('D3.35 P4 crossed open-leaf lease never overrides physical contact/door',()=>{
+ const door={
+  id:'FRONT',kind:'hinged',
+  a:{x:200,y:130},b:{x:200,y:172},
+  open:true,openFraction:1.55,angularVelocity:0,
+  locked:false,jammed:false,wedged:false,heldBy:null
+ };
+ const goal={x:350,y:180};
+ const a={
+  side:'blue',p:{x:170,y:150},
+  plan:[{id:42,kind:'move',p:goal}],nav:[],
+  blockedTime:0,traversal:null,traversalPending:false,squeeze:false,
+  autoSidestep:null,fireRetreatTarget:null,doorTraversal:null
+ };
+ const portal={x:223,y:160};
+ // The actual D2 source observer only accepts a rehearsal from
+ // opposite side to goal, ending on that goal side.
+ noteAcceptedRehearsedPortal(a,door,goal,portal,6);
+ a.p={x:222,y:160};
+ a.nav=[{x:238,y:168},{x:288,y:184}];
+ noteAcceptedFollowOnPortal(a,8);
+ assert.equal(protectedRehearsedFollowOnDoor(a,[door],8.05),'FRONT');
+ const oldNav=a.nav;
+ a.nav=[...oldNav];
+ assert.equal(protectedRehearsedFollowOnDoor(a,[door],8.1),null,
+  'a replaced transient route is NOT protected');
+ a.nav=oldNav;
+ noteAcceptedFollowOnPortal(a,8.2);
+ a.blockedTime=.25;
+ assert.equal(protectedRehearsedFollowOnDoor(a,[door],8.3),null,
+  'real contact immediately restores previous doorway authority');
+ a.blockedTime=0;
+ noteAcceptedFollowOnPortal(a,8.4);
+ a.plan=[{id:43,kind:'move',p:goal}];
+ assert.equal(protectedRehearsedFollowOnDoor(a,[door],8.5),null,
+  'new authored order restores normal episode selection');
+ a.plan=[{id:42,kind:'move',p:goal}];
+ noteAcceptedFollowOnPortal(a,8.6);
+ assert.equal(protectedRehearsedFollowOnDoor(a,
+  [{...door,locked:true}],8.7),null,'a locked door is never protected');
 });

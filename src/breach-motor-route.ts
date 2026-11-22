@@ -504,7 +504,7 @@ export function prepareMotorRoute(
           if(decision.kind==='adopt'){
             setTransientRoute(s,a,verified,'initial-portal-recovery',
               decision.proof??undefined);
-            noteAcceptedFollowOnPortal(a);
+            noteAcceptedFollowOnPortal(a,s.seconds);
             provisionalRouteAccepted(a);
             a.lastNavRepairAt=s.seconds;
             return 'ready';
