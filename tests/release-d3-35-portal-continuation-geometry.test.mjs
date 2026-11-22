@@ -14,7 +14,7 @@ import {bodyClear,sweptBodyClear} from '../src/breach-navigation.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {certifiedFollowOnPortalPrefix,noteAcceptedRehearsedPortal,
  noteAcceptedFollowOnPortal,protectedRehearsedFollowOnDoor,
- claimActualShovePortalRetry}
+ claimActualShovePortalRetry,retainSweptFollowOnAfterPhysicalShove}
  from '../src/breach-rehearsed-portal-continuation.ts';
 import {canAutoOpenEnRoute} from '../src/breach-door.ts';
 import {routeWithSqueezeWorld,routeWithNormalWorld,
@@ -176,4 +176,35 @@ test('D3.35 P8 real actor-owned furniture shove gives ONE cold new-world door pr
   'real actor shove plus revision gives one new physical-world route query');
  assert.equal(claimActualShovePortalRetry(a,[door],goal,9.94,1),false,
   'no repeated world search on the same cover change');
+});
+
+
+test('D3.35 P9 after a REAL cover move keep only short full-body safe prefix',()=>{
+ const door={
+  id:'FRONT',kind:'hinged',
+  a:{x:160,y:244},b:{x:160,y:286},
+  open:true,openFraction:1.55,angularVelocity:0,
+  locked:false,jammed:false,wedged:false,heldBy:null
+ };
+ const goal={x:267,y:296.68};
+ const actor={
+  side:'blue',p:{x:135,y:252},
+  plan:[{id:42,kind:'move',p:goal}],nav:[],
+  blockedTime:0,traversal:null,traversalPending:false,
+  squeeze:false,autoSidestep:null,fireRetreatTarget:null,doorTraversal:null
+ };
+ noteAcceptedRehearsedPortal(actor,door,goal,{x:178,y:275},7);
+ actor.p={x:175,y:275};
+ actor.nav=[{x:184,y:280},{x:200,y:384}];
+ noteAcceptedFollowOnPortal(actor,9.13,0);
+ actor.p={x:194,y:299};
+ assert.equal(retainSweptFollowOnAfterPhysicalShove(
+  actor,[door],9.92,()=>true),true,'real short motor step still legal');
+ assert.equal(retainSweptFollowOnAfterPhysicalShove(
+  actor,[door],9.95,()=>false),false,
+  'a new obstructed four-unit torso stride cannot be protected');
+ actor.nav=[...actor.nav];
+ assert.equal(retainSweptFollowOnAfterPhysicalShove(
+  actor,[door],9.96,()=>true),false,
+  'a replaced transient route cannot borrow old proof');
 });

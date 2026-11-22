@@ -123,6 +123,7 @@ export function certifiedFollowOnPortalPrefix(
  */
 type ForwardLease={
  doorId:string;orderId:number;goal:Pt;route:Pt[];until:number;
+ retainedShoves:number;
 };
 const forwardLeases=new WeakMap<TeamActor,ForwardLease>();
 /** One independent proof survives valid NAV invalidation after THIS actor
@@ -142,7 +143,8 @@ export function noteAcceptedFollowOnPortal(
  if(!w)return;
  w.used=true;
  forwardLeases.set(a,{doorId:w.doorId,orderId:w.orderId,
-  goal:{...w.goal},route:a.nav,until:seconds+5});
+  goal:{...w.goal},route:a.nav,until:seconds+5,
+  retainedShoves:0});
  shoveProvenance.set(a,{doorId:w.doorId,orderId:w.orderId,
   goal:{...w.goal},portal:{...w.portal},selectedAt:seconds,
   revision:worldRevision,attempted:false});
@@ -182,6 +184,41 @@ export function claimActualShovePortalRetry(
  // actor/order/cover revision. Subsequent normal motor/door retries
  // follow the existing backoff and physical collision authority.
  w.attempted=true;return true;
+}
+/** D3.35 P9: a real contact shove has already moved clutter and the
+ * physical world revision has advanced. The previously accepted
+ * full-body-swept NEXT-door route is not automatically invalid: retain
+ * only its unchanged transient node array, only if the first ordinary
+ * four-unit BODY stride is clear in the NEW live world. Everything after
+ * that still goes through the same fixed-step collision motor and
+ * additional real furniture contacts. Any failed short stride drops
+ * back to the original replan behavior. No A*, door opening, teleport,
+ * authored-order edits or false arrivals in this helper.
+ */
+export function retainSweptFollowOnAfterPhysicalShove(
+ a:TeamActor,doors:readonly Door[],seconds:number,
+ sweep:(from:Pt,to:Pt)=>boolean
+):boolean{
+ const w=forwardLeases.get(a),order=a.plan[0];
+ if(!w||w.retainedShoves>=8||a.nav!==w.route||
+    !a.nav.length||a.side!=='blue'||
+    order?.kind!=='move'||order.id!==w.orderId||
+    d(order.p,w.goal)>.5||seconds>=w.until||
+    a.doorTraversal||a.traversal||a.traversalPending||
+    a.squeeze||a.autoSidestep||a.fireRetreatTarget)return false;
+ const door=doors.find(x=>x.id===w.doorId);
+ if(!door||!door.open||door.locked||door.jammed||
+    door.wedged||door.heldBy||
+    (door.openFraction??0)<.98||
+    Math.abs(door.angularVelocity??0)>=.16)return false;
+ const next=a.nav.find(p=>d(a.p,p)>.5);
+ if(!next)return false;
+ const distance=d(a.p,next),step=Math.min(distance,4);
+ const micro={x:a.p.x+(next.x-a.p.x)*step/distance,
+  y:a.p.y+(next.y-a.p.y)*step/distance};
+ if(!sweep(a.p,micro))return false;
+ w.retainedShoves++;
+ return true;
 }
 export function protectedRehearsedFollowOnDoor(
  a:TeamActor,doors:readonly Door[],seconds:number
