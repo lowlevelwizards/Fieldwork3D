@@ -96,7 +96,8 @@ function pending(actor:TeamActor,schedule:PassageSchedule,
  }
  return earliest;
 }
-function ready(member:Member,context:Context):boolean{
+function ready(member:Member,context:Context,
+  alreadyCurrentSlot=false):boolean{
  const a=member.actor,d=context.byDoor.get(member.slot.doorId);
  if(!d||a.health<=0||a.surrendered||a.side!=='blue')return false;
  const order=a.plan[0];
@@ -105,7 +106,11 @@ function ready(member:Member,context:Context):boolean{
  // does not steal the threshold from the first actual crossing MOVE.
  if(normalDepth(order.p,d)*member.slot.fromSide>=-4)return false;
  if(normalDepth(a.p,d)*member.slot.fromSide< -18)return false;
- return pending(a,context.schedule,context.byDoor)===member.slot;
+ // coordinatePassage already selected this exact currently-authored slot.
+ // Do not search the same GO-time schedule a third time at 60 Hz; all
+ // other callers retain the full independent current-slot authority.
+ return alreadyCurrentSlot||
+   pending(a,context.schedule,context.byDoor)===member.slot;
 }
 const throat=(p:Pt,door:Door):boolean=>
  Math.abs(normalDepth(p,door))<OPERATOR_RADIUS+7&&
@@ -245,7 +250,7 @@ export function coordinatePassage(s:Session,a:TeamActor,
  const door=ctx.byDoor.get(slot.doorId);
  if(!door||dist(door.a,door.b)>60||
     dist(a.p,ctx.centers.get(door.id)!)>QUEUE_ENTRY_RADIUS||
-    !ready({actor:a,slot},ctx))return free;
+    !ready({actor:a,slot},ctx,true))return free;
  const forward=forwardTravel(a.p,move,door,slot.fromSide);
  // Q7: a stably traversable doorway is no longer a turn-taking
  // checkpoint. An immutable GO-time rank or expired opposing-side lease
