@@ -7,7 +7,8 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {proposeShallowCoverRelease} from '../src/breach-static-cover-release.ts';
-import {relieveGeneratedEntryWaitCollision} from '../src/breach-actor-motor.ts';
+import {relieveGeneratedEntryWaitCollision,setD333MotorStageObserver}
+ from '../src/breach-actor-motor.ts';
 import {prepareMotorRoute} from '../src/breach-motor-route.ts';
 import {releaseEmbeddedMotorActor}
  from '../src/breach-locomotion-clearance.ts';
@@ -373,6 +374,11 @@ test('D3.33 P7: read-only live 60Hz Townhouse doorway recovery gate timeline',()
  const rook=actors.find(a=>a.id==='rook'),ash=actors.find(a=>a.id==='ash');
  assert.ok(rook&&ash);
  enableEntryStillnessResetRecording(true);
+ const motorStages={};
+ setD333MotorStageObserver((actor,stage)=>{
+  if(actor!==rook||game.seconds<9)return;
+  motorStages[stage]=(motorStages[stage]??0)+1;
+ });
  toggling(game);
  const summary={navZero:0,navPresent:0,stillnessAtLeast125:0,
   stillnessWithNavZero:0,entryMoveNoNav:0,firstEligible:null,
@@ -433,7 +439,9 @@ test('D3.33 P7: read-only live 60Hz Townhouse doorway recovery gate timeline',()
   }
  }
  enableEntryStillnessResetRecording(false);
+ setD333MotorStageObserver(null);
  console.log('D333_LIVE_GATE_TIMELINE',JSON.stringify({
+  motorStages,
   resets:entryStillnessResetCensus(rook),
   summary,maneuvers,initial:marks.slice(0,4),
   during:marks.filter(x=>x.time>=7&&x.time<=21).filter((_,i)=>i%2===0),
