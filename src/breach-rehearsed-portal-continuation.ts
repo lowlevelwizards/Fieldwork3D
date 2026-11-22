@@ -56,12 +56,13 @@ export function eligibleRehearsedPortalContinuation(
  firstIntel:Pt|undefined,seconds:number
 ):Door|null{
  const w=byActor.get(a),order=a.plan[0];
- // D3.35 Garage-only: witnessed generated ENTRY into its OWN open
- // FRONT door. Ordinary multiroom authored MOVEs (Warehouse) remain
- // untouched until their independent physical-route issue is solved.
+ // D3.35 Warehouse: an authored MOVE can inherit the SAME bounded cold
+ // evidence as generated ENTRY, but ONLY after two accepted, genuinely
+ // swept rehearsals through the same fully-open door, a body on its GO
+ // side and an initial-intel first leg that demonstrably goes backward.
+ // Generated ENTRY retains exactly its original physical checks.
  if(!w||w.used||w.count<2||a.side!=='blue'||
-    order?.kind!=='move'||!order.entryDoorId||
-    order.entryDoorId!==w.doorId||order.id!==w.orderId||
+    order?.kind!=='move'||order.id!==w.orderId||
     !samePt(order.p,goal)||!samePt(w.goal,goal)||
     a.nav.length||a.doorTraversal||a.traversal||
     a.traversalPending||a.squeeze||a.autoSidestep||
@@ -233,7 +234,7 @@ export function protectedRehearsedFollowOnDoor(
     d(order.p,w.goal)>.5||
     a.nav!==w.route||!a.nav.length||
     !Number.isFinite(seconds)||seconds>=w.until||
-    a.blockedTime>=.18||a.squeeze||a.traversal||
+    a.blockedTime>=.18||a.traversal||
     a.traversalPending||a.autoSidestep||a.fireRetreatTarget){
   forwardLeases.delete(a);return null;
  }
@@ -244,6 +245,9 @@ export function protectedRehearsedFollowOnDoor(
     Math.abs(door.angularVelocity??0)>=.16){
   forwardLeases.delete(a);return null;
  }
+ // Squeeze is a temporary narrow motor stance, not a real obstruction:
+ // keep the already certified exact transient NAV until contact, a changed
+ // order, a changed route or a different door revokes this brief lease.
  // The certified NEXT-door path can genuinely travel back across the
  // prior open leaf to get around a warehouse exterior wall. Never
  // discard the still-owned, physically swept route just for changing
