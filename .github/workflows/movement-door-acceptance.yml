@@ -12,7 +12,7 @@ on:
         description: JSON suite selection for manual physical audits
         required: true
         type: string
-        default: '{"release7":true,"doorD5":true,"doorD2D3":true,"passageQ5":true,"performanceP28":true}'
+        default: '{"release7":true,"doorD5":true,"doorD2D3":true,"passageQ5":true,"performanceP28":true,"recovery17e":true,"physical25":true,"coordinated15":true}'
 permissions:
   contents: read
 jobs:
@@ -39,5 +39,20 @@ jobs:
   performanceP28:
     if: ${{ fromJSON(inputs.lanes).performanceP28 }}
     uses: ./.github/workflows/performance-p2-8-critical.yml
+    permissions:
+      contents: read
+  recovery17e:
+    if: ${{ fromJSON(inputs.lanes).recovery17e }}
+    uses: ./.github/workflows/d3-17e-recovery.yml
+    permissions:
+      contents: read
+  physical25:
+    if: ${{ fromJSON(inputs.lanes).physical25 }}
+    uses: ./.github/workflows/d3-25-physical-acceptance.yml
+    permissions:
+      contents: read
+  coordinated15:
+    if: ${{ fromJSON(inputs.lanes).coordinated15 }}
+    uses: ./.github/workflows/d3-15-coordinated-release.yml
     permissions:
       contents: read

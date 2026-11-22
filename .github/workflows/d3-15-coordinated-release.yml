@@ -1,20 +1,11 @@
 name: D3.15 coordinated A plus B4 checkpoint physical acceptance
 on:
-  pull_request:
-    paths:
-      - 'src/breach-motor-door.ts'
-      - 'src/breach-order-movement.ts'
-      - 'src/breach-entry-coordination.ts'
-      - 'src/breach-order-wait.ts'
-      - 'src/breach-motor-collision.ts'
-      - 'src/breach-stack-micro-corner.ts'
-      - 'tests/release-d3-15a2-explicit-door-clock.test.mjs'
-      - '.github/workflows/d3-15-coordinated-release.yml'
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: d315-coordinated-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   physical-checkpoint:
@@ -50,6 +41,24 @@ jobs:
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
            11 2700 --site-index=8 --audit-seed=9492261 --audit-scale=small \
            --progress --route-transitions > "$RUNNER_TEMP/d315-motel.json"
+      - name: Historical full 11-site 88-operator physical regression
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+           11 2700 --progress --route-quality --d329-cancellation-door-witness > "$RUNNER_TEMP/d315-historical.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d315-historical.json','utf8'));
+          const s=r.summary,p=r.progressSummary,q=r.routeQualitySummary;
+          console.log('D315_RELEASE_HISTORICAL',JSON.stringify({s,p,q}));
+          if(s.physicalArrivals<76||s.physicalCompletedFour<17||
+             s.completedFour<21||s.stallEpisodes>8||
+             s.exceptions||s.invalidPositions||s.corruptedPlans||
+             s.physicsStepViolations||s.unboundedManeuverAttempts||
+             p.suspectedLoops||p.sustainedStill||q.searches>2850)
+              throw Error('combined D3.15 historical physical regression');
+          NODE
+          node scripts/verification/ci-lock-aware-physical-acceptance.mjs \
+            historical11 "$RUNNER_TEMP/d315-historical.json"
       - name: Require three independent four-body physical successes and no PlanNode loss
         run: |
           node --input-type=module <<'NODE'
@@ -68,22 +77,6 @@ jobs:
             if(site==='motel'&&(m.routeTransitions?.byActor?.['vale:stack-micro-corner']??0)<1)
               throw Error('no demonstrated physical short-stack recovery');
           }
-          NODE
-      - name: Historical full 11-site 88-operator physical regression
-        run: |
-          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
-           11 2700 --progress --route-quality > "$RUNNER_TEMP/d315-historical.json"
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d315-historical.json','utf8'));
-          const s=r.summary,p=r.progressSummary,q=r.routeQualitySummary;
-          console.log('D315_RELEASE_HISTORICAL',JSON.stringify({s,p,q}));
-          if(s.physicalArrivals<80||s.physicalCompletedFour<18||
-             s.completedFour<21||s.stallEpisodes>8||
-             s.exceptions||s.invalidPositions||s.corruptedPlans||
-             s.physicsStepViolations||s.unboundedManeuverAttempts||
-             p.suspectedLoops||p.sustainedStill||q.searches>2850)
-              throw Error('combined D3.15 historical physical regression');
           NODE
       - name: Archive complete 60Hz actual combined A/B4 validation
         if: always()

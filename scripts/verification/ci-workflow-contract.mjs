@@ -38,6 +38,9 @@ const paths={
  doorD2D3:'.github/workflows/door-traversal-d2-d3.yml',
  passageQ5:'.github/workflows/passage-q5-matrix.yml',
  performanceP28:'.github/workflows/performance-p2-8-critical.yml',
+ recovery17e:'.github/workflows/d3-17e-recovery.yml',
+ physical25:'.github/workflows/d3-25-physical-acceptance.yml',
+ coordinated15:'.github/workflows/d3-15-coordinated-release.yml',
  pages:'.github/workflows/pages.yml'
 };
 const read=path=>readFileSync(path,'utf8');
@@ -141,6 +144,51 @@ export function validateWorkflowContracts(wf){
   must(name,marker);
   must('movementDoorRouter','fromJSON(inputs.lanes).'+key);
   must('movementDoorRouter','uses: ./.github/workflows/'+paths[name].split('/').at(-1));
+ }
+ // A7b keeps historical/fresh physical arrival observations and strict witnesses.
+ for(const [key,marker] of [
+  ['recovery17e','--d315b4-blind22'],
+  ['physical25','--d318-fresh22'],
+  ['coordinated15','physicalArrivals<76']]){
+  must(key,'workflow_call:');
+  must(key,'workflow_dispatch:');
+  no(key,'  pull_request:');
+  must(key,'scripts/audit-r7-squad-execution.mjs');
+  must(key,marker);
+  must('movementDoorRouter','fromJSON(inputs.lanes).'+key);
+  must('movementDoorRouter','uses: ./.github/workflows/'+paths[key].split('/').at(-1));
+ }
+ must('physical25','feature/d3-25-entry-stall-witness-20261118');
+ // A7b revised historical/fresh raw floors only after proving the fixed
+ // locked-door census; all reachable frozen goals remain independent hard gates.
+ for(const key of ['physical25','recovery17e']){
+  must(key,'--d329-cancellation-door-witness');
+  must(key,'scripts/verification/ci-physical-cohort-provenance.mjs');
+  must(key,'if: always()');
+ }
+ for(const marker of ['s.physicalArrivals<154','s.physicalCompletedFour<35',
+  "['historical',76,17]","['frozen22',143,30]",
+  'scripts/verification/ci-lock-aware-physical-acceptance.mjs'])
+  must('physical25',marker);
+ for(const marker of ['hist.summary.physicalArrivals<76',
+  'hist.summary.physicalCompletedFour<17',
+  'cur.summary.physicalArrivals<140',
+  'cur.summary.physicalCompletedFour<29',
+  'cur.progressSummary.suspectedLoops>0',
+  'scripts/verification/ci-lock-aware-physical-acceptance.mjs'])
+  must('recovery17e',marker);
+ for(const marker of ['m.arrivals!==4','m.crossed.some',
+  's.physicalArrivals<76','s.physicalCompletedFour<17',
+  'scripts/verification/ci-lock-aware-physical-acceptance.mjs'])
+  must('coordinated15',marker);
+ // A7b sibling reusable workflows must never share a caller-derived
+ // concurrency group: doing so cancels an actual 11/22-site physical audit.
+ for(const [key,prefix] of [
+  ['recovery17e','d317e-recovery-'],
+  ['coordinated15','d315-coordinated-'],
+  ['physical25','d325-physical-']]){
+  must(key,'group: '+prefix);
+  no(key,'group: ${{ github.workflow }}');
  }
  // A7c retains full real Q5 approach matrix and measured sweep broadphase.
  for(const [key,marker] of [

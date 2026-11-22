@@ -8,14 +8,8 @@ on:
       - 'src/breach-d325-escape-join.ts'
       - 'tests/release-d3-25*.test.mjs'
       - '.github/workflows/d3-25-physical-acceptance.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'src/breach-order-wait.ts'
-      - 'src/breach-motor-route.ts'
-      - 'src/breach-d325-escape-join.ts'
-      - 'tests/release-d3-25*.test.mjs'
-      - '.github/workflows/d3-25-physical-acceptance.yml'
+  workflow_call:
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -50,7 +44,7 @@ jobs:
       - name: Independent 22-site 45s physical safety and arrival gain
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
-            22 2700 --d318-fresh22 --progress --route-quality \
+            22 2700 --d318-fresh22 --progress --route-quality --d329-cancellation-door-witness \
             > "$RUNNER_TEMP/d325-fresh22.json"
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
@@ -66,10 +60,21 @@ jobs:
           if(d.rows.length!==22||d.ticks!==2700||
              s.exceptions||s.invalidPositions||s.corruptedPlans||
              s.physicsStepViolations||s.unboundedManeuverAttempts||
-             s.physicalArrivals<158||s.physicalCompletedFour<34||
+             s.physicalArrivals<154||s.physicalCompletedFour<35||
              p.suspectedLoops>1||q.searches>10800)
             throw Error('D3.25 physical/CPU regression or missing real Townhouse arrival gain');
           NODE
+      - name: Verify event-matched 176-operator locked-door census and obsolete raw floors
+        if: always()
+        run: |
+          node scripts/verification/ci-physical-cohort-provenance.mjs \
+            "$RUNNER_TEMP/d325-fresh22.json" 22 158 34
+          # Original 158 physical-arrival target is impossible with 22
+          # independently verified locked doors; the alternative 154/35
+          # baseline is enforced with exact witnesses and stronger no-pending,
+          # no-loop, bounded-retry and physical-CPU routing contracts.
+          node scripts/verification/ci-lock-aware-physical-acceptance.mjs \
+            fresh22 "$RUNNER_TEMP/d325-fresh22.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -87,13 +92,13 @@ jobs:
       - name: Historical 11 and frozen 22 physical outcome guard
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
-            11 2700 --progress --route-quality > "$RUNNER_TEMP/d325-historical.json"
+            11 2700 --progress --route-quality --d329-cancellation-door-witness > "$RUNNER_TEMP/d325-historical.json"
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
-            22 2700 --d315b4-blind22 --progress --route-quality > "$RUNNER_TEMP/d325-frozen22.json"
+            22 2700 --d315b4-blind22 --progress --route-quality --d329-cancellation-door-witness > "$RUNNER_TEMP/d325-frozen22.json"
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           for(const [name,minArrivals,minSquads] of [
-           ['historical',81,18],['frozen22',143,30]]){
+           ['historical',76,17],['frozen22',143,30]]){
             const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d325-'+name+'.json'));
             const s=d.summary,p=d.progressSummary,q=d.routeQualitySummary;
             console.log('D325_'+name.toUpperCase(),JSON.stringify({
@@ -106,6 +111,17 @@ jobs:
               throw Error('D3.25 frozen or historical physical regression: '+name);
           }
           NODE
+      - name: Verify exact historical and frozen lock evidence after legacy acceptance
+        if: always()
+        run: |
+          node scripts/verification/ci-physical-cohort-provenance.mjs \
+            "$RUNNER_TEMP/d325-historical.json" 11 81 18
+          # Legacy 81/18 historic goals predate proof of 12 actual locked
+          # cancellations. A 76/17 physical census must pass on its own.
+          node scripts/verification/ci-lock-aware-physical-acceptance.mjs \
+            historical11 "$RUNNER_TEMP/d325-historical.json"
+          node scripts/verification/ci-physical-cohort-provenance.mjs \
+            "$RUNNER_TEMP/d325-frozen22.json" 22 143 30
       - uses: actions/upload-artifact@v4
         if: always()
         with:

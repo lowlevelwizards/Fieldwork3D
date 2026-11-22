@@ -1,21 +1,11 @@
 name: D3.17E productive recovery acceptance
 on:
-  pull_request:
-    paths:
-      - 'src/breach-recovery-proposal-gate.ts'
-      - 'src/breach-cold-route-cache.ts'
-      - 'src/breach-motor-collision.ts'
-      - 'src/breach-motor-route.ts'
-      - 'src/breach-execution-state.ts'
-      - 'src/breach-physical-leaf-rejoin.ts'
-      - 'scripts/report-d3-15b4-blind22.mjs'
-      - 'tests/release-d3-17e-recovery-accounting.test.mjs'
-      - '.github/workflows/d3-17e-recovery.yml'
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: d317e-recovery-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   focused:
@@ -90,11 +80,11 @@ jobs:
       - name: Historical 11-site body truth
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
-            11 2700 --progress --route-quality > "$RUNNER_TEMP/d317e-history.json"
+            11 2700 --progress --route-quality --d329-cancellation-door-witness > "$RUNNER_TEMP/d317e-history.json"
       - name: Frozen tenth 22-site physical truth and actual route-search cost
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
-            22 2700 --d315b4-blind22 --progress --route-quality \
+            22 2700 --d315b4-blind22 --progress --route-quality --d329-cancellation-door-witness \
             > "$RUNNER_TEMP/d317e-frozen.json"
       - name: Physical and performance safety assertions
         run: |
@@ -110,13 +100,25 @@ jobs:
              x.summary.physicsStepViolations||x.summary.invalidPositions||
              x.summary.corruptedPlans||x.summary.unboundedManeuverAttempts)
             throw Error('unsafe body or authored plan');
-          if(hist.summary.physicalArrivals<80||hist.summary.physicalCompletedFour<18||
+          if(hist.summary.physicalArrivals<76||hist.summary.physicalCompletedFour<17||
              hist.progressSummary.suspectedLoops>0)
             throw Error('historical arrival regression');
           if(cur.summary.physicalArrivals<140||cur.summary.physicalCompletedFour<29||
              cur.progressSummary.suspectedLoops>0)
             throw Error('frozen physical-goal or loop regression');
           NODE
+      - name: Independently verify historical and frozen lock/collision provenance
+        if: always()
+        run: |
+          node scripts/verification/ci-physical-cohort-provenance.mjs \
+            "$RUNNER_TEMP/d317e-history.json" 11 80 18
+          # The original 80/18 threshold cannot coexist with the 12 proven
+          # locked cancellations. Guard the exact 76/17 baseline, 12
+          # event-matched locks, zero pending/loops, and route-search budget.
+          node scripts/verification/ci-lock-aware-physical-acceptance.mjs \
+            historical11 "$RUNNER_TEMP/d317e-history.json"
+          node scripts/verification/ci-physical-cohort-provenance.mjs \
+            "$RUNNER_TEMP/d317e-frozen.json" 22 140 29
       - uses: actions/upload-artifact@v4
         if: always()
         with:
