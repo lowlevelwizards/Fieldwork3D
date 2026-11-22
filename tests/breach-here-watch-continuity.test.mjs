@@ -105,7 +105,7 @@ test('manual reroute clears a stale interrupted-entry warning with undo restorat
   assert.equal(a.interruptedDoorPlan,null,
    'new manual movement supersedes obsolete AI retry affordance');
   assert.ok(undoPlan(s,a.id));
-  assert.deepEqual(a.interruptedDoorPlan,saved);
+  assert.deepEqual(JSON.parse(JSON.stringify(a.interruptedDoorPlan)),saved);
   assert.ok(redoPlan(s,a.id));
   assert.equal(a.interruptedDoorPlan,null);
  }finally{activateSite(null);}

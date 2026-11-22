@@ -774,6 +774,10 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
   // Window/mantle portals remain legal when the established traversal system
   // explicitly permits them.
   const stroke=points.length>60?[...points.slice(0,59),points.at(-1)!]:points;
+  // Fine genuine drawn strokes have enough sampled turns to describe a
+  // curve. Existing scripted one/two-point entry templates must retain
+  // their original 20-unit authored spacing and arrival behavior.
+  const interiorStep=stroke.length>=4?7:20;
   const addStrokePoint=(point:Pt):boolean=>{
     if(d(from,point)<3||!legalMoveRoute(s,from,point).length)return false;
     proposed.push({id:s.nextId+proposed.length,kind:'move',p:clone(point),
@@ -836,7 +840,7 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
       clipped=true;break;
     }
     previousInput=point;
-    if(d(from,point)<(last?3:7))continue;
+    if(d(from,point)<(last?3:interiorStep))continue;
     if(!addStrokePoint(point)){
       // A non-local pathfinding failure must not discard earlier accepted
       // bends or silently jump to the other side of an obstruction.
