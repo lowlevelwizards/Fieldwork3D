@@ -423,3 +423,25 @@ test('D3.33 P7: read-only live 60Hz Townhouse doorway recovery gate timeline',()
  assert.equal(actors.length,4);
  assert.ok(summary.navZero+summary.navPresent===2700);
 });
+
+test('D3.33 P10: two mid-tick contact samples cannot erase a settled 60Hz stall',()=>{
+ const actor={p:{x:581.3765,y:552.1088},nav:[],
+  plan:[{id:1033,kind:'move',entryDoorId:'FRONT',p:{x:493,y:544.88}}],
+  doorTraversal:{doorId:'FRONT',maneuver:'grab-and-hold'}};
+ const stable={...actor.p};
+ for(let tick=0;tick<=90;tick++){
+  const at=tick/60;
+  observeGeneratedEntryPhysicalStillness(actor,at);
+  // A transient within-frame motor correction may be swept against
+  // real collision but resolve back before a 60Hz frame commits.
+  actor.p={x:stable.x-.55,y:stable.y};
+  observeGeneratedEntryPhysicalStillness(actor,at);
+  actor.p={...stable};
+ }
+ assert.equal(witnessedGeneratedEntryStillness(actor,'FRONT',90/60),true,
+  'a second within-frame intermediate contact cannot overwrite the final fixed-tick witness');
+ actor.p={x:stable.x-.31,y:stable.y};
+ observeGeneratedEntryPhysicalStillness(actor,91/60);
+ assert.equal(witnessedGeneratedEntryStillness(actor,'FRONT',91/60),false,
+  'real next-frame net movement MUST reset prior stillness');
+});

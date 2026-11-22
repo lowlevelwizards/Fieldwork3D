@@ -48,6 +48,14 @@ export function observeGeneratedEntryPhysicalStillness(
   episodes.delete(peer);return;
  }
  const doorId=order.entryDoorId,old=episodes.get(peer);
+ // P10: the same authoritatively fixed simulation tick may call this
+ // observation twice: once at actor-motor entry, again from a generated
+ // follower WAIT while the lead is undergoing provisional contact
+ // corrections. Comparing those two INTERMEDIATE poses falsely resets
+ // real 1.25-second stillness (4417 such resets on Townhouse 9568385).
+ // Sample one settled tick boundary. The NEXT 60Hz tick compares actual
+ // net motion and still resets on a genuine >0.20-unit departure.
+ if(old&&now>=old.lastAt&&now-old.lastAt<1/120)return;
  const reason=!old?'new-sample':
   old.orderId!==order.id?'new-order':
   old.doorId!==doorId?'different-door':
