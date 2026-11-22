@@ -7,7 +7,7 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Fixed-clock transient route acquisition and backoff. This never
  * rewrites the player-authored PlanNode[] or grants collision authority.
  */
-import {OPERATOR_RADIUS,doorLeafSegment,doorCenter,doorBlocksSegment,pointToSegment,type Pt}
+import {OPERATOR_RADIUS,doorLeafSegment,doorCenter,doorBlocksSegment,pointToSegment,type Pt,type Door}
  from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {pressDoorOnBodyAttempt,crossesDoorThreshold,canAutoOpenEnRoute} from './breach-door.ts';
@@ -685,7 +685,7 @@ export function prepareMotorRoute(
           a,p,leaf,s.seconds,world.revision)){
         const proposed=routeToNextOperableDoor(
           a.p,p,s.doors,world);
-        const swept=(from:Pt,to:Pt,doors:readonly typeof s.doors[number][]) =>
+        const swept=(from:Pt,to:Pt,doors:readonly Door[]) =>
           sweptBodyClear(from,to,[...doors],OPERATOR_RADIUS,world);
         const certified=selectCertifiedFarSideEntryLanding(
           a.p,p,proposed,s.doors,swept,
