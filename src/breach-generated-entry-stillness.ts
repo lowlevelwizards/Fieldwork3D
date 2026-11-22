@@ -25,8 +25,12 @@ export function observeGeneratedEntryPhysicalStillness(
 ):void{
  const order=peer.plan[0],episode=peer.doorTraversal;
  if(order?.kind!=='move'||!order.entryDoorId||
-    episode?.doorId!==order.entryDoorId||
-    episode.maneuver!=='grab-and-hold'){
+    // Only an actual DIFFERENT door clears the same-order observation.
+    // The authoritative traversal coordinator may transiently retire
+    // or recast this episode during its tick before restoring the
+    // grab-and-hold intent, without moving the physical body at all.
+    // That cannot erase genuine 1.25s body stillness.
+    episode&&episode.doorId!==order.entryDoorId){
   episodes.delete(peer);return;
  }
  const doorId=order.entryDoorId,old=episodes.get(peer);
@@ -41,6 +45,9 @@ export function observeGeneratedEntryPhysicalStillness(
 }
 
 /** Read a body-truth witness for the very same generated entry.
+ * A transient maneuver reclassification or nav array is not a physical
+ * displacement. Only the EXISTING stable-open-leaf, same-order,
+ * grab-and-hold and no-nav motor release gates can act on the witness.
  * A transient nav array is not a physical displacement. Callers have no
  * permission to move unless their own motor/door collision gates pass.
  */

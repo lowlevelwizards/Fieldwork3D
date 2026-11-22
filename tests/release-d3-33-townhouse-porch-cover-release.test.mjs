@@ -337,9 +337,14 @@ test('D3.33 P6: intermittent transient routes cannot erase physically witnessed 
   // The path planner can populate and drop transient routing while the
   // body NEVER physically moves. The same order/door remains active.
   actor.nav=tick%3?[{x:576,y:576}]:[];
+  // The live traversal coordinator can briefly recast a door episode
+  // between frames even while both feet and the authored MOVE stay put.
+  actor.doorTraversal=tick%5?{doorId:'FRONT',maneuver:'direct'}:
+   {doorId:'FRONT',maneuver:'grab-and-hold'};
   observeGeneratedEntryPhysicalStillness(actor,tick/60);
  }
  actor.nav=[];
+ actor.doorTraversal={doorId:'FRONT',maneuver:'grab-and-hold'};
  assert.equal(witnessedGeneratedEntryStillness(actor,'FRONT',79/60),true,
   'physical stillness survives failed transient A* proposals');
  actor.p={x:actor.p.x-.3,y:actor.p.y};
