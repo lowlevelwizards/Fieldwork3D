@@ -23,8 +23,7 @@ const initialCampaignWithPhysicalKit=()=>{
   const equipped=setEquipmentChoice(o.loadout,'utility','utility-wedge');
   const kit={...equipped,fieldInventory:{version:1,stacks:[
    {itemId:'flashbang',quantity:1,location:'rig'},
-   {itemId:'wedge',quantity:2,location:'belt'},
-   {itemId:'zip-tie',quantity:2,location:'backpack'}]}};
+   {itemId:'wedge',quantity:2,location:'belt'}]}};
   assert.equal(fieldCarryReport(kit,o.magazines,kit.fieldInventory).valid,true);
   return {...o,loadout:kit};
  })};
@@ -36,13 +35,14 @@ const report=(c,fieldRemaining,extra={})=>({
  participatingIds:['rook'],casualties:[],objective:true,events:[],
  fieldRemaining:{rook:fieldRemaining},flashUsed:1,...extra
 });
-test('F3: Campaign preserves spent wedges/cuffs, exact owned ammo, medical and HQ flash debit',()=>{
+test('F3: Campaign preserves spent wedges, exact owned ammo, medical and HQ flash debit',()=>{
  const c=initialCampaignWithPhysicalKit(),op=c.operators[0],actor={};
  Object.assign(actor,captureDeploymentInventory(op));
  // The tactical actor has the same mutable property names as this snapshot,
  // with its own detached manifest; no extra or second stock owner.
  assert.equal(spendDeployedFieldItem(actor,'wedge'),true);
- assert.equal(spendDeployedFieldItem(actor,'zip-tie'),true);
+ assert.equal(spendDeployedFieldItem(actor,'zip-tie'),false,
+  'universal restraint no longer consumes field stock');
  assert.equal(spendDeployedFieldItem(actor,'flashbang'),true);
  const remaining=captureMissionFieldInventory(actor.equipment);
  const kept=op.magazines.map((m,i)=>i===0?{...m,rounds:m.rounds-4}:({...m}));
@@ -61,7 +61,7 @@ test('F3: Campaign preserves spent wedges/cuffs, exact owned ammo, medical and H
  assert.equal(fieldQuantity(saved.loadout.fieldInventory,'flashbang'),1,
   'the saved flash is a requested issue, not a second inventory debit');
  assert.equal(fieldQuantity(saved.loadout.fieldInventory,'wedge'),1);
- assert.equal(fieldQuantity(saved.loadout.fieldInventory,'zip-tie'),1);
+ assert.equal(fieldQuantity(saved.loadout.fieldInventory,'zip-tie'),0);
  assert.equal(saved.loadout.fieldInventory.stacks.find(s=>s.itemId==='wedge')?.location,'belt');
  assert.equal(saved.reserve,reserve);
  assert.equal(saved.magazine,op.magazine-7);

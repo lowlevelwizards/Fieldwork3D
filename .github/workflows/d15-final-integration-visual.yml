@@ -8,6 +8,16 @@ on:
       - 'scripts/smoke-d15-final-visual.mjs'
       - 'tests/dispatch-d15*.test.mjs'
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/breach-order-interactions.ts'
+      - 'src/breach-suspect-compliance.ts'
+      - 'src/breach-suspect-weapons.ts'
+      - 'src/breach-simulation-actor-phase.ts'
+      - 'src/breach-optional-intel.ts'
+      - 'tests/dispatch-d15*.test.mjs'
+      - 'tests/dispatch-d9-contact.test.mjs'
+      - '.github/workflows/d15-final-integration-visual.yml'
 permissions: {contents: read}
 concurrency:
   group: d15-final-release-acceptance
@@ -31,6 +41,11 @@ jobs:
             tests/dispatch-d15-capture-transport-eligibility.test.mjs \
             tests/dispatch-d15-opportunity-escape-rearm.test.mjs \
             tests/dispatch-d15-suspect-escort-go.test.mjs \
+            tests/dispatch-d15-suspect-restraint.test.mjs \
+            tests/dispatch-d15-weapon-security.test.mjs \
+            tests/dispatch-d9-contact.test.mjs \
+            tests/eqa3-10-restrain.test.mjs \
+            tests/oc-optional-intel.test.mjs \
             tests/dispatch-d15-operational-foundation.test.mjs \
             tests/equipment-22-04-treatment.test.mjs \
             tests/breach-155.test.mjs \

@@ -95,7 +95,7 @@ test('C4 palette only offers endpoint-authorized civilian actions',()=>{
  assert.match(palette,/const civilianAtPlan=civilianContact\('secure'\)/);
  assert.match(palette,/const rescueAtPlan=civilianContact\('follow'\)/);
  assert.match(palette,/const followingAtPlan=civilianContact\('stop-following'\)/);
- assert.match(palette,/mode==='follow'\|\|mode==='stop-following'\?1\.5:5\.5,/);
+ assert.match(palette,/sweptBodyClear\(from,to,state\.doors,\s*1\.5,/);
  assert.match(palette,/const casualtyAtPlan=routeEndCivilianActions\?/);
  assert.match(palette,/nearestPaletteCandidate\(state\.civilians,at/);
  assert.match(palette,/liveVisibility\(state,c\.p\)/);
@@ -108,7 +108,7 @@ test('C4 actual palette preserves location-specific nearest-target ordering',()=
  assert.match(palette,/const civilianAtPlan=civilianContact\('secure'\)/);
  assert.match(palette,/const rescueAtPlan=civilianContact\('follow'\)/);
  assert.match(palette,/const followingAtPlan=civilianContact\('stop-following'\)/);
- assert.match(palette,/mode==='follow'\|\|mode==='stop-following'\?1\.5:5\.5,/);
+ assert.match(palette,/sweptBodyClear\(from,to,state\.doors,\s*1\.5,/);
  assert.match(palette,/const casualtyAtPlan=routeEndCivilianActions\?/);
  assert.match(palette,/nearestPaletteCandidate\(state\.civilians,at/);
  assert.match(palette,/liveVisibility\(state,c\.p\)/);
