@@ -36,7 +36,11 @@ const GOLDENS=Object.freeze({
  // The earlier D15 R1 hash credited a kill at health=0; D15.7 credits
  // only an irreversible observed fatality. Independent real-shot, actual
  // down, opponent health, AI observation and repeatability gates remain.
- combat:'196a1ed6e715942d82fbe813eb1788e5094dffa3dd4d1ad8c7da59a744c90121',
+ // D15.8: a physically surrendered suspect is no longer an active
+ // contact that overrides the player's explicit LOOK/WATCH. This changes
+ // the contact timeline; reproducible live shots, real downing, health and
+ // AI observation gates below remain strict.
+ combat:'f7f44ce49bfb9d70bd7df8bf464e781f947e36ef147e0d22d2db3446959df27b',
  civilian:'32b97cc3908c2c2655d5729996b6513d57efa339f1ed63b8b82aadf204592136'
 });
 function authorDoorEntry(s){
