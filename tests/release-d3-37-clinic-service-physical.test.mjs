@@ -32,6 +32,10 @@ test('D3.37: only an actual standable, real crossing of one operable door passes
  };
  const operable=door=>!door.locked&&!door.jammed&&
   !door.wedged&&!door.heldBy&&door.openFraction<.72;
+ assert.deepEqual(selectCertifiedFarSideEntryLanding(
+  from,goal,proposed,[service],sweep,
+  (p,doors)=>p!==from&&stand(p,doors),operable),[],
+  'no release from squeeze if real full-body starting center is unstandable');
  assert.equal(stand(proposed.at(-1),[service]),false,
   'the old snapped terminal point overlaps real closed leaf');
  assert.equal(sweep(proposed.at(-2),proposed.at(-1),[]),true);
@@ -77,6 +81,9 @@ test('D3.37: cold claim requires genuine stalled handless generated ENTRY',()=>{
   doorTraversal:{doorId:'FRONT',authoredOrderId:14,
    phase:'blocked',maneuver:'grab-and-hold',
    handContact:false,waypoints:[],lastProgressAt:9.38}};
+ assert.equal(claimStalledGeneratedEntryFarSide(
+  {...actor,squeeze:true},goal,door,45,1),true,
+  'stale squeeze stance may PROPOSE after cold ENTRY proof');
  assert.equal(claimStalledGeneratedEntryFarSide(
   actor,goal,door,45,1),true);
  assert.equal(claimStalledGeneratedEntryFarSide(
