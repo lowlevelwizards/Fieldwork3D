@@ -32,7 +32,7 @@ test('only one command long-press controller remains; failed targeting can retry
   assert.match(pointer,/if\(accepted\)port\.tacticalFeedback\.emit\(p\.dragCommitted\?'command':'select'/);
   assert.match(pointer,/if\(committed\)port\.targeting\.reset\(\)/);
   assert.match(pointer,/p\.mode==='targetPreview'\|\|p\.mode==='undecided'/);
-  assert.match(pointer,/port\.hudController\.facing\.looking\|\|insideTacticalBounds/);
+  assert.match(pointer,/port\.hudController\.facing\.looking\|\|\s*insideTacticalBounds/);
   assert.doesNotMatch(main,/case 'ctxReleaseWatch'/);
   assert.match(pointer,/if\(\!accepted\)port\.rejectAt\(pt,'INVALID SUPPRESSION POINT'\)/);
 });
