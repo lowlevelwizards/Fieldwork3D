@@ -514,6 +514,48 @@ export const movementDoorSpecs=[
       "tests/performance-p2-8-cover-los.test.mjs",
       ".github/workflows/performance-p2-8-critical.yml"
     ]
+  },
+  {
+    "key": "recovery17e",
+    "workflow": "d3-17e-recovery.yml",
+    "paths": [
+      "src/breach-recovery-proposal-gate.ts",
+      "src/breach-cold-route-cache.ts",
+      "src/breach-motor-collision.ts",
+      "src/breach-motor-route.ts",
+      "src/breach-execution-state.ts",
+      "src/breach-physical-leaf-rejoin.ts",
+      "src/breach-d336-stale-open-leaf.ts",
+      "src/breach-d337-entry-service-landing.ts",
+      "scripts/report-d3-15b4-blind22.mjs",
+      "scripts/audit-r7-squad-execution.mjs",
+      "tests/release-d3-17e-recovery-accounting.test.mjs",
+      ".github/workflows/d3-17e-recovery.yml",
+      "scripts/verification/ci-a8-physical-acceptance.mjs",
+      "scripts/verification/ci-lock-aware-physical-acceptance.mjs",
+      "scripts/verification/ci-physical-cohort-provenance.mjs",
+      "scripts/verification/ci-d3-physical-truth.mjs",
+      "tests/ci-a8-physical-acceptance.test.mjs"
+    ]
+  },
+  {
+    "key": "physical25",
+    "workflow": "d3-25-physical-acceptance.yml",
+    "paths": [
+      "src/breach-order-wait.ts",
+      "src/breach-motor-route.ts",
+      "src/breach-d325-escape-join.ts",
+      "src/breach-d336-stale-open-leaf.ts",
+      "src/breach-d337-entry-service-landing.ts",
+      "scripts/audit-r7-squad-execution.mjs",
+      "tests/release-d3-25*.test.mjs",
+      ".github/workflows/d3-25-physical-acceptance.yml",
+      "scripts/verification/ci-a8-physical-acceptance.mjs",
+      "scripts/verification/ci-lock-aware-physical-acceptance.mjs",
+      "scripts/verification/ci-physical-cohort-provenance.mjs",
+      "scripts/verification/ci-d3-physical-truth.mjs",
+      "tests/ci-a8-physical-acceptance.test.mjs"
+    ]
   }
 ];
 const movementDoorInfrastructure=/^(?:\.github\/workflows\/(?:ci|movement-door-acceptance)\.yml|scripts\/verification\/ci-(?:specialist-routing|workflow-contract)\.mjs|tests\/ci-movement-door-routing\.test\.mjs)$/;
