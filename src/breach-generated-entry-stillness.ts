@@ -56,8 +56,13 @@ export function observeGeneratedEntryPhysicalStillness(
  // Sample one settled tick boundary. The NEXT 60Hz tick compares actual
  // net motion and still resets on a genuine >0.20-unit departure.
  if(old&&now>=old.lastAt&&now-old.lastAt<1/120)return;
- const reason=!old?'new-sample':
-  old.orderId!==order.id?'new-order':
+ if(!old){
+  noteReset(peer,'new-sample');
+  episodes.set(peer,{orderId:order.id,doorId,
+   since:now,lastAt:now,anchor:{...peer.p},last:{...peer.p}});
+  return;
+ }
+ const reason=old.orderId!==order.id?'new-order':
   old.doorId!==doorId?'different-door':
   now<old.lastAt?'time-reversed':
   now-old.lastAt>.18?'sample-gap':
