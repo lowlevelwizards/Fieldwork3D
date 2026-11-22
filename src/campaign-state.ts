@@ -663,6 +663,9 @@ export function purchaseMedical(c:CampaignState):CampaignState{
 }
 /** Paid finite HQ reserves. No issue/refill occurs until a separate action. */
 export function purchaseFieldStock(c:CampaignState,key:'wedges'|'cuffs'):CampaignState{
+ // Saved HQ cuff reserves survive migration, but are no longer sellable
+ // or issued: physical restraint is an unconditional operator capability.
+ if(key==='cuffs')return c;
  const pack=FIELD_STOCK_PACKS[key];
  if(c.activeContractId||!canSpend(c,pack.price)||
   c.supplies[key]>FIELD_STOCK_LIMIT-pack.quantity)return c;

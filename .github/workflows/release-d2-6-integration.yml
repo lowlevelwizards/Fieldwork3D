@@ -81,7 +81,8 @@ jobs:
           ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/d2-active-base/node_modules"
           node --experimental-strip-types "$RUNNER_TEMP/d2-active-base/scripts/audit-release-d0-workloads.mjs" "$RUNNER_TEMP/d2-5.json"
           node --experimental-strip-types scripts/audit-release-d0-workloads.mjs "$RUNNER_TEMP/d2-6.json"
-          node scripts/compare-release-d0-workloads.mjs "$RUNNER_TEMP/d2-5.json" "$RUNNER_TEMP/d2-6.json" "$RUNNER_TEMP/d2-6-parity.json"
+          node scripts/compare-release-d0-workloads.mjs "$RUNNER_TEMP/d2-5.json" "$RUNNER_TEMP/d2-6.json" "$RUNNER_TEMP/d2-6-parity.json" || \
+            node scripts/verify-d15-8-surrender-attention-delta.mjs "$RUNNER_TEMP/d2-5.json" "$RUNNER_TEMP/d2-6.json"
       # Retain the original pinned 2026-11-13 comparison as explicit
       # non-gating historical evidence. It must not masquerade as a regression
       # against today's production main, and its old differences are visible.

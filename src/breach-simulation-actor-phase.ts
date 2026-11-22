@@ -7,7 +7,8 @@ import {length,targetAngle,angleDifference} from './breach-plan.ts';
 import {witnessShock,countNearbyEnemyAllies,countRecentlySeenThreats,moraleResponse} from './breach-ai-morale.ts';
 import {commitSuspectSurrender} from './breach-suspect-compliance.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
-import {advanceSurrenderOpportunity} from './breach-suspect-opportunity.ts';
+import {advanceSurrenderOpportunity,canAttemptSuspectEscape,
+ suspectIsSupervised} from './breach-suspect-opportunity.ts';
 import {physicalFollowGoal,physicalFollowerSeparated}
  from './breach-follow-physical-policy.ts';
 import {passageIdleYieldStep,type PassageActor} from './breach-passage.ts';
@@ -28,7 +29,7 @@ export type ActorSimulationPhasePort={
  unobstructed:(from:Pt,to:Pt,s:Session,lowBlocks:boolean)=>boolean;
  defensivePosition:(a:TeamActor,threat:Pt,s:Session)=>Pt|null;
  decideEnemy:(s:Session,a:TeamActor,h:number)=>void;
- /** Existing actor motor is the ONLY physical executor for restrained suspects. */
+ /** Existing actor motor is the ONLY physical executor for surrendered followers. */
  runCustody:(s:Session,a:TeamActor,goal:Pt,h:number)=>void;
  runFriendly:(s:Session,a:TeamActor,h:number,
   profile?:((section:string,elapsedMs:number)=>void))=>void;
@@ -95,7 +96,20 @@ export function advanceSimulationActors(s:Session,h:number,
     // TeamActor. Advance only explicit restraint custody through the existing
     // 60 Hz motor, never hostile AI or a second follower controller.
     if(a.side==='red'&&a.health>0&&a.surrendered){
-      if(a.restrained===true&&a.escortLeaderId){
+      // Surrendered suspects can walk hands-up before restraint. The
+      // existing custody motor remains their sole movement authority.
+      // Unrestrained followers can break away when no longer supervised.
+      if(a.escortLeaderId&&!a.restrained&&
+         canAttemptSuspectEscape(a,s.seconds,
+           suspectIsSupervised(s,a,unobstructed))){
+        a.escortLeaderId=null;a.escortGoal=null;
+        a.nav=[];a.velocity=0;a.lastEscortRouteAt=-100;
+        const message=a.name+' BROKE AWAY FROM UNRESTRAINED FOLLOW';
+        notify(s,message);
+        battleEvent(s,'interaction',a,a.p,message,
+          {action:'suspect-escape',targetId:a.id});
+      }
+      if(a.escortLeaderId){
         const leader=s.operators.find(b=>b.side==='blue'&&
           b.id===a.escortLeaderId&&b.health>0)??null;
         if(physicalFollowerSeparated(a,leader)){

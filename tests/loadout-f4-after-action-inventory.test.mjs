@@ -90,7 +90,8 @@ test('F4 settled Campaign readiness uses authoritative career stock and medical 
  assert.equal(o.readiness,'replenish');
  assert.ok(o.needs.includes('AMMUNITION'));
  assert.ok(o.needs.includes('MEDICAL'));
- assert.ok(o.needs.includes('FLEX CUFFS'));
+ assert.ok(!o.needs.includes('FLEX CUFFS'),
+  'restraints are built in, not a campaign replenishment requirement');
  assert.ok(!o.needs.includes('WEDGES'));
  assert.deepEqual(r.hqStock,c.supplies);
  const recovering={...c,operators:c.operators.map(o=>

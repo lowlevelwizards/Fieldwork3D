@@ -16,12 +16,13 @@ export function challengeSuspectDecision(target:Pick<TeamActor,
  if(target.health<=0||target.surrendered)return 'ineligible';
  if(target.lastChallengeAt!==undefined&&
     now-target.lastChallengeAt<SUSPECT_CHALLENGE_COOLDOWN)return 'cooldown';
- // A verbal order is not a guaranteed arrest. An actively resisting,
- // calm, unsupported civilian-safety situation cannot be coerced magically.
- // Morale is existing defender authority, suppression is witnessed pressure.
+ // A verbal challenge is not guaranteed compliance, but a shaken or
+ // already uncertain suspect should be willing to surrender without first
+ // being shot or heavily suppressed. Decisions remain deterministic and
+ // use only the existing morale/pressure state, never a per-tick reroll.
  const pressure=target.suppression+Math.min(2,target.injuryStage)*.11;
- return target.morale<=.28&&pressure>=.24||
-   target.morale<=.48&&pressure>=.74?'surrender':'refuse';
+ return target.morale<=.34||
+   target.morale<=.62&&pressure>=.22?'surrender':'refuse';
 }
 export function commitSuspectSurrender(
  s:Session,target:TeamActor,

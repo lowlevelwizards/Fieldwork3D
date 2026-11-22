@@ -1,8 +1,8 @@
 /** F6.1 — read-only, fixed-step-observed physical equipment gesture.
  *
- * Uses an already-authorized authored order and the SAME actionTimer and
- * deployed stock quote used by GO. No animation timer, gameplay event,
- * alternative inventory, or predicted expenditure is introduced.
+ * Uses an already-authorized authored order and the SAME actionTimer used
+ * by GO. Flash/wedge gestures reference deployed stock; universal restraint
+ * needs no cuff item. No animation timer or alternate inventory is introduced.
  */
 import type {TeamActor} from './breach-game.ts';
 import {quoteDeployedFieldUse,type LiveFieldItem}
@@ -22,27 +22,35 @@ export type EquipmentInteractionPose={
 type Observation=Pick<TeamActor,'plan'|'actionTimer'|'equipment'|
  'spareMagazines'|'flashCharges'|'wedgeRemaining'|'restraintRemaining'>;
 /** No effects for hypothetical, failed, or zero-time planned actions.
- * In F6.1–2 the flash order is the only supported active gesture. This is
- * deliberately narrow; wedge/RESTAIN will be added once door/civilian hand
- * arbitration is verified in their own release stages.
+ * Flash and wedge animations use physical equipment quotes. Both civilian
+ * and suspect restraint now share a stock-free fixed-tick contact gesture.
  */
 export function readEquipmentInteraction(
  actor:Observation):EquipmentInteractionPose|null{
  const order=actor.plan[0];
  if(!(actor.actionTimer>0)||!Number.isFinite(actor.actionTimer))return null;
+ const universalRestraint=order?.kind==='interact'&&
+   (order.interaction==='restrain-civilian'&&
+     order.objectId?.startsWith('civ:')||
+    order.interaction==='restrain-suspect'&&
+     order.objectId?.startsWith('suspect:'));
+ if(universalRestraint){
+  // The animation is still a real fixed-tick hand-contact gesture.
+  // No equipped cuff, fake stock or additional timer is required.
+  const duration=RESTRAINT_CONTACT_SECONDS;
+  return {item:'zip-tie',location:'belt',elapsed:actor.actionTimer,
+    duration,progress:Math.max(0,Math.min(1,actor.actionTimer/duration))};
+ }
  const item=order?.kind==='flash'&&order.aimPoint?'flashbang':
   order?.kind==='tool'&&order.toolMethod==='wedge'&&order.doorId?
-   'wedge':
-  order?.kind==='interact'&&order.interaction==='restrain-civilian'&&
-   order.objectId?.startsWith('civ:')?'zip-tie':null;
+   'wedge':null;
  if(!item)return null;
  const quote=quoteDeployedFieldUse(actor,item);
  if(!quote.available||!quote.location||
   !FIELD_ITEMS[item].locations.includes(quote.location)||
   !Number.isFinite(quote.accessSeconds))
   return null;
- const duration=(item==='wedge'?WEDGE_PLACEMENT_SECONDS:
-  item==='zip-tie'?RESTRAINT_CONTACT_SECONDS:.3)+quote.accessSeconds;
+ const duration=(item==='wedge'?WEDGE_PLACEMENT_SECONDS:.3)+quote.accessSeconds;
  return {item,location:quote.location,elapsed:actor.actionTimer,
   duration,progress:Math.max(0,Math.min(1,actor.actionTimer/duration))};
 }

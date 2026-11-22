@@ -5,6 +5,8 @@ import type {Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import type {GlockAppearanceId} from './weapons/geometry/glock-family-silhouettes.ts';
 import type {SecondaryEquipment} from './secondary-equipment.ts';
+import {sessionWorldGeometry} from './breach-world-context.ts';
+import {sweptBodyClear} from './breach-navigation.ts';
 export type DroppedFirearm={
  id:number;ownerId:string;p:Pt;heading:number;at:number;
  weapon:TeamActor['weapon'];weaponConfiguration?:TeamActor['weaponConfiguration'];
@@ -15,13 +17,34 @@ export type DroppedFirearm={
  status:'loose'|'secured'|'retrieved';
  securedById?:string;
 };
+/** Place a surrendered weapon beside its owner's collision body, not under
+ * their feet. A bounded candidate sequence checks actual passability.
+ * Narrow spaces retain the origin; adjacent contact still handles them.
+ */
+export function droppedWeaponPosition(s:Session,a:TeamActor):Pt{
+ const world=sessionWorldGeometry(s);
+ const headings=[a.heading-Math.PI/2,a.heading+Math.PI/2,
+   a.heading,a.heading+Math.PI];
+ for(const radius of [25,20,30]){
+  for(const heading of headings){
+   const p={x:a.p.x+Math.cos(heading)*radius,
+     y:a.p.y+Math.sin(heading)*radius};
+   if(!world.passable(p,7)||
+      !sweptBodyClear(a.p,p,s.doors,1.5,world)||
+      s.operators.some(e=>e!==a&&e.health>0&&
+        Math.hypot(e.p.x-p.x,e.p.y-p.y)<17))continue;
+   return p;
+  }
+ }
+ return {...a.p};
+}
 /** A unique world object receives actual held-firearm identity exactly once. */
 export function releaseSuspectHeldFirearm(s:Session,a:TeamActor):DroppedFirearm{
  const pistol=a.secondarySwitch?.active==='secondary'&&
    (a.secondarySwitch.fraction??0)>=.5&&!!a.equipment?.secondary?.weapon;
  const secondary=a.equipment?.secondary;
  const item:DroppedFirearm={
-  id:s.nextEffectId++,ownerId:a.id,p:{...a.p},heading:a.heading,at:s.seconds,
+  id:s.nextEffectId++,ownerId:a.id,p:droppedWeaponPosition(s,a),heading:a.heading,at:s.seconds,
   weapon:a.weapon,weaponConfiguration:a.weaponConfiguration?
     structuredClone(a.weaponConfiguration):undefined,
   loadedRounds:pistol?(secondary?.loadedRounds??0):a.magazine,

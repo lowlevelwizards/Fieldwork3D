@@ -57,6 +57,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/checkout@v4
         with:
           ref: 990c0b35c19ed2850a76d2827c98d5bc596342cc
@@ -72,7 +74,21 @@ jobs:
           node --experimental-strip-types scripts/audit-release-d0-workloads.mjs ../d2-1-before.json
       - name: Current D2.1 replay and simulated gameplay corpus
         run: node --experimental-strip-types scripts/audit-release-d0-workloads.mjs d2-1-after.json
-      - name: Exact world, events, ammo, door, movement and replay fingerprints
+      - name: Current production baseline — ten deterministic workload facts
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/d21-current-base" "$BASE_SHA"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/d21-current-base/node_modules"
+          node --experimental-strip-types "$RUNNER_TEMP/d21-current-base/scripts/audit-release-d0-workloads.mjs" d2-1-current-base.json
+      - name: Reject unreviewed current-main gameplay changes
+        run: |
+          node scripts/compare-release-d0-workloads.mjs d2-1-current-base.json d2-1-after.json d2-1-current-parity.json || \
+            node scripts/verify-d15-8-surrender-attention-delta.mjs d2-1-current-base.json d2-1-after.json
+      # Original D1 baseline stays pinned for historical signal, but the
+      # forward safety gate must use current production and explicit deltas.
+      - name: Historical D1 and H1 comparisons (advisory)
+        continue-on-error: true
         run: |
           # The pinned D1 reference predates D2.3's committed single
           # abandoned-step correction. First demand exact equality; if it
@@ -90,3 +106,5 @@ jobs:
             d2-1-before.json
             d2-1-after.json
             d2-1-comparison.json
+            d2-1-current-base.json
+            d2-1-current-parity.json

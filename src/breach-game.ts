@@ -2,7 +2,7 @@ import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
 import {canConcludeWithdrawal,commitIndividualExtractions,deployedTeam} from './breach-operation-outcomes.ts';
-import {observeOptionalIntel,beginOptionalIntelGather,autoBeginOptionalIntelGather,advanceOptionalIntel,
+import {observeOptionalIntel,beginOptionalIntelGather,collectProximityOptionalIntel,advanceOptionalIntel,
  type OptionalIntelItem,type OptionalIntelGather,eligibleOptionalIntel}
  from './breach-optional-intel.ts';
 import {coverTargetToken} from './worldgen/site-object-identity.ts';
@@ -613,7 +613,7 @@ export function planCivilianInteraction(s:Session,id:string,
  if(range>(voice?CIVILIAN_VOICE_RANGE:34)||
     (range>28&&action!=='stop-following'&&
      !(action==='follow'&&alreadyEscorted)&&!liveVisibility(s,civil.p))||
-    !sweptBodyClear(from,civil.p,s.doors,voice?1.5:5.5,
+    !sweptBodyClear(from,civil.p,s.doors,1.5,
       sessionWorldGeometry(s)))return false;
  if(action==='follow'&&(!civil.rescueTarget||s.mission!=='extract'))
    return false;
@@ -621,7 +621,7 @@ export function planCivilianInteraction(s:Session,id:string,
    s.mission!=='extract'||!alreadyEscorted))return false;
  if(action==='restrain'&&
     (civil.state!=='compliant'||civil.restrained===true||
-     civil.rescueTarget||a.restraintRemaining<=0))return false;
+     civil.rescueTarget))return false;
  const queued=addNode(s,id,'interact',from,{
    objectId:civil.id,interaction:action==='secure'?
      'secure-civilian':action==='follow'?'follow-civilian':
@@ -642,7 +642,7 @@ export function planSuspectChallenge(s:Session,id:string,targetId:string):boolea
    return false;
  const from=finalPoint(a);
  if(d(from,suspect.p)>SUSPECT_CHALLENGE_RANGE||
-    !sweptBodyClear(from,suspect.p,s.doors,5.5,sessionWorldGeometry(s)))
+    !sweptBodyClear(from,suspect.p,s.doors,1.5,sessionWorldGeometry(s)))
    return false;
  const queued=addNode(s,id,'interact',from,{
    objectId:'suspect:'+suspect.id,interaction:'challenge-suspect'
@@ -654,13 +654,12 @@ export function planSuspectChallenge(s:Session,id:string,targetId:string):boolea
 export function planSuspectRestraint(s:Session,id:string,targetId:string):boolean{
  const a=party(s,id),target=enemies(s).find(e=>e.id===targetId);
  if(!a||!target||!canEdit(s)||a.health<=0||
-    target.health<=0||!target.surrendered||target.restrained===true||
-    a.restraintRemaining<=0)return false;
+    target.health<=0||!target.surrendered||target.restrained===true)return false;
  const from=finalPoint(a);
  if(d(from,target.p)>34||
     !team(s).some(observer=>inSight(observer,target,s))&&
       !liveVisibility(s,target.p)||
-    !sweptBodyClear(from,target.p,s.doors,5.5,sessionWorldGeometry(s)))
+    !sweptBodyClear(from,target.p,s.doors,1.5,sessionWorldGeometry(s)))
    return false;
  const queued=addNode(s,id,'interact',from,{
    objectId:'suspect:'+target.id,interaction:'restrain-suspect'
@@ -675,7 +674,7 @@ export function planSuspectEscort(s:Session,id:string,targetId:string,
  mode:'escort'|'stop'):boolean{
  const a=party(s,id),suspect=enemies(s).find(x=>x.id===targetId);
  if(!a||!suspect||!canEdit(s)||a.health<=0||suspect.health<=0||
-    !suspect.surrendered||suspect.restrained!==true)return false;
+    !suspect.surrendered)return false;
  if(mode==='stop'&&!suspect.escortLeaderId)return false;
  if(mode==='escort'&&suspect.escortLeaderId===a.id)return false;
  const from=finalPoint(a);
@@ -710,8 +709,8 @@ export function planSecureDroppedFirearm(s:Session,id:string,weaponId:number):bo
  const a=party(s,id),item=s.droppedFirearms.find(w=>w.id===weaponId);
  if(!a||!item||!canEdit(s)||a.health<=0||item.status!=='loose')return false;
  const from=finalPoint(a);
- if(d(from,item.p)>34||(d(from,item.p)>28&&!liveVisibility(s,item.p))||
-    !sweptBodyClear(from,item.p,s.doors,5.5,sessionWorldGeometry(s)))return false;
+ if(d(from,item.p)>58||!liveVisibility(s,item.p)||
+    !sweptBodyClear(from,item.p,s.doors,1.5,sessionWorldGeometry(s)))return false;
  const queued=addNode(s,id,'interact',from,{
    objectId:'weapon:'+item.id,interaction:'secure-firearm'
  });
@@ -1812,14 +1811,17 @@ function mission(s:Session,dt:number){
     }
   }
   if(s.optionalIntel.length){
-    autoBeginOptionalIntelGather(s,(from,to)=>
+    // Legacy timed interactions still advance for replay/save compatibility.
+    // Ordinary scattered evidence is collected instantly as an operator
+    // passes, even if they never stop for a 1.2-second hidden progress bar.
+    const timed=advanceOptionalIntel(s,dt,(from,to)=>
       unobstructed(from,to,s,false));
-    const gathered=advanceOptionalIntel(s,dt,(from,to)=>
+    const instant=collectProximityOptionalIntel(s,(from,to)=>
       unobstructed(from,to,s,false));
-    if(gathered){
+    for(const gathered of [timed,instant])if(gathered){
       const finder=team(s).find(a=>a.id===gathered.collectedBy);
       if(finder){
-        notify(s,finder.name+' RECOVERED OPTIONAL INTELLIGENCE');
+        notify(s,'INTEL RECOVERED · '+finder.name);
         battleEvent(s,'intel',finder,gathered.p,'OPTIONAL INTELLIGENCE COLLECTED',
           {action:'optional-intel-recovered',objectId:gathered.id,
            contributorId:finder.id});
@@ -1952,10 +1954,8 @@ function mission(s:Session,dt:number){
       if(s.holdTime<7)return;
     }
     if(s.missionType==='intel'){
-      // Deliberate timed pickup. The operator who physically did the
-      // collection becomes the item carrier, not the whole squad.
-      s.holdTime+=dt;
-      if(s.holdTime<1.2)return;
+      // A physically reached, unobstructed objective is collected
+      // immediately. Its courier still owns the actual extraction item.
       const collector=atObjective[0];
       if(!collector)return;
       s.intelCarrierId=collector.id;

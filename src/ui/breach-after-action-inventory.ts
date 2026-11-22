@@ -25,7 +25,7 @@ const readiness=(op:OperatorInventoryCloseout):string=>{
 };
 const pairs=(op:OperatorInventoryCloseout):[string,CloseoutQuantity,string][]=>[
  ['AMMO',op.rounds,'ROUNDS'],['FLASH',op.flash,'FLASH'],
- ['WEDGES',op.wedges,'WEDGES'],['FLEX CUFFS',op.cuffs,'PAIRS'],
+ ['WEDGES',op.wedges,'WEDGES'],
  ['MEDICAL',op.medical,'SUPPLIES']
 ];
 export function renderAfterActionCarrySummary(
@@ -48,8 +48,7 @@ export function renderAfterActionCarrySummary(
   placement.append(el('strong','','REMAINING PHYSICAL LOCATIONS'));
   for(const [label,items] of [
    ['FLASH',op.carryLocations.flash],
-   ['WEDGES',op.carryLocations.wedges],
-   ['FLEX CUFFS',op.carryLocations.cuffs]
+   ['WEDGES',op.carryLocations.wedges]
   ] as const){
    const line=el('div','fw-f4-placement');
    line.append(el('span','',label),
@@ -98,10 +97,10 @@ export function renderAfterActionTeamReadiness(
  }
  root.append(row);
  if(report.hqStock){
-  const {ammo,medical,flash,wedges,cuffs}=report.hqStock;
+  const {ammo,medical,flash,wedges}=report.hqStock;
   root.append(el('p','fw-f4-hq',
    'HQ SUPPLY · '+ammo+' ROUNDS · '+medical+' MEDICAL PACKS · '+
-     flash+' FLASHBANGS · '+wedges+' WEDGES · '+cuffs+' CUFF PAIRS'));
+     flash+' FLASHBANGS · '+wedges+' WEDGES'));
  }
  return root;
 }

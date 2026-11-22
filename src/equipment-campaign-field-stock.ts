@@ -30,7 +30,9 @@ const inventory=(kit:EquipmentLoadout)=>
 const count=(kit:EquipmentLoadout,id:FieldItemId)=>
  fieldQuantity(inventory(kit),id);
 const integer=(x:number)=>Number.isInteger(x)&&x>=0;
-const ids=[['wedge','wedges'],['zip-tie','cuffs']] as const;
+// Restraint is a universal operator action. Keep the persisted HQ cuffs
+// field for old saves, but never issue, spend or restock it again.
+const ids=[['wedge','wedges']] as const;
 
 /** Net stock changes are one atomic transaction, never two sequential ones.
  * Both acquisition AND return routes must use this same quote.

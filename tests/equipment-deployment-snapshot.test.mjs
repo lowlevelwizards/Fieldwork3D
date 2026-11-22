@@ -25,8 +25,8 @@ test('F1 Quick Play snapshot carries exact magazine identities, rounds and fitte
  assert.equal(snapshot.flashCharges,2);
  assert.equal(fieldCarryReport(snapshot.equipment,snapshot.spareMagazines,
   snapshot.equipment.fieldInventory).valid,true);
- assert.equal(snapshot.restraintRemaining,1);
- assert.equal(fieldQuantity(snapshot.equipment.fieldInventory,'zip-tie'),1);
+ assert.equal(snapshot.restraintRemaining,0,'legacy cuffs are not mission-issued');
+ assert.equal(fieldQuantity(snapshot.equipment.fieldInventory,'zip-tie'),0);
  assert.deepEqual(snapshot.equipment.slots,source.loadout.slots);
  assert.notStrictEqual(snapshot.equipment,source.loadout);
  assert.notStrictEqual(snapshot.equipment.slots,source.loadout.slots);
@@ -55,14 +55,14 @@ test('F1 Campaign deployment preserves depleted medical inventory and true flash
  assert.equal(actor.flashCharges,3);
  assert.equal(fieldCarryReport(actor.equipment,actor.spareMagazines,
   actor.equipment.fieldInventory).valid,true);
- assert.equal(actor.restraintRemaining,2);
+ assert.equal(actor.restraintRemaining,0);
  assert.deepEqual(actor.weaponConfiguration,source.weaponConfiguration);
  assert.notStrictEqual(actor.weaponConfiguration,source.weaponConfiguration);
  assert.equal(actor.weaponLightOn,source.weaponConfiguration.slots.light==='light-compact');
  limitDeployedFlashIssue(actor,1);
  assert.equal(actor.flashCharges,1);
  assert.equal(fieldQuantity(actor.equipment.fieldInventory,'flashbang'),1);
- assert.equal(fieldQuantity(actor.equipment.fieldInventory,'zip-tie'),2);
+ assert.equal(fieldQuantity(actor.equipment.fieldInventory,'zip-tie'),0);
  assert.equal(fieldQuantity(source.loadout.fieldInventory,'flashbang'),3);
  assert.equal(actor.spareMagazines.reduce((sum,m)=>sum+m.rounds,0),source.reserve);
  limitDeployedFlashIssue(actor,0);

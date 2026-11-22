@@ -49,23 +49,13 @@ test('F2: one physical canister is removed from the quickest actual pouch',()=>{
  assert.equal(fieldQuantity(a.equipment.fieldInventory,'flashbang'),0);
  assert.deepEqual(source,before,'authoritative roster source never changed');
 });
-test('F2: physical flex cuffs require a carried pair and add backpack access',()=>{
+test('F2: archived cuffs are no longer issued stock or needed for RESTRAIN',()=>{
  const source=issued([{itemId:'zip-tie',quantity:2,location:'backpack'}]);
  const a=active(source);
- assert.equal(a.restraintRemaining,2);
- const quote=quoteDeployedFieldUse(a,'zip-tie');
- assert.equal(quote.location,'backpack');assert.equal(quote.accessSeconds,.8);
- assert.equal(spendDeployedFieldItem(a,'zip-tie'),true);
- assert.equal(a.restraintRemaining,1);
- assert.equal(fieldQuantity(a.equipment.fieldInventory,'zip-tie'),1);
- assert.equal(spendDeployedFieldItem(a,'zip-tie'),true);
- assert.equal(spendDeployedFieldItem(a,'zip-tie'),false);
  assert.equal(a.restraintRemaining,0);
- const stale=active(source);stale.equipment.fieldInventory.stacks=[];
- assert.equal(quoteDeployedFieldUse(stale,'zip-tie').available,false,
-  'a stale counter must never conjure an unavailable physical pair');
- assert.equal(spendDeployedFieldItem(stale,'zip-tie'),false);
- assert.equal(stale.restraintRemaining,2);
+ assert.equal(fieldQuantity(a.equipment.fieldInventory,'zip-tie'),0);
+ assert.equal(quoteDeployedFieldUse(a,'zip-tie').available,false);
+ assert.equal(spendDeployedFieldItem(a,'zip-tie'),false);
 });
 test('F2: placed wedges return exactly one to a physically valid carrier',()=>{
  const source=issued([
@@ -157,7 +147,7 @@ test('F2: replay rewinds and seeks exact physical item positions and quantities'
   'flashbang'),2,'replay seek never mutates stored historic frames');
 });
 
-test('F2: real RESTRAIN retrieves backpack cuffs, then consumes only on success',()=>{
+test('F2: real RESTRAIN is an ordinary timed contact even with no field item',()=>{
  const pt=(x,y)=>({x,y});
  const site={seed:31010,name:'F2 pack restraints',layout:'corridor',
   rooms:[{id:'floor',x:80,y:140,w:420,h:160,kind:'room',
@@ -172,22 +162,20 @@ test('F2: real RESTRAIN retrieves backpack cuffs, then consumes only on success'
  try{
   for(const blue of team(s))if(blue!==a)blue.health=0;
   a.p=pt(300,200);a.priorP={...a.p};a.heading=0;a.weaponYaw=0;
-  applyDeploymentInventory(a,issued([
-   {itemId:'zip-tie',quantity:2,location:'backpack'}]));
+  applyDeploymentInventory(a,issued([]));
   const person=createCivilian({id:'civ:f2-cuffs',role:'visitor',
    persona:'steady',activity:'idle',position:pt(315,200),
    heading:0,roomId:'floor',appearanceSeed:13});
   person.state='compliant';person.stateSince=0;s.civilians.push(person);
   assert.equal(planCivilianInteraction(s,a.id,person.id,'restrain'),true);
-  assert.equal(a.restraintRemaining,2,'planning is free');
+  assert.equal(a.restraintRemaining,0,'no cuffs are issued');
   toggling(s);
-  for(let i=0;i<95;i++)stepSession(s,1/60);
-  assert.equal(person.restrained,false,'backpack retrieval must take real time');
-  assert.equal(a.restraintRemaining,2,'incomplete gesture cannot spend cuffs');
-  for(let i=95;i<190&&!person.restrained;i++)stepSession(s,1/60);
+  for(let i=0;i<50;i++)stepSession(s,1/60);
+  assert.equal(person.restrained,false,'contact still requires time');
+  for(let i=50;i<160&&!person.restrained;i++)stepSession(s,1/60);
   assert.equal(person.restrained,true);
-  assert.equal(a.restraintRemaining,1);
-  assert.equal(fieldQuantity(a.equipment.fieldInventory,'zip-tie'),1);
+  assert.equal(a.restraintRemaining,0);
+  assert.equal(fieldQuantity(a.equipment.fieldInventory,'zip-tie'),0);
  }finally{activateSite(null);}
 });
 
