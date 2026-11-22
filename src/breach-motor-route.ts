@@ -47,6 +47,10 @@ import {eligibleRehearsedPortalContinuation,
  from './breach-rehearsed-portal-continuation.ts';
 import {claimPhysicalLeafRejoin,relevantStableOpenLeaf,
  selectColdStaleLeafPortalStage} from './breach-physical-leaf-rejoin.ts';
+import {claimColdBlockedOpenLeafContinuation}
+ from './breach-d336-stale-open-leaf.ts';
+import {noteAcceptedColdBlockedLeafContinuation}
+ from './breach-rehearsed-portal-continuation.ts';
 import {claimColdExactExistingRouteRejoin,
  selectColdExactExistingRouteRejoin}
  from './breach-d336-cold-route-rejoin.ts';
@@ -654,6 +658,55 @@ export function prepareMotorRoute(
           setTransientRoute(s,a,prefix,'initial-portal-recovery',
             portalDecision.proof??undefined);
           provisionalRouteAccepted(a);
+        }
+      }
+    }
+
+    // D3.36 Garage Moss: a local D1 episode can remain BLOCKED for
+    // many seconds even though the leaf is now fully OPEN, has no hand
+    // contact or stage, and the actor has NO route. Ordinary intel and
+    // generic portal acquisition above have already failed. Permit ONE
+    // cold certified prefix to the NEXT actual operable door, only when
+    // every current full-body edge is legal (except the single verified
+    // final closed-door contact). Original MOVE, GO, doors and collision
+    // remain unchanged. Retire the STALE episode only after R4 approval.
+    if(!a.nav.length&&a.side==='blue'&&a.plan[0]?.kind==='move'&&
+       !a.plan[0].entryDoorId&&!a.plan[0].stackDoorId&&
+       a.lastBlocker==='route'&&a.blockedTime>=3&&
+       a.doorTraversal?.phase==='blocked'&&
+       !a.traversal&&!a.traversalPending&&!a.squeeze){
+      const old=a.doorTraversal;
+      const leaf=s.doors.find(door=>door.id===old.doorId);
+      const world=sessionWorldGeometry(s);
+      if(leaf&&claimColdBlockedOpenLeafContinuation(
+          a,p,leaf,s.seconds,world.revision)){
+        const proposed=routeToNextOperableDoor(
+          a.p,p,s.doors,world);
+        const certified=certifiedFollowOnPortalPrefix(
+          a.p,p,proposed,s.doors,
+          (from,to,doors)=>sweptBodyClear(from,to,[...doors],
+            OPERATOR_RADIUS,world),
+          door=>!door.locked&&!door.jammed&&!door.wedged&&
+            !door.heldBy&&(door.openFraction??(door.open?1:0))<.72&&
+            canAutoOpenEnRoute({kind:'move'},door.id));
+        if(certified.length){
+          a.doorTraversal=null;
+          const decision=authorizeRouteAcquisition({
+            actor:a,session:s,source:'initial-portal-recovery',goal:p,
+            route:certified,orderIdAtSelection:acquisitionOrderId,
+            certificate:'first-operable-door-prefix',eligible:true,
+            physicalProof:true,initialRouteAbsent:true
+          });
+          if(decision.kind==='adopt'){
+            setTransientRoute(s,a,certified,'initial-portal-recovery',
+              decision.proof??undefined);
+            noteAcceptedColdBlockedLeafContinuation(
+              a,leaf,p,s.seconds);
+            provisionalRouteAccepted(a);
+            a.lastNavRepairAt=s.seconds;
+            return 'ready';
+          }
+          a.doorTraversal=old; // R4 refused: restore unchanged owner.
         }
       }
     }
