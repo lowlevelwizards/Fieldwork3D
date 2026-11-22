@@ -47,6 +47,12 @@ import {eligibleRehearsedPortalContinuation,
  from './breach-rehearsed-portal-continuation.ts';
 import {claimPhysicalLeafRejoin,relevantStableOpenLeaf,
  selectColdStaleLeafPortalStage} from './breach-physical-leaf-rejoin.ts';
+import {claimColdExactExistingRouteRejoin,
+ selectColdExactExistingRouteRejoin}
+ from './breach-d336-cold-route-rejoin.ts';
+import {evaluateOrdinaryRecoveryAdoption}
+ from './breach-ordinary-recovery-adoption.ts';
+import {watchClearanceAllowed} from './breach-auto-sidestep.ts';
 
 /** After an ACTUAL swept door overlap escape, prefer one physical
  * world-truth connector past a STABLE fully-open leaf. Otherwise a
@@ -343,6 +349,46 @@ export function prepareMotorRoute(
   // Re-evaluate a previously chosen long path after a nearby physically
   // broken latch clears. Transient route only; no player-plan rewrite.
   if(a.nav.length)refreshRouteAfterForcedDoor(a,p,s);
+  // D3.36 Garage: the real body can stop at a WALL whose coarse next
+  // NAV point is unstandable while a LATER node on the exact same
+  // previously selected route is reachable by a real full-body path.
+  // Cold-rejoin that disposable tail, not the authored GO, only after
+  // >=3s of physical failure and no active doorway/hand reservation.
+  // The existing actor motor still executes every exact .3u footstep.
+  if(a.side==='blue'&&a.plan[0]?.kind==='move'&&
+     a.nav.length>=3&&a.blockedTime>=3&&
+     a.lastBlocker==='wall'&&!a.squeeze&&
+     s.seconds>=a.retryRouteAt){
+    const world=sessionWorldGeometry(s);
+    const sweep=(from:Pt,to:Pt)=>
+      sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
+    if(claimColdExactExistingRouteRejoin(a,p,s.seconds,world.revision,
+       s.doors,sweep(a.p,a.nav[0]))){
+      const route=selectColdExactExistingRouteRejoin(
+        a.p,p,a.nav,
+        at=>bodyClear(at,s.doors,OPERATOR_RADIUS,world),sweep);
+      if(route.length&&watchClearanceAllowed(a.p,route[0],p,
+          !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)){
+        const approved=evaluateOrdinaryRecoveryAdoption({
+          actor:a,session:s,source:'blocked-leg-connector',
+          operation:'replace',goal:p,route,
+          orderIdAtSelection:acquisitionOrderId,
+          eligible:true,certificate:'first-full-body-stride',
+          watchSafe:true,useful:true,
+          retry:'collision-retry',recurrence:'blocked-leg-connector'
+        });
+        if(approved.accepted){
+          setTransientRoute(s,a,route,'blocked-leg-connector',
+            approved.proof);
+          markD326FineMotorRoute(a);
+          notePreciseLocalDetour(a,route[0]);
+          a.lastNavRepairAt=s.seconds;
+          provisionalRouteAccepted(a);
+          return 'ready';
+        }
+      }
+    }
+  }
   if(!a.nav.length){
     // D3.10B: after real retries have established a known, immovable
     // authored landing, do not run the same A* and contact probes forever.
