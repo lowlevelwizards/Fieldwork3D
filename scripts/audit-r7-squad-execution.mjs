@@ -1399,6 +1399,40 @@ function run(site,seed,kind){
       });
     };
     const initial=edges(actor.p,fullPortal);
+    // The old terminal snapped *outside* SERVICE's aperture capsule.
+    // Only a real crossing to a FULL-BODY-STANDABLE post-door landing
+    // may be substituted; every other world edge stays original.
+    // These are read-only exact geometrical hypotheses, not motor NAV.
+    const last=initial.at(-1);
+    const singleLeaf=last&&last.index===fullPortal.length-1&&
+      !last.fullBodySweep&&last.withoutAllDoors&&
+      last.culpritDoors.length===1?
+        doors.find(door=>door.id===last.culpritDoors[0].id):null;
+    const landingTests=[];
+    if(singleLeaf&&operable(singleLeaf)){
+      const span=dist(singleLeaf.a,singleLeaf.b);
+      const tx=(singleLeaf.b.x-singleLeaf.a.x)/span,
+        ty=(singleLeaf.b.y-singleLeaf.a.y)/span;
+      const nx=-ty,ny=tx;
+      const mid={x:(singleLeaf.a.x+singleLeaf.b.x)/2,
+        y:(singleLeaf.a.y+singleLeaf.b.y)/2};
+      const sign=(goal.x-mid.x)*nx+(goal.y-mid.y)*ny>=0?1:-1;
+      const previous=fullPortal.at(-2);
+      for(const depth of [OPERATOR_RADIUS+8,OPERATOR_RADIUS+12,
+         OPERATOR_RADIUS+18,OPERATOR_RADIUS+24])
+        for(const offset of [0,6,-6,12,-12]){
+          const target={x:mid.x+nx*sign*depth+tx*offset,
+            y:mid.y+ny*sign*depth+ty*offset};
+          const proposed=[...fullPortal.slice(0,-1),target];
+          landingTests.push({
+            depth,offset,target,standable:stand(target),
+            sweepAfterRemovingJustThisLeaf:sweep(previous,target,
+              doors.filter(d=>d!==singleLeaf)),
+            completeFullBodyCertificate:certification(actor.p,proposed),
+            proposed:proposed.slice(0,8)
+          });
+        }
+    }
     const alternatives=[];
     for(const radius of [4,8,12,20,32]){
       for(let h=0;h<16;h++){
@@ -1429,7 +1463,7 @@ function run(site,seed,kind){
         waypoints:actor.doorTraversal.waypoints,
         lastProgressAt:actor.doorTraversal.lastProgressAt}:null,
       route:fullPortal,certifiedCount:certification(actor.p,fullPortal),
-      edges:initial,alternatives,
+      edges:initial,alternatives,landingTests,
       doors:doors.map(door=>({id:door.id,
         open:door.open,locked:!!door.locked,
         fraction:round(door.openFraction??0),
