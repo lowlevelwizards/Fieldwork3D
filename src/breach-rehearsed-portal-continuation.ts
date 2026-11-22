@@ -128,7 +128,7 @@ export function certifiedFollowOnPortalPrefix(
  */
 type ForwardLease={
  doorId:string;orderId:number;goal:Pt;route:Pt[];until:number;
- retainedShoves:number;
+ retainedShoves:number;startBlockedTime:number;
 };
 const forwardLeases=new WeakMap<TeamActor,ForwardLease>();
 /** One independent proof survives valid NAV invalidation after THIS actor
@@ -149,7 +149,7 @@ export function noteAcceptedFollowOnPortal(
  w.used=true;
  forwardLeases.set(a,{doorId:w.doorId,orderId:w.orderId,
   goal:{...w.goal},route:a.nav,until:seconds+5,
-  retainedShoves:0});
+  retainedShoves:0,startBlockedTime:a.blockedTime});
  shoveProvenance.set(a,{doorId:w.doorId,orderId:w.orderId,
   goal:{...w.goal},portal:{...w.portal},selectedAt:seconds,
   revision:worldRevision,attempted:false});
@@ -225,6 +225,33 @@ export function retainSweptFollowOnAfterPhysicalShove(
  w.retainedShoves++;
  return true;
 }
+/** D3.36: after an immobile, fully opened old leaf's STALE episode
+ * has been retired AND the R4 gate has adopted a complete physically
+ * certified first-operable-door prefix, keep only that same route
+ * identity from immediately reacquiring the OLD leaf. The next real
+ * door, collision or any new authored GO stays fully authoritative.
+ *
+ * Caller MUST first prove the true blocked/open-leaf state and run
+ * certifiedFollowOnPortalPrefix plus authorizeRouteAcquisition. This
+ * helper grants no certificate, route, collision or actor movement.
+ */
+export function noteAcceptedColdBlockedLeafContinuation(
+ a:TeamActor,oldLeaf:Door,goal:Pt,seconds:number
+):boolean{
+ const order=a.plan[0];
+ if(a.side!=='blue'||order?.kind!=='move'||
+    !samePt(order.p,goal)||a.doorTraversal||
+    !a.nav.length||!oldLeaf.open||oldLeaf.locked||
+    oldLeaf.jammed||oldLeaf.wedged||oldLeaf.heldBy||
+    oldLeaf.kind==='shutter'||oldLeaf.kind==='sliding'||
+    (oldLeaf.openFraction??0)<.98||
+    Math.abs(oldLeaf.angularVelocity??0)>=.16||
+    !Number.isFinite(seconds))return false;
+ forwardLeases.set(a,{doorId:oldLeaf.id,orderId:order.id,
+   goal:{...goal},route:a.nav,until:seconds+5,
+   retainedShoves:0,startBlockedTime:a.blockedTime});
+ return true;
+}
 export function protectedRehearsedFollowOnDoor(
  a:TeamActor,doors:readonly Door[],seconds:number
 ):string|null{
@@ -234,7 +261,7 @@ export function protectedRehearsedFollowOnDoor(
     d(order.p,w.goal)>.5||
     a.nav!==w.route||!a.nav.length||
     !Number.isFinite(seconds)||seconds>=w.until||
-    a.blockedTime>=.18||a.traversal||
+    a.blockedTime>=w.startBlockedTime+.18||a.traversal||
     a.traversalPending||a.autoSidestep||a.fireRetreatTarget){
   forwardLeases.delete(a);return null;
  }
@@ -245,6 +272,16 @@ export function protectedRehearsedFollowOnDoor(
     Math.abs(door.angularVelocity??0)>=.16){
   forwardLeases.delete(a);return null;
  }
+ // Only REAL physical foot movement can reset the existing blocked-time
+ // counter. Once the ordinary motor has reset it, use that lower genuine
+ // value as the next obstruction baseline: a later .18s block must revoke
+ // protection immediately, not inherit pre-adoption stationary seconds.
+ if(a.blockedTime<w.startBlockedTime)
+  w.startBlockedTime=a.blockedTime;
+ // A newly accepted route may start after several seconds of genuine
+ // no-route blockage. Keep that measured history: revoke only if a NEW
+ // 0.18s contact episode accumulates after adoption. A real footstep
+ // resets blockedTime by the existing motor, not by this lease setter.
  // Squeeze is a temporary narrow motor stance, not a real obstruction:
  // keep the already certified exact transient NAV until contact, a changed
  // order, a changed route or a different door revokes this brief lease.
