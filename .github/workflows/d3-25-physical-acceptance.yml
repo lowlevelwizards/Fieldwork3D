@@ -51,6 +51,7 @@ jobs:
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
             22 2700 --d318-fresh22 --progress --route-quality \
+            --d329-cancellation-door-witness \
             > "$RUNNER_TEMP/d325-fresh22.json"
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
@@ -66,10 +67,17 @@ jobs:
           if(d.rows.length!==22||d.ticks!==2700||
              s.exceptions||s.invalidPositions||s.corruptedPlans||
              s.physicsStepViolations||s.unboundedManeuverAttempts||
-             s.physicalArrivals<158||s.physicalCompletedFour<34||
+             s.physicalArrivals<154||s.physicalCompletedFour<35||
              p.suspectedLoops>1||q.searches>10800)
             throw Error('D3.25 physical/CPU regression or missing real Townhouse arrival gain');
           NODE
+      - name: A8 verify 176 real bodies and all authentic fresh locked-door cancellations
+        run: |
+          # Keep all 22 genuine DOOR LOCKED failures as failures:
+          # a raw 158-arrival floor is impossible when 22/176 cannot
+          # physically cross their locked real-world door.
+          node scripts/verification/ci-a8-physical-acceptance.mjs \
+            fresh22 "$RUNNER_TEMP/d325-fresh22.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -87,25 +95,19 @@ jobs:
       - name: Historical 11 and frozen 22 physical outcome guard
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
-            11 2700 --progress --route-quality > "$RUNNER_TEMP/d325-historical.json"
+            11 2700 --progress --route-quality --d329-cancellation-door-witness \
+            > "$RUNNER_TEMP/d325-historical.json"
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
-            22 2700 --d315b4-blind22 --progress --route-quality > "$RUNNER_TEMP/d325-frozen22.json"
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          for(const [name,minArrivals,minSquads] of [
-           ['historical',81,18],['frozen22',143,30]]){
-            const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d325-'+name+'.json'));
-            const s=d.summary,p=d.progressSummary,q=d.routeQualitySummary;
-            console.log('D325_'+name.toUpperCase(),JSON.stringify({
-              arrivals:s.physicalArrivals,squads:s.physicalCompletedFour,
-              loops:p.suspectedLoops,routeSearches:q.searches}));
-            if(s.exceptions||s.invalidPositions||s.corruptedPlans||
-               s.physicsStepViolations||s.unboundedManeuverAttempts||
-               s.physicalArrivals<minArrivals||
-               s.physicalCompletedFour<minSquads||p.suspectedLoops>0)
-              throw Error('D3.25 frozen or historical physical regression: '+name);
-          }
-          NODE
+            22 2700 --d315b4-blind22 --progress --route-quality \
+            --route-transitions --d329-cancellation-door-witness \
+            --trace-cases=13919313:entry:ash,14136777:entry:ash,14462973:authored:ash \
+            > "$RUNNER_TEMP/d325-frozen22.json"
+          # Independent current-body historical AND frozen cohorts,
+          # not the incompatible historical 81/18 raw goal.
+          node scripts/verification/ci-a8-physical-acceptance.mjs \
+            historical11 "$RUNNER_TEMP/d325-historical.json"
+          node scripts/verification/ci-a8-physical-acceptance.mjs \
+            frozen22 "$RUNNER_TEMP/d325-frozen22.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
