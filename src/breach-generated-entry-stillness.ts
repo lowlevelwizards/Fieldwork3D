@@ -10,22 +10,6 @@ import type {TeamActor} from './breach-game.ts';
 type LeadStillEpisode={orderId:number;doorId:string;since:number;
  lastAt:number;anchor:Pt;last:Pt};
 const episodes=new WeakMap<TeamActor,LeadStillEpisode>();
-/** Exact-test-only reset census. Disabled in normal gameplay and never
- * observed by movement/AI. */
-let resetRecording=false;
-const resetCounters=new WeakMap<TeamActor,Record<string,number>>();
-export function enableEntryStillnessResetRecording(enabled:boolean):void{
- resetRecording=enabled;
-}
-export function entryStillnessResetCensus(a:TeamActor){
- return {...resetCounters.get(a)};
-}
-function noteReset(a:TeamActor,reason:string):void{
- if(!resetRecording)return;
- let c=resetCounters.get(a);
- if(!c){c={};resetCounters.set(a,c);}
- c[reason]=(c[reason]??0)+1;
-}
 
 const gap=(x:Pt,y:Pt)=>Math.hypot(x.x-y.x,x.y-y.y);
 
@@ -43,8 +27,6 @@ export function observeGeneratedEntryPhysicalStillness(
  const order=peer.plan[0],episode=peer.doorTraversal;
  if(order?.kind!=='move'||!order.entryDoorId||
     episode&&episode.doorId!==order.entryDoorId){
-  noteReset(peer,order?.kind!=='move'?'not-entry-move':
-   !order.entryDoorId?'missing-entry-door':'other-door-episode');
   episodes.delete(peer);return;
  }
  const doorId=order.entryDoorId,old=episodes.get(peer);
@@ -57,7 +39,6 @@ export function observeGeneratedEntryPhysicalStillness(
  // net motion and still resets on a genuine >0.20-unit departure.
  if(old&&now>=old.lastAt&&now-old.lastAt<1/120)return;
  if(!old){
-  noteReset(peer,'new-sample');
   episodes.set(peer,{orderId:order.id,doorId,
    since:now,lastAt:now,anchor:{...peer.p},last:{...peer.p}});
   return;
@@ -69,7 +50,6 @@ export function observeGeneratedEntryPhysicalStillness(
   gap(peer.p,old.last)>.20?'instant-physical-step':
   gap(peer.p,old.anchor)>1?'net-physical-step':null;
  if(reason){
-  noteReset(peer,reason);
   episodes.set(peer,{orderId:order.id,doorId,
    since:now,lastAt:now,anchor:{...peer.p},last:{...peer.p}});
   return;
@@ -93,15 +73,6 @@ export function witnessedGeneratedEntryStillness(
   now-recorded.since>=1.25;
 }
 
-/** Read-only, cold test instrumentation of the authoritative 60Hz witness.
- * This does not create a witness, mutate clocks, or select any movement.
- */
-export function inspectGeneratedEntryStillness(peer:TeamActor,now:number){
- const e=episodes.get(peer);
- return e?{age:now-e.since,sampleGap:now-e.lastAt,
-  displacement:gap(peer.p,e.anchor),
-  doorId:e.doorId,orderId:e.orderId}:null;
-}
 
 /** The same generated ENTRY may own at most six previously swept, real
  * narrow-body exit strides. This is an ownership witness, NOT clearance.

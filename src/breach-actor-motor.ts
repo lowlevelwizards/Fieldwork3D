@@ -118,11 +118,6 @@ export function relieveGeneratedEntryWaitCollision(
  return true;
 }
 
-/** D3.33 exact-seed diagnostic only. No observer in production. */
-let motorStageObserver:((a:TeamActor,stage:string)=>void)|null=null;
-export function setD333MotorStageObserver(
- observer:((a:TeamActor,stage:string)=>void)|null
-):void{motorStageObserver=observer;}
 export function advanceActorMotor(
  a:TeamActor,p:Pt,dt:number,s:Session,hooks:ActorMotorHooks,
  speedScale=1,profile?:((section:string,elapsedMs:number)=>void)):boolean{
@@ -130,7 +125,6 @@ export function advanceActorMotor(
  // profiler as the parent operator total. No additional work in normal play.
  // One authoritative observation before any route/door/queue early return.
  // No navigation or hinge force is produced by this D1 foundation.
- motorStageObserver?.(a,'entered');
  if(a.side==='blue'){
   syncDoorTraversalEpisode(a,s.doors,s.seconds);
   // D3.33 P6: observe REAL body stillness at every 60Hz authoritative
@@ -142,17 +136,14 @@ export function advanceActorMotor(
  const traversalStart=profile?beginMotorCpuMeasurement():0;
  // Do not interrupt a continuous physical traversal with route search.
  if(advanceMotorTraversal(a,s,dt,hooks)){
-  motorStageObserver?.(a,'traversal-active');
   if(profile)profile('motor-traversal',finishMotorCpuMeasurement(traversalStart));
   return true;
  }
  if(releaseEmbeddedMotorActor(a,p,s.doors,dt,sessionWorldGeometry(s),s.seconds)){
-  motorStageObserver?.(a,'embedded-release');
   if(profile)profile('motor-traversal',finishMotorCpuMeasurement(traversalStart));
   return true;
  }
  if(prepareMotorTraversal(a,p,dt,s,hooks)){
-  motorStageObserver?.(a,'traversal-prepare');
   if(profile)profile('motor-traversal',finishMotorCpuMeasurement(traversalStart));
   return true;
  }
@@ -162,12 +153,10 @@ export function advanceActorMotor(
  // to the same doorway. One full-radius swept staging correction per
  // episode; never touch authored LOOK/WATCH or the global route graph.
  if(a.side==='blue'&&recoverDoorApproachDrift(a,s)){
-  motorStageObserver?.(a,'door-drift');
   return true;
  }
  const routeStart=profile?beginMotorCpuMeasurement():0;
  const readiness=prepareMotorRoute(a,p,dt,s,hooks);
- motorStageObserver?.(a,'route-'+readiness);
  if(profile)profile('motor-route',finishMotorCpuMeasurement(routeStart));
  if(readiness==='handled')return true;
  if(readiness==='unavailable')return false;
