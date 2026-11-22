@@ -225,6 +225,33 @@ export function retainSweptFollowOnAfterPhysicalShove(
  w.retainedShoves++;
  return true;
 }
+/** D3.36: after an immobile, fully opened old leaf's STALE episode
+ * has been retired AND the R4 gate has adopted a complete physically
+ * certified first-operable-door prefix, keep only that same route
+ * identity from immediately reacquiring the OLD leaf. The next real
+ * door, collision or any new authored GO stays fully authoritative.
+ *
+ * Caller MUST first prove the true blocked/open-leaf state and run
+ * certifiedFollowOnPortalPrefix plus authorizeRouteAcquisition. This
+ * helper grants no certificate, route, collision or actor movement.
+ */
+export function noteAcceptedColdBlockedLeafContinuation(
+ a:TeamActor,oldLeaf:Door,goal:Pt,seconds:number
+):boolean{
+ const order=a.plan[0];
+ if(a.side!=='blue'||order?.kind!=='move'||
+    !samePt(order.p,goal)||a.doorTraversal||
+    !a.nav.length||!oldLeaf.open||oldLeaf.locked||
+    oldLeaf.jammed||oldLeaf.wedged||oldLeaf.heldBy||
+    oldLeaf.kind==='shutter'||oldLeaf.kind==='sliding'||
+    (oldLeaf.openFraction??0)<.98||
+    Math.abs(oldLeaf.angularVelocity??0)>=.16||
+    !Number.isFinite(seconds))return false;
+ forwardLeases.set(a,{doorId:oldLeaf.id,orderId:order.id,
+   goal:{...goal},route:a.nav,until:seconds+5,
+   retainedShoves:0});
+ return true;
+}
 export function protectedRehearsedFollowOnDoor(
  a:TeamActor,doors:readonly Door[],seconds:number
 ):string|null{
