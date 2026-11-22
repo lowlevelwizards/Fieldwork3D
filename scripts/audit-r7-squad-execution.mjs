@@ -402,6 +402,8 @@ function run(site,seed,kind){
        t:round(session.seconds),p:{...actor.p},
        nav:actor.nav.slice(0,4).map(x=>({...x})),
        goalKey:actor.routeGoalKey,
+       worldRevision:session.objectRevision,
+       actorShoveAt:round(actor.lastAutoShoveAt),
        blockedTime:round(actor.blockedTime),
        lastBlocker:actor.lastBlocker,
        phase:actor.doorTraversal?.phase??null,
