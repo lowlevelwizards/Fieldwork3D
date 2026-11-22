@@ -17,20 +17,14 @@ test('M4.9 selection cycles five formations per door/session without authored ed
  assert.equal(selectedDoorStackFormation(other,'FRONT'),'auto');
  assert.deepEqual(s.plan,[]);
 });
-test('M4.9 formation actions are visible only for planning and retain door controls',()=>{
- const editable=contextActionChoices({...base,formationEditable:true,
-  stackFormation:'split',doorOpen:false});
- assert.ok(editable.some(x=>x.id==='ctxOpen'));
- assert.ok(editable.some(x=>x.id==='ctxFormationCycle'&&
-   x.label.includes('SPLIT')));
- assert.ok(editable.some(x=>x.id==='ctxStackTeam'));
- assert.ok(editable.some(x=>x.id==='ctxSquadEntry'));
- for(const state of [{...base,doorPartial:true},{...base,doorOpen:true}])
-  assert.equal(contextActionChoices({...state,formationEditable:true})
-    .filter(x=>x.id==='ctxFormationCycle').length,1);
- const executing=contextActionChoices({...base,formationEditable:false});
- assert.equal(executing.some(x=>x.id==='ctxStackTeam'),false);
- assert.equal(executing.some(x=>x.id==='ctxSquadEntry'),false);
+test('M4.9 internal formation and entry controls stay out of the player palette',()=>{
+ for(const state of [{...base},{...base,doorPartial:true},{...base,doorOpen:true}]){
+  const actions=contextActionChoices({...state,formationEditable:true,
+    stackFormation:'split',resumeAvailable:true,resumeSquadAvailable:true});
+  assert.ok(actions.some(x=>x.id==='ctxOpen'||x.id==='ctxClose'));
+  assert.ok(actions.every(x=>!['ctxFormationCycle','ctxStackTeam',
+    'ctxSquadEntry','ctxResumeEntry','ctxResumeSquad'].includes(x.id)));
+ }
 });
 
 import {newSession,team} from '../src/breach-game.ts';

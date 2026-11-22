@@ -35,6 +35,33 @@ const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
 const angle=(a:Pt,b:Pt)=>targetAngle(a,b);
 const clone=(p:Pt):Pt=>({...p});
 const pop=completeOrder;
+/** Preserve the existing sightline for a short ordinary reposition; turning
+ * starts only after enough actual forward travel has accumulated. This is
+ * deliberately excluded from LOOK/WATCH, threats, strafe, RUN and entry. */
+export function holdHeadingForShortMove(
+ initialDistance:number,traveled:number,headingDelta:number):boolean{
+ return initialDistance<=22&&traveled<18&&Math.abs(headingDelta)>1.04;
+}
+const naturalTravel=new WeakMap<TeamActor,{
+ orderId:number;point:Pt;distance:number;last:number;initialDistance:number
+}>();
+function rotateNaturalTravel(a:TeamActor,goal:number,dt:number,s:Session,orderId:number,goalPoint:Pt):void{
+ let motion=naturalTravel.get(a);
+ if(!motion||motion.orderId!==orderId||s.seconds-motion.last>Math.max(.09,dt*3)){
+   motion={orderId,point:clone(a.priorP),distance:0,last:s.seconds,
+     initialDistance:d(a.priorP,goalPoint)};
+   naturalTravel.set(a,motion);
+ }
+ motion.distance+=d(motion.point,a.p);
+ motion.point=clone(a.p);motion.last=s.seconds;
+ const difference=Math.abs(((goal-a.heading+Math.PI)%
+   (2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI);
+ // ~18 world units of real steps before a large turn is allowed.
+ if(holdHeadingForShortMove(motion.initialDistance,motion.distance,difference)){
+   a.turning=0;return;
+ }
+ rotate(a,goal,dt,s);
+}
 /** D3.15A2: after a REAL, reachable hinge is already opening, let the
  * explicit OPEN order handler work at that physical leaf. Otherwise the
  * generic waypoint motor repeatedly walks toward a point now INSIDE the
@@ -407,7 +434,13 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
         !a.aimInstruction&&
         !approachingNarrowThreshold(a.p,n.p,s.doors));
       if(facing===null)a.autoSidestep=null;
-      rotate(a,facing??angle(a.p,a.nav[0]),dt,s);
+      const desired=facing??angle(a.p,a.nav[0]);
+      if(a.side==='blue'&&n.kind==='move'&&!n.entryDoorId&&
+         !n.stackDoorId&&!running&&!visibleThreat&&!a.aimInstruction&&
+         n.moveMode!=='strafe'&&n.facing===undefined&&
+         n.aimMode!=='track'&&n.aimMode!=='fixed')
+        rotateNaturalTravel(a,desired,dt,s,n.id,n.p);
+      else rotate(a,desired,dt,s);
     }
     return true;
   }

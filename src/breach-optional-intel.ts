@@ -87,6 +87,16 @@ export function beginOptionalIntelGather(s:IntelMission,operatorId:string,
  s.intelGather={itemId:item.id,operatorId,elapsed:0};
  return true;
 }
+/** Timed pickup starts automatically on observed, physically reachable
+ * evidence. Courier ownership and interruption still belong to the tick. */
+export function autoBeginOptionalIntelGather(s:IntelMission,
+ clear:(from:Pt,to:Pt)=>boolean):boolean{
+ if(s.intelGather||s.phase!=='running')return false;
+ for(const actor of s.operators)
+  if(actor.side==='blue'&&actor.health>0&&
+     beginOptionalIntelGather(s,actor.id,clear))return true;
+ return false;
+}
 export function advanceOptionalIntel(s:IntelMission,dt:number,
  clear:(from:Pt,to:Pt)=>boolean):OptionalIntelItem|null{
  // Lost couriers leave a tangible, observed object for another real pickup.

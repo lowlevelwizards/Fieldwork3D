@@ -71,6 +71,20 @@ test('structured status classification never parses human-readable text',()=>{
  feed.reset();
  assert.equal(feed.update([],'planning',5000,[]),null);
 });
+test('resolved obstruction is replaced by the next operator state',()=>{
+ const feed=new ExecutionNoticeFeed();
+ const event=(id,kind,reason)=>({id,t:id/60,actor:'rook',orderId:8,
+   p:{x:0,y:0},kind,reason,text:kind.toUpperCase()});
+ feed.update([],'planning',0,[]);
+ assert.equal(feed.update([],'running',100,[event(1,'blocked','door-locked')])?.severity,'warning');
+ assert.equal(feed.update([],'running',200,[event(1,'blocked','door-locked'),
+   event(2,'resumed','moving')])?.severity,'progress');
+ assert.equal(feed.update([],'running',300,[event(1,'blocked','door-locked'),
+   event(2,'resumed','moving'),event(3,'blocked','collision-wall')])?.text,'BLOCKED');
+ assert.equal(feed.update([],'running',320,[event(1,'blocked','door-locked'),
+   event(2,'resumed','moving'),event(3,'blocked','collision-wall'),
+   event(4,'completed','complete')])?.severity,'progress');
+});
 test('narrative input does not duplicate identical structured transitions',()=>{
  const feed=new ExecutionNoticeFeed();
  feed.update([],'planning',0,[]);

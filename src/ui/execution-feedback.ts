@@ -16,7 +16,7 @@ export function classifyExecutionNotice(message:string):Classified{
   if(/\b(CONTACT|SPOTTED|UNSEEN GUNFIRE)\b/.test(text))
     return {label:'CONTACT',severity:'contact',priority:4,duration:4100};
   if(/\b(BLOCKED|OBSTRUCT|NO SAFE ROUTE|CANNOT|INVALID|JAMMED|OUT OF RANGE|NO WALKABLE|LOCKED|RESISTED|INSUFFICIENT CLEARANCE|INVALIDATE A LATER WAYPOINT|NOT REACHABLE|NO KNOWN DOOR|NO PUSHABLE|NO OPERABLE|AIM POINT|TARGET UNAVAILABLE)\b/.test(text))
-    return {label:'OBSTRUCTED',severity:'warning',priority:3,duration:3500};
+    return {label:'OBSTRUCTED',severity:'warning',priority:3,duration:2400};
   if(/\b(INJURED|WOUND|HIT|HURT|STABILIZED)\b/.test(text))
     return {label:'MEDICAL',severity:'danger',priority:4,duration:4500};
   if(/\b(RELOAD(?:ED|ING)?|MAGAZINE|FLASH|DOOR|OPENED|CLOSING|FORCED|EXTRACT|RECOVERED|SECURED)\b/.test(text))
@@ -27,7 +27,7 @@ export function classifyExecutionNotice(message:string):Classified{
 export function classifyExecutionTransition(event:Pick<ExecutionEvent,'kind'|'reason'>):
  Classified|null{
  switch(event.kind){
-  case 'blocked':return {label:'OBSTRUCTED',severity:'warning',priority:3,duration:3500};
+  case 'blocked':return {label:'OBSTRUCTED',severity:'warning',priority:3,duration:2400};
   case 'recovering':return {label:'RECOVERING',severity:'progress',priority:2,duration:1800};
   case 'resumed':return {label:'RESUMED',severity:'progress',priority:2,duration:1750};
   case 'completed':return {label:'COMPLETE',severity:'progress',priority:2,duration:2200};
@@ -90,6 +90,9 @@ export class ExecutionNoticeFeed{
     for(const event of events.slice(start))if(!structuredTexts.has(event))
       this.enqueue(event,now);
     for(const event of fresh){
+      // A later operator state invalidates a previously displayed obstruction.
+      this.queue=this.queue.filter(n=>n.actorId!==event.actor||
+        n.severity!=='warning');
       const classification=classifyExecutionTransition(event);
       if(!classification)continue;
       this.queue.push({text:event.text,label:classification.label,

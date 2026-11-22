@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateOptionalIntel,observeOptionalIntel,beginOptionalIntelGather,
- advanceOptionalIntel,eligibleOptionalIntel,optionalIntelRecovered}
+ advanceOptionalIntel,autoBeginOptionalIntelGather,eligibleOptionalIntel,optionalIntelRecovered}
  from '../src/breach-optional-intel.ts';
 const rooms=Array.from({length:12},(_,i)=>({
  id:'room'+i,kind:'room',x:(i%4)*120,y:Math.floor(i/4)*120,
@@ -46,6 +46,19 @@ test('OC3 only observed intel can be gathered, collection is timed and interrupt
  assert.equal(item.collectedAt,1.21);
  assert.equal(item.collectedBy,'rook');
  assert.equal(beginOptionalIntelGather(s,'rook',visible),false,'unique item credit');
+});
+test('observed evidence starts timed pickup automatically within physical reach',()=>{
+ const item=generateOptionalIntel(site)[0];
+ const s={phase:'running',seconds:0,optionalIntel:[item],intelGather:null,
+  scenario:{extract:{x:610,y:0}},operators:[soldier('rook',item.p.x,item.p.y)]};
+ assert.equal(autoBeginOptionalIntelGather(s,visible),false);
+ item.discovered=true;
+ assert.equal(autoBeginOptionalIntelGather(s,()=>false),false);
+ assert.equal(autoBeginOptionalIntelGather(s,visible),true);
+ assert.equal(s.intelGather?.operatorId,'rook');
+ assert.equal(autoBeginOptionalIntelGather(s,visible),false);
+ assert.equal(advanceOptionalIntel(s,1.21,visible)?.id,item.id);
+ assert.equal(autoBeginOptionalIntelGather(s,visible),false);
 });
 test('OC3 actual courier custody, casualty drop, recovery and extraction',()=>{
  const item=generateOptionalIntel(site)[0];

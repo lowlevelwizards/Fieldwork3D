@@ -37,7 +37,7 @@ export function pickTacticalTarget(input:TacticalPickInput):TacticalPick|null{
     return resolveTacticalPick(team(state).filter(a=>a.health>0).map(a=>({
       kind:'operator' as const,owner:a.id,
       distancePx:distance(worldToScreen(a.p,viewMode==='plan2d'?0:24),screen),
-      corePx:touch?18:pen?16:14,haloPx:touch?30:pen?25:21
+      corePx:touch?24:pen?18:14,haloPx:touch?34:pen?26:21
     })),selected);
   }
   const hits:TacticalPick[]=[];
@@ -45,10 +45,10 @@ export function pickTacticalTarget(input:TacticalPickInput):TacticalPick|null{
   for(const unit of team(state)){
     if(unit.health<=0)continue;
     const here=worldToScreen(unit.p,viewMode==='plan2d'?0:24);
-    // A 44 px direct finger target is generous without an invisible 60 px
-    // magnetic halo that steals floor taps beside a stacked teammate.
+    // Other squad members have a larger finger target. The selected HERE
+    // marker stays precise so nearby floor taps can make micro-adjustments.
     hits.push({kind:'operator',owner:unit.id,distancePx:distance(here,screen),
-      corePx:touch?22:pen?18:15});
+      corePx:touch?(unit.id===selected?14:26):pen?18:15});
     const problem=executionProblemStatus(unit);
     if(problem?.orderId!=null){
       const marker=executionMarkerPoint(unit,viewMode!=='plan2d');
@@ -66,10 +66,13 @@ export function pickTacticalTarget(input:TacticalPickInput):TacticalPick|null{
     for(const node of unit.plan){
       const here=worldToScreen(node.p,8);
       const selectedHandle=unit.id===selected&&node.id===selectedNode;
-      hits.push({kind:'node',owner:unit.id,nodeId:node.id,
-        distancePx:distance(here,screen),
-        corePx:touch?(unit.id===selected?19:17):pen?16:13,
-        haloPx:selectedHandle&&touch?24:undefined});
+      // A LOOK/WATCH origin at HERE cannot be dragged into movement.
+      if(!(node.kind==='look'&&distance(node.p,unit.p)<5))
+        hits.push({kind:'node',owner:unit.id,nodeId:node.id,
+          watchOrigin:node.aimMode==='track',
+          distancePx:distance(here,screen),
+          corePx:touch?(unit.id===selected?19:17):pen?16:13,
+          haloPx:selectedHandle&&touch?24:undefined});
       if(node.aimPoint&&node.aimMode==='track')
         hits.push({kind:'watch',owner:unit.id,nodeId:node.id,
           distancePx:distance(worldToScreen(node.aimPoint,12),screen),

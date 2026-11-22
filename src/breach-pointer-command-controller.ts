@@ -121,8 +121,8 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
           return true;
         };
         const spaced=stroke?spaceStrokeWaypoints(
-          simplifyStrokePoints(stroke,project,15,shortcut),
-          project,18,shortcut):[];
+          simplifyStrokePoints(stroke,project,5,shortcut),
+          project,8,shortcut):[];
         port.useSelectedGround(pt,spaced.slice(1,-1).slice(0,24));
       }else port.showUiHelp('TAP INSIDE THE MAP TO PLACE THE TARGET',2700);
     }else if(p.mode==='activeWatch'){
@@ -148,9 +148,12 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
       port.adoptPointerOwner(p);
       if(p.dragCommitted){
         const moving=port.uid(port.selected)?.plan.find(node=>node.id===p.nodeId);
-        const moved=moving?.kind==='flash'?
-          moveFlashTarget(port.state,port.selected,p.nodeId,pt):
-          movePlanNode(port.state,port.selected,p.nodeId,pt);
+        const moved=moving?.aimMode==='track'&&moving.aimPoint?
+          !!aimTargetFromTap(moving.p,pt)&&
+            planWatch(port.state,port.selected,pt,p.nodeId):
+          moving?.kind==='flash'?
+            moveFlashTarget(port.state,port.selected,p.nodeId,pt):
+            movePlanNode(port.state,port.selected,p.nodeId,pt);
         if(!moved){
           const chosen=port.uid(port.selected)?.plan.find(n=>n.id===p.nodeId);
           const origin=port.uid(port.selected)?.p??pt;
@@ -168,7 +171,7 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
       const chosen=port.uid(port.selected)?.plan.find(n=>n.id===p.nodeId);
       if(chosen)port.tacticalFeedback.emit('node',chosen.p);
     }else if(p.mode==='route'&&port.trace&&
-      distance(port.trace[0],pt)>16){
+      distance(port.trace[0],pt)>3.5){
       // The finger trace is a high-frequency preview, NOT one order per
       // input sample. Preserve meaningful screen-space bends and reject
       // simplifications that would cut across KNOWN obstacles. Unseen
@@ -186,15 +189,15 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
       };
       const projectStroke=(point:Pt)=>port.worldToScreen(point,8);
       const points=simplifyStrokePoints([...port.trace,pt],
-        projectStroke,15,knownShortcutClear);
-      const spaced=spaceStrokeWaypoints(points,projectStroke,18,
+        projectStroke,5,knownShortcutClear);
+      const spaced=spaceStrokeWaypoints(points,projectStroke,8,
         knownShortcutClear);
       // A stroke that starts on the operator's HERE marker REPLACES the
       // queued plan, even when it contains several waypoints. Appending
       // still happens via taps and gestures on the existing route end.
       // planMoveStroke records the entire replacement as one undoable edit.
       const strokeOutcome={clipped:false,endpoint:pt};
-      if(!planMoveStroke(port.state,port.selected,spaced.slice(1),false,true,strokeOutcome))
+      if(!planMoveStroke(port.state,port.selected,spaced.slice(1),false,true,strokeOutcome,true))
         port.rejectAt(pt,'NO WALKABLE STROKE · PREVIOUS ROUTE KEPT');
       else{
         port.selectedActiveWatch=false;

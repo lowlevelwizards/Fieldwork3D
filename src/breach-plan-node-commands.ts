@@ -21,6 +21,9 @@ export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
     !intelPassable(p,s.intel,SQUEEZE_RADIUS)||
     !routeWithSqueezeIntel(s.intel,finalPoint(a),p).length))return false;
   return edit(s,a,()=>{
+    // A fresh player-authored route supersedes a saved interrupted entry.
+    // Undo restores the incident together with the previous plan.
+    if(kind==='move')a.interruptedDoorPlan=null;
     a.plan.push({id:s.nextId++,kind,p:clone(p),...extra});
   });
 }

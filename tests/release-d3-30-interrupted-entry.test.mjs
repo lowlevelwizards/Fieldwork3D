@@ -104,15 +104,14 @@ test('D3.30B: resuming is prohibited outside planning and without physical door'
  assert.equal(a.interruptedDoorPlan?.sourceOrderId,1);
 });
 
-test('D3.30C: resume control appears only when an actual recoverable incident exists',()=>{
+test('D3.30C: interrupted entry recovery is internal, not a player menu button',()=>{
  const base={door:false,node:false,flashRemaining:2,
   posture:'stand',pace:'walk',firePolicy:'engage',reserve:20,magazine:20};
- assert.equal(contextActionChoices({...base,resumeAvailable:false})
-  .some(x=>x.id==='ctxResumeEntry'),false);
- const available=contextActionChoices({...base,resumeAvailable:true});
- assert.equal(available[0].id,'ctxResumeEntry');
- assert.equal(contextActionChoices({...base,door:true,resumeAvailable:true})
-  .some(x=>x.id==='ctxResumeEntry'),true);
+ for(const door of [true,false]){
+  const actions=contextActionChoices({...base,door,resumeAvailable:true,
+   resumeSquadAvailable:true});
+  assert.ok(actions.every(x=>x.id!=='ctxResumeEntry'&&x.id!=='ctxResumeSquad'));
+ }
 });
 test('D3.30C: palette action refuses locked door and explicitly restores after unlock',()=>{
  const s=newSession(0,undefined,'full-view'),a=team(s)[0],door=s.doors[0];

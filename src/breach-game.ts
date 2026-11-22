@@ -2,7 +2,7 @@ import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
 import {canConcludeWithdrawal,commitIndividualExtractions,deployedTeam} from './breach-operation-outcomes.ts';
-import {observeOptionalIntel,beginOptionalIntelGather,advanceOptionalIntel,
+import {observeOptionalIntel,beginOptionalIntelGather,autoBeginOptionalIntelGather,advanceOptionalIntel,
  type OptionalIntelItem,type OptionalIntelGather,eligibleOptionalIntel}
  from './breach-optional-intel.ts';
 import {coverTargetToken} from './worldgen/site-object-identity.ts';
@@ -749,7 +749,8 @@ export function planMove(s:Session,id:string,p:Pt,strafe=false){
  * obstacle and never by exposing geometry still hidden from the player. */
 export type StrokeOutcome={clipped:boolean;endpoint:Pt};
 export function planMoveStroke(s:Session,id:string,points:Pt[],
- strafe=false,replaceExisting=false,outcome?:StrokeOutcome){
+ strafe=false,replaceExisting=false,outcome?:StrokeOutcome,
+ drawnGesture=false){
   const a=party(s,id);if(!a||!canEdit(s))return false;
   // HERE redraw replaces navigation, not sustained WATCH intent. A WATCH
   // attached to an old MOVE waypoint becomes an independent HERE instruction,
@@ -774,6 +775,10 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
   // Window/mantle portals remain legal when the established traversal system
   // explicitly permits them.
   const stroke=points.length>60?[...points.slice(0,59),points.at(-1)!]:points;
+  // Only the explicit human finger gesture requests tighter spacing.
+  // Scripted squad entry, coordinated movement and existing planning callers
+  // retain their tested physical waypoint geometry regardless of point count.
+  const interiorStep=drawnGesture?7:20;
   const addStrokePoint=(point:Pt):boolean=>{
     if(d(from,point)<3||!legalMoveRoute(s,from,point).length)return false;
     proposed.push({id:s.nextId+proposed.length,kind:'move',p:clone(point),
@@ -836,7 +841,7 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
       clipped=true;break;
     }
     previousInput=point;
-    if(d(from,point)<(last?3:20))continue;
+    if(d(from,point)<(last?3:interiorStep))continue;
     if(!addStrokePoint(point)){
       // A non-local pathfinding failure must not discard earlier accepted
       // bends or silently jump to the other side of an obstruction.
@@ -911,6 +916,9 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
   const codes=new Set(replaceExisting?
     a.plan.filter(n=>n.kind==='sync'&&n.syncCode).map(n=>n.syncCode!):[]);
   return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{
+    // A newly drawn path is the player's recovery decision. A historical
+    // interrupted entry must not keep warning after replacement movement.
+    a.interruptedDoorPlan=null;
     if(replaceExisting)a.plan=retainedWatch?[retainedWatch,...expanded]:expanded;
     else a.plan.push(...expanded);
     s.nextId+=expanded.length;
@@ -1804,6 +1812,8 @@ function mission(s:Session,dt:number){
     }
   }
   if(s.optionalIntel.length){
+    autoBeginOptionalIntelGather(s,(from,to)=>
+      unobstructed(from,to,s,false));
     const gathered=advanceOptionalIntel(s,dt,(from,to)=>
       unobstructed(from,to,s,false));
     if(gathered){
