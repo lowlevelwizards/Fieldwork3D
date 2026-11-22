@@ -119,6 +119,10 @@ test('D3.35 P4 crossed open-leaf lease never overrides physical contact/door',()
  a.nav=[{x:238,y:168},{x:288,y:184}];
  noteAcceptedFollowOnPortal(a,8);
  assert.equal(protectedRehearsedFollowOnDoor(a,[door],8.05),'FRONT');
+ a.p={x:170,y:150};
+ assert.equal(protectedRehearsedFollowOnDoor(a,[door],8.06),'FRONT',
+  'a still-swept route may lawfully return through the already-open leaf');
+ a.p={x:222,y:160};
  const oldNav=a.nav;
  a.nav=[...oldNav];
  assert.equal(protectedRehearsedFollowOnDoor(a,[door],8.1),null,

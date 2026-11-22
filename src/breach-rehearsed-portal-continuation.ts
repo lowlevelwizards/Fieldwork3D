@@ -149,9 +149,12 @@ export function protectedRehearsedFollowOnDoor(
  if(!door||!door.open||door.locked||door.jammed||
     door.wedged||door.heldBy||
     (door.openFraction??0)<.98||
-    Math.abs(door.angularVelocity??0)>=.16||
-    signedDoorSide(a.p,door)*signedDoorSide(w.goal,door)<=0){
+    Math.abs(door.angularVelocity??0)>=.16){
   forwardLeases.delete(a);return null;
  }
+ // The certified NEXT-door path can genuinely travel back across the
+ // prior open leaf to get around a warehouse exterior wall. Never
+ // discard the still-owned, physically swept route just for changing
+ // its signed side: actual blockedTime/route ownership decide validity.
  return w.doorId;
 }

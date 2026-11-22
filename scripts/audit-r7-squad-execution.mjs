@@ -134,6 +134,8 @@ if(traceMode!==null&&traceMode!=='authored'&&traceMode!=='entry')
 // a post-rehearsal route is adopted. Never used by the live motor, and
 // dormant in all normal/frozen CI auditor invocations.
 const d335RouteSamples=process.argv.includes('--d335-route-ownership-samples');
+const d335EmbeddedModule=d335RouteSamples?
+ await import('../src/breach-locomotion-clearance.ts'):null;
 // D3.17A: opt-in, bounded route-event traces for exact frozen seed/mode/actor
 // tuples. Read-only evidence; no route generation or motor behavior changes.
 const traceCasesArg=process.argv.find(a=>a.startsWith('--trace-cases='));
@@ -296,7 +298,7 @@ function run(site,seed,kind){
    traceEvery:15}):null;
   const grid=routeQuality?createD311GridObserver():null;
   const routeWitness=routeTransitions?{counts:{},byActor:{},rejectReasons:{},
-   rejectsByActor:{},events:[],ownershipSamples:[],
+   rejectsByActor:{},events:[],ownershipSamples:[],embeddedReleases:[],
    escapeReacquirePairs:0,pairsByDoor:{},pairsByActor:{}}:null;
   // Offline-only evidence: associate one physical LEAF escape with the
   // next immediate reacquisition for the SAME actor and door. A route that
@@ -370,6 +372,13 @@ function run(site,seed,kind){
    retries:0,badWindows:0
   }));
   if(planned.accepted){enableD32MotorDoorWitness(true);toggling(session);}
+  if(d335EmbeddedModule&&routeWitness&&traceActor)
+   d335EmbeddedModule.setEmbeddedReleaseObserver(event=>{
+    if(event.actorId===traceActor&&
+       routeWitness.embeddedReleases.length<40)
+      routeWitness.embeddedReleases.push({
+       t:round(session.seconds),...event});
+   });
   for(let tick=0;tick<ticks&&planned.accepted;tick++){
    if(tick===Math.max(0,ticks-180))
     for(let i=0;i<actors.length;i++)windowStart[i]={...actors[i].p};
@@ -1559,6 +1568,7 @@ function run(site,seed,kind){
   queueMotionModule?.listenQueueMotion(session,null);
   setRouteGridAuditObserver(null);
   setTransientRouteObserver(null);
+  d335EmbeddedModule?.setEmbeddedReleaseObserver(null);
   enableD32MotorDoorWitness(false);activateSite(null);
  }
 }

@@ -49,6 +49,7 @@ for(const c of cases)test('D3.35 frozen path-cycle forensic '+c.site+
   door:a.doorEpisode,sourceCounts:run.routeTransitions.byActor,
   suspectWindows:suspect,windowTrace:windows,
   ownershipSamples:run.routeTransitions?.ownershipSamples??[],
+  embeddedReleases:run.routeTransitions?.embeddedReleases??[],
   routeTransitions:transitions.slice(0,95)
  }));
  assert.equal(r.summary.physicsStepViolations,0);
