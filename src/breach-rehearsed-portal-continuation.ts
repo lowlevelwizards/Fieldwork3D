@@ -125,12 +125,63 @@ type ForwardLease={
  doorId:string;orderId:number;goal:Pt;route:Pt[];until:number;
 };
 const forwardLeases=new WeakMap<TeamActor,ForwardLease>();
-export function noteAcceptedFollowOnPortal(a:TeamActor,seconds:number):void{
+/** One independent proof survives valid NAV invalidation after THIS actor
+ * physically pushes a cover item; do not retain ownership of the old
+ * route itself after a real shove. This is re-acquisition of a new
+ * world-confirmed prefix, not an automatic adoption of stale nodes.
+ */
+type ShoveProvenance={
+ orderId:number;doorId:string;goal:Pt;portal:Pt;
+ selectedAt:number;revision:number;attempted:boolean;
+};
+const shoveProvenance=new WeakMap<TeamActor,ShoveProvenance>();
+export function noteAcceptedFollowOnPortal(
+ a:TeamActor,seconds:number,worldRevision=0
+):void{
  const w=byActor.get(a);
  if(!w)return;
  w.used=true;
  forwardLeases.set(a,{doorId:w.doorId,orderId:w.orderId,
   goal:{...w.goal},route:a.nav,until:seconds+5});
+ shoveProvenance.set(a,{doorId:w.doorId,orderId:w.orderId,
+  goal:{...w.goal},portal:{...w.portal},selectedAt:seconds,
+  revision:worldRevision,attempted:false});
+}
+/** D3.35 P8 Garage: the actor ITSELF successfully shoved a blocking
+ * fixture, changing the actual collision world and justifiably clearing
+ * its old transient nav. One cold, newly swept world-route proposal
+ * may run before the stale intel route returns to the old doorway.
+ * No remote cover change, no unchanged world, no lock/held door,
+ * no repeated failed probe, no generated-order or GO rewrite.
+ */
+export function claimActualShovePortalRetry(
+ a:TeamActor,doors:readonly Door[],goal:Pt,
+ seconds:number,worldRevision:number
+):boolean{
+ const w=shoveProvenance.get(a),order=a.plan[0];
+ if(!w||w.attempted||a.side!=='blue'||order?.kind!=='move'||
+   order.id!==w.orderId||!samePt(order.p,w.goal)||
+   !samePt(goal,w.goal)||a.nav.length||a.doorTraversal||
+   a.traversal||a.traversalPending||a.squeeze||
+   a.autoSidestep||a.fireRetreatTarget||
+   !Number.isFinite(a.lastAutoShoveAt)||
+   a.lastAutoShoveAt<=w.selectedAt+.05||
+   seconds-w.selectedAt>3||seconds<a.lastAutoShoveAt||
+   seconds-a.lastAutoShoveAt>.20||
+   worldRevision<=w.revision||
+   d(a.p,w.portal)>70||d(a.p,goal)<25)return false;
+ const door=doors.find(x=>x.id===w.doorId);
+ if(!door||!door.open||door.locked||door.jammed||
+    door.wedged||door.heldBy||
+    door.kind==='sliding'||door.kind==='shutter'||
+    (door.openFraction??0)<.98||
+    Math.abs(door.angularVelocity??0)>=.16||
+    signedDoorSide(a.p,door)*signedDoorSide(goal,door)<=0)
+   return false;
+ // A failed cold route claim is a terminal probe for this exact
+ // actor/order/cover revision. Subsequent normal motor/door retries
+ // follow the existing backoff and physical collision authority.
+ w.attempted=true;return true;
 }
 export function protectedRehearsedFollowOnDoor(
  a:TeamActor,doors:readonly Door[],seconds:number

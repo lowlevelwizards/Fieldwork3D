@@ -13,7 +13,8 @@ import {OPERATOR_RADIUS,doorLeafSegment,pointToSegment}
 import {bodyClear,sweptBodyClear} from '../src/breach-navigation.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {certifiedFollowOnPortalPrefix,noteAcceptedRehearsedPortal,
- noteAcceptedFollowOnPortal,protectedRehearsedFollowOnDoor}
+ noteAcceptedFollowOnPortal,protectedRehearsedFollowOnDoor,
+ claimActualShovePortalRetry}
  from '../src/breach-rehearsed-portal-continuation.ts';
 import {canAutoOpenEnRoute} from '../src/breach-door.ts';
 import {routeWithSqueezeWorld,routeWithNormalWorld,
@@ -141,4 +142,38 @@ test('D3.35 P4 crossed open-leaf lease never overrides physical contact/door',()
  noteAcceptedFollowOnPortal(a,8.6);
  assert.equal(protectedRehearsedFollowOnDoor(a,
   [{...door,locked:true}],8.7),null,'a locked door is never protected');
+});
+
+
+test('D3.35 P8 real actor-owned furniture shove gives ONE cold new-world door prefix',()=>{
+ const door={
+  id:'FRONT',kind:'hinged',
+  a:{x:160,y:244},b:{x:160,y:286},
+  open:true,openFraction:1.55,angularVelocity:0,
+  locked:false,jammed:false,wedged:false,heldBy:null
+ };
+ const goal={x:267,y:296.68};
+ const a={
+  side:'blue',p:{x:135,y:252},
+  plan:[{kind:'move',id:42,p:goal}],nav:[],
+  blockedTime:0,traversal:null,traversalPending:false,
+  squeeze:false,autoSidestep:null,fireRetreatTarget:null,
+  doorTraversal:null,lastAutoShoveAt:-100
+ };
+ const portal={x:178,y:275};
+ noteAcceptedRehearsedPortal(a,door,goal,portal,7);
+ a.p={x:175,y:275};
+ a.nav=[{x:184,y:280},{x:200,y:296},{x:232,y:416}];
+ noteAcceptedFollowOnPortal(a,9.13,0);
+ a.p={x:194.42,y:298.78};
+ a.nav=[];
+ a.lastAutoShoveAt=9.92;
+ assert.equal(claimActualShovePortalRetry(a,[door],goal,9.93,0),false,
+  'unchanged actual world has no cold-shove authority');
+ assert.equal(claimActualShovePortalRetry(a,[{...door,locked:true}],
+  goal,9.93,1),false,'locked old leaf cannot be claimed as crossed');
+ assert.equal(claimActualShovePortalRetry(a,[door],goal,9.93,1),true,
+  'real actor shove plus revision gives one new physical-world route query');
+ assert.equal(claimActualShovePortalRetry(a,[door],goal,9.94,1),false,
+  'no repeated world search on the same cover change');
 });

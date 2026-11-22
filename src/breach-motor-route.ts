@@ -42,7 +42,8 @@ import {claimD326ColdFineProbe,markD326FineMotorRoute}
  from './breach-d326-fine-route-gate.ts';
 import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
 import {eligibleRehearsedPortalContinuation,
- certifiedFollowOnPortalPrefix,noteAcceptedFollowOnPortal}
+ certifiedFollowOnPortalPrefix,noteAcceptedFollowOnPortal,
+ claimActualShovePortalRetry}
  from './breach-rehearsed-portal-continuation.ts';
 import {claimPhysicalLeafRejoin,relevantStableOpenLeaf,
  selectColdStaleLeafPortalStage} from './breach-physical-leaf-rejoin.ts';
@@ -472,6 +473,37 @@ export function prepareMotorRoute(
        a.retryRouteAt=s.seconds+.6;
        return 'unavailable';
     }
+    // D3.35 P8: a REAL furniture shove changed the world under the
+    // previously selected, full-body-certified future-door prefix,
+    // forcing the physical motor to drop its disposable old nav.
+    // ONE cold new-world prefix replaces an otherwise stale backwards
+    // intel acquisition; this can never fire on a remote cover edit.
+    if(claimActualShovePortalRetry(a,s.doors,p,s.seconds,s.objectRevision)){
+      const world=sessionWorldGeometry(s);
+      const proposed=routeToNextOperableDoor(a.p,p,s.doors,world);
+      const certified=certifiedFollowOnPortalPrefix(
+        a.p,p,proposed,s.doors,
+        (from,to,doors)=>sweptBodyClear(from,to,[...doors],
+          OPERATOR_RADIUS,world),
+        door=>!door.locked&&!door.jammed&&!door.wedged&&
+          !door.heldBy&&(door.openFraction??(door.open?1:0))<.72&&
+          canAutoOpenEnRoute({kind:'move'},door.id));
+      if(certified.length){
+        const decision=authorizeRouteAcquisition({
+          actor:a,session:s,source:'initial-portal-recovery',goal:p,
+          route:certified,orderIdAtSelection:acquisitionOrderId,
+          certificate:'first-operable-door-prefix',eligible:true,
+          physicalProof:true,initialRouteAbsent:true
+        });
+        if(decision.kind==='adopt'){
+          setTransientRoute(s,a,certified,'initial-portal-recovery',
+            decision.proof??undefined);
+          provisionalRouteAccepted(a);
+          a.lastNavRepairAt=s.seconds;
+          return 'ready';
+        }
+      }
+    }
     const initialSource=a.side==='blue'?'initial-intel':'initial-enemy';
     const initialRoute=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
       hooks.cachedEnemyRoute(s,a.p,p,true);
@@ -504,7 +536,7 @@ export function prepareMotorRoute(
           if(decision.kind==='adopt'){
             setTransientRoute(s,a,verified,'initial-portal-recovery',
               decision.proof??undefined);
-            noteAcceptedFollowOnPortal(a,s.seconds);
+            noteAcceptedFollowOnPortal(a,s.seconds,s.objectRevision);
             provisionalRouteAccepted(a);
             a.lastNavRepairAt=s.seconds;
             return 'ready';
