@@ -130,6 +130,10 @@ if(traceActorArg&&(!traceActor||traceActor.length>32))
  throw Error('invalid --trace-actor');
 if(traceMode!==null&&traceMode!=='authored'&&traceMode!=='entry')
  throw Error('invalid --trace-mode (authored or entry)');
+// D3.35 cold-only forensic: sampled exact transient nav ownership after
+// a post-rehearsal route is adopted. Never used by the live motor, and
+// dormant in all normal/frozen CI auditor invocations.
+const d335RouteSamples=process.argv.includes('--d335-route-ownership-samples');
 // D3.17A: opt-in, bounded route-event traces for exact frozen seed/mode/actor
 // tuples. Read-only evidence; no route generation or motor behavior changes.
 const traceCasesArg=process.argv.find(a=>a.startsWith('--trace-cases='));
@@ -292,7 +296,7 @@ function run(site,seed,kind){
    traceEvery:15}):null;
   const grid=routeQuality?createD311GridObserver():null;
   const routeWitness=routeTransitions?{counts:{},byActor:{},rejectReasons:{},
-   rejectsByActor:{},events:[],
+   rejectsByActor:{},events:[],ownershipSamples:[],
    escapeReacquirePairs:0,pairsByDoor:{},pairsByActor:{}}:null;
   // Offline-only evidence: associate one physical LEAF escape with the
   // next immediate reacquisition for the SAME actor and door. A route that
@@ -376,6 +380,29 @@ function run(site,seed,kind){
    }finally{
     if(grid)setRouteGridAuditObserver(null);
     if(recordRoute)setTransientRouteObserver(null);
+   }
+   // Exact P3 forensic ONLY: what really replaced/cleared the accepted
+   // portal prefix between 9 and 12 seconds? Never call a planner, shift
+   // a nav node or mutate any movement/door state in this observer.
+   if(d335RouteSamples&&routeWitness&&traceActor&&
+      (!traceMode||kind===traceMode)&&
+      session.seconds>=8.6&&session.seconds<=12.8&&tick%12===0){
+     const actor=actors.find(x=>x.id===traceActor);
+     if(actor&&routeWitness.ownershipSamples.length<24)
+      routeWitness.ownershipSamples.push({
+       t:round(session.seconds),p:{...actor.p},
+       nav:actor.nav.slice(0,4).map(x=>({...x})),
+       goalKey:actor.routeGoalKey,
+       blockedTime:round(actor.blockedTime),
+       lastBlocker:actor.lastBlocker,
+       phase:actor.doorTraversal?.phase??null,
+       episodeDoor:actor.doorTraversal?.doorId??null,
+       maneuver:actor.doorTraversal?.maneuver??null,
+       hand:actor.doorHandContact?.doorId??null,
+       squeeze:actor.squeeze,
+       retryAt:round(actor.retryRouteAt),
+       door:planned.door?.id??null
+      });
    }
    // D3.29B: only after an actual, authoritatively failed order, capture
    // the motor-selected leaf at the SAME failure tick. The final chosen

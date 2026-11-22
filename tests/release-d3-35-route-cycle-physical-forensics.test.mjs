@@ -22,6 +22,7 @@ for(const c of cases)test('D3.35 frozen path-cycle forensic '+c.site+
   '--experimental-strip-types','scripts/audit-r7-squad-execution.mjs',
   '1','2700','--site-index='+c.index,'--audit-seed='+c.seed,
   '--audit-scale='+c.scale,'--progress','--route-transitions',
+  '--d335-route-ownership-samples',
   '--trace-actor='+c.actor,'--trace-mode='+c.mode
  ],{cwd:root,encoding:'utf8',timeout:120000,maxBuffer:24*1024*1024}));
  const row=r.rows[0],run=row.modes.find(x=>x.mode===c.mode);
@@ -47,6 +48,7 @@ for(const c of cases)test('D3.35 frozen path-cycle forensic '+c.site+
   actualArrivals:run.arrivals,fullCase:run.successful,
   door:a.doorEpisode,sourceCounts:run.routeTransitions.byActor,
   suspectWindows:suspect,windowTrace:windows,
+  ownershipSamples:run.routeTransitions?.ownershipSamples??[],
   routeTransitions:transitions.slice(0,95)
  }));
  assert.equal(r.summary.physicsStepViolations,0);
