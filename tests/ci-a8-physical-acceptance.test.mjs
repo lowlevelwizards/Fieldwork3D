@@ -58,7 +58,7 @@ function corpus(kind){
   // Other submitted orders are fully drained, but this is no reason to
   // count deliberately unplanned ENTRY modes as physical squad success.
   flattened[13].complete=false;
-  flattened[0].progressEvidence.push({
+  flattened[14].progressEvidence.push({
    actor:'rook',classification:'movement-loop',suspicious:true,
    seconds:10,position:{x:20,y:20},travel:10,net:2,
    goalReduction:2,remaining:20
