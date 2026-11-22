@@ -6,13 +6,13 @@ export type TacticalHitProfile={
   waypoint:number;route:number;reachableDoor:number;dragStart:number;
 };
 const MOUSE_PROFILE:TacticalHitProfile=Object.freeze({
-  waypoint:27,route:14,reachableDoor:28,dragStart:9
+  waypoint:27,route:14,reachableDoor:28,dragStart:6
 });
 const PEN_PROFILE:TacticalHitProfile=Object.freeze({
-  waypoint:30,route:17,reachableDoor:29,dragStart:11
+  waypoint:30,route:17,reachableDoor:29,dragStart:8
 });
 const TOUCH_PROFILE:TacticalHitProfile=Object.freeze({
-  waypoint:34,route:20,reachableDoor:31,dragStart:8
+  waypoint:34,route:20,reachableDoor:31,dragStart:10
 });
 export function tacticalHitProfile(kind:TacticalPointerKind):TacticalHitProfile{
   return kind==='touch'?TOUCH_PROFILE:kind==='pen'?PEN_PROFILE:MOUSE_PROFILE;
