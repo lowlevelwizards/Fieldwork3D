@@ -10,6 +10,7 @@ import {doorSwingBlocked} from './breach-door.ts';
 import {doorSecuredFrom} from './breach-door-security.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {failCurrentOrder} from './breach-order-lifecycle.ts';
+import {relieveGeneratedEntryWaitCollision} from './breach-actor-motor.ts';
 
 export function advanceWaitOrder(
  s:Session,a:TeamActor,n:PlanNode,dt:number,
@@ -60,6 +61,11 @@ export function advanceWaitOrder(
   const leadAcross=!!entry&&generatedLeadAcrossSameDoor(
     doorway,a,entry.p,s.operators);
   if(gate!=='ready'&&!leadAcross){
+   // D3.33: a zero-duration generated follower WAIT may be physically
+   // overlapping the already-stalled lead at this SAME open entry.
+   // Request a bounded real 60Hz body step from the one motor; never
+   // finish the WAIT or shift an authored MOVE, queue rank, or GO.
+   if(entry)relieveGeneratedEntryWaitCollision(s,a,n,dt);
    a.velocity=0;a.waitRemaining=0;a.actionTimer+=dt;
    if(a.actionTimer>=2.5&&a.actionTimer-dt<2.5){
     const stalledSwing=!!doorway&&doorway.open&&
