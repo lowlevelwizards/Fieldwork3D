@@ -10,6 +10,7 @@ import {doorSwingBlocked} from './breach-door.ts';
 import {doorSecuredFrom} from './breach-door-security.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {failCurrentOrder} from './breach-order-lifecycle.ts';
+import {relieveGeneratedEntryWaitCollision} from './breach-actor-motor.ts';
 
 export function advanceWaitOrder(
  s:Session,a:TeamActor,n:PlanNode,dt:number,
@@ -60,6 +61,10 @@ export function advanceWaitOrder(
   const leadAcross=!!entry&&generatedLeadAcrossSameDoor(
     doorway,a,entry.p,s.operators);
   if(gate!=='ready'&&!leadAcross){
+   // Never complete or rewrite a generated WAIT to force passage.
+   // Only a witnessed same-fully-open-leaf leader/body overlap may
+   // request one <=0.55u physically swept separation at 60Hz.
+   if(entry)relieveGeneratedEntryWaitCollision(s,a,n,dt);
    a.velocity=0;a.waitRemaining=0;a.actionTimer+=dt;
    if(a.actionTimer>=2.5&&a.actionTimer-dt<2.5){
     const stalledSwing=!!doorway&&doorway.open&&
