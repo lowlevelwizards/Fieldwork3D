@@ -38,11 +38,11 @@ const pop=completeOrder;
 /** Preserve the existing sightline for a short ordinary reposition; turning
  * starts only after enough actual forward travel has accumulated. This is
  * deliberately excluded from LOOK/WATCH, threats, strafe, RUN and entry. */
-const naturalTravel=new WeakMap<TeamActor,{point:Pt;distance:number;last:number}>();
-function rotateNaturalTravel(a:TeamActor,goal:number,dt:number,s:Session):void{
+const naturalTravel=new WeakMap<TeamActor,{orderId:number;point:Pt;distance:number;last:number}>();
+function rotateNaturalTravel(a:TeamActor,goal:number,dt:number,s:Session,orderId:number):void{
  let motion=naturalTravel.get(a);
- if(!motion||s.seconds-motion.last>Math.max(.09,dt*3)){
-   motion={point:clone(a.priorP),distance:0,last:s.seconds};
+ if(!motion||motion.orderId!==orderId||s.seconds-motion.last>Math.max(.09,dt*3)){
+   motion={orderId,point:clone(a.priorP),distance:0,last:s.seconds};
    naturalTravel.set(a,motion);
  }
  motion.distance+=d(motion.point,a.p);
@@ -430,7 +430,7 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
          !n.stackDoorId&&!running&&!visibleThreat&&!a.aimInstruction&&
          n.moveMode!=='strafe'&&n.facing===undefined&&
          n.aimMode!=='track'&&n.aimMode!=='fixed')
-        rotateNaturalTravel(a,desired,dt,s);
+        rotateNaturalTravel(a,desired,dt,s,n.id);
       else rotate(a,desired,dt,s);
     }
     return true;
