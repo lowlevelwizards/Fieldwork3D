@@ -1,6 +1,8 @@
 /** Fixed-step SYNC, RELOAD and FLASH handlers, retaining authored timing.
  * Stable callbacks delegate game-owned events and order completion.
  */
+import {failedGeneratedStackSyncMember}
+ from './breach-generated-sync-dropout.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import type {Pt} from './breach-core.ts';
@@ -46,13 +48,24 @@ export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
     // Only actors still carrying this code participate. An undone
     // companion order must not create a permanent one-sided deadlock.
     const code=a.syncReady;
-    const peers=s.operators.filter(x=>x.side==='blue').filter(x=>x.health>0&&
-      (x.syncReady===code||x.plan.some(order=>
+    const participants=s.operators.filter(x=>x.side==='blue'&&
+      x.health>0&&(x.syncReady===code||x.plan.some(order=>
         order.kind==='sync'&&order.syncCode===code)));
-    if(peers.every(x=>x.syncReady===code)){
-      // Clear all participants in the same fixed simulation tick.
+    // Only a genuinely failed GENERATED STACK may leave this barrier:
+    // a witnessed DOOR LOCKED cancellation, >=3s immobile away from
+    // its exact SYNC footprint, with a later generated ENTRY retained.
+    // It is NEVER counted READY or given an arrival.
+    const separated=participants.filter(x=>
+      failedGeneratedStackSyncMember(x,code));
+    const peers=participants.filter(x=>!separated.includes(x));
+    if(peers.length>0&&
+       (separated.length===0||peers.length>=2)&&
+       peers.every(x=>x.syncReady===code)){
+      // Release only still-capable members in this exact simulation
+      // tick. Failed members keep their active original blocked SYNC.
       for(const teammate of peers)h.pop(teammate);
-      h.notify(s,'GO CODE '+(n.syncCode??'A'));
+      h.notify(s,'GO CODE '+code+
+       (separated.length?' · '+separated.length+' FAILED STACK SEPARATED':''));
     }
     return true;
   }
