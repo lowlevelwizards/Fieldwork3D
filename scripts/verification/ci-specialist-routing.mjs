@@ -556,6 +556,30 @@ export const movementDoorSpecs=[
       "scripts/verification/ci-d3-physical-truth.mjs",
       "tests/ci-a8-physical-acceptance.test.mjs"
     ]
+  },
+  {
+    "key": "coordinated15",
+    "workflow": "d3-15-coordinated-release.yml",
+    "paths": [
+      "src/breach-motor-door.ts",
+      "src/breach-order-movement.ts",
+      "src/breach-entry-coordination.ts",
+      "src/breach-order-wait.ts",
+      "src/breach-motor-collision.ts",
+      "src/breach-stack-micro-corner.ts",
+      "tests/release-d3-15a2-explicit-door-clock.test.mjs",
+      ".github/workflows/d3-15-coordinated-release.yml",
+      "src/breach-actor-motor.ts",
+      "src/breach-locomotion-clearance.ts",
+      "src/breach-motor-route.ts",
+      "src/breach-generated-entry-stillness.ts",
+      "src/breach-static-cover-release.ts",
+      "tests/release-d3-40-townhouse-porch-cover-release.test.mjs",
+      "scripts/audit-r7-squad-execution.mjs",
+      "scripts/verification/ci-a8-physical-acceptance.mjs",
+      "scripts/verification/ci-physical-cohort-provenance.mjs",
+      "scripts/verification/ci-lock-aware-physical-acceptance.mjs"
+    ]
   }
 ];
 const movementDoorInfrastructure=/^(?:\.github\/workflows\/(?:ci|movement-door-acceptance)\.yml|scripts\/verification\/ci-(?:specialist-routing|workflow-contract)\.mjs|tests\/ci-movement-door-routing\.test\.mjs)$/;

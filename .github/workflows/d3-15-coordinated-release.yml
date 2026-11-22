@@ -1,20 +1,11 @@
 name: D3.15 coordinated A plus B4 checkpoint physical acceptance
 on:
-  pull_request:
-    paths:
-      - 'src/breach-motor-door.ts'
-      - 'src/breach-order-movement.ts'
-      - 'src/breach-entry-coordination.ts'
-      - 'src/breach-order-wait.ts'
-      - 'src/breach-motor-collision.ts'
-      - 'src/breach-stack-micro-corner.ts'
-      - 'tests/release-d3-15a2-explicit-door-clock.test.mjs'
-      - '.github/workflows/d3-15-coordinated-release.yml'
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: d315-coordinated-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   physical-checkpoint:
