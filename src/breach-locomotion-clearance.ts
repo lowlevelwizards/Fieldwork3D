@@ -11,6 +11,18 @@ import {releaseStaticWallOverlap,sweptProfileClear,
 import {preciseNarrowExitWaypoint} from './breach-squeeze-leaf-exit.ts';
 import {releaseEmbeddedCover} from './breach-cover-release.ts';
 import {isFootstepObstacle} from './breach-traversal-surfaces.ts';
+/** D3.35 offline-only: TRUE physical wall/cover unembedding that resets
+ * transient motor navigation. No observer in production or normal CI;
+ * this reports existing decisions, never determines or changes them.
+ */
+export type EmbeddedReleaseEvent={
+ actorId:string;kind:'wall'|'cover';from:Pt;to:Pt;next:Pt|null;
+};
+let embeddedReleaseObserver:((event:EmbeddedReleaseEvent)=>void)|null=null;
+export function setEmbeddedReleaseObserver(
+ fn:((event:EmbeddedReleaseEvent)=>void)|null
+):void{embeddedReleaseObserver=fn;}
+
 export function releaseEmbeddedMotorActor(
  a:TeamActor,goal:Pt,doors:Door[],dt:number,
  world?:SessionWorldGeometry):boolean{
@@ -49,6 +61,9 @@ export function releaseEmbeddedMotorActor(
  }
  const wallRelease=releaseStaticWallOverlap(a.p,goal,doors,dt*50,world);
  if(wallRelease){
+  if(embeddedReleaseObserver)
+   embeddedReleaseObserver({actorId:a.id,kind:'wall',from:{...a.p},
+    to:{...wallRelease},next:a.nav[0]?{...a.nav[0]}:null});
   a.priorP={...a.p};a.p=wallRelease;
   a.velocity=0;a.squeeze=false;a.squeezeTime=0;
   a.blockedTime=0;a.lastBlocker='clear';
@@ -62,6 +77,9 @@ export function releaseEmbeddedMotorActor(
   releaseEmbeddedCover(a.p,goal,world?.cover??COVER,world?.walls??WALLS,
    doors,world?.bounds??activeWorldBounds(),dt*45):null;
  if(coverRelease){
+  if(embeddedReleaseObserver)
+   embeddedReleaseObserver({actorId:a.id,kind:'cover',from:{...a.p},
+    to:{...coverRelease},next:a.nav[0]?{...a.nav[0]}:null});
   a.priorP={...a.p};a.p=coverRelease;
   a.velocity=0;a.squeeze=false;a.squeezeTime=0;
   a.blockedTime=0;a.lastBlocker='clear';

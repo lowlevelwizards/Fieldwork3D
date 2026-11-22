@@ -130,6 +130,12 @@ if(traceActorArg&&(!traceActor||traceActor.length>32))
  throw Error('invalid --trace-actor');
 if(traceMode!==null&&traceMode!=='authored'&&traceMode!=='entry')
  throw Error('invalid --trace-mode (authored or entry)');
+// D3.35 cold-only forensic: sampled exact transient nav ownership after
+// a post-rehearsal route is adopted. Never used by the live motor, and
+// dormant in all normal/frozen CI auditor invocations.
+const d335RouteSamples=process.argv.includes('--d335-route-ownership-samples');
+const d335EmbeddedModule=d335RouteSamples?
+ await import('../src/breach-locomotion-clearance.ts'):null;
 // D3.17A: opt-in, bounded route-event traces for exact frozen seed/mode/actor
 // tuples. Read-only evidence; no route generation or motor behavior changes.
 const traceCasesArg=process.argv.find(a=>a.startsWith('--trace-cases='));
@@ -292,7 +298,8 @@ function run(site,seed,kind){
    traceEvery:15}):null;
   const grid=routeQuality?createD311GridObserver():null;
   const routeWitness=routeTransitions?{counts:{},byActor:{},rejectReasons:{},
-   rejectsByActor:{},events:[],
+   rejectsByActor:{},events:[],ownershipSamples:[],embeddedReleases:[],
+   coldShoveRoutes:[],
    escapeReacquirePairs:0,pairsByDoor:{},pairsByActor:{}}:null;
   // Offline-only evidence: associate one physical LEAF escape with the
   // next immediate reacquisition for the SAME actor and door. A route that
@@ -366,6 +373,13 @@ function run(site,seed,kind){
    retries:0,badWindows:0
   }));
   if(planned.accepted){enableD32MotorDoorWitness(true);toggling(session);}
+  if(d335EmbeddedModule&&routeWitness&&traceActor)
+   d335EmbeddedModule.setEmbeddedReleaseObserver(event=>{
+    if(event.actorId===traceActor&&
+       routeWitness.embeddedReleases.length<40)
+      routeWitness.embeddedReleases.push({
+       t:round(session.seconds),...event});
+   });
   for(let tick=0;tick<ticks&&planned.accepted;tick++){
    if(tick===Math.max(0,ticks-180))
     for(let i=0;i<actors.length;i++)windowStart[i]={...actors[i].p};
@@ -376,6 +390,65 @@ function run(site,seed,kind){
    }finally{
     if(grid)setRouteGridAuditObserver(null);
     if(recordRoute)setTransientRouteObserver(null);
+   }
+   // Exact P3 forensic ONLY: what really replaced/cleared the accepted
+   // portal prefix between 9 and 12 seconds? Never call a planner, shift
+   // a nav node or mutate any movement/door state in this observer.
+   if(d335RouteSamples&&routeWitness&&traceActor&&
+      (!traceMode||kind===traceMode)&&
+      session.seconds>=8.6&&session.seconds<=12.8&&tick%12===0){
+     const actor=actors.find(x=>x.id===traceActor);
+     if(actor&&routeWitness.ownershipSamples.length<24)
+      routeWitness.ownershipSamples.push({
+       t:round(session.seconds),p:{...actor.p},
+       nav:actor.nav.slice(0,4).map(x=>({...x})),
+       goalKey:actor.routeGoalKey,
+       worldRevision:session.objectRevision,
+       actorShoveAt:round(actor.lastAutoShoveAt),
+       blockedTime:round(actor.blockedTime),
+       lastBlocker:actor.lastBlocker,
+       phase:actor.doorTraversal?.phase??null,
+       episodeDoor:actor.doorTraversal?.doorId??null,
+       maneuver:actor.doorTraversal?.maneuver??null,
+       hand:actor.doorHandContact?.doorId??null,
+       squeeze:actor.squeeze,
+       retryAt:round(actor.retryRouteAt),
+       door:planned.door?.id??null
+      });
+   }
+   // D3.35 P7: the exact FIRST real body-owned furniture shove,
+   // now with scene revision already advanced, warrants ONE offline
+   // current-world route feasibility probe. No live motor policy change.
+   if(d335RouteSamples&&routeWitness&&traceActor&&
+      (!traceMode||kind===traceMode)&&
+      routeWitness.coldShoveRoutes.length<2){
+    const actor=actors.find(x=>x.id===traceActor);
+    if(actor&&actor.lastAutoShoveAt>0&&
+       session.seconds-actor.lastAutoShoveAt<1/30){
+     const goal=planned.goals.get(actor.id);
+     if(goal){
+      const world=sessionWorldGeometry(session);
+      const future=routeToNextOperableDoor(actor.p,goal,session.doors,world);
+      const normal=routeWithNormalWorld(actor.p,goal,session.doors,world);
+      const squeeze=routeWithSqueezeWorld(actor.p,goal,session.doors,world);
+      const fine=coldFineMotorWorldRoute(actor.p,goal,session.doors,world);
+      const firstSwept=x=>x.length? sweptBodyClear(actor.p,x[0],
+        session.doors,OPERATOR_RADIUS,world):null;
+      routeWitness.coldShoveRoutes.push({
+       t:round(session.seconds),goal:{...goal},
+       at:{...actor.p},revision:session.objectRevision,
+       door:actor.doorTraversal?.doorId??null,
+       portal:{count:future.length,first:future[0]??null,
+        last:future.at(-1)??null,firstSwept:firstSwept(future)},
+       normal:{count:normal.length,first:normal[0]??null,
+        last:normal.at(-1)??null,firstSwept:firstSwept(normal)},
+       squeeze:{count:squeeze.length,first:squeeze[0]??null,
+        last:squeeze.at(-1)??null,firstSwept:firstSwept(squeeze)},
+       fine:{count:fine.length,first:fine[0]??null,
+        last:fine.at(-1)??null,firstSwept:firstSwept(fine)}
+      });
+     }
+    }
    }
    // D3.29B: only after an actual, authoritatively failed order, capture
    // the motor-selected leaf at the SAME failure tick. The final chosen
@@ -1532,6 +1605,7 @@ function run(site,seed,kind){
   queueMotionModule?.listenQueueMotion(session,null);
   setRouteGridAuditObserver(null);
   setTransientRouteObserver(null);
+  d335EmbeddedModule?.setEmbeddedReleaseObserver(null);
   enableD32MotorDoorWitness(false);activateSite(null);
  }
 }

@@ -20,6 +20,8 @@ import {handleMotorDoor} from './breach-motor-door.ts';
 import {resolveMotorCollision} from './breach-motor-collision.ts';
 import {d,angle,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {syncDoorTraversalEpisode} from './breach-door-traversal-episode.ts';
+import {protectedRehearsedFollowOnDoor}
+ from './breach-rehearsed-portal-continuation.ts';
 import {ownsD326FineMotorRoute} from './breach-d326-fine-route-gate.ts';
 import {recoverDoorApproachDrift,preferShortPhysicalEntry} from './breach-door-traversal-maneuver.ts';
 import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
@@ -32,7 +34,10 @@ export function advanceActorMotor(
  // profiler as the parent operator total. No additional work in normal play.
  // One authoritative observation before any route/door/queue early return.
  // No navigation or hinge force is produced by this D1 foundation.
- if(a.side==='blue')syncDoorTraversalEpisode(a,s.doors,s.seconds);
+ if(a.side==='blue'){
+  const crossed=protectedRehearsedFollowOnDoor(a,s.doors,s.seconds);
+  syncDoorTraversalEpisode(a,s.doors,s.seconds,crossed);
+ }
  const traversalStart=profile?beginMotorCpuMeasurement():0;
  // Do not interrupt a continuous physical traversal with route search.
  if(advanceMotorTraversal(a,s,dt,hooks)){
