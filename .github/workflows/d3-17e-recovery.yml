@@ -90,33 +90,30 @@ jobs:
       - name: Historical 11-site body truth
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
-            11 2700 --progress --route-quality > "$RUNNER_TEMP/d317e-history.json"
+            11 2700 --progress --route-quality --d329-cancellation-door-witness > "$RUNNER_TEMP/d317e-history.json"
       - name: Frozen tenth 22-site physical truth and actual route-search cost
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
             22 2700 --d315b4-blind22 --progress --route-quality \
+            --route-transitions --d329-cancellation-door-witness \
+            --trace-cases=13919313:entry:ash,14136777:entry:ash,14462973:authored:ash \
             > "$RUNNER_TEMP/d317e-frozen.json"
-      - name: Physical and performance safety assertions
+      - name: A8 independent real-body, event-matched locked-door and recovered-loop truth
         run: |
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const get=n=>JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d317e-'+n+'.json','utf8'));
-          const hist=get('history'),cur=get('frozen');
-          console.log('D317E_COHORT',JSON.stringify({
-            hist:hist.summary,current:cur.summary,
-            route:cur.routeQualitySummary,progress:cur.progressSummary
-          }));
-          for(const x of [hist,cur])if(x.summary.exceptions||
-             x.summary.physicsStepViolations||x.summary.invalidPositions||
-             x.summary.corruptedPlans||x.summary.unboundedManeuverAttempts)
-            throw Error('unsafe body or authored plan');
-          if(hist.summary.physicalArrivals<80||hist.summary.physicalCompletedFour<18||
-             hist.progressSummary.suspectedLoops>0)
-            throw Error('historical arrival regression');
-          if(cur.summary.physicalArrivals<140||cur.summary.physicalCompletedFour<29||
-             cur.progressSummary.suspectedLoops>0)
-            throw Error('frozen physical-goal or loop regression');
-          NODE
+          # 80 historic arrivals would require passing through twelve
+          # event-verified LOCKED doors. This test demands 76 true
+          # arrivals, 12 authentic locked cancellations, ZERO pending,
+          # full physical collision and route-search limits instead.
+          node scripts/verification/ci-a8-physical-acceptance.mjs \
+            historical11 "$RUNNER_TEMP/d317e-history.json"
+          # Frozen D3.15B4 is a DIFFERENT 176-body cohort. Preserve all
+          # 22 real locks, eight unplanned outcomes and zero pending,
+          # require 146 real arrivals / 31 complete squads, and demand
+          # event-by-event evidence that its one flagged loop RECOVERED.
+          # A real unarrived loop, a new lock, route or 0.3u step breach
+          # still fails this independent job.
+          node scripts/verification/ci-a8-physical-acceptance.mjs \
+            frozen22 "$RUNNER_TEMP/d317e-frozen.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
