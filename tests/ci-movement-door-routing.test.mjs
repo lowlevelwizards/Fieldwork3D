@@ -85,6 +85,46 @@ const frozen=[
       "tests/performance-p2-8-cover-los.test.mjs",
       ".github/workflows/performance-p2-8-critical.yml"
     ]
+  },
+  {
+    "key": "recovery17e",
+    "paths": [
+      "src/breach-recovery-proposal-gate.ts",
+      "src/breach-cold-route-cache.ts",
+      "src/breach-motor-collision.ts",
+      "src/breach-motor-route.ts",
+      "src/breach-execution-state.ts",
+      "src/breach-physical-leaf-rejoin.ts",
+      "src/breach-d336-stale-open-leaf.ts",
+      "src/breach-d337-entry-service-landing.ts",
+      "scripts/report-d3-15b4-blind22.mjs",
+      "scripts/audit-r7-squad-execution.mjs",
+      "tests/release-d3-17e-recovery-accounting.test.mjs",
+      ".github/workflows/d3-17e-recovery.yml",
+      "scripts/verification/ci-a8-physical-acceptance.mjs",
+      "scripts/verification/ci-lock-aware-physical-acceptance.mjs",
+      "scripts/verification/ci-physical-cohort-provenance.mjs",
+      "scripts/verification/ci-d3-physical-truth.mjs",
+      "tests/ci-a8-physical-acceptance.test.mjs"
+    ]
+  },
+  {
+    "key": "physical25",
+    "paths": [
+      "src/breach-order-wait.ts",
+      "src/breach-motor-route.ts",
+      "src/breach-d325-escape-join.ts",
+      "src/breach-d336-stale-open-leaf.ts",
+      "src/breach-d337-entry-service-landing.ts",
+      "scripts/audit-r7-squad-execution.mjs",
+      "tests/release-d3-25*.test.mjs",
+      ".github/workflows/d3-25-physical-acceptance.yml",
+      "scripts/verification/ci-a8-physical-acceptance.mjs",
+      "scripts/verification/ci-lock-aware-physical-acceptance.mjs",
+      "scripts/verification/ci-physical-cohort-provenance.mjs",
+      "scripts/verification/ci-d3-physical-truth.mjs",
+      "tests/ci-a8-physical-acceptance.test.mjs"
+    ]
   }
 ];
 const keys=frozen.map(x=>x.key);
@@ -157,4 +197,65 @@ test('A7c preserve strict passage motor geometry and real performance broadphase
   "retreat belongs|idle doorway occupancy|single furniture-side obstruction",
   'npm run check && npx vite build'])
   assert.ok(perf.includes(needle),needle);
+});
+
+test('A8b preserved D3.17E and D3.25 distinct 60Hz cohorts are nested, not duplicated PR runs',()=>{
+ const ci=workflow('ci.yml'),router=workflow('movement-door-acceptance.yml');
+ assert.equal((ci.match(/uses: \.\/\.github\/workflows\/movement-door-acceptance\.yml/g)||[]).length,1);
+ for(const [key,file,required] of [
+  ['recovery17e','d3-17e-recovery.yml',[
+   '--d315b4-blind22','11 2700','22 2700',
+   '--route-transitions','--d329-cancellation-door-witness',
+   'ci-a8-physical-acceptance.mjs','historical11','frozen22',
+   'tests/release-d3-17e-recovery-accounting.test.mjs']],
+  ['physical25','d3-25-physical-acceptance.yml',[
+   '--d318-fresh22','--d315b4-blind22','11 2700','22 2700',
+   '--d329-cancellation-door-witness','--route-transitions',
+   'ci-a8-physical-acceptance.mjs','historical11','fresh22','frozen22',
+   'tests/release-d3-25f-cold-swept-entry-escape.test.mjs']]
+ ]){
+  const source=workflow(file);
+  assert.match(source,/^  workflow_call:$/m,file+' must be reusable');
+  assert.match(source,/^  workflow_dispatch:$/m,file+' must be manually runnable');
+  assert.doesNotMatch(source,/^  pull_request:$/m,file+' must not duplicate primary CI');
+  assert.ok(router.includes('fromJSON(inputs.lanes).'+key),key+' missing selection');
+  assert.ok(router.includes('uses: ./.github/workflows/'+file),file+' missing caller');
+  for(const item of required)
+   assert.ok(source.includes(item),file+' omitted original cohort '+item);
+ }
+ assert.match(workflow('d3-25-physical-acceptance.yml'),
+  /branches: \[feature\/d3-25-entry-stall-witness-20261118\]/,
+  'the original feature-specific push remains intentionally available');
+});
+test('A8b physical-proof source edits and all original motor file globs select exact retained lanes',()=>{
+ for(const path of [
+  'scripts/verification/ci-a8-physical-acceptance.mjs',
+  'scripts/verification/ci-physical-cohort-provenance.mjs',
+  'scripts/verification/ci-lock-aware-physical-acceptance.mjs',
+  'scripts/verification/ci-d3-physical-truth.mjs',
+  'scripts/audit-r7-squad-execution.mjs',
+  'src/breach-motor-route.ts',
+  'src/breach-d337-entry-service-landing.ts',
+  'tests/ci-a8-physical-acceptance.test.mjs']){
+  const selected=selectMovementDoorSuites([path]);
+  assert.equal(selected.recovery17e,true,path+' missing recovery');
+  assert.equal(selected.physical25,true,path+' missing fresh/historical/frozen');
+ }
+ for(const path of ['docs/deployment-notes.md',
+  'src/weapons/geometry/glock-family-silhouettes.ts']){
+  const selected=selectMovementDoorSuites([path]);
+  assert.equal(selected.recovery17e,false,'unrelated file triggers recovered cohorts');
+  assert.equal(selected.physical25,false,'unrelated file triggers fresh cohort');
+ }
+});
+test('A8b independent cohort jobs cannot cancel each other through caller concurrency',()=>{
+ const a=workflow('d3-17e-recovery.yml');
+ const b=workflow('d3-25-physical-acceptance.yml');
+ const g1=a.split('\n').find(x=>x.startsWith('  group: '));
+ const g2=b.split('\n').find(x=>x.startsWith('  group: '));
+ assert.match(g1,/d317e-recovery-/);
+ assert.match(g2,/d325-physical-/);
+ assert.notEqual(g1,g2);
+ assert.doesNotMatch(g1,/github\.workflow/);
+ assert.doesNotMatch(g2,/github\.workflow/);
 });
