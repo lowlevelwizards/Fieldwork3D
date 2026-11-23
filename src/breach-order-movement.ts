@@ -26,6 +26,7 @@ import {routeWithNormalWorld} from './breach-squeeze-route.ts';
 import {setTransientRoute} from './breach-route-transition.ts';
 import {provisionalRouteAccepted} from './breach-movement-recovery.ts';
 import {autoSidestepFacing} from './breach-auto-sidestep.ts';
+import {knownFixedGoalBlock} from './breach-authored-goal-block.ts';
 import {approachingNarrowThreshold} from './breach-passage.ts';
 import {completeOrder,failCurrentOrder,rotate,aimHeading,applyAimNode}
  from './breach-order-lifecycle.ts';
@@ -329,14 +330,24 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
       'generated-entry-settle');
     provisionalRouteAccepted(a);
   }
-  const settle=retained??newlySettled;
+  // A friendly settle/near-contact tolerance cannot turn a fixed authored
+  // GO *inside discovered non-relocatable furniture* into a false physical
+  // arrival. This is a narrow endpoint truth gate, not a new route or
+  // correction; normal clear and generated entry landings are unaffected.
+  const fixedAuthoredLanding=n.kind==='move'&&!n.entryDoorId&&
+    !n.stackDoorId&&d(a.p,n.p)<=19&&
+    !!knownFixedGoalBlock(s,n.p);
+  if(fixedAuthoredLanding)settledMoveTargets.delete(a);
+  const settle=fixedAuthoredLanding?null:retained??newlySettled;
   if(settle&&!settledAt){
     move(a,settle,dt,s,.72);
     return true;
   }
-  const at=settledAt||arrivedAtLinkedGeneratedSync||near(a.p,n.p,5)||(
+  const at=!fixedAuthoredLanding&&(
+    settledAt||arrivedAtLinkedGeneratedSync||near(a.p,n.p,5)||(
     n.kind==='move'&&nearOccupiedFriendlyGoal(a.p,n.p,
-      friendlyPeers,(from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))));
+      friendlyPeers,(from,to)=>sweptBodyClear(from,to,s.doors,
+        OPERATOR_RADIUS,sessionWorldGeometry(s)))));
   if(at&&retained)settledMoveTargets.delete(a);
   // EQA3.2: an active DOOR order's short, physically swept swing-clear
   // stance takes temporary precedence over its original handle waypoint.
