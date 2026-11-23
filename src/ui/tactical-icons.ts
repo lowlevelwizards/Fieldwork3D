@@ -281,7 +281,8 @@ const entryMethodGlyphs:Readonly<Record<string,string>>={
 export function resolveTacticalIconId(key:string):string|null{
   const chosen=aliases[key]??(key.startsWith('ctxTool-')?
     entryMethodGlyphs[key.slice('ctxTool-'.length)]:undefined)??
-    (/^ctxPower:(on|off):.+$/.test(key)?'power':key);
+    (/^ctxPower:(on|off):.+$/.test(key)?'power':
+      key.startsWith('ctxTreat:')?'medical':key);
   return Object.hasOwn(FIELDWORK_ICON_FAMILY,chosen)?chosen:null;
 }
 const warnedMissingGlyphs=new Set<string>();

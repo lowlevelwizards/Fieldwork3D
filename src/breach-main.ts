@@ -703,7 +703,10 @@ hudController.bindContextActions({
  get doorMenuDismissedId(){return doorMenuDismissedId;},
  set doorMenuDismissedId(v){doorMenuDismissedId=v;},
  focusedDoor:()=>{const a=uid(selected);return a?focusedDoor(a,selectedPlanNode()):undefined;},
- medicalCandidate:at=>medicalCandidate(selected,at),audio:audioController,
+ medicalCandidate:at=>medicalCandidate(selected,at),
+ toggleTreatment:()=>paletteController.toggleTreatment(),
+ closeTreatment:()=>paletteController.closeTreatment(),
+ audio:audioController,
  invalidateFog:()=>fog2D.invalidate(),updateHud,armFacing,showUiHelp
 });
 
@@ -1459,6 +1462,12 @@ const toolbarButtons=hudController.bindToolbar({
  showWeaponChooser,hideWeaponChooser,selectUnit,cancelTargeting,
  showUiHelp,updateHud,medicalCandidate:()=>medicalCandidate(selected),
  casualtyCandidate:()=>casualtyCandidate(selected),
+ openTreatment:()=>{
+   if(state.phase!=='planning'||replaying)return;
+   selectedNode=null;selectedActiveWatch=false;doorFocusId=null;
+   paletteController.closeTreatment();paletteController.invalidate();
+   updateContext();paletteController.toggleTreatment();
+ },
  invalidateFog:()=>fog2D.invalidate(),
  setRangeTrial:value=>{lastRangeTrial=value;},
  resetMission:()=>appFlow.mode==='training'?trainingScreen.retry():reset(),

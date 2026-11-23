@@ -24,13 +24,14 @@ import {nvgControlState,nvgOperational} from '../equipment-night-vision.ts';
 import type {ViewMode} from '../breach-3d.ts';
 import {doorCenter,type Door,type Pt} from '../breach-core.ts';
 import {dispatchTacticalContextCommand} from '../breach-tactical-context-command.ts';
+import {medicalTreatmentChoices} from '../breach-medical-target-choices.ts';
 import type {createBreachAudioController} from '../breach-audio-controller.ts';
 import type {DisplayRouteCache} from '../breach-route-cache.ts';
 import type {createBreachReplayAnalysisController} from './breach-replay-analysis-controller.ts';
 import type {createBreachReplayTimelineController} from './breach-replay-timeline-controller.ts';
 import type {ReplayPlaybackController} from '../breach-replay-playback-controller.ts';
 import {backOne,clearPlan,undoPlan,redoPlan,planWait,toggleWeaponLight,toggleNvg,equipWeaponChoice,
-  planMedicalTreatment,planRecoverMedical,planReload,reloadNow,planSync,
+  planRecoverMedical,planReload,reloadNow,planSync,
   posture,toggleContactRule} from '../breach-game.ts';
 import {captureRangeTrial} from '../equipment-training-diagnostics.ts';
 import {confirmFieldworkAction} from './fieldwork-controls.ts';
@@ -101,6 +102,7 @@ export type TacticalToolbarPorts={
  selectUnit:(id:string)=>void;cancelTargeting:()=>void;
  showUiHelp:(text:string,duration?:number)=>void;updateHud:()=>void;
  medicalCandidate:()=>TeamActor|null;casualtyCandidate:()=>TransportCandidate|null;
+ openTreatment?:()=>void;
  invalidateFog:()=>void;
  setRangeTrial:(trial:RangeTrial|null)=>void;
  resetMission:()=>void;restartRange:()=>void;
@@ -116,6 +118,7 @@ export type TacticalContextActionPorts={
  selectedNode:number|null;selectedActiveWatch:boolean;
  doorFocusId:string|null;doorMenuDismissedId:string|null;
  focusedDoor:()=>Door|undefined;medicalCandidate:(at:Pt)=>TeamActor|null;
+ toggleTreatment?:()=>void;closeTreatment?:()=>void;
  audio:ReturnType<typeof createBreachAudioController>;
  invalidateFog:()=>void;updateHud:()=>void;
  armFacing:(mode:'look'|'watch')=>void;
@@ -535,7 +538,7 @@ export function createTacticalHudController(
   }
   function renderSession(input:TacticalSessionPresentation):void{
     const {state,mode,replaying,selected,selectedNode,selectedActiveWatch,ui,
-      siteIdentityOutput,rangeTelemetry,lastRangeTrial,medicalCandidate,casualty,
+      siteIdentityOutput,rangeTelemetry,lastRangeTrial,casualty,
       paletteTether,paintOperatorAccent,colorFor,fieldLightButton,nvgButton,
       medicalButton,dragButton,carryButton,retrieveButton,navPanel,
       canvas,auditRouteMode,viewMode,cssW,cssH,worldToScreen,displayRouteCache,
@@ -569,12 +572,15 @@ export function createTacticalHudController(
   paintOperatorAccent(paletteTether,selected);
   // Optional intel is collected by proximity in simulation.
   if(medicalButton){
-   const patient=medicalCandidate();
-   medicalButton.disabled=!patient||state.phase!=='planning'||replaying;
-   writeDomText(medicalButton,patient?'TREAT · '+patient.name.toUpperCase():
-    'TREAT · NO SUITABLE SUPPLIES');
-   writeDomAttribute(medicalButton,'aria-label',patient?
-    'Plan medical stabilization for '+patient.name:'No treatable wound with available supplies');
+   const medic=team(state).find(op=>op.id===selected&&op.health>0);
+   const patients=medic?medicalTreatmentChoices(state,medic,medic.p):[];
+   const bleeding=patients.some(p=>p.status==='BLEEDING');
+   medicalButton.disabled=!patients.length||state.phase!=='planning'||replaying;
+   writeDomText(medicalButton,bleeding?'TREAT · BLEEDING':
+     patients.length?'TREAT · STATUS':'TREAT · NO PATIENT');
+   writeDomAttribute(medicalButton,'aria-label',
+     patients.length?'Choose self or a nearby patient and review medical status':
+       'No known wounded patient in reach');
   }
   for(const [button,mode] of [
    [dragButton,'DRAG'],[carryButton,'CARRY'],[retrieveButton,'RECOVER']
@@ -943,8 +949,9 @@ medicalButton.textContent='TREAT';
 medicalButton.setAttribute('aria-label','Plan medical stabilization');
 medicalButton.addEventListener('click',()=>{
  if(port.replaying||port.state.phase!=='planning')return;
- const patient=port.medicalCandidate();
- if(patient)planMedicalTreatment(port.state,port.selected,patient.id);
+ // The toolbar is another entry to the SAME two-step medical selector,
+ // never a shortcut that silently treats whichever patient was nearest.
+ port.openTreatment?.();
  port.updateHud();
 });
 port.ui.loadout.insertAdjacentElement('afterend',medicalButton);
@@ -1038,6 +1045,12 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
       if(action)discoverAction(action,button.title);
       const a=config.actor;
       if(!a)return;
+      // The original dispatcher still understands legacy ctxTreat; the
+      // player-facing button MUST never call it before patient selection.
+      if(action==='ctxTreat'){
+        config.toggleTreatment?.();
+        config.audio.uiClickTone('select');config.updateHud();return;
+      }
       const result=dispatchTacticalContextCommand({
         state:config.state,selected:config.selected,actor:a,node,door,action:action??'',
         selectedActiveWatch:config.selectedActiveWatch,
@@ -1059,6 +1072,8 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
         if(result.dismissDoorId!==undefined)
           config.doorMenuDismissedId=result.dismissDoorId;
         if(result.invalidateFog)config.invalidateFog();
+        if(action?.startsWith('ctxTreat:')&&result.outcome==='accepted')
+          config.closeTreatment?.();
         // The command API's boolean is authoritative; an event-log append
         // is not evidence that a command failed or succeeded.
         completeAction(door?doorCenter(door):node?.p??a.p,

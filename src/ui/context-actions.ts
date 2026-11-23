@@ -62,11 +62,9 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     {id:'ctxWait',label:'WAIT',group:'primary',
       pressed:o.nodeKind==='wait'||o.nodeKind==='holdClear',title:'Wait at this position'},
     ...(o.treatTargetName?[{id:'ctxTreat',
-      label:o.treatCaptureTarget?'TREAT TARGET':'TREAT',
+      label:'TREAT',
       group:'primary' as const,
-      title:o.treatCaptureTarget?
-        'Stabilize actual bleeding before extraction to prevent death · requires issued medical supplies':
-        'Queue medical treatment for '+o.treatTargetName}]:[]),
+      title:'Choose self or a nearby patient; review bleeding and available medical supplies'}]:[]),
     ...(o.nearDoor?[{id:'ctxDoor',label:'DOOR ACTIONS',group:'primary' as const,
       title:'Show actions for a reachable door'}]:[]),
     ...(o.powerActions??[]),

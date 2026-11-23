@@ -2585,6 +2585,8 @@ export class TacticalScene3D{
         civilianContactAge:poseSeconds-(actor.lastCivilianContactAt??-100),
         interactionCrouch:actor.treatmentActive?
           Math.min(1,Math.max(0,(s.seconds-actor.lastTreatmentAt)/.38)):
+          actor.plan[0]?.interaction==='secure-firearm'?
+          Math.min(1,actor.actionTimer/.34):
           actor.plan[0]?.kind==='tool'&&actor.plan[0]?.toolMethod==='pick'&&
           actor.actionTimer>0?
           Math.min(1,Math.max(0,(s.seconds-actor.lastDoorAt)/.38)):0,

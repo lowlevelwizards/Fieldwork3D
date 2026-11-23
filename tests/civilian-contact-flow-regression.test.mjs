@@ -55,5 +55,7 @@ test('SECURE acknowledges its planned/GO state and closes small contact gaps',()
  const executor=readFileSync(new URL('../src/breach-order-interactions.ts',import.meta.url),'utf8');
  assert.match(game,/QUEUED — EXECUTES ON GO/);
  assert.match(executor,/d\(person\.p,n\.p\)<=45/);
- assert.match(executor,/approach\(a,person\.p,dt,s,\.65\)/);
+ assert.match(executor,/personContactStandpoint\(a\.p,person\.p/);
+ assert.match(executor,/approach\(a,stand,dt,s,\.65\)/);
+ assert.doesNotMatch(executor,/approach\(a,person\.p,dt,s,\.65\)/);
 });

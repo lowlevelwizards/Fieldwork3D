@@ -14,7 +14,7 @@ test('TREAT only appears for an eligible medical target, never on door menu',()=
   assert.equal(contextActionChoices(options).some(x=>x.id==='ctxTreat'),false);
   const withPatient=contextActionChoices({...options,treatTargetName:'Moss'});
   assert.equal(withPatient.find(x=>x.id==='ctxTreat')?.group,'primary');
-  assert.match(withPatient.find(x=>x.id==='ctxTreat')?.title??'',/Moss/);
+  assert.match(withPatient.find(x=>x.id==='ctxTreat')?.title??'',/Choose self or a nearby patient/);
   assert.equal(contextActionChoices({...options,door:true,treatTargetName:'Moss'})
     .some(x=>x.id==='ctxTreat'),false);
 });
@@ -58,7 +58,8 @@ test('selected waypoint treatment inserts before following orders with real supp
 test('tactical palette looks up windows and patients at selected waypoint',()=>{
   const palette=readFileSync(new URL('../src/ui/tactical-palette-controller.ts',import.meta.url),'utf8');
   assert.match(palette,/const at=node\?\.p\?\?finalPoint\(a\)/);
-  assert.match(palette,/treatTargetName:treatTarget\?\.name/);
+  assert.match(palette,/treatTargetName:treatmentCandidates\.length/);
+ assert.match(palette,/medicalChoices:treatmentCandidates/);
   assert.match(palette,/liveVisibility\(state,c\.p\)/);
   const commands=readFileSync(new URL('../src/breach-tactical-context-command.ts',import.meta.url),'utf8');
   assert.match(commands,/planNearbyInteraction\(state,selected,\s*nearby\.open\?'close-window':'open-window',node\?\.id\)/);

@@ -320,6 +320,15 @@ function sprite(a:TeamActor){
     // Enemy names are intentionally never shown.
   }
 }
+function liveWeaponKnown(item:{ownerId:string;p:Pt},state:Session):boolean{
+  const owner=state.operators.find(a=>a.id===item.ownerId);
+  const knowledge=replayKnowledge;
+  // Reuse the existing observable owner check; unseen weapon positions do
+  // not become a new source of full-map intelligence.
+  return !!owner&&(getFrame().replaying?
+    (knowledge?.omniscient===true||isSeen(state,owner)):
+    isSeen(state,owner));
+}
 function contacts(){
   const {state,replaying,replayAnalysis,replayContactMarkers,viewMode}=getFrame();
   if(replaying&&replayAnalysis&&replayContactMarkers)
@@ -342,6 +351,21 @@ function contacts(){
   }
   for(const m of state.dropped){
     rect(m.p.x-3,m.p.y-1,6,2,'#202e2d');
+  }
+  // Physical firearm identity comes from the same replayed Session data as
+  // the 3D evidence marker. Never expose an unseen hostile's former location.
+  for(const item of state.droppedFirearms??[]){
+    if(item.status==='retrieved'||!liveWeaponKnown(item,state))continue;
+    const x=item.p.x,y=item.p.y;
+    if(item.status==='secured'){
+      rect(x-8,y-5,16,10,'#bca97b');
+      draw.strokeStyle='#26372f';draw.lineWidth=2.3;
+      draw.beginPath();draw.moveTo(x-5,y);
+      draw.lineTo(x-1,y+3);draw.lineTo(x+6,y-3);draw.stroke();
+    }else{
+      rect(x-8,y-2,16,4,'#343a35');
+      rect(x+2,y,4,7,'#343a35');
+    }
   }
   for(const g of state.grenades){
     circle(g.p.x,g.p.y,3,'#a7b4a0');

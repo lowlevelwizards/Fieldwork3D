@@ -4225,3 +4225,23 @@ body.nvg-selected-view #breach3dCanvas{
   white-space:normal;text-overflow:clip;line-height:1.12;text-align:center;
  }
 }
+
+/* TREAT opens a secondary patient selector: keep its statuses distinct and
+   legible, including disabled STABLE / NO SUPPLIES entries. */
+.context-tools .context-medical{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:5px;padding:7px 3px 3px;border-top:1px solid #657a68;
+}
+.context-tools .context-medical[hidden]{display:none!important}
+.context-tools .context-medical button{
+ min-width:0;min-height:44px;white-space:normal;
+ background:#304e45;border:1px solid #829782;
+ color:#e6e1cb;font:700 11px/1.1 var(--fw-font-action);
+}
+.context-tools .context-medical button:disabled{
+ opacity:.65;border-style:dashed;
+}
+@media(max-width:600px){
+ .context-tools .context-medical{grid-template-columns:1fr}
+ .context-tools .context-medical button{font-size:10px}
+}
