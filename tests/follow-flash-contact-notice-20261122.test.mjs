@@ -6,6 +6,8 @@ import {validateThrow,sampleThrow} from '../src/breach-flash.ts';
 import {newSession,team} from '../src/breach-game.ts';
 import {selectedActionTarget} from '../src/breach-action-target-marker.ts';
 import {ExecutionNoticeFeed} from '../src/ui/execution-feedback.ts';
+import {liveExecutionNotice,liveExecutionStatus}
+ from '../src/ui/live-execution-presentation.ts';
 import {executionStatus} from '../src/breach-execution-state.ts';
 import {activateSite,OPERATOR_RADIUS} from '../src/breach-core.ts';
 import {generateSite} from '../src/breach-site.ts';
@@ -109,22 +111,32 @@ test('resolved blocked orders and old entry interruptions do not persist in noti
  const blocked={id:1,t:.4,actor:'rook',p:{x:0,y:0},
    orderId:44,kind:'blocked',reason:'door-locked',
    text:'ROOK DOOR BLOCKED · LOCKED'};
- assert.equal(feed.update([], 'running',1000,[blocked],
-   [{id:'rook',plan:[{id:44}]}])?.severity,'warning');
- assert.notEqual(feed.update([], 'running',1010,[],
-   [{id:'rook',plan:[]}])?.severity,'warning');
- const later=feed.update(['ENTRY INTERRUPTED'], 'planning',1200,[],
-   [{id:'rook',plan:[]}]);
- assert.equal(later?.text?.includes('ENTRY INTERRUPTED'),false);
- // A shifted legacy event buffer is historical, not a new obstruction.
- // Current typed notices still show when the matching order is active.
- const stale=feed.update(['ROOK PATH BLOCKED · DOOR LOCKED · ORDER CANCELLED'],
-   'running',1600,[],[{id:'rook',plan:[]}]);
- assert.notEqual(stale?.severity,'warning');
- const execution=read('src/breach-execution-state.ts');
- assert.match(execution,/ctx\.showHistoricalIssues!==false&&a\.interruptedDoorPlan/);
- const hud=read('src/ui/tactical-hud-controller.ts');
- assert.match(hud,/showHistoricalIssues:false/);
+ const active=[{id:'rook',plan:[{id:44}]}],drained=[{id:'rook',plan:[]}];
+ assert.equal(liveExecutionNotice(feed.update([], 'running',1000,[blocked]),
+   active)?.severity,'warning');
+ assert.equal(liveExecutionNotice(feed.update([], 'running',1010,[]),
+   drained),null);
+ assert.equal(liveExecutionNotice(feed.update(['ENTRY INTERRUPTED'],
+   'planning',1200,[]),drained),null);
+ const stale=liveExecutionNotice(feed.update(
+   ['ROOK PATH BLOCKED · DOOR LOCKED · ORDER CANCELLED'],
+   'running',1600,[]),drained);
+ assert.equal(stale,null);
+ const actor={health:4,plan:[],activeNode:-1,blockedTime:0,
+   lastBlocker:'clear',recoveryAttempts:0,velocity:0,
+   waitRemaining:0,actionTimer:0,syncReady:null,traversal:null,
+   traversalRetreating:false,traversalElapsed:0,motorPause:null,
+   orderIssue:null,completedOrders:1,failedOrders:1,
+   lastFailedOrder:{id:44,kind:'door',reason:'DOOR LOCKED',at:2},
+   interruptedDoorPlan:{doorId:'D1',reason:'locked',at:2}};
+ assert.equal(liveExecutionStatus(actor,{phase:'running'},3).label,
+   'ORDER FAILED');
+ const after=liveExecutionStatus(actor,{phase:'running'},12);
+ assert.equal(after.kind,'idle');
+ assert.notEqual(after.label,'ORDERS COMPLETE');
+ const historical=executionStatus(actor);
+ assert.equal(historical.label,'ENTRY INTERRUPTED',
+   'forensic/history contract must not be rewritten by live presentation');
  const overlay=read('src/breach-2d-route-overlays.ts');
  assert.doesNotMatch(overlay,/paintInterruptedEntryMarker/);
  const projected=read('src/breach-2d-projected-overlays.ts');

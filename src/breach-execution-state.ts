@@ -35,9 +35,6 @@ type Peer={id?:string;health:number;syncReady:string|null;plan:readonly PlanNode
 type DoorView={id:string;open:boolean;openFraction?:number};
 export type ExecutionContext={
  phase?:'planning'|'running'|'won'|'lost';
- seconds?:number;
- /** UI hides archival interruptions; diagnostics preserve exact history. */
- showHistoricalIssues?:boolean;
  doors?:readonly DoorView[];peers?:readonly Peer[];
 };
 const result=(kind:ExecutionKind,label:string,detail:string,
@@ -50,10 +47,7 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
  if(a.health<=0)return result('idle','DOWN','INCAPACITATED',null,'down');
  if(a.orderIssue&&n&&a.orderIssue.nodeId===n.id)
    return result('blocked','NEEDS ATTENTION',a.orderIssue.reason,id,'order-failed');
- // Historic incidents remain honest queryable outcomes for tests/replay.
- // Player-facing HUD explicitly opts out of completed/obsolete incidents.
- if(ctx.showHistoricalIssues!==false&&a.interruptedDoorPlan&&
-   (ctx.phase==='planning'||!n))
+ if(a.interruptedDoorPlan&&(ctx.phase==='planning'||!n))
    return result('blocked','ENTRY INTERRUPTED',
      a.interruptedDoorPlan.reason==='coordinated'?
        'SQUAD ENTRY HELD · REPLAN WHEN CLEAR':
@@ -105,17 +99,9 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
    // orders were discarded after a witnessed terminal failure. Active
    // actions and ordinary idle actors keep their existing state.
    const failed=a.failedOrders??0;
-   // Only show a genuinely recent final failure; historical cancelled
-   // orders may remain in replay/report data but are not active obstructions.
-   if(failed>0&&ctx.showHistoricalIssues!==false)
-     return result('blocked','ORDERS CANCELLED',
-       failed+' FAILED · '+(a.lastFailedOrder?.reason??'SEE EVENT LOG'),
-       null,'order-cancelled');
-   if(failed>0&&ctx.phase==='running'&&
-      ctx.seconds!==undefined&&a.lastFailedOrder&&
-      ctx.seconds-a.lastFailedOrder.at<1.5)
-     return result('blocked','ORDER FAILED',
-       a.lastFailedOrder.reason,null,'order-cancelled');
+   if(failed>0)return result('blocked','ORDERS CANCELLED',
+     failed+' FAILED · '+(a.lastFailedOrder?.reason??'SEE EVENT LOG'),
+     null,'order-cancelled');
    return result(a.completedOrders>0?'complete':'idle',
      a.completedOrders>0?'ORDERS COMPLETE':'IDLE',
      a.completedOrders>0?'AWAITING YOUR PLAN':'NO ACTIVE ORDERS',

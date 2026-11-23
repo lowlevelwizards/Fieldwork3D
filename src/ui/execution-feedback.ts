@@ -66,8 +66,7 @@ export class ExecutionNoticeFeed{
   }
   /** Only the new suffix of a rolling, at-most-12-item game event log is ingested. */
   update(events:readonly string[],phase:string,now:number,
-    executionEvents:readonly ExecutionEvent[]=[],
-    currentOrders?:readonly {id:string;plan:readonly {id:number}[]}[]):ExecutionNotice|null{
+    executionEvents:readonly ExecutionEvent[]=[]):ExecutionNotice|null{
     let start=events.length;
     if(this.priorEvents===null){
       // Do not replay an entire old log when the screen first opens.
@@ -87,23 +86,13 @@ export class ExecutionNoticeFeed{
     const after=this.lastExecutionId??Math.max(0,(latestId??0)-1);
     const fresh=executionEvents.filter(e=>e.id>after);
     if(latestId!==undefined)this.lastExecutionId=latestId;
-    const structuredTexts=new Set(executionEvents.map(e=>e.text));
-    for(const event of events.slice(start)){
-      const message=event.toUpperCase();
-      // A typed event is the authoritative report. The rolling text log
-      // must never resurrect an already-cancelled/retired obstruction as
-      // a fresh warning just because its buffer shifted on the next tick.
-      const historical=/ENTRY INTERRUPTED|SQUAD ENTRY CANCELLED|ORDER CANCELLED|MOVE BLOCKED.*ORDER RETAINED|PATH BLOCKED.*ORDER RETAINED/.test(message);
-      if(!structuredTexts.has(event)&&!historical)
-        this.enqueue(event,now);
-    }
+    const structuredTexts=new Set(fresh.map(e=>e.text));
+    for(const event of events.slice(start))if(!structuredTexts.has(event))
+      this.enqueue(event,now);
     for(const event of fresh){
       // A later operator state invalidates a previously displayed obstruction.
       this.queue=this.queue.filter(n=>n.actorId!==event.actor||
         n.severity!=='warning');
-      // An old interrupted entry is an implementation detail, not a new
-      // player command to recover. Keep typed history for replay analysis.
-      if(event.reason==='entry-interrupted')continue;
       const classification=classifyExecutionTransition(event);
       if(!classification)continue;
       this.queue.push({text:event.text,label:classification.label,
@@ -115,7 +104,6 @@ export class ExecutionNoticeFeed{
       if(this.queue.length>8)this.queue.shift();
     }
     if(this.priorPhase&&phase!==this.priorPhase){
-      this.queue=this.queue.filter(n=>n.severity!=='warning');
       if(this.priorPhase==='running'&&phase==='planning')
         this.enqueue('Execution paused · Edit orders or resume',now,true);
       else if(this.priorPhase==='planning'&&phase==='running')
@@ -123,11 +111,7 @@ export class ExecutionNoticeFeed{
     }
     this.priorEvents=[...events];
     this.priorPhase=phase;
-    this.queue=this.queue.filter(x=>x.expires>now&&
-      (x.severity!=='warning'||!x.actorId||!currentOrders||
-       !!currentOrders.find(a=>a.id===x.actorId&&
-         x.orderId!==undefined&&x.orderId!==null&&
-         a.plan.some(n=>n.id===x.orderId))));
+    this.queue=this.queue.filter(x=>x.expires>now);
     // Higher-priority conditions are not instantly replaced by routine chatter.
     const ranked=this.queue.sort((a,b)=>b.priority-a.priority||b.born-a.born);
     return ranked[0]??null;
