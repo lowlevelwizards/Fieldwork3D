@@ -72,7 +72,8 @@ test('R6.3 new Quick Play Session reusing actor and order IDs has no ghost notic
    assert.equal(scoped(two,feed,125),null);
    assert.equal(feed.peek(),null);
    assert.notEqual(one,two);
-   assert.equal(one.failedOrders,undefined);
+   assert.equal(team(one)[0].failedOrders,1,
+    'switching sessions cannot erase the original failure ledger');
   }finally{activateSite(null);}
  }finally{activateSite(null);}
 });
