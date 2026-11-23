@@ -67,12 +67,12 @@ test('Ready tab actions move both real pistol wrists and muzzle distinctly',()=>
  assert.equal(frame('high-ready').stance,'high');
  assert.equal(frame('short-stock').stance,'retention');
  assert.equal(frame('active-aim').aim,1);
- assert.ok(frame('point-shoot').aim>.5);
+ assert.ok(frame('point-shoot').aim>.25&&frame('point-shoot').aim<.45);
  assert.ok(frame('ready-to-ads',.7).aim<frame('ready-to-ads',1.5).aim);
  assert.ok(frame('ads-to-low',.7).stanceBlend<
   frame('ads-to-low',1.5).stanceBlend);
  assert.ok(frame('low-ready').pitch<-.25&&frame('low-ready').pitch>-.4);
- assert.ok(frame('high-ready').pitch>.35&&frame('high-ready').pitch<.6);
+ assert.ok(frame('high-ready').pitch>.35&&frame('high-ready').pitch<.5);
  for(const kind of ['reload','reload-emergency','reload-retention'])
   assert.ok(frame(kind,1).reload,kind);
  // An interrupted reload must already have ended by 1.0 s, but its
@@ -81,7 +81,7 @@ test('Ready tab actions move both real pistol wrists and muzzle distinctly',()=>
  assert.equal(frame('reload-interrupt',1).reload,null);
  assert.equal(frame('reload-emergency',1).reload.retain,false);
  assert.equal(frame('reload-retention',1).reload.retain,true);
- assert.ok(LAB_PISTOL_PREVIEW_SCALE>=.6&&LAB_PISTOL_PREVIEW_SCALE<.8);
+ assert.ok(LAB_PISTOL_PREVIEW_SCALE>.53&&LAB_PISTOL_PREVIEW_SCALE<.6);
  const target=(track,t=2)=>{
   const p=frame(track,t);
   return secondaryUpperBodyTargets({fraction:p.fraction,aim:p.aim,
@@ -91,11 +91,20 @@ test('Ready tab actions move both real pistol wrists and muzzle distinctly',()=>
  const high=target('high-ready'),low=target('low-ready');
  const ready=target('ready'),ads=target('active-aim');
  const retention=target('short-stock');
+ const point=target('point-shoot');
+ assert.ok(ads.firing.y>high.firing.y+2,'ADS must be at eye height');
+ assert.ok(high.firing.y>ready.firing.y+2,'high ready above normal ready');
+ assert.ok(ready.firing.y>0,'normal ready above the sternum baseline');
+ assert.ok(point.firing.y<ads.firing.y-2,
+  'point shoot stays conspicuously lower than ADS');
+ assert.ok(point.firing.x<ads.firing.x-2,'point shoot is not full ADS');
  assert.ok(high.firing.y-low.firing.y>5,'high/low firing wrist');
  assert.ok(high.support.y-low.support.y>5,'high/low support wrist');
- assert.ok(ads.firing.x-ready.firing.x>7.5,'ADS nearly straightens both arms');
+ assert.ok(ads.firing.x-ready.firing.x>6.5,'ADS nearly straightens both arms');
  assert.ok(ads.firing.y-ready.firing.y>3.4,'ADS raises both hands');
  assert.ok(ready.firing.x-retention.firing.x>2,'retention retracts hands');
+ assert.ok(retention.support.z<retention.firing.z-5,
+  'close retention brings the free support hand back to the chest');
  // Return the support palm to the authored weapon instead of arbitrary
  // in-front-of-chest coordinates: every model has its own sockets.
  for(const ref of POSE_SIDEARM_GROUPS.flatMap(g=>g.models)){
@@ -103,9 +112,9 @@ test('Ready tab actions move both real pistol wrists and muzzle distinctly',()=>
    glockArtSockets(ref.id):m9ArtSockets(ref.id);
   const contact=labPistolContacts(ref.id);
   assert.equal(contact.primaryFromPivot.x,
-   sockets.primaryGrip.x-sockets.holsterPivot.x,ref.id);
+   sockets.primaryGrip.x+1.05-sockets.holsterPivot.x,ref.id);
   assert.equal(contact.primaryFromPivot.y,
-   sockets.primaryGrip.y-sockets.holsterPivot.y,ref.id);
+   sockets.primaryGrip.y+.72-sockets.holsterPivot.y,ref.id);
   const aimPose=sampleLabPistolFrame('active-aim',2);
   const both=secondaryUpperBodyTargets({
    fraction:1,aim:aimPose.aim,moving:false,obstructed:false,
@@ -113,9 +122,23 @@ test('Ready tab actions move both real pistol wrists and muzzle distinctly',()=>
   });
   assert.ok(Math.abs(both.support.y-both.firing.y)<1.5,ref.id);
   assert.ok(both.firing.x>17,ref.id);
+  assert.ok(both.support.x-both.firing.x>1.3,
+   'support palm must be forward of firing grip '+ref.id);
+  const highFrame=sampleLabPistolFrame('high-ready',2);
+  const pitched=secondaryUpperBodyTargets({
+   fraction:1,aim:0,moving:false,obstructed:false,
+   stance:highFrame.stance,labContacts:contact,
+   labPitch:highFrame.pitch
+  });
+  const unpitched=secondaryUpperBodyTargets({
+   fraction:1,aim:0,moving:false,obstructed:false,
+   stance:highFrame.stance,labContacts:contact,labPitch:0
+  });
+  assert.ok(pitched.support.y>unpitched.support.y+.45,
+   'support palm must rotate with the angled pistol '+ref.id);
   assert.ok(both.support.x>16,ref.id);
   assert.ok(Number.isFinite(contact.slideOffset.x),ref.id);
-  assert.ok(contact.slideOffset.y>3,ref.id);
+  assert.ok(contact.slideOffset.y>2.6,ref.id);
  }
  // No explicit Lab stance = gameplay targets are absolutely unchanged.
  assert.deepEqual(secondaryUpperBodyTargets({
@@ -182,6 +205,12 @@ test('Lab uses the live operator rig and preserves the unissued-only M9 boundary
  assert.ok(lab.includes('PISTOL PREVIEW'));
  assert.ok(source('src/secondary-holster-visual.ts').includes('labScale?:number'));
  assert.ok(lab.includes('labPistolContacts(sidearm)'));
+ assert.ok(lab.includes('presentLabPistolHandShapes(rig,'));
+ assert.ok(lab.includes('poseSidearmSupportAhead'));
+ assert.ok(source('src/breach-operator-upper-body-output.ts')
+  .includes('orientLabPistolHand('));
+ assert.ok(source('src/operator-lab-pistol-hand-visual.ts')
+  .includes('operator-lab-trigger-index'));
  assert.ok(lab.includes('labPistolSlideRack:pistolFrame?.slideRack'));
  assert.ok(contract.includes('labPistolContacts?:LabPistolContacts'));
  assert.ok(contract.includes('labPistolSlideRack?:'));
