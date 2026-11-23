@@ -14,7 +14,8 @@ import {type Session,type TeamActor,plannedControl,finalPoint,
  liveVisibility,resumeInterruptedDoorPlan,
  resumeInterruptedSquadEntry} from './breach-game.ts';
 import type {EntryTool} from './breach-entry-tools.ts';
-import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
+import {SUSPECT_CHALLENGE_RANGE,SUSPECT_ESCORT_VOICE_RANGE}
+ from './breach-suspect-compliance.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {nearestContextCivilian} from './breach-civilian-context-selection.ts';
@@ -144,7 +145,7 @@ export function dispatchTacticalContextCommand(input:{
      e.surrendered&&
      (stopping?!!e.escortLeaderId:e.escortLeaderId!==a.id)&&
      (!stopping?liveVisibility(state,e.p):true)&&
-     distance(at,e.p)<=SUSPECT_CHALLENGE_RANGE&&
+     distance(at,e.p)<=SUSPECT_ESCORT_VOICE_RANGE&&
      sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)))
      .sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0];
    return finish(!!candidate&&planSuspectEscort(state,selected,
