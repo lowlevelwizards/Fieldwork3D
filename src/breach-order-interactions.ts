@@ -4,7 +4,7 @@ import {PERSON_CONTACT_REACH,personContactStandpoint}
 /** Stage 8: civilian custody/escort, physical prop pushing and window
  * actions. Target/reach checks are unchanged and failed orders remain.
  */
-import {type Pt} from './breach-core.ts';
+import {OPERATOR_RADIUS,type Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {setCivilianState} from './breach-civilian-types.ts';
@@ -110,8 +110,8 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
          d(suspect.p,n.p)<=45&&liveVisibility(s,suspect.p)){
         const world=sessionWorldGeometry(s);
         const stand=personContactStandpoint(a.p,suspect.p,p=>
-          world.passable(p,8)&&
-          sweptBodyClear(a.p,p,s.doors,7,world)&&
+          world.passable(p,OPERATOR_RADIUS)&&
+          sweptBodyClear(a.p,p,s.doors,OPERATOR_RADIUS,world)&&
           !s.operators.some(e=>e!==a&&e.health>0&&d(e.p,p)<21)&&
           !s.civilians.some(c=>c.health>0&&d(c.p,p)<20));
         if(stand){approach(a,stand,dt,s,.65);return true;}
@@ -317,8 +317,8 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
          liveVisibility(s,person.p)){
         const world=sessionWorldGeometry(s);
         const stand=personContactStandpoint(a.p,person.p,p=>
-          world.passable(p,8)&&
-          sweptBodyClear(a.p,p,s.doors,7,world)&&
+          world.passable(p,OPERATOR_RADIUS)&&
+          sweptBodyClear(a.p,p,s.doors,OPERATOR_RADIUS,world)&&
           !s.operators.some(e=>e!==a&&e.health>0&&d(e.p,p)<21)&&
           !s.civilians.some(c=>c!==person&&c.health>0&&d(c.p,p)<20));
         if(stand){approach(a,stand,dt,s,.65);return true;}
