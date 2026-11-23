@@ -90,6 +90,11 @@ test('selected action marker is attached to the actual persistent prop identity'
    assert.deepEqual(chosen,{p:{x:a.p.x+20,y:a.p.y},kind:'prop'});
    s.coverState[0].x+=15;
    assert.equal(selectedActionTarget(s,a,999)?.p.x,s.coverState[0].x);
+   a.plan.unshift({id:998,kind:'move',p:{...a.p}});
+   assert.equal(selectedActionTarget(s,a,998),null,
+     'a selected MOVE never inherits an unrelated action target');
+   assert.equal(selectedActionTarget(s,a,null)?.kind,'prop',
+     'without a selected waypoint, the latest actual action remains visible');
    s.intel.cover.delete(0);
    assert.equal(selectedActionTarget(s,a,999),null,
      'unseen cover cannot be identified by a UI dot');

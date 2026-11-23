@@ -10,12 +10,19 @@ import {presentCivilian}
 export type ActionTargetMarker={p:Pt;kind:'person'|'prop'|'door'|'weapon'};
 export function selectedActionTarget(s:Session,a:TeamActor,
  selectedNode:number|null):ActionTargetMarker|null{
- const chosen=selectedNode===null?undefined:
-   a.plan.find(n=>n.id===selectedNode);
- const node=chosen?.kind==='interact'||chosen?.kind==='treat'||
-   chosen?.kind==='evacuate'||chosen?.kind==='door'?chosen:
-   [...a.plan].reverse().find(n=>n.kind==='interact'||
-     n.kind==='treat'||n.kind==='evacuate'||n.kind==='door');
+ // The selected waypoint is authoritative. A selected MOVE must not
+ // display the unrelated dot of an older interaction later in the queue.
+ // No per-frame reversed-plan allocation; tactical overlays run every RAF.
+ const targetable=(n:TeamActor['plan'][number])=>
+   n.kind==='interact'||n.kind==='treat'||n.kind==='evacuate'||
+   n.kind==='door';
+ let node:TeamActor['plan'][number]|undefined;
+ if(selectedNode!==null){
+   const chosen=a.plan.find(n=>n.id===selectedNode);
+   node=chosen&&targetable(chosen)?chosen:undefined;
+ }else for(let i=a.plan.length-1;i>=0;i--){
+   if(targetable(a.plan[i])){node=a.plan[i];break;}
+ }
  if(!node)return null;
  if(node.kind==='door'&&node.doorId){
   const door=s.doors.find(d=>d.id===node.doorId);
