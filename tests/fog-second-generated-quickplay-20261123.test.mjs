@@ -26,7 +26,7 @@ function recordingMask(){
   moveTo(x,y){path.push({x,y});},
   lineTo(x,y){path.push({x,y});},
   closePath(){},
-  fill(){records.push({style:this.fillStyle,mode:this.globalCompositeOperation,
+  fill(){records.push({style:typeof this.fillStyle==='object'?'graded-cone':this.fillStyle,mode:this.globalCompositeOperation,
     points:path.map(p=>({...p}))});},
   createRadialGradient(){
    return {addColorStop(){}};
@@ -84,11 +84,16 @@ test('two consecutive generated-site fog mesh swaps retain shared material but r
  try{
   const a=replaceTacticalFogGeometry(smooth,exterior,first.site);
   const oldSmooth=smooth.geometry,oldExterior=exterior.geometry;
+  const oldExteriorPoints=Array.from(oldExterior.getAttribute('position').array);
   const b=replaceTacticalFogGeometry(smooth,exterior,second.site);
   assert.notEqual(smooth.geometry,oldSmooth);
   assert.notEqual(exterior.geometry,oldExterior);
   assert.deepEqual(b,second.site.bounds);
-  assert.notDeepEqual(a,b);
+  // Procedural maps may share world bounds but have very different rooms.
+  assert.deepEqual(a,first.site.bounds);
+  assert.notDeepEqual(oldExteriorPoints,
+   Array.from(exterior.geometry.getAttribute('position').array),
+   'the second site's indoor footprint must replace the previous one');
   assert.equal(smooth.material,shared);
   assert.equal(exterior.material,shared);
   const params=smooth.geometry.parameters;
