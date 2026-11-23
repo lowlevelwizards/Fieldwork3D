@@ -88,6 +88,12 @@ const d326Fine=d326LastStallProbe?
  await import('../src/breach-squeeze-route.ts'):null;
 const d326Gate=d326LastStallProbe?
  await import('../src/breach-d326-fine-route-gate.ts'):null;
+// D3.37 P1: exact frozen CLINIC Ash read-only edge proof.
+const d337ClinicEdgeProof=process.argv.includes('--d337-clinic-edge-proof');
+const d337Portal=d337ClinicEdgeProof?
+ await import('../src/breach-rehearsed-portal-continuation.ts'):null;
+const d337Door=d337ClinicEdgeProof?
+ await import('../src/breach-door.ts'):null;
 // D3.17E: offline-only, post-run real geometry witness for blocked bodies.
 // It never runs in live movement, advances the simulation, or adopts a route.
 const leafRejoinDiagnostic=process.argv.includes('--leaf-rejoin-diagnostic');
@@ -1342,6 +1348,131 @@ function run(site,seed,kind){
       gap:round(pointToSegment(actor.p,doorLeafSegment(door)))
      })).sort((a,b)=>a.gap-b.gap).slice(0,10)};
    })():null;
+  // D3.37: inspect exactly ONE true frozen 45-second Clinic ENTRY Ash.
+  // No tick, actor, door or world mutation: all routes are hypothetical.
+  const d337ClinicProof=d337ClinicEdgeProof&&kind==='entry'&&
+    seed===14191143?(()=>{
+    const actor=actors.find(a=>a.id==='ash');
+    if(!actor||actor.plan[0]?.kind!=='move')return null;
+    const goal=actor.plan[0].p,world=sessionWorldGeometry(session);
+    const doors=session.doors;
+    const sweep=(from,to,ds=doors)=>sweptBodyClear(from,to,ds,
+      OPERATOR_RADIUS,world);
+    const stand=(at,ds=doors)=>bodyClear(at,ds,OPERATOR_RADIUS,world);
+    const operable=door=>!door.locked&&!door.jammed&&
+      !door.wedged&&!door.heldBy&&
+      (door.openFraction??(door.open?1:0))<.72&&
+      d337Door.canAutoOpenEnRoute({kind:'move'},door.id);
+    const fullPortal=routeToNextOperableDoor(actor.p,goal,doors,world);
+    const certification=(from,path)=>d337Portal.certifiedFollowOnPortalPrefix(
+      from,goal,path,doors,
+      (a,b,ds)=>sweep(a,b,ds),operable).length;
+    const describeEdge=(from,to,index,length)=>{
+      const mid={x:(from.x+to.x)/2,y:(from.y+to.y)/2};
+      const allowed=sweep(from,to),emptyDoorSweep=sweep(from,to,[]);
+      const culpritDoors=allowed?[]:doors.filter(door=>
+        sweep(from,to,doors.filter(d=>d!==door))&&
+        !sweep(from,to,doors)).map(d=>({id:d.id,
+        locked:!!d.locked,open:d.open,
+        fraction:round(d.openFraction??0),
+        gapFrom:round(pointToSegment(from,doorLeafSegment(d))),
+        gapTo:round(pointToSegment(to,doorLeafSegment(d)))}));
+      return {index,from,to,length:round(length),
+        fullBodySweep:allowed,withoutAllDoors:emptyDoorSweep,
+        standableEndpoint:stand(to),
+        motorFirstStepClear:dist(from,to)>0.3?
+          sweep(from,{x:from.x+(to.x-from.x)*.3/dist(from,to),
+           y:from.y+(to.y-from.y)*.3/dist(from,to)}):allowed,
+        culpritDoors,
+        wallNear:world.walls.map((w,i)=>({i,
+          gap:round(pointToSegment(mid,w)),a:w.a,b:w.b}))
+          .sort((a,b)=>a.gap-b.gap).slice(0,3),
+        coverNear:world.cover.map((c,i)=>({i,
+          x:c.x,y:c.y,w:c.w,h:c.h,
+          gap:round(dist(mid,c))})).sort((a,b)=>a.gap-b.gap).slice(0,3)};
+    };
+    const edges=(from,path)=>{
+      let p=from;
+      return path.map((next,i)=>{
+        const edge=describeEdge(p,next,i,dist(p,next));
+        p=next;return edge;
+      });
+    };
+    const initial=edges(actor.p,fullPortal);
+    // The old terminal snapped *outside* SERVICE's aperture capsule.
+    // Only a real crossing to a FULL-BODY-STANDABLE post-door landing
+    // may be substituted; every other world edge stays original.
+    // These are read-only exact geometrical hypotheses, not motor NAV.
+    const last=initial.at(-1);
+    const singleLeaf=last&&last.index===fullPortal.length-1&&
+      !last.fullBodySweep&&last.withoutAllDoors&&
+      last.culpritDoors.length===1?
+        doors.find(door=>door.id===last.culpritDoors[0].id):null;
+    const landingTests=[];
+    if(singleLeaf&&operable(singleLeaf)){
+      const span=dist(singleLeaf.a,singleLeaf.b);
+      const tx=(singleLeaf.b.x-singleLeaf.a.x)/span,
+        ty=(singleLeaf.b.y-singleLeaf.a.y)/span;
+      const nx=-ty,ny=tx;
+      const mid={x:(singleLeaf.a.x+singleLeaf.b.x)/2,
+        y:(singleLeaf.a.y+singleLeaf.b.y)/2};
+      const sign=(goal.x-mid.x)*nx+(goal.y-mid.y)*ny>=0?1:-1;
+      const previous=fullPortal.at(-2);
+      for(const depth of [OPERATOR_RADIUS+8,OPERATOR_RADIUS+12,
+         OPERATOR_RADIUS+18,OPERATOR_RADIUS+24])
+        for(const offset of [0,6,-6,12,-12]){
+          const target={x:mid.x+nx*sign*depth+tx*offset,
+            y:mid.y+ny*sign*depth+ty*offset};
+          const proposed=[...fullPortal.slice(0,-1),target];
+          landingTests.push({
+            depth,offset,target,standable:stand(target),
+            sweepAfterRemovingJustThisLeaf:sweep(previous,target,
+              doors.filter(d=>d!==singleLeaf)),
+            completeFullBodyCertificate:certification(actor.p,proposed),
+            proposed:proposed.slice(0,8)
+          });
+        }
+    }
+    const alternatives=[];
+    for(const radius of [4,8,12,20,32]){
+      for(let h=0;h<16;h++){
+        const theta=h*Math.PI/8;
+        const at={x:actor.p.x+Math.cos(theta)*radius,
+          y:actor.p.y+Math.sin(theta)*radius};
+        if(!stand(at)||!sweep(actor.p,at))continue;
+        if(alternatives.length>=16)break;
+        const candidate=routeToNextOperableDoor(at,goal,doors,world);
+        const cEdges=edges(at,candidate);
+        const cert=certification(at,candidate);
+        alternatives.push({radius,h,at,nodes:candidate.length,
+          first:candidate[0]??null,last:candidate.at(-1)??null,
+          certified:cert,blocked:cEdges.filter(e=>!e.fullBodySweep)
+            .map(e=>({index:e.index,from:e.from,to:e.to,
+              noDoors:e.withoutAllDoors,culprit:e.culpritDoors})).slice(0,4),
+          path:candidate.slice(0,8)});
+      }
+      if(alternatives.length>=16)break;
+    }
+    return {actor:'ash',start:actor.p,goal,blocked:actor.blockedTime,
+      lastBlocker:actor.lastBlocker,navCount:actor.nav.length,
+      episode:actor.doorTraversal?{
+        id:actor.doorTraversal.doorId,
+        phase:actor.doorTraversal.phase,
+        maneuver:actor.doorTraversal.maneuver,
+        hasHand:!!actor.doorTraversal.handContact,
+        waypoints:actor.doorTraversal.waypoints,
+        lastProgressAt:actor.doorTraversal.lastProgressAt}:null,
+      route:fullPortal,certifiedCount:certification(actor.p,fullPortal),
+      edges:initial,alternatives,landingTests,
+      doors:doors.map(door=>({id:door.id,
+        open:door.open,locked:!!door.locked,
+        fraction:round(door.openFraction??0),
+        angularVelocity:round(door.angularVelocity??0),
+        held:!!door.heldBy,
+        leaf:doorLeafSegment(door),
+        gap:round(pointToSegment(actor.p,doorLeafSegment(door)))}))
+        .sort((a,b)=>a.gap-b.gap).slice(0,12)};
+  })():null;
   const triage=stats.details.map((detail,i)=>{
    const actor=actors[i];
    const recentNetMovement=round(dist(actor.p,windowStart[i]));
@@ -1452,6 +1583,7 @@ function run(site,seed,kind){
    ...(d315bRouteProbe?{d315bRouteEvidence}:{}),
    ...(progress?{progressEvidence}:{}),
    ...(leafRejoinDiagnostic?{leafRecoveryEvidence}:{}),
+   ...(d337ClinicEdgeProof?{d337ClinicProof}:{}),
    ...(d325Feasibility?{d325Feasibility}:{}),
    ...(d326StallEvidence?{d326StallEvidence}:{}),
    ...(d326LastStallProbe?{d326MicroTrace}:{}),
