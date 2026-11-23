@@ -101,6 +101,7 @@ import {PerceptionPairCache} from './breach-perception-cache.ts';
 
 import {setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
 import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.ts';
+import {assessTacticalAction} from './breach-action-assessment.ts';
 import {CIVILIAN_VOICE_RANGE} from './breach-civilian-context-selection.ts';
 import {PERSON_CONTACT_REACH} from './breach-person-contact-standpoint.ts';
 import {SUSPECT_CHALLENGE_RANGE,SUSPECT_ESCORT_VOICE_RANGE}
@@ -621,11 +622,20 @@ export function planCivilianInteraction(s:Session,id:string,
      liveVisibility(s,civil.p))&&
    sweptBodyClear(a.p,civil.p,s.doors,1.5,sessionWorldGeometry(s));
  const from=speakNow?a.p:finalPoint(a),range=d(from,civil.p);
- if(range>(voice?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH)||
-    (range>28&&action!=='stop-following'&&
-     !(action==='follow'&&alreadyEscorted)&&!liveVisibility(s,civil.p))||
-    !sweptBodyClear(from,civil.p,s.doors,1.5,
-      sessionWorldGeometry(s)))return false;
+ const interaction=action==='secure'?'secure-civilian':
+   action==='follow'?'follow-civilian':
+   action==='stop-following'?'stop-following-civilian':'restrain-civilian';
+ const maximumRange=voice?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH;
+ const requireObserved=range>28&&action!=='stop-following'&&
+   !(action==='follow'&&alreadyEscorted);
+ if(!assessTacticalAction({
+   action:interaction,phase:'authoring',actorAvailable:true,
+   targetAvailable:true,domainEligible:true,
+   requireObserved,observed:!requireObserved||liveVisibility(s,civil.p),
+   distance:range,maximumRange,
+   unobstructed:range<=maximumRange&&sweptBodyClear(from,civil.p,s.doors,
+     1.5,sessionWorldGeometry(s))
+ }).allowed)return false;
  if(action==='follow'&&(!civil.rescueTarget||s.mission!=='extract'))
    return false;
  if(action==='stop-following'&&(!civil.rescueTarget||
@@ -633,9 +643,6 @@ export function planCivilianInteraction(s:Session,id:string,
  if(action==='restrain'&&
     (civil.state!=='compliant'||civil.restrained===true||
      civil.rescueTarget))return false;
- const interaction=action==='secure'?'secure-civilian':
-   action==='follow'?'follow-civilian':
-   action==='stop-following'?'stop-following-civilian':'restrain-civilian';
  const queued=speakNow?
    edit(s,a,()=>{a.plan.unshift({
      id:s.nextId++,kind:'interact',p:clone(from),
@@ -656,9 +663,14 @@ export function planSuspectChallenge(s:Session,id:string,targetId:string):boolea
     suspect.surrendered||!team(s).some(observer=>inSight(observer,suspect,s)))
    return false;
  const from=finalPoint(a);
- if(d(from,suspect.p)>SUSPECT_CHALLENGE_RANGE||
-    !sweptBodyClear(from,suspect.p,s.doors,1.5,sessionWorldGeometry(s)))
-   return false;
+ const range=d(from,suspect.p);
+ if(!assessTacticalAction({
+   action:'challenge-suspect',phase:'authoring',actorAvailable:true,
+   targetAvailable:true,domainEligible:true,
+   distance:range,maximumRange:SUSPECT_CHALLENGE_RANGE,
+   unobstructed:range<=SUSPECT_CHALLENGE_RANGE&&
+     sweptBodyClear(from,suspect.p,s.doors,1.5,sessionWorldGeometry(s))
+ }).allowed)return false;
  const queued=addNode(s,id,'interact',from,{
    objectId:'suspect:'+suspect.id,interaction:'challenge-suspect'
  });
@@ -671,11 +683,18 @@ export function planSuspectRestraint(s:Session,id:string,targetId:string):boolea
  if(!a||!target||!canEdit(s)||a.health<=0||
     target.health<=0||!target.surrendered||target.restrained===true)return false;
  const from=finalPoint(a);
- if(d(from,target.p)>PERSON_CONTACT_REACH||
-    !team(s).some(observer=>inSight(observer,target,s))&&
-      !liveVisibility(s,target.p)||
-    !sweptBodyClear(from,target.p,s.doors,1.5,sessionWorldGeometry(s)))
-   return false;
+ const range=d(from,target.p);
+ if(!assessTacticalAction({
+   action:'restrain-suspect',phase:'authoring',actorAvailable:true,
+   targetAvailable:true,domainEligible:true,
+   requireObserved:true,
+   observed:range<=PERSON_CONTACT_REACH&&
+     (team(s).some(observer=>inSight(observer,target,s))||
+      liveVisibility(s,target.p)),
+   distance:range,maximumRange:PERSON_CONTACT_REACH,
+   unobstructed:range<=PERSON_CONTACT_REACH&&
+     sweptBodyClear(from,target.p,s.doors,1.5,sessionWorldGeometry(s))
+ }).allowed)return false;
  const queued=addNode(s,id,'interact',from,{
    objectId:'suspect:'+target.id,interaction:'restrain-suspect'
  });
@@ -700,9 +719,15 @@ export function planSuspectEscort(s:Session,id:string,targetId:string,
    (mode==='stop'||liveVisibility(s,suspect.p));
  const from=speakNow?a.p:finalPoint(a);
  const range=d(from,suspect.p);
- if(range>SUSPECT_ESCORT_VOICE_RANGE||
-    !sweptBodyClear(from,suspect.p,s.doors,1.5,sessionWorldGeometry(s))||
-    (mode==='escort'&&!liveVisibility(s,suspect.p)))return false;
+ if(!assessTacticalAction({
+   action:mode==='escort'?'escort-suspect':'stop-escorting-suspect',
+   phase:'authoring',actorAvailable:true,targetAvailable:true,
+   domainEligible:true,requireObserved:mode==='escort',
+   observed:mode==='stop'||liveVisibility(s,suspect.p),
+   distance:range,maximumRange:SUSPECT_ESCORT_VOICE_RANGE,
+   unobstructed:range<=SUSPECT_ESCORT_VOICE_RANGE&&
+     sweptBodyClear(from,suspect.p,s.doors,1.5,sessionWorldGeometry(s))
+ }).allowed)return false;
  const interaction=mode==='escort'?'escort-suspect':'stop-escorting-suspect';
  const objectId='suspect:'+suspect.id;
  const queued=speakNow?
@@ -720,8 +745,15 @@ export function planSearchSuspect(s:Session,id:string,targetId:string):boolean{
  if(!a||!target||!canEdit(s)||a.health<=0||target.health<=0||
     !target.surrendered||target.restrained!==true||target.suspectSearched)return false;
  const from=finalPoint(a);
- if(d(from,target.p)>34||(d(from,target.p)>28&&!liveVisibility(s,target.p))||
-    !sweptBodyClear(from,target.p,s.doors,5.5,sessionWorldGeometry(s)))return false;
+ const range=d(from,target.p),requireObserved=range>28;
+ if(!assessTacticalAction({
+   action:'search-suspect',phase:'authoring',actorAvailable:true,
+   targetAvailable:true,domainEligible:true,
+   requireObserved,observed:!requireObserved||liveVisibility(s,target.p),
+   distance:range,maximumRange:34,
+   unobstructed:range<=34&&
+     sweptBodyClear(from,target.p,s.doors,5.5,sessionWorldGeometry(s))
+ }).allowed)return false;
  const queued=addNode(s,id,'interact',from,{
    objectId:'suspect:'+target.id,interaction:'search-suspect'
  });
@@ -733,8 +765,15 @@ export function planSecureDroppedFirearm(s:Session,id:string,weaponId:number):bo
  const a=party(s,id),item=s.droppedFirearms.find(w=>w.id===weaponId);
  if(!a||!item||!canEdit(s)||a.health<=0||item.status!=='loose')return false;
  const from=finalPoint(a);
- if(d(from,item.p)>58||!liveVisibility(s,item.p)||
-    !sweptBodyClear(from,item.p,s.doors,1.5,sessionWorldGeometry(s)))return false;
+ const range=d(from,item.p);
+ if(!assessTacticalAction({
+   action:'secure-firearm',phase:'authoring',actorAvailable:true,
+   targetAvailable:true,domainEligible:true,requireObserved:true,
+   observed:range<=58&&liveVisibility(s,item.p),
+   distance:range,maximumRange:58,
+   unobstructed:range<=58&&
+     sweptBodyClear(from,item.p,s.doors,1.5,sessionWorldGeometry(s))
+ }).allowed)return false;
  const queued=addNode(s,id,'interact',from,{
    objectId:'weapon:'+item.id,interaction:'secure-firearm'
  });
