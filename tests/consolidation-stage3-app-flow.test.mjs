@@ -173,7 +173,9 @@ test('A3: composition uses AppFlow for mode, real visibility, mission and replay
  const flow=source('src/breach-app-flow.ts');
  assert.match(main,/createBreachAppFlow\(/);
  assert.match(main,/appFlow\.missionMounted\(\)/);
- assert.match(main,/appFlow\.observePhase\(state\.phase\)/);
+ // R7.1 observes phases through the Session lifecycle owner, never a HUD paint.
+ assert.match(main,/observePhase:phase=>appFlow\.observePhase\(phase\)/);
+ assert.match(main,/sessionLifecycleObserver\.observe\(\{session:state,recorder,replaying\}\)/);
  assert.match(main,/appFlow\.beginReplay\(source\)/);
  assert.match(main,/appFlow\.exitReplay\(\)/);
  assert.match(main,/appFlow\.setMode\(mode\)/);
