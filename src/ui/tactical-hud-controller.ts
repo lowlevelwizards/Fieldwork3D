@@ -1045,6 +1045,12 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
       if(action)discoverAction(action,button.title);
       const a=config.actor;
       if(!a)return;
+      // The original dispatcher still understands legacy ctxTreat; the
+      // player-facing button MUST never call it before patient selection.
+      if(action==='ctxTreat'){
+        config.toggleTreatment?.();
+        config.audio.uiClickTone('select');config.updateHud();return;
+      }
       const result=dispatchTacticalContextCommand({
         state:config.state,selected:config.selected,actor:a,node,door,action:action??'',
         selectedActiveWatch:config.selectedActiveWatch,
@@ -1078,9 +1084,6 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
         config.updateHud();return;
       }
       switch(action){
-        case 'ctxTreat':
-          config.toggleTreatment?.();
-          config.audio.uiClickTone('select');config.updateHud();return;
         case 'ctxSuppress':
           targeting.armSuppress();
           feedback.emit('armed',node?.p??a.p,'SUPPRESS READY');

@@ -118,7 +118,11 @@ test('TREAT toolbar and context both open the same explicit patient chooser',()=
  const main=source('src/breach-main.ts');
  assert.match(hud,/port\.openTreatment\?\.\(\)/);
  assert.doesNotMatch(hud,/if\(patient\)planMedicalTreatment\(port\.state,port\.selected,patient\.id\)/);
- assert.match(hud,/case 'ctxTreat':\s*config\.toggleTreatment\?\.\(\)/);
+ assert.match(hud,/if\(action==='ctxTreat'\)\{/);
+ const chooserAt=hud.indexOf("if(action==='ctxTreat')");
+ const dispatcherAt=hud.indexOf('const result=dispatchTacticalContextCommand({');
+ assert.ok(chooserAt>=0&&chooserAt<dispatcherAt,
+   'TREAT must enter chooser before any legacy auto-target dispatch');
  assert.match(palette,/context-medical/);
  assert.match(palette,/medicalPatientStatus\(a\)/);
  assert.match(palette,/medicalChoices:treatmentCandidates/);
