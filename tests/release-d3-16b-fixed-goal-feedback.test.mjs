@@ -4,6 +4,35 @@ import {readFileSync} from 'node:fs';
 import {fixedGoalCorrectionText} from '../src/breach-authored-goal-block.ts';
 import {recoveryAdviceFor} from '../src/ui/recovery-guidance.ts';
 import {classifyExecutionNotice,ExecutionNoticeFeed,locateNoticeOrder} from '../src/ui/execution-feedback.ts';
+import {generateSite} from '../src/breach-site.ts';
+import {newSession} from '../src/breach-game.ts';
+import {activateSite,OPERATOR_RADIUS} from '../src/breach-core.ts';
+import {sessionWorldGeometry} from '../src/breach-world-context.ts';
+import {knownFixedGoalBlock} from '../src/breach-authored-goal-block.ts';
+import {bodyClear} from '../src/breach-navigation.ts';
+
+
+test('D3.16B: motel 31149 toilet GO remains physically invalid at all arrival tolerances',()=>{
+ const site=generateSite(31149,'small',undefined,{mission:'intel'},
+   {archetype:'motel'});
+ const quiet={...site,training:true,enemies:[],encounter:undefined};
+ const session=newSession(0,31149,'full-view','small','intel',quiet,
+   {enableCivilians:false});
+ try{
+  const goal={x:619.3,y:248},world=sessionWorldGeometry(session);
+  assert.equal(knownFixedGoalBlock(session,goal),'furniture',
+   'the authored goal is in the known immutable toilet clearance');
+  assert.equal(world.passable(goal,OPERATOR_RADIUS),false);
+  assert.equal(bodyClear(goal,session.doors,OPERATOR_RADIUS,world),false);
+  const orderSource=readFileSync(new URL(
+   '../src/breach-order-movement.ts',import.meta.url),'utf8');
+  assert.match(orderSource,/authoredGoalUnstandable/);
+  assert.match(orderSource,/!sessionWorldGeometry\(s\)\.passable\(n\.p,OPERATOR_RADIUS\)/);
+  assert.match(orderSource,/const at=!authoredGoalUnstandable/);
+  // This test freezes the spatial premise; the workflow's 2700-tick
+  // actual motor run must keep the goal pending, not pretend arrival.
+ }finally{activateSite(null);}
+});
 
 test('D3.16B: known fixture at physical GO identifies action without inventing a new destination',()=>{
  const text=fixedGoalCorrectionText('furniture');
