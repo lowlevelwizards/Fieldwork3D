@@ -31,6 +31,7 @@ const cases=[
  [21,'clear'],[14,'hold'],[17,'rescue'],[25,'capture'],[23,'rescue']
 ];
 const forensic=process.argv.includes('--forensic');
+const rescueStandOff=process.argv.includes('--rescue-stand-off');
 const doorAware=process.argv.includes('--door-aware');
 const forensicSeedArg=params.get('seed');
 const chosenBeforeSeed=process.argv.includes('--smoke')?
@@ -78,8 +79,14 @@ for(const [seed,mission] of chosen){
     const decisions=[],stages=[],civilianStates=[],firstViews=[];
     const attemptedDoorActions=new Set();
     const operatorHandoffs=[];
+    let rescueStandOffAccepted=0,rescueStandOffFallbacks=0;
     let acceptedDoorActions=0;
     const forensicEvents=[];
+    // EQA3.5 replayable forensic witnesses, never input into decisions.
+    // Harm is sourced from the authoritative projectile attribution ledger.
+    const harmWitnesses=[],shotWitnesses=[],rescueTimeline=[];
+    const seenShotIds=new Set(),seenHarmIds=new Set();
+    let lastRescueSignature='';
     let lastForensicSignature='';
     const forensicCapture=(type)=>{
       if(!forensic||forensicEvents.length>=380)return;
@@ -215,7 +222,35 @@ for(const [seed,mission] of chosen){
         // mission state machine must independently acknowledge SECURE.
         if(gap>14){
          let plannedAt=target;
-         let acceptedMove=planMove(s,rescuer.id,target);
+         // EQA3.5H audit-driver A/B ONLY. The baseline scripted scout
+         // walks onto the person's actual point even though SECURE/FOLLOW
+         // are usable 27-28 units away and neutral traffic is soft. Test a
+         // physically authored 22-unit approach without enemy/hidden truth.
+         // Stable approach-relative angular ordering ensures no stochastic
+         // tactic, target lookup, ghost movement or new live game behavior.
+         const standoff=rescueStandOff&&s.missionType==='rescue'&&
+           (action==='approach-visible-civilian'||
+            action==='approach-disclosed-objective');
+         let acceptedMove=false;
+         if(standoff){
+          const bearing=Math.atan2(rescuer.p.y-target.y,
+            rescuer.p.x-target.x);
+          findStandOff:for(const radius of [22,25]){
+           for(const offset of [0,Math.PI/4,-Math.PI/4,Math.PI/2,
+                -Math.PI/2,3*Math.PI/4,-3*Math.PI/4,Math.PI]){
+            const candidate={x:target.x+Math.cos(bearing+offset)*radius,
+              y:target.y+Math.sin(bearing+offset)*radius};
+            if(planMove(s,rescuer.id,candidate)){
+             acceptedMove=true;plannedAt=candidate;
+             rescueStandOffAccepted++;break findStandOff;
+            }
+           }
+          }
+          // Real fallback remains the established player-authored point;
+          // report it explicitly so we never claim a standoff occurred.
+          if(!acceptedMove){rescueStandOffFallbacks++;
+            acceptedMove=planMove(s,rescuer.id,target);}
+         }else acceptedMove=planMove(s,rescuer.id,target);
          // EQA3.1 diagnostic correction: a *verified objective location*
          // need not be a valid standing footprint (e.g. evidence placed
          // against a shelf or civilian body). An actual player can click a
@@ -277,6 +312,67 @@ for(const [seed,mission] of chosen){
     executeOrder();
     for(let tick=0;tick<tickFrames&&s.phase==='running';tick++){
       stepSession(s,1/30);
+      // Completion can advance phase out of RUNNING before the 6-tick
+      // sample below. Do not describe a truly DONE mission as lacking
+      // extraction merely because its terminal transition fell off-grid.
+      if(objectiveAt===null&&
+         (s.mission==='extract'||s.mission==='done'))
+        objectiveAt=s.seconds;
+      if(atExtraction===null&&s.mission==='done')
+        atExtraction=s.seconds;
+      if(forensic){
+        for(const shot of s.shots){
+          if(seenShotIds.has(shot.id))continue;
+          seenShotIds.add(shot.id);
+          const firingActor=s.operators.find(a=>a.id===shot.shooterId);
+          const intendedOpponent=firingActor?.targetId?
+            s.operators.find(a=>a.id===firingActor.targetId):null;
+          if(shotWitnesses.length<500)shotWitnesses.push({
+            id:shot.id,at:round(shot.firedAt??s.seconds),
+            side:shot.side,shooter:shot.shooterId,
+            // ShotEvent.targetId identifies the physically resolved hit,
+            // NOT the attacker's deliberate tactical target.
+            resolvedHitActorId:shot.targetId,
+            firingActorTargetId:firingActor?.targetId??null,
+            firingActorTargetP:intendedOpponent?{...intendedOpponent.p}:null,
+            firingActorP:firingActor?{...firingActor.p}:null,
+            from:{...shot.start},to:{...shot.end},
+            yaw:shot.shotYaw,hit:shot.hit,down:shot.down,
+            surface:shot.surface,hitRegion:shot.hitRegion});
+        }
+        for(const harm of s.civilianHarmEvents){
+          if(seenHarmIds.has(harm.id))continue;
+          seenHarmIds.add(harm.id);
+          const victim=s.civilians.find(c=>c.id===harm.victimId);
+          const shooter=s.operators.find(a=>a.id===harm.actorId);
+          if(harmWitnesses.length<100)harmWitnesses.push({
+            ...harm,p:{...harm.p},
+            victimState:victim?.state??null,
+            victimFollowing:victim?.following??null,
+            victimCarriedBy:victim?.carriedById??null,
+            victimRescueTarget:!!victim?.rescueTarget,
+            shooterP:shooter?{...shooter.p}:null,
+            associatedShot:shotWitnesses.find(x=>x.id===harm.shotId)??null
+          });
+        }
+        if(tick%6===0){
+          const person=s.civilians.find(c=>c.rescueTarget);
+          if(person){
+            const signature=JSON.stringify([
+              person.health,person.state,person.following,
+              person.carriedById,s.mission]);
+            if(signature!==lastRescueSignature){
+              lastRescueSignature=signature;
+              if(rescueTimeline.length<120)rescueTimeline.push({
+                at:round(s.seconds),stage:s.mission,
+                state:person.state,health:person.health,
+                following:person.following,carriedBy:person.carriedById,
+                position:{...person.p},actorDistance:round(dist(scout.p,person.p))
+              });
+            }
+          }
+        }
+      }
       // Scripted handoff, not automatic gameplay AI: when its one
       // commanded scout goes down, a human could choose another real
       // surviving teammate. Preserve authoritative casualty state and
@@ -390,7 +486,11 @@ for(const [seed,mission] of chosen){
       roomsUnreachable:failed.size,roomsAttempted:attempted.size,
       civilianStates,stages,decisions,
       forensic:forensic?forensicEvents:undefined,
+      harmWitnesses:forensic?harmWitnesses:undefined,
+      shotWitnesses:forensic?shotWitnesses:undefined,
+      rescueTimeline:forensic?rescueTimeline:undefined,
       doorAware,acceptedDoorActions,operatorHandoffs,
+      rescueStandOff,rescueStandOffAccepted,rescueStandOffFallbacks,
       activeScout:scout.id,activeScoutHealth:scout.health,
       doorsAtEnd:doorAware?s.doors.map(d=>({id:d.id,open:d.open,
         fraction:round(d.openFraction??0),locked:d.locked})):undefined,
@@ -409,7 +509,10 @@ for(const [seed,mission] of chosen){
 }
 const valid=rows.filter(r=>Array.isArray(r.integrity));
 const observed=valid.filter(x=>x.firstContactAt!==null);
-const summary={intel,doorAware,operatorHandoffs:valid.reduce((n,r)=>n+(r.operatorHandoffs?.length??0),0),acceptedDoorActions:valid.reduce((n,r)=>n+(r.acceptedDoorActions??0),0),trials:valid.length,exceptions:exceptions.length,
+const summary={intel,doorAware,rescueStandOff,
+ rescueStandOffAccepted:valid.reduce((n,r)=>n+(r.rescueStandOffAccepted??0),0),
+ rescueStandOffFallbacks:valid.reduce((n,r)=>n+(r.rescueStandOffFallbacks??0),0),
+ operatorHandoffs:valid.reduce((n,r)=>n+(r.operatorHandoffs?.length??0),0),acceptedDoorActions:valid.reduce((n,r)=>n+(r.acceptedDoorActions??0),0),trials:valid.length,exceptions:exceptions.length,
  invalid:valid.filter(x=>x.integrity.length).length,
  completed:valid.filter(x=>x.missionStage==='done').length,
  objectiveSecured:valid.filter(x=>x.objectiveAt!==null).length,
@@ -431,6 +534,11 @@ if(process.env.EQA3_OUTPUT){
  writeFileSync(process.env.EQA3_OUTPUT,JSON.stringify(report,null,2)+'\n');
 }
 console.log(JSON.stringify({summary,errors:exceptions,
+ rescueHarm:forensic?valid.filter(r=>r.harmWitnesses?.length||r.rescueTimeline?.length)
+   .map(r=>({seed:r.seed,mission:r.mission,intel:r.intel,
+     insertion:r.insertion,harms:r.harmWitnesses,
+     rescueTimeline:r.rescueTimeline,
+     witnessShots:r.shotWitnesses?.length??0})):undefined,
  forensic:forensic?valid.map(r=>({seed:r.seed,mission:r.mission,intel:r.intel,
   insertion:r.insertion,stage:r.missionStage,events:r.forensic?.slice(0,120)})):undefined,
  highInterest:valid.filter(x=>x.routeAbort||x.objectiveAt!==null||

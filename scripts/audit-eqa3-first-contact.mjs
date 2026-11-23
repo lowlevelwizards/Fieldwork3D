@@ -8,13 +8,19 @@ import {writeFileSync,mkdirSync} from 'node:fs';
 import {generateSite} from '../src/breach-site.ts';
 import {newSession,availableDeployments,selectDeployment,team,enemies,
   planDoor,planMove,toggling,stepSession,inSight} from '../src/breach-game.ts';
-import {doorCenter,activateSite} from '../src/breach-core.ts';
+import {doorCenter,doorOpticalSegment,activateSite} from '../src/breach-core.ts';
+import {exposure} from '../src/breach-combat.ts';
+import {effectiveEyeHeight,effectiveAimHeight} from '../src/breach-cover-height.ts';
+import {sessionWorldGeometry} from '../src/breach-world-context.ts';
+import {segmentImpact} from '../src/breach-ballistic-resolution.ts';
+import {windowPaneSegment} from '../src/breach-windows.ts';
 import {doorKnown} from '../src/breach-intel.ts';
 const cases=[
  [12,'intel'],[13,'rescue'],[14,'hold'],[17,'rescue'],
  [18,'rescue'],[20,'capture'],[23,'rescue'],[25,'capture']
 ];
 const sec=process.argv.includes('--quick')?7:18;
+const forensic=process.argv.includes('--forensic');
 const d=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const center=r=>({x:r.x+r.w/2,y:r.y+r.h/2});
 const round=n=>Math.round(n*100)/100;
@@ -98,6 +104,37 @@ for(const [seed,mission] of cases){
       firstEnemySight={t:round(s.seconds),
         ids:hostilesSeeingScout.map(x=>x.id)};
     if(!firstContact&&(visibleToSquad.length||hostilesSeeingScout.length)){
+      // EQA3.5 offline sightline witness. It never supplies target
+      // knowledge or alters visibility, weapon selection, or movement.
+      // Capture real confirmed actor pairs at the instant of first sight,
+      // including the optical door/window geometry before entry opens.
+      const world=forensic?sessionWorldGeometry(s):null;
+      const confirmedPairs=forensic?[
+        ...observers.flatMap(a=>visibleToSquad.filter(e=>inSight(a,e,s))
+          .map(e=>({from:a,to:e,side:'blue'}))),
+        ...hostilesSeeingScout.map(e=>({from:e,to:scout,side:'red'}))
+      ]:[];
+      const sightlineWitness=forensic?confirmedPairs.map(({from,to,side})=>{
+        const geo=exposure(from.p,to.p,s.doors,
+          to.posture==='crouch',from.posture==='crouch',true,
+          world.walls,world.cover,effectiveEyeHeight(from),
+          effectiveAimHeight(to));
+        const intersectedDoors=s.doors.filter(door=>
+          segmentImpact(from.p,to.p,doorOpticalSegment(door))!==null)
+          .map(door=>({id:door.id,style:door.style??'unspecified',
+            open:door.open,fraction:round(door.openFraction??0)}));
+        const intersectedWindows=s.windows.filter(w=>
+          segmentImpact(from.p,to.p,windowPaneSegment(w))!==null)
+          .map(w=>({id:w.id??null,open:w.open,shattered:w.shattered,
+            sill:w.sillHeight,head:w.headHeight}));
+        return {observer:from.id,target:to.id,side,
+          from:{...from.p},to:{...to.p},
+          gap:round(d(from.p,to.p)),observerHeading:round(from.heading),
+          targetHeading:round(to.heading),
+          visualProgress:round(from.awareness.visualProgress[to.id]??0),
+          opticalExposure:geo,
+          intersectedDoors,intersectedWindows};
+      }):undefined;
       const active=[...new Set([...visibleToSquad,...hostilesSeeingScout])];
       firstContact={at:round(s.seconds),
         scoutP:{...scout.p},
@@ -112,6 +149,12 @@ for(const [seed,mission] of cases){
           role:a.encounterRole,readiness:a.encounterReadiness,
           activity:a.encounterActivity,alert:a.alert,
           state:a.encounterReactionUntil})),
+        firstOpenOrderDoor:doorAuthored?(()=>{
+          const door=s.doors.find(x=>x.id===doorAuthored);
+          return door?{id:door.id,open:door.open,
+            fraction:round(door.openFraction??0),style:door.style}:null;
+        })():null,
+        sightlineWitness,
         nearbyCivilians:s.civilians.filter(c=>c.health>0&&
           d(c.p,scout.p)<=90).map(c=>({
             id:c.id,state:c.state,gap:round(d(c.p,scout.p)),
@@ -205,6 +248,8 @@ console.log(JSON.stringify({summary,pairs,
     at:r.firstContact.at,saw:r.firstContact.playerSaw,
     enemySaw:r.firstContact.enemySawScout,roles:r.firstContact.people,
     civilian:r.firstContact.nearbyCivilians,
+    firstOpenOrderDoor:r.firstContact.firstOpenOrderDoor,
+    sightlines:r.firstContact.sightlineWitness,
     doorOpenAt:r.doorOpensAt,shots:r.actualShots,
     followUp:r.firstFoeSnapshots.slice(0,3)})),
   noDoorOpen:records.filter(r=>r.doorAuthored&&r.doorOpensAt===null)
