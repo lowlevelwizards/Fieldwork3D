@@ -296,7 +296,15 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
     return true;
    }
   }
-  const newlySettled=n.kind==='move'&&!retained?
+  // A physically blocked *authored* GO must not be considered reached
+  // merely because the operator is within a five-unit completion bubble
+  // or has stepped onto a friendly-traffic settle point nearby.
+  // This is a live physical test, not a player intel disclosure. Generated
+  // ENTRY/STACK have separate, explicitly verified settle contracts.
+  const authoredGoalUnstandable=n.kind==='move'&&
+    !n.entryDoorId&&!n.stackDoorId&&d(a.p,n.p)<=18.5&&
+    !sessionWorldGeometry(s).passable(n.p,OPERATOR_RADIUS);
+  const newlySettled=n.kind==='move'&&!retained&&!authoredGoalUnstandable?
     entrySettle??stackSettle??friendlyArrivalSettleTarget(a.p,n.p,friendlyPeers,(from,to)=>
       sessionWorldGeometry(s).passable(to,OPERATOR_RADIUS)&&
       sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))):null;
@@ -329,14 +337,16 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
       'generated-entry-settle');
     provisionalRouteAccepted(a);
   }
-  const settle=retained??newlySettled;
+  const settle=authoredGoalUnstandable?null:retained??newlySettled;
   if(settle&&!settledAt){
     move(a,settle,dt,s,.72);
     return true;
   }
-  const at=settledAt||arrivedAtLinkedGeneratedSync||near(a.p,n.p,5)||(
-    n.kind==='move'&&nearOccupiedFriendlyGoal(a.p,n.p,
-      friendlyPeers,(from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))));
+  const at=!authoredGoalUnstandable&&
+    (settledAt||arrivedAtLinkedGeneratedSync||near(a.p,n.p,5)||(
+      n.kind==='move'&&nearOccupiedFriendlyGoal(a.p,n.p,
+        friendlyPeers,(from,to)=>sweptBodyClear(from,to,s.doors,
+          OPERATOR_RADIUS,sessionWorldGeometry(s)))));
   if(at&&retained)settledMoveTargets.delete(a);
   // EQA3.2: an active DOOR order's short, physically swept swing-clear
   // stance takes temporary precedence over its original handle waypoint.
