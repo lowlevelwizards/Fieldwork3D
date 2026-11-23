@@ -13,6 +13,21 @@ export type LabPistolContacts=Readonly<{
  supportOffset:Anchor3;
  slideOffset:Anchor3;
 }>;
+/** Compact, one-handed Lab retention. Both hands remain in front of the
+ * torso, on their own anatomical sides. The support palm guards the left
+ * chest rather than crossing over the gun; downward poles keep the elbows
+ * hanging near the ribs instead of making a folded X across the vest.
+ * Never passed to a live gameplay character.
+ */
+export const LAB_CLOSE_RETENTION=Object.freeze({
+ firing:{x:8.05,y:-1.8,z:6.5},
+ support:{x:7.05,y:1.0,z:-5.9},
+ firingElbowPole:{x:7,y:-12,z:1},
+ supportElbowPole:{x:7,y:-12,z:-1}
+}) satisfies Readonly<{
+ firing:Anchor3;support:Anchor3;
+ firingElbowPole:Anchor3;supportElbowPole:Anchor3
+}>;
 const clamp=(v:number)=>Math.max(0,Math.min(1,Number.isFinite(v)?v:0));
 const smooth=(t:number)=>{const x=clamp(t);return x*x*(3-2*x);};
 const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;
@@ -66,7 +81,7 @@ export function secondaryUpperBodyTargets(input:Readonly<{
  const extended:Anchor3=laboratory?
   {x:17.4,y:6.1,z:2.55}:{x:13.4,y:-.25,z:2.0};
  const retention:Anchor3=laboratory?
-  {x:7.0,y:-.6,z:4.8}:{x:5.7,y:-5.7,z:4.9};
+  LAB_CLOSE_RETENTION.firing:{x:5.7,y:-5.7,z:4.9};
  const firing=input.obstructed||input.stance==='retention'?retention:
   blend(ready,extended,ads);
  const supportBase:Anchor3=laboratory?
@@ -81,7 +96,7 @@ export function secondaryUpperBodyTargets(input:Readonly<{
  let support=input.obstructed||input.stance==='retention'?
   // Support palm retracts independently to guard the chest, not over the
   // firing hand in a cramped pseudo-rifle short-stock hold.
-  (laboratory?{x:4.7,y:0,z:-2.2}:{x:5.3,y:-5.8,z:1.5}):
+  (laboratory?LAB_CLOSE_RETENTION.support:{x:5.3,y:-5.8,z:1.5}):
   blend(supportReady,supportAim,ads);
  if(input.labContacts&&input.stance!=='retention'&&!input.obstructed)
   support=add(firing,pitched(input.labContacts.supportOffset,input.labPitch??0));

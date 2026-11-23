@@ -223,6 +223,8 @@ export type TeamActor=Operator & {
   pivotEpisode?:import('./breach-pivot-episode.ts').PivotEpisode|null;
   /** A3.9-K: real-sweep kick-leg choice, visual footstep IK only. */
   kickFoot?:0|1|null;
+  /** Leaf strike position frozen when the kick starts; never door-attached. */
+  kickImpactPoint?:Pt|null;
   /** A3.9: fixed-step cover-matched height relative to authored posture. */
   coverStanceDrop?:number;coverStanceSource?:string|null;
   recoveryAttempts:number;retryRouteAt:number;routeGoalKey:string;

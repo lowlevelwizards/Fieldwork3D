@@ -2392,6 +2392,8 @@ export class TacticalScene3D{
       const activeDoor=plannedDoor??(actor.lastDoorId?
         this.frameDoorsById.get(actor.lastDoorId):undefined);
       const handle=activeDoor?
+        actor.lastDoorMethod==='kick'&&actor.kickImpactPoint?
+          actor.kickImpactPoint:
         actor.lastDoorMethod==='kick'?
           (()=>{const leaf=doorLeafSegment(activeDoor);
             return {x:leaf.a.x+(leaf.b.x-leaf.a.x)*.78,
@@ -2666,6 +2668,7 @@ export class TacticalScene3D{
         flashHookPoint,
         lastBashAt:actor.lastBashAt,bashRole:actor.lastBashRole,
         doorMethod:actor.lastDoorMethod,kickFoot:actor.kickFoot,
+        kickImpactPoint:actor.kickImpactPoint??undefined,
         lockpickActive,lockpickProgress,
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
          doorGrip:previewPreOpen?undefined:doorGrip,physicalContact,

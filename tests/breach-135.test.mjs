@@ -12,6 +12,13 @@ test('135: grounded kick reaches contact and recovers without a snap',()=>{
  assert.ok(impact.reach>3&&impact.lift>2);
  assert.equal(end.extension,0);
  assert.equal(end.complete,true);
+ const strike=kickMotion(KICK_DURATION*.53);
+ const follow=kickMotion(KICK_DURATION*.64);
+ assert.ok(follow.extension>strike.extension,
+   'short follow-through extends after the door impulse');
+ assert.equal(kickMotion(KICK_DURATION*.60).contact,false,
+   'the sole is released before the door starts moving');
+ assert.equal(kickMotion(KICK_DURATION*.94).extension,0);
 });
 test('135: door handle follows hinge and kick accelerates into frame limits',()=>{
  const d=initDoor({id:'D',a:{x:100,y:100},b:{x:130,y:100},

@@ -171,7 +171,14 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
     if(a.actionTimer===0){
       a.lastDoorAt=s.seconds;a.lastDoorId=door.id;
       a.lastDoorMethod=n.method??'open';
-      if(n.method==='kick')a.kickFoot=selectActualKickFoot(s,a,door);
+      if(n.method==='kick'){
+        a.kickFoot=selectActualKickFoot(s,a,door);
+        // Capture the leaf BEFORE the .53 impact impulse. Follow-through
+        // never chases its moving hinge, including in replay.
+        const leaf=doorLeafSegment(door);
+        a.kickImpactPoint={x:leaf.a.x+(leaf.b.x-leaf.a.x)*.78,
+          y:leaf.a.y+(leaf.b.y-leaf.a.y)*.78};
+      }else a.kickImpactPoint=null;
     }
     a.actionTimer+=dt;
     if(n.method==='kick'&&a.actionTimer>=required*.53&&
