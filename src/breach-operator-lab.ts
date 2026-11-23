@@ -2271,6 +2271,11 @@ function draw(){
    (pistolReload.elapsed/pistolReload.duration).toFixed(3):'';
   canvas.dataset.poseSidearmPresentation=sidearm?
    (poseSidearmArtOnly(sidearm)?'art-only':'issued-model-preview'):'none';
+  const heldPreview=sidearm&&poseSidearmArtOnly(sidearm)?
+   rig.hip.getObjectByName('operator-lab-beretta-model'):
+   rig.hip.getObjectByName('secondary-holstered-pistol');
+  canvas.dataset.poseSidearmMesh=String(!!sidearm&&!!heldPreview?.visible);
+  canvas.dataset.posePrimaryHidden=String(!!sidearm&&!rig.weapon.visible);
   canvas.dataset.poseFitSavedWeapon=poseArsenalSavedId??'';
   canvas.dataset.poseFitWeaponReceiver=exactWeaponConfig?.build?.parts.receiver??'';
   canvas.dataset.poseFitWeaponStock=exactWeaponConfig?.build?.parts.stock??'';
