@@ -36,9 +36,8 @@ test('spoken FOLLOW ME has a larger range than challenge or physical restraint',
    .split("if(n.interaction==='search-suspect')")[0];
  assert.match(escort,/range>SUSPECT_ESCORT_VOICE_RANGE/);
  assert.doesNotMatch(escort,/approach\(a,suspect\.p/);
- const civilian=interactions.split("if(n.objectId.startsWith('civ:')&&")[1]
-   .split("if(n.interaction==='release-capture-target')")[0]??'';
- assert.ok(civilian.length>=0);
+ assert.match(interactions,
+   /range>\(voice\?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH\)/);
 });
 
 test('spoken suspect FOLLOW ME is issued from present position BEFORE a queued task',()=>{
@@ -114,7 +113,7 @@ test('hostile key inventory and source-timed escort pose are continuous in both 
  assert.ok(hostileCustodyWalkBlend(a,12.2)<1);
  approx(hostileCustodyWalkBlend(a,13),0);
  a.lastEscortCommandAt=undefined;
- approx(hostileCustodyWalkBlend(a,13),0,'legacy frame');
+ approx(hostileCustodyWalkBlend(a,13),0);
  a.suspectEscapeMode='flee';
  approx(hostileCustodyWalkBlend(a,13),1);
  assert.equal(hostileNpcTransitionKey(a),'hostile/escape');
