@@ -19,6 +19,7 @@ import {SUSPECT_CHALLENGE_RANGE} from '../breach-suspect-compliance.ts';
 import {sweptBodyClear} from '../breach-navigation.ts';
 import {sessionWorldGeometry} from '../breach-world-context.ts';
 import {nearestContextCivilian} from '../breach-civilian-context-selection.ts';
+import {PERSON_CONTACT_REACH} from '../breach-person-contact-standpoint.ts';
 import {finalPoint} from '../breach-game.ts';
 import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide}
   from '../breach-context-placement.ts';
@@ -460,7 +461,7 @@ export function createTacticalPaletteController(config:{
     nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&
       e.surrendered&&!e.restrained&&
       liveVisibility(state,e.p)&&
-      sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)),34):null;
+      sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)),PERSON_CONTACT_REACH):null;
   const searchableAtPlan=routeEndCivilianActions?
     nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&
       e.surrendered&&e.restrained===true&&!e.suspectSearched&&

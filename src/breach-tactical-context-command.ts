@@ -18,6 +18,7 @@ import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {nearestContextCivilian} from './breach-civilian-context-selection.ts';
+import {PERSON_CONTACT_REACH} from './breach-person-contact-standpoint.ts';
 import {medicalTreatmentChoices} from './breach-medical-target-choices.ts';
 import {plannedSecondaryHand} from './secondary-switching.ts';
 import {selectedDoorStackFormation,cycleDoorStackFormation}
@@ -111,7 +112,7 @@ export function dispatchTacticalContextCommand(input:{
   case 'ctxRestrainSuspect':{
    const at=finalPoint(a);
    const target=enemies(state).filter(e=>e.health>0&&e.surrendered&&
-     !e.restrained&&distance(at,e.p)<=34&&liveVisibility(state,e.p)&&
+     !e.restrained&&distance(at,e.p)<=PERSON_CONTACT_REACH&&liveVisibility(state,e.p)&&
      sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)))
      .sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0];
    return finish(!!target&&planSuspectRestraint(state,selected,target.id),

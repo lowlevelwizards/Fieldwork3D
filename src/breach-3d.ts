@@ -787,7 +787,7 @@ export class TacticalScene3D{
   private target=new THREE.Vector3(339,0,413);
   private currentElev=55*Math.PI/180;
   private readonly minZoom=.65;
-  private readonly maxZoom=6.0;
+  private readonly maxZoom=8.0;
   /** Camera QA DOM state is only refreshed when its inputs change.
    * Do not format, join and allocate a status string on every render. */
   private lastCameraStatus:{
@@ -1441,7 +1441,7 @@ export class TacticalScene3D{
     if(this.view.mode==='plan2d')return;
     this.view.mode='iso';
     this.view.pitch=THREE.MathUtils.clamp(
-      this.view.pitch-dy*.004,35*Math.PI/180,Math.PI/2);
+      this.view.pitch-dy*.004,25*Math.PI/180,Math.PI/2);
     this.setYaw(this.view.yaw-dx*.007);
   }
   /** One-time tactical framing after explicit unit selection. Do not follow
