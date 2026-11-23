@@ -177,7 +177,7 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
   turning:0,deterministic:true,unarmedPreview:true,
   appearanceSeed:c.appearanceSeed,equipment:r.equipment,
   wardrobe:r.wardrobe,gait:pose==='run'?'run':'walk',
-  downProgress:down?1:physical.kneel,
+  downProgress:down?physical.fallBlend:physical.kneel,
   replayFeet,poseDiagnostics:false
  },r.lastTime>=0&&now>=r.lastTime?Math.min(.08,now-r.lastTime):0);
  // Only actual GO-time restraint earns a cuff band. The shared operator
@@ -192,7 +192,8 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
    r.character.arms[0].hand.add(band);
    r.restraintBand=band;
  }
- if(r.restraintBand)r.restraintBand.visible=c.restrained===true;
+ if(r.restraintBand)r.restraintBand.visible=c.restrained===true&&
+   physical.restraintBlend>.68;
  // Per-frame absolute evidence-scoped gaze is derived by the same pure
  // interpreter as the legacy skeleton. poseOperator resets the head first.
  r.character.head.rotation.y+=physical.headYaw;
@@ -270,13 +271,20 @@ export function updateCivilianRig(r:CivilianRig,
    r.leftLeg.position.x=-4.15-.5*t;
    r.rightLeg.position.x=4.15+.5*t;
   }
-  r.leftArm.rotation.z=-2.35;r.rightArm.rotation.z=2.35;
+  r.leftArm.rotation.z=-2.35*physical.entering;
+  r.rightArm.rotation.z=2.35*physical.entering;
  }else if(pose==='restrained'){
-  // Distinct actual restraint silhouette, not automatic after SECURE.
-  bend(11,.54);
-  r.leftLeg.position.x=-5.2;r.rightLeg.position.x=5.2;
-  r.leftArm.rotation.z=-.45;r.rightArm.rotation.z=.45;
-  r.leftArm.rotation.x=.68;r.rightArm.rotation.x=.68;
+  // The state flag changes at GO, but the anatomical transition must
+  // start from the LAST compliant silhouette, not jump to tied wrists.
+  // Blend pelvis AND leg compression together for the legacy rig; the
+  // shared production rig uses one atomic upper-body handoff instead.
+  const t=physical.restraintBlend,k=physical.kneel;
+  bend(8*k+(11-8*k)*t,(1-.37*k)+(.54-(1-.37*k))*t);
+  r.leftLeg.position.x=-4.15-.5*k-.55*t;
+  r.rightLeg.position.x=4.15+.5*k+.55*t;
+  r.leftArm.rotation.z=-2.35+1.90*t;
+  r.rightArm.rotation.z=2.35-1.90*t;
+  r.leftArm.rotation.x=.68*t;r.rightArm.rotation.x=.68*t;
  }else if(pose==='startled'){
   // Visible palms/arms raised when a threatening armed presence startles.
   r.leftArm.rotation.z=-2.2;r.rightArm.rotation.z=2.2;
@@ -297,7 +305,8 @@ export function updateCivilianRig(r:CivilianRig,
  }else if(pose==='dragged'){
   r.root.rotation.z=Math.PI*.47;r.root.position.y=3;
  }else if(pose==='down'){
-  r.root.rotation.z=Math.PI*.48;r.root.position.y=3;
+  r.root.rotation.z=Math.PI*.48*physical.fallBlend;
+  r.root.position.y=3*physical.fallBlend;
  }else if(pose==='injured-walk'){
   const step=Math.sin(now*5+c.appearanceSeed*.01)*.17;
   r.leftLeg.rotation.x=step;r.rightLeg.rotation.x=-step;

@@ -77,6 +77,7 @@ export type ReplayActorFrame=ActorFrame & {
  restrained?:boolean;lastCustodyAt?:number;
  suspectSearched?:boolean;
  escortLeaderId?:string|null;lastEscortRouteAt?:number;
+ lastEscortCommandAt?:number;
  escortGoal?:Pt|null;
  /** F6: optional fixed-step clock of the authored active interaction.
   * Missing in older films means no credible mid-action hand retrieval. */
@@ -276,6 +277,7 @@ export function snapshot(s:Session,seenGround?:string[],
       escortLeaderId:a.escortLeaderId??null,
       escortGoal:a.escortGoal?position(a.escortGoal):null,
       lastEscortRouteAt:a.lastEscortRouteAt,
+      lastEscortCommandAt:a.lastEscortCommandAt,
       defense:a.defense?position(a.defense):null,
       watch:a.watch?position(a.watch):null,
       aimInstruction:a.aimInstruction?{...a.aimInstruction,
@@ -607,6 +609,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       escortLeaderId:copy.escortLeaderId??null,
       escortGoal:copy.escortGoal?position(copy.escortGoal):null,
       lastEscortRouteAt:copy.lastEscortRouteAt??-100,
+      lastEscortCommandAt:copy.lastEscortCommandAt,
       actionTimer:copy.actionTimer??0,
       heard:copy.heard?position(copy.heard):null,
       contact:copy.contact?position(copy.contact):null,

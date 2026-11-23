@@ -15,7 +15,8 @@ import {equippedEntryMethods} from '../equipment-entry-tools.ts';
 import {entryToolVerdict} from '../breach-entry-tools.ts';
 import {team,enemies,isSeen,inSight,plannedControl,liveVisibility,
  hasInterruptedSquadEntry,canEdit,type Session,type TeamActor} from '../breach-game.ts';
-import {SUSPECT_CHALLENGE_RANGE} from '../breach-suspect-compliance.ts';
+import {SUSPECT_CHALLENGE_RANGE,SUSPECT_ESCORT_VOICE_RANGE}
+ from '../breach-suspect-compliance.ts';
 import {sweptBodyClear} from '../breach-navigation.ts';
 import {sessionWorldGeometry} from '../breach-world-context.ts';
 import {nearestContextCivilian} from '../breach-civilian-context-selection.ts';
@@ -476,12 +477,12 @@ export function createTacticalPaletteController(config:{
       e.escortLeaderId!==a.id&&
       liveVisibility(state,e.p)&&
       sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)),
-      SUSPECT_CHALLENGE_RANGE):null;
+      SUSPECT_ESCORT_VOICE_RANGE):null;
   const followingSuspectAtPlan=routeEndCivilianActions?
     nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&e.surrendered&&
       !!e.escortLeaderId&&
       sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)),
-      SUSPECT_CHALLENGE_RANGE):null;
+      SUSPECT_ESCORT_VOICE_RANGE):null;
   const downedCaptureAtPlan=routeEndCivilianActions&&
     state.missionType==='capture'&&!!state.captureTarget?
     nearestPaletteCandidate(enemies(state),at,e=>

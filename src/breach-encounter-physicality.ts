@@ -10,7 +10,7 @@ type Subject=Pick<CivilianActor,
  'p'|'heading'|'health'|'injuryStage'|'state'|'stateSince'|'velocity'|
  'activity'|'lastEvidenceAt'|'threatEstimate'|'lastFlinchAt'|'appearanceSeed'
 > & Partial<Pick<CivilianActor,
- 'lastEvidenceId'|'lastContactAt'|'lastContactPoint'|
+ 'lastEvidenceId'|'lastContactAt'|'lastContactPoint'|'lastHitAt'|
  'carriedById'|'transportMode'|'restrained'>>;
 const clamp=(v:number,low:number,high:number)=>Math.max(low,Math.min(high,v));
 const ease=(v:number)=>{const t=clamp(v,0,1);return t*t*(3-2*t);};
@@ -31,6 +31,10 @@ export type CivilianPhysicality={
  hands:'none'|'up'|'head'|'behind';
  /** 0..1 compliance settling, never delays physical SECURE. */
  kneel:number;
+ /** 0..1 visible cuffing handoff from hands-up to hands-behind. */
+ restraintBlend:number;
+ /** 0..1 render-only fall from an actually recorded incapacitating hit. */
+ fallBlend:number;
 };
 
 export function civilianPhysicalityAt(c:Subject,now:number):CivilianPhysicality{
@@ -73,10 +77,21 @@ export function civilianPhysicalityAt(c:Subject,now:number):CivilianPhysicality{
  const shelter=pose==='hide'?c.state==='hiding'?
    .85*entering:.48*entering:0;
  const kneel=secured?ease((age-.32)/.92):0;
+ // Cuff completion does not change 'compliant' or stateSince. Use the
+ // actual recorded contact, not the stale surrender state timestamp.
+ const cuffAge=time-(c.lastContactAt??-100);
+ const restraintBlend=pose==='restrained'?
+   c.lastContactAt!==undefined&&c.lastContactAt>=0&&cuffAge>=0?
+     ease(cuffAge/.44):1:0;
+ // Legacy films without hit timestamps retain a settled down pose.
+ const fallAge=time-(c.lastHitAt??-100);
+ const fallBlend=pose==='down'&&c.lastHitAt!==undefined&&
+   c.lastHitAt>=0&&fallAge>=0?ease(fallAge/.62):1;
  const hands: CivilianPhysicality['hands']=immobile?'none':
    pose==='restrained'?'behind':
    flinch>.15||c.state==='hiding'||c.state==='frozen'||
      pose==='run'?'head':
    pose==='startled'||pose==='compliant'?'up':'none';
- return {pose,headYaw,flinch,entering,shelter,hands,kneel};
+ return {pose,headYaw,flinch,entering,shelter,hands,kneel,
+   restraintBlend,fallBlend};
 }

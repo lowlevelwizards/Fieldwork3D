@@ -13,6 +13,7 @@ import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {canSecureRescuePerson} from './breach-civilian-mission.ts';
 import {CIVILIAN_VOICE_RANGE} from './breach-civilian-context-selection.ts';
 import {SUSPECT_CHALLENGE_RANGE,SUSPECT_CHALLENGE_SECONDS,
+ SUSPECT_ESCORT_VOICE_RANGE,
  challengeSuspectDecision,commitSuspectSurrender} from './breach-suspect-compliance.ts';
 import {canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
 import {coverTargetIndex} from './worldgen/site-object-identity.ts';
@@ -154,7 +155,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         failCurrentOrder(s,a,n,'SUSPECT IS NOT FOLLOWING');return true;
       }
       const range=d(a.p,suspect.p);
-      if(range>SUSPECT_CHALLENGE_RANGE||
+      if(range>SUSPECT_ESCORT_VOICE_RANGE||
          !sweptBodyClear(a.p,suspect.p,s.doors,1.5,sessionWorldGeometry(s))){
         failCurrentOrder(s,a,n,'SUSPECT OUT OF VOICE RANGE');return true;
       }
@@ -167,6 +168,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       // A GO-time custody change belongs to the targeted original actor.
       // No civilian puppet, allegiance mutation, or implicit follow on arrest.
       suspect.escortLeaderId=start?a.id:null;
+      suspect.lastEscortCommandAt=s.seconds;
       // A spoken command can interrupt an unrestrained escape preparation.
       // Once following, a poorly supervised suspect can still break away.
       if(start){

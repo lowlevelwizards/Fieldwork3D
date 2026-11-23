@@ -81,6 +81,8 @@ export type OperatorPose={
   restrained?:boolean;
   /** D15.5 conscious custodial gait; hand restraint stays, knees stand. */
   custodyWalking?:boolean;
+  /** 0-1 visual weight transfer from kneeling to escorted standing. */
+  custodyWalkBlend?:number;
   /** Lab preview only: choose an exact stock/weapon readiness posture. */
   handlingOverride?:Handling;
   handlingIntent?:HandlingIntent;threatRange?:number|null;

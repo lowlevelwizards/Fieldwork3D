@@ -7,6 +7,8 @@ import type {BattleEvent} from './breach-combat.ts';
 import {releaseSuspectHeldFirearm} from './breach-suspect-weapons.ts';
 
 export const SUSPECT_CHALLENGE_RANGE=100;
+/** Spoken FOLLOW ME / STOP commands need not approach hand-contact range. */
+export const SUSPECT_ESCORT_VOICE_RANGE=150;
 export const SUSPECT_CHALLENGE_SECONDS=.48;
 export const SUSPECT_CHALLENGE_COOLDOWN=6;
 

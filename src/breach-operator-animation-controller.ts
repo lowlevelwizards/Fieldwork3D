@@ -106,7 +106,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
   const smooth=(t:number)=>{const v=clamp(t,0,1);return v*v*(3-2*v)};
   const buckle=p.down&&!p.surrender?smooth(downProgress/.48):0;
-  const kneel=p.surrender&&!p.custodyWalking?smooth(downProgress/.65):0;
+  // Blend pelvis/chest/root BEFORE leg IK so boots remain planted when
+  // custody changes from kneeling to standing or back. No leg after-pass.
+  const custodyWeight=clamp(p.custodyWalkBlend??(p.custodyWalking?1:0),0,1);
+  const kneel=p.surrender?smooth(downProgress/.65)*(1-custodyWeight):0;
   // A kneel must keep the pelvis an achievable two-bone distance from
   // planted ankles. The old hip -9 PLUS root -6 put the pelvis ~5 units
   // off the floor, below the legal leg IK minimum reach (~8.4), forcing
