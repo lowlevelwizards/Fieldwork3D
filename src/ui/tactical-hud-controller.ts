@@ -502,7 +502,8 @@ export function createTacticalHudController(
     }
     const execution=a?executionStatus(a,{
       phase:state.phase==='planning'&&state.started?'running':state.phase,
-      seconds:state.seconds,doors:state.doors,peers:input.peers
+      seconds:state.seconds,showHistoricalIssues:false,
+      doors:state.doors,peers:input.peers
     }):null;
     const status=compactExecutionStatus(execution,{
       selected:id===selected,

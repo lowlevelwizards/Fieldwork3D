@@ -109,7 +109,9 @@ test('resolved blocked orders and old entry interruptions do not persist in noti
    [{id:'rook',plan:[]}]);
  assert.equal(later?.text?.includes('ENTRY INTERRUPTED'),false);
  const execution=read('src/breach-execution-state.ts');
- assert.doesNotMatch(execution,/return result\('blocked','ENTRY INTERRUPTED'/);
+ assert.match(execution,/ctx\.showHistoricalIssues!==false&&a\.interruptedDoorPlan/);
+ const hud=read('src/ui/tactical-hud-controller.ts');
+ assert.match(hud,/showHistoricalIssues:false/);
  const overlay=read('src/breach-2d-route-overlays.ts');
  assert.doesNotMatch(overlay,/paintInterruptedEntryMarker/);
  const projected=read('src/breach-2d-projected-overlays.ts');

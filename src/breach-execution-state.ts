@@ -36,6 +36,8 @@ type DoorView={id:string;open:boolean;openFraction?:number};
 export type ExecutionContext={
  phase?:'planning'|'running'|'won'|'lost';
  seconds?:number;
+ /** UI hides archival interruptions; diagnostics preserve exact history. */
+ showHistoricalIssues?:boolean;
  doors?:readonly DoorView[];peers?:readonly Peer[];
 };
 const result=(kind:ExecutionKind,label:string,detail:string,
@@ -48,9 +50,15 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
  if(a.health<=0)return result('idle','DOWN','INCAPACITATED',null,'down');
  if(a.orderIssue&&n&&a.orderIssue.nodeId===n.id)
    return result('blocked','NEEDS ATTENTION',a.orderIssue.reason,id,'order-failed');
- // The old entry-interruption bookkeeping remains for recovery, but it is
- // not a new actionable order. Do not surface historic incidents as live
- // blockages in the operator HUD after the route has continued.
+ // Historic incidents remain honest queryable outcomes for tests/replay.
+ // Player-facing HUD explicitly opts out of completed/obsolete incidents.
+ if(ctx.showHistoricalIssues!==false&&a.interruptedDoorPlan&&
+   (ctx.phase==='planning'||!n))
+   return result('blocked','ENTRY INTERRUPTED',
+     a.interruptedDoorPlan.reason==='coordinated'?
+       'SQUAD ENTRY HELD · REPLAN WHEN CLEAR':
+       'FAILED ENTRY · REPLAN WHEN CLEAR',
+     id,'entry-interrupted');
  if(ctx.phase==='planning'&&n)
    return result('planned','PLANNED',n.kind.toUpperCase(),id,'planned');
  if(a.traversalRetreating)
@@ -99,6 +107,10 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
    const failed=a.failedOrders??0;
    // Only show a genuinely recent final failure; historical cancelled
    // orders may remain in replay/report data but are not active obstructions.
+   if(failed>0&&ctx.showHistoricalIssues!==false)
+     return result('blocked','ORDERS CANCELLED',
+       failed+' FAILED · '+(a.lastFailedOrder?.reason??'SEE EVENT LOG'),
+       null,'order-cancelled');
    if(failed>0&&ctx.phase==='running'&&
       ctx.seconds!==undefined&&a.lastFailedOrder&&
       ctx.seconds-a.lastFailedOrder.at<1.5)
