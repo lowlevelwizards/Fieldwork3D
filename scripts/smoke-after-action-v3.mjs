@@ -210,42 +210,38 @@ try{
       'Content clips '+screen+name+' '+JSON.stringify(metrics));
    };
    await fits('squad');
+   // Rank/name/points sit directly above the retained four-model stage.
+   const stage=await root.evaluate(node=>{
+     const strip=node.querySelector('.fw-v4-rank-list').getBoundingClientRect();
+     const model=node.querySelector('.fw-v4-squad-model').getBoundingClientRect();
+     return {stripBottom:strip.bottom,modelTop:model.top,
+       columns:getComputedStyle(node.querySelector('.fw-v4-rank-list'))
+         .gridTemplateColumns.split(' ').length};
+   });
+   check(stage.columns===4&&stage.stripBottom<=stage.modelTop+3,
+     'Lineup identities are not above their four models '+name+' '+JSON.stringify(stage));
    await root.locator('.fw-v4-rank-row').first().focus();
    await root.locator('.fw-v4-rank-row').first().press('Enter');
-   check(await page.evaluate(()=>
-     document.activeElement?.tagName==='H2'&&
-     document.activeElement?.textContent==='ROOK'),
-     'Keyboard selection did not focus selected operator heading '+name);
-   await root.locator('.fw-v4-overview-back').click();
-   await root.locator('.fw-v4-rank-row').filter({hasText:'MOSS'}).click();
-   check((await root.locator('.fw-v3-squad-name h2').textContent())==='MOSS',
-     'Squad selection failed '+name);
-   if(width<=700){
-     const visible=await page.evaluate(()=>{
-       const root=document.querySelector('#v3-qa'),body=root.querySelector('#afterActionBody');
-       const chosen=root.querySelector('.fw-v4-selected-overview');
-       return !!chosen&&chosen.getBoundingClientRect().top<
-         body.getBoundingClientRect().bottom;
-     });
-     check(visible,'Selected operator details hidden below fold '+name);
-   }
-   check(await root.locator('.fw-v4-rank-row[aria-pressed=true]').count()===1,
-     'Selected operator not clearly identified '+name);
-   check((await root.locator('.fw-v4-selected-overview').textContent())
-     .includes('OBJECTIVE'),
-     'Weighted category breakdown missing '+name);
-   await root.locator('.fw-v4-overview-back').click();
-   check(await root.locator('.fw-v4-rank-row[aria-pressed=true]').count()===0,
-     'All Operators did not clear selection '+name);
-   check(await root.locator('.fw-v4-team-overview').count()===1,
-     'Squad overview not restored '+name);
-   await root.locator('.fw-v4-rank-row').filter({hasText:'MOSS'}).click();
-   await root.locator('.fw-v3-details-link').click();
    check(await root.locator('#afterActionOperatorRecord').count()===1,
-     'Operator record not opened in Squad '+name);
+     'Keyboard activation did not open the full operator record '+name);
+   check((await root.locator('#afterActionOperatorRecord').textContent())
+     .includes('ROOK / RECORDED CONTRIBUTIONS'),
+     'Keyboard opened wrong operator '+name);
+   await root.locator('.fw-v4-record-back').click();
+   check(await root.locator('.fw-v4-team-overview').count()===1,
+     'Back to squad did not restore overview '+name);
+   await root.locator('.fw-v4-rank-row').filter({hasText:'MOSS'}).click();
    check((await root.locator('#afterActionOperatorRecord').textContent())
      .includes('MOSS / RECORDED CONTRIBUTIONS'),
-     'Incorrect operator record '+name);
+     'Name selection did not open Moss '+name);
+   check(await root.locator('.fw-v4-rank-row[aria-pressed=true]').count()===1,
+     'Selected operator not clearly identified '+name);
+   // Switch directly without returning to the squad first.
+   await root.locator('.fw-v4-rank-row').filter({hasText:'ASH'}).click();
+   check((await root.locator('#afterActionOperatorRecord').textContent())
+     .includes('ASH / RECORDED CONTRIBUTIONS'),
+     'Direct record switch failed '+name);
+   await root.locator('.fw-v4-rank-row').filter({hasText:'MOSS'}).click();
    check(!(await root.locator('#afterActionDetails').isVisible()),
      'Operator record wrongly opened Mission Details '+name);
    await root.locator('#afterActionDetailsToggle').click();
