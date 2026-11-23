@@ -167,7 +167,8 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         failCurrentOrder(s,a,n,'SUSPECT IS NOT FOLLOWING');return true;
       }
       const range=d(a.p,suspect.p);
-      if(!assessTacticalAction({
+      // Cheap explicit distance short-circuit precedes the shared verdict.
+      if(range>SUSPECT_ESCORT_VOICE_RANGE||!assessTacticalAction({
         action:n.interaction,phase:'go',
         actorAvailable:true,targetAvailable:true,domainEligible:true,
         distance:range,maximumRange:SUSPECT_ESCORT_VOICE_RANGE,
@@ -354,6 +355,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       const requireObserved=n.interaction==='follow-civilian'&&
         range>28&&!knownEscort;
       if(!person||person.health<=0||
+         range>(voice?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH)||
          !assessTacticalAction({
            action:n.interaction,phase:'go',
            actorAvailable:true,targetAvailable:true,domainEligible:true,
