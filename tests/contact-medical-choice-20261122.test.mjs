@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {personContactStandpoint,PERSON_CONTACT_REACH}
+import {personContactStandpoint,PERSON_CONTACT_REACH,PERSON_CONTACT_STANDOFF}
  from '../src/breach-person-contact-standpoint.ts';
 import {newSession,team,enemies,planSuspectRestraint,toggling,stepSession}
  from '../src/breach-game.ts';
@@ -17,16 +17,22 @@ const d=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 test('restraint standoff never places an operator at the subject center',()=>{
  const from={x:0,y:0},person={x:40,y:0};
- assert.equal(PERSON_CONTACT_REACH,36);
+ assert.equal(PERSON_CONTACT_REACH,42);
+ assert.equal(PERSON_CONTACT_STANDOFF,39);
  const goal=personContactStandpoint(from,person,p=>p.x>0);
  assert.ok(goal);
- assert.ok(Math.abs(d(goal,person)-31)<.0001);
- assert.ok(d(goal,person)>20,'standing space must not overlap the subject');
+ assert.ok(Math.abs(d(goal,person)-PERSON_CONTACT_STANDOFF)<.0001);
+ assert.ok(d(goal,person)>36,'stop at arm reach without body overlap');
+ const sidestep=personContactStandpoint({x:0,y:0},{x:44,y:0},p=>Math.abs(p.y)>9);
+ assert.ok(sidestep&&Math.abs(d(sidestep,{x:44,y:0})-39)<.001,
+   'blocked direct slot selects a safe side slot at the same distance');
  assert.equal(personContactStandpoint(from,person,()=>false),null);
  const order=source('src/breach-order-interactions.ts');
  assert.match(order,/PERSON_CONTACT_REACH/);
  assert.match(order,/personContactStandpoint\(a\.p,suspect\.p/);
  assert.match(order,/personContactStandpoint\(a\.p,person\.p/);
+ assert.equal((order.match(/sweptBodyClear\(a\.p,p,s\.doors,OPERATOR_RADIUS,world\)/g)??[]).length,2,
+   'both contact approaches must sweep the operator full radius');
  const restrain=order.split("if(n.interaction==='restrain-suspect')")[1]
    .split("if(n.interaction==='escort-suspect'||")[0];
  assert.doesNotMatch(restrain,/approach\(a,suspect\.p,dt,s,\.65\)/);
@@ -55,6 +61,40 @@ test('a compliant suspect 32 units away can be restrained without walking into t
   assert.ok(d(actor.p,suspect.p)>=18,'bodies remain separate');
   assert.ok(d(actor.p,origin)<8,'nearby restraint does not force entry to target center');
  }finally{activateSite(null);}
+});
+
+test('a compliant suspect at comfortable hand reach is restrained without stepping closer',()=>{
+ const s=newSession(0,4);
+ try{
+  const actor=team(s)[0],suspect=enemies(s)[0];
+  for(const mate of team(s))if(mate!==actor)mate.health=0;
+  for(const enemy of enemies(s))if(enemy!==suspect)enemy.health=0;
+  suspect.p={x:actor.p.x+40,y:actor.p.y};
+  suspect.priorP={...suspect.p};
+  suspect.heading=actor.heading=actor.weaponYaw=0;
+  actor.awareness.visualProgress[suspect.id]=1;
+  assert.equal(commitSuspectSurrender(s,suspect,()=>{},()=>{}),true);
+  assert.equal(planSuspectRestraint(s,actor.id,suspect.id),true);
+  const origin={...actor.p};
+  toggling(s);
+  for(let i=0;i<145&&s.phase==='running'&&!suspect.restrained;i++)
+   stepSession(s,1/60);
+  assert.equal(suspect.restrained,true);
+  assert.ok(d(actor.p,origin)<8,'operator need not approach an already reachable subject');
+  assert.ok(d(actor.p,suspect.p)>=38,'real body spacing is preserved');
+ }finally{activateSite(null);}
+});
+
+test('restraint offer and execution all share the same farther contact reach',()=>{
+ const game=source('src/breach-game.ts');
+ const selection=source('src/breach-civilian-context-selection.ts');
+ const palette=source('src/ui/tactical-palette-controller.ts');
+ const dispatch=source('src/breach-tactical-context-command.ts');
+ assert.match(game,/d\(from,target\.p\)>PERSON_CONTACT_REACH/);
+ assert.match(game,/voice\?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH/);
+ assert.match(selection,/best=spoken\?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH/);
+ assert.match(palette,/e\.surrendered&&!e\.restrained&&[\s\S]*?PERSON_CONTACT_REACH\):null/);
+ assert.match(dispatch,/distance\(at,e\.p\)<=PERSON_CONTACT_REACH/);
 });
 
 test('medical choices identify self, bleeding, stability, and insufficient supplies',()=>{
