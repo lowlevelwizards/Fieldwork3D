@@ -1509,6 +1509,16 @@ function run(site,seed,kind){
     // End-state evidence only. Read current authoritative motor state;
     // no new tick-level probes, authority, or path calculation.
     goal:planned.goals.get(d.actor)??null,
+    // Original authored MOVE, after the player's known-ground projection.
+    // The older "goal" field is the RAW requested room-center candidate.
+    // It can be unstandable and legitimately nudged before a PlanNode exists.
+    authoredGoal:d327OriginalMove.get(d.actor)?.point??null,
+    authoredGoalStandable:d327OriginalMove.get(d.actor)?.point?
+      bodyClear(d327OriginalMove.get(d.actor).point,session.doors,
+        OPERATOR_RADIUS,sessionWorldGeometry(session)):null,
+    authoredGoalDistance:d327OriginalMove.get(d.actor)?.point?
+      round(dist(actors.find(a=>a.id===d.actor).p,
+        d327OriginalMove.get(d.actor).point)):null,
     position:{...actors.find(a=>a.id===d.actor).p},
     start:starting[actors.findIndex(a=>a.id===d.actor)],
     startingGoalDistance:startedGoalDistance[actors.findIndex(a=>a.id===d.actor)],
