@@ -102,6 +102,7 @@ import {PerceptionPairCache} from './breach-perception-cache.ts';
 import {setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
 import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.ts';
 import {CIVILIAN_VOICE_RANGE} from './breach-civilian-context-selection.ts';
+import {PERSON_CONTACT_REACH} from './breach-person-contact-standpoint.ts';
 import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
 import {activeCombatant,captureTargetResolved} from './breach-suspect-operational-state.ts';
 import {captureVitalStatus,livingCaptureStatus,CAPTURE_VITAL_CHECK_SECONDS,
@@ -610,7 +611,7 @@ export function planCivilianInteraction(s:Session,id:string,
  // SECURE/RESTRAIN retain their short physical reach and full body gate.
  const voice=action==='follow'||action==='stop-following';
  const alreadyEscorted=civil.following!==null&&civil.state==='escorted';
- if(range>(voice?CIVILIAN_VOICE_RANGE:34)||
+ if(range>(voice?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH)||
     (range>28&&action!=='stop-following'&&
      !(action==='follow'&&alreadyEscorted)&&!liveVisibility(s,civil.p))||
     !sweptBodyClear(from,civil.p,s.doors,1.5,
@@ -656,7 +657,7 @@ export function planSuspectRestraint(s:Session,id:string,targetId:string):boolea
  if(!a||!target||!canEdit(s)||a.health<=0||
     target.health<=0||!target.surrendered||target.restrained===true)return false;
  const from=finalPoint(a);
- if(d(from,target.p)>34||
+ if(d(from,target.p)>PERSON_CONTACT_REACH||
     !team(s).some(observer=>inSight(observer,target,s))&&
       !liveVisibility(s,target.p)||
     !sweptBodyClear(from,target.p,s.doors,1.5,sessionWorldGeometry(s)))
