@@ -4337,6 +4337,7 @@ body.nvg-selected-view #breach3dCanvas{
  --fw-v7-lineup-height:clamp(280px,36dvh,360px);
  --fw-v7-heading-height:92px;
  --fw-v7-dot-height:44px;
+ --fw-v7-card-inset:7px;
  display:block;position:relative;min-width:0}
 .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-squad-focus{
  display:flex;flex-direction:column;gap:8px;order:initial;
@@ -4349,14 +4350,14 @@ body.nvg-selected-view #breach3dCanvas{
 .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection)
  .fw-v7-lineup-model .fw-v4-model-canvas{
  position:absolute;left:0;right:0;
- top:calc(var(--fw-v7-heading-height) + var(--fw-v7-dot-height));
- width:100%;height:calc(100% - var(--fw-v7-heading-height) - var(--fw-v7-dot-height))!important;
+ top:calc(var(--fw-v7-card-inset) + var(--fw-v7-heading-height) + var(--fw-v7-dot-height));
+ width:100%;height:calc(100% - var(--fw-v7-heading-height) - var(--fw-v7-dot-height) - 2 * var(--fw-v7-card-inset))!important;
  max-width:100%;z-index:1}
 .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-list{
  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
  position:absolute;top:0;left:0;right:0;z-index:2;
  box-sizing:border-box;width:100%;height:var(--fw-v7-lineup-height);
- padding:7px;gap:4px;align-content:stretch;pointer-events:none}
+ padding:var(--fw-v7-card-inset);gap:4px;align-content:stretch;pointer-events:none}
 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v7-operator-card{
  display:flex;flex-direction:column;align-items:stretch;
  position:relative;min-width:0;height:100%;box-sizing:border-box;
@@ -4414,9 +4415,10 @@ body.nvg-selected-view #breach3dCanvas{
 @media(max-width:700px){
  .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-squad-content{
   --fw-v7-lineup-height:clamp(280px,36dvh,345px);
-  --fw-v7-heading-height:88px}
+  --fw-v7-heading-height:88px;
+  --fw-v7-card-inset:5px}
  .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-list{
-  padding:5px;gap:3px}
+  gap:3px}
  .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-row{
   min-height:0;padding:5px 1px;gap:3px}
  .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-number{font-size:11px}
