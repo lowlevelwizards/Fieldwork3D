@@ -62,6 +62,8 @@ export type BreachRuntimeLoopHooks={
  setReplayPresentation:(value:ReplayPresentation|null)=>void;
  invalidateFog:()=>void;
  advanceReplayCamera:(dt:number)=>void;
+ /** R7.1: post-step Session notification, never a HUD draw. */
+ observeSessionLifecycle?:()=>void;
  updateHud:()=>void;
  updateReplayHud:()=>void;
  updateContext:()=>void;
@@ -326,7 +328,10 @@ function tick(now:number){
       if(playbackStep.finishedIncident)audioController.stopReplaySounds();
     }
   }
-  const runtimeUiStart=performance.now();
+  // Session lifecycle is notified after fixed GO/recorder and replay
+   // handling, independently from the 120/180/750 ms HUD schedule.
+   config.observeSessionLifecycle?.();
+   const runtimeUiStart=performance.now();
   if(replaying&&!photoActive)config.advanceReplayCamera(dt);
   const uiCameraEnd=perfOverlay?performance.now():0;
   audioController.consumeLiveFrame(state,recorder,selected,replaying);
