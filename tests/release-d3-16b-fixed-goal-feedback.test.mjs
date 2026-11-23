@@ -6,6 +6,37 @@ import {readFileSync} from 'node:fs';
 import {fixedGoalCorrectionText} from '../src/breach-authored-goal-block.ts';
 import {recoveryAdviceFor} from '../src/ui/recovery-guidance.ts';
 import {classifyExecutionNotice,ExecutionNoticeFeed,locateNoticeOrder} from '../src/ui/execution-feedback.ts';
+import {generateSite} from '../src/breach-site.ts';
+import {newSession} from '../src/breach-game.ts';
+import {activateSite,OPERATOR_RADIUS} from '../src/breach-core.ts';
+import {sessionWorldGeometry} from '../src/breach-world-context.ts';
+import {knownFixedGoalBlock} from '../src/breach-authored-goal-block.ts';
+import {bodyClear} from '../src/breach-navigation.ts';
+
+
+
+test('D3.16B diagnostic: source-authentic motel target geometry is witnessed',()=>{
+ const site=generateSite(31149,'small',undefined,{mission:'intel'},
+  {archetype:'motel'});
+ const quiet={...site,training:true,enemies:[],encounter:undefined};
+ const s=newSession(0,31149,'full-view','small','intel',quiet,
+  {enableCivilians:false});
+ try{
+  const goal={x:619.3,y:248},world=sessionWorldGeometry(s);
+  const near=world.cover.filter(c=>Math.abs(c.x-goal.x)<65&&
+   Math.abs(c.y-goal.y)<65).map(c=>({
+    x:c.x,y:c.y,w:c.w,h:c.h,fixture:c.fixture??null,
+    kind:c.kind??null,movable:c.movable??null
+  }));
+  const evidence={
+   goal,passable:world.passable(goal,OPERATOR_RADIUS),
+   fullBody:bodyClear(goal,s.doors,OPERATOR_RADIUS,world),
+   knownBlock:knownFixedGoalBlock(s,goal),near
+  };
+  console.log('D316B_MAIN_GEOMETRY',JSON.stringify(evidence));
+  assert.ok(Number.isFinite(goal.x)&&Number.isFinite(goal.y));
+ }finally{activateSite(null);}
+});
 
 test('D3.16B: known fixture at physical GO identifies action without inventing a new destination',()=>{
  const text=fixedGoalCorrectionText('furniture');
