@@ -65,6 +65,22 @@ Related but separate interaction flows:
 - Temporary targeting controls are UI intent, not physical action progress.
 - A drained order queue is not an arrival or an interaction outcome.
 
+## 4A. Context-command and method census (additional entry surfaces)
+
+The context dispatcher has **35 distinct command identifiers**, several of which change authored controls rather than emit an interaction PlanNode. All 35 are included in the executable R6.0 ledger:
+
+- Civilian and suspect: ctxChallengeSuspect, ctxEscortSuspect, ctxFollowCivilian, ctxRestrainCivilian, ctxRestrainSuspect, ctxSearchSuspect, ctxSecureCivilian, ctxSecureFirearm, ctxStopEscortSuspect, ctxStopFollowingCivilian.
+- Capture and civilian transport: ctxCarryCapture, ctxCarryCivilian, ctxDragCapture, ctxDragCivilian, ctxReleaseCapture, ctxReleaseCivilian.
+- Doors and team entry: ctxOpen, ctxClose, ctxKick, ctxTool, ctxFormationCycle, ctxStackTeam, ctxSquadEntry, ctxResumeEntry, ctxResumeSquad.
+- Weapon, movement policy and editing: ctxFire, ctxPace, ctxStance, ctxReload, ctxSwitchWeapon, ctxWait, ctxDelete.
+- Other contextual world objects: ctxPower, ctxWindow, ctxTreat.
+
+Dynamic variants such as ctxTreat:patientId, ctxPower:on/off:id and ctxTool:method share one command identifier with validated payload, not an unbounded list of independent commands. The palette also exposes ctxWatch through the established temporary facing/selection route; it is explicitly recorded as a **palette-only** identifier, not incorrectly counted as a 36th dispatcher branch.
+
+The PlanNode schema additionally provides **four door methods** (open, close, kick, hold) and **six entry-tool methods** (pick, pry, cut, wedge, unwedge, breach). These are separate subtypes of door/tool orders and must not be mistaken for human interaction subtypes. R6.0 drift-checks both unions.
+
+These inventories complete the currently known authored and contextual command surfaces; future commands must update the inventory intentionally instead of being silently absorbed by a generic handler.
+
 ## 5. Consolidation findings and candidate duplication
 
 ### 5.1 Range, obstruction and eligibility
@@ -135,7 +151,7 @@ The existing changed-file test selector can run the newly added test directly. D
 
 ## 9. Definition of done
 
-- Exactly all 15 live PlanKinds and all 17 interaction variants inventoried, with no unknown subtype silently ignored.
+- Exactly all 15 live PlanKinds, 17 interaction variants, 35 contextual command identifiers, four door methods and six tool methods inventoried, with no unknown subtype silently ignored.
 - Every source authority stage and known out-of-band action identified, without creating new runtime owners.
 - Repeated rules labeled as **candidates**, not proven bugs; distinct voice and physical-contact behavior explicitly protected.
 - Follow-up R6.1–R6.4 contracts, risks and test matrix written.
