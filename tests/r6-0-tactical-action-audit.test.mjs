@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import {
  R60_STAGE,R60_READ_ONLY,R60_ORDER_OWNERS,R60_INTERACTIONS,
  R60_CLASSES,R60_BOUNDARIES,R60_REPEATED_POLICY,R60_OUT_OF_BAND,
- declaredActionTypes,inspectR60,verifyR60,renderR60
+ R60_CONTEXT_COMMANDS,R60_METHODS,R60_PALETTE_ONLY,
+ declaredActionTypes,declaredMethodTypes,observedContextActions,
+ inspectR60,verifyR60,renderR60
 } from '../scripts/verification/r6-0-tactical-action-audit.mjs';
 
 test('R6.0 discriminator reader accepts multiline unions without importing the game',()=>{
@@ -24,6 +26,21 @@ test('R6.0 discriminator reader accepts multiline unions without importing the g
   /missing PlanNode discriminants/);
 });
 
+test('R6.0 parses contextual identifiers and door/entry method unions',()=>{
+ const source=[
+  "export type DoorMethod='open'|'close';",
+  "toolMethod?:'pick'|'pry';"
+ ].join('\n');
+ assert.deepEqual(declaredMethodTypes(source),{
+  door:['open','close'],tool:['pick','pry']
+ });
+ assert.throws(()=>declaredMethodTypes('toolMethod?:string;'),
+  /missing door\/tool method/);
+ assert.deepEqual(observedContextActions(
+  "case 'ctxOpen': return true; if(action.startsWith('ctxTreat:')){} "+
+  "case 'ctxOpen': return true;"),['ctxOpen','ctxTreat']);
+});
+
 test('R6.0 inventories every authored kind and subtype exactly once',()=>{
  const report=inspectR60();
  assert.equal(R60_STAGE,'R6.0');
@@ -31,6 +48,12 @@ test('R6.0 inventories every authored kind and subtype exactly once',()=>{
  assert.equal(verifyR60(report),true,JSON.stringify(report.problems));
  assert.equal(report.declared.kinds.length,15);
  assert.equal(report.declared.interactions.length,17);
+ assert.equal(report.contextActions.length,35);
+ assert.deepEqual(report.contextActions,[...R60_CONTEXT_COMMANDS].sort());
+ assert.deepEqual(report.methods,R60_METHODS);
+ assert.deepEqual(report.methods.door,['open','close','kick','hold']);
+ assert.equal(report.methods.tool.length,6);
+ assert.deepEqual(R60_PALETTE_ONLY,['ctxWatch']);
  assert.equal(new Set(report.declared.kinds).size,15);
  assert.equal(new Set(report.declared.interactions).size,17);
  assert.deepEqual(report.declared.kinds.slice().sort(),
@@ -67,6 +90,9 @@ test('R6.0 reports all action layers while keeping unproven candidates explicit'
  const markdown=renderR60(report);
  assert.match(markdown,/Read-only: yes/);
  assert.match(markdown,/17/);
+ assert.match(markdown,/contextual command lexemes: 35/);
+ assert.match(markdown,/door methods: 4/);
+ assert.match(markdown,/Context actions/);
  assert.match(markdown,/Existing execution and feedback boundaries/);
  assert.match(markdown,/candidates, not defects/);
  assert.match(markdown,/No action execution/);
