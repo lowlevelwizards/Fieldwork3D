@@ -103,7 +103,8 @@ import {setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
 import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.ts';
 import {CIVILIAN_VOICE_RANGE} from './breach-civilian-context-selection.ts';
 import {PERSON_CONTACT_REACH} from './breach-person-contact-standpoint.ts';
-import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
+import {SUSPECT_CHALLENGE_RANGE,SUSPECT_ESCORT_VOICE_RANGE}
+ from './breach-suspect-compliance.ts';
 import {activeCombatant,captureTargetResolved} from './breach-suspect-operational-state.ts';
 import {captureVitalStatus,livingCaptureStatus,CAPTURE_VITAL_CHECK_SECONDS,
  recordActualDown} from './breach-capture-vitals.ts';
@@ -606,11 +607,18 @@ export function planCivilianInteraction(s:Session,id:string,
  civilianId:string,action:'secure'|'follow'|'restrain'|'stop-following'):boolean{
  const a=party(s,id),civil=s.civilians.find(c=>c.id===civilianId);
  if(!a||!civil||!canEdit(s)||civil.health<=0)return false;
- const from=finalPoint(a),range=d(from,civil.p);
- // FOLLOW/STOP are spoken instructions, not a hand-contact maneuver.
- // SECURE/RESTRAIN retain their short physical reach and full body gate.
+ // A spoken order can be given immediately from the operator's REAL
+ // position, even when another MOVE sits at the end of the authored plan.
+ // Never walk to that waypoint (or the person's occupied center) just to
+ // say FOLLOW / STOP. Retain delayed speech after a genuinely necessary
+ // preplanned approach when the subject is not yet in earshot.
  const voice=action==='follow'||action==='stop-following';
  const alreadyEscorted=civil.following!==null&&civil.state==='escorted';
+ const speakNow=voice&&d(a.p,civil.p)<=CIVILIAN_VOICE_RANGE&&
+   (d(a.p,civil.p)<=28||action==='stop-following'||alreadyEscorted||
+     liveVisibility(s,civil.p))&&
+   sweptBodyClear(a.p,civil.p,s.doors,1.5,sessionWorldGeometry(s));
+ const from=speakNow?a.p:finalPoint(a),range=d(from,civil.p);
  if(range>(voice?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH)||
     (range>28&&action!=='stop-following'&&
      !(action==='follow'&&alreadyEscorted)&&!liveVisibility(s,civil.p))||
@@ -623,11 +631,15 @@ export function planCivilianInteraction(s:Session,id:string,
  if(action==='restrain'&&
     (civil.state!=='compliant'||civil.restrained===true||
      civil.rescueTarget))return false;
- const queued=addNode(s,id,'interact',from,{
-   objectId:civil.id,interaction:action==='secure'?
-     'secure-civilian':action==='follow'?'follow-civilian':
-     action==='stop-following'?'stop-following-civilian':'restrain-civilian'
- });
+ const interaction=action==='secure'?'secure-civilian':
+   action==='follow'?'follow-civilian':
+   action==='stop-following'?'stop-following-civilian':'restrain-civilian';
+ const queued=speakNow?
+   edit(s,a,()=>{a.plan.unshift({
+     id:s.nextId++,kind:'interact',p:clone(from),
+     objectId:civil.id,interaction
+   });}):
+   addNode(s,id,'interact',from,{objectId:civil.id,interaction});
  if(queued)notify(s,(action==='secure'?'SECURE':
    action==='follow'?'FOLLOW':action==='stop-following'?
    'STOP FOLLOWING':'RESTRAIN')+
@@ -678,15 +690,24 @@ export function planSuspectEscort(s:Session,id:string,targetId:string,
     !suspect.surrendered)return false;
  if(mode==='stop'&&!suspect.escortLeaderId)return false;
  if(mode==='escort'&&suspect.escortLeaderId===a.id)return false;
- const from=finalPoint(a);
+ // FOLLOW ME / STOP are vocal instructions, not physical reach orders.
+ // If already audible, put the instruction FIRST rather than forcing the
+ // speaker through a queued route or into the suspect's collision capsule.
+ const speakNow=d(a.p,suspect.p)<=SUSPECT_ESCORT_VOICE_RANGE&&
+   sweptBodyClear(a.p,suspect.p,s.doors,1.5,sessionWorldGeometry(s))&&
+   (mode==='stop'||liveVisibility(s,suspect.p));
+ const from=speakNow?a.p:finalPoint(a);
  const range=d(from,suspect.p);
- if(range>SUSPECT_CHALLENGE_RANGE||
+ if(range>SUSPECT_ESCORT_VOICE_RANGE||
     !sweptBodyClear(from,suspect.p,s.doors,1.5,sessionWorldGeometry(s))||
     (mode==='escort'&&!liveVisibility(s,suspect.p)))return false;
- const queued=addNode(s,id,'interact',from,{
-   objectId:'suspect:'+suspect.id,
-   interaction:mode==='escort'?'escort-suspect':'stop-escorting-suspect'
- });
+ const interaction=mode==='escort'?'escort-suspect':'stop-escorting-suspect';
+ const objectId='suspect:'+suspect.id;
+ const queued=speakNow?
+   edit(s,a,()=>{a.plan.unshift({
+     id:s.nextId++,kind:'interact',p:clone(from),objectId,interaction
+   });}):
+   addNode(s,id,'interact',from,{objectId,interaction});
  if(queued)notify(s,(mode==='escort'?'ESCORT':'STOP ESCORT')+
    ' QUEUED — EXECUTES ON GO');
  return queued;
