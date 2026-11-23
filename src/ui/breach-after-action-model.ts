@@ -15,6 +15,7 @@ import {createForensicModelOverlay,type ForensicModelOverlay}
 export type AfterActionModelPresenter={
  show:(host:HTMLElement,operatorId:string|null)=>void;
  setOperatorTapHandler:(handler:((id:string)=>void)|null)=>void;
+ setLineupOrder:(ids:readonly string[])=>void;
  setEvidence:(evidence:ForensicEvidence|null)=>void;
  hide:()=>void;
  dispose:()=>void;
@@ -161,16 +162,16 @@ export function createAfterActionModelPresenter(
    if(selected&&!models.has(selected))return false;
    const squad=!selected;
    const n=roster.length;
-   const spacing=n>5?30:34;
    const base=squad?Math.max(158,88+n*17):100;
    lookAt.set(0,28,0);
-   // Keep the outer bodies inside the camera on tall/narrow phone canvases.
-   // The four heading columns stay above their respective screen positions.
-   const halfWidth=((n-1)/2)*spacing+14;
-   const horizontalFit=squad?halfWidth/(
-     Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*
-     Math.max(.55,camera.aspect)):0;
+   const tanHalfFov=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
+   // Place every 3D rig at the exact horizontal center of its corresponding
+   // card. This cannot use fixed world spacing: phone aspect ratios differ.
+   const minSpacing=n>5?30:34;
+   const horizontalFit=squad?minSpacing*n/(
+     2*tanHalfFov*Math.max(.3,camera.aspect)):0;
    const dist=Math.max(base*zoom,horizontalFit);
+   const spacing=squad?dist*tanHalfFov*camera.aspect*2/n:34;
    // The camera does not spin the entire lineup as a single rigid object.
    camera.position.set(0,lookAt.y+Math.sin(pitch)*dist,
      -Math.cos(pitch)*dist);
@@ -191,7 +192,9 @@ export function createAfterActionModelPresenter(
  };
  const drawNow=()=>{
    if(disposed||lost||!host||!host.isConnected)return;
-   const bounds=host.getBoundingClientRect();
+   // On Squad, the labels/dots occupy the top and bottom of the same host.
+   // Measure the actual body canvas so rigs never sit behind the headings.
+   const bounds=canvas.getBoundingClientRect();
    const width=Math.floor(bounds.width),height=Math.floor(bounds.height);
    if(width<16||height<16)return;
    if(width!==lastWidth||height!==lastHeight){
@@ -222,7 +225,12 @@ export function createAfterActionModelPresenter(
    const pointerX=(event.clientX-rect.left)/Math.max(1,rect.width)*2-1;
    const pointerY=1-(event.clientY-rect.top)/Math.max(1,rect.height)*2;
    let nearest=Infinity;dragTarget=null;
-   for(const [id,model] of models){
+   if(host?.classList.contains('fw-v7-lineup-model')){
+     // The complete body lane is tappable, even before rigs finish loading.
+     const index=clamp(Math.floor((pointerX+1)/2*roster.length),
+       0,roster.length-1);
+     dragTarget=roster[index]?.id??null;
+   }else for(const [id,model] of models){
      if(!model.holder.visible)continue;
      const center=model.holder.getWorldPosition(new THREE.Vector3());
      const foot=center.clone().project(camera);
@@ -303,7 +311,7 @@ export function createAfterActionModelPresenter(
      }
      selected=operatorId;
      canvas.setAttribute('aria-label',operatorId===null?
-       'Tap an operator for their full record, or drag to rotate':
+       'Tap anywhere in an operator column to open their record; drag to rotate':
        'Tap the selected operator to return to squad, or drag to rotate');
      if(host!==nextHost){
        observer?.disconnect();
@@ -316,6 +324,11 @@ export function createAfterActionModelPresenter(
    },
    setOperatorTapHandler(handler){
      operatorTapHandler=handler;
+   },
+   setLineupOrder(ids){
+     const order=new Map(ids.map((id,index)=>[id,index]));
+     roster.sort((a,b)=>(order.get(a.id)??Number.MAX_SAFE_INTEGER)-
+       (order.get(b.id)??Number.MAX_SAFE_INTEGER));
    },
    setEvidence(evidence){
      forensicEvidence=evidence;
