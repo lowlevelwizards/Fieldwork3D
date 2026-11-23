@@ -4,6 +4,37 @@ import {readFileSync} from 'node:fs';
 import {fixedGoalCorrectionText} from '../src/breach-authored-goal-block.ts';
 import {recoveryAdviceFor} from '../src/ui/recovery-guidance.ts';
 import {classifyExecutionNotice,ExecutionNoticeFeed,locateNoticeOrder} from '../src/ui/execution-feedback.ts';
+import {generateSite} from '../src/breach-site.ts';
+import {newSession,team,planMove} from '../src/breach-game.ts';
+import {activateSite,OPERATOR_RADIUS} from '../src/breach-core.ts';
+import {sessionWorldGeometry} from '../src/breach-world-context.ts';
+import {knownFixedGoalBlock} from '../src/breach-authored-goal-block.ts';
+import {bodyClear} from '../src/breach-navigation.ts';
+
+test('D3.16B: the real motel authored GO is standable, not the toilet inside the raw request',()=>{
+ const site=generateSite(31149,'small',undefined,{mission:'intel'},
+   {archetype:'motel'});
+ const quiet={...site,training:true,enemies:[],encounter:undefined};
+ const session=newSession(0,31149,'full-view','small','intel',quiet,
+   {enableCivilians:false});
+ try{
+  const requested={x:619.3,y:248},world=sessionWorldGeometry(session);
+  assert.equal(knownFixedGoalBlock(session,requested),'furniture');
+  assert.equal(world.passable(requested,OPERATOR_RADIUS),false);
+  assert.equal(bodyClear(requested,session.doors,OPERATOR_RADIUS,world),false);
+  const ash=team(session).find(a=>a.id==='ash');
+  assert.ok(ash,'the authentic Ash operator must be available');
+  assert.equal(planMove(session,ash.id,requested),true);
+  const authored=ash.plan[0]?.p;
+  assert.ok(authored,'we require an actual authored PlanNode');
+  const delta=Math.hypot(requested.x-authored.x,requested.y-authored.y);
+  assert.ok(delta>.1&&delta<=13.01,'bounded intentional authoring nudge');
+  assert.equal(world.passable(authored,OPERATOR_RADIUS),true);
+  assert.equal(bodyClear(authored,session.doors,OPERATOR_RADIUS,world),true);
+  assert.ok(session.events.some(e=>e.includes('POSITION ADJUSTED TO WALKABLE GROUND')),
+   'the player is told their requested GO was adjusted');
+ }finally{activateSite(null);}
+});
 
 test('D3.16B: known fixture at physical GO identifies action without inventing a new destination',()=>{
  const text=fixedGoalCorrectionText('furniture');
