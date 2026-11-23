@@ -8,6 +8,8 @@ import {sessionIntelligenceReview} from '../briefing/briefing-after-action.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
 import type {CampaignState} from '../campaign-state.ts';
 import type {DispatchIncidentContext} from '../dispatch-incident-context.ts';
+import type {ReplayActorIdentity} from '../breach-replay-manifest.ts';
+import type * as THREE from 'three';
 import {renderAfterActionWorkspace} from './breach-after-action-controller.ts';
 import {buildAfterActionInventoryCloseout}
  from '../breach-after-action-inventory.ts';
@@ -27,6 +29,7 @@ export function renderMissionDebrief(input:{
  recorder:MissionRecorder;campaign:CampaignState|null;
  campaignMode:CampaignMode;incident?:DispatchIncidentContext|null;
  operationsLogged:number;
+ captureAfterActionModels?:(identities:readonly ReplayActorIdentity[])=>ReadonlyMap<string,THREE.Group>;
 }):void{
  const {ui,state,brief,recorder,campaign,campaignMode,operationsLogged,incident}=input;
  const incidentKey=incident?incident.campaignId+':'+incident.contractId:'';
@@ -101,6 +104,8 @@ export function renderMissionDebrief(input:{
     }));
     if(root)renderAfterActionWorkspace(root,recorder,{
       showIntel:!!state.operationDossier,
+      modelSnapshots:input.captureAfterActionModels?.(
+        recorder.manifest?.actors??[]),
       inventory:buildAfterActionInventoryCloseout({
        session:state,recorder,
        mode:campaignMode==='mission'?'mission':

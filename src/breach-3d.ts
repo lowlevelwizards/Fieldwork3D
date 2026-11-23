@@ -6,6 +6,7 @@ import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera}
   from './breach-ground-geometry.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import {SiteFixtureLightingPresenter} from './rendering/breach-site-light-presenter.ts';
+import type {ReplayActorIdentity} from './breach-replay-manifest.ts';
 import * as THREE from 'three';
 import {ColdRendererTrace} from './rendering/breach-cold-renderer-trace.ts';
 import {LiveShadowSubmitProfiler} from './rendering/breach-live-shadow-submit-profiler.ts';
@@ -1687,6 +1688,52 @@ export class TacticalScene3D{
       .project(this.projectionCamera);
     return {x:(world.x+1)*this.width/2,
       y:(1-world.y)*this.height/2};
+  }
+  /** A terminal mission may reuse the already-built friendly visual meshes.
+   * Clone the scene graph (sharing geometry/materials, never reparenting live
+   * models), take one deterministic low-ready sample, and restore the live rig
+   * immediately so replay and the next mission retain sole pose ownership.
+   * Called only for an active 3D mission's first debrief render.
+   */
+  captureAfterActionSquad(identities:readonly ReplayActorIdentity[]):Map<string,THREE.Group>{
+    const copies=new Map<string,THREE.Group>();
+    for(const actor of identities){
+      if(actor.side!=='blue')continue;
+      const live=this.actors.get(actor.id);
+      if(!live||live.side!=='blue'||!live.physical.lastPose)continue;
+      const previous={...live.physical.lastPose};
+      const flashVisible=live.flash.visible;
+      try{
+        poseOperator(live.physical,{
+          ...previous,
+          x:0,z:0,heading:-Math.PI/2,travelYaw:-Math.PI/2,
+          pelvisYaw:undefined,shotHeading:-Math.PI/2,
+          velocity:0,stride:0,posture:'stand',injury:0,
+          weapon:actor.weapon,weaponConfiguration:actor.weaponConfiguration,
+          equipment:actor.equipment,wardrobe:actor.wardrobe,
+          appearanceSeed:actor.appearanceSeed,
+          down:false,surrender:false,worldWeaponReleased:false,
+          aiming:false,firing:false,aimBlend:0,recoil:0,
+          reload:0,lastDoorAt:-100,lastThrowAt:-100,
+          equipmentInteraction:null,treatmentActive:false,
+          physicalContact:null,doorGrip:null,secondarySwitch:undefined,
+          handlingTransition:undefined,handlingOverride:'low',
+          deterministic:true,poseDiagnostics:false
+        },0);
+        live.flash.visible=false;
+        const copy=live.physical.root.clone(true);
+        copy.visible=true;
+        copy.position.set(0,0,0);
+        copies.set(actor.id,copy);
+      }catch(error){
+        console.warn('[After Action 3D] Live pose snapshot unavailable',actor.id,error);
+      }finally{
+        live.flash.visible=flashVisible;
+        try{poseOperator(live.physical,{...previous,deterministic:true},0);}
+        catch(error){console.warn('[After Action 3D] Live pose restore failed',actor.id,error);}
+      }
+    }
+    return copies;
   }
   /** Stage initial visible operator geometry separately from the first
    * tactical WebGL frame. Existing soldier models are reused without reset. */

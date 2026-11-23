@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import {createOperatorRig,poseOperator,type OperatorRig}
  from '../breach-operator-rig.ts';
+import type * as THREEType from 'three';
 import type {ReplayActorIdentity} from '../breach-replay-manifest.ts';
 import type {ForensicEvidence} from '../breach-forensic-evidence.ts';
 import {createForensicModelOverlay,type ForensicModelOverlay}
@@ -18,21 +19,23 @@ export type AfterActionModelPresenter={
  dispose:()=>void;
 };
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
-type Model={rig:OperatorRig;holder:THREE.Group;overlay:ForensicModelOverlay};
+type Model={rig:OperatorRig|null;holder:THREE.Group;overlay:ForensicModelOverlay|null};
 const pose=(rig:OperatorRig,actor:ReplayActorIdentity)=>{
  poseOperator(rig,{
-   x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
+   x:0,z:0,heading:-Math.PI/2,velocity:0,seconds:0,stride:0,
    posture:'stand',injury:0,weapon:actor.weapon,
    weaponConfiguration:actor.weaponConfiguration,
    equipment:actor.equipment,wardrobe:actor.wardrobe,
    appearanceSeed:actor.appearanceSeed,
    reload:0,reloadDuration:1.8,lastDoorAt:-100,lastThrowAt:-100,
    down:false,surrender:false,aiming:false,firing:false,turning:0,
+   handlingOverride:'low',aimBlend:0,
    poseDiagnostics:false,deterministic:true
  },0);
 };
 export function createAfterActionModelPresenter(
- identities:readonly ReplayActorIdentity[],onUnavailable?:()=>void
+ identities:readonly ReplayActorIdentity[],onUnavailable?:()=>void,
+ liveSnapshots?:ReadonlyMap<string,THREEType.Group>
 ):AfterActionModelPresenter|null{
  if(!identities.some(actor=>actor.side==='blue'))return null;
  let renderer:THREE.WebGLRenderer;
@@ -59,27 +62,43 @@ export function createAfterActionModelPresenter(
  canvas.style.touchAction='pan-y';
  canvas.setAttribute('role','img');
  canvas.setAttribute('aria-label',
-   'Historical 3D operator models. Drag to rotate, scroll to zoom.');
+   'Historical 3D operator models. Drag an operator to rotate it; scroll to zoom.');
  const roster=identities.filter(a=>a.side==='blue');
  const byId=new Map(identities.map(actor=>[actor.id,actor]));
  const models=new Map<string,Model>();
- // Actual rigs and equipment are built once per recorder. Host/selection
- // changes move this canvas; they never construct another WebGL context.
+ // During a live terminal transition, all already-built friendly geometry is
+ // available on the first paint. The tactical renderer keeps the original
+ // rigs; these independent scene-graph clones share immutable GPU assets.
+ for(const actor of roster){
+   const snapshot=liveSnapshots?.get(actor.id);
+   if(!snapshot)continue;
+   const holder=new THREE.Group();holder.add(snapshot);scene.add(holder);
+   models.set(actor.id,{rig:null,holder,overlay:null});
+ }
+ // Historical/replay-only visits still build lazily. Forensic inspection
+ // upgrades just the inspected clone to the actual instrumented rig.
+ const needsBuild=(id:string)=>!models.has(id)||
+   (selected===id&&forensicEvidence!==null&&!models.get(id)?.rig);
  const build=(actor:ReplayActorIdentity)=>{
-   const existing=models.get(actor.id);if(existing)return existing;
+   const existing=models.get(actor.id);
+   if(existing&&!needsBuild(actor.id))return existing;
    const rig=createOperatorRig(actor.id,actor.side);
    try{pose(rig,actor);}
    catch(error){rig.dispose();throw error;}
    const overlay=createForensicModelOverlay(rig);
    const holder=new THREE.Group();holder.add(rig.root);scene.add(holder);
-   const entry={rig,holder,overlay};models.set(actor.id,entry);return entry;
+   const entry:Model={rig,holder,overlay};
+   if(existing)scene.remove(existing.holder);
+   models.set(actor.id,entry);return entry;
  };
  // Rigs are expensive to construct and pose on mobile. Never block the
  // debrief mount by building an entire roster synchronously.
  let disposed=false,lost=false,host:HTMLElement|null=null;
  let selected:string|null=null,dragId:number|null=null,lastX=0,lastY=0;
+ let dragTarget:string|null=null;
  let forensicEvidence:ForensicEvidence|null=null;
- let yaw=0,pitch=.16,zoom=1;
+ let pitch=.16,zoom=1;
+ const individualYaw=new Map<string,number>();
  const lookAt=new THREE.Vector3(0,28,0);
  const viewTools=document.createElement('div');
  viewTools.className='fw-v6-model-tools';
@@ -94,7 +113,7 @@ export function createAfterActionModelPresenter(
  modelButton('−','Zoom out',()=>{zoom=clamp(zoom+.12,.65,1.7);draw();});
  modelButton('+','Zoom in',()=>{zoom=clamp(zoom-.12,.65,1.7);draw();});
  modelButton('↺','Reset model view',()=>{
-   yaw=0;pitch=.16;zoom=1;draw();
+   individualYaw.clear();pitch=.16;zoom=1;draw();
  });
  const loading=document.createElement('div');
  loading.className='fw-v6-model-loading';
@@ -106,8 +125,8 @@ export function createAfterActionModelPresenter(
    compact?1:1.25));
  const syncLoading=()=>{
    if(!host)return;
-   const remaining=selected?Number(!models.has(selected)):
-     roster.filter(actor=>!models.has(actor.id)).length;
+   const remaining=selected?Number(needsBuild(selected)):
+     roster.filter(actor=>needsBuild(actor.id)).length;
    if(!remaining){loading.remove();return;}
    loading.textContent=selected?'PREPARING RECORDED MODEL':
      'PREPARING SQUAD · '+models.size+' / '+roster.length;
@@ -121,7 +140,7 @@ export function createAfterActionModelPresenter(
      buildTimer=null;
      if(disposed||lost||!host)return;
      const id=pending.shift(),actor=id?byId.get(id):undefined;
-     if(actor&&!models.has(actor.id)){
+     if(actor&&needsBuild(actor.id)){
        try{build(actor);}
        catch(error){
          console.warn('[After Action 3D] Historical rig could not build',
@@ -135,7 +154,7 @@ export function createAfterActionModelPresenter(
  const queueModels=(operatorId:string|null)=>{
    const requested=operatorId?[operatorId]:roster.map(actor=>actor.id);
    for(const id of requested){
-     if(models.has(id)||pending.includes(id))continue;
+     if(!needsBuild(id)||pending.includes(id))continue;
      if(operatorId)pending.unshift(id);
      else pending.push(id);
    }
@@ -152,21 +171,25 @@ export function createAfterActionModelPresenter(
    const squad=!selected;
    const n=roster.length;
    const spacing=n>5?30:34;
+   const base=squad?Math.max(158,88+n*17):100;
+   lookAt.set(0,28,0);
+   const dist=base*zoom;
+   // The camera does not spin the entire lineup as a single rigid object.
+   camera.position.set(0,lookAt.y+Math.sin(pitch)*dist,
+     -Math.cos(pitch)*dist);
+   camera.lookAt(lookAt);
    for(const [id,model] of models){
      const i=roster.findIndex(a=>a.id===id);
      model.holder.visible=squad?i>=0:id===selected;
      model.holder.position.set(squad?(i-(n-1)/2)*spacing:0,0,0);
-     // Single source of truth for highlighted anatomical slots.
-     // Group remains neutral for the ordinary Squad identity display.
-     model.overlay.update(!squad&&id===selected?forensicEvidence:null);
+     // Each canonical -Z-facing actor turns toward its own camera bearing.
+     const dx=camera.position.x-model.holder.position.x;
+     const dz=camera.position.z-model.holder.position.z;
+     model.holder.rotation.y=Math.atan2(-dx,-dz)+(individualYaw.get(id)??0);
+     // A cloned live pose has no instrumented forensic sockets; the actual
+     // rig is lazily installed when a Combat inspector needs an overlay.
+     model.overlay?.update(!squad&&id===selected?forensicEvidence:null);
    }
-   const base=squad?Math.max(158,88+n*17):100;
-   lookAt.set(0,28,0);
-   const dist=base*zoom;
-   camera.position.set(Math.sin(yaw)*Math.cos(pitch)*dist,
-     lookAt.y+Math.sin(pitch)*dist,
-     -Math.cos(yaw)*Math.cos(pitch)*dist);
-   camera.lookAt(lookAt);
    return true;
  };
  const drawNow=()=>{
@@ -195,18 +218,33 @@ export function createAfterActionModelPresenter(
    if(dragId!==null||lost)return;
    dragId=event.pointerId;
    lastX=event.clientX;lastY=event.clientY;
+   if(selected)dragTarget=selected;
+   else{
+     // Pick the nearest on-screen actor, not a shared squad orbit.
+     const rect=canvas.getBoundingClientRect();
+     const pointerX=(event.clientX-rect.left)/Math.max(1,rect.width)*2-1;
+     let nearest=Infinity;dragTarget=null;
+     for(const [id,model] of models){
+       if(!model.holder.visible)continue;
+       const center=model.holder.getWorldPosition(new THREE.Vector3());
+       center.y+=24;
+       const delta=Math.abs(center.project(camera).x-pointerX);
+       if(delta<nearest){nearest=delta;dragTarget=id;}
+     }
+   }
    canvas.setPointerCapture(event.pointerId);
  };
  const move=(event:PointerEvent)=>{
    if(event.pointerId!==dragId)return;
-   yaw+=(event.clientX-lastX)*.012;
-   pitch=clamp(pitch+(event.clientY-lastY)*.008,-.55,.85);
+   if(dragTarget)individualYaw.set(dragTarget,
+     (individualYaw.get(dragTarget)??0)+(event.clientX-lastX)*.012);
+   if(selected)pitch=clamp(pitch+(event.clientY-lastY)*.008,-.55,.85);
    lastX=event.clientX;lastY=event.clientY;
    draw();
  };
  const up=(event:PointerEvent)=>{
    if(event.pointerId!==dragId)return;
-   dragId=null;
+   dragId=null;dragTarget=null;
    if(canvas.hasPointerCapture(event.pointerId))
      canvas.releasePointerCapture(event.pointerId);
  };
@@ -239,7 +277,7 @@ export function createAfterActionModelPresenter(
        nextHost.textContent='NO RECORDED MODEL FOR THIS CONTACT';
        return;
      }
-     if(selected!==operatorId){yaw=0;pitch=.16;zoom=1;}
+     if(selected!==operatorId){pitch=.16;zoom=1;}
      selected=operatorId;
      if(host!==nextHost){
        observer?.disconnect();
@@ -258,7 +296,7 @@ export function createAfterActionModelPresenter(
      forensicEvidence=null;
      observer?.disconnect();
      canvas.remove();
-     host=null;dragId=null;
+     host=null;dragId=null;dragTarget=null;
    },
    dispose(){
      if(disposed)return;
@@ -274,7 +312,7 @@ export function createAfterActionModelPresenter(
      canvas.removeEventListener('webglcontextlost',contextLost);
      canvas.remove();
      for(const model of models.values()){
-       model.rig.dispose();scene.remove(model.holder);
+       model.rig?.dispose();scene.remove(model.holder);
      }
      models.clear();scene.clear();
      renderer.dispose();renderer.forceContextLoss();

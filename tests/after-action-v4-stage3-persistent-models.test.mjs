@@ -30,7 +30,9 @@ test('V4-3: viewer builds at most one renderer and caches a rig per actor id',()
  const rig=source('src/ui/breach-after-action-model.ts');
  assert.equal((rig.match(/new THREE\.WebGLRenderer\(/g)||[]).length,1);
  assert.match(rig,/const models=new Map<string,Model>\(\)/);
- assert.match(rig,/const existing=models\.get\(actor\.id\);if\(existing\)return existing/);
+ assert.match(rig,/const existing=models\.get\(actor\.id\)/);
+ assert.match(rig,/if\(existing&&!needsBuild\(actor\.id\)\)return existing/);
+ assert.match(rig,/liveSnapshots\?\.get\(actor\.id\)/);
  assert.doesNotMatch(rig,/for\(const actor of roster\)build\(actor\)/);
  assert.match(rig,/queueModels\(operatorId\)/);
  assert.match(rig,/buildTimer=window\.setTimeout/);
