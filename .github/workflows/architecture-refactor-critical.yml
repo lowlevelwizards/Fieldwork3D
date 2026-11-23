@@ -41,6 +41,10 @@ jobs:
         run: |
           node --test tests/refactor-e0-audit.test.mjs
           node scripts/verification/refactor-e0-audit.mjs --check --out artifacts/refactor-e0
+      - name: R7.0 read-only UI orchestration and equipment ownership census
+        run: |
+          node --test tests/r7-0-ui-orchestration-audit.test.mjs
+          node scripts/verification/r7-0-ui-orchestration-audit.mjs --check --out artifacts/refactor-r7-0
       - name: E4 combined replay and event-feed closeout evidence
         run: node --experimental-strip-types scripts/verification/refactor-e4-closeout.mjs --out artifacts/refactor-e4/closeout.json
       - name: E5 capture and long-session retention evidence
@@ -65,6 +69,7 @@ jobs:
           path: |
             artifacts/consolidation/
             artifacts/refactor-e0/
+            artifacts/refactor-r7-0/
             artifacts/refactor-e4/
             artifacts/refactor-e5/
             artifacts/refactor-e6/
