@@ -1,3 +1,4 @@
+import {assessTacticalAction} from './breach-action-assessment.ts';
 import {captureVitalStatus} from './breach-capture-vitals.ts';
 /** Authoritative contextual command mutations, independent of button DOM.
  * Input gestures and target-mode arming remain in the application; gameplay
@@ -104,8 +105,15 @@ export function dispatchTacticalContextCommand(input:{
    const from=finalPoint(a);
    const target=enemies(state).filter(e=>e.health>0&&
       !e.surrendered&&distance(from,e.p)<SUSPECT_CHALLENGE_RANGE&&
-      team(state).some(observer=>inSight(observer,e,state))&&
-      sweptBodyClear(from,e.p,state.doors,1.5,sessionWorldGeometry(state)))
+      assessTacticalAction({
+        action:'challenge-suspect',phase:'selection',
+        actorAvailable:true,targetAvailable:true,domainEligible:true,
+        requireObserved:true,
+        observed:team(state).some(observer=>inSight(observer,e,state)),
+        distance:distance(from,e.p),maximumRange:SUSPECT_CHALLENGE_RANGE,
+        unobstructed:sweptBodyClear(from,e.p,state.doors,1.5,
+          sessionWorldGeometry(state))
+      }).allowed)
      .sort((x,y)=>distance(from,x.p)-distance(from,y.p))[0];
    return finish(!!target&&planSuspectChallenge(state,selected,target.id),
      'SUSPECT CHALLENGE NOT AVAILABLE');
@@ -113,8 +121,14 @@ export function dispatchTacticalContextCommand(input:{
   case 'ctxRestrainSuspect':{
    const at=finalPoint(a);
    const target=enemies(state).filter(e=>e.health>0&&e.surrendered&&
-     !e.restrained&&distance(at,e.p)<=PERSON_CONTACT_REACH&&liveVisibility(state,e.p)&&
-     sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)))
+     !e.restrained&&assessTacticalAction({
+       action:'restrain-suspect',phase:'selection',
+       actorAvailable:true,targetAvailable:true,domainEligible:true,
+       requireObserved:true,observed:liveVisibility(state,e.p),
+       distance:distance(at,e.p),maximumRange:PERSON_CONTACT_REACH,
+       unobstructed:sweptBodyClear(at,e.p,state.doors,1.5,
+         sessionWorldGeometry(state))
+     }).allowed)
      .sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0];
    return finish(!!target&&planSuspectRestraint(state,selected,target.id),
      'COMPLIANT SUSPECT NOT IN PHYSICAL REACH');
@@ -122,9 +136,15 @@ export function dispatchTacticalContextCommand(input:{
   case 'ctxSearchSuspect':{
    const at=finalPoint(a);
    const target=enemies(state).filter(e=>e.health>0&&e.surrendered&&
-     e.restrained===true&&!e.suspectSearched&&distance(at,e.p)<=34&&
-     liveVisibility(state,e.p)&&
-     sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)))
+     e.restrained===true&&!e.suspectSearched&&
+     assessTacticalAction({
+       action:'search-suspect',phase:'selection',
+       actorAvailable:true,targetAvailable:true,domainEligible:true,
+       requireObserved:true,observed:liveVisibility(state,e.p),
+       distance:distance(at,e.p),maximumRange:34,
+       unobstructed:sweptBodyClear(at,e.p,state.doors,1.5,
+         sessionWorldGeometry(state))
+     }).allowed)
      .sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0];
    return finish(!!target&&planSearchSuspect(state,selected,target.id),
      'RESTRAINED SUSPECT NOT REACHABLE');
@@ -132,8 +152,14 @@ export function dispatchTacticalContextCommand(input:{
   case 'ctxSecureFirearm':{
    const at=finalPoint(a);
    const item=state.droppedFirearms.filter(w=>w.status==='loose'&&
-     distance(at,w.p)<=58&&liveVisibility(state,w.p)&&
-     sweptBodyClear(at,w.p,state.doors,1.5,sessionWorldGeometry(state)))
+     assessTacticalAction({
+       action:'secure-firearm',phase:'selection',
+       actorAvailable:true,targetAvailable:true,domainEligible:true,
+       requireObserved:true,observed:liveVisibility(state,w.p),
+       distance:distance(at,w.p),maximumRange:58,
+       unobstructed:sweptBodyClear(at,w.p,state.doors,1.5,
+         sessionWorldGeometry(state))
+     }).allowed)
      .sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0];
    return finish(!!item&&planSecureDroppedFirearm(state,selected,item.id),
      'LOOSE FIREARM NOT REACHABLE');
@@ -144,9 +170,16 @@ export function dispatchTacticalContextCommand(input:{
    const candidate=enemies(state).filter(e=>e.health>0&&
      e.surrendered&&
      (stopping?!!e.escortLeaderId:e.escortLeaderId!==a.id)&&
-     (!stopping?liveVisibility(state,e.p):true)&&
-     distance(at,e.p)<=SUSPECT_ESCORT_VOICE_RANGE&&
-     sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)))
+     assessTacticalAction({
+       action:stopping?'stop-escorting-suspect':'escort-suspect',
+       phase:'selection',
+       actorAvailable:true,targetAvailable:true,domainEligible:true,
+       requireObserved:!stopping,
+       observed:stopping||liveVisibility(state,e.p),
+       distance:distance(at,e.p),maximumRange:SUSPECT_ESCORT_VOICE_RANGE,
+       unobstructed:sweptBodyClear(at,e.p,state.doors,1.5,
+         sessionWorldGeometry(state))
+     }).allowed)
      .sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0];
    return finish(!!candidate&&planSuspectEscort(state,selected,
      candidate.id,stopping?'stop':'escort'),
