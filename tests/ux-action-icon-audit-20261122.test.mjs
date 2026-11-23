@@ -10,14 +10,14 @@ const base={door:false,node:true,flashRemaining:2,
 
 test('all authoritative contextual action IDs have semantic icons, never focus fallback',()=>{
  const content=read('src/ui/context-actions.ts');
- const actionIds=[...new Set([...content.matchAll(/\\bid:'(ctx[^']+)'/g)]
+ const actionIds=[...new Set([...content.matchAll(/\bid:'(ctx[^']+)'/g)]
    .map(match=>match[1]))].filter(id=>id!=='ctxTool-');
  assert.ok(actionIds.length>=35,'audit must cover the real action catalog');
  for(const id of actionIds){
   const resolved=resolveTacticalIconId(id);
   assert.ok(resolved,'unmapped action '+id);
   assert.notEqual(resolved,'focus','generic glyph for '+id);
-  assert.match(FIELDWORK_ICON_FAMILY[resolved].markup,/<(?:path|circle|rect|g)\\b/);
+  assert.match(FIELDWORK_ICON_FAMILY[resolved].markup,/<(?:path|circle|rect|g)\b/);
  }
  for(const tool of ['pick','pry','cut','wedge','unwedge','breach','ram'])
   assert.ok(resolveTacticalIconId('ctxTool-'+tool),'door tool '+tool);
