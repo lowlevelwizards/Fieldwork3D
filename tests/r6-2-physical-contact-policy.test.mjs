@@ -73,7 +73,7 @@ test('R6.2 free side candidate is chosen in deterministic angular order',()=>{
  });
  const s=resolvePhysicalContactEpisode(b);
  assert.equal(s.kind,'approach');
- assert.ok(s.goal.y>12,'positive angular alternate wins after direct blockage');
+ assert.ok(s.goal.y< -12,'positive angular offset is first alternate behind the direct slot');
  const c=resolvePhysicalContactEpisode({...b,canStand:()=>false});
  assert.deepEqual({kind:c.kind,reason:c.reason},
   {kind:'blocked',reason:'no-standpoint'});
