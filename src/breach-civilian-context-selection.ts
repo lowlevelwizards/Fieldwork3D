@@ -5,12 +5,13 @@
 import type {Pt} from './breach-core.ts';
 import type {CivilianActor} from './breach-civilian-types.ts';
 
+import {PERSON_CONTACT_REACH} from './breach-person-contact-standpoint.ts';
 export const CIVILIAN_VOICE_RANGE=96;
 
 /** Select a *reachable* civilian of the correct kind. The old
  * dispatcher chose the nearest civilian of ANY kind, even when the UI
  * offered FOLLOW because a farther rescue person was actually eligible.
- * SECURE/RESTRAIN keep 34-unit contact reach; spoken FOLLOW/STOP use
+ * SECURE/RESTRAIN use physical hand reach; spoken FOLLOW/STOP use
  * 96-unit unobstructed communication reach. Stable ties keep actor order.
  */
 export function nearestContextCivilian<T extends Pick<CivilianActor,
@@ -22,7 +23,7 @@ export function nearestContextCivilian<T extends Pick<CivilianActor,
 ):T|null{
   const spoken=action==='follow'||action==='stop-following';
   if(spoken&&missionStage!=='extract')return null;
-  let nearest:T|null=null,best=spoken?CIVILIAN_VOICE_RANGE:34;
+  let nearest:T|null=null,best=spoken?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH;
   for(const person of civilians){
     if(person.health<=0||
       (action==='stop-following'?!person.rescueTarget||
