@@ -1,4 +1,6 @@
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {PERSON_CONTACT_REACH,personContactStandpoint}
+ from './breach-person-contact-standpoint.ts';
 /** Stage 8: civilian custody/escort, physical prop pushing and window
  * actions. Target/reach checks are unchanged and failed orders remain.
  */
@@ -104,12 +106,18 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       const range=d(a.p,suspect.p);
       const clear=sweptBodyClear(a.p,suspect.p,s.doors,1.5,
         sessionWorldGeometry(s));
-      if(range>28&&range<=45&&clear&&d(suspect.p,n.p)<=45&&
-         liveVisibility(s,suspect.p)){
-        approach(a,suspect.p,dt,s,.65);return true;
+      if(range>PERSON_CONTACT_REACH&&range<=45&&clear&&
+         d(suspect.p,n.p)<=45&&liveVisibility(s,suspect.p)){
+        const world=sessionWorldGeometry(s);
+        const stand=personContactStandpoint(a.p,suspect.p,p=>
+          world.passable(p,8)&&
+          sweptBodyClear(a.p,p,s.doors,7,world)&&
+          !s.operators.some(e=>e!==a&&e.health>0&&d(e.p,p)<21)&&
+          !s.civilians.some(c=>c.health>0&&d(c.p,p)<20));
+        if(stand){approach(a,stand,dt,s,.65);return true;}
       }
-      if(range>28||!clear){
-        failCurrentOrder(s,a,n,'SUSPECT NOT IN PHYSICAL CONTACT');return true;
+      if(range>PERSON_CONTACT_REACH||!clear){
+        failCurrentOrder(s,a,n,'SUSPECT OUT OF REACH OR OBSTRUCTED');return true;
       }
       a.velocity=0;
       const toward=Math.atan2(suspect.p.y-a.p.y,suspect.p.x-a.p.x);
@@ -304,17 +312,20 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       const range=person?d(a.p,person.p):Infinity;
       const clear=!!person&&sweptBodyClear(a.p,person.p,s.doors,
         1.5,sessionWorldGeometry(s));
-      if(!voice&&person&&person.health>0&&range>28&&range<=45&&
-         d(person.p,n.p)<=45&&clear&&
-         (range<=32||liveVisibility(s,person.p))){
-        // A civilian who shifts just past the operator stays a reachable
-        // pending command. Walk the remaining real distance even when
-        // the person has slipped behind the present sight cone.
-        approach(a,person.p,dt,s,.65);return true;
+      if(!voice&&person&&person.health>0&&range>PERSON_CONTACT_REACH&&
+         range<=45&&d(person.p,n.p)<=45&&clear&&
+         liveVisibility(s,person.p)){
+        const world=sessionWorldGeometry(s);
+        const stand=personContactStandpoint(a.p,person.p,p=>
+          world.passable(p,8)&&
+          sweptBodyClear(a.p,p,s.doors,7,world)&&
+          !s.operators.some(e=>e!==a&&e.health>0&&d(e.p,p)<21)&&
+          !s.civilians.some(c=>c!==person&&c.health>0&&d(c.p,p)<20));
+        if(stand){approach(a,stand,dt,s,.65);return true;}
       }
       const knownEscort=!!person?.following&&person.state==='escorted';
       if(!person||person.health<=0||
-         range>(voice?CIVILIAN_VOICE_RANGE:28)||!clear||
+         range>(voice?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH)||!clear||
          (n.interaction==='follow-civilian'&&range>28&&
           !knownEscort&&!liveVisibility(s,person.p))||
          (!voice&&person.rescueTarget&&!canSecureRescuePerson(person,a,
@@ -348,7 +359,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       // visible hand reach has its own short post-contact pose window:
       // already-aligned contacts keep their prior one-tick responsiveness.
       // Do not animate a hand touching someone 90 units away.
-      if(!voice||range<=28)a.lastCivilianContactAt=s.seconds;
+      if(!voice||range<=PERSON_CONTACT_REACH)a.lastCivilianContactAt=s.seconds;
       if(n.interaction==='stop-following-civilian'){
         if(!person.rescueTarget||s.missionType!=='rescue'||
            s.mission!=='extract'||!s.rescue||!knownEscort){
