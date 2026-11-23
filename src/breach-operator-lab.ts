@@ -1232,6 +1232,8 @@ let labSwitch:null|{from:Handling;to:Handling;
     wrist:THREE.Vector3;bend:THREE.Vector3}[]}=null;
 let rig:OperatorRig|null=null,track:LabTrack='idle';
 const labPistolHandWorld=new THREE.Vector3();
+const labPistolGripWorld=new THREE.Vector3();
+const labPistolWristWorld=new THREE.Vector3();
 /** Lazy visual peer for shoulder contact auditions. Reused while scrubbing. */
 let shoulderLeaderRig:OperatorRig|null=null;
 function ensureLabShoulderLeader():OperatorRig{
@@ -2311,6 +2313,17 @@ function draw(){
    rig.hip.getObjectByName('operator-lab-beretta-model'):
    rig.hip.getObjectByName('secondary-holstered-pistol');
   canvas.dataset.poseSidearmMesh=String(!!sidearm&&!!heldPreview?.visible);
+  // Real rendered pistol trigger grip vs solved firing wrist (world units).
+  // This catches visually misplaced fists that hand-height tests miss.
+  const pistolCradle=sidearm?
+   rig.hip.getObjectByName('secondary-holstered-pistol'):null;
+  if(pistolCradle&&pistolContacts){
+   const socket=pistolContacts.primaryFromPivot;
+   const grip=pistolCradle.localToWorld(labPistolGripWorld.set(
+    socket.x,socket.y,socket.z).multiplyScalar(LAB_PISTOL_PREVIEW_SCALE));
+   const wrist=rig.arms[1].hand.getWorldPosition(labPistolWristWorld);
+   canvas.dataset.poseSidearmGripError=grip.distanceTo(wrist).toFixed(3);
+  }else canvas.dataset.poseSidearmGripError='';
   canvas.dataset.posePrimaryHidden=String(!!sidearm&&!rig.weapon.visible);
   canvas.dataset.poseFitSavedWeapon=poseArsenalSavedId??'';
   canvas.dataset.poseFitWeaponReceiver=exactWeaponConfig?.build?.parts.receiver??'';
