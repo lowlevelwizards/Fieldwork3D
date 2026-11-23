@@ -32,6 +32,7 @@ export const R70_OWNERS=Object.freeze([
  {id:'hud',path:'src/ui/tactical-hud-controller.ts',authority:'tactical-display',role:'Read-only HUD, command binding and ephemeral feedback',markers:['createTacticalHudController','function renderSession(']},
  {id:'notices',path:'src/ui/execution-feedback.ts',authority:'notice-display',role:'Player-visible scoped notice lifecycle',markers:['class ExecutionNoticeFeed']},
  {id:'dom',path:'src/ui/tactical-dom-reconciliation.ts',authority:'dom-writes',role:'DOM equality guards, no cache or gameplay scheduling',markers:['export function writeDomText(']},
+ {id:'quick-strip-invalidation',path:'src/ui/tactical-ui-invalidation.ts',authority:'presentation-invalidation',role:'Scoped semantic view signature and mounted view invalidation; no Session mutations or timers',markers:['export function quickStateViewSignature(', 'export function createTacticalSectionInvalidator(']},
  {id:'campaign-view',path:'src/campaign-ui.ts',authority:'campaign-display',role:'Campaign navigation, roster, contract, armory and preview view state',markers:['export class CampaignScreen','private disposePreview()']},
  {id:'campaign-flow',path:'src/breach-campaign-flow.ts',authority:'campaign-actions',role:'Application transaction coordination and save feedback',markers:['createBreachCampaignFlow','function applyVisibleCampaignAction(']},
  {id:'campaign-domain',path:'src/campaign-state.ts',authority:'campaign-state',role:'Persistent campaign/economy/mission result functions',markers:['export function readCampaign(', 'export function resolveOperation(']},
@@ -43,7 +44,7 @@ export const R70_OWNERS=Object.freeze([
  {id:'kit-preview',path:'src/equipment-preview.ts',authority:'preview-gpu',role:'CampaignKitPreview rendering and thumbnail resource lifetime',markers:['export class CampaignKitPreview']}
 ]);
 export const R70_MODES=Object.freeze({
- 'Planning/Tactical 2D or 3D':['composition','lifecycle','frame','mission','game','recorder','hud','notices','dom'],
+ 'Planning/Tactical 2D or 3D':['composition','lifecycle','frame','mission','game','recorder','hud','notices','dom','quick-strip-invalidation'],
  'Running GO':['composition','lifecycle','frame','game','recorder','hud','notices','dom'],
  'Replay/After Action':['composition','lifecycle','frame','recorder','hud','notices','dom'],
  'Campaign Home':['campaign-view','campaign-flow','campaign-domain'],
@@ -52,7 +53,7 @@ export const R70_MODES=Object.freeze({
  'Quick Play Creator':['quick-creator','outfitter','field-kit','squad-rail','kit-preview']
 });
 const SIGNALS=Object.freeze({
- refresh:['updateHud','refreshHud','renderSession','renderQuickStates','renderOperationsBoard','renderSquadPrep','updateContext','updateReplayHud','syncBriefingCard','syncMissionPhase','syncNextSiteControls','syncSavedButtons','showCampaignHome'],
+ refresh:['updateHud','refreshHud','renderSession','renderQuickStates','quickStateViewSignature','renderOperationsBoard','renderSquadPrep','updateContext','updateReplayHud','syncBriefingCard','syncMissionPhase','syncNextSiteControls','syncSavedButtons','showCampaignHome'],
  bookkeeping:['capturePlanning','recordCompletedOperation','observeSessionLifecycle','resolveOperation','saveCampaign','stepSession','applyVisibleCampaignAction'],
  shared:['createOutfitterGallery','createFieldGadgetEditor','createLoadoutSquadRail','renderModelThumbnail','renderModelThumbnailAsync'],
  lifetime:['dispose','disconnect','remove','cancelAnimationFrame','releaseMissionPresentation','mountMissionSession','resetNotices','requestAnimationFrame'],
@@ -67,6 +68,7 @@ export const R70_EDGES=Object.freeze([
  ['src/breach-session-lifecycle-observer.ts','recordCompletedOperation'],
  ['src/breach-runtime-loop.ts','observeSessionLifecycle'],
  ['src/breach-runtime-loop.ts','updateHud'],
+ ['src/ui/tactical-hud-controller.ts','quickStateViewSignature'],
  ['src/breach-operations-board-controller.ts','renderOperationsBoard'],
  ['src/ui/quick-play-configurator.ts','renderSquadPrep'],
  ['src/campaign-ui.ts','createOutfitterGallery'],

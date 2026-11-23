@@ -54,6 +54,10 @@ test('R7.0 live source census protects real refresh, bookkeeping and shared gall
  assert.ok(r.lifecycle.files.some(x=>x.path.includes('campaign-outfitter-gallery')&&
   x.observed.some(s=>s.callee==='disconnect')));
  assert.ok(r.owners.find(x=>x.id==='quick-ops').counts.refresh>0);
+ assert.ok(r.owners.find(x=>x.id==='quick-strip-invalidation').markers.every(x=>x.found));
+ assert.ok(r.refresh.entrypoints.some(edge=>
+  edge.path==='src/ui/tactical-hud-controller.ts'&&
+  edge.callee==='quickStateViewSignature'&&edge.sites.length===1));
  assert.ok(r.owners.every(x=>x.markers.every(m=>m.found)));
 });
 test('R7.0 verification fails closed on missing owner, changed timer and observed drift',()=>{
