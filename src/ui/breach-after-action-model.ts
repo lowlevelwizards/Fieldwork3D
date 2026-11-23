@@ -14,6 +14,7 @@ import {createForensicModelOverlay,type ForensicModelOverlay}
 
 export type AfterActionModelPresenter={
  show:(host:HTMLElement,operatorId:string|null)=>void;
+ setOperatorTapHandler:(handler:((id:string)=>void)|null)=>void;
  setEvidence:(evidence:ForensicEvidence|null)=>void;
  hide:()=>void;
  dispose:()=>void;
@@ -65,7 +66,7 @@ export function createAfterActionModelPresenter(
  canvas.style.touchAction='pan-y';
  canvas.setAttribute('role','img');
  canvas.setAttribute('aria-label',
-   'Historical 3D operator models. Drag an operator to rotate it; scroll to zoom.');
+   'Historical 3D operators. Tap to inspect a record; drag to rotate; scroll to zoom.');
  const roster=identities.filter(a=>a.side==='blue');
  const byId=new Map(identities.map(actor=>[actor.id,actor]));
  const models=new Map<string,Model>();
@@ -98,7 +99,9 @@ export function createAfterActionModelPresenter(
  // debrief mount by building an entire roster synchronously.
  let disposed=false,lost=false,host:HTMLElement|null=null;
  let selected:string|null=null,dragId:number|null=null,lastX=0,lastY=0;
- let dragTarget:string|null=null;
+ let downX=0,downY=0,dragged=false;
+ let dragTarget:string|null=null,tapTarget:string|null=null;
+ let operatorTapHandler:((id:string)=>void)|null=null;
  let forensicEvidence:ForensicEvidence|null=null;
  let pitch=.16,zoom=DEFAULT_SQUAD_ZOOM;
  const individualYaw=new Map<string,number>();
@@ -161,7 +164,13 @@ export function createAfterActionModelPresenter(
    const spacing=n>5?30:34;
    const base=squad?Math.max(158,88+n*17):100;
    lookAt.set(0,28,0);
-   const dist=base*zoom;
+   // Keep the outer bodies inside the camera on tall/narrow phone canvases.
+   // The four heading columns stay above their respective screen positions.
+   const halfWidth=((n-1)/2)*spacing+14;
+   const horizontalFit=squad?halfWidth/(
+     Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*
+     Math.max(.55,camera.aspect)):0;
+   const dist=Math.max(base*zoom,horizontalFit);
    // The camera does not spin the entire lineup as a single rigid object.
    camera.position.set(0,lookAt.y+Math.sin(pitch)*dist,
      -Math.cos(pitch)*dist);
@@ -205,25 +214,38 @@ export function createAfterActionModelPresenter(
  const down=(event:PointerEvent)=>{
    if(dragId!==null||lost)return;
    dragId=event.pointerId;
-   lastX=event.clientX;lastY=event.clientY;
-   if(selected)dragTarget=selected;
-   else{
-     // Pick the nearest on-screen actor, not a shared squad orbit.
-     const rect=canvas.getBoundingClientRect();
-     const pointerX=(event.clientX-rect.left)/Math.max(1,rect.width)*2-1;
-     let nearest=Infinity;dragTarget=null;
-     for(const [id,model] of models){
-       if(!model.holder.visible)continue;
-       const center=model.holder.getWorldPosition(new THREE.Vector3());
-       center.y+=24;
-       const delta=Math.abs(center.project(camera).x-pointerX);
-       if(delta<nearest){nearest=delta;dragTarget=id;}
+   lastX=downX=event.clientX;lastY=downY=event.clientY;
+   dragged=false;
+   // Project each visible actor's body into the canvas; tapping empty stage
+   // space must not unexpectedly select the closest squad member.
+   const rect=canvas.getBoundingClientRect();
+   const pointerX=(event.clientX-rect.left)/Math.max(1,rect.width)*2-1;
+   const pointerY=1-(event.clientY-rect.top)/Math.max(1,rect.height)*2;
+   let nearest=Infinity;dragTarget=null;
+   for(const [id,model] of models){
+     if(!model.holder.visible)continue;
+     const center=model.holder.getWorldPosition(new THREE.Vector3());
+     const foot=center.clone().project(camera);
+     const head=center.clone();head.y+=60;head.project(camera);
+     center.y+=26;center.project(camera);
+     const delta=Math.abs(center.x-pointerX);
+     const insideBody=pointerY>=Math.min(head.y,foot.y)-.12&&
+       pointerY<=Math.max(head.y,foot.y)+.12;
+     if(insideBody&&delta<.26&&delta<nearest){
+       nearest=delta;dragTarget=id;
      }
    }
+   // The selected rig may still rotate from the empty stage; only an actual
+   // projected character hit is eligible to trigger a record transition.
+   tapTarget=dragTarget;
+   if(selected&&!dragTarget)dragTarget=selected;
    canvas.setPointerCapture(event.pointerId);
  };
  const move=(event:PointerEvent)=>{
    if(event.pointerId!==dragId)return;
+   if(!dragged&&Math.hypot(event.clientX-downX,event.clientY-downY)<8)
+     return;
+   dragged=true;
    if(dragTarget)individualYaw.set(dragTarget,
      (individualYaw.get(dragTarget)??0)+(event.clientX-lastX)*.012);
    if(selected)pitch=clamp(pitch+(event.clientY-lastY)*.008,-.55,.85);
@@ -232,7 +254,17 @@ export function createAfterActionModelPresenter(
  };
  const up=(event:PointerEvent)=>{
    if(event.pointerId!==dragId)return;
-   dragId=null;dragTarget=null;
+   const tapped=!dragged&&
+     Math.hypot(event.clientX-downX,event.clientY-downY)<8?
+       tapTarget:null;
+   dragId=null;dragTarget=null;tapTarget=null;dragged=false;
+   if(canvas.hasPointerCapture(event.pointerId))
+     canvas.releasePointerCapture(event.pointerId);
+   if(tapped)operatorTapHandler?.(tapped);
+ };
+ const cancel=(event:PointerEvent)=>{
+   if(event.pointerId!==dragId)return;
+   dragId=null;dragTarget=null;tapTarget=null;dragged=false;
    if(canvas.hasPointerCapture(event.pointerId))
      canvas.releasePointerCapture(event.pointerId);
  };
@@ -249,7 +281,7 @@ export function createAfterActionModelPresenter(
  canvas.addEventListener('pointerdown',down);
  canvas.addEventListener('pointermove',move);
  canvas.addEventListener('pointerup',up);
- canvas.addEventListener('pointercancel',up);
+ canvas.addEventListener('pointercancel',cancel);
  canvas.addEventListener('wheel',wheel,{passive:false});
  canvas.addEventListener('webglcontextlost',contextLost);
  return {
@@ -270,6 +302,9 @@ export function createAfterActionModelPresenter(
        zoom=operatorId===null?DEFAULT_SQUAD_ZOOM:1;
      }
      selected=operatorId;
+     canvas.setAttribute('aria-label',operatorId===null?
+       'Tap an operator for their full record, or drag to rotate':
+       'Tap the selected operator to return to squad, or drag to rotate');
      if(host!==nextHost){
        observer?.disconnect();
        host=nextHost;
@@ -279,6 +314,9 @@ export function createAfterActionModelPresenter(
      queueModels(operatorId);
      draw();
    },
+   setOperatorTapHandler(handler){
+     operatorTapHandler=handler;
+   },
    setEvidence(evidence){
      forensicEvidence=evidence;
    },
@@ -286,18 +324,18 @@ export function createAfterActionModelPresenter(
      forensicEvidence=null;
      observer?.disconnect();
      canvas.remove();
-     host=null;dragId=null;dragTarget=null;
+     host=null;dragId=null;dragTarget=null;tapTarget=null;dragged=false;
    },
    dispose(){
      if(disposed)return;
      disposed=true;observer?.disconnect();
      if(buildTimer!==null)window.clearTimeout(buildTimer);
      if(frameRequest!==null)window.cancelAnimationFrame(frameRequest);
-     pending.length=0;loading.remove();
+     pending.length=0;loading.remove();operatorTapHandler=null;
      canvas.removeEventListener('pointerdown',down);
      canvas.removeEventListener('pointermove',move);
      canvas.removeEventListener('pointerup',up);
-     canvas.removeEventListener('pointercancel',up);
+     canvas.removeEventListener('pointercancel',cancel);
      canvas.removeEventListener('wheel',wheel);
      canvas.removeEventListener('webglcontextlost',contextLost);
      canvas.remove();

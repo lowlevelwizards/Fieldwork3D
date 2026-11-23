@@ -126,13 +126,14 @@ function scoreRank(op:OperatorAfterAction,operators:OperatorAfterAction[]){
  return (tied?'TIED #':'#')+op.rank;
 }
 function rankRow(op:OperatorAfterAction,operators:OperatorAfterAction[],
- selectedId:string|null,choose:(id:string|null)=>void){
- const row=action('',()=>choose(op.id),'fw-v3-roster-card fw-v4-rank-row');
+ selectedId:string|null,open:(id:string)=>void){
+ const row=action('',()=>open(op.id),'fw-v3-roster-card fw-v4-rank-row');
  row.setAttribute('aria-pressed',String(op.id===selectedId));
  row.setAttribute('data-after-operator-id',op.id);
  row.setAttribute('data-after-condition',op.status);
- row.setAttribute('aria-label',op.name+', '+scoreRank(op,operators)+
-   ' in recorded contribution, '+op.contribution+' points, '+statusName(op.status));
+ row.setAttribute('aria-label','Open '+op.name+' operator record, '+
+   scoreRank(op,operators)+' in recorded contribution, '+
+   op.contribution+' points, '+statusName(op.status));
  const rank=el('span','fw-v4-rank-number',scoreRank(op,operators));
  const name=el('span','fw-v4-rank-identity');
  name.append(el('strong','',op.name),
@@ -157,7 +158,7 @@ function initialOverview(report:AfterActionReport,
      totals[category]+=op.categories[category];
  root.append(contributionBar(totals),breakdown(totals));
  root.append(el('p','fw-v4-select-note',
-   'Select any ranked operator to inspect their actions and condition.'));
+   'Tap an operator or their name to open the full recorded profile.'));
  root.append(methodology());
  if(inventory)root.append(renderAfterActionTeamReadiness(inventory));
  return root;
@@ -221,17 +222,17 @@ export function renderSquadView(report:AfterActionReport,
  section.append(intro,condition);
  const content=el('div','fw-v4-squad-content');
  const roster=el('nav','fw-v3-roster fw-v4-rank-list');
- roster.setAttribute('aria-label','Squad ranked by recorded contribution');
+ roster.setAttribute('aria-label','Open operator records in contribution order');
  const selected=operators.find(op=>op.id===selectedId)??null;
  if(selected)section.classList.add('fw-v4-has-selection');
  for(const op of operators)
-   roster.append(rankRow(op,operators,selected?.id??null,choose));
+   roster.append(rankRow(op,operators,selected?.id??null,more));
  const focus=el('div','fw-v3-squad-focus fw-v4-squad-focus');
  const viewer=el('div','fw-v4-squad-model','LOADING RECORDED 3D OPERATORS');
  viewer.setAttribute('data-after-squad-model','');
  viewer.setAttribute('aria-label',selected?
    'Historical 3D model for '+selected.name:
-   'Historical 3D models of the complete squad');
+   'Historical 3D squad lineup. Tap an operator to open their record, or drag to rotate');
  focus.append(viewer,selected?selectedOverview(selected,operators,choose,more,inspect,inventory):
    initialOverview(report,inventory));
  content.append(roster,focus);section.append(content);

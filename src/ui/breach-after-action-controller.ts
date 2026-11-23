@@ -82,6 +82,7 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
  if(!host){owner.presenter?.hide();return;}
  if(owner.presenter){
    owner.presenter.setEvidence(evidence);
+   owner.presenter.setOperatorTapHandler(id=>selectSquadOperator(root,id));
    owner.presenter.show(host,operatorId);return;
  }
  const identities=recorder.manifest?.actors??[];
@@ -124,6 +125,7 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
      fallback();return;
    }
    if(current){
+     owner.presenter.setOperatorTapHandler(id=>selectSquadOperator(root,id));
      const id=current.hasAttribute('data-after-squad-model')?
        owners.get(root)?.selectedOperator??null:
        current.dataset.afterModel??null;
@@ -150,6 +152,7 @@ type State={
   selectedHighlight:string|null;
   operatorRecordOpen:boolean;summaryCompact:boolean;
   scroll:Partial<Record<AfterActionTab,number>>;
+  lineupScroll:number;recordScroll:number;
   showIntel:boolean;inventory:AfterActionInventoryCloseout|null;
   modelSnapshots:ReadonlyMap<string,THREE.Group>|undefined;
   timelineEvents:readonly AfterActionTimelineEvent[];
@@ -170,6 +173,25 @@ function currentCombatEvidence(root:HTMLElement):ForensicEvidence|null{
    s.selectedShotId,s.forensicScope):null;
 }
 const renderers=new WeakMap<HTMLElement,()=>void>();
+/** Both the label and the model use this selection path. */
+function selectSquadOperator(root:HTMLElement,id:string):void{
+ const s=owners.get(root);
+ if(!s||s.tab!=='squad'||!s.report.operators.some(op=>op.id===id))return;
+ const panel=root.querySelector<HTMLElement>('#afterActionBody');
+ if(!s.operatorRecordOpen)s.lineupScroll=panel?.scrollTop??s.lineupScroll;
+ const returning=s.operatorRecordOpen&&s.selectedOperator===id;
+ s.operatorRecordOpen=!returning;
+ s.selectedOperator=returning?null:id;
+ if(!returning)s.recordScroll=0;
+ s.summaryCompact=true;
+ renderers.get(root)?.();
+ const choices=[...root.querySelectorAll<HTMLButtonElement>(
+   '[data-after-operator-id]')];
+ const focus=returning?choices.find(button=>
+   button.getAttribute('data-after-operator-id')===id):
+   root.querySelector<HTMLButtonElement>('.fw-v4-record-back');
+ focus?.focus({preventScroll:true});
+}
 const timelineRenderers=new WeakMap<HTMLElement,()=>void>();
 const bound=new WeakSet<HTMLElement>();
 const make=(tag:string,cls='',value?:string)=>{
@@ -195,7 +217,8 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      contactSide:'red',paperBack:false,inspectionMode:'3d',
      forensicScope:'cumulative',
      selectedHighlight:null,operatorRecordOpen:false,summaryCompact:false,
-     scroll:{},showIntel:options.showIntel,
+     scroll:{},lineupScroll:0,recordScroll:0,
+     showIntel:options.showIntel,
      inventory:options.inventory??null,
      modelSnapshots:options.modelSnapshots,
      timelineEvents:buildAfterActionTimeline(rec),
@@ -236,6 +259,10 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
       const current=owners.get(root);if(!current)return;
       // Selection redraws replace the section DOM, not the player's reading position.
       current.scroll[current.tab]=safeContent.scrollTop;
+      if(current.tab==='squad'){
+        if(current.operatorRecordOpen)current.recordScroll=safeContent.scrollTop;
+        else current.lineupScroll=safeContent.scrollTop;
+      }
       if(current.summaryCompact||safeContent.scrollTop<24)return;
       current.summaryCompact=true;syncSummary();
     },{passive:true});
@@ -359,7 +386,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
            s.tab='combat';
          }else if(operator){
            s.selectedOperator=operator.id;
-           s.operatorRecordOpen=true;s.tab='squad';
+           s.operatorRecordOpen=true;s.recordScroll=0;s.tab='squad';
          }
          const details=root.querySelector<HTMLElement>('#afterActionDetails');
          if(details)details.hidden=true;
@@ -454,12 +481,9 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    let screen:HTMLElement;
    if(s.tab==='squad'){
      screen=renderSquadView(s.report,s.recorder.manifest,
-       s.selectedOperator,(id)=>choose(id),(id)=>{
-         s.selectedOperator=id;
-         s.operatorRecordOpen=true;draw();
-         safeContent.querySelector<HTMLButtonElement>(
-           '.fw-v4-record-back')?.focus({preventScroll:true});
-       },inspectContribution,s.inventory??undefined);
+       s.selectedOperator,(id)=>choose(id),
+       (id)=>selectSquadOperator(root,id),inspectContribution,
+       s.inventory??undefined);
      if(s.operatorRecordOpen){
        const operator=s.report.operators.find(o=>o.id===s.selectedOperator);
        if(operator){
@@ -469,11 +493,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
          record.setAttribute('aria-label','Full operator record for '+operator.name);
          const back=make('button','fw-v4-record-back','‹ BACK TO SQUAD') as HTMLButtonElement;
          back.type='button';
-         back.addEventListener('click',()=>{
-           s.operatorRecordOpen=false;draw();
-           safeContent.querySelector<HTMLButtonElement>(
-             '.fw-v3-details-link')?.focus();
-         });
+         back.addEventListener('click',()=>selectSquadOperator(root,operator.id));
          const modelHost=make('div','fw-v4-squad-model',
            'LOADING RECORDED 3D OPERATOR');
          modelHost.setAttribute('data-after-squad-model','');
@@ -581,7 +601,9 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    presentModel(root,s.recorder,squadHost??combatHost,
      squadHost?s.selectedOperator:combatHost?.dataset.afterModel??null,
      currentCombatEvidence(root));
-   safeContent.scrollTop=s.scroll[s.tab]??0;
+   safeContent.scrollTop=s.tab==='squad'?
+     (s.operatorRecordOpen?s.recordScroll:s.lineupScroll):
+     (s.scroll[s.tab]??0);
    drawTimeline();
  }
  renderers.set(root,draw);
@@ -600,6 +622,7 @@ export type AfterActionReturnContext={
  timelineLedgerLimit?:number;timelineRailScroll?:number;
  timelineGroupScroll?:number;timelineLedgerScroll?:number;
  operatorRecordOpen:boolean;summaryCompact?:boolean;
+ lineupScroll?:number;recordScroll?:number;
   detailsOpen:boolean;detailsScroll:number;
  scroll:Partial<Record<AfterActionTab,number>>;
 };
@@ -632,6 +655,7 @@ export function afterActionSnapshot(root:HTMLElement):AfterActionReturnContext|n
    timelineLedgerScroll:s.timelineLedgerScroll,
    operatorRecordOpen:s.operatorRecordOpen,
     summaryCompact:s.summaryCompact,
+    lineupScroll:s.lineupScroll,recordScroll:s.recordScroll,
     detailsOpen:!root.querySelector<HTMLElement>('#afterActionDetails')?.hidden,
    detailsScroll:root.querySelector<HTMLElement>('.fw-after-detail-content')?.scrollTop??0,
    scroll:{...s.scroll}};
@@ -674,6 +698,8 @@ export function restoreAfterActionWorkspace(
  s.timelineGroupScroll=Math.max(0,context.timelineGroupScroll??0);
  s.timelineLedgerScroll=Math.max(0,context.timelineLedgerScroll??0);
  s.operatorRecordOpen=context.operatorRecordOpen&&!!context.operatorId;
+ s.lineupScroll=Math.max(0,context.lineupScroll??context.scroll.squad??0);
+ s.recordScroll=Math.max(0,context.recordScroll??0);
   s.summaryCompact=context.summaryCompact??true;
   s.scroll={...context.scroll};
  const detail=root.querySelector<HTMLElement>('#afterActionDetails');
