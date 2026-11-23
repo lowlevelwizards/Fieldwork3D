@@ -5,6 +5,7 @@
 import {executionStatus,type ExecutionActor,type ExecutionContext,
  type ExecutionStatus} from '../breach-execution-state.ts';
 import type {ExecutionNotice} from './execution-feedback.ts';
+import {liveNoticeEligible,type LiveNoticeActor} from './execution-notice-provenance.ts';
 
 export function liveExecutionStatus(actor:ExecutionActor,
  context:ExecutionContext,seconds:number):ExecutionStatus{
@@ -26,14 +27,9 @@ export function liveExecutionStatus(actor:ExecutionActor,
 
 export function liveExecutionNotice(
  notice:ExecutionNotice|null,
- currentOrders:readonly {id:string;plan:readonly {id:number}[]}[]
+ currentOrders:readonly LiveNoticeActor[],
+ seconds?:number,phase?:string
 ):ExecutionNotice|null{
  if(!notice)return null;
- // Preserve event text for debrief/replay, but not as active warning banners.
- if(/ENTRY INTERRUPTED|SQUAD ENTRY CANCELLED|ORDER CANCELLED|MOVE BLOCKED.*ORDER RETAINED|PATH BLOCKED.*ORDER RETAINED/
-   .test(notice.text.toUpperCase()))return null;
- if(notice.severity==='warning'&&notice.actorId&&notice.orderId!=null&&
-   !currentOrders.some(actor=>actor.id===notice.actorId&&
-     actor.plan.some(node=>node.id===notice.orderId)))return null;
- return notice;
+ return liveNoticeEligible(notice,currentOrders,seconds,phase)?notice:null;
 }
