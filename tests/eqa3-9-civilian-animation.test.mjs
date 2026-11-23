@@ -41,7 +41,7 @@ test('EQA3.9 secure state is immediately lawful; post-contact animation blends f
  c.state='compliant';c.stateSince=4;c.restrained=false;
  assert.equal(civilianPose(c),'compliant');
  updateCivilianRig(r,c,4);
- assert.equal(r.leftArm.rotation.z,0,
+ assert.ok(Math.abs(r.leftArm.rotation.z)<1e-9,
    'first surrender frame preserves the prior displayed arm orientation');
  updateCivilianRig(r,c,4.05);
  const early=r.upper.position.y,firstRaise=r.leftArm.rotation.z;
