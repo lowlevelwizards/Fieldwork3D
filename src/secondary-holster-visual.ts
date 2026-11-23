@@ -225,13 +225,18 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
 export function presentSecondaryDraw(hip:THREE.Group,
  firingHand:THREE.Object3D,secondary:SecondaryEquipment|undefined,
  fraction:number,operational=true,shotHeading?:number,
- labPitch=0):boolean{
+ labPitch=0,labScale?:number):boolean{
  const mount=mounted.get(hip);
  if(!mount||!secondary?.weapon||mount.root.userData.secondaryWeaponId!==secondary.weapon){
   return false;
  }
  const weight=operational&&Number.isFinite(fraction)?
   Math.max(0,Math.min(1,fraction)):0;
+ // No gameplay transform changes: only the Operator Lab passes labScale.
+ // Retain the authentic authored grip pivot across sizes and draw states.
+ const scale=labScale!==undefined&&Number.isFinite(labScale)?
+  Math.max(.37,Math.min(.8,labScale)):.37;
+ if(mount.cradle.scale.x!==scale)mount.cradle.scale.setScalar(scale);
  if(weight===0){
   mount.cradle.position.copy(mount.stowedPosition);
   mount.cradle.quaternion.copy(mount.stowedQuaternion);
