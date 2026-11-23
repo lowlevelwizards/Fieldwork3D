@@ -128,8 +128,11 @@ export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
     if(!n.aimPoint||s.flashRemaining<=0||!field.available){
       h.fail(s,a,n,'FLASH UNAVAILABLE');return true;
     }
+    // Real sessions provide the full world. Minimal isolated utility
+    // harnesses still use the legacy activated core site for throw tests.
     const trajectory=validateThrow(a.p,n.aimPoint,s.doors,[],
-      sessionWorldGeometry(s));
+      Array.isArray(s.coverState)&&Array.isArray(s.civilians)?
+        sessionWorldGeometry(s):undefined);
     if(!trajectory.valid){
       h.fail(s,a,n,'FLASH BLOCKED — '+
         (trajectory.reason??'CHECK TRAJECTORY'));return true;
