@@ -39,7 +39,7 @@ export function selectedActionTarget(s:Session,a:TeamActor,
  }
  if(id.startsWith('weapon:')){
   const weapon=s.droppedFirearms.find(w=>String(w.id)===id.slice(7));
-  return weapon&&liveVisibility(s,weapon.p)?
+  return weapon?.status==='loose'&&liveVisibility(s,weapon.p)?
     {p:weapon.p,kind:'weapon'}:null;
  }
  const subjectId=id.startsWith('suspect:')?id.slice(8):id;
