@@ -20,8 +20,8 @@ export type LabPistolContacts=Readonly<{
  * Never passed to a live gameplay character.
  */
 export const LAB_CLOSE_RETENTION=Object.freeze({
- firing:{x:10.2,y:-2.1,z:6.5},
- support:{x:8.1,y:1.0,z:-5.9},
+ firing:{x:8.05,y:-1.8,z:6.5},
+ support:{x:7.05,y:1.0,z:-5.9},
  firingElbowPole:{x:7,y:-12,z:1},
  supportElbowPole:{x:7,y:-12,z:-1}
 }) satisfies Readonly<{
