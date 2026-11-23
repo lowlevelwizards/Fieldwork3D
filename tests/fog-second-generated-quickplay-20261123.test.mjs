@@ -93,7 +93,7 @@ test('two consecutive generated-site fog mesh swaps retain shared material but r
   assert.deepEqual(a,first.site.bounds);
   assert.notDeepEqual(oldExteriorPoints,
    Array.from(exterior.geometry.getAttribute('position').array),
-   'the second site's indoor footprint must replace the previous one');
+   "the second site must replace the previous indoor fog footprint");
   assert.equal(smooth.material,shared);
   assert.equal(exterior.material,shared);
   const params=smooth.geometry.parameters;
