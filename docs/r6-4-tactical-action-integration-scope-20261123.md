@@ -18,7 +18,7 @@ Retain `contactStandpointAtRadius` and `PERSON_CONTACT_REACH/STANDOFF/OFFSETS`: 
 
 A. Freeze this scope and explicit candidate evidence. Do not edit main directly.
 
-B. Delete only `personContactStandpoint`; update its two test callers to `contactStandpointAtRadius` with explicit R6.2 constants. Keep the seven-offset deterministic ordering, 39-unit person standoff, side clearance and blocked outcomes. Assert the wrapper stays absent so it cannot silently reappear.
+B. Delete only `personContactStandpoint`; update its two test callers to `contactStandpointAtRadius` with explicit R6.2 constants. Reconcile the R6.0 fail-closed inventory boundary and cross-layer reuse ledger to the actual radius-aware geometry function (the first PR CI run correctly detected the stale pre-R6.2 adapter reference). Keep the seven-offset deterministic ordering, 39-unit person standoff, side clearance and blocked outcomes. Assert the wrapper stays absent so it cannot silently reappear.
 
 C. Add an integration acceptance test using a real `newSession`, `toggling` and `stepSession` at 60 Hz. Verify voice escort without approach and hand-contact restraint with movement/elapsed-time/physical spacing; then a genuinely failed order with no fabricated completion, immutable execution facts, a current typed warning, retired-warning invalidation and a second Session that cannot reuse the prior notice even with reused actor/order IDs. No mock executor or fake motor completion.
 

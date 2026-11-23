@@ -79,6 +79,18 @@ test('R6.0 preserves voice versus physical contact and out-of-band boundaries',(
  assert.ok(R60_BOUNDARIES.some(x=>x[0]==='physical motor'));
  assert.ok(R60_BOUNDARIES.some(x=>x[0]==='replay'));
  assert.ok(R60_REPEATED_POLICY.some(x=>x.id==='civilian-voice-reach'));
+ const stance=R60_BOUNDARIES.find(x=>x[0]==='physical standpoint');
+ assert.deepEqual(stance,[
+  'physical standpoint','src/breach-person-contact-standpoint.ts',
+  'contactStandpointAtRadius'
+ ]);
+ const contract=R60_REPEATED_POLICY.find(x=>x.id==='contact-standpoint');
+ assert.equal(contract?.symbol,'contactStandpointAtRadius');
+ assert.deepEqual(contract.files,[
+  'src/breach-person-contact-standpoint.ts',
+  'src/breach-physical-contact-episode.ts'
+ ]);
+ assert.equal(report.problems.length,0);
 });
 
 test('R6.0 reports all action layers while keeping unproven candidates explicit',()=>{
