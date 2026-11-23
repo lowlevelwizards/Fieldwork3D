@@ -83,8 +83,8 @@ try{
   const initialPistol=await ready(page);
   if(Math.abs(Number(initialPistol.poseSidearmScale)-.57)>.001)
    throw Error('Expected slightly oversized, reduced pistol size');
-  if(initialPistol.poseSidearmTriggerIndex!=='true')
-   throw Error('Visible index finger contact cue missing');
+  if(initialPistol.poseSidearmExtraDigits!=='false')
+   throw Error('Pistol has unwanted additional finger geometry');
   await page.locator('[data-lab-tab="ready"]').click();
   await page.locator('[data-pose="low-ready"]').click();
   await page.waitForFunction(()=>{
@@ -128,8 +128,8 @@ try{
   if(Number(adsRecord.poseSidearmSupportAhead)<.7)
    throw Error('Support palm remains behind firing wrist: '+
     adsRecord.poseSidearmSupportAhead);
-  if(adsRecord.poseSidearmSupportThumb!=='true')
-   throw Error('Support hand missing its grip wrap');
+  if(adsRecord.poseSidearmExtraDigits!=='false')
+   throw Error('Pistol ADS unexpectedly has extra finger/thumb meshes');
   if(Number(adsRecord.poseSidearmGripError)>.25)
    throw Error('Actual trigger grip missed firing wrist: '+
     adsRecord.poseSidearmGripError);
@@ -153,10 +153,22 @@ try{
    return d?.poseSidearmStance==='retention';
   },null,{timeout:15000});
   const retained=await ready(page);
-  if(retained.poseSidearmSupportThumb!=='false')
-   throw Error('Close retention still overlaps the support grip');
+  if(retained.poseSidearmExtraDigits!=='false')
+   throw Error('Close retention added forbidden finger/thumb geometry');
   if(Number(retained.poseSidearmSupportAhead)>-.5)
    throw Error('Close retention support wrist not tucked back');
+  // From both sides the free hand stays in front of the left chest and
+  // the pistol stays right of the sternum, with both elbows hanging low.
+  if(Number(retained.poseSidearmSupportLocalZ)>-5.5||
+     Number(retained.poseSidearmFiringLocalZ)<5.5)
+   throw Error('Close retention arms cross the chest: '+
+    JSON.stringify({left:retained.poseSidearmSupportLocalZ,
+     right:retained.poseSidearmFiringLocalZ}));
+  if(Number(retained.poseSidearmSupportLocalX)<6.7||
+     Number(retained.poseSidearmFiringLocalX)>8.8)
+   throw Error('Close retention hands inside vest or pistol not retracted: '+
+    JSON.stringify({left:retained.poseSidearmSupportLocalX,
+     right:retained.poseSidearmFiringLocalX}));
   await page.screenshot({path:out+'/glock-pistol-close-retention-iphone.png'});
   await page.locator('[data-lab-tab="poses"]').click();
   await page.locator('#poseAnimation').selectOption('pistol-reload-retention');
@@ -210,8 +222,11 @@ try{
     return d?.poseSidearm===id&&d.poseSidearmArtOnly==='true'&&
      d.poseSidearmMesh==='true'&&d.posePrimaryHidden==='true';
    },model,{timeout:15000});
-   if(Number((await ready(page)).poseSidearmGripError)>.25)
+   const beretta=await ready(page);
+   if(Number(beretta.poseSidearmGripError)>.25)
     throw Error('Beretta grip socket misses the firing hand: '+model);
+   if(beretta.poseSidearmExtraDigits!=='false')
+    throw Error('Extra fingers returned on Beretta: '+model);
    if(!(await page.locator('#poseSidearmHint').textContent())?.includes('ART-ONLY'))
     throw Error('Beretta preview was misrepresented as playable: '+model);
    await page.screenshot({path:out+'/'+model+'-high-ready-iphone.png'});
