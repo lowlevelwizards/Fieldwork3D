@@ -14,6 +14,7 @@ import type {V3ReloadHold} from './breach-pose-v3-reload-weapon.ts';
 import type {WeaponId} from './breach-combat.ts';
 import type {SecondarySwitchState} from './secondary-switching.ts';
 import type {SecondaryTimedReload} from './secondary-timed-reload.ts';
+import type {LabPistolContacts} from './secondary-upper-body-pose.ts';
 import type {ReplayFeet} from './breach-replay-motion.ts';
 import type {MomentumEnvelope} from './breach-motion-transitions.ts';
 import type {ReloadMode} from './breach-magazines.ts';
@@ -113,6 +114,10 @@ export type OperatorPose={
   labPistolScale?:number;
   /** Lab-only continuous transition into the selected readiness posture. */
   labPistolStanceBlend?:number;
+  /** Lab-only authored model grip/slide contacts, never live ballistics. */
+  labPistolContacts?:LabPistolContacts;
+  /** Lab-only slide-rack hand choreography; gun mesh stays static. */
+  labPistolSlideRack?:Readonly<{weight:number;pull:number}>|null;
   equipment?:EquipmentLoadout;flashCharges?:number;wedgeRemaining?:number;
   restraintRemaining?:number;
   medicalCarryLocation?:CarryLocation;utilityCarryLocation?:CarryLocation;
