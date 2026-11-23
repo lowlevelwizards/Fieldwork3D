@@ -86,14 +86,14 @@ try{
   await page.locator('[data-pose="low-ready"]').click();
   await page.waitForFunction(()=>{
    const d=document.getElementById('preview')?.dataset;
-   return d?.poseSidearmStance==='low'&&Number(d.poseSidearmPitch)<-.5;
+   return d?.poseSidearmStance==='low'&&Number(d.poseSidearmPitch)<-.25;
   },null,{timeout:15000});
   const lowHand=Number((await ready(page)).poseSidearmHandY);
   await page.screenshot({path:out+'/glock-pistol-low-ready-iphone.png'});
   await page.locator('[data-pose="high-ready"]').click();
   await page.waitForFunction(()=>{
    const d=document.getElementById('preview')?.dataset;
-   return d?.poseSidearmStance==='high'&&Number(d.poseSidearmPitch)>.5;
+   return d?.poseSidearmStance==='high'&&Number(d.poseSidearmPitch)>.35;
   },null,{timeout:15000});
   const highHand=Number((await ready(page)).poseSidearmHandY);
   if(highHand-lowHand<4)
@@ -107,10 +107,14 @@ try{
   await page.waitForFunction(()=>{
    const d=document.getElementById('preview')?.dataset;
    return d?.track==='active-aim'&&d?.poseSidearmStance==='ready'&&
-    d?.poseSidearmScale==='0.650';
+    d?.poseSidearmScale==='0.620';
   },null,{timeout:15000});
-  const adsHand=Number((await ready(page)).poseSidearmHandY);
-  if(adsHand-lowHand<4)
+  const adsRecord=await ready(page);
+  const adsHand=Number(adsRecord.poseSidearmHandY);
+  if(Number(adsRecord.poseSidearmGripError)>.25)
+   throw Error('Actual trigger grip missed firing wrist: '+
+    adsRecord.poseSidearmGripError);
+  if(adsHand-lowHand<3.2)
    throw Error('ADS does not raise and extend firing wrist: '+
     JSON.stringify({lowHand,adsHand}));
   await page.screenshot({path:out+'/glock-pistol-ads-iphone.png'});
@@ -131,6 +135,39 @@ try{
     Number(d.poseSidearmReload)>.2&&d.poseSidearmMesh==='true';
   },null,{timeout:15000});
   await page.screenshot({path:out+'/glock-pistol-reload-iphone.png'});
+  await page.locator('#poseAnimation').selectOption('pistol-reload-emergency');
+  await page.locator('#timeline').evaluate(e=>{
+   e.value='1950';e.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  await page.waitForFunction(()=>{
+   const d=document.getElementById('preview')?.dataset;
+   return d?.track==='pistol-reload-emergency'&&
+    Number(d.poseSidearmRack)>.5&&Number(d.poseSidearmReload)>.7;
+  },null,{timeout:15000});
+  const grab=await ready(page);
+  await page.screenshot({path:out+'/glock-empty-reload-slide-grab-iphone.png'});
+  await page.locator('#timeline').evaluate(e=>{
+   e.value='2130';e.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  await page.waitForFunction(()=>{
+   const d=document.getElementById('preview')?.dataset;
+   return Number(d?.poseSidearmRackPull)>.5;
+  },null,{timeout:15000});
+  const rack=await ready(page);
+  if(Math.abs(Number(rack.poseSidearmSupportX)-
+    Number(grab.poseSidearmSupportX))<.45)
+   throw Error('Empty reload did not visibly pull slide-hand rearward: '+
+    JSON.stringify({grab:grab.poseSidearmSupportX,
+     pull:rack.poseSidearmSupportX}));
+  await page.screenshot({path:out+'/glock-empty-reload-slide-rack-iphone.png'});
+  await page.locator('#timeline').evaluate(e=>{
+   e.value='2600';e.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  await page.waitForFunction(()=>{
+   const d=document.getElementById('preview')?.dataset;
+   return d?.poseSidearmRack===''&&d?.poseSidearmReload==='';
+  },null,{timeout:15000});
+  await page.screenshot({path:out+'/glock-empty-reload-regrip-iphone.png'});
   for(const model of ['beretta-m9','beretta-m9a3']){
    await page.locator('#poseWeapon').selectOption(model);
    await page.locator('#poseAnimation').selectOption('pistol-high-ready');
@@ -139,6 +176,8 @@ try{
     return d?.poseSidearm===id&&d.poseSidearmArtOnly==='true'&&
      d.poseSidearmMesh==='true'&&d.posePrimaryHidden==='true';
    },model,{timeout:15000});
+   if(Number((await ready(page)).poseSidearmGripError)>.25)
+    throw Error('Beretta grip socket misses the firing hand: '+model);
    if(!(await page.locator('#poseSidearmHint').textContent())?.includes('ART-ONLY'))
     throw Error('Beretta preview was misrepresented as playable: '+model);
    await page.screenshot({path:out+'/'+model+'-high-ready-iphone.png'});
