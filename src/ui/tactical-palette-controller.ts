@@ -1,4 +1,6 @@
 import {captureVitalStatus} from '../breach-capture-vitals.ts';
+import {medicalTreatmentChoices,medicalPatientStatus,
+ type MedicalPatientChoice} from '../breach-medical-target-choices.ts';
 /** Contextual command palette presentation and spatial placement.
  * Receives read-only, already-authorized action descriptors. NEVER validates,
  * queues or executes tactical commands. Both layouts share one DOM dispatcher.
@@ -45,6 +47,7 @@ export type PaletteContext={
   node:TeamActor['plan'][number]|undefined;
   selectedWatch:Pt|null;door:Door|undefined;
   actions:readonly ContextAction[];
+  medicalChoices?:readonly MedicalPatientChoice[];
   width:number;height:number;lastAuthoringAt:number;
 };
 /** Read-only visibility-limited context inputs, never an order mutation port. */
@@ -82,6 +85,7 @@ export function createTacticalPaletteController(config:{
   tether.hidden=true;
   document.body.append(tether);
   let contextSignature='',actionSignature='',lastPlacementKey='';
+  let treatmentExpanded=false,treatmentScope='';
   let lastSide:MenuSide|null=null;
   let paletteWidth=0,paletteHeight=0,tetherBrightUntil=0;
   let exiting:Animation|null=null;
@@ -116,6 +120,7 @@ export function createTacticalPaletteController(config:{
     contextSignature='';actionSignature='';lastPlacementKey='';
   }
   function hide(){
+    treatmentExpanded=false;treatmentScope='';
     lastPlacementKey='';
     // An exiting floating palette must not accept late clicks.
     context.dataset.owner='';
@@ -164,13 +169,26 @@ export function createTacticalPaletteController(config:{
   }
   function show({
     state,actor:a,selected,node,selectedWatch,door,
-    actions,width:cssW,height:cssH,lastAuthoringAt
+    actions,medicalChoices=[],width:cssW,height:cssH,lastAuthoringAt
   }:PaletteContext){
-    const paletteChoices=actions.filter(choice=>choice.group!=='state');
     setPresentation(placement);
     context.dataset.owner=selected;
     const identity=(door?'door:'+door.id:node?'node:'+node.id:
       selectedWatch?'active-watch':'here')+'/'+selected;
+    if(treatmentScope!==identity){
+      treatmentScope=identity;treatmentExpanded=false;
+    }
+    const patientActions:ContextAction[]=treatmentExpanded&&
+      actions.some(choice=>choice.id==='ctxTreat')?
+      medicalChoices.map(patient=>({
+        id:'ctxTreat:'+patient.id,
+        label:(patient.isSelf?'SELF':patient.name.toUpperCase())+
+          ' · '+patient.status,
+        group:'primary' as const,disabled:!patient.canTreat,
+        title:patient.note
+      })):[];
+    const paletteChoices=[...actions.filter(choice=>choice.group!=='state'),
+      ...patientActions];
     context.dataset.scopeKey=identity;
     const changed=contextSignature!==identity;
     if(changed){
@@ -181,9 +199,12 @@ export function createTacticalPaletteController(config:{
       heading.setAttribute('aria-live','off');
       context.append(heading);
       const primary=document.createElement('div');primary.className='context-primary';
+      const medical=document.createElement('div');medical.className='context-medical';
+      medical.setAttribute('role','group');
+      medical.setAttribute('aria-label','Choose treatment patient and status');
       const secondary=document.createElement('div');secondary.className='context-state';
       const destructive=document.createElement('div');destructive.className='context-danger';
-      context.append(primary,secondary,destructive);
+      context.append(primary,medical,secondary,destructive);
     }
     const heading=context.querySelector<HTMLElement>('.fw-context-heading');
     if(heading){
@@ -195,7 +216,9 @@ export function createTacticalPaletteController(config:{
         node?'Orders queued at this waypoint':
         selectedWatch?'Drag the ring to reposition or DELETE WATCH to release':
         'Orders for the selected operator';
-      const label=a.name.toUpperCase()+' · '+title;
+      const condition=medicalPatientStatus(a);
+      const suffix=condition==='UNINJURED'?'':' · '+condition;
+      const label=a.name.toUpperCase()+' · '+title+suffix;
       if(heading.textContent!==label)heading.textContent=label;
       heading.title=scope;
     }
@@ -207,6 +230,7 @@ export function createTacticalPaletteController(config:{
       actionSignature=signature;
       const buckets:Record<string,HTMLElement>={
         primary:context.querySelector<HTMLElement>('.context-primary')!,
+        medical:context.querySelector<HTMLElement>('.context-medical')!,
         state:context.querySelector<HTMLElement>('.context-state')!,
         destructive:context.querySelector<HTMLElement>('.context-danger')!
       };
@@ -241,7 +265,8 @@ export function createTacticalPaletteController(config:{
         if(choice.pressed===undefined)button.removeAttribute('aria-pressed');
         else button.setAttribute('aria-pressed',String(choice.pressed));
         button.classList.toggle('danger',choice.group==='destructive');
-        const destination=placement==='floating'?
+        const destination=choice.id.startsWith('ctxTreat:')?
+          buckets.medical:placement==='floating'?
           buckets[choice.group==='advanced'?'primary':choice.group]:
           buckets.primary;
         destination.append(button);
@@ -250,6 +275,7 @@ export function createTacticalPaletteController(config:{
         'button[data-action]')){
         if(!wanted.has(button.dataset.action??''))button.remove();
       }
+      buckets.medical.hidden=!patientActions.length;
       buckets.state.hidden=!buckets.state.childElementCount;
       buckets.destructive.hidden=!buckets.destructive.childElementCount;
       context.classList.toggle('door-menu',!!door);
@@ -394,7 +420,7 @@ export function createTacticalPaletteController(config:{
       if(powerActions.length>=4)break; // bounded touch palette
     }
   }
-  const treatTarget=input.medicalCandidate(at);
+  const treatmentCandidates=medicalTreatmentChoices(state,a,at);
   // WATCH remains active through later waypoints until LOOK or RELEASE.
   // Read the authored history, not merely this node's local modifier.
   let watchActive=a.aimInstruction?.mode==='track'&&a.pace!=='run';
@@ -479,9 +505,9 @@ export function createTacticalPaletteController(config:{
     formationEditable:!!door&&canEdit(state),
     stackFormation:door?selectedDoorStackFormation(state,door.id):'auto',
     nearMovable,nearWindow:!!nearWindow,nearWindowOpen:nearWindow?.open,
-    powerActions,treatTargetName:treatTarget?.name,
-     treatCaptureTarget:state.missionType==='capture'&&
-       !!treatTarget&&treatTarget.id===state.captureTarget,
+    powerActions,treatTargetName:treatmentCandidates.length?
+      'CHOOSE PATIENT':undefined,
+     treatCaptureTarget:false,
     nearDoor:!door&&!!nearbyDoor,
     nearCivilian:!!civilianAtPlan,
     nearRestrainableCivilian:!!restraintAtPlan,
@@ -517,11 +543,20 @@ export function createTacticalPaletteController(config:{
   });
   show({
     state,actor:a,selected,node,selectedWatch,door,actions:choices,
+    medicalChoices:treatmentCandidates,
     width:cssW,height:cssH,lastAuthoringAt
   });
   }
+  const toggleTreatment=()=>{
+    if(context.hidden)return;
+    treatmentExpanded=!treatmentExpanded;actionSignature='';
+  };
+  const closeTreatment=()=>{
+    treatmentExpanded=false;actionSignature='';
+  };
   return {
-    hide,show,showFromAuthorizedState,advance,heldPointers,availableActions,invalidate,
+    hide,show,showFromAuthorizedState,toggleTreatment,closeTreatment,
+    advance,heldPointers,availableActions,invalidate,
     get tether(){return tether;},
     get placement(){return placement;},
     get active(){return motion.active;},
