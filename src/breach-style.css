@@ -4351,7 +4351,7 @@ body.nvg-selected-view #breach3dCanvas{
  .fw-v7-lineup-model .fw-v4-model-canvas{
  position:absolute;left:0;right:0;
  top:calc(var(--fw-v7-card-inset) + var(--fw-v7-heading-height) + var(--fw-v7-dot-height));
- width:100%;height:calc(100% - var(--fw-v7-heading-height) - var(--fw-v7-dot-height) - 2 * var(--fw-v7-card-inset))!important;
+ width:100%;height:calc(100% - var(--fw-v7-heading-height) - var(--fw-v7-dot-height) - var(--fw-v7-card-inset) - var(--fw-v7-card-inset))!important;
  max-width:100%;z-index:1}
 .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-list{
  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
