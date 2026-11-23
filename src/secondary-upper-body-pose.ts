@@ -24,20 +24,35 @@ export function secondaryUpperBodyTargets(input:Readonly<{
  reloadProgress?:number|null;
  /** Optional Lab-only distinction; normal tactical ready/ADS is unchanged. */
  stance?:'high'|'low'|'ready'|'retention';
+ /** Lab-only transition toward the requested ready posture. */
+ stanceBlend?:number;
 }>):SecondaryPoseTarget{
  const weight=smooth((clamp(input.fraction)-.08)/.78);
  const ads=smooth(input.aim)*(input.moving ? .88 : 1);
- const ready:Anchor3=input.stance==='high'?{x:7.6,y:.9,z:3.4}:
-  input.stance==='low'?{x:7.0,y:-5.7,z:3.8}:
-  {x:8.2,y:-3.0,z:3.3};
- const extended:Anchor3={x:13.4,y:-.25,z:2.0};
+ // Live sidearms retain their established shot-authoritative arm targets.
+ // Only explicit Lab stances get the enlarged and more legible geometry.
+ const laboratory=input.stance!==undefined;
+ const baseReady:Anchor3=laboratory?
+  {x:9.4,y:-1.4,z:3.5}:{x:8.2,y:-3.0,z:3.3};
+ const stanceReady:Anchor3=input.stance==='high'?
+  {x:6.8,y:4.0,z:3.5}:input.stance==='low'?
+  {x:9.6,y:-8.0,z:3.7}:baseReady;
+ const ready=blend(baseReady,stanceReady,
+  clamp(input.stanceBlend??1));
+ const extended:Anchor3=laboratory?
+  {x:15.0,y:3.4,z:1.8}:{x:13.4,y:-.25,z:2.0};
  const retention:Anchor3={x:5.7,y:-5.7,z:4.9};
  const firing=input.obstructed||input.stance==='retention'?retention:
   blend(ready,extended,ads);
- const supportReady:Anchor3=input.stance==='high'?{x:6.5,y:.1,z:1.1}:
-  input.stance==='low'?{x:5.9,y:-6.4,z:.8}:
-  {x:6.9,y:-3.7,z:.6};
- const supportAim:Anchor3={x:12.0,y:-.75,z:.25};
+ const supportBase:Anchor3=laboratory?
+  {x:8.0,y:-2.0,z:.6}:{x:6.9,y:-3.7,z:.6};
+ const supportStance:Anchor3=input.stance==='high'?
+  {x:6.1,y:3.3,z:1.0}:input.stance==='low'?
+  {x:8.1,y:-8.5,z:.9}:supportBase;
+ const supportReady=blend(supportBase,supportStance,
+  clamp(input.stanceBlend??1));
+ const supportAim:Anchor3=laboratory?
+  {x:13.4,y:2.7,z:.1}:{x:12.0,y:-.75,z:.25};
  let support=input.obstructed||input.stance==='retention'?
   {x:5.3,y:-5.8,z:1.5}:blend(supportReady,supportAim,ads);
  if(input.reloadProgress!==undefined&&input.reloadProgress!==null){
