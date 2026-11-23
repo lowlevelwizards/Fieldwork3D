@@ -7,7 +7,10 @@ import {newSession,team} from '../src/breach-game.ts';
 import {selectedActionTarget} from '../src/breach-action-target-marker.ts';
 import {ExecutionNoticeFeed} from '../src/ui/execution-feedback.ts';
 import {executionStatus} from '../src/breach-execution-state.ts';
-import {activateSite} from '../src/breach-core.ts';
+import {activateSite,OPERATOR_RADIUS} from '../src/breach-core.ts';
+import {generateSite} from '../src/breach-site.ts';
+import {knownFixedGoalBlock} from '../src/breach-authored-goal-block.ts';
+import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const d=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -137,4 +140,23 @@ test('paused OPEN uses real hand reach and high-ready, flashburst overlay surviv
  const fx=read('src/ui/breach-tactical-frame-feedback-controller.ts');
  assert.match(fx,/for\(const burst of state\.flashBursts\)/);
  assert.match(fx,/worldToScreen\(burst\.p,17\)/);
+});
+
+test('frozen motel Ash GO remains actual known non-relocatable furniture',()=>{
+ const site=generateSite(31149,'small',undefined,{mission:'intel'},
+   {archetype:'motel'});
+ const quiet={...site,training:true,enemies:[],encounter:undefined};
+ const s=newSession(0,31149,'full-view','small','intel',quiet,
+   {enableCivilians:false});
+ try{
+  const goal={x:619.3,y:248};
+  const block=knownFixedGoalBlock(s,goal);
+  const passable=sessionWorldGeometry(s).passable(goal,OPERATOR_RADIUS);
+  const nearby=s.coverState.map((c,i)=>({
+   x:c.x,y:c.y,w:c.w,h:c.h,fixture:c.fixture??null,known:s.intel.cover.has(i)
+  })).filter(c=>Math.abs(c.x-goal.x)<65&&Math.abs(c.y-goal.y)<65);
+  console.log('FROZEN_MOTEL_GO',JSON.stringify({goal,block,passable,nearby}));
+  assert.equal(block,'furniture','the frozen GO must still refer to the known fixture');
+  assert.equal(passable,false,'no fictional physical arrival inside the fixture');
+ }finally{activateSite(null);}
 });
