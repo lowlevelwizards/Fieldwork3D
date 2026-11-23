@@ -73,7 +73,8 @@ test('R6.1 GO: physical restraint is timed and never completed at planning',()=>
 test('R6.1 GO: civilian voice FOLLOW is not a hand-contact task',()=>{
  const s=newSession(0,6101,'full-view','small','rescue',site());
  try{
-  const {a}=single(s);
+  const {a,p}=single(s);
+  p.health=0; // A spoken-command test must not depend on enemy reactions.
   const c=createCivilian({id:'civ:r61-voice',role:'rescue',
    persona:'steady',activity:'waiting',
    position:pt(365,200),heading:0,
