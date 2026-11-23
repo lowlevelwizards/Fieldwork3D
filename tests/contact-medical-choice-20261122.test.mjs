@@ -99,7 +99,8 @@ test('restraint offer and execution all share the same farther contact reach',()
  assert.match(game,/voice\?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH/);
  assert.match(selection,/best=spoken\?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH/);
  assert.match(palette,/e\.surrendered&&!e\.restrained&&[\s\S]*?PERSON_CONTACT_REACH\):null/);
- assert.match(dispatch,/distance\(at,e\.p\)<=PERSON_CONTACT_REACH/);
+ assert.match(dispatch,/action:'restrain-suspect',phase:'selection'/);
+ assert.match(dispatch,/maximumRange:PERSON_CONTACT_REACH/);
 });
 
 test('medical choices identify self, bleeding, stability, and insufficient supplies',()=>{
