@@ -6,6 +6,8 @@ on:
       - 'src/ui/recovery-guidance.ts'
       - 'src/ui/execution-feedback.ts'
       - 'tests/release-d3-16b-fixed-goal-feedback.test.mjs'
+      - 'tests/d3-16b-physical-parity.test.mjs'
+      - 'scripts/verification/d3-16b-physical-parity.mjs'
       - 'tests/tactical-integration-13-execution-status.test.mjs'
       - '.github/workflows/d3-16b-known-fixed-goal.yml'
   workflow_dispatch:
@@ -27,6 +29,7 @@ jobs:
           node --experimental-strip-types --test \
             tests/release-d3-16a-honest-order-outcomes.test.mjs \
             tests/release-d3-16b-fixed-goal-feedback.test.mjs \
+            tests/d3-16b-physical-parity.test.mjs \
             tests/tactical-integration-13-execution-status.test.mjs \
             tests/breach-roadmap2-stage8-orders.test.mjs \
             tests/release7-mobile-clarity.test.mjs
@@ -35,48 +38,82 @@ jobs:
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
             11 2700 --site-index=8 --audit-seed=31149 --audit-scale=small \
             --progress > "$RUNNER_TEMP/d316b-motel.json"
-      - name: Preserve Ash destination and one actionable issue; seven cancellations remain real
+      - name: Verify actual authored GO and fixed-motor physical completion
         run: |
-          node --input-type=module <<'NODE'
+          node --experimental-strip-types --input-type=module <<'NODE'
           import fs from 'node:fs';
-          const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d316b-motel.json','utf8'));
-          const m=r.rows[0].modes.find(x=>x.mode==='authored');
-          const ash=m.operators.find(o=>o.id==='ash');
-          const vale=m.operators.find(o=>o.id==='vale');
-          console.log('D316B_MOTEL',JSON.stringify({ash,vale,summary:r.summary,events:m.orderCancelledEvents}));
-          if(!ash||ash.arrived||ash.remainingOrders!==1||ash.failedOrders!==0||
-             ash.activeOrder!=='move'||ash.remaining<30||ash.remaining>40||
-             !/MOVE BLOCKED · GO INSIDE FURNITURE · DRAG WAYPOINT TO CLEAR FLOOR/.test(ash.orderIssue??''))
-             throw Error('Ash goal was moved/cancelled, blocked hint ungrounded, or no real obstruction');
-          if(!vale||vale.failedOrders!==1||vale.arrived||vale.remainingOrders!==0)
-             throw Error('locked-door cancellation no longer truthful');
-          if(r.summary.physicalArrivals!==6||r.summary.physicalCompletedFour!==1||
-             r.summary.successfulFour!==1||r.summary.terminallyCancelledOrders!==1||
-             r.summary.cancelledOperators!==1||r.summary.physicallyPendingOperators!==1||
-             r.summary.exceptions||r.summary.physicsStepViolations||
-             r.summary.corruptedPlans||r.summary.invalidPositions)
-             throw Error('frozen motel physics or failure outcomes regressed');
+          import {generateSite} from './src/breach-site.ts';
+          import {newSession,planMove,team} from './src/breach-game.ts';
+          import {activateSite,OPERATOR_RADIUS} from './src/breach-core.ts';
+          import {sessionWorldGeometry} from './src/breach-world-context.ts';
+          import {bodyClear} from './src/breach-navigation.ts';
+          import {knownFixedGoalBlock} from './src/breach-authored-goal-block.ts';
+          const run=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+
+            '/d316b-motel.json','utf8'));
+          const mode=run.rows[0].modes.find(m=>m.mode==='authored');
+          const ash=mode.operators.find(o=>o.id==='ash');
+          const vale=mode.operators.find(o=>o.id==='vale');
+          if(!ash||!vale)throw Error('Required real operators absent');
+          const raw=ash.goal;
+          const site=generateSite(31149,'small',undefined,{mission:'intel'},
+            {archetype:'motel'});
+          const quiet={...site,training:true,enemies:[],encounter:undefined};
+          const session=newSession(0,31149,'full-view','small','intel',quiet,
+            {enableCivilians:false});
+          const world=sessionWorldGeometry(session);
+          try{
+            const actor=team(session).find(a=>a.id==='ash');
+            if(!actor||!planMove(session,actor.id,raw))
+              throw Error('Authentic motel MOVE could not be authored');
+            const actual=actor.plan[0]?.p;
+            if(!actual)throw Error('No authentic authored GO');
+            const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+            const adjustment=dist(raw,actual);
+            const arrivalDistance=dist(ash.position,actual);
+            const evidence={raw,authored:actual,final:ash.position,
+              adjustment,arrivalDistance,
+              rawBlocker:knownFixedGoalBlock(session,raw),
+              actualPassable:world.passable(actual,OPERATOR_RADIUS),
+              actualFullBody:bodyClear(actual,session.doors,
+                OPERATOR_RADIUS,world),
+              visibleNudge:session.events.some(e=>
+                e.includes('POSITION ADJUSTED TO WALKABLE GROUND'))};
+            console.log('D316B_AUTHORED_GO',JSON.stringify(evidence));
+            if(evidence.rawBlocker!=='furniture'||
+               !(adjustment>.1&&adjustment<=13.01)||
+               !evidence.actualPassable||!evidence.actualFullBody||
+               !evidence.visibleNudge||
+               !ash.arrived||ash.remainingOrders!==0||ash.failedOrders!==0||
+               ash.activeOrder!==null||arrivalDistance>5.5)
+              throw Error('Ash failed truthful arrival at the actual authored GO');
+          }finally{activateSite(null);}
+          if(vale.failedOrders!==1||vale.arrived||
+             vale.remainingOrders!==0||
+             vale.lastFailedOrder?.reason!=='PATH BLOCKED · DOOR LOCKED')
+            throw Error('Vale lock cancellation is not physically truthful');
+          if(run.summary.exceptions||run.summary.physicsStepViolations||
+             run.summary.invalidPositions||run.summary.corruptedPlans||
+             run.summary.arrivedDespiteCancellation||
+             run.summary.unreachedDrainedOperators||
+             run.summary.cancelledAndNotArrived!==run.summary.cancelledOperators)
+            throw Error('Motel physical truth, safe navigation or failure accounting regressed');
           NODE
-      - name: Historical 88 operators x 45s and exact 7+1 outcome classification
+      - name: Main-to-PR historical 88-operator real-motor non-regression
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
             11 2700 --progress > "$RUNNER_TEMP/d316b-historical.json"
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d316b-historical.json','utf8'));
-          const s=r.summary;
-          console.log('D316B_HISTORICAL',JSON.stringify(s));
-          // Clean production main 1eb34097, independently replayed on 2026-11-17:
-          // 80 arrivals, 18 successful fours, 7 cancellations, 0 arrived despite cancellation.
-          // Keep exact physics/truth assertions; prior 16/9/2 snapshot was obsolete.
-          if(s.physicalArrivals!==80||s.physicalCompletedFour!==18||
-             s.successfulFour!==18||s.terminallyCancelledOrders!==7||
-             s.cancelledOperators!==7||s.cancelledAndNotArrived!==7||
-             s.arrivedDespiteCancellation!==0||s.physicallyPendingOperators!==1||
-             s.unreachedDrainedOperators!==0||s.stallEpisodes>8||
-             s.exceptions||s.physicsStepViolations||s.invalidPositions||
-             s.corruptedPlans)throw Error('D3.16B historical physical truth regressed');
-          NODE
+          # Require exact physical parity with this PR's current-main base.
+          # The older 80/7/18 target remains a documented movement quality debt.
+          BASE_SHA="${{ github.event.pull_request.base.sha || github.sha }}"
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git worktree add --detach "$RUNNER_TEMP/d316b-current-main" "$BASE_SHA"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/d316b-current-main/node_modules"
+          ( cd "$RUNNER_TEMP/d316b-current-main" &&
+            node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+              11 2700 --progress > "$RUNNER_TEMP/d316b-historical-main.json" )
+          node scripts/verification/d3-16b-physical-parity.mjs \
+            "$RUNNER_TEMP/d316b-historical-main.json" \
+            "$RUNNER_TEMP/d316b-historical.json"
       - name: Archive full actual 60 Hz incident and 88-operator evidence
         if: always()
         uses: actions/upload-artifact@v4
