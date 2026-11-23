@@ -55,6 +55,26 @@ export const R60_INTERACTIONS=Object.freeze({
  'power-on':{class:'object-contact',planner:'planSitePowerControl'},
  'power-off':{class:'object-contact',planner:'planSitePowerControl'}
 });
+/** Contextual command lexemes are separate from PlanKinds: some alter
+ * planning settings, while some emit authored interactions or other orders.
+ * Dynamic ctxTreat/ctxPower/ctxTool parameters are NOT separate types. */
+export const R60_CONTEXT_COMMANDS=Object.freeze([
+ 'ctxCarryCapture','ctxCarryCivilian','ctxChallengeSuspect','ctxClose',
+ 'ctxDelete','ctxDragCapture','ctxDragCivilian','ctxEscortSuspect',
+ 'ctxFire','ctxFollowCivilian','ctxFormationCycle','ctxKick','ctxOpen',
+ 'ctxPace','ctxPower','ctxReleaseCapture','ctxReleaseCivilian',
+ 'ctxReload','ctxRestrainCivilian','ctxRestrainSuspect','ctxResumeEntry',
+ 'ctxResumeSquad','ctxSearchSuspect','ctxSecureCivilian',
+ 'ctxSecureFirearm','ctxSquadEntry','ctxStackTeam','ctxStance',
+ 'ctxStopEscortSuspect','ctxStopFollowingCivilian','ctxSwitchWeapon',
+ 'ctxTool','ctxTreat','ctxWait','ctxWindow'
+]);
+export const R60_METHODS=Object.freeze({
+ door:['open','close','kick','hold'],
+ tool:['pick','pry','cut','wedge','unwedge','breach']
+});
+export const R60_PALETTE_ONLY=Object.freeze(['ctxWatch']);
+
 export const R60_CLASSES=Object.freeze([
  'voice','person-contact','object-contact','release'
 ]);
@@ -115,6 +135,16 @@ export function declaredActionTypes(planSource){
  if(!kinds||!interactions)throw new Error('R6.0 missing PlanNode discriminants');
  return {kinds:words(kinds[1]),interactions:words(interactions[1])};
 }
+export function declaredMethodTypes(planSource){
+ const door=planSource.match(/export\s+type\s+DoorMethod\s*=\s*([^;]+);/);
+ const tool=planSource.match(/\btoolMethod\?\s*:\s*([^;]+);/);
+ if(!door||!tool)throw new Error('R6.0 missing door/tool method discriminants');
+ return {door:words(door[1]),tool:words(tool[1])};
+}
+export function observedContextActions(commandSource){
+ return [...new Set([...commandSource.matchAll(/\bctx[A-Z][A-Za-z]+/g)]
+  .map(x=>x[0]))].sort();
+}
 const sameValues=(a,b)=>JSON.stringify([...a].sort())===JSON.stringify([...b].sort());
 const distinct=(a)=>new Set(a).size===a.length;
 
@@ -137,6 +167,21 @@ export function inspectR60(root=ROOT){
   problems.push('PlanKind drift: update R6.0 kind ledger before implementation');
  if(!sameValues(declared.interactions,Object.keys(R60_INTERACTIONS)))
   problems.push('PlanNode.interaction drift: classify new subtype explicitly');
+ let methods={door:[],tool:[]};
+ try{methods=declaredMethodTypes(schema??'');}
+ catch(e){problems.push(String(e.message));}
+ if(!sameValues(methods.door,R60_METHODS.door)||
+    !sameValues(methods.tool,R60_METHODS.tool))
+  problems.push('Door/tool method drift: refresh R6.0 method ledger');
+ if(!distinct(methods.door)||!distinct(methods.tool))
+  problems.push('Duplicate door/tool method discriminator');
+ const contexts=observedContextActions(
+  source('src/breach-tactical-context-command.ts')??'');
+ if(!sameValues(contexts,R60_CONTEXT_COMMANDS))
+  problems.push('Context command drift: update R6.0 contextual ledger');
+ for(const action of R60_PALETTE_ONLY)
+  if(!(source('src/ui/tactical-palette-controller.ts')??'').includes(action))
+   problems.push('Missing palette-only command '+action);
  const orders=Object.entries(R60_ORDER_OWNERS).map(([name,path])=>{
   const text=source(path);
   const observed=!!text&&text.includes("'"+name+"'");
@@ -173,13 +218,15 @@ export function inspectR60(root=ROOT){
  for(const [name,spec] of Object.entries(R60_INTERACTIONS))
   if(!R60_CLASSES.includes(spec.class))problems.push('Unknown class '+name);
  return {stage:R60_STAGE,readOnly:true,
-  declared,orders,interactions,boundaries,duplication,outOfBand,problems,
+  declared,methods,contextActions:contexts,orders,interactions,boundaries,duplication,outOfBand,problems,
   caveat:'Static source evidence only; does not execute or validate physical gameplay'};
 }
 export function verifyR60(report){
  if(!report.readOnly||report.problems.length)
   throw new Error('R6.0 audit failed: '+(report.problems.join('; ')||'not read-only'));
- if(report.orders.length!==15||report.interactions.length!==17)
+ if(report.orders.length!==15||report.interactions.length!==17||
+    report.contextActions.length!==35||report.methods.door.length!==4||
+    report.methods.tool.length!==6)
   throw new Error('R6.0 incomplete action census');
  return true;
 }
@@ -189,7 +236,10 @@ export function renderR60(report){
   '',
   'Read-only: yes. Source-level evidence only; not measured runtime behavior.',
   'Declared kinds: '+report.declared.kinds.length+
-   ' · interaction variants: '+report.declared.interactions.length,
+   ' · interaction variants: '+report.declared.interactions.length+
+   ' · contextual command lexemes: '+report.contextActions.length+
+   ' · door methods: '+report.methods.door.length+
+   ' · tool methods: '+report.methods.tool.length,
   '',
   '## Order owners',
   '| PlanKind | Existing handler | Found |',
@@ -197,6 +247,11 @@ export function renderR60(report){
  ];
  for(const x of report.orders)
   lines.push('| '+x.name+' | '+x.owner+' | '+x.handlerEvidence+' |');
+ lines.push('','## Context actions (selection/authoring, not a new GO authority)',
+  report.contextActions.join(', '),
+  '','Door methods: '+report.methods.door.join(', '),
+  'Tool methods: '+report.methods.tool.join(', '),
+  'Palette-only command identifiers: '+R60_PALETTE_ONLY.join(', '));
  lines.push('','## Interaction lifecycle candidates',
   '| Action | Class | Existing planner | GO owner | Planning/GO found |',
   '| --- | --- | --- | --- | --- |');
