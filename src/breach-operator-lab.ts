@@ -209,6 +209,10 @@ function syncPosePickers(){
  // A selected pistol MUST NOT read "NO WEAPON" in the primary controls.
  if(unarmedOption)unarmedOption.textContent=sidearm?
   'PISTOL PREVIEW':'NO WEAPON';
+ const retentionButton=document.querySelector<HTMLButtonElement>(
+  '[data-pose="short-stock"]');
+ if(retentionButton)retentionButton.textContent=sidearm?
+  'CLOSE RETENTION':'SHORT STOCK';
  const sidearmHint=document.getElementById('poseSidearmHint');
  if(sidearmHint){
   sidearmHint.hidden=!sidearm;
