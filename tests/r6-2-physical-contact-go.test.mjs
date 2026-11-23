@@ -81,6 +81,7 @@ test('R6.2 actual GO: restrained suspect SEARCH uses standable side position',()
 test('R6.2 actual GO: loose firearm secures a real object, exactly once',()=>{
  const {s,a,p}=setup();
  try{
+  p.surrendered=false;
   assert.equal(commitSuspectSurrender(s,p,()=>{},()=>{}),true);
   p.restrained=true;
   const gun=s.droppedFirearms[0];assert.ok(gun);
