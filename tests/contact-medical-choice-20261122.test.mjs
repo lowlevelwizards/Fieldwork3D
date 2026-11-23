@@ -29,10 +29,13 @@ test('restraint standoff never places an operator at the subject center',()=>{
  assert.equal(personContactStandpoint(from,person,()=>false),null);
  const order=source('src/breach-order-interactions.ts');
  assert.match(order,/PERSON_CONTACT_REACH/);
- assert.match(order,/personContactStandpoint\(a\.p,suspect\.p/);
- assert.match(order,/personContactStandpoint\(a\.p,person\.p/);
- assert.equal((order.match(/sweptBodyClear\(a\.p,p,s\.doors,OPERATOR_RADIUS,world\)/g)??[]).length,2,
-   'both contact approaches must sweep the operator full radius');
+ assert.match(order,/contactEpisode\(s,a,n,suspect\.p/);
+ assert.match(order,/contactEpisode\(s,a,n,person\.p/);
+ assert.match(order,/contactEpisode\(s,a,n,weapon\.p/);
+ assert.match(source('src/breach-physical-contact-episode.ts'),
+   /contactStandpointAtRadius/);
+ assert.equal((order.match(/sweptBodyClear\(a\.p,p,s\.doors,OPERATOR_RADIUS,world\)/g)??[]).length,1,
+   'all four contact families share one full-body stance sweep');
  const restrain=order.split("if(n.interaction==='restrain-suspect')")[1]
    .split("if(n.interaction==='escort-suspect'||")[0];
  assert.doesNotMatch(restrain,/approach\(a,suspect\.p,dt,s,\.65\)/);
@@ -90,7 +93,9 @@ test('restraint offer and execution all share the same farther contact reach',()
  const selection=source('src/breach-civilian-context-selection.ts');
  const palette=source('src/ui/tactical-palette-controller.ts');
  const dispatch=source('src/breach-tactical-context-command.ts');
- assert.match(game,/d\(from,target\.p\)>PERSON_CONTACT_REACH/);
+ assert.match(game,/maximumRange:PERSON_CONTACT_REACH/);
+ assert.match(source('src/breach-physical-contact-episode.ts'),
+   /handReach:PERSON_CONTACT_REACH/);
  assert.match(game,/voice\?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH/);
  assert.match(selection,/best=spoken\?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH/);
  assert.match(palette,/e\.surrendered&&!e\.restrained&&[\s\S]*?PERSON_CONTACT_REACH\):null/);
