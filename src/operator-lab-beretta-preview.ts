@@ -49,8 +49,10 @@ export function presentLabBerettaPreview(rig:OperatorRig,
  model.position.set(-pivot.x,-pivot.y,-pivot.z);
  // The rig owns its materials; never dispose the Arsenal's shared palette.
  const materialClones=new Map<THREE.Material,THREE.Material>();
+ const generatedMaterials=new Set<THREE.Material>();
  model.traverse(child=>{
   if(!(child instanceof THREE.Mesh))return;
+  const sources=Array.isArray(child.material)?child.material:[child.material];
   const own=(m:THREE.Material)=>{
    let copy=materialClones.get(m);
    if(!copy){copy=m.clone();materialClones.set(m,copy);}
@@ -58,7 +60,12 @@ export function presentLabBerettaPreview(rig:OperatorRig,
   };
   child.material=Array.isArray(child.material)?
    child.material.map(own):own(child.material);
+  // M9's open-slide frame has a newly allocated double-sided material.
+  // Our Lab-owned clone replaces it; release that original immediately.
+  if(child.userData.m9OwnsMaterial)
+   for(const material of sources)generatedMaterials.add(material);
  });
+ for(const material of generatedMaterials)material.dispose();
  cradle.add(model);
  for(const child of cradle.children)child.visible=child===model;
  previews.set(rig,{id,cradle,model});
