@@ -384,9 +384,12 @@ export function createTacticalHudController(
   function resetNotices():void{noticeFeed.reset();}
   function renderNotice(node:HTMLElement,events:string[],phase:string,
     replaying:boolean,executionEvents:readonly import('../breach-execution-events.ts').ExecutionEvent[],
-    currentOrders?:readonly {id:string;plan:readonly {id:number}[]}[]):void{
+    currentOrders?:readonly TeamActor[],session?:Session):void{
+    const seconds=session?.seconds;
     const notice=liveExecutionNotice(noticeFeed.update(
-      events,phase,performance.now(),executionEvents),currentOrders??[]);
+      events,phase,performance.now(),executionEvents,
+      session?{session,actors:currentOrders??[],seconds:session.seconds,
+        phase}:undefined),currentOrders??[],seconds,phase);
     node.hidden=!notice||replaying;
     if(!notice||replaying){
       node.removeAttribute('data-notice-key');
@@ -740,7 +743,7 @@ export function createTacticalHudController(
     if(siteHeader.title!==siteTitle)siteHeader.title=siteTitle;
   }
   renderNotice(ui.feed,state.events,state.phase,replaying,
-    state.executionEvents,team(state));
+    state.executionEvents,team(state),state);
   renderGuidance({
     replaying,phase:state.phase,selectedNode,selectedActiveWatch,
     feed:ui.feed,hint:ui.hint
@@ -828,6 +831,13 @@ port.ui.feed.addEventListener('click',event=>{
  if(!button||port.replaying||port.ui.feed.hidden)return;
  const actorId=port.ui.feed.dataset.issueActor;
  const raw=port.ui.feed.dataset.issueOrder;
+ // A pause, GO completion, edited plan or mission replacement can occur
+ // between HUD painting and tapping LOCATE. Revalidate against the live
+ // Session and the exact on-screen source, not stale DOM datasets alone.
+ const live=liveExecutionNotice(noticeFeed.peek(),
+   team(port.state),port.state.seconds,port.state.phase);
+ if(!live||live.actorId!==actorId||
+    String(live.orderId??'')!==String(raw??''))return;
  const located=locateNoticeOrder({
   actorId,orderId:raw?Number(raw):null
  },team(port.state));

@@ -1,5 +1,6 @@
 import {recoveryAdviceFor} from './recovery-guidance.ts';
 import type {ExecutionEvent} from '../breach-execution-events.ts';
+import {liveNoticeEligible,type LiveNoticeScope} from './execution-notice-provenance.ts';
 /** Priority-based, time-limited HUD notices from the EXISTING player-facing event log.
  * No inspection of enemy state, fog, or world geometry. */
 export type FeedbackSeverity='danger'|'contact'|'warning'|'progress'|'routine'|'state';
@@ -7,6 +8,9 @@ export type ExecutionNotice={
   text:string;label:string;severity:FeedbackSeverity;priority:number;
   born:number;expires:number;recovery?:string;
   actorId?:string;orderId?:number|null;
+  /** UI-only source/identity. ExecutionEvent remains forensic and unchanged. */
+  origin?:'transition'|'narrative'|'state';
+  eventId?:number;eventAt?:number;reason?:string;
 };
 type Classified={label:string;severity:FeedbackSeverity;priority:number;duration:number};
 export function classifyExecutionNotice(message:string):Classified{
@@ -59,14 +63,28 @@ export class ExecutionNoticeFeed{
   private priorEvents:string[]|null=null;
   private priorPhase:string|null=null;
   private lastExecutionId:number|null=null;
+  private sessionKey:object|null=null;
+  private currentNotice:ExecutionNotice|null=null;
   private queue:ExecutionNotice[]=[];
+  /** Last displayed candidate; click handling must still revalidate it. */
+  peek():ExecutionNotice|null{return this.currentNotice;}
   reset(){
     this.priorEvents=null;this.priorPhase=null;
     this.lastExecutionId=null;this.queue=[];
+    this.currentNotice=null;this.sessionKey=null;
   }
   /** Only the new suffix of a rolling, at-most-12-item game event log is ingested. */
   update(events:readonly string[],phase:string,now:number,
-    executionEvents:readonly ExecutionEvent[]=[]):ExecutionNotice|null{
+    executionEvents:readonly ExecutionEvent[]=[],
+    scope?:LiveNoticeScope):ExecutionNotice|null{
+    if(scope&&this.sessionKey&&this.sessionKey!==scope.session){
+      // A fresh Quick Play/campaign Session cannot inherit the previous
+      // site's rolling event suffix or actor/order IDs, even if reused.
+      this.reset();
+      this.sessionKey=scope.session;
+      this.priorEvents=[...events];
+      this.lastExecutionId=executionEvents.at(-1)?.id??null;
+    }else if(scope&&!this.sessionKey)this.sessionKey=scope.session;
     let start=events.length;
     if(this.priorEvents===null){
       // Do not replay an entire old log when the screen first opens.
@@ -96,7 +114,8 @@ export class ExecutionNoticeFeed{
       const classification=classifyExecutionTransition(event);
       if(!classification)continue;
       this.queue.push({text:event.text,label:classification.label,
-        ...(event.kind==='blocked'?{actorId:event.actor,orderId:event.orderId}:{}),
+        origin:'transition',eventId:event.id,eventAt:event.t,
+        reason:event.reason,actorId:event.actor,orderId:event.orderId,
         severity:classification.severity,priority:classification.priority,
         born:now,expires:now+classification.duration,
         recovery:classification.severity==='warning'?
@@ -111,10 +130,13 @@ export class ExecutionNoticeFeed{
     }
     this.priorEvents=[...events];
     this.priorPhase=phase;
-    this.queue=this.queue.filter(x=>x.expires>now);
-    // Higher-priority conditions are not instantly replaced by routine chatter.
+    this.queue=this.queue.filter(x=>x.expires>now&&
+      (!scope||liveNoticeEligible(x,scope.actors,scope.seconds,scope.phase)));
+    // Higher-priority conditions cannot obscure a newer valid event once
+    // their source order has completed or this actor has advanced.
     const ranked=this.queue.sort((a,b)=>b.priority-a.priority||b.born-a.born);
-    return ranked[0]??null;
+    this.currentNotice=ranked[0]??null;
+    return this.currentNotice;
   }
   private enqueue(text:string,now:number,phase=false){
     if(!text.trim())return;
@@ -123,6 +145,7 @@ export class ExecutionNoticeFeed{
       classifyExecutionNotice(text);
     const recovery=c.severity==='warning'?recoveryAdviceFor(text)?.next:undefined;
     this.queue.push({text,label:c.label,severity:c.severity,recovery,
+      origin:phase?'state':'narrative',
       priority:c.priority,born:now,expires:now+c.duration});
     if(this.queue.length>8)this.queue.splice(0,this.queue.length-8);
   }
@@ -138,5 +161,5 @@ export function locateNoticeOrder(
  if(!actor)return null;
  const id=notice.orderId;
  return {actorId:actor.id,orderId:id!==null&&id!==undefined&&
-  actor.plan.some(n=>n.id===id)?id:null};
+  actor.plan[0]?.id===id?id:null};
 }
