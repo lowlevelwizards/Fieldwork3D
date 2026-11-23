@@ -80,8 +80,11 @@ try{
   const topWeaponLabel=await page.locator('#weapon option:checked').textContent();
   if(topWeaponLabel!=='PISTOL PREVIEW')
    throw Error('Pistol inspection still claims NO WEAPON: '+topWeaponLabel);
-  if(Number((await ready(page)).poseSidearmScale)<.6)
-   throw Error('Glock still uses miniature holster scale');
+  const initialPistol=await ready(page);
+  if(Math.abs(Number(initialPistol.poseSidearmScale)-.57)>.001)
+   throw Error('Expected slightly oversized, reduced pistol size');
+  if(initialPistol.poseSidearmTriggerIndex!=='true')
+   throw Error('Visible index finger contact cue missing');
   await page.locator('[data-lab-tab="ready"]').click();
   await page.locator('[data-pose="low-ready"]').click();
   await page.waitForFunction(()=>{
@@ -95,11 +98,22 @@ try{
    const d=document.getElementById('preview')?.dataset;
    return d?.poseSidearmStance==='high'&&Number(d.poseSidearmPitch)>.35;
   },null,{timeout:15000});
-  const highHand=Number((await ready(page)).poseSidearmHandY);
+  const highFrame=await ready(page);
+  const highHand=Number(highFrame.poseSidearmHandY);
   if(highHand-lowHand<4)
    throw Error('HIGH and LOW ready still look the same: '+
     JSON.stringify({lowHand,highHand}));
   await page.screenshot({path:out+'/glock-pistol-high-ready-iphone.png'});
+  await page.locator('[data-pose="ready"]').click();
+  await page.waitForFunction(()=>{
+   const d=document.getElementById('preview')?.dataset;
+   return d?.track==='ready'&&d?.poseSidearmStance==='ready';
+  },null,{timeout:15000});
+  const readyHand=Number((await ready(page)).poseSidearmHandY);
+  if(readyHand-lowHand<2||highHand-readyHand<1.5)
+   throw Error('Readiness levels no longer stack naturally: '+
+    JSON.stringify({lowHand,readyHand,highHand}));
+  await page.screenshot({path:out+'/glock-pistol-raised-ready-iphone.png'});
   await page.locator('[data-pose="active-aim"]').click();
   await page.locator('#timeline').evaluate(e=>{
    e.value='1450';e.dispatchEvent(new Event('input',{bubbles:true}));
@@ -107,22 +121,42 @@ try{
   await page.waitForFunction(()=>{
    const d=document.getElementById('preview')?.dataset;
    return d?.track==='active-aim'&&d?.poseSidearmStance==='ready'&&
-    d?.poseSidearmScale==='0.620';
+    d?.poseSidearmScale==='0.570';
   },null,{timeout:15000});
   const adsRecord=await ready(page);
   const adsHand=Number(adsRecord.poseSidearmHandY);
+  if(Number(adsRecord.poseSidearmSupportAhead)<.7)
+   throw Error('Support palm remains behind firing wrist: '+
+    adsRecord.poseSidearmSupportAhead);
+  if(adsRecord.poseSidearmSupportThumb!=='true')
+   throw Error('Support hand missing its grip wrap');
   if(Number(adsRecord.poseSidearmGripError)>.25)
    throw Error('Actual trigger grip missed firing wrist: '+
     adsRecord.poseSidearmGripError);
-  if(adsHand-lowHand<3.2)
+  if(adsHand-highHand<1.5)
    throw Error('ADS does not raise and extend firing wrist: '+
     JSON.stringify({lowHand,adsHand}));
   await page.screenshot({path:out+'/glock-pistol-ads-iphone.png'});
+  await page.locator('[data-pose="point-shoot"]').click();
+  await page.waitForFunction(()=>{
+   const d=document.getElementById('preview')?.dataset;
+   return d?.track==='point-shoot'&&Number(d.poseSidearmAim)<.45;
+  },null,{timeout:15000});
+  const pointHand=Number((await ready(page)).poseSidearmHandY);
+  if(adsHand-pointHand<1.5)
+   throw Error('Point shoot looks like eye-line ADS: '+
+    JSON.stringify({adsHand,pointHand}));
+  await page.screenshot({path:out+'/glock-pistol-low-point-shoot-iphone.png'});
   await page.locator('[data-pose="short-stock"]').click();
   await page.waitForFunction(()=>{
    const d=document.getElementById('preview')?.dataset;
    return d?.poseSidearmStance==='retention';
   },null,{timeout:15000});
+  const retained=await ready(page);
+  if(retained.poseSidearmSupportThumb!=='false')
+   throw Error('Close retention still overlaps the support grip');
+  if(Number(retained.poseSidearmSupportAhead)>-.5)
+   throw Error('Close retention support wrist not tucked back');
   await page.screenshot({path:out+'/glock-pistol-close-retention-iphone.png'});
   await page.locator('[data-lab-tab="poses"]').click();
   await page.locator('#poseAnimation').selectOption('pistol-reload-retention');
