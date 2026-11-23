@@ -7,6 +7,7 @@ import type {DisplayRouteCache} from './breach-route-cache.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {paintPassageRanks} from './ui/passage-rank-badges.ts';
+import {selectedActionTarget} from './breach-action-target-marker.ts';
 export type Route2DFrame={
  state:Session;replaying:boolean;selected:string;selectedNode:number|null;
  selectedActiveWatch:boolean;draggingNode:Pt|null;draggingWatchTarget:boolean;
@@ -297,6 +298,21 @@ function paths(){
   // The tiny per-session preview is cached and never runs a new route
   // search until the player changes a plan.
   paintPassageRanks(state,draw,p=>p,colorFor,selected,replaying);
+  if(!replaying){
+    const a=uid(selected),target=a?
+      selectedActionTarget(state,a,selectedNode):null;
+    if(target){
+      // White dot, dark backing; never a giant target ring or extra label.
+      draw.save();
+      draw.fillStyle='#152b2b';draw.strokeStyle='#f5f4e8';
+      draw.lineWidth=2.5;
+      draw.beginPath();draw.arc(target.p.x,target.p.y-13,5.8,0,
+        Math.PI*2);draw.fill();draw.stroke();
+      draw.beginPath();draw.arc(target.p.x,target.p.y-13,2.3,0,
+        Math.PI*2);draw.fillStyle='#f5f4e8';draw.fill();
+      draw.restore();
+    }
+  }
 const draft=draftRouteNeighbors();
   if(draft){
     draw.save();draw.strokeStyle='#d5cb9d';draw.globalAlpha=.75;

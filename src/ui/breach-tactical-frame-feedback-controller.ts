@@ -144,6 +144,12 @@ export function createBreachTacticalFrameFeedbackController(config:{
           y:obj.y+Math.sin(yaw)*dist};
         const startPx=worldToScreen(center,13),endPx=worldToScreen(end,13);
         feedbackDraw.save();
+        // This is the exact currently chosen prop, not a free-floating
+        // direction marker. The same white dot persists on queued PUSH.
+        feedbackDraw.fillStyle='#f5f4e8';
+        feedbackDraw.beginPath();
+        feedbackDraw.arc(startPx.x,startPx.y-17,4.5,0,Math.PI*2);
+        feedbackDraw.fill();
         feedbackDraw.strokeStyle='#e4c998';feedbackDraw.fillStyle='#e4c998';
         feedbackDraw.lineWidth=2.4;feedbackDraw.setLineDash([5,4]);
         feedbackDraw.beginPath();feedbackDraw.arc(startPx.x,startPx.y,15,
