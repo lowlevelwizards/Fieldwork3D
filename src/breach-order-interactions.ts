@@ -1,3 +1,4 @@
+import {assessTacticalAction} from './breach-action-assessment.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {PERSON_CONTACT_REACH,personContactStandpoint}
  from './breach-person-contact-standpoint.ts';
@@ -62,9 +63,15 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
     if(n.interaction==='challenge-suspect'){
       const suspect=s.operators.find(e=>e.side==='red'&&
         n.objectId==='suspect:'+e.id);
-      if(!suspect||suspect.health<=0||a.health<=0||
-         d(a.p,suspect.p)>SUSPECT_CHALLENGE_RANGE||
-         !sweptBodyClear(a.p,suspect.p,s.doors,1.5,sessionWorldGeometry(s))){
+      const range=suspect?d(a.p,suspect.p):Infinity;
+      if(!suspect||!assessTacticalAction({
+        action:'challenge-suspect',phase:'go',
+        actorAvailable:a.health>0,targetAvailable:suspect.health>0,
+        domainEligible:true,distance:range,
+        maximumRange:SUSPECT_CHALLENGE_RANGE,
+        unobstructed:range<=SUSPECT_CHALLENGE_RANGE&&
+          sweptBodyClear(a.p,suspect.p,s.doors,1.5,sessionWorldGeometry(s))
+      }).allowed){
         failCurrentOrder(s,a,n,'SUSPECT NOT VISIBLE OR IN SPEAKING RANGE');
         return true;
       }
@@ -117,7 +124,12 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
           !s.civilians.some(c=>c.health>0&&d(c.p,p)<20));
         if(stand){approach(a,stand,dt,s,.65);return true;}
       }
-      if(range>PERSON_CONTACT_REACH||!clear){
+      if(!assessTacticalAction({
+        action:'restrain-suspect',phase:'go',
+        actorAvailable:true,targetAvailable:true,domainEligible:true,
+        distance:range,maximumRange:PERSON_CONTACT_REACH,
+        unobstructed:clear
+      }).allowed){
         failCurrentOrder(s,a,n,'SUSPECT OUT OF REACH OR OBSTRUCTED');return true;
       }
       a.velocity=0;
@@ -155,8 +167,13 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         failCurrentOrder(s,a,n,'SUSPECT IS NOT FOLLOWING');return true;
       }
       const range=d(a.p,suspect.p);
-      if(range>SUSPECT_ESCORT_VOICE_RANGE||
-         !sweptBodyClear(a.p,suspect.p,s.doors,1.5,sessionWorldGeometry(s))){
+      if(!assessTacticalAction({
+        action:n.interaction,phase:'go',
+        actorAvailable:true,targetAvailable:true,domainEligible:true,
+        distance:range,maximumRange:SUSPECT_ESCORT_VOICE_RANGE,
+        unobstructed:range<=SUSPECT_ESCORT_VOICE_RANGE&&
+          sweptBodyClear(a.p,suspect.p,s.doors,1.5,sessionWorldGeometry(s))
+      }).allowed){
         failCurrentOrder(s,a,n,'SUSPECT OUT OF VOICE RANGE');return true;
       }
       a.velocity=0;
@@ -203,7 +220,11 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
          liveVisibility(s,suspect.p)){
         approach(a,suspect.p,dt,s,.65);return true;
       }
-      if(distance>28||!clear){
+      if(!assessTacticalAction({
+        action:'search-suspect',phase:'go',
+        actorAvailable:true,targetAvailable:true,domainEligible:true,
+        distance,maximumRange:28,unobstructed:clear
+      }).allowed){
         failCurrentOrder(s,a,n,'SEARCH REQUIRES PHYSICAL CONTACT');return true;
       }
       a.velocity=0;
@@ -257,7 +278,11 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         }
         if(contact){approach(a,contact,dt,s,.65);return true;}
       }
-      if(distance>34||!clear){
+      if(!assessTacticalAction({
+        action:'secure-firearm',phase:'go',
+        actorAvailable:true,targetAvailable:true,domainEligible:true,
+        distance,maximumRange:34,unobstructed:clear
+      }).allowed){
         failCurrentOrder(s,a,n,'NO REACHABLE WEAPON CONTACT');return true;
       }
       a.velocity=0;
@@ -326,10 +351,18 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         if(stand){approach(a,stand,dt,s,.65);return true;}
       }
       const knownEscort=!!person?.following&&person.state==='escorted';
+      const requireObserved=n.interaction==='follow-civilian'&&
+        range>28&&!knownEscort;
       if(!person||person.health<=0||
-         range>(voice?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH)||!clear||
-         (n.interaction==='follow-civilian'&&range>28&&
-          !knownEscort&&!liveVisibility(s,person.p))||
+         !assessTacticalAction({
+           action:n.interaction,phase:'go',
+           actorAvailable:true,targetAvailable:true,domainEligible:true,
+           requireObserved,
+           observed:!requireObserved||liveVisibility(s,person.p),
+           distance:range,
+           maximumRange:voice?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH,
+           unobstructed:clear
+         }).allowed||
          (!voice&&person.rescueTarget&&!canSecureRescuePerson(person,a,
            (from,to)=>sweptBodyClear(from,to,s.doors,5.5,sessionWorldGeometry(s))))){
         failCurrentOrder(s,a,n,voice?
