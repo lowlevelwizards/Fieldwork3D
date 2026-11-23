@@ -15,6 +15,7 @@ import {measureR72,verifyR72,renderR72,instrumentedDomNode}
 
 const file=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const model=(props={})=>({
+ ownerId:'rook',nodeId:null,
  scope:'ROOK · HERE · NO ORDERS',scopeTitle:'Rook at current position',
  scopeAria:'Commands for Rook at current position',scopeKind:'operator',
  choices:[{id:'stance',label:'CROUCH',disabled:false,pressed:false},
@@ -37,6 +38,8 @@ test('R7.2 same-tick plan/stance, WATCH, operator, disabled and accessibility ed
   model({scopeKind:'watch',scopeAria:'Commands for Rook; WATCH selected'}),
   model({scope:'ROOK · WAYPOINT 02 · 2 QUEUED',scopeKind:'waypoint'}),
   model({scope:'MOSS · HERE · NO ORDERS',scopeTitle:'Moss here'}),
+  model({ownerId:'moss'}), // identical callsign/labels; different selected actor
+  model({nodeId:42}), // identical waypoint label; different authored node identity
   model({choices:[{id:'stance',label:'STAND',pressed:true,disabled:false}]}),
   model({choices:[{id:'stance',label:'CROUCH',pressed:false,disabled:true}]}),
   model({choices:[{id:'stance',label:'CROUCH',title:'New help'}]})
@@ -45,7 +48,7 @@ test('R7.2 same-tick plan/stance, WATCH, operator, disabled and accessibility ed
   assert.equal(update(view),true);
   assert.equal(update(view),false);
  }
- assert.deepEqual(guard.stats(),{attempts:15,reconciled:8,skipped:7});
+ assert.deepEqual(guard.stats(),{attempts:19,reconciled:10,skipped:9});
  // JSON tuples cannot collide on user-entered delimiters.
  assert.notEqual(quickStateViewSignature(model({scope:'A|B'})),
   quickStateViewSignature(model({scope:'A',scopeTitle:'B'})));
@@ -129,6 +132,7 @@ test('R7.2 production boundary keeps live HUD, notice and GO running at original
  assert.match(quick,/plannedControl\(validWaypoint\?node\?\.id:undefined\)/);
  assert.match(quick,/selectAccessibleSecondaryMagazine/);
  assert.match(quick,/selectedActiveWatch/);
+ assert.match(quick,/ownerId:actor\.id,nodeId:validWaypoint\?node\.id:null/);
  assert.match(session,/renderOperatorCard\(\{/);
  assert.match(session,/renderNotice\(ui\.feed/);
  assert.match(session,/renderGuidance\(\{/);

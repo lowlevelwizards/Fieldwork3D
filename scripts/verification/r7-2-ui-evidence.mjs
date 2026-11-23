@@ -43,6 +43,7 @@ export function instrumentedDomNode(){
  return {node,count};
 }
 const view=(extras={})=>({
+ ownerId:'rook',nodeId:null,
  scope:'ROOK · HERE · NO ORDERS',
  scopeTitle:'These settings apply to Rook at current position',
  scopeAria:'Commands for Rook at current position',

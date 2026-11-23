@@ -6,6 +6,7 @@ export type QuickStateViewChoice={
  id:string;label:string;title?:string;disabled?:boolean;pressed?:boolean;
 };
 export type QuickStateView={
+ ownerId:string;nodeId:number|null;
  scope:string;scopeTitle:string;scopeAria:string;scopeKind:string;
  choices:readonly QuickStateViewChoice[];
 };
@@ -14,6 +15,7 @@ export type QuickStateView={
  */
 export function quickStateViewSignature(view:QuickStateView):string{
  return JSON.stringify([
+  view.ownerId,view.nodeId,
   view.scope,view.scopeTitle,view.scopeAria,view.scopeKind,
   view.choices.map(choice=>[
    choice.id,choice.label,choice.title??null,

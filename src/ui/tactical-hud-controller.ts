@@ -301,6 +301,7 @@ export function createTacticalHudController(
     // same-tick in-place plan edits. Reconcile nodes only if that model,
     // the Session, or either mounted surface actually changed.
     const signature=quickStateViewSignature({
+      ownerId:actor.id,nodeId:validWaypoint?node.id:null,
       scope:scopeText,scopeTitle,scopeAria,scopeKind,choices
     });
     if(!quickStateInvalidation.shouldReconcile({
