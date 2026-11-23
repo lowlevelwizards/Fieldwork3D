@@ -90,6 +90,30 @@ test('V4-2: initial squad is unselected and shows all ranked operators without 2
  assert.equal(descendants(root,'fw-v4-squad-model').length,1);
  assert.ok(rows.every(row=>row.getAttribute('aria-label')?.startsWith('Open ')));
  assert.equal(descendants(root,'fw-v4-rank-list').length,1);
+ assert.equal(descendants(root,'fw-v7-operator-card').length,4);
+ assert.equal(descendants(root,'fw-v7-operator-dot').length,4);
+ assert.equal(descendants(root,'fw-v7-lineup-model').length,1);
+ const dots=descendants(root,'fw-v7-operator-dot');
+ dots[1].click();
+ assert.deepEqual(details,['moss','ash']);
+}));
+
+test('V7: bottom dots use saved identification colors and navigate by identity',()=>
+ withDocument(()=>{
+ const report=buildAfterActionReport(rec());
+ const opened=[];
+ const custom=new Map([['rook','#B69CC9'],['moss','#DEB37D']]);
+ const root=renderSquadView(report,null,null,()=>{},id=>opened.push(id),
+   undefined,undefined,custom);
+ const cards=descendants(root,'fw-v7-operator-card');
+ assert.equal(cards.length,4);
+ assert.equal(cards[0].getAttribute('data-after-card-id'),'rook');
+ assert.equal(cards[0].getAttribute('style'),
+   '--fw-after-operator-color:#B69CC9');
+ assert.equal(cards[2].getAttribute('style'),
+   '--fw-after-operator-color:#DEB37D');
+ descendants(root,'fw-v7-operator-dot')[2].click();
+ assert.deepEqual(opened,['moss']);
 }));
 
 test('V4-2: selected performance keeps squad ranks and offers explicit return to overview',()=>
