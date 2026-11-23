@@ -161,6 +161,12 @@ try{
   await page.locator('.arsenal-wb-category').filter({hasText:'Furniture'}).click();
   await page.locator('.arsenal-wb-subslot').filter({hasText:'Stock'}).click();
   await page.locator('.arsenal-wb-option').filter({hasText:'A2 Fixed'}).click();
+  // Arsenal's current non-destructive part picker shows a proposal first.
+  // Confirm the equipped part is unchanged until APPLY PART is committed.
+  await page.locator('.arsenal-wb-proposal').waitFor();
+  if((await page.locator('.arsenal-wb-current').textContent())?.includes('A2 Fixed'))
+   throw Error('Preview-only part selection unexpectedly installed the stock');
+  await page.locator('.arsenal-wb-proposal .arsenal-wb-accept').click();
   await page.waitForFunction(()=>document.querySelector(
    '.arsenal-wb-current')?.textContent?.includes('A2 Fixed'));
   await page.getByRole('button',{name:'LOAD BUILD'}).click();
