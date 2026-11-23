@@ -52,7 +52,7 @@ import {GLOVE_SOLIDS,GARMENT_SOLID_COLORS,isGloveSolid}
 import {FAMILY_PRESETS} from './equipment-weapon-families.ts';
 import {initialSecondaryEquipment} from './secondary-equipment.ts';
 import {isM9AppearanceId} from './weapons/geometry/beretta-m9-silhouettes.ts';
-import {sampleLabPistolFrame,isLabPistolTrack}
+import {sampleLabPistolFrame,isLabPistolTrack,LAB_PISTOL_PREVIEW_SCALE}
  from './operator-lab-pistol-tracks.ts';
 import {presentLabBerettaPreview,clearLabBerettaPreview}
  from './operator-lab-beretta-preview.ts';
@@ -203,6 +203,11 @@ function syncPosePickers(){
  const model=document.getElementById('poseWeapon') as HTMLSelectElement;
  if(model?.options.length)model.value=poseWeaponPreset;
  const sidearm=poseSidearm(poseWeaponPreset);
+ const unarmedOption=(document.getElementById('weapon') as HTMLSelectElement)
+  .querySelector('option[value="none"]');
+ // A selected pistol MUST NOT read "NO WEAPON" in the primary controls.
+ if(unarmedOption)unarmedOption.textContent=sidearm?
+  'PISTOL PREVIEW':'NO WEAPON';
  const sidearmHint=document.getElementById('poseSidearmHint');
  if(sidearmHint){
   sidearmHint.hidden=!sidearm;
@@ -1221,6 +1226,7 @@ let labSwitch:null|{from:Handling;to:Handling;
   authoredArms?:readonly {shoulder:THREE.Vector3;elbow:THREE.Vector3;
     wrist:THREE.Vector3;bend:THREE.Vector3}[]}=null;
 let rig:OperatorRig|null=null,track:LabTrack='idle';
+const labPistolHandWorld=new THREE.Vector3();
 /** Lazy visual peer for shoulder contact auditions. Reused while scrubbing. */
 let shoulderLeaderRig:OperatorRig|null=null;
 function ensureLabShoulderLeader():OperatorRig{
@@ -1937,6 +1943,11 @@ function draw(){
     undefined;
   // Carry one *linear* phase. The presentation solver applies smoothing
   // exactly once to weapon, profile and body; double easing caused drift.
+  const pistolSelected=!!poseSidearm(poseWeaponPreset);
+  // Only the shoulder-fired primary owns these legacy handling blends.
+  // A pistol has its own hand/aim targets; blending a hidden rifle pose
+  // underneath can flatten or interrupt the actual sidearm animation.
+  if(pistolSelected)labSwitch=null;
   const alpha=labSwitch?Math.max(0,Math.min(1,
     (performance.now()/1000-labSwitch.since)/labSwitch.duration)):1;
   const direct:HandlingTransition|undefined=labSwitch?
@@ -1947,7 +1958,7 @@ function draw(){
       authoredChest:labSwitch.authoredChest,
       authoredHip:labSwitch.authoredHip,
       authoredArms:labSwitch.authoredArms}:undefined;
-  const transition=direct??scripted;
+  const transition=pistolSelected?undefined:direct??scripted;
   if(labSwitch&&alpha>=1)labSwitch=null;
   const selectedHandling=transition?.to??previewHandling[track];
   const contactTrack=isLabContactTrack(track);
@@ -2016,7 +2027,7 @@ function draw(){
       track==='reload-wounded'?2:0),
     weapon:currentWeapon,weaponConfiguration:exactWeaponConfig,
     unarmedPreview:weapon.value==='none'&&track!=='reload-shotgun'&&!sidearm,
-    reload:motion.reload,reloadDuration:1.8,
+    reload:sidearm?0:motion.reload,reloadDuration:1.8,
     reloadMode:track==='reload-retention'?'retention':
       track==='reload-shotgun'?'shells':'emergency',
     reloadRemoved:track==='reload-interrupt'&&clock>.53,
@@ -2042,11 +2053,13 @@ function draw(){
     }:undefined,
     secondaryReload:pistolReload,
     labPistolStance:pistolFrame?.stance,
+    labPistolStanceBlend:pistolFrame?.stanceBlend,
     labPistolPitch:pistolFrame?.pitch,
-    handlingOverride:shoulderTrack?'high':selectedHandling,
+    labPistolScale:sidearm?LAB_PISTOL_PREVIEW_SCALE:undefined,
+    handlingOverride:sidearm?'ready':shoulderTrack?'high':selectedHandling,
     poseV3Preview,poseV4ReloadPreview,
     poseV3StrictContact:poseStrictContact.checked,
-    handlingTransition:transition,
+    handlingTransition:sidearm?undefined:transition,
     replayFeet:feet,
     pelvisYaw:state.pelvisYaw,
     hybridSupport:gaitReference.value==='candidate',
@@ -2267,6 +2280,15 @@ function draw(){
   canvas.dataset.poseSidearmArtOnly=String(!!sidearm&&poseSidearmArtOnly(sidearm));
   canvas.dataset.poseSidearmFraction=pistolFrame?
    pistolFrame.fraction.toFixed(3):'';
+  canvas.dataset.poseSidearmStance=pistolFrame?.stance??'';
+  canvas.dataset.poseSidearmPitch=pistolFrame?
+   pistolFrame.pitch.toFixed(3):'';
+  canvas.dataset.poseSidearmScale=sidearm?
+   LAB_PISTOL_PREVIEW_SCALE.toFixed(3):'';
+  canvas.dataset.poseSidearmHandY=sidearm?
+   rig.arms[1].hand.getWorldPosition(labPistolHandWorld).y.toFixed(3):'';
+  canvas.dataset.poseSidearmSupportY=sidearm?
+   rig.arms[0].hand.getWorldPosition(labPistolHandWorld).y.toFixed(3):'';
   canvas.dataset.poseSidearmReload=pistolReload?
    (pistolReload.elapsed/pistolReload.duration).toFixed(3):'';
   canvas.dataset.poseSidearmPresentation=sidearm?

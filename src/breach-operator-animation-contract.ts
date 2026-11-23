@@ -109,6 +109,10 @@ export type OperatorPose={
   labPistolStance?:'high'|'low'|'ready'|'retention';
   /** Operator Lab-only visible barrel pitch; does not alter shot geometry. */
   labPistolPitch?:number;
+  /** Lab-only physical art size. Live Glock holsters retain original scale. */
+  labPistolScale?:number;
+  /** Lab-only continuous transition into the selected readiness posture. */
+  labPistolStanceBlend?:number;
   equipment?:EquipmentLoadout;flashCharges?:number;wedgeRemaining?:number;
   restraintRemaining?:number;
   medicalCarryLocation?:CarryLocation;utilityCarryLocation?:CarryLocation;

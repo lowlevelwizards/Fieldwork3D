@@ -9,9 +9,10 @@ import {POSE_SIDEARM_GROUPS,poseSidearm,poseSidearmArtOnly,
  poseWeaponType,defaultPoseWeapon,POSE_ANIMATIONS}
  from '../src/operator-lab-pose-browser.ts';
 import {LAB_TRACKS} from '../src/breach-lab-tracks.ts';
-import {isLabPistolTrack,sampleLabPistolFrame}
+import {isLabPistolTrack,sampleLabPistolFrame,LAB_PISTOL_PREVIEW_SCALE}
  from '../src/operator-lab-pistol-tracks.ts';
 
+import {secondaryUpperBodyTargets} from '../src/secondary-upper-body-pose.ts';
 const source=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 test('Operator Lab enumerates every real Glock and M9 art model, no invented pistols',()=>{
  const shown=POSE_SIDEARM_GROUPS.flatMap(group=>group.models.map(model=>model.id));
@@ -57,6 +58,49 @@ test('All pistol motions share the ordinary selectable 4-second Lab clock',()=>{
  assert.equal(sampleLabPistolFrame('pistol-reload-retention',1).reload?.retain,true);
  assert.equal(sampleLabPistolFrame('pistol-reload-interrupt',2).reload,null);
 });
+test('Ready tab actions move both real pistol wrists and muzzle distinctly',()=>{
+ const frame=(name,t=2)=>sampleLabPistolFrame(name,t);
+ assert.equal(frame('low-ready').stance,'low');
+ assert.equal(frame('high-ready').stance,'high');
+ assert.equal(frame('short-stock').stance,'retention');
+ assert.equal(frame('active-aim').aim,1);
+ assert.ok(frame('point-shoot').aim>.5);
+ assert.ok(frame('ready-to-ads',.7).aim<frame('ready-to-ads',1.5).aim);
+ assert.ok(frame('ads-to-low',.7).stanceBlend<
+  frame('ads-to-low',1.5).stanceBlend);
+ assert.ok(frame('low-ready').pitch<-.5);
+ assert.ok(frame('high-ready').pitch>.5);
+ for(const kind of ['reload','reload-emergency','reload-retention'])
+  assert.ok(frame(kind,1).reload,kind);
+ // An interrupted reload must already have ended by 1.0 s, but its
+ // pre-interruption phase is still real and seekable.
+ assert.ok(frame('reload-interrupt',.6).reload);
+ assert.equal(frame('reload-interrupt',1).reload,null);
+ assert.equal(frame('reload-emergency',1).reload.retain,false);
+ assert.equal(frame('reload-retention',1).reload.retain,true);
+ assert.ok(LAB_PISTOL_PREVIEW_SCALE>=.6&&LAB_PISTOL_PREVIEW_SCALE<.8);
+ const target=(track,t=2)=>{
+  const p=frame(track,t);
+  return secondaryUpperBodyTargets({fraction:p.fraction,aim:p.aim,
+   moving:false,obstructed:false,stance:p.stance,
+   stanceBlend:p.stanceBlend});
+ };
+ const high=target('high-ready'),low=target('low-ready');
+ const ready=target('ready'),ads=target('active-aim');
+ const retention=target('short-stock');
+ assert.ok(high.firing.y-low.firing.y>10,'high/low firing wrist');
+ assert.ok(high.support.y-low.support.y>10,'high/low support wrist');
+ assert.ok(ads.firing.x-ready.firing.x>5,'ADS extends both hands');
+ assert.ok(ads.firing.y-ready.firing.y>4,'ADS raises both hands');
+ assert.ok(ready.firing.x-retention.firing.x>2,'retention retracts hands');
+ // No explicit Lab stance = gameplay targets are absolutely unchanged.
+ assert.deepEqual(secondaryUpperBodyTargets({
+  fraction:1,aim:0,moving:false,obstructed:false
+ }).firing,{x:8.2,y:-3,z:3.3});
+ assert.deepEqual(secondaryUpperBodyTargets({
+  fraction:1,aim:1,moving:false,obstructed:false
+ }).firing,{x:13.4,y:-.25,z:2});
+});
 test('Lab uses the live operator rig and preserves the unissued-only M9 boundary',()=>{
  const lab=source('src/breach-operator-lab.ts');
  const html=source('operator-lab.html');
@@ -77,4 +121,8 @@ test('Lab uses the live operator rig and preserves the unissued-only M9 boundary
  assert.match(contract,/labPistolStance\?/);
  assert.match(rig,/presentSecondaryDraw\(r\.hip/);
  assert.doesNotMatch(visual,/setEquipmentChoice|requestSecondarySwitch|advanceTimedSecondaryReload/);
+ assert.ok(contract.includes('labPistolScale?:number'));
+ assert.ok(lab.includes('labPistolScale:sidearm?LAB_PISTOL_PREVIEW_SCALE'));
+ assert.ok(lab.includes('PISTOL PREVIEW'));
+ assert.ok(source('src/secondary-holster-visual.ts').includes('labScale?:number'));
 });
