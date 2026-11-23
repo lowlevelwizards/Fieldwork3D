@@ -168,6 +168,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       // A GO-time custody change belongs to the targeted original actor.
       // No civilian puppet, allegiance mutation, or implicit follow on arrest.
       suspect.escortLeaderId=start?a.id:null;
+      suspect.lastEscortCommandAt=s.seconds;
       // A spoken command can interrupt an unrestrained escape preparation.
       // Once following, a poorly supervised suspect can still break away.
       if(start){
