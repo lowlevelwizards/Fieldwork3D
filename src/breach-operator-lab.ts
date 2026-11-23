@@ -55,6 +55,7 @@ import {isM9AppearanceId} from './weapons/geometry/beretta-m9-silhouettes.ts';
 import {sampleLabPistolFrame,isLabPistolTrack,LAB_PISTOL_PREVIEW_SCALE}
  from './operator-lab-pistol-tracks.ts';
 import {labPistolContacts} from './operator-lab-pistol-contacts.ts';
+import {presentLabPistolHandShapes} from './operator-lab-pistol-hand-visual.ts';
 import {presentLabBerettaPreview,clearLabBerettaPreview}
  from './operator-lab-beretta-preview.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
@@ -2092,6 +2093,8 @@ function draw(){
     hitYaw:motion.heading+Math.PI/2,
     hitAge:track==='wounded'?Math.max(0,clock-.7):undefined,
     hitSeverity:2},0);
+  presentLabPistolHandShapes(rig,!!sidearm&&!comparing,
+   pistolFrame?.stance==='retention',!!pistolReload);
   if(sidearm&&!comparing){
    // Even during a holster/draw phase the hidden primary must not suddenly
    // appear behind the pistol. Only the actual carried sidearm is visible.
@@ -2291,6 +2294,8 @@ function draw(){
   canvas.dataset.poseSidearmFraction=pistolFrame?
    pistolFrame.fraction.toFixed(3):'';
   canvas.dataset.poseSidearmStance=pistolFrame?.stance??'';
+  canvas.dataset.poseSidearmAim=pistolFrame?
+   pistolFrame.aim.toFixed(3):'';
   canvas.dataset.poseSidearmPitch=pistolFrame?
    pistolFrame.pitch.toFixed(3):'';
   canvas.dataset.poseSidearmScale=sidearm?
@@ -2303,6 +2308,10 @@ function draw(){
    pistolFrame.slideRack.weight.toFixed(3):'';
   canvas.dataset.poseSidearmRackPull=pistolFrame?.slideRack?
    pistolFrame.slideRack.pull.toFixed(3):'';
+  canvas.dataset.poseSidearmTriggerIndex=String(!!sidearm&&
+   !!rig.arms[1].hand.getObjectByName('operator-lab-trigger-index')?.visible);
+  canvas.dataset.poseSidearmSupportThumb=String(!!sidearm&&
+   !!rig.arms[0].hand.getObjectByName('operator-lab-support-thumb')?.visible);
   canvas.dataset.poseSidearmSupportX=sidearm?
    rig.arms[0].hand.getWorldPosition(labPistolHandWorld).x.toFixed(3):'';
   canvas.dataset.poseSidearmReload=pistolReload?
