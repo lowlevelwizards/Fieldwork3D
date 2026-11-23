@@ -383,8 +383,10 @@ export function createTacticalHudController(
   const noticeFeed=new ExecutionNoticeFeed();
   function resetNotices():void{noticeFeed.reset();}
   function renderNotice(node:HTMLElement,events:string[],phase:string,
-    replaying:boolean,executionEvents:readonly import('../breach-execution-events.ts').ExecutionEvent[]):void{
-    const notice=noticeFeed.update(events,phase,performance.now(),executionEvents);
+    replaying:boolean,executionEvents:readonly import('../breach-execution-events.ts').ExecutionEvent[],
+    currentOrders?:readonly {id:string;plan:readonly {id:number}[]}[]):void{
+    const notice=noticeFeed.update(events,phase,performance.now(),
+      executionEvents,currentOrders);
     node.hidden=!notice||replaying;
     if(!notice||replaying){
       node.removeAttribute('data-notice-key');
@@ -500,7 +502,7 @@ export function createTacticalHudController(
     }
     const execution=a?executionStatus(a,{
       phase:state.phase==='planning'&&state.started?'running':state.phase,
-      doors:state.doors,peers:input.peers
+      seconds:state.seconds,doors:state.doors,peers:input.peers
     }):null;
     const status=compactExecutionStatus(execution,{
       selected:id===selected,
@@ -737,7 +739,8 @@ export function createTacticalHudController(
     const siteTitle=state.site?.name??'Cutwoods';
     if(siteHeader.title!==siteTitle)siteHeader.title=siteTitle;
   }
-  renderNotice(ui.feed,state.events,state.phase,replaying,state.executionEvents);
+  renderNotice(ui.feed,state.events,state.phase,replaying,
+    state.executionEvents,team(state));
   renderGuidance({
     replaying,phase:state.phase,selectedNode,selectedActiveWatch,
     feed:ui.feed,hint:ui.hint
