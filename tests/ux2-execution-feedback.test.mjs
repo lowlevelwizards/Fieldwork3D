@@ -42,7 +42,9 @@ test('pause/resume cues are short, do not spam, and reset between missions',()=>
 });
 test('HUD reads authoritative typed execution events and preserves presentation',()=>{
  const source=readFileSync(new URL('../src/ui/tactical-hud-controller.ts',import.meta.url),'utf8');
- assert.match(source,/noticeFeed\.update\(events,phase,performance\.now\(\),executionEvents\)/);
+ assert.match(source,/noticeFeed\.update\(/);
+ assert.match(source,/events,phase,performance\.now\(\),executionEvents/);
+ assert.match(source,/session\?\{session,actors:currentOrders\?\?\[\],seconds:session\.seconds/);
  assert.match(source,/state\.executionEvents/);
  assert.match(source,/noticeFeed\.reset\(\)/);
  assert.match(source,/node\.dataset\.severity=notice\.severity/);
