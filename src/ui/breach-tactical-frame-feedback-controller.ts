@@ -115,6 +115,27 @@ export function createBreachTacticalFrameFeedbackController(config:{
     }
     tacticalFeedback.draw(feedbackDraw,p=>worldToScreen(p,7),
       performance.now(),preview,reducedMotion);
+    // The flash itself is known (our own thrown device), even when a room
+    // is fogged or a wall is between the camera and the detonation. The
+    // over-fog ring reveals no enemies, occupants or hidden architecture.
+    if(!replaying)for(const burst of state.flashBursts){
+      const strength=Math.max(0,1-burst.age/.7);
+      if(strength<=0)continue;
+      const at=worldToScreen(burst.p,17);
+      feedbackDraw.save();
+      feedbackDraw.globalAlpha=.84*strength;
+      feedbackDraw.strokeStyle='#fff5c7';
+      feedbackDraw.fillStyle='#fff9e6';
+      feedbackDraw.lineWidth=3+strength*2;
+      feedbackDraw.beginPath();
+      feedbackDraw.arc(at.x,at.y,10+(1-strength)*57,0,Math.PI*2);
+      feedbackDraw.stroke();
+      feedbackDraw.globalAlpha=.78*strength*strength;
+      feedbackDraw.beginPath();
+      feedbackDraw.arc(at.x,at.y,8+strength*14,0,Math.PI*2);
+      feedbackDraw.fill();
+      feedbackDraw.restore();
+    }
     // Direction-only preview of an authored furniture push. The authoritative
     // simulation still decides how far the real object can move on contact;
     // this never mutates cover, reveals unknown obstacles, or guarantees travel.
