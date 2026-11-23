@@ -139,6 +139,15 @@ export function advanceSimulationMotion(s:Session,h:number,
       const civilianStepStart=cpuMark();
       escortSoftBlueTraffic=escortUsesFriendlySoftTraffic(civil);
       stepCivilianMovement(civil,s.seconds,h,clear,occupied,routeTo);
+      // An escorted civilian looks toward their actual leader rather than
+      // retaining the last path-leg bearing after coming to a stop.
+      if(civil.state==='escorted'&&civil.following){
+        const leader=s.operators.find(a=>a.side==='blue'&&
+          a.id===civil.following&&a.health>0);
+        if(leader&&d(civil.p,leader.p)>8)
+          civil.heading=Math.atan2(leader.p.y-civil.p.y,
+            leader.p.x-civil.p.x);
+      }
       if(profile){
         const elapsed=performance.now()-civilianStepStart;
         movementTime+=elapsed;
