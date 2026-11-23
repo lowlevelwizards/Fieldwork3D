@@ -24,6 +24,7 @@ import {nvgControlState,nvgOperational} from '../equipment-night-vision.ts';
 import type {ViewMode} from '../breach-3d.ts';
 import {doorCenter,type Door,type Pt} from '../breach-core.ts';
 import {dispatchTacticalContextCommand} from '../breach-tactical-context-command.ts';
+import {medicalTreatmentChoices} from '../breach-medical-target-choices.ts';
 import type {createBreachAudioController} from '../breach-audio-controller.ts';
 import type {DisplayRouteCache} from '../breach-route-cache.ts';
 import type {createBreachReplayAnalysisController} from './breach-replay-analysis-controller.ts';
@@ -101,6 +102,7 @@ export type TacticalToolbarPorts={
  selectUnit:(id:string)=>void;cancelTargeting:()=>void;
  showUiHelp:(text:string,duration?:number)=>void;updateHud:()=>void;
  medicalCandidate:()=>TeamActor|null;casualtyCandidate:()=>TransportCandidate|null;
+ openTreatment?:()=>void;
  invalidateFog:()=>void;
  setRangeTrial:(trial:RangeTrial|null)=>void;
  resetMission:()=>void;restartRange:()=>void;
@@ -570,12 +572,15 @@ export function createTacticalHudController(
   paintOperatorAccent(paletteTether,selected);
   // Optional intel is collected by proximity in simulation.
   if(medicalButton){
-   const patient=medicalCandidate();
-   medicalButton.disabled=!patient||state.phase!=='planning'||replaying;
-   writeDomText(medicalButton,patient?'TREAT · '+patient.name.toUpperCase():
-    'TREAT · NO SUITABLE SUPPLIES');
-   writeDomAttribute(medicalButton,'aria-label',patient?
-    'Plan medical stabilization for '+patient.name:'No treatable wound with available supplies');
+   const medic=team(state).find(op=>op.id===selected&&op.health>0);
+   const patients=medic?medicalTreatmentChoices(state,medic,medic.p):[];
+   const bleeding=patients.some(p=>p.status==='BLEEDING');
+   medicalButton.disabled=!patients.length||state.phase!=='planning'||replaying;
+   writeDomText(medicalButton,bleeding?'TREAT · BLEEDING':
+     patients.length?'TREAT · STATUS':'TREAT · NO PATIENT');
+   writeDomAttribute(medicalButton,'aria-label',
+     patients.length?'Choose self or a nearby patient and review medical status':
+       'No known wounded patient in reach');
   }
   for(const [button,mode] of [
    [dragButton,'DRAG'],[carryButton,'CARRY'],[retrieveButton,'RECOVER']
@@ -944,8 +949,9 @@ medicalButton.textContent='TREAT';
 medicalButton.setAttribute('aria-label','Plan medical stabilization');
 medicalButton.addEventListener('click',()=>{
  if(port.replaying||port.state.phase!=='planning')return;
- const patient=port.medicalCandidate();
- if(patient)planMedicalTreatment(port.state,port.selected,patient.id);
+ // The toolbar is another entry to the SAME two-step medical selector,
+ // never a shortcut that silently treats whichever patient was nearest.
+ port.openTreatment?.();
  port.updateHud();
 });
 port.ui.loadout.insertAdjacentElement('afterend',medicalButton);

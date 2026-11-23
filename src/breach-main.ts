@@ -1462,6 +1462,12 @@ const toolbarButtons=hudController.bindToolbar({
  showWeaponChooser,hideWeaponChooser,selectUnit,cancelTargeting,
  showUiHelp,updateHud,medicalCandidate:()=>medicalCandidate(selected),
  casualtyCandidate:()=>casualtyCandidate(selected),
+ openTreatment:()=>{
+   if(state.phase!=='planning'||replaying)return;
+   selectedNode=null;selectedActiveWatch=false;doorFocusId=null;
+   paletteController.closeTreatment();paletteController.invalidate();
+   updateContext();paletteController.toggleTreatment();
+ },
  invalidateFog:()=>fog2D.invalidate(),
  setRangeTrial:value=>{lastRangeTrial=value;},
  resetMission:()=>appFlow.mode==='training'?trainingScreen.retry():reset(),
