@@ -70,8 +70,12 @@ test('Ready tab actions move both real pistol wrists and muzzle distinctly',()=>
   frame('ads-to-low',1.5).stanceBlend);
  assert.ok(frame('low-ready').pitch<-.5);
  assert.ok(frame('high-ready').pitch>.5);
- for(const kind of ['reload','reload-emergency','reload-retention',
-  'reload-interrupt'])assert.ok(frame(kind,1).reload,kind);
+ for(const kind of ['reload','reload-emergency','reload-retention'])
+  assert.ok(frame(kind,1).reload,kind);
+ // An interrupted reload must already have ended by 1.0 s, but its
+ // pre-interruption phase is still real and seekable.
+ assert.ok(frame('reload-interrupt',.6).reload);
+ assert.equal(frame('reload-interrupt',1).reload,null);
  assert.equal(frame('reload-emergency',1).reload.retain,false);
  assert.equal(frame('reload-retention',1).reload.retain,true);
  assert.ok(LAB_PISTOL_PREVIEW_SCALE>=.6&&LAB_PISTOL_PREVIEW_SCALE<.8);
