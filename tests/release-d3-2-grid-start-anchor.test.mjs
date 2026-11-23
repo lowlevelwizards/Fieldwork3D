@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {route} from '../src/breach-core.ts';
-import {routeWithIntel,knownFurnitureBlocksSnappedStart} from '../src/breach-intel.ts';
+import {route,pointToSegment} from '../src/breach-core.ts';
+import {routeWithIntel,knownFurnitureBlocksSnappedStart,
+ knownWallBlocksSnappedStart} from '../src/breach-intel.ts';
 const windowSill={x:602,y:305.5,w:10,h:52};
 function passableWithSill(p,r=8,sill=windowSill){
  return p.x>24+r&&p.x<720-r&&p.y>24+r&&p.y<690-r&&
@@ -79,4 +80,36 @@ test('D3.2.12: known sill enables start rescue but unknown sill never leaks into
  assert.equal(physicallyClear(from,path[0],p=>passableWithSill(p)),true);
  const unknown={...intel,cover:new Set()};
  assert.equal(knownFurnitureBlocksSnappedStart(unknown,from,world),false);
+});
+
+test('Doorway: known jamb endpoint must not strand a legal body on a blocked snapped grid start',()=>{
+ const walls=[
+  {a:{x:160,y:100},b:{x:160,y:185}},
+  {a:{x:160,y:245},b:{x:160,y:310}}
+ ];
+ const wallClear=p=>walls.every(w=>pointToSegment(p,w)>=9);
+ const world={
+  bounds:{minX:0,minY:0,maxX:400,maxY:400},
+  someWallNearPoint(_p,_r,cb){return walls.some((wall,i)=>cb(wall,i));},
+  someCoverNearPoint:()=>false
+ };
+ const intel={mode:'floor-plan',walls:new Set([0,1]),doors:new Set(),
+  cover:new Set(),rooms:new Set(),doorMemory:new Map()};
+ const from={x:152.5,y:195},goal={x:226,y:212};
+ const snap={x:Math.round(from.x/16)*16,y:Math.round(from.y/16)*16};
+ assert.equal(wallClear(from),true,'operator is outside the known jamb');
+ assert.equal(wallClear(snap),false,'nearest normal-grid vertex clips jamb');
+ assert.equal(knownWallBlocksSnappedStart(intel,from,world),true);
+ const path=routeWithIntel(intel,from,goal,world);
+ assert.ok(path.length,'known doorway should find a normal-body connector');
+ let prev=from;
+ for(const point of path){
+  assert.equal(physicallyClear(prev,point,wallClear),true,
+   'no grid rescue may cut through the wall at any step');
+  prev=point;
+ }
+ assert.deepEqual(path.at(-1),goal,'authored GO must remain exact');
+ const undiscovered={...intel,walls:new Set()};
+ assert.equal(knownWallBlocksSnappedStart(undiscovered,from,world),false,
+  'undiscovered wall geometry must not influence planning');
 });
