@@ -342,7 +342,10 @@ export function createBreachPhotoModeController(ports:Ports){
   if(!ports.isReplaying())return;
   replayClean=!replayClean;
   document.body.classList.toggle('replay-clean',replayClean);
-  ui.clean.textContent=replayClean?'◫ SHOW HUD':'◫ CLEAN';
+  ui.clean.textContent=replayClean?'◫ SHOW HUD':'◫ HIDE HUD';
+  ui.clean.title=replayClean?'Restore the replay interface':
+    'Hide replay interface for a clean camera view';
+  ui.clean.setAttribute('aria-label',replayClean?'Show replay HUD':'Hide replay HUD');
   ui.clean.setAttribute('aria-pressed',String(replayClean));
   markDirty();ports.requestHud();
  });
@@ -428,7 +431,10 @@ export function createBreachPhotoModeController(ports:Ports){
  },true);
  return {get active(){return active;},get replayClean(){return replayClean&&ports.isReplaying();},
   clearReplayClean(){replayClean=false;document.body.classList.remove('replay-clean');
-   ui.clean.textContent='◫ CLEAN';ui.clean.setAttribute('aria-pressed','false');},
+   ui.clean.textContent='◫ HIDE HUD';
+   ui.clean.title='Hide replay interface for a clean camera view';
+   ui.clean.setAttribute('aria-label','Hide replay HUD');
+   ui.clean.setAttribute('aria-pressed','false');},
   get needsFrame(){return active&&
   (dirty||pending!==null);},onFrame,exit,openGallery};
 }

@@ -171,7 +171,7 @@ export function renderAfterActionTimeline(input:{
  const inspection=inspectLabel(selected);
  if(inspection)controls.append(button(inspection,
    ()=>actions.inspect(selected)));
- if(highlightsAvailable)controls.append(button('OPEN HIGHLIGHTS',
+ if(highlightsAvailable)controls.append(button('VIEW MOMENTS',
    actions.highlights));
  card.append(controls);root.append(card);
  const ledger=make('section','fw-v5-timeline-ledger');

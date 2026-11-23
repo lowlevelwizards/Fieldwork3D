@@ -101,7 +101,9 @@ export function createQuickPlayConfigurator(options:{
  const seedInput=node('input');seedInput.type='number';seedInput.min='1';
  seedInput.max='4294967295';seedInput.step='1';seedInput.placeholder='RANDOM';
  seedInput.setAttribute('aria-label','Seed, blank for random');
- const dice=command('RANDOM',()=>{settings.seed=null;seedInput.value='';update();});
+ const dice=command('RANDOM SEED',()=>{settings.seed=null;seedInput.value='';update();});
+ dice.title='Use a random seed when generating the next mission';
+ dice.setAttribute('aria-label','Use random site seed');
  seedRow.append(seedInput,dice);seedGroup.append(seedRow);
  seedInput.addEventListener('input',()=>{
   settings.seed=seedInput.value===''?null:Number(seedInput.value);
@@ -190,7 +192,7 @@ export function createQuickPlayConfigurator(options:{
  advancedBody.append(seedGroup,conditions,buildingDisclosure);
  advanced.append(advancedBody);
  const squadPrep=node('details','fw-quick-config-squad-prep');
- const squadLabel=node('summary','','SQUAD LOADOUT · PREPARE EQUIPMENT');
+ const squadLabel=node('summary','','SQUAD EQUIPMENT');
  const squadContent=node('div','fw-quick-config-advanced-content');
  let selectedSquadMember:string|null=null;
  let selectedSquadSlot:LoadoutSlot='primary';
@@ -380,9 +382,12 @@ export function createQuickPlayConfigurator(options:{
  const error=node('p','fw-quick-config-error');error.setAttribute('role','status');
  const footer=node('footer','fw-quick-config-footer');
  const start=command('GENERATE MISSION',()=>generate(),'fw-quick-config-start');
- footer.append(command('SURPRISE ME',()=>{
+ const randomMission=command('GENERATE RANDOM',()=>{
    settings=defaultQuickPlaySettings();render();generate();
- }),start);
+ });
+ randomMission.title='Immediately generate a mission using random scenario settings';
+ randomMission.setAttribute('aria-label','Generate a random mission now');
+ footer.append(randomMission,start);
  content.append(fieldGrid,squadPrep,advanced,summary,error);
  dialog.append(header,intro,content,footer);
  backdrop.append(dialog);document.body.append(backdrop);
