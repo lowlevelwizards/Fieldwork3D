@@ -7,7 +7,7 @@ import {fixedGoalCorrectionText} from '../src/breach-authored-goal-block.ts';
 import {recoveryAdviceFor} from '../src/ui/recovery-guidance.ts';
 import {classifyExecutionNotice,ExecutionNoticeFeed,locateNoticeOrder} from '../src/ui/execution-feedback.ts';
 import {generateSite} from '../src/breach-site.ts';
-import {newSession} from '../src/breach-game.ts';
+import {newSession,team,planMove} from '../src/breach-game.ts';
 import {activateSite,OPERATOR_RADIUS} from '../src/breach-core.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {knownFixedGoalBlock} from '../src/breach-authored-goal-block.ts';
@@ -28,10 +28,17 @@ test('D3.16B diagnostic: source-authentic motel target geometry is witnessed',()
     x:c.x,y:c.y,w:c.w,h:c.h,fixture:c.fixture??null,
     kind:c.kind??null,movable:c.movable??null
   }));
+  const ash=team(s).find(a=>a.id==='ash');
+  const accepted=!!ash&&planMove(s,ash.id,goal);
+  const authored=ash?.plan.find(n=>n.kind==='move')?.p??null;
   const evidence={
    goal,passable:world.passable(goal,OPERATOR_RADIUS),
    fullBody:bodyClear(goal,s.doors,OPERATOR_RADIUS,world),
-   knownBlock:knownFixedGoalBlock(s,goal),near
+   knownBlock:knownFixedGoalBlock(s,goal),near,
+   planMoveAccepted:accepted,authored,
+   authoredPassable:authored?world.passable(authored,OPERATOR_RADIUS):null,
+   authoredFullBody:authored?bodyClear(authored,s.doors,OPERATOR_RADIUS,world):null,
+   authoringEvents:s.events.filter(x=>x.includes('POSITION ADJUSTED'))
   };
   console.log('D316B_MAIN_GEOMETRY',JSON.stringify(evidence));
   assert.ok(Number.isFinite(goal.x)&&Number.isFinite(goal.y));
