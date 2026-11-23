@@ -51,7 +51,7 @@ test('STOP: known followers can be told to hold within voice range; strangers ca
    posture:'stand',pace:'walk',firePolicy:'engage',reserve:20,magazine:20};
  const actions=contextActionChoices({...basic,stopFollowingCivilian:true});
  assert.equal(actions.find(a=>a.id==='ctxStopFollowingCivilian')?.label,
-   'STOP FOLLOWING');
+   'STAY HERE');
  assert.equal(contextActionChoices(basic).some(a=>
    a.id==='ctxStopFollowingCivilian'),false);
 });
