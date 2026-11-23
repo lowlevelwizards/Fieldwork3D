@@ -100,7 +100,7 @@ export function createAfterActionModelPresenter(
  let disposed=false,lost=false,host:HTMLElement|null=null;
  let selected:string|null=null,dragId:number|null=null,lastX=0,lastY=0;
  let downX=0,downY=0,dragged=false;
- let dragTarget:string|null=null;
+ let dragTarget:string|null=null,tapTarget:string|null=null;
  let operatorTapHandler:((id:string)=>void)|null=null;
  let forensicEvidence:ForensicEvidence|null=null;
  let pitch=.16,zoom=DEFAULT_SQUAD_ZOOM;
@@ -229,8 +229,9 @@ export function createAfterActionModelPresenter(
        nearest=delta;dragTarget=id;
      }
    }
-   // Rotation still works with a selected model even outside the body hit
-   // region; only a short tap actually over the actor opens navigation.
+   // The selected rig may still rotate from the empty stage; only an actual
+   // projected character hit is eligible to trigger a record transition.
+   tapTarget=dragTarget;
    if(selected&&!dragTarget)dragTarget=selected;
    canvas.setPointerCapture(event.pointerId);
  };
@@ -249,15 +250,15 @@ export function createAfterActionModelPresenter(
    if(event.pointerId!==dragId)return;
    const tapped=!dragged&&
      Math.hypot(event.clientX-downX,event.clientY-downY)<8?
-       dragTarget:null;
-   dragId=null;dragTarget=null;dragged=false;
+       tapTarget:null;
+   dragId=null;dragTarget=null;tapTarget=null;dragged=false;
    if(canvas.hasPointerCapture(event.pointerId))
      canvas.releasePointerCapture(event.pointerId);
    if(tapped)operatorTapHandler?.(tapped);
  };
  const cancel=(event:PointerEvent)=>{
    if(event.pointerId!==dragId)return;
-   dragId=null;dragTarget=null;dragged=false;
+   dragId=null;dragTarget=null;tapTarget=null;dragged=false;
    if(canvas.hasPointerCapture(event.pointerId))
      canvas.releasePointerCapture(event.pointerId);
  };
@@ -317,7 +318,7 @@ export function createAfterActionModelPresenter(
      forensicEvidence=null;
      observer?.disconnect();
      canvas.remove();
-     host=null;dragId=null;dragTarget=null;dragged=false;
+     host=null;dragId=null;dragTarget=null;tapTarget=null;dragged=false;
    },
    dispose(){
      if(disposed)return;
