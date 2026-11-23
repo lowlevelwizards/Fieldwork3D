@@ -196,10 +196,36 @@ export const FIELDWORK_ICON_FAMILY:Record<string,Glyph>={
     "strokeWidth": 2.65
   }
 };
+/** Action audit: single-stroke semantic glyphs, readable at tactical size. */
+const commandGlyph=(markup:string):Glyph=>({markup,viewBox:'0 0 48 48',strokeWidth:2.65});
+Object.assign(FIELDWORK_ICON_FAMILY,{
+  doorActions:commandGlyph('<path d="M8 7H34V41H8Z M12 11L27 15V36L12 40Z"/><circle cx="34" cy="19" r="1.6"/><circle cx="40" cy="19" r="1.6"/><circle cx="46" cy="19" r="1.6"/>'),
+  verbal:commandGlyph('<path d="M6 8H42V34H24L15 42V34H6Z M16 15H31 M16 22H33 M16 28H25"/>'),
+  restrain:commandGlyph('<circle cx="13" cy="24" r="8"/><circle cx="35" cy="24" r="8"/><path d="M21 19L27 16 M21 29L27 32 M10 21V27 M38 21V27"/>'),
+  searchPerson:commandGlyph('<circle cx="18" cy="11" r="5"/><path d="M9 38V24Q9 19 18 19Q24 19 28 23 M11 38H25"/><circle cx="33" cy="31" r="8"/><path d="M39 37L45 43"/>'),
+  secureWeapon:commandGlyph('<path d="M5 15H31L35 20H28L25 26H19L17 21H5Z M17 21L15 35H25L26 26"/><path d="M29 34L35 40L45 27"/>'),
+  reassure:commandGlyph('<circle cx="13" cy="12" r="5"/><path d="M5 39V26Q5 21 13 21Q22 21 22 28V39"/><path d="M29 21Q24 15 29 11Q34 7 38 12Q44 7 47 13Q49 17 43 23L38 28Z"/>'),
+  follow:commandGlyph('<circle cx="11" cy="12" r="4"/><path d="M5 35V24Q5 19 11 19Q17 19 17 24V35"/><circle cx="29" cy="12" r="5"/><path d="M22 37V25Q22 19 29 19Q36 19 36 25V37 M38 22H46M42 18L46 22L42 26"/>'),
+  stay:commandGlyph('<circle cx="14" cy="12" r="5"/><path d="M6 39V24Q6 19 14 19Q22 19 22 24V39"/><path d="M29 38V19M29 19Q29 15 32 15Q35 15 35 19V28V16Q35 12 38 13V28V20Q38 17 42 18V35Q42 42 34 42Z"/>'),
+  dragPerson:commandGlyph('<circle cx="36" cy="30" r="5"/><path d="M5 38H30L33 35 M17 30L25 27H31 M7 16L3 20L7 24M3 20H28"/>'),
+  carryPerson:commandGlyph('<circle cx="13" cy="11" r="5"/><path d="M7 40V24Q7 20 13 20Q19 20 19 24V40 M18 27L27 32L35 27 M24 36H39"/><circle cx="34" cy="21" r="5"/>'),
+  setDown:commandGlyph('<circle cx="13" cy="11" r="5"/><path d="M7 36V24Q7 20 13 20Q20 20 20 25V36M25 19V38M20 33L25 38L30 33M30 39H45"/>'),
+  switchWeapon:commandGlyph('<path d="M6 12H40L34 6M40 12L34 18 M42 36H8L14 30M8 36L14 42"/><path d="M11 22H32L36 25H30L28 31H22L21 26H11Z"/>'),
+  pickLock:commandGlyph('<path d="M13 21V13A11 11 0 0 1 35 13V21M10 21H38V42H10Z"/><circle cx="24" cy="29" r="3"/><path d="M24 32V37"/>'),
+  pryTool:commandGlyph('<path d="M8 40L35 11 M35 11Q41 4 45 12L37 18 M17 31L11 25"/>'),
+  cutTool:commandGlyph('<circle cx="16" cy="34" r="6"/><circle cx="32" cy="34" r="6"/><path d="M20 30L39 8 M28 30L9 8 M19 18L29 18"/>'),
+  wedgeTool:commandGlyph('<path d="M7 39L40 39L40 16Z M7 39H40 M26 16H40V11M26 16V11"/>'),
+  removeWedge:commandGlyph('<path d="M6 40L36 40L36 22Z M40 29V7M33 14L40 7L47 14"/>'),
+  breachTool:commandGlyph('<path d="M7 8H30V42H7Z M12 13L24 17V38L12 42Z M32 16L38 9 M34 25H45 M33 33L40 40"/>'),
+  power:commandGlyph('<path d="M24 6V25 M13 12A18 18 0 1 0 35 12 M12 37H36"/>'),
+  windowOpen:commandGlyph('<path d="M6 7H37V41H6Z M21 7V41 M6 23H37 M23 11L39 17V35L23 39Z M38 11L45 4M39 4H45V10"/>'),
+  windowClose:commandGlyph('<path d="M7 7H39V41H7Z M23 7V41 M7 23H39 M43 24H33M38 19L33 24L38 29"/>'),
+  inspect:commandGlyph('<path d="M8 5H29L37 13V38H8Z M28 5V14H37 M14 20H27 M14 27H22"/><circle cx="33" cy="32" r="9"/><path d="M39 38L45 44"/>')
+});
 const aliases:Record<string,string>={
   "ctxResumeEntry": "openDoor",
   "ctxOpen": "openDoor",
-  "ctxDoor": "openDoor",
+  "ctxDoor": "doorActions",
   "ctxClose": "closeDoor",
   "ctxKick": "kick",
   "ctxDoorFlash": "flash",
@@ -219,13 +245,45 @@ const aliases:Record<string,string>={
   "ctxReload": "reload",
   "ctxDelete": "deletePoint",
   "ctxPush": "push",
-  "ctxWindow": "window",
+  "ctxWindow": "windowOpen",
+  "ctxWindowOpen": "windowOpen",
+  "ctxWindowClose": "windowClose",
   "ctxTreat": "medical",
+  "ctxChallengeSuspect": "verbal",
+  "ctxRestrainSuspect": "restrain",
+  "ctxSearchSuspect": "searchPerson",
+  "ctxSecureFirearm": "secureWeapon",
+  "ctxEscortSuspect": "follow",
+  "ctxStopEscortSuspect": "stay",
+  "ctxSecureCivilian": "reassure",
+  "ctxRestrainCivilian": "restrain",
+  "ctxFollowCivilian": "follow",
+  "ctxStopFollowingCivilian": "stay",
+  "ctxReleaseCivilian": "setDown",
+  "ctxReleaseCapture": "setDown",
+  "ctxDragCapture": "dragPerson",
+  "ctxCarryCapture": "carryPerson",
+  "ctxDragCivilian": "dragPerson",
+  "ctxCarryCivilian": "carryPerson",
+  "ctxSwitchWeapon": "switchWeapon",
   "siteSettingsToggle": "settings",
   "reset": "restart",
   "cancelTarget": "cancelTarget",
   "back": "undo"
 };
+
+const entryMethodGlyphs:Readonly<Record<string,string>>={
+  pick:'pickLock',pry:'pryTool',cut:'cutTool',wedge:'wedgeTool',
+  unwedge:'removeWedge',breach:'breachTool',ram:'breachTool'
+};
+/** Null represents a missing glyph contract: tests reject unidentified actions. */
+export function resolveTacticalIconId(key:string):string|null{
+  const chosen=aliases[key]??(key.startsWith('ctxTool-')?
+    entryMethodGlyphs[key.slice('ctxTool-'.length)]:undefined)??
+    (/^ctxPower:(on|off):.+$/.test(key)?'power':key);
+  return Object.hasOwn(FIELDWORK_ICON_FAMILY,chosen)?chosen:null;
+}
+const warnedMissingGlyphs=new Set<string>();
 
 /** Resolve the four persistent quick-strip states without mutating actions. */
 export function tacticalIconForState(id:string,label:string){
@@ -234,11 +292,16 @@ export function tacticalIconForState(id:string,label:string){
   if(id==='ctxPace')return state==='WALK'?'ctxPaceWalk':'ctxPace';
   if(id==='ctxFire')return state.startsWith('HOLD')?'ctxFireHold':
     state.startsWith('RETURN')?'ctxFireReturn':'ctxFire';
+  if(id==='ctxWindow')return state.startsWith('CLOSE')?'ctxWindowClose':'ctxWindowOpen';
   return id;
 }
 export function tacticalIcon(key:string):SVGSVGElement{
-  const id=aliases[key]??key;
-  const g=FIELDWORK_ICON_FAMILY[id]??FIELDWORK_ICON_FAMILY.focus;
+  const id=resolveTacticalIconId(key);
+  if(!id&&!warnedMissingGlyphs.has(key)){
+    warnedMissingGlyphs.add(key);
+    console.warn('[Fieldwork icons] Missing semantic icon for',key);
+  }
+  const g=FIELDWORK_ICON_FAMILY[id??'focus'];
   const s=document.createElementNS('http://www.w3.org/2000/svg','svg');
   s.setAttribute('viewBox',g.viewBox);
   s.setAttribute('width','24');s.setAttribute('height','24');

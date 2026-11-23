@@ -10,7 +10,7 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   secondaryReloadAvailable?:boolean;
   nodeKind?:string;nodeMoveMode?:string;aimLabel?:string;nodeFirePolicy?:string;
   watchActive?:boolean;
-  nearMovable?:boolean;nearWindow?:boolean;nearDoor?:boolean;
+  nearMovable?:boolean;nearWindow?:boolean;nearWindowOpen?:boolean;nearDoor?:boolean;
   powerActions?:readonly ContextAction[];
   treatTargetName?:string;treatCaptureTarget?:boolean;
   nearCivilian?:boolean;escortableCivilian?:boolean;
@@ -45,7 +45,11 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     {id:'ctxDoorFlash',label:'FLASH ×'+o.flashRemaining,group:'primary',
       disabled:o.flashRemaining<=0,title:'Flash through this door'},
     ...(o.availableTools??[]).map(method=>({id:'ctxTool-'+method,
-     label:method.toUpperCase(),group:'primary' as const,
+     label:method==='pick'?'PICK LOCK':
+       method==='unwedge'?'REMOVE WEDGE':
+       method==='breach'?'BREACH DOOR':
+       method==='ram'?'RAM DOOR':method.toUpperCase(),
+     group:'primary' as const,
      title:'Use equipped '+method+' tool at door'})), 
   ];
   return doorActions;
@@ -58,12 +62,12 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     {id:'ctxWait',label:'WAIT',group:'primary',
       pressed:o.nodeKind==='wait'||o.nodeKind==='holdClear',title:'Wait at this position'},
     ...(o.treatTargetName?[{id:'ctxTreat',
-      label:o.treatCaptureTarget?'TREAT CAPTURE TARGET':'TREAT',
+      label:o.treatCaptureTarget?'TREAT TARGET':'TREAT',
       group:'primary' as const,
       title:o.treatCaptureTarget?
         'Stabilize actual bleeding before extraction to prevent death · requires issued medical supplies':
         'Queue medical treatment for '+o.treatTargetName}]:[]),
-    ...(o.nearDoor?[{id:'ctxDoor',label:'DOOR',group:'primary' as const,
+    ...(o.nearDoor?[{id:'ctxDoor',label:'DOOR ACTIONS',group:'primary' as const,
       title:'Show actions for a reachable door'}]:[]),
     ...(o.powerActions??[]),
     ...(o.nearSuspect?[{id:'ctxChallengeSuspect',label:'CHALLENGE',
@@ -79,35 +83,35 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     ...(o.nearDroppedFirearm?[{id:'ctxSecureFirearm',label:'SECURE WEAPON',
       group:'primary' as const,
       title:'Secure an actual visible dropped firearm through physical contact'}]:[]),
-    ...(o.nearEscortableSuspect?[{id:'ctxEscortSuspect',label:'FOLLOW SUSPECT',
+    ...(o.nearEscortableSuspect?[{id:'ctxEscortSuspect',label:'FOLLOW ME',
       group:'primary' as const,title:'Tell a cooperative surrendered suspect to stand with hands raised and follow'}]:[]),
-    ...(o.nearFollowingSuspect?[{id:'ctxStopEscortSuspect',label:'STOP FOLLOW',
+    ...(o.nearFollowingSuspect?[{id:'ctxStopEscortSuspect',label:'STAY HERE',
       group:'primary' as const,title:'Tell a following suspect to stop and hold their actual position'}]:[]),
-    ...(o.nearCivilian?[{id:'ctxSecureCivilian',label:'SECURE',
+    ...(o.nearCivilian?[{id:'ctxSecureCivilian',label:'REASSURE',
       group:'primary' as const,
       title:'Queue a physical reassurance and stay command'}]:[]),
     ...(o.nearRestrainableCivilian?
       [{id:'ctxRestrainCivilian',label:'RESTRAIN',
         group:'primary' as const,
         title:'Physically restrain this compliant person; no consumable required'}]:[]),
-    ...(o.escortableCivilian?[{id:'ctxFollowCivilian',label:'FOLLOW',
+    ...(o.escortableCivilian?[{id:'ctxFollowCivilian',label:'FOLLOW ME',
       group:'primary' as const,
       title:'Call a visible rescue person to follow within unobstructed voice range'}]:[]),
     ...(o.stopFollowingCivilian?[{id:'ctxStopFollowingCivilian',
-      label:'STOP FOLLOWING',group:'primary' as const,
+      label:'STAY HERE',group:'primary' as const,
       title:'Tell the escorted person to hold position until told to follow again'}]:[]),
     ...(o.carryingCivilian?[
-      {id:'ctxReleaseCivilian',label:'RELEASE',group:'primary' as const,
+      {id:'ctxReleaseCivilian',label:'SET DOWN',group:'primary' as const,
        title:'Queue the physical release of the civilian you are carrying'}
     ]:[]),
     ...(o.carryingCaptureTarget?[
-      {id:'ctxReleaseCapture',label:'RELEASE CAPTURE TARGET',group:'primary' as const,
+      {id:'ctxReleaseCapture',label:'SET DOWN TARGET',group:'primary' as const,
        title:'Release the physically held downed target at its actual position'}
     ]:[]),
     ...(o.nearDownedCaptureTarget?[
-      {id:'ctxDragCapture',label:'DRAG CAPTURE TARGET',group:'primary' as const,
+      {id:'ctxDragCapture',label:'DRAG TARGET',group:'primary' as const,
        title:'Arm physical drag · tap a destination or draw a custom transport route'},
-      {id:'ctxCarryCapture',label:'CARRY CAPTURE TARGET',group:'primary' as const,
+      {id:'ctxCarryCapture',label:'CARRY TARGET',group:'primary' as const,
        title:'Arm physical carry · tap a destination or draw a custom transport route'}
     ]:[]),
     ...(o.nearCivilianCasualty?[
@@ -117,7 +121,7 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
        title:'Physically carry an incapacitated civilian to extraction'}
     ]:[]),
     ...(o.secondaryIssued?[{id:'ctxSwitchWeapon',group:'advanced' as const,
-      label:o.secondaryHand==='secondary'?'HOLSTER SIDEARM':'DRAW SIDEARM',
+      label:o.secondaryHand==='secondary'?'SWITCH TO PRIMARY':'DRAW SIDEARM',
       title:o.secondaryHand==='secondary'?
         'Plan return to primary at this waypoint':
         'Plan drawing the actual issued pistol at this waypoint'}]:[]),
@@ -125,7 +129,8 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
       disabled:o.flashRemaining<=0,title:o.flashRemaining>0?'Choose a flash target':'No flash grenades remaining'},
     {id:'ctxSuppress',label:'SUPPRESS',group:'advanced',
       pressed:o.nodeFirePolicy==='suppress',title:'Suppress an area'},
-    {id:'ctxFire',label:o.firePolicy.toUpperCase(),group:'state',
+    {id:'ctxFire',label:o.firePolicy==='hold'?'HOLD FIRE':
+      o.firePolicy==='return'?'RETURN FIRE':o.firePolicy.toUpperCase(),group:'state',
       pressed:o.firePolicy!=='engage',title:'Cycle rules of engagement'},
     {id:'ctxStance',label:o.posture.toUpperCase(),group:'state',
       pressed:o.posture==='crouch',title:'Toggle standing and crouching'},
@@ -141,8 +146,11 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     // Contextual fixtures append AFTER the stable primary order.
     ...(o.nearMovable?[{id:'ctxPush',label:'PUSH',group:'advanced' as const,
       title:'Queue a physical push of nearby light furniture'}]:[]),
-    ...(o.nearWindow?[{id:'ctxWindow',label:'WINDOW',group:'advanced' as const,
-      title:'Queue opening or closing the reachable operable window'}]:[]),
-    ...(o.node?[{id:'ctxDelete',label:'Delete',group:'destructive' as const,title:'Remove selected waypoint'}]:[]),
+    ...(o.nearWindow?[{id:'ctxWindow',
+      label:o.nearWindowOpen?'CLOSE WINDOW':'OPEN WINDOW',
+      group:'advanced' as const,
+      title:o.nearWindowOpen?'Queue closing the observed operable window':
+        'Queue opening the observed operable window'}]:[]),
+    ...(o.node?[{id:'ctxDelete',label:'DELETE POINT',group:'destructive' as const,title:'Remove selected waypoint'}]:[]),
   ];
 }
