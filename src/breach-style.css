@@ -4328,3 +4328,113 @@ body.nvg-selected-view #breach3dCanvas{
  .fw-debrief-v3 .fw-v4-squad .fw-v4-squad-focus .fw-v4-squad-model{
   height:clamp(115px,34dvh,195px);min-height:115px}
 }
+
+
+/* V7: every ranked operator is one actual shared-3D lineup card. Rank, name,
+   condition and points sit INSIDE the model box; the identification color
+   lives at the foot of the card. Card chrome never replaces the live rigs. */
+.fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-squad-content{
+ --fw-v7-lineup-height:clamp(290px,48dvh,500px);
+ --fw-v7-heading-height:116px;
+ --fw-v7-dot-height:44px;
+ display:block;position:relative;min-width:0}
+.fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-squad-focus{
+ display:flex;flex-direction:column;gap:8px;order:initial;
+ width:100%;padding:0;background:transparent;border:0}
+.fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-squad-model{
+ position:relative;display:block;box-sizing:border-box;
+ width:100%;height:var(--fw-v7-lineup-height);
+ min-height:var(--fw-v7-lineup-height);border-radius:7px;
+ background:#1b3028;border:1px solid #597260}
+.fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection)
+ .fw-v7-lineup-model .fw-v4-model-canvas{
+ position:absolute;left:0;right:0;top:var(--fw-v7-heading-height);
+ width:100%;height:calc(100% - var(--fw-v7-heading-height) - var(--fw-v7-dot-height))!important;
+ max-width:100%;z-index:1}
+.fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-list{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ position:absolute;top:0;left:0;right:0;z-index:2;
+ box-sizing:border-box;width:100%;height:var(--fw-v7-lineup-height);
+ padding:7px;gap:4px;align-content:stretch;pointer-events:none}
+.fw-v4-squad:not(.fw-v4-has-selection) .fw-v7-operator-card{
+ display:flex;flex-direction:column;align-items:stretch;
+ position:relative;min-width:0;height:100%;box-sizing:border-box;
+ background:linear-gradient(180deg,#30483a77 0%,#223b311e 36%,#2743361c 100%);
+ border:1px solid #496858;border-radius:8px;
+ pointer-events:none;transition:border-color .12s ease}
+.fw-v4-squad:not(.fw-v4-has-selection) .fw-v7-operator-card:has(.fw-v4-rank-row:hover),
+.fw-v4-squad:not(.fw-v4-has-selection) .fw-v7-operator-card:has(.fw-v4-rank-row:focus-visible),
+.fw-v4-squad:not(.fw-v4-has-selection) .fw-v7-operator-card:has(.fw-v7-operator-dot:hover){
+ border-color:#e2c995;box-shadow:inset 0 0 0 1px #c0aa7b}
+.fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-row{
+ position:relative;z-index:3;flex:0 0 var(--fw-v7-heading-height);
+ display:flex;flex-direction:column;justify-content:center;align-items:center;
+ box-sizing:border-box;width:100%;min-width:0;min-height:0;
+ border:0;box-shadow:none;border-radius:7px 7px 0 0;
+ background:transparent;color:#f3e6cb;gap:4px;
+ text-align:center;padding:6px 2px;pointer-events:auto;cursor:pointer}
+.fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection)
+ .fw-v4-rank-row:hover,
+.fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection)
+ .fw-v4-rank-row:focus-visible{
+ background:#526f5344;border:0;outline:2px solid #d9c59b;outline-offset:-3px}
+.fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-number{
+ order:0;font:800 12px/1.1 var(--ui-display);color:#d9cba9}
+.fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-identity{
+ order:1;display:flex;flex-direction:column;align-items:center;
+ gap:3px;min-width:0;width:100%}
+.fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-identity strong{
+ font:800 clamp(11px,1.8vw,17px)/1.1 var(--ui-display);
+ width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-identity small{
+ font:700 9px/1.1 var(--ui-display);color:#baccb9;white-space:normal}
+.fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-points{
+ order:2;display:flex;align-items:baseline;justify-content:center;
+ gap:4px;min-width:0}
+.fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-points strong{
+ font:800 clamp(17px,3vw,27px)/1 var(--ui-display);color:#efd9b4}
+.fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-points small{
+ font:700 9px var(--ui-display);color:#baceb9}
+.fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection)
+ .fw-v7-operator-dot{
+ position:absolute;z-index:3;bottom:0;left:0;right:0;
+ display:flex;align-items:center;justify-content:center;
+ box-sizing:border-box;width:100%;height:var(--fw-v7-dot-height);
+ min-height:44px;padding:3px;border:0;background:transparent;
+ margin:0;border-radius:0 0 7px 7px;pointer-events:auto;cursor:pointer}
+.fw-v7-operator-dot::before{
+ content:'';display:block;width:15px;height:15px;border-radius:50%;
+ background:var(--fw-after-operator-color,#88b4c8);
+ border:2px solid #d7ddce;box-shadow:0 1px 6px #0b1915aa}
+.fw-v4-squad:not(.fw-v4-has-selection) .fw-v7-operator-dot:hover::before,
+.fw-v4-squad:not(.fw-v4-has-selection) .fw-v7-operator-dot:focus-visible::before{
+ outline:3px solid #e7d2a3;outline-offset:3px}
+.fw-v4-squad.fw-v4-has-selection .fw-v7-operator-dot{display:none}
+@media(max-width:700px){
+ .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-squad-content{
+  --fw-v7-lineup-height:clamp(290px,51dvh,470px);
+  --fw-v7-heading-height:105px}
+ .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-list{
+  padding:5px;gap:3px}
+ .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-row{
+  min-height:0;padding:5px 1px;gap:3px}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-number{font-size:11px}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-identity strong{font-size:12px}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-identity small{font-size:8px}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-points strong{font-size:19px}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-points small{font-size:8px}
+}
+@media(max-width:360px){
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-identity strong{font-size:11px}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-points{gap:2px}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-points strong{font-size:17px}
+}
+@media(max-height:480px){
+ .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-squad-content{
+  --fw-v7-lineup-height:205px;--fw-v7-heading-height:74px}
+ .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection)
+ .fw-v4-rank-row{gap:1px;padding:2px}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-identity small{display:none}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-number{font-size:10px}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-points strong{font-size:16px}
+}
