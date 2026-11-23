@@ -85,8 +85,11 @@ test('V4-2: initial squad is unselected and shows all ranked operators without 2
  assert.match(text(root),/16 pts/);
  assert.match(text(root),/not the mission grade or Campaign XP/);
  rows[2].click();
- assert.deepEqual(chosen,['moss']);
- assert.deepEqual(details,[]);
+ assert.deepEqual(chosen,[]);
+ assert.deepEqual(details,['moss']);
+ assert.equal(descendants(root,'fw-v4-squad-model').length,1);
+ assert.ok(rows.every(row=>row.getAttribute('aria-label')?.startsWith('Open ')));
+ assert.equal(descendants(root,'fw-v4-rank-list').length,1);
 }));
 
 test('V4-2: selected performance keeps squad ranks and offers explicit return to overview',()=>
@@ -105,8 +108,10 @@ test('V4-2: selected performance keeps squad ranks and offers explicit return to
  assert.match(text(root),/COMBAT/);
  assert.match(text(root),/OBJECTIVE/);
  assert.equal(descendants(root,'fw-v3-miniature').length,0);
+ rows[0].click();
+ assert.deepEqual(actions.more,['rook']);
  descendants(root,'fw-v3-details-link')[0].click();
- assert.deepEqual(actions.more,['moss']);
+ assert.deepEqual(actions.more,['rook','moss']);
  descendants(root,'fw-v4-overview-back')[0].click();
  assert.deepEqual(actions.chosen,[null]);
 }));
