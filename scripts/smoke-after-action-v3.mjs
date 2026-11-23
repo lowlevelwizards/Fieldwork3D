@@ -217,21 +217,31 @@ try{
      const cards=[...node.querySelectorAll('.fw-v7-operator-card')];
      const rows=cards.map(card=>card.querySelector('.fw-v4-rank-row'));
      const dots=cards.map(card=>card.querySelector('.fw-v7-operator-dot'));
+     const canvas=node.querySelector('.fw-v7-lineup-model canvas')
+       .getBoundingClientRect();
      return {stripTop:strip.top,stripBottom:strip.bottom,
-       modelTop:model.top,modelBottom:model.bottom,
+       modelTop:model.top,modelBottom:model.bottom,modelHeight:model.height,
        cards:cards.length,dots:dots.length,
        headingsInside:rows.every(row=>row.getBoundingClientRect().top>=model.top-2&&
          row.getBoundingClientRect().bottom<model.bottom),
-       dotsInside:dots.every(dot=>dot.getBoundingClientRect().bottom<=model.bottom+3&&
-         dot.getBoundingClientRect().bottom>=model.bottom-8),
+       dotsDirectlyBelowText:dots.every((dot,i)=>{
+         const bottom=rows[i].getBoundingClientRect().bottom;
+         const frame=dot.getBoundingClientRect();
+         return frame.top>=bottom-2&&frame.top<=bottom+2;
+       }),
+       bodiesImmediatelyBelowDots:dots.every(dot=>
+         Math.abs(dot.getBoundingClientRect().bottom-canvas.top)<=3),
+       bodyHeight:canvas.height,
        columns:getComputedStyle(node.querySelector('.fw-v4-rank-list'))
          .gridTemplateColumns.split(' ').length};
    });
    check(stage.cards===4&&stage.dots===4&&stage.columns===4&&
      Math.abs(stage.stripTop-stage.modelTop)<10&&
      Math.abs(stage.stripBottom-stage.modelBottom)<10&&
-     stage.headingsInside&&stage.dotsInside,
-     'The four interactive cards do not enclose their models and bottom dots '+
+     stage.headingsInside&&stage.dotsDirectlyBelowText&&
+     stage.bodiesImmediatelyBelowDots&&stage.bodyHeight>=90&&
+     stage.modelHeight<=365,
+     'Four compact cards must show score, dot, then 3D body without dead footer '+
        name+' '+JSON.stringify(stage));
    await root.locator('.fw-v4-rank-row').first().focus();
    await root.locator('.fw-v4-rank-row').first().press('Enter');
