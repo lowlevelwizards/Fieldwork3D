@@ -149,6 +149,7 @@ test('R7.2 production boundary keeps live HUD, notice and GO running at original
 test('R7.2 scope explicitly includes release gates and unchanged critical modes',()=>{
  const doc=file('docs/r7-2-targeted-ui-invalidation-scope-20261123.md');
  for(const token of ['R7.2.01','R7.2.08','120 ms','180 ms','750 ms',
-  'same-tick','WATCH','replay','No FPS','exact-head'])
+  'same-tick','WATCH','replay','No FPS'])
   assert.ok(doc.includes(token),token);
+ assert.match(doc,/exact-head/i,'release must require exact tested commit');
 });
