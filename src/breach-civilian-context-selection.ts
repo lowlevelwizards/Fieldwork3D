@@ -2,6 +2,7 @@
  * and the command dispatcher. Authoritative GO-time orders still recheck
  * physical reach; this does not mutate civilian state or reveal hidden actors.
  */
+import {assessTacticalAction} from './breach-action-assessment.ts';
 import type {Pt} from './breach-core.ts';
 import type {CivilianActor} from './breach-civilian-types.ts';
 
@@ -38,10 +39,19 @@ export function nearestContextCivilian<T extends Pick<CivilianActor,
     // present sight cone; a NEW FOLLOW requires disclosure. All spoken
     // commands still need an unobstructed route for the actual voice.
     const knownEscort=!!person.following&&person.state==='escorted';
-    if(distance>=best||
-       (distance>28&&action!=='stop-following'&&
-        !(action==='follow'&&knownEscort)&&!disclosed(person.p))||
-       !physicalContact(from,person.p))continue;
+    if(distance>=best)continue; // Preserve nearest-first strict tie behavior.
+    const requireObserved=distance>28&&action!=='stop-following'&&
+      !(action==='follow'&&knownEscort);
+    const interaction=action==='secure'?'secure-civilian':
+      action==='follow'?'follow-civilian':
+      action==='stop-following'?'stop-following-civilian':'restrain-civilian';
+    if(!assessTacticalAction({
+      action:interaction,phase:'selection',
+      actorAvailable:true,targetAvailable:true,domainEligible:true,
+      requireObserved,observed:!requireObserved||disclosed(person.p),
+      distance,maximumRange:spoken?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH,
+      unobstructed:physicalContact(from,person.p)
+    }).allowed)continue;
     nearest=person;best=distance;
   }
   return nearest;
