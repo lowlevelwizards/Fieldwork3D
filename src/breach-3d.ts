@@ -1689,8 +1689,6 @@ export class TacticalScene3D{
     return {x:(world.x+1)*this.width/2,
       y:(1-world.y)*this.height/2};
   }
-  /** Stage initial visible operator geometry separately from the first
-   * tactical WebGL frame. Existing soldier models are reused without reset. */
   /** A terminal mission may reuse the already-built friendly visual meshes.
    * Clone the scene graph (sharing geometry/materials, never reparenting live
    * models), take one deterministic low-ready sample, and restore the live rig
@@ -1737,6 +1735,8 @@ export class TacticalScene3D{
     }
     return copies;
   }
+  /** Stage initial visible operator geometry separately from the first
+   * tactical WebGL frame. Existing soldier models are reused without reset. */
   prepareOperatorModel(a:TeamActor):boolean{
     if(this.actors.has(a.id))return false;
     this.soldier(a);
