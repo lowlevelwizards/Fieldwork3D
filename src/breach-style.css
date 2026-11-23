@@ -4245,3 +4245,86 @@ body.nvg-selected-view #breach3dCanvas{
  .context-tools .context-medical{grid-template-columns:1fr}
  .context-tools .context-medical button{font-size:10px}
 }
+
+
+/* Squad lineup: the identity strip belongs directly above the four recorded
+   models. No separate 2×2 scorecards or duplicate portrait choices. */
+.fw-debrief-v3 .fw-v4-squad .fw-v4-squad-content{
+ display:flex;flex-direction:column;gap:0;min-width:0;align-items:stretch}
+.fw-debrief-v3 .fw-v4-squad .fw-v4-rank-list{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:3px;width:100%;min-width:0;grid-column:auto;grid-row:auto;
+ margin:0;padding:0 1px;box-sizing:border-box}
+.fw-debrief-v3 .fw-v4-squad .fw-v4-rank-row{
+ display:flex;flex-direction:column;align-items:center;justify-content:center;
+ min-width:0;min-height:88px;gap:1px;padding:7px 2px 5px;
+ text-align:center;background:transparent;border:1px solid transparent;
+ border-radius:5px;color:#eee4ca;box-shadow:none;cursor:pointer}
+.fw-debrief-v3 .fw-v4-squad .fw-v4-rank-row:hover,
+.fw-debrief-v3 .fw-v4-squad .fw-v4-rank-row:focus-visible{
+ background:#3c554657;border-color:#9caa88;outline-offset:0}
+.fw-debrief-v3 .fw-v4-squad .fw-v4-rank-row[aria-pressed="true"]{
+ background:#405b493b;border-color:#c8b48d;box-shadow:inset 0 -2px #d3bf96}
+.fw-v4-squad .fw-v4-rank-number{
+ order:0;font:800 11px/1.1 var(--ui-display);color:#bcbfa8}
+.fw-v4-squad .fw-v4-rank-identity{
+ order:1;display:flex;flex-direction:column;align-items:center;
+ gap:3px;width:100%;min-width:0}
+.fw-v4-squad .fw-v4-rank-identity strong{
+ font:800 clamp(11px,1.9vw,16px)/1.15 var(--ui-display);
+ max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fw-v4-squad .fw-v4-rank-identity small{
+ order:2;color:#b9c8b4;font:700 9px/1.1 var(--ui-display);
+ max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fw-v4-squad .fw-v4-rank-row[data-after-condition="wounded"] .fw-v4-rank-identity small,
+.fw-v4-squad .fw-v4-rank-row[data-after-condition="heavy"] .fw-v4-rank-identity small,
+.fw-v4-squad .fw-v4-rank-row[data-after-condition="incapacitated"] .fw-v4-rank-identity small{
+ color:#ecc29a}
+.fw-v4-squad .fw-v4-rank-points{
+ order:2;display:flex;align-items:baseline;justify-content:center;
+ gap:3px;min-width:0;justify-items:center}
+.fw-v4-squad .fw-v4-rank-points strong{
+ font:800 clamp(16px,3vw,23px)/1.1 var(--ui-display);
+ color:#edd7ad}
+.fw-v4-squad .fw-v4-rank-points small{
+ font:700 9px/1 var(--ui-display);color:#b8c6b6}
+.fw-debrief-v3 .fw-v4-squad .fw-v4-squad-focus{
+ display:flex;flex-direction:column;gap:8px;order:0;
+ box-sizing:border-box;width:100%;min-width:0;min-height:0;
+ background:transparent;border:0;padding:0}
+.fw-debrief-v3 .fw-v4-squad .fw-v4-squad-focus .fw-v4-squad-model{
+ display:block;grid-column:auto;grid-row:auto;
+ box-sizing:border-box;width:100%;
+ height:clamp(190px,39dvh,420px);min-height:190px;
+ border:1px solid #4c6556;border-radius:6px;
+ background:#1b3028}
+.fw-debrief-v3 .fw-v4-squad .fw-v4-team-overview,
+.fw-debrief-v3 .fw-v4-squad .fw-v4-selected-overview{
+ box-sizing:border-box;width:100%;grid-column:auto;grid-row:auto;
+ display:grid;gap:9px;min-width:0;padding:10px;
+ background:#20362c;border:1px solid #567362;border-radius:6px}
+.fw-debrief-v3 .fw-v4-squad.fw-v4-record-expanded .fw-v4-operator-record{
+ order:0;width:100%;box-sizing:border-box;margin-top:5px}
+.fw-debrief-v3 .fw-v4-squad.fw-v4-record-expanded
+ .fw-v4-operator-record .fw-v4-squad-model{
+ height:clamp(180px,33dvh,330px);min-height:170px}
+@media(max-width:700px){
+ .fw-debrief-v3 .fw-v4-squad .fw-v4-rank-row{
+  min-height:77px;padding:5px 1px}
+ .fw-v4-squad .fw-v4-rank-identity strong{font-size:12px}
+ .fw-v4-squad .fw-v4-rank-identity small{font-size:8px}
+ .fw-v4-squad .fw-v4-rank-points strong{font-size:19px}
+ .fw-v4-squad .fw-v4-rank-points small{font-size:8px}
+}
+@media(max-width:375px){
+ .fw-debrief-v3 .fw-v4-squad .fw-v4-rank-row{min-height:76px}
+ .fw-v4-squad .fw-v4-rank-identity strong{font-size:11px}
+ .fw-v4-squad .fw-v4-rank-points strong{font-size:17px}
+ .fw-v4-squad .fw-v4-rank-points{gap:2px}
+}
+@media(max-height:480px){
+ .fw-debrief-v3 .fw-v4-squad .fw-v4-rank-row{min-height:61px;padding:3px 1px}
+ .fw-v4-squad .fw-v4-rank-identity small{display:none}
+ .fw-debrief-v3 .fw-v4-squad .fw-v4-squad-focus .fw-v4-squad-model{
+  height:clamp(115px,34dvh,195px);min-height:115px}
+}
