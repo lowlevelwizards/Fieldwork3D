@@ -55,7 +55,6 @@ import {isM9AppearanceId} from './weapons/geometry/beretta-m9-silhouettes.ts';
 import {sampleLabPistolFrame,isLabPistolTrack,LAB_PISTOL_PREVIEW_SCALE}
  from './operator-lab-pistol-tracks.ts';
 import {labPistolContacts} from './operator-lab-pistol-contacts.ts';
-import {presentLabPistolHandShapes} from './operator-lab-pistol-hand-visual.ts';
 import {presentLabBerettaPreview,clearLabBerettaPreview}
  from './operator-lab-beretta-preview.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
@@ -2093,8 +2092,6 @@ function draw(){
     hitYaw:motion.heading+Math.PI/2,
     hitAge:track==='wounded'?Math.max(0,clock-.7):undefined,
     hitSeverity:2},0);
-  presentLabPistolHandShapes(rig,!!sidearm&&!comparing,
-   pistolFrame?.stance==='retention',!!pistolReload);
   if(sidearm&&!comparing){
    // Even during a holster/draw phase the hidden primary must not suddenly
    // appear behind the pistol. Only the actual carried sidearm is visible.
@@ -2308,10 +2305,19 @@ function draw(){
    pistolFrame.slideRack.weight.toFixed(3):'';
   canvas.dataset.poseSidearmRackPull=pistolFrame?.slideRack?
    pistolFrame.slideRack.pull.toFixed(3):'';
-  canvas.dataset.poseSidearmTriggerIndex=String(!!sidearm&&
-   !!rig.arms[1].hand.getObjectByName('operator-lab-trigger-index')?.visible);
-  canvas.dataset.poseSidearmSupportThumb=String(!!sidearm&&
-   !!rig.arms[0].hand.getObjectByName('operator-lab-support-thumb')?.visible);
+  // The Lab intentionally uses the same unembellished block hands as
+  // gameplay. Check for lingering extra digit geometry when rendering.
+  canvas.dataset.poseSidearmExtraDigits=String(!!sidearm&&
+   !!(rig.arms[1].hand.getObjectByName('operator-lab-trigger-index')||
+      rig.arms[0].hand.getObjectByName('operator-lab-support-thumb')));
+  canvas.dataset.poseSidearmSupportLocalZ=sidearm?
+   rig.arms[0].hand.position.z.toFixed(3):'';
+  canvas.dataset.poseSidearmFiringLocalZ=sidearm?
+   rig.arms[1].hand.position.z.toFixed(3):'';
+  canvas.dataset.poseSidearmSupportLocalX=sidearm?
+   rig.arms[0].hand.position.x.toFixed(3):'';
+  canvas.dataset.poseSidearmFiringLocalX=sidearm?
+   rig.arms[1].hand.position.x.toFixed(3):'';
   // Local +X is barrel-forward; compare actual solved palm positions.
   canvas.dataset.poseSidearmSupportAhead=sidearm?
    (rig.arms[0].hand.position.x-rig.arms[1].hand.position.x).toFixed(3):'';

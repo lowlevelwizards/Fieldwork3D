@@ -10,7 +10,8 @@ import {beginOperatorFramePose,workingOperatorRig,finishOperatorFramePose}
  from './breach-operator-frame-output.ts';
 import {updateOperatorAppearance} from './breach-operator-appearance.ts';
 import {presentSecondaryDraw,presentSecondaryReload} from './secondary-holster-visual.ts';
-import {secondaryUpperBodyTargets} from './secondary-upper-body-pose.ts';
+import {secondaryUpperBodyTargets,LAB_CLOSE_RETENTION}
+ from './secondary-upper-body-pose.ts';
 /** Roadmap 2 Stage 11: presentation-only operator pose orchestrator.
  * This is the compatibility-preserving home for the existing pose evaluation;
  * it never writes actor simulation, collision, inventory or shot ballistics.
@@ -1110,8 +1111,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       // downward rifle pole folds pistol wrists across the torso.
       const closeLab=!!p.labPistolContacts&&
        p.labPistolStance==='retention';
+      const retentionPole=i===0?
+       LAB_CLOSE_RETENTION.supportElbowPole:
+       LAB_CLOSE_RETENTION.firingElbowPole;
       const guide=closeLab?
-       (i===0?P(-1,-5,-7):P(-3,-4,8)):
+       P(retentionPole.x,retentionPole.y,retentionPole.z):
        (i===0?P(5,-8,-3):P(5,-8,4));
       const solved=solveTwoBone(shoulder,requested,10,10,guide,ARM_LIMITS);
       arm.bend.copy(solved.bendPlane);

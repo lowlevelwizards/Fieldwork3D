@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,existsSync} from 'node:fs';
+import * as THREE from 'three';
+import {solveTwoBone,ARM_LIMITS,intersectsTorso}
+ from '../src/breach-ik.ts';
+import {ANATOMY} from '../src/breach-anatomy.ts';
 import {GLOCK_APPEARANCE_REFERENCES}
  from '../src/weapons/geometry/glock-family-silhouettes.ts';
 import {M9_APPEARANCE_REFERENCES}
@@ -12,7 +16,8 @@ import {LAB_TRACKS} from '../src/breach-lab-tracks.ts';
 import {isLabPistolTrack,sampleLabPistolFrame,LAB_PISTOL_PREVIEW_SCALE}
  from '../src/operator-lab-pistol-tracks.ts';
 
-import {secondaryUpperBodyTargets} from '../src/secondary-upper-body-pose.ts';
+import {secondaryUpperBodyTargets,LAB_CLOSE_RETENTION}
+ from '../src/secondary-upper-body-pose.ts';
 import {labPistolContacts} from '../src/operator-lab-pistol-contacts.ts';
 import {glockArtSockets} from '../src/weapons/geometry/glock-family-silhouettes.ts';
 import {m9ArtSockets} from '../src/weapons/geometry/beretta-m9-silhouettes.ts';
@@ -148,6 +153,52 @@ test('Ready tab actions move both real pistol wrists and muzzle distinctly',()=>
   fraction:1,aim:1,moving:false,obstructed:false
  }).firing,{x:13.4,y:-.25,z:2});
 });
+test('close retention keeps both arms on their own side, no torso penetration',()=>{
+ const fire=LAB_CLOSE_RETENTION.firing;
+ const support=LAB_CLOSE_RETENTION.support;
+ const point=(x)=>new THREE.Vector3(x.x,x.y,x.z);
+ const actual=secondaryUpperBodyTargets({
+  fraction:1,aim:0,moving:false,obstructed:false,stance:'retention',
+  labContacts:labPistolContacts('glock-g19-gen3')
+ });
+ assert.deepEqual(actual.firing,fire);
+ assert.deepEqual(actual.support,support);
+ assert.ok(fire.x<9&&fire.x>7,'pistol must be close, but outside the right ribs');
+ assert.ok(support.x>6.7,'support palm clears front of chest/vest');
+ assert.ok(support.x<fire.x,'offhand stays slightly rearward of pistol');
+ assert.ok(fire.z>5.5&&support.z< -5.5,'hands never cross centerline');
+ assert.ok(fire.y<0&&support.y>0,'pistol low, free palm guards left pectoral');
+ assert.ok(!intersectsTorso(point(actual.firing)));
+ assert.ok(!intersectsTorso(point(actual.support)));
+
+ for(const [side,start,end,pole] of [
+  ['support',ANATOMY.shoulderLeft,support,LAB_CLOSE_RETENTION.supportElbowPole],
+  ['firing',ANATOMY.shoulderRight,fire,LAB_CLOSE_RETENTION.firingElbowPole]
+ ]){
+  const limb=solveTwoBone(point(start),point(end),10,10,point(pole),ARM_LIMITS);
+  assert.equal(limb.reached,true,side+' wrist reachable');
+  assert.ok(limb.joint.y< -4,side+' elbow drops alongside body');
+  if(side==='support')
+   assert.ok(limb.joint.z< -7,side+' elbow remains left of torso');
+  else assert.ok(limb.joint.z>7,side+' elbow remains right of torso');
+  assert.ok(!intersectsTorso(limb.joint),
+   side+' elbow must not be buried in the vest');
+ }
+ const ready=secondaryUpperBodyTargets({
+  fraction:1,aim:.12,moving:false,obstructed:false,
+  stance:'ready'
+ });
+ assert.ok(ready.firing.x-fire.x>2,'pistol remains retracted versus ready');
+});
+test('Lab-only extra fingers have been deleted, not merely hidden',()=>{
+ const lab=source('src/breach-operator-lab.ts');
+ const visual=source('src/breach-operator-upper-body-output.ts');
+ assert.equal(existsSync(new URL('../src/operator-lab-pistol-hand-visual.ts',
+  import.meta.url)),false);
+ assert.doesNotMatch(lab,/presentLabPistolHandShapes/);
+ assert.doesNotMatch(visual,/BoxGeometry|operator-lab-trigger-index/);
+ assert.ok(lab.includes('poseSidearmExtraDigits'));
+});
 test('Only empty reloads rack the rear slide, after magazine seating',()=>{
  const empty=track=>[.7,1.4,1.95,2.13,2.25,2.5]
   .map(t=>({time:t,frame:sampleLabPistolFrame(track,t)}));
@@ -205,12 +256,12 @@ test('Lab uses the live operator rig and preserves the unissued-only M9 boundary
  assert.ok(lab.includes('PISTOL PREVIEW'));
  assert.ok(source('src/secondary-holster-visual.ts').includes('labScale?:number'));
  assert.ok(lab.includes('labPistolContacts(sidearm)'));
- assert.ok(lab.includes('presentLabPistolHandShapes(rig,'));
+ assert.ok(!lab.includes('presentLabPistolHandShapes(rig,'));
  assert.ok(lab.includes('poseSidearmSupportAhead'));
  assert.ok(source('src/breach-operator-upper-body-output.ts')
   .includes('orientLabPistolHand('));
- assert.ok(source('src/operator-lab-pistol-hand-visual.ts')
-  .includes('operator-lab-trigger-index'));
+ assert.ok(!existsSync(new URL('../src/operator-lab-pistol-hand-visual.ts',
+  import.meta.url)));
  assert.ok(lab.includes('labPistolSlideRack:pistolFrame?.slideRack'));
  assert.ok(contract.includes('labPistolContacts?:LabPistolContacts'));
  assert.ok(contract.includes('labPistolSlideRack?:'));
