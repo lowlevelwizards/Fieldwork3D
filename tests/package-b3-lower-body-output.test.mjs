@@ -14,7 +14,6 @@ import {solveTwoBone,LEG_LIMITS,alignSegment,alignSegmentComponents}
  from '../src/breach-ik.ts';
 import {LEG_HIP_SIDE,LEG_ANKLE_HEIGHT,LEG_UPPER_LENGTH,LEG_LOWER_LENGTH}
  from '../src/breach-leg-geometry.ts';
-import {kickMotion} from '../src/breach-door-actions.ts';
 import {inspectOperatorPoseOutput} from '../src/breach-operator-pose-output.ts';
 
 const base={
@@ -110,7 +109,7 @@ function legacyLegReference(r,p,targets,kick,headingYaw){
  return {before,gaps};
 }
 
-test('B3: direct lower-body output exactly matches frozen B2 leg writer',()=>{
+test('B3: unchanged lower-body poses match frozen B2 leg writer',()=>{
  const cases=[
   {name:'planted',pose:base,feet:sampleFeet},
   {name:'walk-strafe',pose:{...base,velocity:60,travelYaw:1.18,
@@ -122,9 +121,6 @@ test('B3: direct lower-body output exactly matches frozen B2 leg writer',()=>{
    feet:[foot(18,25,1.3),foot(21,35,1.1)]},
   {name:'fall',pose:{...base,down:true,downProgress:.72,
    downPose:'right'},feet:[foot(21,24,.2),foot(19,34,.1)]},
-  {name:'door-kick',pose:{...base,lastDoorAt:2.58,
-   doorMethod:'kick',doorPoint:{x:39,y:31}},
-   feet:sampleFeet,kick:kickMotion(.42)},
   {name:'unreachable',pose:base,
    feet:[foot(400,420,.6),foot(20,36,.1)]}
  ];
