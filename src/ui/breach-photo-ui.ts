@@ -16,9 +16,10 @@ export function mountBreachPhotoUi(){
  replay.title='Enter replay Photo Mode';replay.textContent='◉ PHOTO';
  document.getElementById('replayTopHud')?.prepend(replay);
  const clean=document.createElement('button');
- clean.type='button';clean.id='replayCleanToggle';clean.textContent='◫ CLEAN';
+ clean.type='button';clean.id='replayCleanToggle';clean.textContent='◫ HIDE HUD';
  clean.className='photo-entry';clean.setAttribute('aria-pressed','false');
- clean.title='Hide the replay HUD; tap again to restore';
+ clean.title='Hide replay interface for a clean camera view';
+ clean.setAttribute('aria-label','Hide replay HUD');
  document.getElementById('replayTopHud')?.prepend(clean);
  const access=document.createElement('button');
  access.type='button';access.id='photoLibraryAccess';

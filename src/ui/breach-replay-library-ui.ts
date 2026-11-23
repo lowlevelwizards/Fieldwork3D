@@ -48,7 +48,9 @@ async function renderSavedReplayLibrary():Promise<void>{
         (item.complete?'':' · PARTIAL');
       information.append(name,details);
       const watch=document.createElement('button');watch.type='button';
-      watch.textContent='WATCH';watch.className='replay-library-watch';watch.title='Open saved recording';
+      watch.textContent='WATCH REPLAY';watch.className='replay-library-watch';
+      watch.title='Play this saved mission recording';
+      watch.setAttribute('aria-label','Watch saved replay '+item.siteName);
       watch.addEventListener('click',()=>{void playSavedReplay(item.id);});
       const favorite=document.createElement('button');favorite.type='button';
       favorite.textContent=item.favorite?'★':'☆';favorite.className='replay-library-favorite';
@@ -65,15 +67,17 @@ async function renderSavedReplayLibrary():Promise<void>{
         finally{replayLibraryBusy=false;}
       });
       const exportFile=document.createElement('button');exportFile.type='button';
-      exportFile.textContent='EXPORT';exportFile.title='Download full replay file';
+      exportFile.textContent='EXPORT REPLAY';exportFile.title='Download full replay file';
+      exportFile.setAttribute('aria-label','Export replay '+item.siteName);
       exportFile.addEventListener('click',()=>{void exportSavedReplayFile(item.id);});
       const remove=document.createElement('button');remove.type='button';
-      remove.textContent='DELETE';
+      remove.textContent='DELETE REPLAY';
       remove.setAttribute('aria-label','Delete replay '+item.siteName);
       remove.addEventListener('click',async()=>{
         if(replayLibraryBusy)return;
         if(remove.dataset.confirm!=='yes'){
-          remove.dataset.confirm='yes';remove.textContent='CONFIRM';
+          remove.dataset.confirm='yes';remove.textContent='CONFIRM DELETE';
+          remove.setAttribute('aria-label','Confirm deletion of replay '+item.siteName);
           return;
         }
         replayLibraryBusy=true;
@@ -93,7 +97,10 @@ async function renderSavedReplayLibrary():Promise<void>{
       secondary.append(exportFile,remove);
       more.append(summary,secondary);
       more.addEventListener('toggle',()=>{
-        if(!more.open){remove.dataset.confirm='';remove.textContent='DELETE';}
+        if(!more.open){
+          remove.dataset.confirm='';remove.textContent='DELETE REPLAY';
+          remove.setAttribute('aria-label','Delete replay '+item.siteName);
+        }
       });
       row.append(information,watch,favorite,more);
       fragment.append(row);

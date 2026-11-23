@@ -167,6 +167,7 @@ export function renderCombatReport(
      if(shot)act.chooseShot(shot.id);
    },'fw-v3-shot-step');
    prev.disabled=selected?.id===active.shots[0]?.id;
+   prev.setAttribute('aria-label','Previous recorded shot');prev.title='Previous recorded shot';
    const rail=el('div','fw-v3-shot-rail');rail.setAttribute('aria-label','Shots in order');
    for(const [i,s] of active.shots.entries()){
      const b=button(String(i+1),()=>act.chooseShot(s.id),'fw-v3-shot-chip');
@@ -183,10 +184,14 @@ export function renderCombatReport(
      if(shot)act.chooseShot(shot.id);
    },'fw-v3-shot-step');
    next.disabled=selected?.id===active.shots.at(-1)?.id;
+   next.setAttribute('aria-label','Next recorded shot');next.title='Next recorded shot';
    sequence.append(prev,rail,next);
    figureColumn.append(sequence);
  }
- figureColumn.append(button(selected?'▶ WATCH SHOT CLIP':'▶ WATCH INCIDENT',
-   ()=>act.viewReplay(active,selected),'fw-v3-play fw-v6-watch-clip'));
+ const watch=button(selected?'▶ WATCH CLIP':'▶ WATCH INCIDENT',
+   ()=>act.viewReplay(active,selected),'fw-v3-play fw-v6-watch-clip');
+ watch.title=selected?'Watch the recorded clip around this shot':
+   'Watch the recorded incident';
+ figureColumn.append(watch);
  return root;
 }

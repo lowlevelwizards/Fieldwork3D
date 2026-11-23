@@ -177,7 +177,7 @@ try{
     await page.locator('#operationsBoardToggle').click();
     const board=page.locator('#operationsBoard');
     const operator=board.locator('.fw-squad-card').first();
-    await operator.locator('.fw-squad-actions button').filter({hasText:'LOADOUT'}).click();
+    await operator.locator('.fw-squad-actions button').filter({hasText:'EQUIPMENT'}).click();
     const quickGallery=board.locator('.fw-quick-board-gallery .fw-outfitter-gallery');
     assert.ok(await quickGallery.isVisible(),
      'Actual in-game Squad Loadout opens the shared R5 gallery');

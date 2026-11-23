@@ -43,7 +43,7 @@ test('all on-screen contextual action icons use chosen artwork, not legacy place
   })};
   for(const [key,expected] of [
    ['ctxKick','kick'],['ctxFlash','flash'],['ctxDoorFlash','flash'],
-   ['ctxSuppress','suppress'],['ctxWindow','window'],['ctxPush','push'],
+   ['ctxSuppress','suppress'],['ctxWindow','windowOpen'],['ctxPush','push'],
    ['ctxReleaseWatch','releaseWatch'],['siteSettingsToggle','settings'],
    ['reset','restart'],['ctxFireHold','holdFire'],['ctxFireReturn','returnFire']
   ]){
@@ -71,11 +71,14 @@ test('retired HOLD DOOR, PIE, and STRAFE do not appear as selectable actions',()
   assert.ok(!move.some(a=>a.id===obsolete),obsolete);
 });
 
-test('existing HUD and replay actions are wired to the icon registry',()=>{
+test('current replay HUD and UI element owners use approved SVG icons',()=>{
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
- assert.match(main,/tacticalIcon\(playbackIcon\)/);
- assert.match(main,/\['replayBack','rewind'\]/);
- assert.match(main,/\['replayPrevEvent','previousEvent'\]/);
- assert.match(main,/\['watchReplay','watchReplay'\]/);
+ const replay=readFileSync(new URL('../src/ui/breach-replay-hud-controller.ts',import.meta.url),'utf8');
+ const elements=readFileSync(new URL('../src/ui/breach-ui-elements.ts',import.meta.url),'utf8');
+ assert.match(replay,/tacticalIcon\(playbackIcon\)/);
+ assert.match(elements,/\['replayBack','rewind'\]/);
+ assert.match(elements,/\['replayPrevEvent','previousEvent'\]/);
+ assert.match(elements,/\['watchReplay','watchReplay'\]/);
+ assert.match(elements,/\['replayMore','inspect'\]/);
  assert.doesNotMatch(main,/case 'ctxHold'/);
 });

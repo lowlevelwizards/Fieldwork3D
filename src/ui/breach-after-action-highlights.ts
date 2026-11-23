@@ -60,12 +60,12 @@ export function renderAfterActionHighlights(
  play.addEventListener('click',()=>watch(active));
  info.append(play);root.append(hero,info);
  const rail=el('div','fw-v3-highlight-rail');
- rail.setAttribute('aria-label','Select featured highlight');
+ rail.setAttribute('aria-label','Select a recorded moment');
  for(const [i,m] of moments.entries()){
   const b=document.createElement('button');b.type='button';
   b.className='fw-v3-highlight-chip';
   b.setAttribute('aria-pressed',String(m.id===active.id));
-  b.setAttribute('aria-label','Highlight '+(i+1)+' '+m.label);
+  b.setAttribute('aria-label','Moment '+(i+1)+' '+m.label);
   const thumb=highlightCapture.get(rec,m.id);
   if(thumb){const img=document.createElement('img');img.src=thumb.url;img.alt='';
     img.loading='lazy';b.append(img);}

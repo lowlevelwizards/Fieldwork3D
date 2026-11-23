@@ -224,7 +224,7 @@ for(const [key,glyph] of [
   ['stance','crouch'],['briefingToggle','briefing'],
   ['cameraFit','fitView'],['restart','restart'],
   ['watchReplay','watchReplay'],['clear','clearPlan'],
-  ['replayMore','settings']
+  ['replayMore','inspect']
 ] as const)decorateIconButton(ui[key],glyph);
 for(const [key,glyph] of [
   ['replayPrevEvent','previousEvent'],['replayBack','rewind'],

@@ -366,9 +366,15 @@ export function createTacticalPaletteController(config:{
     paletteDistance(at,{x:o.x,y:o.y})<Math.max(o.w,o.h)/2+43);
   // Window interactions may be offered only for currently observed panes;
   // an unrevealed room/window cannot advertise its operability in the menu.
-  const nearWindow=state.windows.some(w=>w.operable&&!w.shattered&&
-    paletteDistance(at,{x:w.x,y:w.y})<54&&
-    liveVisibility(state,{x:w.x,y:w.y}));
+  // Match the command dispatcher's nearest actionable pane exactly.
+  // Never reveal the nearer pane's open state unless it is visible.
+  const nearestWindow=state.windows.filter(w=>w.operable&&!w.shattered&&
+    paletteDistance(at,{x:w.x,y:w.y})<54)
+    .sort((a,b)=>paletteDistance(at,{x:a.x,y:a.y})-
+      paletteDistance(at,{x:b.x,y:b.y}))[0];
+  const nearWindow=nearestWindow&&
+    liveVisibility(state,{x:nearestWindow.x,y:nearestWindow.y})?
+    nearestWindow:undefined;
   const powerActions:ContextAction[]=[];
   if(state.site&&state.sitePower&&state.sitePower.mode===state.lightingMode){
     const power=state.sitePower;
@@ -472,7 +478,8 @@ export function createTacticalPaletteController(config:{
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
     formationEditable:!!door&&canEdit(state),
     stackFormation:door?selectedDoorStackFormation(state,door.id):'auto',
-    nearMovable,nearWindow,powerActions,treatTargetName:treatTarget?.name,
+    nearMovable,nearWindow:!!nearWindow,nearWindowOpen:nearWindow?.open,
+    powerActions,treatTargetName:treatTarget?.name,
      treatCaptureTarget:state.missionType==='capture'&&
        !!treatTarget&&treatTarget.id===state.captureTarget,
     nearDoor:!door&&!!nearbyDoor,

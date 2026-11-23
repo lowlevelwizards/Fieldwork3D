@@ -20,7 +20,7 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
  hooks:CampaignPreGoPrepHooks):{close:()=>void;setAvailable:(available:boolean)=>void}{
  const launch=document.createElement('button');
  launch.type='button';launch.className='fw-pre-go-launch';
- launch.textContent='PREPARE SQUAD EQUIPMENT';
+ launch.textContent='SQUAD EQUIPMENT';
  launch.hidden=true;
  launch.setAttribute('aria-label','Prepare Campaign squad field equipment before GO');
  briefingRoster.insertAdjacentElement('afterend',launch);
@@ -32,7 +32,7 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
  const heading=document.createElement('header');heading.className='fw-pre-go-header';
  const title=document.createElement('div');title.className='fw-pre-go-title';
  const eyebrow=document.createElement('small');eyebrow.textContent='FIELDWORK / CAMPAIGN';
- const headingText=document.createElement('h2');headingText.textContent='SQUAD PREP';
+ const headingText=document.createElement('h2');headingText.textContent='SQUAD EQUIPMENT';
  title.append(eyebrow,headingText);
  const closeButton=document.createElement('button');closeButton.type='button';
  closeButton.className='fw-pre-go-close';closeButton.textContent='BACK TO BRIEFING';
