@@ -19,6 +19,9 @@ export type AfterActionModelPresenter={
  dispose:()=>void;
 };
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
+// One and a half of the former 0.12 zoom-in button steps, for the
+// full debrief lineup only. Individual inspection keeps its prior framing.
+const DEFAULT_SQUAD_ZOOM=.82;
 type Model={rig:OperatorRig|null;holder:THREE.Group;overlay:ForensicModelOverlay|null};
 const pose=(rig:OperatorRig,actor:ReplayActorIdentity)=>{
  poseOperator(rig,{
@@ -97,24 +100,9 @@ export function createAfterActionModelPresenter(
  let selected:string|null=null,dragId:number|null=null,lastX=0,lastY=0;
  let dragTarget:string|null=null;
  let forensicEvidence:ForensicEvidence|null=null;
- let pitch=.16,zoom=1;
+ let pitch=.16,zoom=DEFAULT_SQUAD_ZOOM;
  const individualYaw=new Map<string,number>();
  const lookAt=new THREE.Vector3(0,28,0);
- const viewTools=document.createElement('div');
- viewTools.className='fw-v6-model-tools';
- viewTools.setAttribute('role','group');
- viewTools.setAttribute('aria-label','3D model view controls');
- const modelButton=(label:string,title:string,click:()=>void)=>{
-   const button=document.createElement('button');
-   button.type='button';button.textContent=label;button.title=title;
-   button.setAttribute('aria-label',title);
-   button.addEventListener('click',click);viewTools.append(button);
- };
- modelButton('−','Zoom out',()=>{zoom=clamp(zoom+.12,.65,1.7);draw();});
- modelButton('+','Zoom in',()=>{zoom=clamp(zoom-.12,.65,1.7);draw();});
- modelButton('↺','Reset model view',()=>{
-   individualYaw.clear();pitch=.16;zoom=1;draw();
- });
  const loading=document.createElement('div');
  loading.className='fw-v6-model-loading';
  loading.setAttribute('role','status');
@@ -277,13 +265,15 @@ export function createAfterActionModelPresenter(
        nextHost.textContent='NO RECORDED MODEL FOR THIS CONTACT';
        return;
      }
-     if(selected!==operatorId){pitch=.16;zoom=1;}
+     if(selected!==operatorId){
+       pitch=.16;
+       zoom=operatorId===null?DEFAULT_SQUAD_ZOOM:1;
+     }
      selected=operatorId;
      if(host!==nextHost){
        observer?.disconnect();
        host=nextHost;
        host.replaceChildren(canvas);
-       host.append(viewTools);
        observer?.observe(host);
      }
      queueModels(operatorId);
@@ -303,7 +293,7 @@ export function createAfterActionModelPresenter(
      disposed=true;observer?.disconnect();
      if(buildTimer!==null)window.clearTimeout(buildTimer);
      if(frameRequest!==null)window.cancelAnimationFrame(frameRequest);
-     pending.length=0;loading.remove();viewTools.remove();
+     pending.length=0;loading.remove();
      canvas.removeEventListener('pointerdown',down);
      canvas.removeEventListener('pointermove',move);
      canvas.removeEventListener('pointerup',up);
