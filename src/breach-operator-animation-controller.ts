@@ -33,6 +33,7 @@ import {neutralMannequinWrist,neutralMannequinElbowPole}
 import {solveTwoBone,ARM_LIMITS} from './breach-ik.ts';
 import {beginOperatorArmPose,setOperatorArmSegments,setOperatorHandPose,
  rotateOperatorSupportHand,orientOperatorSupportPalmOnShoulder,
+ orientLabPistolHand,
  operatorHandTransform,operatorHandEuler,
  finishOperatorArmPose} from './breach-operator-upper-body-output.ts';
 import {idleLifeAt} from './breach-idle-life.ts';
@@ -1092,7 +1093,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       stance:p.labPistolStance,
       stanceBlend:p.labPistolStanceBlend,
       labContacts:p.labPistolContacts,
-      labSlideRack:p.labPistolSlideRack
+      labSlideRack:p.labPistolSlideRack,
+      labPitch:p.labPistolPitch
     }):null;
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
@@ -1104,7 +1106,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       const target=i===0?secondaryTarget.support:secondaryTarget.firing;
       const requested=source.clone().lerp(P(target.x,target.y,target.z),
         secondaryTarget.weight);
-      const guide=i===0?P(5,-8,-3):P(5,-8,4);
+      // Lab close retention has its own elbow bend poles. The ordinary
+      // downward rifle pole folds pistol wrists across the torso.
+      const closeLab=!!p.labPistolContacts&&
+       p.labPistolStance==='retention';
+      const guide=closeLab?
+       (i===0?P(-1,-5,-7):P(-3,-4,8)):
+       (i===0?P(5,-8,-3):P(5,-8,4));
       const solved=solveTwoBone(shoulder,requested,10,10,guide,ARM_LIMITS);
       arm.bend.copy(solved.bendPlane);
       arm.outOfReach=!solved.reached;
@@ -1113,6 +1121,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       setOperatorArmSegments(scratch,i as 0|1,
         shoulder,solved.joint,solved.effector,scratch.sides[i]);
       setOperatorHandPose(scratch,i as 0|1,solved.effector,0);
+      if(p.labPistolContacts)
+       orientLabPistolHand(scratch,i as 0|1,
+        p.labPistolPitch??0,p.labPistolStance==='retention');
       continue;
     }
     if((manualShort||manualCarry)&&manualSourceFit&&!equipmentActive){
