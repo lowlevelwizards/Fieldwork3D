@@ -2312,6 +2312,9 @@ function draw(){
    !!rig.arms[1].hand.getObjectByName('operator-lab-trigger-index')?.visible);
   canvas.dataset.poseSidearmSupportThumb=String(!!sidearm&&
    !!rig.arms[0].hand.getObjectByName('operator-lab-support-thumb')?.visible);
+  // Local +X is barrel-forward; compare actual solved palm positions.
+  canvas.dataset.poseSidearmSupportAhead=sidearm?
+   (rig.arms[0].hand.position.x-rig.arms[1].hand.position.x).toFixed(3):'';
   canvas.dataset.poseSidearmSupportX=sidearm?
    rig.arms[0].hand.getWorldPosition(labPistolHandWorld).x.toFixed(3):'';
   canvas.dataset.poseSidearmReload=pistolReload?
