@@ -131,7 +131,6 @@ try{
    check(await page.evaluate(()=>window.__v4Stage3Canvas===
      document.querySelector('#v4-stage3-qa .fw-v4-model-canvas')),
      'Selection rebuilt the WebGL canvas '+label);
-   await root.locator('.fw-v3-details-link').click();
    check(await root.locator('#afterActionOperatorRecord').count()===1,
      'Full operator record did not open '+label);
    check(await page.evaluate(()=>window.__v4Stage3Canvas===
