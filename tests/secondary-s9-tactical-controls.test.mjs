@@ -20,7 +20,7 @@ test('S9: draw/holster is absent without issuance and respects authored waypoint
  assert.equal(issued.find(x=>x.id==='ctxSwitchWeapon')?.label,'DRAW SIDEARM');
  const held=contextActionChoices({...base,secondaryIssued:true,
   secondaryHand:'secondary',secondaryReloadAvailable:false});
- assert.equal(held.find(x=>x.id==='ctxSwitchWeapon')?.label,'HOLSTER SIDEARM');
+ assert.equal(held.find(x=>x.id==='ctxSwitchWeapon')?.label,'SWITCH TO PRIMARY');
  assert.equal(held.find(x=>x.id==='ctxReload')?.disabled,true);
  const spare=contextActionChoices({...base,secondaryIssued:true,
   secondaryHand:'secondary',secondaryReloadAvailable:true});

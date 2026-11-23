@@ -43,7 +43,7 @@ test('all on-screen contextual action icons use chosen artwork, not legacy place
   })};
   for(const [key,expected] of [
    ['ctxKick','kick'],['ctxFlash','flash'],['ctxDoorFlash','flash'],
-   ['ctxSuppress','suppress'],['ctxWindow','window'],['ctxPush','push'],
+   ['ctxSuppress','suppress'],['ctxWindow','windowOpen'],['ctxPush','push'],
    ['ctxReleaseWatch','releaseWatch'],['siteSettingsToggle','settings'],
    ['reset','restart'],['ctxFireHold','holdFire'],['ctxFireReturn','returnFire']
   ]){
