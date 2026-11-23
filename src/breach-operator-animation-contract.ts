@@ -74,6 +74,8 @@ export type OperatorPose={
   /** A3.5: typed anchor from an existing simulation-owned contact. */
   physicalContact?:PhysicalContact|null;
   kickFoot?:0|1|null;
+  /** Fixed at kick windup, never recomputed from a rotating door leaf. */
+  kickImpactPoint?:{x:number;y:number}|null;
   doorMethod?:'open'|'close'|'kick'|'hold';down:boolean;
   lastBashAt?:number;bashRole?:BashRole;
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
