@@ -1085,7 +1085,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       aim:p.aimBlend??(p.aiming?1:0),moving:physicalSpeed>3,
       obstructed:!!p.obstruction||!!p.clearanceBlocked,
       reloadProgress:p.secondaryReload?
-        p.secondaryReload.elapsed/Math.max(.001,p.secondaryReload.duration):null
+        p.secondaryReload.elapsed/Math.max(.001,p.secondaryReload.duration):null,
+      stance:p.labPistolStance
     }):null;
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
@@ -1424,7 +1425,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // The fixed-step fraction also gives deterministic replay and reversal.
   presentSecondaryDraw(r.hip,r.arms[1].hand,p.equipment?.secondary,
     p.secondarySwitch?.fraction??0,!p.down&&!p.surrender,
-    p.shotHeading??p.heading);
+    p.shotHeading??p.heading,p.labPistolPitch??0);
   presentSecondaryReload(r.hip,r.arms[0].hand,p.equipment?.secondary,
     !p.down&&!p.surrender?p.secondaryReload:null);
   // F6.2: one already issued pouch mesh is attached to the *finished*
