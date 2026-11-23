@@ -238,9 +238,14 @@ export function renderSquadView(report:AfterActionReport,
  roster.setAttribute('aria-label','Open operator records in contribution order');
  const selected=operators.find(op=>op.id===selectedId)??null;
  if(selected)section.classList.add('fw-v4-has-selection');
+ const deployed=(_manifest?.actors??[]).filter(actor=>actor.side==='blue');
  for(const [index,op] of operators.entries()){
+   // Fallback identity follows deployed squad order, never the ranking.
+   // Otherwise a Quick Play operator changes colors when points change.
+   const slot=deployed.findIndex(actor=>actor.id===op.id);
+   const paletteIndex=slot>=0?slot:index;
    const color=colors?.get(op.id)??
-     SQUAD_IDENTIFICATION_COLORS[index%SQUAD_IDENTIFICATION_COLORS.length];
+     SQUAD_IDENTIFICATION_COLORS[paletteIndex%SQUAD_IDENTIFICATION_COLORS.length];
    roster.append(rankRow(op,operators,selected?.id??null,more,color));
  }
  const focus=el('div','fw-v3-squad-focus fw-v4-squad-focus');
