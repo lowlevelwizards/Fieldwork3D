@@ -39,7 +39,7 @@ jobs:
       - name: Fixed cover stance, head and muzzle parity
         run: node --experimental-strip-types --test tests/animation-a3-9-continuous-cover-stance.test.mjs tests/animation-a3-9-cover-height-source.test.mjs tests/animation-a3-9-lab-observability.test.mjs
       - name: Door kick weight and historical contact continuity
-        run: node --experimental-strip-types --test tests/animation-a3-9-kick-weight-transfer.test.mjs tests/animation-a3-9-kick-leg-choice.test.mjs tests/breach-135.test.mjs tests/door-traversal-d4-live-grip.test.mjs
+        run: node --experimental-strip-types --test tests/animation-a3-9-kick-weight-transfer.test.mjs tests/animation-a3-9-kick-leg-choice.test.mjs tests/breach-135.test.mjs tests/door-traversal-d4-live-grip.test.mjs tests/kick-impact-release.test.mjs
       - name: Existing body safety, physical hand and pose regressions
         run: node --experimental-strip-types --test tests/animation-a3-1-friendly-volume.test.mjs tests/animation-a3-6-7-support-contacts.test.mjs tests/package-b3-lower-body-output.test.mjs tests/breach-143b.test.mjs
       - name: TypeScript and production build
