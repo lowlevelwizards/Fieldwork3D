@@ -62,6 +62,44 @@ try{
   },null,{timeout:15000});
   const result=await ready(page);
   await page.screenshot({path:out+'/mp5a3-heavy-reload-iphone.png'});
+  // Sidearms share the SAME real operator rig and seekable timeline.
+  await page.locator('#poseWeapon').selectOption('glock-g19-gen3');
+  await page.locator('#poseAnimation').selectOption('pistol-draw');
+  await page.locator('#timeline').evaluate(e=>{
+   e.value='850';e.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  await page.waitForFunction(()=>{
+   const d=document.getElementById('preview')?.dataset;
+   return d?.poseSidearm==='glock-g19-gen3'&&
+    Number(d.poseSidearmFraction)>.6&&d.poseSidearmMesh==='true'&&
+    d.posePrimaryHidden==='true';
+  },null,{timeout:15000});
+  await page.screenshot({path:out+'/glock-draw-iphone.png'});
+  await page.locator('#poseAnimation').selectOption('pistol-reload-retention');
+  await page.locator('#timeline').evaluate(e=>{
+   e.value='1100';e.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  await page.waitForFunction(()=>{
+   const d=document.getElementById('preview')?.dataset;
+   return d?.track==='pistol-reload-retention'&&
+    Number(d.poseSidearmReload)>.2&&d.poseSidearmMesh==='true';
+  },null,{timeout:15000});
+  await page.screenshot({path:out+'/glock-pistol-reload-iphone.png'});
+  for(const model of ['beretta-m9','beretta-m9a3']){
+   await page.locator('#poseWeapon').selectOption(model);
+   await page.locator('#poseAnimation').selectOption('pistol-high-ready');
+   await page.waitForFunction(id=>{
+    const d=document.getElementById('preview')?.dataset;
+    return d?.poseSidearm===id&&d.poseSidearmArtOnly==='true'&&
+     d.poseSidearmMesh==='true'&&d.posePrimaryHidden==='true';
+   },model,{timeout:15000});
+   if(!(await page.locator('#poseSidearmHint').textContent())?.includes('ART-ONLY'))
+    throw Error('Beretta preview was misrepresented as playable: '+model);
+   await page.screenshot({path:out+'/'+model+'-high-ready-iphone.png'});
+  }
+  // Restore primary weapon for the existing long-gun contact audit.
+  await page.locator('#poseWeapon').selectOption('hk-mp5a3');
+  await page.locator('#poseAnimation').selectOption('reload-emergency');
   await page.locator('#poseInspector').evaluate(e=>e.open=true);
   if(!(await page.locator('#poseInspectorReport').textContent())?.includes('GRIP'))
    throw Error('Integrated pose report not showing');
