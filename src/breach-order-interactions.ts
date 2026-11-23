@@ -1,7 +1,9 @@
 import {assessTacticalAction} from './breach-action-assessment.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
-import {PERSON_CONTACT_REACH,personContactStandpoint}
- from './breach-person-contact-standpoint.ts';
+import {PERSON_CONTACT_REACH} from './breach-person-contact-standpoint.ts';
+import {resolvePhysicalContactEpisode,advancePhysicalContactTime,
+ type PhysicalContactAction}
+ from './breach-physical-contact-episode.ts';
 /** Stage 8: civilian custody/escort, physical prop pushing and window
  * actions. Target/reach checks are unchanged and failed orders remain.
  */
@@ -37,6 +39,34 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
  const {approach,notify,battleEvent,liveVisibility,movePhysicalProp,hear}=port;
  const failCurrentOrder=(s:Session,a:TeamActor,n:PlanNode,reason:string)=>
   failOrder(s,a,n,reason,port.notify);
+ /** Shared GO-only physical stance policy. Full-body contact and movement
+  * remain controlled by the real Session geometry and the existing motor.
+  * The target can be a person or the precise dropped world item.
+  */
+ const contactEpisode=(s:Session,a:TeamActor,n:PlanNode,target:Pt,
+  action:PhysicalContactAction,handLaneClear:boolean,
+  ignoredCivilianId:string|null=null)=>{
+  const firearm=action==='secure-firearm';
+  const world=sessionWorldGeometry(s);
+  return resolvePhysicalContactEpisode({
+   action,from:a.p,target,authoredAt:n.p,handLaneClear,
+   targetVisible:liveVisibility(s,target),
+   canStand:p=>world.passable(p,OPERATOR_RADIUS)&&
+    sweptBodyClear(a.p,p,s.doors,OPERATOR_RADIUS,world)&&
+    !s.operators.some(e=>e!==a&&e.health>0&&
+      d(e.p,p)<(firearm?18:21))&&
+    !s.civilians.some(c=>c.id!==ignoredCivilianId&&c.health>0&&
+      d(c.p,p)<(firearm?18:20))
+  });
+ };
+ /** A progress sample is never an action success. The caller has already
+  * revalidated live hand reach, sightline and facing at this fixed tick.
+  */
+ const continueContact=(a:TeamActor,dt:number,duration:number):boolean=>{
+  const state=advancePhysicalContactTime(a.actionTimer,dt,duration);
+  a.actionTimer=state.elapsed;
+  return state.complete;
+ };
  return function executeInteractionOrder(s:Session,a:TeamActor,n:PlanNode,dt:number):boolean{
   if(n.kind==='interact'){
     if(!n.objectId||!n.interaction){
@@ -114,17 +144,12 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       const range=d(a.p,suspect.p);
       const clear=sweptBodyClear(a.p,suspect.p,s.doors,1.5,
         sessionWorldGeometry(s));
-      if(range>PERSON_CONTACT_REACH&&range<=45&&clear&&
-         d(suspect.p,n.p)<=45&&liveVisibility(s,suspect.p)){
-        const world=sessionWorldGeometry(s);
-        const stand=personContactStandpoint(a.p,suspect.p,p=>
-          world.passable(p,OPERATOR_RADIUS)&&
-          sweptBodyClear(a.p,p,s.doors,OPERATOR_RADIUS,world)&&
-          !s.operators.some(e=>e!==a&&e.health>0&&d(e.p,p)<21)&&
-          !s.civilians.some(c=>c.health>0&&d(c.p,p)<20));
-        if(stand){approach(a,stand,dt,s,.65);return true;}
+      const contact=contactEpisode(s,a,n,suspect.p,
+        'restrain-suspect',clear);
+      if(contact.kind==='approach'){
+        approach(a,contact.goal,dt,s,.65);return true;
       }
-      if(!assessTacticalAction({
+      if(contact.kind!=='ready'||!assessTacticalAction({
         action:'restrain-suspect',phase:'go',
         actorAvailable:true,targetAvailable:true,domainEligible:true,
         distance:range,maximumRange:PERSON_CONTACT_REACH,
@@ -135,8 +160,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       a.velocity=0;
       const toward=Math.atan2(suspect.p.y-a.p.y,suspect.p.x-a.p.x);
       if(!rotate(a,toward,dt,s))return true;
-      a.actionTimer+=dt;
-      if(a.actionTimer<RESTRAINT_CONTACT_SECONDS)return true;
+      if(!continueContact(a,dt,RESTRAINT_CONTACT_SECONDS))return true;
       suspect.restrained=true;suspect.lastCustodyAt=s.seconds;
       // Completing physical cuffs interrupts any pending escape, hand
       // retrieval or partially drawn pistol at the exact GO-time tick.
@@ -217,11 +241,11 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       const distance=d(a.p,suspect.p);
       const clear=sweptBodyClear(a.p,suspect.p,s.doors,5.5,
         sessionWorldGeometry(s));
-      if(distance>28&&distance<=45&&clear&&d(suspect.p,n.p)<=45&&
-         liveVisibility(s,suspect.p)){
-        approach(a,suspect.p,dt,s,.65);return true;
+      const contact=contactEpisode(s,a,n,suspect.p,'search-suspect',clear);
+      if(contact.kind==='approach'){
+        approach(a,contact.goal,dt,s,.65);return true;
       }
-      if(!assessTacticalAction({
+      if(contact.kind!=='ready'||!assessTacticalAction({
         action:'search-suspect',phase:'go',
         actorAvailable:true,targetAvailable:true,domainEligible:true,
         distance,maximumRange:28,unobstructed:clear
@@ -231,8 +255,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       a.velocity=0;
       if(!rotate(a,Math.atan2(suspect.p.y-a.p.y,suspect.p.x-a.p.x),dt,s))
         return true;
-      a.actionTimer+=dt;
-      if(a.actionTimer<.9)return true;
+      if(!continueContact(a,dt,.9))return true;
       const pistol=suspect.equipment?.secondary;
       if(pistol?.weapon){
         // Physically confiscate only an actually issued carried pistol.
@@ -261,25 +284,11 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       const distance=d(a.p,weapon.p);
       const clear=sweptBodyClear(a.p,weapon.p,s.doors,1.5,
         sessionWorldGeometry(s));
-      if(distance>34&&distance<=58&&clear&&
-         liveVisibility(s,weapon.p)){
-        // Approach a standable position on the operator's side of the
-        // weapon, not the surrendered owner's occupied body center.
-        const world=sessionWorldGeometry(s);
-        const direction=Math.atan2(a.p.y-weapon.p.y,a.p.x-weapon.p.x);
-        let contact:Pt|null=null;
-        for(const theta of [direction,direction+.65,direction-.65,
-          direction+1.3,direction-1.3]){
-          const p={x:weapon.p.x+Math.cos(theta)*25,
-            y:weapon.p.y+Math.sin(theta)*25};
-          if(world.passable(p,7)&&
-             !s.operators.some(e=>e!==a&&e.health>0&&d(e.p,p)<18)){
-            contact=p;break;
-          }
-        }
-        if(contact){approach(a,contact,dt,s,.65);return true;}
+      const contact=contactEpisode(s,a,n,weapon.p,'secure-firearm',clear);
+      if(contact.kind==='approach'){
+        approach(a,contact.goal,dt,s,.65);return true;
       }
-      if(!assessTacticalAction({
+      if(contact.kind!=='ready'||!assessTacticalAction({
         action:'secure-firearm',phase:'go',
         actorAvailable:true,targetAvailable:true,domainEligible:true,
         distance,maximumRange:34,unobstructed:clear
@@ -289,8 +298,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       a.velocity=0;
       if(!rotate(a,Math.atan2(weapon.p.y-a.p.y,weapon.p.x-a.p.x),dt,s))
         return true;
-      a.actionTimer+=dt;
-      if(a.actionTimer<.75)return true;
+      if(!continueContact(a,dt,.75))return true;
       weapon.status='secured';weapon.securedById=a.id;
       const message=a.name+' SECURED DROPPED FIREARM';
       notify(s,message);
@@ -340,21 +348,18 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       const range=person?d(a.p,person.p):Infinity;
       const clear=!!person&&sweptBodyClear(a.p,person.p,s.doors,
         1.5,sessionWorldGeometry(s));
-      if(!voice&&person&&person.health>0&&range>PERSON_CONTACT_REACH&&
-         range<=45&&d(person.p,n.p)<=45&&clear&&
-         liveVisibility(s,person.p)){
-        const world=sessionWorldGeometry(s);
-        const stand=personContactStandpoint(a.p,person.p,p=>
-          world.passable(p,OPERATOR_RADIUS)&&
-          sweptBodyClear(a.p,p,s.doors,OPERATOR_RADIUS,world)&&
-          !s.operators.some(e=>e!==a&&e.health>0&&d(e.p,p)<21)&&
-          !s.civilians.some(c=>c!==person&&c.health>0&&d(c.p,p)<20));
-        if(stand){approach(a,stand,dt,s,.65);return true;}
+      const contact=!voice&&person&&person.health>0?
+        contactEpisode(s,a,n,person.p,
+          n.interaction==='restrain-civilian'?
+          'restrain-civilian':'secure-civilian',clear,person.id):null;
+      if(contact?.kind==='approach'){
+        approach(a,contact.goal,dt,s,.65);return true;
       }
       const knownEscort=!!person?.following&&person.state==='escorted';
       const requireObserved=n.interaction==='follow-civilian'&&
         range>28&&!knownEscort;
       if(!person||person.health<=0||
+         (!voice&&contact?.kind!=='ready')||
          range>(voice?CIVILIAN_VOICE_RANGE:PERSON_CONTACT_REACH)||
          !assessTacticalAction({
            action:n.interaction,phase:'go',
@@ -384,8 +389,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
           failCurrentOrder(s,a,n,'RESTRAINT NOT AVAILABLE');return true;
         }
         if(a.actionTimer===0)a.lastCivilianContactAt=s.seconds;
-        a.actionTimer+=dt;
-        if(a.actionTimer<RESTRAINT_CONTACT_SECONDS)return true;
+        if(!continueContact(a,dt,RESTRAINT_CONTACT_SECONDS))return true;
         person.restrained=true;
         person.lastContactAt=s.seconds;person.lastContactPoint=clone(a.p);
         a.lastCivilianContactAt=s.seconds;
