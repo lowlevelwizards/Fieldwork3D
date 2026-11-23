@@ -768,9 +768,12 @@ const magazineSelector=choose<HTMLSelectElement>('kitMagazines');
 const magazineHint=choose<HTMLElement>('magazineHint');
 function updateMagazineState(){
  const shotgun=weapon.value==='shotgun',unarmed=weapon.value==='none';
- magazineSelector.disabled=shotgun||unarmed;
- if(unarmed)magazineSelector.value='0';
- magazineHint.textContent=unarmed?'Unarmed inspection: zero carried magazines.':shotgun?
+ const sidearm=!!poseSidearm(poseWeaponPreset);
+ magazineSelector.disabled=shotgun||unarmed||sidearm;
+ if(unarmed||sidearm)magazineSelector.value='0';
+ magazineHint.textContent=sidearm?
+  'PISTOL: own detachable magazines and holster; inspect in Poses.':
+  unarmed?'Unarmed inspection: zero carried magazines.':shotgun?
   'SHOTGUN: loose shells; detachable spare magazines are not applicable.':
   'Preview locations use the real equipment carrying ledger.';
 }
@@ -2266,6 +2269,8 @@ function draw(){
    pistolFrame.fraction.toFixed(3):'';
   canvas.dataset.poseSidearmReload=pistolReload?
    (pistolReload.elapsed/pistolReload.duration).toFixed(3):'';
+  canvas.dataset.poseSidearmPresentation=sidearm?
+   (poseSidearmArtOnly(sidearm)?'art-only':'issued-model-preview'):'none';
   canvas.dataset.poseFitSavedWeapon=poseArsenalSavedId??'';
   canvas.dataset.poseFitWeaponReceiver=exactWeaponConfig?.build?.parts.receiver??'';
   canvas.dataset.poseFitWeaponStock=exactWeaponConfig?.build?.parts.stock??'';
