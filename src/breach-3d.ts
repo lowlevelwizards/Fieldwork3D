@@ -114,6 +114,7 @@ import {entryToolVerdict} from './breach-entry-tools.ts';
 import {doorHandPoint} from './breach-door-hand-contact.ts';
 import {doorGripPhysicalContact} from './breach-physical-contact-anchor.ts';
 import {preOpenDoorCandidate} from './breach-preopen-contact.ts';
+import {validateThrow} from './breach-flash.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {armedPrecontactStyle} from './breach-idle-life.ts';
@@ -2376,9 +2377,16 @@ export class TacticalScene3D{
       object.flash.position.x=gunTip?.muzzleX??19.5;
       object.flash.position.y=gunTip?.muzzleY??0;
       if(flashCue.active)object.flash.scale.setScalar(flashCue.scale);
-      const plannedDoor=actor.plan[0]?.kind==='door'&&
-        actor.plan[0].doorId!==undefined?
-        this.frameDoorsById.get(actor.plan[0].doorId):undefined;
+      // A paused OPEN requested beside the REAL doorway should preview
+      // contact even if an unrelated, already-positioned MOVE precedes it.
+      // Reach is checked against the live feet, not the future waypoint.
+      const plannedOpenNode=s.phase==='planning'&&!replay?
+        actor.plan.find(n=>n.kind==='door'&&
+          (n.method==='open'||n.method===undefined)):undefined;
+      const nextDoor=actor.plan[0]?.kind==='door'?
+        actor.plan[0]:plannedOpenNode;
+      const plannedDoor=nextDoor?.doorId!==undefined?
+        this.frameDoorsById.get(nextDoor.doorId):undefined;
       const activeDoor=plannedDoor??(actor.lastDoorId?
         this.frameDoorsById.get(actor.lastDoorId):undefined);
       const handle=activeDoor?
@@ -2404,15 +2412,29 @@ export class TacticalScene3D{
       // OPEN order and same reachable face candidate used at GO-time.
       // The simulation owns subsequent acquisition/release; no motor tick
       // or phantom door command is created while paused.
-      const previewPreOpen=s.phase==='planning'&&plannedDoor&&
-        !physicalGrip&&!actor.physicalContact?
-        preOpenDoorCandidate(s,actor,plannedDoor,
+      const doorFacing=plannedDoor&&handle?
+        Math.atan2(handle.y-actor.p.y,handle.x-actor.p.x):actor.heading;
+      // A paused frame can retain a previous running-step velocity or a
+      // fully RELEASED old contact. Neither should suppress a newly queued
+      // OPEN beside an actually reachable handle. This is read-only pose
+      // projection; GO-time movement and hands stay motor-owned.
+      const previewActor=plannedOpenNode&&plannedDoor&&
+        actor.side==='blue'&&actor.health>0&&actor.targetId===null?
+        {...actor,plan:[plannedOpenNode],heading:doorFacing,
+          velocity:0,aim:0,aimInstruction:null,pace:'walk' as const}:null;
+      const gripActive=!!physicalGrip&&physicalGrip.releasedAt===null;
+      const contactActive=!!actor.physicalContact&&
+        actor.physicalContact.releasedAt===null;
+      const previewPreOpen=previewActor&&
+        !gripActive&&!contactActive?
+        preOpenDoorCandidate(s,previewActor,plannedDoor!,
           sessionWorldGeometry(s)):null;
-      const physicalContact=physicalGrip&&gripDoor&&doorGrip?
+      const physicalContact=gripActive&&physicalGrip&&gripDoor&&doorGrip?
         doorGripPhysicalContact(physicalGrip.doorId,doorGrip,
           doorLeafSegment(gripDoor),actor.p):
-        actor.physicalContact??(previewPreOpen?{
-          ...previewPreOpen,startedAt:poseSeconds-.26}:undefined);
+        contactActive?actor.physicalContact:
+        previewPreOpen?{...previewPreOpen,startedAt:poseSeconds-.26}:
+        actor.physicalContact;
       // A3.8-L: the actual simulation keyway anchor is the lockpick clock.
       // Replaying a recorded frame samples this same contact timestamp;
       // no rendering-only progress state can invent an unlock.
@@ -2550,12 +2572,22 @@ export class TacticalScene3D{
         reloading:actor.reload>0,interacting:!!actor.treatmentActive||
           !!actor.traversal||actor.plan[0]?.kind==='door'
       });
+      // Preview a hooked throw only while actively authoring/performing
+      // the real FLASH node. No phantom grenade or second simulator.
+      const flashOrder=actor.plan[0]?.kind==='flash'?actor.plan[0]:null;
+      const hook=flashOrder?.aimPoint?
+        validateThrow(actor.p,flashOrder.aimPoint,s.doors,[],
+          sessionWorldGeometry(s)):null;
+      const flashHookPoint=hook?.valid&&hook.mode==='doorway'?
+        hook.via:undefined;
       const poseStart=this.profileSceneUpdate?performance.now():0;
       if(this.profileSceneUpdate)
         this.actorPhaseCosts.posePrepMs+=poseStart-posePrepStart;
       poseOperator(object.physical,{
         x:drawActor.x,z:drawActor.z,
-        heading:transport?.heading??drawActor.heading,
+        heading:transport?.heading??(previewPreOpen?
+          doorFacing:drawActor.heading),
+        handlingOverride:previewPreOpen?'high':undefined,
         velocity:actor.traversal?0:actor.velocity,
         seconds:poseSeconds,idleLifeSeconds:actorIdleSeconds,
         precontact,
@@ -2629,11 +2661,12 @@ export class TacticalScene3D{
         reloadRemoved:actor.reloadRemoved,
         reloadInserted:actor.reloadInserted,
         lastThrowAt:actor.lastThrowAt,lastDoorAt:actor.lastDoorAt,
+        flashHookPoint,
         lastBashAt:actor.lastBashAt,bashRole:actor.lastBashRole,
         doorMethod:actor.lastDoorMethod,kickFoot:actor.kickFoot,
         lockpickActive,lockpickProgress,
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
-         doorGrip,physicalContact,
+         doorGrip:previewPreOpen?undefined:doorGrip,physicalContact,
         down:actor.health<=0,surrender:actor.surrendered,
         worldWeaponReleased:actor.surrendered&&actor.releasedWeaponId!=null,
         restrained:actor.restrained===true,
@@ -2644,7 +2677,8 @@ export class TacticalScene3D{
         aiming:!actor.traversal&&actor.aim>.20,
         turning:actor.turning,firing:!!firing&&!actor.traversal,
         aimBlend:actor.aim,recoil:actor.recoil*6,
-        shotHeading:drawActor.weaponYaw,shoulderOffset:actor.aimSideOffset??0,
+        shotHeading:previewPreOpen?doorFacing:drawActor.weaponYaw,
+        shoulderOffset:actor.aimSideOffset??0,
         shoulderPullback:clearance.shoulderPullback,
         hitAge,hitFade,downProgress,
         handlingIntent,

@@ -919,7 +919,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     leftGrip.copy(fit.support).lerp(pouch,gesture.reach);
     leftGrip.lerp(ready,gesture.lift);
   }else if(throwActive){
-    
+
     // A1: timeline-sampled visual gesture only. Hand ownership, simulated
     // throw/release, world trajectory and actor intent remain untouched.
     const gesture=throwSupportGesture(throwAge);
@@ -992,6 +992,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     reachError:number;violations:string[];
     evaluations:number;softScale:number;
   }>|null=diagnosticsEnabled?[]:null;
+  if(p.flashHookPoint&&!p.down&&!p.surrender&&
+    (equipmentActive||throwActive)){
+    const hookTarget=P(p.flashHookPoint.x-p.x,
+      19-frame.chest.position.y,p.flashHookPoint.y-p.z);
+    hookTarget.applyAxisAngle(P(0,1,0),-r.legacyYaw);
+    hookTarget.applyAxisAngle(P(0,1,0),-frame.chest.rotation.y);
+    leftGrip.copy(hookTarget);
+    reaching=true;
+  }
   // The base hold is calculated from the very same ready/aim source used
   // by shot-time geometry. No previous-frame elbow memory; replay is pure.
   const manualCarry=(handling==='high'||handling==='low')&&

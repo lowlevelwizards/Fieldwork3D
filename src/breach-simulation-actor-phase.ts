@@ -125,6 +125,10 @@ export function advanceSimulationActors(s:Session,h:number,
           if(a.escortGoal&&d(a.p,a.escortGoal)>19)
             port.runCustody(s,a,a.escortGoal,h);
           else a.velocity=0;
+          // The target faces the person they're following, including when
+          // waiting close behind. This is actual fixed-step heading, so
+          // the 2D/3D silhouettes and replay remain in agreement.
+          rotate(a,angle(a.p,leader.p),h,s);
         }
       }else if(a.restrained===true)a.velocity=0;
       else advanceSurrenderOpportunity(s,a,h,{

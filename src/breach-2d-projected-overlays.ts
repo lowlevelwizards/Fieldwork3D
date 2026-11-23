@@ -2,14 +2,14 @@
  * presentation; hit testing, order execution and depth belong elsewhere.
  */
 import {doorCenter,type Pt} from './breach-core.ts';
-import {interruptedEntryPoint,paintInterruptedEntryMarker}
- from './ui/interrupted-entry-marker.ts';
+
 import {type Session,type TeamActor,team,enemies,isSeen,lastKnown,
  plannedWindowRoute,flashTrajectory} from './breach-game.ts';
 import type {TacticalScene3D} from './breach-3d.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {paintPassageRanks} from './ui/passage-rank-badges.ts';
+import {selectedActionTarget} from './breach-action-target-marker.ts';
 import {intelPassable} from './breach-intel.ts';
 import {objectiveLocationKnown,approximateObjectiveBounds} from './breach-objective-intel.ts';
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
@@ -285,12 +285,22 @@ function renderProjectedPlans(){
   // A marker is a screen-space annotation, never 3D world geometry.
   paintPassageRanks(state,draw,p=>worldToScreen(p,12),
    colorFor,selected,replaying);
-  // Same witnessed door marker in projected 3D planning, screen-space only.
   if(!replaying){
-    const a=uid(selected),point=a?interruptedEntryPoint(state,a):null;
-    if(point)paintInterruptedEntryMarker(draw,worldToScreen(point,12));
+    const a=uid(selected),target=a?
+      selectedActionTarget(state,a,selectedNode):null;
+    if(target){
+      const location=worldToScreen(target.p,
+        target.kind==='person'?34:target.kind==='prop'?17:10);
+      draw.save();
+      draw.fillStyle='#152b2b';draw.strokeStyle='#f5f4e8';
+      draw.lineWidth=2.5;
+      draw.beginPath();draw.arc(location.x,location.y,6,0,Math.PI*2);
+      draw.fill();draw.stroke();
+      draw.beginPath();draw.arc(location.x,location.y,2.4,0,Math.PI*2);
+      draw.fillStyle='#f5f4e8';draw.fill();draw.restore();
+    }
   }
-  // Recorded operator labels are independent of route visibility.
+// Recorded operator labels are independent of route visibility.
   if(replaying&&replayNameTags)for(const member of team(state)){
     const pawn=worldToScreen(member.p,32);
     draw.textAlign='center';draw.font='700 12px "Saira Condensed",sans-serif';

@@ -22,5 +22,7 @@ test('173: render never advances simulation or adds another foot-placement write
  const scene=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
  assert.match(runtime,/previousRenderActors=renderSnapshot\(state\.operators\)/);
  assert.match(scene,/interpolatedActor\(actor,renderFrame\)/);
- assert.match(scene,/shotHeading:drawActor.weaponYaw/);
+ assert.match(scene,/shotHeading:previewPreOpen\?doorFacing:drawActor\.weaponYaw/);
+ assert.match(scene,/heading:transport\?\.heading\?\?\(previewPreOpen\?/);
+ assert.match(scene,/handlingOverride:previewPreOpen\?'high':undefined/);
 });

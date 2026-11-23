@@ -43,7 +43,7 @@ test('one genuine moving body still gets full collision and authoritative geomet
 });
 test('civilian occupancy preserves live positions without two filtered/spread arrays',()=>{
  const phase=readFileSync(new URL('../src/breach-simulation-motion-phase.ts',import.meta.url),'utf8');
- assert.match(phase,/const nearby:Array<\{id:string;p:Pt\}>=\[\]/);
+ assert.match(phase,/const nearby:Array<\{id:string;p:Pt;side\?:string\}>=\[\]/);
  assert.match(phase,/for\(const a of s\.operators\)if\(a\.health>0\)nearby\.push\(a\)/);
  assert.match(phase,/for\(const c of s\.civilians\)if\(c\.health>0\)nearby\.push\(c\)/);
  assert.match(phase,/isCrowded:p=>s\.operators\.some\(o=>o\.health>0&&/);

@@ -8,6 +8,7 @@ import type {PlanNode} from './breach-plan.ts';
 import type {Pt} from './breach-core.ts';
 import {liveMagazineCapacity} from './arsenal/live-magazine-capacity.ts';
 import {validateThrow} from './breach-flash.ts';
+import {sessionWorldGeometry} from './breach-world-context.ts';
 import {quoteDeployedFieldUse,spendDeployedFieldItem}
  from './equipment-deployed-field-use.ts';
 import {targetAngle} from './breach-plan.ts';
@@ -127,7 +128,11 @@ export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
     if(!n.aimPoint||s.flashRemaining<=0||!field.available){
       h.fail(s,a,n,'FLASH UNAVAILABLE');return true;
     }
-    const trajectory=validateThrow(a.p,n.aimPoint,s.doors);
+    // Real sessions provide the full world. Minimal isolated utility
+    // harnesses still use the legacy activated core site for throw tests.
+    const trajectory=validateThrow(a.p,n.aimPoint,s.doors,[],
+      Array.isArray(s.coverState)&&Array.isArray(s.civilians)?
+        sessionWorldGeometry(s):undefined);
     if(!trajectory.valid){
       h.fail(s,a,n,'FLASH BLOCKED — '+
         (trajectory.reason??'CHECK TRAJECTORY'));return true;
@@ -139,8 +144,10 @@ export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
         h.fail(s,a,n,'FLASH UNAVAILABLE');return true;
       }
       s.flashRemaining--;a.lastThrowAt=s.seconds;
-      s.grenades.push({id:s.nextEffectId++,p:clone(a.p),
-        from:clone(a.p),to:clone(n.aimPoint),age:0,fuse:1.15,
+      const release=trajectory.mode==='doorway'&&trajectory.via?
+        trajectory.via:a.p;
+      s.grenades.push({id:s.nextEffectId++,p:clone(release),
+        from:clone(release),to:clone(n.aimPoint),age:0,fuse:1.15,
         path:trajectory});
       h.battleEvent(s,'flash',a,a.p,a.name+' FLASH OUT');
       h.notify(s,a.name+' FLASH OUT');

@@ -115,6 +115,27 @@ export function createBreachTacticalFrameFeedbackController(config:{
     }
     tacticalFeedback.draw(feedbackDraw,p=>worldToScreen(p,7),
       performance.now(),preview,reducedMotion);
+    // The flash itself is known (our own thrown device), even when a room
+    // is fogged or a wall is between the camera and the detonation. The
+    // over-fog ring reveals no enemies, occupants or hidden architecture.
+    if(!replaying)for(const burst of state.flashBursts){
+      const strength=Math.max(0,1-burst.age/.7);
+      if(strength<=0)continue;
+      const at=worldToScreen(burst.p,17);
+      feedbackDraw.save();
+      feedbackDraw.globalAlpha=.84*strength;
+      feedbackDraw.strokeStyle='#fff5c7';
+      feedbackDraw.fillStyle='#fff9e6';
+      feedbackDraw.lineWidth=3+strength*2;
+      feedbackDraw.beginPath();
+      feedbackDraw.arc(at.x,at.y,10+(1-strength)*57,0,Math.PI*2);
+      feedbackDraw.stroke();
+      feedbackDraw.globalAlpha=.78*strength*strength;
+      feedbackDraw.beginPath();
+      feedbackDraw.arc(at.x,at.y,8+strength*14,0,Math.PI*2);
+      feedbackDraw.fill();
+      feedbackDraw.restore();
+    }
     // Direction-only preview of an authored furniture push. The authoritative
     // simulation still decides how far the real object can move on contact;
     // this never mutates cover, reveals unknown obstacles, or guarantees travel.
@@ -144,6 +165,12 @@ export function createBreachTacticalFrameFeedbackController(config:{
           y:obj.y+Math.sin(yaw)*dist};
         const startPx=worldToScreen(center,13),endPx=worldToScreen(end,13);
         feedbackDraw.save();
+        // This is the exact currently chosen prop, not a free-floating
+        // direction marker. The same white dot persists on queued PUSH.
+        feedbackDraw.fillStyle='#f5f4e8';
+        feedbackDraw.beginPath();
+        feedbackDraw.arc(startPx.x,startPx.y-17,4.5,0,Math.PI*2);
+        feedbackDraw.fill();
         feedbackDraw.strokeStyle='#e4c998';feedbackDraw.fillStyle='#e4c998';
         feedbackDraw.lineWidth=2.4;feedbackDraw.setLineDash([5,4]);
         feedbackDraw.beginPath();feedbackDraw.arc(startPx.x,startPx.y,15,

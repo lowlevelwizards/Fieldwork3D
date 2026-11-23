@@ -11,6 +11,22 @@ export function physicalFollowGoal(
  const dx=leader.priorP?leader.p.x-leader.priorP.x:0;
  const dy=leader.priorP?leader.p.y-leader.priorP.y:0;
  const moved=Math.hypot(dx,dy);
+ // A follower standing in the lead operator's near-forward corridor must
+ // yield BEFORE chasing. Stage them alongside/behind the leader, not at
+ // the center of the path that is about to be occupied. No teleport:
+ // existing civilian/custody motors still sweep every step.
+ const dir=leader.velocity!==undefined&&leader.velocity>3&&moved>.025?
+   Math.atan2(dy,dx):leader.heading;
+ if(follower){
+  const px=follower.p.x-leader.p.x,py=follower.p.y-leader.p.y;
+  const forward=px*Math.cos(dir)+py*Math.sin(dir);
+  const lateral=-px*Math.sin(dir)+py*Math.cos(dir);
+  if(forward>-12&&forward<44&&Math.abs(lateral)<21){
+   const side=lateral<0?-1:1;
+   return {x:leader.p.x-29*Math.cos(dir)-side*34*Math.sin(dir),
+     y:leader.p.y-29*Math.sin(dir)+side*34*Math.cos(dir)};
+  }
+ }
  if(leader.velocity!==undefined&&leader.velocity>3&&moved>.025){
   const dir=Math.atan2(dy,dx);
   return {x:leader.p.x-23*Math.cos(dir),

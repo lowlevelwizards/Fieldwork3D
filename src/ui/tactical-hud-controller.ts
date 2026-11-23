@@ -47,7 +47,7 @@ import {team,isSeen,missionText,operationBriefing,
  type Session,type TeamActor} from '../breach-game.ts';
 import {injuryOf,WEAPONS} from '../breach-combat.ts';
 import {magazineAlert} from '../arsenal/live-magazine-capacity.ts';
-import {executionStatus} from '../breach-execution-state.ts';
+import {liveExecutionStatus,liveExecutionNotice} from './live-execution-presentation.ts';
 import {compactExecutionStatus} from './tactical-hud-density.ts';
 import {tacticalUiActionAvailability} from './tactical-command-affordances.ts';
 import {ExecutionNoticeFeed,locateNoticeOrder} from './execution-feedback.ts';
@@ -383,8 +383,10 @@ export function createTacticalHudController(
   const noticeFeed=new ExecutionNoticeFeed();
   function resetNotices():void{noticeFeed.reset();}
   function renderNotice(node:HTMLElement,events:string[],phase:string,
-    replaying:boolean,executionEvents:readonly import('../breach-execution-events.ts').ExecutionEvent[]):void{
-    const notice=noticeFeed.update(events,phase,performance.now(),executionEvents);
+    replaying:boolean,executionEvents:readonly import('../breach-execution-events.ts').ExecutionEvent[],
+    currentOrders?:readonly {id:string;plan:readonly {id:number}[]}[]):void{
+    const notice=liveExecutionNotice(noticeFeed.update(
+      events,phase,performance.now(),executionEvents),currentOrders??[]);
     node.hidden=!notice||replaying;
     if(!notice||replaying){
       node.removeAttribute('data-notice-key');
@@ -498,10 +500,10 @@ export function createTacticalHudController(
       stateLine=document.createElement('span');
       stateLine.className='unit-execution';button.append(stateLine);
     }
-    const execution=a?executionStatus(a,{
+    const execution=a?liveExecutionStatus(a,{
       phase:state.phase==='planning'&&state.started?'running':state.phase,
       doors:state.doors,peers:input.peers
-    }):null;
+    },state.seconds):null;
     const status=compactExecutionStatus(execution,{
       selected:id===selected,
       phase:state.phase==='running'?'execution':
@@ -737,7 +739,8 @@ export function createTacticalHudController(
     const siteTitle=state.site?.name??'Cutwoods';
     if(siteHeader.title!==siteTitle)siteHeader.title=siteTitle;
   }
-  renderNotice(ui.feed,state.events,state.phase,replaying,state.executionEvents);
+  renderNotice(ui.feed,state.events,state.phase,replaying,
+    state.executionEvents,team(state));
   renderGuidance({
     replaying,phase:state.phase,selectedNode,selectedActiveWatch,
     feed:ui.feed,hint:ui.hint

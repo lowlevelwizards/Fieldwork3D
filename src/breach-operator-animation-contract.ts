@@ -64,6 +64,8 @@ export type OperatorPose={
   reload:number;reloadDuration:number;reloadMode?:ReloadMode|null;
   reloadRemoved?:boolean;reloadInserted?:boolean;lastThrowAt:number;
   lastDoorAt:number;doorPoint?:{x:number;y:number};
+  /** Reachable real frame/corner where a hook throw's palm rests. */
+  flashHookPoint?:{x:number;y:number};
   /** F6: real deployed pouch retrieval; presentation only. */
   equipmentInteraction?:EquipmentInteractionPose|null;
   /** D4 motor-owned active/releasing support hand attachment. */
