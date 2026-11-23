@@ -35,9 +35,16 @@ import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} fro
 import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
 import {sweptBodyClear,bodyClear,sweptProfileClear,squeezeFacing,escapeOpenDoorOverlap} from '../src/breach-navigation.ts';
 import {routeWithSqueezeWorld,routeToNextOperableDoor,
- recoverNormalLane,routeWithSqueezeIntel,routeWithNormalWorld,
- coldFineMotorWorldRoute}
+ recoverNormalLane,routeWithSqueezeIntel,routeWithNormalWorld}
  from '../src/breach-squeeze-route.ts';
+import * as squeezeRouteAuditExports from '../src/breach-squeeze-route.ts';
+// Paired cold-baseline jobs deliberately copy this read-only observation
+// harness into older historical source trees. Some pre-D3.26 versions lack
+// the diagnostic fine-route export. Absence means "no cold fine witness",
+// NEVER a motor result or evidence for/against real physical arrival.
+const coldFineMotorWorldRoute=
+ typeof squeezeRouteAuditExports.coldFineMotorWorldRoute==='function'?
+   squeezeRouteAuditExports.coldFineMotorWorldRoute:()=>[];
 import {observeNarrowLeafExit} from './lib/d3-14b-narrow-exit-probe.mjs';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {fullBodyMotorRouteClear} from '../src/breach-recovery-route-validation.ts';
