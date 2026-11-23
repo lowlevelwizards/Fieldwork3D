@@ -40,9 +40,16 @@ test('EQA3.9 secure state is immediately lawful; post-contact animation blends f
  const c=civilian(),r=createCivilianRig(c);
  c.state='compliant';c.stateSince=4;c.restrained=false;
  assert.equal(civilianPose(c),'compliant');
+ updateCivilianRig(r,c,4);
+ assert.equal(r.leftArm.rotation.z,0,
+   'first surrender frame preserves the prior displayed arm orientation');
  updateCivilianRig(r,c,4.05);
- const early=r.upper.position.y;
- assert.ok(r.leftArm.rotation.z< -2);
+ const early=r.upper.position.y,firstRaise=r.leftArm.rotation.z;
+ assert.ok(firstRaise<0&&firstRaise> -1,
+   'hands should begin raising gradually, without teleporting upward');
+ updateCivilianRig(r,c,4.28);
+ assert.ok(r.leftArm.rotation.z< -2,
+   'hands reach their fully raised position after the initial transition');
  updateCivilianRig(r,c,5.15);
  assert.ok(r.upper.position.y<early-3,
    'hips settle after initial raised-hands contact phase, rather than snap');
