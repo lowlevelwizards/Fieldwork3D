@@ -43,6 +43,8 @@ export function applyOperatorLegIK(r:OperatorRig,p:OperatorPose,
  scratch:OperatorPoseScratch,targets:[FootTarget,FootTarget],
  kick:ReturnType<typeof kickMotion>|null,headingYaw:number,
  smooth:(t:number)=>number){
+ // Keep the published B3 call contract; kick phases are already eased.
+ void smooth;
  const output=scratch.legOutput;
  // Preserve initial per-rig geometry/visibility/rotation, including the
  // hidden ankle cuff's last transform. Never create scene nodes or buffers
