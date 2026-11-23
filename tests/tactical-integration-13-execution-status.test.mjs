@@ -76,7 +76,8 @@ test('operator cards expose a compact status and accessible reason, without new 
  const hud=readFileSync(new URL('../src/ui/tactical-hud-controller.ts',import.meta.url),'utf8');
  const css=readFileSync(new URL('../src/breach-style.css',import.meta.url),'utf8');
  assert.match(main,/executionStatus\(a,/);
- assert.match(hud,/executionStatus\(a,/);
+ assert.match(hud,/liveExecutionStatus\(a,/);
+ assert.match(hud,/state\.seconds\):null/);
  assert.match(hud,/const executionKind=execution\?\.kind\?\?'idle'/);
  assert.match(hud,/if\(stateLine\.dataset\.kind!==executionKind\)stateLine\.dataset\.kind=executionKind/);
  assert.match(hud,/\.unit-execution/);
