@@ -16,6 +16,7 @@ const tests=[
  'tests/r6-3-action-outcome-provenance.test.mjs',
  'tests/r6-3-live-go-feedback.test.mjs',
  'tests/r6-4-action-integration.test.mjs',
+ 'tests/r7-1-session-lifecycle.test.mjs',
  'tests/contact-medical-choice-20261122.test.mjs',
  'tests/consolidation-stage7-domain-ownership.test.mjs',
  'tests/consolidation-stage8-world-ownership.test.mjs',
