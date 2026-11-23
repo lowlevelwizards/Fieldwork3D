@@ -4330,13 +4330,14 @@ body.nvg-selected-view #breach3dCanvas{
 }
 
 
-/* V7: every ranked operator is one actual shared-3D lineup card. Rank, name,
-   condition and points sit INSIDE the model box; the identification color
-   lives at the foot of the card. Card chrome never replaces the live rigs. */
+/* V7.1: compact four-operator cards. Identification dots sit immediately
+   under the ranked score labels, above the 3D bodies. One retained WebGL
+   canvas stays underneath all four clickable, individually outlined cards. */
 .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-squad-content{
- --fw-v7-lineup-height:clamp(290px,48dvh,500px);
- --fw-v7-heading-height:116px;
+ --fw-v7-lineup-height:clamp(280px,36dvh,360px);
+ --fw-v7-heading-height:92px;
  --fw-v7-dot-height:44px;
+ --fw-v7-card-inset:7px;
  display:block;position:relative;min-width:0}
 .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-squad-focus{
  display:flex;flex-direction:column;gap:8px;order:initial;
@@ -4348,14 +4349,15 @@ body.nvg-selected-view #breach3dCanvas{
  background:#1b3028;border:1px solid #597260}
 .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection)
  .fw-v7-lineup-model .fw-v4-model-canvas{
- position:absolute;left:0;right:0;top:var(--fw-v7-heading-height);
- width:100%;height:calc(100% - var(--fw-v7-heading-height) - var(--fw-v7-dot-height))!important;
+ position:absolute;left:0;right:0;
+ top:calc(var(--fw-v7-card-inset) + var(--fw-v7-heading-height) + var(--fw-v7-dot-height));
+ width:100%;height:calc(100% - var(--fw-v7-heading-height) - var(--fw-v7-dot-height) - var(--fw-v7-card-inset) - var(--fw-v7-card-inset))!important;
  max-width:100%;z-index:1}
 .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-list{
  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
  position:absolute;top:0;left:0;right:0;z-index:2;
  box-sizing:border-box;width:100%;height:var(--fw-v7-lineup-height);
- padding:7px;gap:4px;align-content:stretch;pointer-events:none}
+ padding:var(--fw-v7-card-inset);gap:4px;align-content:stretch;pointer-events:none}
 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v7-operator-card{
  display:flex;flex-direction:column;align-items:stretch;
  position:relative;min-width:0;height:100%;box-sizing:border-box;
@@ -4397,11 +4399,11 @@ body.nvg-selected-view #breach3dCanvas{
  font:700 9px var(--ui-display);color:#baceb9}
 .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection)
  .fw-v7-operator-dot{
- position:absolute;z-index:3;bottom:0;left:0;right:0;
+ position:relative;z-index:3;flex:0 0 var(--fw-v7-dot-height);
  display:flex;align-items:center;justify-content:center;
  box-sizing:border-box;width:100%;height:var(--fw-v7-dot-height);
  min-height:44px;padding:3px;border:0;background:transparent;
- margin:0;border-radius:0 0 7px 7px;pointer-events:auto;cursor:pointer}
+ margin:0;border-radius:0;pointer-events:auto;cursor:pointer}
 .fw-v7-operator-dot::before{
  content:'';display:block;width:15px;height:15px;border-radius:50%;
  background:var(--fw-after-operator-color,#88b4c8);
@@ -4412,10 +4414,11 @@ body.nvg-selected-view #breach3dCanvas{
 .fw-v4-squad.fw-v4-has-selection .fw-v7-operator-dot{display:none}
 @media(max-width:700px){
  .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-squad-content{
-  --fw-v7-lineup-height:clamp(290px,51dvh,470px);
-  --fw-v7-heading-height:105px}
+  --fw-v7-lineup-height:clamp(280px,36dvh,345px);
+  --fw-v7-heading-height:88px;
+  --fw-v7-card-inset:5px}
  .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-list{
-  padding:5px;gap:3px}
+  gap:3px}
  .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-row{
   min-height:0;padding:5px 1px;gap:3px}
  .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-number{font-size:11px}
@@ -4431,7 +4434,7 @@ body.nvg-selected-view #breach3dCanvas{
 }
 @media(max-height:480px){
  .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-squad-content{
-  --fw-v7-lineup-height:205px;--fw-v7-heading-height:74px}
+  --fw-v7-lineup-height:225px;--fw-v7-heading-height:70px}
  .fw-debrief-v3 .fw-v4-squad:not(.fw-v4-has-selection)
  .fw-v4-rank-row{gap:1px;padding:2px}
  .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-identity small{display:none}

@@ -167,10 +167,14 @@ export function createAfterActionModelPresenter(
    const tanHalfFov=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
    // Place every 3D rig at the exact horizontal center of its corresponding
    // card. This cannot use fixed world spacing: phone aspect ratios differ.
-   const minSpacing=n>5?30:34;
+   const minSpacing=n>5?30:29;
    const horizontalFit=squad?minSpacing*n/(
      2*tanHalfFov*Math.max(.3,camera.aspect)):0;
-   const dist=Math.max(base*zoom,horizontalFit);
+   // Compact cards have a shorter canvas. Scale camera distance with that
+   // actual body lane, not the outer card height, to keep rigs legible while
+   // maintaining safe per-column spacing. Single-operator/Combat unchanged.
+   const bodyFit=squad?Math.max(.62,Math.min(1,lastHeight/300)):1;
+   const dist=Math.max(base*zoom*bodyFit,horizontalFit);
    const spacing=squad?dist*tanHalfFov*camera.aspect*2/n:34;
    // The camera does not spin the entire lineup as a single rigid object.
    camera.position.set(0,lookAt.y+Math.sin(pitch)*dist,
