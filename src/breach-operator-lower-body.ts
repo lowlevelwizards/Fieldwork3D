@@ -9,8 +9,8 @@ import {advanceFootsteps,validatedReplayFeet,type FootstepInput,type FootTarget}
  from './breach-footsteps.ts';
 import {kickMotion} from './breach-door-actions.ts';
 import {solveTwoBone,LEG_LIMITS,alignSegmentComponents} from './breach-ik.ts';
-import {LEG_HIP_SIDE,LEG_ANKLE_HEIGHT,LEG_UPPER_LENGTH,LEG_LOWER_LENGTH}
- from './breach-leg-geometry.ts';
+import {LEG_HIP_SIDE,LEG_ANKLE_HEIGHT,LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,
+ legMaximumLength} from './breach-leg-geometry.ts';
 
 export function sampleOperatorFootContacts(
  r:OperatorRig,p:OperatorPose,physicalSpeed:number,moving:number,
@@ -82,27 +82,44 @@ export function applyOperatorLegIK(r:OperatorRig,p:OperatorPose,
   foot.swinging=!target.contact;
   const targetWorld=scratch.targets[i].set(target.position.x,
     LEG_ANKLE_HEIGHT+target.height,target.position.y);
-  if(i===(p.kickFoot??1)&&kick){
-   const motion=smooth((kick.progress-.30)/.23)*
-     (1-smooth((kick.progress-.67)/.25));
-   if(p.doorPoint){
-    const dx=p.x-p.doorPoint.x,dz=p.z-p.doorPoint.y;
-    const gap=Math.hypot(dx,dz)||1;
-    // Kick reaches the actual recorded door-leaf contact, not an
-    // invented placement or a second footstep target.
-    const contact=scratch.kickContact.set(p.doorPoint.x+dx/gap*1.5,9,
-     p.doorPoint.y+dz/gap*1.5);
-    targetWorld.lerp(contact,motion);
-   }else{
-    targetWorld.x+=Math.cos(p.heading)*kick.reach;
-    targetWorld.z+=Math.sin(p.heading)*kick.reach;
-    targetWorld.y+=kick.lift;
-   }
-   foot.swinging=true;
+  const kicking=!!kick&&p.kickFoot!==null&&i===(p.kickFoot??1);
+  if(kicking&&kick){
+   // Chamber without unplanting the support foot. At .53 the sole touches
+   // the fixed, SIMULATION-RECORDED leaf point; the hinge never owns it.
+   const release=1-kick.retract;
+   targetWorld.y+=3.8*kick.chamber*(1-kick.strike)*release;
+   const forwardX=Math.cos(p.heading),forwardZ=Math.sin(p.heading);
+   const point=p.kickImpactPoint;
+   const dx=point?point.x-p.x:forwardX;
+   const dz=point?point.y-p.z:forwardZ;
+   const length=Math.hypot(dx,dz)||1;
+   const nx=dx/length,nz=dz/length;
+   // Older replay films without a fixed impact anchor follow a forward
+   // anatomical kick, NEVER the current (rotating) door leaf.
+   const contact=point?scratch.kickContact.set(
+    point.x-nx*1.5,9,point.y-nz*1.5):
+    scratch.kickContact.set(
+     target.position.x+nx*11.7,9,target.position.y+nz*11.7);
+   targetWorld.lerp(contact,kick.strike*release);
+   // After impact, the foot continues in the original kick direction by
+   // a SMALL amount while the leaf swings away under its own physics.
+   targetWorld.x+=nx*2.15*kick.followThrough*release;
+   targetWorld.z+=nz*2.15*kick.followThrough*release;
+   foot.swinging=release>0&&(kick.chamber>0||kick.strike>0);
   }
   const relative=scratch.relative[i].copy(targetWorld)
     .sub(scratch.rootPoint.set(p.x,r.root.position.y,p.z))
     .applyQuaternion(bodyInverse);
+  if(kicking){
+   // Bound the *boot*, not only the knee solver. Otherwise solveTwoBone
+   // correctly stops at max extension while the shoe/ankle-link is still
+   // drawn at the unreachable door target (the rubber-leg artifact).
+   const offset=scratch.kickContact.copy(relative).sub(hipLocal);
+   const length=offset.length();
+   const maxReach=legMaximumLength()-.35;
+   if(length>maxReach)
+    relative.copy(hipLocal).addScaledVector(offset,maxReach/length);
+  }
   const leg=solveTwoBone(hipLocal,relative,LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,
     scratch.legPoles[i],LEG_LIMITS,foot.bend,scratch.legs[i]);
   foot.bend.copy(leg.bendPlane);
