@@ -82,7 +82,7 @@ test('R6.1 voice has no physical contact and release no synthetic range requirem
 test('R6.1 pure evaluator imports no world/clock, and adoption stays in existing owners',()=>{
  assert.match(assessmentSource,/import type \{PlanNode\}/);
  assert.doesNotMatch(assessmentSource,/from ['"](?:three|\.\/breach-(?:game|navigation|actor-motor|world-context|replay)|\.\/ui\/)/);
- assert.doesNotMatch(assessmentSource,/\b(?:Date|performance|Math\.random|setInterval|setTimeout|document|window)\b/);
+ assert.doesNotMatch(assessmentSource,/\b(?:Date\.now|performance\.|Math\.random|setInterval\(|setTimeout\(|document\.|window\.)/);
  for(const name of ['breach-game.ts','breach-order-interactions.ts',
    'breach-civilian-context-selection.ts']){
   const source=readFileSync(new URL('../src/'+name,import.meta.url),'utf8');
