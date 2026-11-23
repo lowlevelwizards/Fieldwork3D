@@ -31,7 +31,7 @@ import type {createBreachReplayAnalysisController} from './breach-replay-analysi
 import type {createBreachReplayTimelineController} from './breach-replay-timeline-controller.ts';
 import type {ReplayPlaybackController} from '../breach-replay-playback-controller.ts';
 import {backOne,clearPlan,undoPlan,redoPlan,planWait,toggleWeaponLight,toggleNvg,equipWeaponChoice,
-  planMedicalTreatment,planRecoverMedical,planReload,reloadNow,planSync,
+  planRecoverMedical,planReload,reloadNow,planSync,
   posture,toggleContactRule} from '../breach-game.ts';
 import {captureRangeTrial} from '../equipment-training-diagnostics.ts';
 import {confirmFieldworkAction} from './fieldwork-controls.ts';
@@ -538,7 +538,7 @@ export function createTacticalHudController(
   }
   function renderSession(input:TacticalSessionPresentation):void{
     const {state,mode,replaying,selected,selectedNode,selectedActiveWatch,ui,
-      siteIdentityOutput,rangeTelemetry,lastRangeTrial,medicalCandidate,casualty,
+      siteIdentityOutput,rangeTelemetry,lastRangeTrial,casualty,
       paletteTether,paintOperatorAccent,colorFor,fieldLightButton,nvgButton,
       medicalButton,dragButton,carryButton,retrieveButton,navPanel,
       canvas,auditRouteMode,viewMode,cssW,cssH,worldToScreen,displayRouteCache,
