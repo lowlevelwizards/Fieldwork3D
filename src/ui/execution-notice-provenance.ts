@@ -24,12 +24,15 @@ export function liveNoticeEligible(
  actors:readonly LiveNoticeActor[],
  seconds?:number,phase?:string
 ):boolean{
- if(notice.severity!=='warning')return true;
  const historical=/ENTRY INTERRUPTED|SQUAD ENTRY CANCELLED|ORDER CANCELLED|MOVE BLOCKED.*ORDER RETAINED|PATH BLOCKED.*ORDER RETAINED/;
+ // A terminal narrative string can be classified ROUTINE as well as WARNING.
+ // Never resurrect that archival phrase when its typed order has retired.
+ if(notice.origin!=='transition'&&
+    historical.test(notice.text.toUpperCase()))return false;
+ if(notice.severity!=='warning')return true;
  if(notice.origin!=='transition'){
   // Narrative text has no trusted order identity, and can be replayed by the
   // rolling-log overlap algorithm. Never turn it into an ongoing issue.
-  if(historical.test(notice.text.toUpperCase()))return false;
   if(seconds!==undefined&&!actors.some(a=>a.health===undefined||
     a.health>0?!!a.plan[0]:false))return false;
   return true;
