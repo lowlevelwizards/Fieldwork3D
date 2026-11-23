@@ -17,6 +17,11 @@ export const LAB_TRACKS=[
   'point-shoot','ready-to-ads','ads-to-low','reload',
   'reload-emergency','reload-retention','reload-shotgun',
   'reload-interrupt','reload-wounded',
+  // Lab-only deterministic secondary action tracks, never live orders.
+  'pistol-draw','pistol-holster','pistol-ready','pistol-high-ready',
+  'pistol-low-ready','pistol-aim','pistol-fire','pistol-retention',
+  'pistol-reload','pistol-reload-emergency','pistol-reload-retention',
+  'pistol-reload-interrupt',
   'flash','door','pre-open-handle','pre-open-hinge','pre-open-cancel',
   'stack-shoulder','stack-shoulder-crouch','stack-shoulder-cancel',
   'kick','bash','down','down-forward','down-back',
@@ -92,7 +97,8 @@ export function sampleLabTrack(kind:LabTrack,time:number):LabMotion{
   const posture=kind==='crouch'||kind==='crouch-walk'?
     'crouch' as const:'stand' as const;
   const aim=['aim','pie','look','strafe','strafe-left',
-    'strafe-right','active-aim','point-shoot'].includes(kind)?1:0;
+    'strafe-right','active-aim','point-shoot',
+    'pistol-aim','pistol-fire'].includes(kind)?1:0;
   const reload=kind.startsWith('reload')?
     kind==='reload-interrupt'?Math.max(0,t<.9?1.8-t:0):
     Math.max(0,1.8-(t%2.4)):0;

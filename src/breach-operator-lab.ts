@@ -50,13 +50,20 @@ import {sleeveStateOptions} from './operator-wardrobe-data.ts';
 import {GLOVE_SOLIDS,GARMENT_SOLID_COLORS,isGloveSolid}
  from './operator-garment-color-policy.ts';
 import {FAMILY_PRESETS} from './equipment-weapon-families.ts';
+import {initialSecondaryEquipment} from './secondary-equipment.ts';
+import {isM9AppearanceId} from './weapons/geometry/beretta-m9-silhouettes.ts';
+import {sampleLabPistolFrame,isLabPistolTrack}
+ from './operator-lab-pistol-tracks.ts';
+import {presentLabBerettaPreview,clearLabBerettaPreview}
+ from './operator-lab-beretta-preview.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from './equipment-weapon-assemblies.ts';
 import {loadArsenalBuildLibrary} from './arsenal/saved-builds.ts';
 import {arsenalRecipeToLegacy,readArsenalRecipe,type ArsenalRecipeV2}
  from './arsenal/recipes.ts';
 import {POSE_ARMOR_OPTIONS,POSE_RIG_OPTIONS,POSE_UNIFORM_OPTIONS,
- POSE_ANIMATIONS,POSE_WEAPON_GROUPS,posePreset,poseWeaponType,
+ POSE_ANIMATIONS,POSE_WEAPON_GROUPS,POSE_SIDEARM_GROUPS,
+ posePreset,poseWeaponType,poseSidearm,poseSidearmArtOnly,
  defaultPoseWeapon,poseArmorEquipment,poseRigEquipment}
  from './operator-lab-pose-browser.ts';
 import {uniformCutCamoChoices,type UniformCompareCut}
@@ -191,10 +198,19 @@ function syncKit(){
 /** Same wardrobe/kit as Appearance; never a duplicate "fit costume". */
 function syncPosePickers(){
  const current=(document.getElementById('weapon') as HTMLSelectElement).value;
- if(poseWeaponType(poseWeaponPreset)!==current)
+ if(!poseSidearm(poseWeaponPreset)&&poseWeaponType(poseWeaponPreset)!==current)
   poseWeaponPreset=defaultPoseWeapon(current);
  const model=document.getElementById('poseWeapon') as HTMLSelectElement;
  if(model?.options.length)model.value=poseWeaponPreset;
+ const sidearm=poseSidearm(poseWeaponPreset);
+ const sidearmHint=document.getElementById('poseSidearmHint');
+ if(sidearmHint){
+  sidearmHint.hidden=!sidearm;
+  sidearmHint.textContent=!sidearm?'':
+   poseSidearmArtOnly(sidearm)?
+    'BERETTA · ART-ONLY OPERATOR STUDY · Not an issued or playable sidearm':
+    'GLOCK · Real pistol rig, holster, draw and magazine pose · Lab-only preview';
+ }
  const savedModel=document.getElementById('poseSavedWeapon') as HTMLSelectElement|null;
  if(savedModel)savedModel.value=poseArsenalSavedId??'';
  const look=resolvedWardrobe(wardrobeOptions,labKit);
@@ -219,6 +235,8 @@ document.getElementById('wardrobeApply')?.addEventListener('click',()=>{
  (document.getElementById('weapon') as HTMLSelectElement).value=
   result.kit.slots.primary.replace(/^primary-/,'');
  poseArsenalRecipe=null;poseArsenalSavedId=null;
+ poseWeaponPreset=defaultPoseWeapon(
+  (document.getElementById('weapon') as HTMLSelectElement).value);
  // Archived color wheels are retired; headwear receives its own swatch.
  labPalette=1;
  syncKit();updateMagazineState();
@@ -750,9 +768,12 @@ const magazineSelector=choose<HTMLSelectElement>('kitMagazines');
 const magazineHint=choose<HTMLElement>('magazineHint');
 function updateMagazineState(){
  const shotgun=weapon.value==='shotgun',unarmed=weapon.value==='none';
- magazineSelector.disabled=shotgun||unarmed;
- if(unarmed)magazineSelector.value='0';
- magazineHint.textContent=unarmed?'Unarmed inspection: zero carried magazines.':shotgun?
+ const sidearm=!!poseSidearm(poseWeaponPreset);
+ magazineSelector.disabled=shotgun||unarmed||sidearm;
+ if(unarmed||sidearm)magazineSelector.value='0';
+ magazineHint.textContent=sidearm?
+  'PISTOL: own detachable magazines and holster; inspect in Poses.':
+  unarmed?'Unarmed inspection: zero carried magazines.':shotgun?
   'SHOTGUN: loose shells; detachable spare magazines are not applicable.':
   'Preview locations use the real equipment carrying ledger.';
 }
@@ -785,6 +806,15 @@ for(const platform of POSE_WEAPON_GROUPS){
  group.label=platform.name+' · '+platform.presets.length;
  for(const preset of platform.presets)
   group.append(new Option(preset.name,preset.id));
+ poseWeaponSelect.append(group);
+}
+// All modeled pistols live beside primary models, including art-only M9s.
+// Sidearm labels are explicit about the live-equipment boundary.
+for(const family of POSE_SIDEARM_GROUPS){
+ const group=document.createElement('optgroup');
+ group.label=family.name+' · '+family.models.length;
+ for(const model of family.models)
+  group.append(new Option(model.name,model.id));
  poseWeaponSelect.append(group);
 }
 const addOptions=(target:HTMLSelectElement,
@@ -852,8 +882,12 @@ poseWeaponSelect.addEventListener('change',()=>{
  checkpointAppearance();poseArsenalRecipe=null;poseArsenalSavedId=null;
  poseWeaponPreset=poseWeaponSelect.value;
  const next=poseWeaponType(poseWeaponPreset);
- weapon.value=next;
- if(next!=='none')labKit=syncPrimaryWeapon(labKit,next);
+ // The physical Lab rig retains its internal primary class; a selected
+ // sidearm is represented by its true carried/drawn 3D mesh, not a fake
+ // fifth gameplay WeaponId or a changed Campaign weapon.
+ weapon.value=next==='pistol'?'none':next;
+ if(next!=='none'&&next!=='pistol')
+  labKit=syncPrimaryWeapon(labKit,next);
  updateMagazineState();syncKit();draw();
 });
 for(const [element,slot] of [
@@ -883,7 +917,8 @@ choose<HTMLButtonElement>('unequipAll').addEventListener('click',()=>{
  checkpointAppearance();const empty=unequipLabAppearance();
  labKit=empty.kit;wardrobeOptions=empty.wardrobe;
  weapon.value='none';injury.value='0';
- poseArsenalRecipe=null;poseArsenalSavedId=null;refreshSavedPoseWeapons();
+ poseArsenalRecipe=null;poseArsenalSavedId=null;
+ poseWeaponPreset='none';refreshSavedPoseWeapons();
  magazineSelector.value='0';
  choose<HTMLSelectElement>('faceTreatment').value='blank';
  labPalette=1;
@@ -1296,7 +1331,7 @@ const build=()=>{
   if(variantComparing)endVariantComparison();
   labSwitch=null;
   clearComparison();clearGaitCompare();
-  if(rig){releaseOperatorPreviewRig(scene,rig);}
+  if(rig){clearLabBerettaPreview(rig);releaseOperatorPreviewRig(scene,rig);}
   endKitComparison();
   rig=createOperatorRig(operator.value,operator.value==='hostile'?'red':'blue');
   scene.add(rig.root);
@@ -1438,6 +1473,13 @@ choose<HTMLButtonElement>('inspectionSampleKit').addEventListener('click',()=>{
 });
 
 function chooseTrack(next:LabTrack){
+ if(isLabPistolTrack(next)&&!poseSidearm(poseWeaponPreset)){
+  // Selecting a pistol-specific track from any other weapon makes it
+  // visible instead of silently running a long-gun approximation.
+  poseArsenalRecipe=null;poseArsenalSavedId=null;
+  poseWeaponPreset='glock-g19-gen3';weapon.value='none';
+  updateMagazineState();syncPosePickers();refreshSavedPoseWeapons();
+ }
   // Snapshot the actual current presentation, not merely the last named
   // pose. Rapid tap-to-tap retargeting remains continuous mid-transition.
   const target=LAB_HANDLING[next];
@@ -1925,9 +1967,11 @@ function draw(){
   }
   // The selected family model remains the same across every track.
   // Shotgun reload is an explicit special case; no synthetic AR magazine.
+  const sidearm=poseSidearm(poseWeaponPreset);
+  const pistolFrame=sidearm?sampleLabPistolFrame(track,clock):null;
   const selectedPosePreset=track==='reload-shotgun'?undefined:
    posePreset(poseWeaponPreset);
-  const currentWeapon=(track==='reload-shotgun'?'shotgun':
+  const currentWeapon=(sidearm?'carbine':track==='reload-shotgun'?'shotgun':
    selectedPosePreset?.weapon??(weapon.value==='none'?'carbine':weapon.value)) as WeaponId;
   const poseWeaponConfig=selectedPosePreset&&
    selectedPosePreset.weapon===currentWeapon?
@@ -1938,8 +1982,23 @@ function draw(){
    poseArsenalRecipe.weapon===currentWeapon?
    arsenalRecipeToLegacy(poseArsenalRecipe):undefined;
   const exactWeaponConfig=savedWeaponConfig??poseWeaponConfig;
-  const currentKit=syncPrimaryWeapon(labKit,currentWeapon);
+  const baseKit=syncPrimaryWeapon(labKit,currentWeapon);
+  const sidearmModel=sidearm?isM9AppearanceId(sidearm)?
+   'glock-g19-gen3':sidearm:null;
+  // Only a temporary Lab equipment snapshot: Glock drives the already
+  // shipped secondary arm/holster IK. Beretta art replaces its geometry.
+  const availableKit=sidearm&&baseKit.slots.belt==='belt-none'?
+   setEquipmentChoice(baseKit,'belt','belt-light'):baseKit;
+  const currentKit=sidearmModel?{
+   ...availableKit,secondary:initialSecondaryEquipment(operator.value,sidearmModel)
+  }:baseKit;
   const currentCarry=previewCarry(currentKit,currentWeapon);
+  const pistolReload=pistolFrame?.reload&&currentKit.secondary?.weapon?{
+   orderId:0,selectedId:currentKit.secondary.spareMagazines[0].id,
+   elapsed:pistolFrame.reload.progress*1.45,duration:1.45,
+   retain:pistolFrame.reload.retain,
+   inserted:pistolFrame.reload.progress>=.72
+  }:null;
   if(!comparing)poseOperator(rig,{
     x:motion.x,z:motion.z,
     heading:motion.heading,
@@ -1956,7 +2015,7 @@ function draw(){
     injury:Math.max(motion.injury,Number(injury.value),
       track==='reload-wounded'?2:0),
     weapon:currentWeapon,weaponConfiguration:exactWeaponConfig,
-    unarmedPreview:weapon.value==='none'&&track!=='reload-shotgun',
+    unarmedPreview:weapon.value==='none'&&track!=='reload-shotgun'&&!sidearm,
     reload:motion.reload,reloadDuration:1.8,
     reloadMode:track==='reload-retention'?'retention':
       track==='reload-shotgun'?'shells':'emergency',
@@ -1971,9 +2030,19 @@ function draw(){
     handlingIntent:preOpenTrack?'door':shoulderTrack?'stack':'hold',
     lastThrowAt:motion.throwAt,
     down:motion.down||Number(injury.value)===3,
-    surrender:false,aiming:motion.aim>.2,
-    firing:false,turning:motion.turning,
-    aimBlend:motion.aim,
+    surrender:false,aiming:pistolFrame?
+     pistolFrame.aim>.2:motion.aim>.2,
+    firing:!!pistolFrame&&pistolFrame.recoil>.01,turning:motion.turning,
+    aimBlend:pistolFrame?.aim??motion.aim,
+    recoil:pistolFrame?.recoil??0,
+    secondarySwitch:pistolFrame?{
+     active:pistolFrame.fraction>=1?'secondary':'primary',
+     desired:track==='pistol-holster'?'primary':'secondary',
+     fraction:pistolFrame.fraction
+    }:undefined,
+    secondaryReload:pistolReload,
+    labPistolStance:pistolFrame?.stance,
+    labPistolPitch:pistolFrame?.pitch,
     handlingOverride:shoulderTrack?'high':selectedHandling,
     poseV3Preview,poseV4ReloadPreview,
     poseV3StrictContact:poseStrictContact.checked,
@@ -2000,6 +2069,13 @@ function draw(){
     hitYaw:motion.heading+Math.PI/2,
     hitAge:track==='wounded'?Math.max(0,clock-.7):undefined,
     hitSeverity:2},0);
+  if(sidearm&&!comparing){
+   // Even during a holster/draw phase the hidden primary must not suddenly
+   // appear behind the pistol. Only the actual carried sidearm is visible.
+   rig.weapon.visible=false;rig.droppedGun.visible=false;
+  }
+  presentLabBerettaPreview(rig,sidearm&&isM9AppearanceId(sidearm)?
+   sidearm:null);
   if(shoulderTrack&&!comparing&&!kitComparing&&!variantComparing&&
     rig.lastPose){
     const leader=ensureLabShoulderLeader();
@@ -2174,7 +2250,7 @@ function draw(){
       staticReport.status==='clear'?'CLEAR':'FALLBACK'):
       'TRACK · '+track.replaceAll('-',' ').toUpperCase();
    info.textContent=(poseStrictContact.checked?'STRICT · ':'VISUAL · ')+
-    label+' · '+currentWeapon+
+    label+' · '+(sidearm??currentWeapon)+
     '\\nARMOR '+look.armorStyle+' · RIG '+look.rigStyle+
     '\\nGRIP '+rig.gripError.toFixed(2)+
     ' · STOCK REF '+rig.stockError.toFixed(2)+
@@ -2187,6 +2263,19 @@ function draw(){
     '\\nJoint markers and contacts: DIAGNOSTICS tab.';
   }
   canvas.dataset.poseFitWeapon=poseWeaponPreset;
+  canvas.dataset.poseSidearm=sidearm??'';
+  canvas.dataset.poseSidearmArtOnly=String(!!sidearm&&poseSidearmArtOnly(sidearm));
+  canvas.dataset.poseSidearmFraction=pistolFrame?
+   pistolFrame.fraction.toFixed(3):'';
+  canvas.dataset.poseSidearmReload=pistolReload?
+   (pistolReload.elapsed/pistolReload.duration).toFixed(3):'';
+  canvas.dataset.poseSidearmPresentation=sidearm?
+   (poseSidearmArtOnly(sidearm)?'art-only':'issued-model-preview'):'none';
+  const heldPreview=sidearm&&poseSidearmArtOnly(sidearm)?
+   rig.hip.getObjectByName('operator-lab-beretta-model'):
+   rig.hip.getObjectByName('secondary-holstered-pistol');
+  canvas.dataset.poseSidearmMesh=String(!!sidearm&&!!heldPreview?.visible);
+  canvas.dataset.posePrimaryHidden=String(!!sidearm&&!rig.weapon.visible);
   canvas.dataset.poseFitSavedWeapon=poseArsenalSavedId??'';
   canvas.dataset.poseFitWeaponReceiver=exactWeaponConfig?.build?.parts.receiver??'';
   canvas.dataset.poseFitWeaponStock=exactWeaponConfig?.build?.parts.stock??'';
