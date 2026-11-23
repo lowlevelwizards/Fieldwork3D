@@ -21,7 +21,7 @@ const target=(x,following=null)=>({
   rescueTarget:true,following
 });
 test('VOICE: follow is much farther than physical contact, but never through an obstruction',()=>{
- assert.equal(CIVILIAN_VOICE_RANGE,96);
+ assert.equal(CIVILIAN_VOICE_RANGE,150);
  const c=target(75);
  assert.equal(nearestContextCivilian([c],from,'follow','extract',
    ()=>true,()=>true),c);
@@ -29,7 +29,7 @@ test('VOICE: follow is much farther than physical contact, but never through an 
    ()=>false,()=>true),null,'a previously unknown person cannot be shouted into disclosure');
  assert.equal(nearestContextCivilian([c],from,'follow','extract',
    ()=>true,()=>false),null,'closed wall/door blocks voice contact');
- assert.equal(nearestContextCivilian([target(110)],from,'follow','extract',
+ assert.equal(nearestContextCivilian([target(166)],from,'follow','extract',
    ()=>true,()=>true),null);
  assert.equal(nearestContextCivilian([c],from,'secure','extract',
    ()=>true,()=>true),null,'SECURE remains physical contact');
