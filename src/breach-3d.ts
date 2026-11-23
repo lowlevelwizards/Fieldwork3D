@@ -1,5 +1,7 @@
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {hostileNpcTransitionKey,hostileCustodyWalkBlend}
+ from './breach-hostile-pose-transition.ts';
 import {rebuildFrameIdIndex} from './breach-frame-lookup.ts';
 import {FrameActorNeighborhoodIndex} from './breach-actor-neighborhood.ts';
 import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera}
@@ -2670,6 +2672,13 @@ export class TacticalScene3D{
         down:actor.health<=0,surrender:actor.surrendered,
         worldWeaponReleased:actor.surrendered&&actor.releasedWeaponId!=null,
         restrained:actor.restrained===true,
+        // Gameplay and replay use the same named NPC transition contract as
+        // the Lab. In particular surrender -> cuffed must not snap wrists.
+        npcTransitionKey:actor.side==='red'?
+          hostileNpcTransitionKey(actor):undefined,
+        npcTransitionDuration:actor.surrendered?.34:.24,
+        custodyWalkBlend:actor.side==='red'?
+          hostileCustodyWalkBlend(actor,poseSeconds):undefined,
         // Escaping unrestrained captives remain visibly upright while
         // moving, rather than gliding on their knees in surrender pose.
         custodyWalking:actor.surrendered&&!!actor.escortLeaderId||
