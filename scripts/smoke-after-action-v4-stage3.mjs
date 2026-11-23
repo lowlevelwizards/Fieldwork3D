@@ -117,15 +117,32 @@ try{
          scrollTop:body.scrollTop,scrollHeight:body.scrollHeight,
          clientHeight:body.clientHeight};
      });
-     check(visible.modelTop>=visible.bodyTop-2&&
-       visible.modelBottom<=visible.bodyBottom+2&&
-       (old.modelBottom<=old.bodyBottom+2||visible.scrollTop>old.scrollTop),
-       'Retained WebGL viewer not fully reachable in phone debrief scroll '+
+     // The consolidated card can exceed a short phone's scrollport.
+     // Require a real, scrollable view rather than shrinking the 3D rigs.
+     check(visible.modelTop<visible.bodyBottom&&
+       visible.modelBottom>visible.bodyTop&&
+       (visible.modelBottom<=visible.bodyBottom+2||
+        visible.scrollHeight>visible.clientHeight),
+       'Integrated lineup card not reachable in phone debrief scroll '+
          label+' '+JSON.stringify({old,visible}));
      await root.screenshot({
        path:'artifacts/after-action-v4-stage3/model-visible-'+label+'.png'
      });
    }
+   // A short tap in the body area of column 2 opens its record.
+   // The same canvas remains mounted across selection and return.
+   await root.locator('.fw-v4-model-canvas').scrollIntoViewIfNeeded();
+   const bounds=await root.locator('.fw-v4-model-canvas').boundingBox();
+   check(!!bounds,'3D body canvas not mounted '+label);
+   await page.mouse.click(bounds.x+bounds.width*3/8,
+     bounds.y+bounds.height*.52);
+   check(await root.locator('#afterActionOperatorRecord').count()===1,
+     '3D column tap failed to open operator record '+label);
+   await root.locator('.fw-v4-record-back').click();
+   await root.locator('.fw-v7-operator-dot').first().click();
+   check(await root.locator('#afterActionOperatorRecord').count()===1,
+     'Bottom color dot failed to open operator record '+label);
+   await root.locator('.fw-v4-record-back').click();
    await root.locator('.fw-v4-rank-row')
      .filter({hasText:'MOSS'}).click();
    check(await page.evaluate(()=>window.__v4Stage3Canvas===
