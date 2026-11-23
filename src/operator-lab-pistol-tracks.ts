@@ -9,7 +9,7 @@ export type LabPistolStance='high'|'low'|'ready'|'retention';
  * Lab-only presentation scale preserves every original model's proportions
  * and grip socket, and never changes live gameplay muzzle or ballistics.
  */
-export const LAB_PISTOL_PREVIEW_SCALE=.62;
+export const LAB_PISTOL_PREVIEW_SCALE=.57;
 export type LabPistolFrame=Readonly<{
  fraction:number;aim:number;pitch:number;recoil:number;
  stanceBlend:number;
@@ -25,7 +25,7 @@ const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 const ease=(n:number)=>{const v=clamp(n);return v*v*(3-2*v);};
 export function sampleLabPistolFrame(track:LabTrack,time:number):LabPistolFrame{
  const t=Math.max(0,Math.min(4,Number.isFinite(time)?time:0));
- let fraction=1,aim=.14,pitch=0,recoil=0,stanceBlend=1;
+ let fraction=1,aim=.12,pitch=0,recoil=0,stanceBlend=1;
  let slideRack:LabPistolFrame['slideRack']=null;
  let stance:LabPistolStance='ready';
  let reload:LabPistolFrame['reload']=null;
@@ -36,7 +36,7 @@ export function sampleLabPistolFrame(track:LabTrack,time:number):LabPistolFrame{
    fraction=1-ease((t-.20)/.85);aim=.10;break;
   case 'high-ready':
   case 'pistol-high-ready':
-   stance='high';pitch=.44;aim=0;break;
+   stance='high';pitch=.40;aim=0;break;
   case 'low-ready':
   case 'pistol-low-ready':
    stance='low';pitch=-.30;aim=0;break;
@@ -45,7 +45,8 @@ export function sampleLabPistolFrame(track:LabTrack,time:number):LabPistolFrame{
   case 'pistol-aim':
    aim=ease((t-.12)/.65);break;
   case 'point-shoot':
-   aim=.67;pitch=-.10;break;
+   // Intuitive, lower point shooting: short of the eye-line ADS extension.
+   aim=.36;pitch=-.12;break;
   case 'short-stock':
    // Close retention is the correct sidearm equivalent of short stock.
    stance='retention';aim=0;pitch=-.06;break;
@@ -91,7 +92,7 @@ export function sampleLabPistolFrame(track:LabTrack,time:number):LabPistolFrame{
    break;
   }
   case 'ready':
-  case 'pistol-ready':aim=.14;break;
+  case 'pistol-ready':aim=.12;break;
   default:
    // Ordinary movement and ready tracks can still be inspected with the
    // selected pistol. Existing long-gun track timing remains untouched.
