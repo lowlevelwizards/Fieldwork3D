@@ -32,7 +32,7 @@ export function medicalTreatmentChoices(s:Session,actor:TeamActor,at:Pt):
    liveVisibility(s,o.p));
  if(capture&&!candidates.includes(capture))candidates.push(capture);
  for(const patient of candidates){
-  if(patient.health<=0&&patient!==capture)continue;
+  if(patient.health<=0&&captureVitalStatus(patient)==='deceased')continue;
   const self=patient.id===actor.id;
   const distance=Math.hypot(patient.p.x-at.x,patient.p.y-at.y);
   if(!self&&(distance>65||!liveVisibility(s,patient.p)||

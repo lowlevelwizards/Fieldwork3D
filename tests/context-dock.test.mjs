@@ -32,8 +32,8 @@ test('classic Floating uses original spring and route-aware placement, not Smart
 });
 
 test('both layouts share the real contextual command dispatcher',()=>{
-  assert.match(palette,/const paletteChoices=actions\.filter\(choice=>choice\.group!=='state'\)/);
-  assert.match(palette,/const destination=placement==='floating'\?/);
+  assert.match(palette,/const paletteChoices=\[\.\.\.actions\.filter\(choice=>choice\.group!=='state'\)/);
+  assert.match(palette,/const destination=choice\.id\.startsWith\('ctxTreat:'\)\?/);
   assert.match(palette,/buckets\[choice\.group==='advanced'\?'primary':choice\.group\]:\s*buckets\.primary/);
   assert.match(main,/hudController\.bindContextActions\(/);
   assert.match(hud,/config\.ui\.context\.addEventListener\('click',handleContextAction\)/);
