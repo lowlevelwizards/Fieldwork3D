@@ -28,9 +28,10 @@ test('restraint standoff never places an operator at the subject center',()=>{
  assert.match(order,/personContactStandpoint\(a\.p,suspect\.p/);
  assert.match(order,/personContactStandpoint\(a\.p,person\.p/);
  const restrain=order.split("if(n.interaction==='restrain-suspect')")[1]
-   .split("if(n.interaction==='escort-suspect')")[0];
+   .split("if(n.interaction==='escort-suspect'||")[0];
  assert.doesNotMatch(restrain,/approach\(a,suspect\.p,dt,s,\.65\)/);
- const civilian=order.split("if(n.objectId.startsWith('civ:')")[1];
+ const civilian=order.split("if(n.objectId.startsWith('civ:')")[1]
+   .split("if(n.interaction==='power-on'||")[0];
  assert.doesNotMatch(civilian,/approach\(a,person\.p,dt,s,\.65\)/);
 });
 
