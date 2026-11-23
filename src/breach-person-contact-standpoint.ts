@@ -6,13 +6,25 @@ import type {Pt} from './breach-core.ts';
 export const PERSON_CONTACT_REACH=42;
 /** Prefer a comfortable full-body gap; the last few units are hand reach. */
 export const PERSON_CONTACT_STANDOFF=39;
-export function personContactStandpoint(from:Pt,target:Pt,valid:(point:Pt)=>boolean):Pt|null{
+/** Fixed angular preference, shared by legacy and R6.2 contact episodes. */
+export const PERSON_CONTACT_OFFSETS=Object.freeze([0,.52,-.52,1.04,-1.04,1.57,-1.57]);
+/** Geometry-only candidate selection; the caller validates actual body/route
+ * swept clearance and occupancy. Never returns an occupied target center. */
+export function contactStandpointAtRadius(
+ from:Pt,target:Pt,radius:number,offsets:readonly number[],
+ valid:(point:Pt)=>boolean
+):Pt|null{
+ if(!Number.isFinite(radius)||radius<=0)return null;
  const bearing=Math.atan2(from.y-target.y,from.x-target.x);
- for(const offset of [0,.52,-.52,1.04,-1.04,1.57,-1.57]){
+ for(const offset of offsets){
   const theta=bearing+offset;
-  const point={x:target.x+Math.cos(theta)*PERSON_CONTACT_STANDOFF,
-    y:target.y+Math.sin(theta)*PERSON_CONTACT_STANDOFF};
+  const point={x:target.x+Math.cos(theta)*radius,
+    y:target.y+Math.sin(theta)*radius};
   if(valid(point))return point;
  }
  return null;
+}
+export function personContactStandpoint(from:Pt,target:Pt,valid:(point:Pt)=>boolean):Pt|null{
+ return contactStandpointAtRadius(from,target,PERSON_CONTACT_STANDOFF,
+  PERSON_CONTACT_OFFSETS,valid);
 }
