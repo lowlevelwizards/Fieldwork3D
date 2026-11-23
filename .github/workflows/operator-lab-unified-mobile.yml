@@ -11,7 +11,7 @@ permissions:
   contents: read
 jobs:
   unified-poses-mobile:
-    if: ${{ startsWith(github.head_ref, 'feature/operator-lab-unified-poses-') || startsWith(github.head_ref, 'feature/breach-stock-contact-authored-transitions-') || startsWith(github.head_ref, 'feature/arsenal-v2-operator-recipes-r9-') || startsWith(github.head_ref, 'feature/arsenal-r13-model-switch-') || startsWith(github.head_ref, 'feature/arsenal-r15-finishes-') }}
+    if: ${{ startsWith(github.head_ref, 'feature/operator-lab-unified-poses-') || startsWith(github.head_ref, 'feature/breach-stock-contact-authored-transitions-') || startsWith(github.head_ref, 'feature/arsenal-v2-operator-recipes-r9-') || startsWith(github.head_ref, 'feature/arsenal-r13-model-switch-') || startsWith(github.head_ref, 'feature/arsenal-r15-finishes-') || startsWith(github.head_ref, 'feature/operator-lab-sidearms-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -22,6 +22,8 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - run: npx playwright install --with-deps chromium
+      - run: node --experimental-strip-types --test tests/operator-lab-unified-poses.test.mjs tests/operator-lab-sidearms.test.mjs
+      - run: npm run build
       - run: node scripts/smoke-operator-lab-unified.mjs
       - uses: actions/upload-artifact@v4
         if: always()

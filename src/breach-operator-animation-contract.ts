@@ -105,6 +105,10 @@ export type OperatorPose={
   secondarySwitch?:SecondarySwitchState;
   /** Already authored fixed-step magazine retrieval, presentation only. */
   secondaryReload?:SecondaryTimedReload|null;
+  /** Operator Lab-only high/low/retention hand posture; NEVER gameplay IK. */
+  labPistolStance?:'high'|'low'|'ready'|'retention';
+  /** Operator Lab-only visible barrel pitch; does not alter shot geometry. */
+  labPistolPitch?:number;
   equipment?:EquipmentLoadout;flashCharges?:number;wedgeRemaining?:number;
   restraintRemaining?:number;
   medicalCarryLocation?:CarryLocation;utilityCarryLocation?:CarryLocation;
