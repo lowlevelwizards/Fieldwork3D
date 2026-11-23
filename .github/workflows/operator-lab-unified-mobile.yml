@@ -21,10 +21,14 @@ jobs:
           node-version: '24'
       - run: npm install --no-audit --no-fund
       - run: npm install --no-save --package-lock=false playwright@1.56.1
-      - run: npx playwright install --with-deps chromium
+      # Ubuntu GitHub runners already ship Chrome. Reuse it rather than
+      # repeatedly downloading Chromium and apt dependencies on each PR.
+      # The shared smoke script explicitly supports FIELDWORK_CI_CHROME.
       - run: node --experimental-strip-types --test tests/operator-lab-unified-poses.test.mjs tests/operator-lab-sidearms.test.mjs
       - run: npm run build
       - run: node scripts/smoke-operator-lab-unified.mjs
+        env:
+          FIELDWORK_CI_CHROME: '1'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
