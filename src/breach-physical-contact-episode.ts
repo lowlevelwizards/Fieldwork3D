@@ -5,7 +5,8 @@
  */
 import type {Pt} from './breach-core.ts';
 import type {PlanNode} from './breach-plan.ts';
-import {PERSON_CONTACT_REACH,PERSON_CONTACT_STANDOFF}
+import {PERSON_CONTACT_REACH,PERSON_CONTACT_STANDOFF,
+ PERSON_CONTACT_OFFSETS,contactStandpointAtRadius}
  from './breach-person-contact-standpoint.ts';
 
 export type PhysicalContactAction=Extract<NonNullable<PlanNode['interaction']>,
@@ -19,22 +20,21 @@ export type PhysicalContactProfile=Readonly<{
  anchorLimit:number|null;
 }>;
 /** Contact distance is per action. GO never silently expands hand reach. */
-const PERSON_OFFSETS=Object.freeze([0,.52,-.52,1.04,-1.04,1.57,-1.57]);
 const OBJECT_OFFSETS=Object.freeze([0,.65,-.65,1.3,-1.3]);
 export const PHYSICAL_CONTACT_PROFILES:Readonly<Record<
  PhysicalContactAction,PhysicalContactProfile>>=Object.freeze({
  'restrain-suspect':{
   handReach:PERSON_CONTACT_REACH,approachLimit:45,
-  standOff:PERSON_CONTACT_STANDOFF,offsets:PERSON_OFFSETS,anchorLimit:45},
+  standOff:PERSON_CONTACT_STANDOFF,offsets:PERSON_CONTACT_OFFSETS,anchorLimit:45},
  'secure-civilian':{
   handReach:PERSON_CONTACT_REACH,approachLimit:45,
-  standOff:PERSON_CONTACT_STANDOFF,offsets:PERSON_OFFSETS,anchorLimit:45},
+  standOff:PERSON_CONTACT_STANDOFF,offsets:PERSON_CONTACT_OFFSETS,anchorLimit:45},
  'restrain-civilian':{
   handReach:PERSON_CONTACT_REACH,approachLimit:45,
-  standOff:PERSON_CONTACT_STANDOFF,offsets:PERSON_OFFSETS,anchorLimit:45},
+  standOff:PERSON_CONTACT_STANDOFF,offsets:PERSON_CONTACT_OFFSETS,anchorLimit:45},
  'search-suspect':{
   handReach:28,approachLimit:45,
-  standOff:25,offsets:PERSON_OFFSETS,anchorLimit:45},
+  standOff:25,offsets:PERSON_CONTACT_OFFSETS,anchorLimit:45},
  'secure-firearm':{
   handReach:34,approachLimit:58,
   standOff:25,offsets:OBJECT_OFFSETS,anchorLimit:null}
@@ -80,14 +80,9 @@ export function resolvePhysicalContactEpisode(f:PhysicalContactEpisodeFacts):
   return {kind:'blocked',distance:range,reason:'stale-target'};
  if(!f.targetVisible)
   return {kind:'blocked',distance:range,reason:'unobserved'};
- const bearing=Math.atan2(f.from.y-f.target.y,f.from.x-f.target.x);
- for(const offset of profile.offsets){
-  const angle=bearing+offset;
-  const point={x:f.target.x+Math.cos(angle)*profile.standOff,
-   y:f.target.y+Math.sin(angle)*profile.standOff};
-  if(f.canStand(point))
-   return {kind:'approach',distance:range,goal:point};
- }
+ const goal=contactStandpointAtRadius(f.from,f.target,profile.standOff,
+  profile.offsets,f.canStand);
+ if(goal)return {kind:'approach',distance:range,goal};
  return {kind:'blocked',distance:range,reason:'no-standpoint'};
 }
 
