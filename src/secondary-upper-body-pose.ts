@@ -22,6 +22,13 @@ const blend=(a:Anchor3,b:Anchor3,t:number):Anchor3=>({
 const add=(a:Anchor3,b:Anchor3):Anchor3=>({
  x:a.x+b.x,y:a.y+b.y,z:a.z+b.z
 });
+/** Follow the pistol's rendered Z pitch for contact offsets, rather than
+ * leaving the support palm horizontal while the weapon tilts. */
+const pitched=(pt:Anchor3,pitch:number):Anchor3=>{
+ const angle=Number.isFinite(pitch)?pitch:0;
+ const c=Math.cos(angle),s=Math.sin(angle);
+ return {x:pt.x*c-pt.y*s,y:pt.x*s+pt.y*c,z:pt.z};
+};
 /** At low readiness the pistol is held close to the sternum; ADS extends
  * both wrists together, not a rifle stock into the shoulder. Obstruction
  * draws to a downrange retention grip rather than forcing the muzzle into
@@ -39,6 +46,8 @@ export function secondaryUpperBodyTargets(input:Readonly<{
  labContacts?:LabPistolContacts;
  /** Lab-only empty-reload support hand animation. */
  labSlideRack?:Readonly<{weight:number;pull:number}>|null;
+ /** Lab-only visible muzzle pitch for model-specific hand alignment. */
+ labPitch?:number;
 }>):SecondaryPoseTarget{
  const weight=smooth((clamp(input.fraction)-.08)/.78);
  const ads=smooth(input.aim)*(input.moving ? .88 : 1);
@@ -46,36 +55,36 @@ export function secondaryUpperBodyTargets(input:Readonly<{
  // Only explicit Lab stances get the enlarged and more legible geometry.
  const laboratory=input.stance!==undefined;
  const baseReady:Anchor3=laboratory?
-  {x:9.6,y:-1.1,z:3.2}:{x:8.2,y:-3.0,z:3.3};
+  {x:10.0,y:.65,z:3.2}:{x:8.2,y:-3.0,z:3.3};
  const stanceReady:Anchor3=input.stance==='high'?
   // High ready stays elevated but clear of the chin and face.
-  {x:11.1,y:1.75,z:3.15}:input.stance==='low'?
+  {x:11.8,y:3.65,z:3.1}:input.stance==='low'?
   // Low ready stays in front of the belt, not near the thigh.
   {x:10.0,y:-4.05,z:3.3}:baseReady;
  const ready=blend(baseReady,stanceReady,
   clamp(input.stanceBlend??1));
  const extended:Anchor3=laboratory?
-  {x:18.0,y:2.8,z:2.35}:{x:13.4,y:-.25,z:2.0};
+  {x:17.4,y:6.1,z:2.55}:{x:13.4,y:-.25,z:2.0};
  const retention:Anchor3=laboratory?
-  {x:6.4,y:-2.45,z:4.9}:{x:5.7,y:-5.7,z:4.9};
+  {x:7.0,y:-.6,z:4.8}:{x:5.7,y:-5.7,z:4.9};
  const firing=input.obstructed||input.stance==='retention'?retention:
   blend(ready,extended,ads);
  const supportBase:Anchor3=laboratory?
-  {x:9.1,y:-1.3,z:1.2}:{x:6.9,y:-3.7,z:.6};
+  {x:9.4,y:.15,z:1.1}:{x:6.9,y:-3.7,z:.6};
  const supportStance:Anchor3=input.stance==='high'?
-  {x:10.4,y:1.5,z:1.15}:input.stance==='low'?
+  {x:10.7,y:3.25,z:1.15}:input.stance==='low'?
   {x:9.4,y:-4.3,z:1.1}:supportBase;
  const supportReady=blend(supportBase,supportStance,
   clamp(input.stanceBlend??1));
  const supportAim:Anchor3=laboratory?
-  {x:17.15,y:2.9,z:1.1}:{x:12.0,y:-.75,z:.25};
+  {x:16.9,y:5.7,z:.85}:{x:12.0,y:-.75,z:.25};
  let support=input.obstructed||input.stance==='retention'?
   // Support palm retracts independently to guard the chest, not over the
   // firing hand in a cramped pseudo-rifle short-stock hold.
-  (laboratory?{x:3.85,y:-2.1,z:-2.3}:{x:5.3,y:-5.8,z:1.5}):
+  (laboratory?{x:4.7,y:0,z:-2.2}:{x:5.3,y:-5.8,z:1.5}):
   blend(supportReady,supportAim,ads);
  if(input.labContacts&&input.stance!=='retention'&&!input.obstructed)
-  support=add(firing,input.labContacts.supportOffset);
+  support=add(firing,pitched(input.labContacts.supportOffset,input.labPitch??0));
  if(input.reloadProgress!==undefined&&input.reloadProgress!==null){
   const p=clamp(input.reloadProgress);
   // Travel to real carrier direction, then present an already-owned mag
@@ -89,11 +98,11 @@ export function secondaryUpperBodyTargets(input:Readonly<{
   else if(p<.67)support=blend(pouch,magwell,smooth((p-.28)/.39));
   else support=blend(magwell,from,smooth((p-.67)/.33));
   if(input.labContacts&&p>=.72)
-   support=add(firing,input.labContacts.supportOffset);
+   support=add(firing,pitched(input.labContacts.supportOffset,input.labPitch??0));
  }
  if(input.labContacts&&input.labSlideRack&&input.stance!=='retention'){
   // Rise to the real rear-slide point, pull rearward, release and regrip.
-  const top=add(firing,input.labContacts.slideOffset);
+  const top=add(firing,pitched(input.labContacts.slideOffset,input.labPitch??0));
   top.x-=1.45*clamp(input.labSlideRack.pull);
   support=blend(support,top,clamp(input.labSlideRack.weight));
  }

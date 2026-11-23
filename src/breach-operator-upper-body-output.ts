@@ -11,6 +11,7 @@ import {alignSegmentComponents} from './breach-ik.ts';
 
 const localZ=new THREE.Vector3(0,0,1);
 const localX=new THREE.Vector3(1,0,0);
+const localY=new THREE.Vector3(0,1,0);
 
 /** Seed once from the rig for exact degenerate-alignment compatibility.
  * Subsequent frames reuse their own component transforms; commits never
@@ -82,6 +83,24 @@ export function orientOperatorSupportPalmOnShoulder(
  hand.quaternion.multiply(q.setFromAxisAngle(localX,-.36*w));
  hand.quaternion.multiply(q.setFromAxisAngle(localZ,.24*w));
  output.handEuler[0].setFromQuaternion(hand.quaternion);
+}
+/** Lab-only sidearm palms: incline the trigger hand to the grip, and
+ * rotate the support palm inward over its new forward hand-contact socket.
+ * Does NOT alter any of the game's existing primary/secondary hand IK.
+ */
+export function orientLabPistolHand(scratch:OperatorPoseScratch,
+ index:0|1,pitch:number,retention:boolean):void{
+ const output=scratch.armOutput;
+ const hand=output.transforms[index*3+2];
+ const q=output.rockQuaternion;
+ const angle=index===1?(.16+.34*pitch):
+  (retention?.24:(.12+.30*pitch));
+ hand.quaternion.multiply(q.setFromAxisAngle(localZ,angle));
+ if(index===0)
+  hand.quaternion.multiply(q.setFromAxisAngle(localY,
+   retention?-.40:-.27));
+ else hand.quaternion.multiply(q.setFromAxisAngle(localY,-.13));
+ output.handEuler[index].setFromQuaternion(hand.quaternion);
 }
 export function operatorHandTransform(scratch:OperatorPoseScratch,
  index:0|1){
