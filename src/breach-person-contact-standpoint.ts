@@ -6,7 +6,7 @@ import type {Pt} from './breach-core.ts';
 export const PERSON_CONTACT_REACH=42;
 /** Prefer a comfortable full-body gap; the last few units are hand reach. */
 export const PERSON_CONTACT_STANDOFF=39;
-/** Fixed angular preference, shared by legacy and R6.2 contact episodes. */
+/** Fixed angular preference shared by R6.2 person-contact episodes. */
 export const PERSON_CONTACT_OFFSETS=Object.freeze([0,.52,-.52,1.04,-1.04,1.57,-1.57]);
 /** Geometry-only candidate selection; the caller validates actual body/route
  * swept clearance and occupancy. Never returns an occupied target center. */
@@ -23,8 +23,4 @@ export function contactStandpointAtRadius(
   if(valid(point))return point;
  }
  return null;
-}
-export function personContactStandpoint(from:Pt,target:Pt,valid:(point:Pt)=>boolean):Pt|null{
- return contactStandpointAtRadius(from,target,PERSON_CONTACT_STANDOFF,
-  PERSON_CONTACT_OFFSETS,valid);
 }

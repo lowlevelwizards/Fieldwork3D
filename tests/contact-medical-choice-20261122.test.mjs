@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {personContactStandpoint,PERSON_CONTACT_REACH,PERSON_CONTACT_STANDOFF}
+import {contactStandpointAtRadius,PERSON_CONTACT_REACH,
+ PERSON_CONTACT_STANDOFF,PERSON_CONTACT_OFFSETS}
  from '../src/breach-person-contact-standpoint.ts';
 import {newSession,team,enemies,planSuspectRestraint,toggling,stepSession}
  from '../src/breach-game.ts';
@@ -19,14 +20,17 @@ test('restraint standoff never places an operator at the subject center',()=>{
  const from={x:0,y:0},person={x:40,y:0};
  assert.equal(PERSON_CONTACT_REACH,42);
  assert.equal(PERSON_CONTACT_STANDOFF,39);
- const goal=personContactStandpoint(from,person,p=>p.x>0);
+ const goal=contactStandpointAtRadius(from,person,PERSON_CONTACT_STANDOFF,
+  PERSON_CONTACT_OFFSETS,p=>p.x>0);
  assert.ok(goal);
  assert.ok(Math.abs(d(goal,person)-PERSON_CONTACT_STANDOFF)<.0001);
  assert.ok(d(goal,person)>36,'stop at arm reach without body overlap');
- const sidestep=personContactStandpoint({x:0,y:0},{x:44,y:0},p=>Math.abs(p.y)>9);
+ const sidestep=contactStandpointAtRadius({x:0,y:0},{x:44,y:0},
+  PERSON_CONTACT_STANDOFF,PERSON_CONTACT_OFFSETS,p=>Math.abs(p.y)>9);
  assert.ok(sidestep&&Math.abs(d(sidestep,{x:44,y:0})-39)<.001,
    'blocked direct slot selects a safe side slot at the same distance');
- assert.equal(personContactStandpoint(from,person,()=>false),null);
+ assert.equal(contactStandpointAtRadius(from,person,PERSON_CONTACT_STANDOFF,
+  PERSON_CONTACT_OFFSETS,()=>false),null);
  const order=source('src/breach-order-interactions.ts');
  assert.match(order,/PERSON_CONTACT_REACH/);
  assert.match(order,/contactEpisode\(s,a,n,suspect\.p/);

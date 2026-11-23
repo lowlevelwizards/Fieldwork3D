@@ -6,6 +6,17 @@ import {spawnSync} from 'node:child_process';
 import {existsSync} from 'node:fs';
 import {shardTestPaths} from './test-shards.mjs';
 const tests=[
+ // R6.4: consolidate the full R6.0-R6.4 lifecycle acceptance into this
+ // existing gate; no redundant workflow, motor, or independent order clock.
+ 'tests/r6-0-tactical-action-audit.test.mjs',
+ 'tests/r6-1-action-assessment.test.mjs',
+ 'tests/r6-1-action-go-acceptance.test.mjs',
+ 'tests/r6-2-physical-contact-policy.test.mjs',
+ 'tests/r6-2-physical-contact-go.test.mjs',
+ 'tests/r6-3-action-outcome-provenance.test.mjs',
+ 'tests/r6-3-live-go-feedback.test.mjs',
+ 'tests/r6-4-action-integration.test.mjs',
+ 'tests/contact-medical-choice-20261122.test.mjs',
  'tests/consolidation-stage7-domain-ownership.test.mjs',
  'tests/consolidation-stage8-world-ownership.test.mjs',
  'tests/breach-roadmap2-stage1-contracts.test.mjs',

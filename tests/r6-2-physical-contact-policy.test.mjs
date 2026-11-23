@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {PERSON_CONTACT_STANDOFF,personContactStandpoint,
+import {PERSON_CONTACT_STANDOFF,PERSON_CONTACT_OFFSETS,
  contactStandpointAtRadius} from '../src/breach-person-contact-standpoint.ts';
 import {PHYSICAL_CONTACT_PROFILES,resolvePhysicalContactEpisode,
  advancePhysicalContactTime}
@@ -77,7 +77,8 @@ test('R6.2 free side candidate is chosen in deterministic angular order',()=>{
  const c=resolvePhysicalContactEpisode({...b,canStand:()=>false});
  assert.deepEqual({kind:c.kind,reason:c.reason},
   {kind:'blocked',reason:'no-standpoint'});
- const person=personContactStandpoint(pt(0,0),pt(44,0),p=>Math.abs(p.y)>9);
+ const person=contactStandpointAtRadius(pt(0,0),pt(44,0),
+  PERSON_CONTACT_STANDOFF,PERSON_CONTACT_OFFSETS,p=>Math.abs(p.y)>9);
  assert.ok(person&&Math.abs(dist(person,pt(44,0))-39)<1e-6);
  const other=contactStandpointAtRadius(pt(0,0),pt(44,0),25,[0,.52,-.52],
   p=>Math.abs(p.y)>12);
