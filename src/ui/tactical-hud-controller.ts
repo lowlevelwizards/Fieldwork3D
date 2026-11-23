@@ -15,6 +15,8 @@ import type {CampaignState} from '../campaign-state.ts';
 import type {TransportCandidate} from '../breach-transport-candidate.ts';
 import {nearestEligibleActor} from './tactical-nearest-actor.ts';
 import type {DispatchIncidentContext} from '../dispatch-incident-context.ts';
+import type {ReplayActorIdentity} from '../breach-replay-manifest.ts';
+import type * as THREE from 'three';
 import type {MissionRecorder} from '../breach-replay.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,rangeTrialLabel,type RangeTrial} from '../equipment-training-diagnostics.ts';
 import {lightControlState} from '../equipment-weapon-light-ui.ts';
@@ -79,6 +81,7 @@ export type TacticalSessionPresentation={
  reducedMotion:boolean;weaponChooser:HTMLElement;hideWeaponChooser:()=>void;
  favoriteActive:boolean;recorder:MissionRecorder;campaign:CampaignState|null;
  incident?:DispatchIncidentContext|null;operationsLogged:number;
+ captureAfterActionModels?:(identities:readonly ReplayActorIdentity[])=>ReadonlyMap<string,THREE.Group>;
 };
 
 /** UI-only weapon choice overlay; legality stays in equipWeaponChoice. */
@@ -537,7 +540,7 @@ export function createTacticalHudController(
       medicalButton,dragButton,carryButton,retrieveButton,navPanel,
       canvas,auditRouteMode,viewMode,cssW,cssH,worldToScreen,displayRouteCache,
       reducedMotion,weaponChooser,hideWeaponChooser,favoriteActive,
-      recorder,campaign,incident,operationsLogged}=input;
+      recorder,campaign,incident,operationsLogged,captureAfterActionModels}=input;
     // One read-only squad snapshot per HUD reconciliation, never a second
     // simulation or movement authority.
     const friendly=team(state);
@@ -705,7 +708,7 @@ export function createTacticalHudController(
   ui.retry.disabled=mode==='mission';
   if(!ui.debrief.hidden)renderMissionDebrief({
     ui,state,brief,recorder,campaign,campaignMode:mode,
-    incident,operationsLogged:operationsLogged
+    incident,operationsLogged:operationsLogged,captureAfterActionModels
   });
   for(const id of ['rook','moss','ash','vale'] as const){
     renderOperatorCard({

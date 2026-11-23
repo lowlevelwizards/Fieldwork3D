@@ -14,6 +14,7 @@ import type {ReplayPlaybackController} from '../breach-replay-playback-controlle
 import {renderCombatReport} from './breach-after-action-combat.ts';
 import {renderAfterActionHighlights} from './breach-after-action-highlights.ts';
 import {replayHighlightMoments} from '../breach-highlight-frames.ts';
+import type * as THREE from 'three';
 import type {AfterActionModelPresenter} from './breach-after-action-model.ts';
 import {buildAfterActionTimeline,selectTimelineEvents,TIMELINE_FILTERS,
  type AfterActionTimelineEvent,type TimelineFilter}
@@ -114,7 +115,7 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
          owners.get(root)?.selectedOperator??null:
          current.dataset.afterModel??null,currentCombatEvidence(root));
      fallback();
-   });
+   },owners.get(root)?.modelSnapshots);
    const current=root.querySelector<HTMLElement>(
      '[data-after-squad-model], [data-after-model]');
    if(!owner.presenter){
@@ -150,6 +151,7 @@ type State={
   operatorRecordOpen:boolean;summaryCompact:boolean;
   scroll:Partial<Record<AfterActionTab,number>>;
   showIntel:boolean;inventory:AfterActionInventoryCloseout|null;
+  modelSnapshots:ReadonlyMap<string,THREE.Group>|undefined;
   timelineEvents:readonly AfterActionTimelineEvent[];
   timelineFilter:TimelineFilter;timelineSelectedKey:string|null;
   timelineClusterId:string|null;timelineLedgerOpen:boolean;
@@ -177,7 +179,8 @@ const make=(tag:string,cls='',value?:string)=>{
   return el;
 };
 export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
-  options:{showIntel:boolean;inventory?:AfterActionInventoryCloseout|null}):void{
+  options:{showIntel:boolean;inventory?:AfterActionInventoryCloseout|null;
+    modelSnapshots?:ReadonlyMap<string,THREE.Group>}):void{
  const content=root.querySelector<HTMLElement>('#afterActionBody');
  const nav=root.querySelector<HTMLElement>('#afterActionTabs');
  const intel=root.querySelector<HTMLElement>('#debriefIntelBlock');
@@ -194,6 +197,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      selectedHighlight:null,operatorRecordOpen:false,summaryCompact:false,
      scroll:{},showIntel:options.showIntel,
      inventory:options.inventory??null,
+     modelSnapshots:options.modelSnapshots,
      timelineEvents:buildAfterActionTimeline(rec),
      timelineFilter:'key',timelineSelectedKey:null,timelineClusterId:null,
      timelineLedgerOpen:false,timelineLedgerLimit:30,timelineRailScroll:0,

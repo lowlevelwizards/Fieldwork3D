@@ -798,6 +798,9 @@ function updateHud(){
     canvas,auditRouteMode,viewMode,cssW,cssH,worldToScreen,displayRouteCache,
     reducedMotion:reducedMotionMedia.matches,weaponChooser,hideWeaponChooser,
     favoriteActive:!!replayLibrary.activeFavoriteId,recorder,campaign,
+    captureAfterActionModels:identities=>
+      stage&&viewMode!=='plan2d'?
+        stage.captureAfterActionSquad(identities):new Map(),
     incident:!replaying?readDispatchIncident():null,
     operationsLogged:operationHistory().length
   });
