@@ -13,6 +13,9 @@ import {isLabPistolTrack,sampleLabPistolFrame,LAB_PISTOL_PREVIEW_SCALE}
  from '../src/operator-lab-pistol-tracks.ts';
 
 import {secondaryUpperBodyTargets} from '../src/secondary-upper-body-pose.ts';
+import {labPistolContacts} from '../src/operator-lab-pistol-contacts.ts';
+import {glockArtSockets} from '../src/weapons/geometry/glock-family-silhouettes.ts';
+import {m9ArtSockets} from '../src/weapons/geometry/beretta-m9-silhouettes.ts';
 const source=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 test('Operator Lab enumerates every real Glock and M9 art model, no invented pistols',()=>{
  const shown=POSE_SIDEARM_GROUPS.flatMap(group=>group.models.map(model=>model.id));
@@ -68,8 +71,8 @@ test('Ready tab actions move both real pistol wrists and muzzle distinctly',()=>
  assert.ok(frame('ready-to-ads',.7).aim<frame('ready-to-ads',1.5).aim);
  assert.ok(frame('ads-to-low',.7).stanceBlend<
   frame('ads-to-low',1.5).stanceBlend);
- assert.ok(frame('low-ready').pitch<-.5);
- assert.ok(frame('high-ready').pitch>.5);
+ assert.ok(frame('low-ready').pitch<-.25&&frame('low-ready').pitch>-.4);
+ assert.ok(frame('high-ready').pitch>.35&&frame('high-ready').pitch<.6);
  for(const kind of ['reload','reload-emergency','reload-retention'])
   assert.ok(frame(kind,1).reload,kind);
  // An interrupted reload must already have ended by 1.0 s, but its
@@ -88,11 +91,32 @@ test('Ready tab actions move both real pistol wrists and muzzle distinctly',()=>
  const high=target('high-ready'),low=target('low-ready');
  const ready=target('ready'),ads=target('active-aim');
  const retention=target('short-stock');
- assert.ok(high.firing.y-low.firing.y>10,'high/low firing wrist');
- assert.ok(high.support.y-low.support.y>10,'high/low support wrist');
- assert.ok(ads.firing.x-ready.firing.x>5,'ADS extends both hands');
- assert.ok(ads.firing.y-ready.firing.y>4,'ADS raises both hands');
+ assert.ok(high.firing.y-low.firing.y>5,'high/low firing wrist');
+ assert.ok(high.support.y-low.support.y>5,'high/low support wrist');
+ assert.ok(ads.firing.x-ready.firing.x>7.5,'ADS nearly straightens both arms');
+ assert.ok(ads.firing.y-ready.firing.y>3.4,'ADS raises both hands');
  assert.ok(ready.firing.x-retention.firing.x>2,'retention retracts hands');
+ // Return the support palm to the authored weapon instead of arbitrary
+ // in-front-of-chest coordinates: every model has its own sockets.
+ for(const ref of POSE_SIDEARM_GROUPS.flatMap(g=>g.models)){
+  const sockets=ref.id.startsWith('glock-')?
+   glockArtSockets(ref.id):m9ArtSockets(ref.id);
+  const contact=labPistolContacts(ref.id);
+  assert.equal(contact.primaryFromPivot.x,
+   sockets.primaryGrip.x-sockets.holsterPivot.x,ref.id);
+  assert.equal(contact.primaryFromPivot.y,
+   sockets.primaryGrip.y-sockets.holsterPivot.y,ref.id);
+  const aimPose=sampleLabPistolFrame('active-aim',2);
+  const both=secondaryUpperBodyTargets({
+   fraction:1,aim:aimPose.aim,moving:false,obstructed:false,
+   stance:aimPose.stance,labContacts:contact
+  });
+  assert.ok(Math.abs(both.support.y-both.firing.y)<1.5,ref.id);
+  assert.ok(both.firing.x>17,ref.id);
+  assert.ok(both.support.x>16,ref.id);
+  assert.ok(Number.isFinite(contact.slideOffset.x),ref.id);
+  assert.ok(contact.slideOffset.y>3,ref.id);
+ }
  // No explicit Lab stance = gameplay targets are absolutely unchanged.
  assert.deepEqual(secondaryUpperBodyTargets({
   fraction:1,aim:0,moving:false,obstructed:false
@@ -100,6 +124,38 @@ test('Ready tab actions move both real pistol wrists and muzzle distinctly',()=>
  assert.deepEqual(secondaryUpperBodyTargets({
   fraction:1,aim:1,moving:false,obstructed:false
  }).firing,{x:13.4,y:-.25,z:2});
+});
+test('Only empty reloads rack the rear slide, after magazine seating',()=>{
+ const empty=track=>[.7,1.4,1.95,2.13,2.25,2.5]
+  .map(t=>({time:t,frame:sampleLabPistolFrame(track,t)}));
+ for(const name of ['reload-emergency','pistol-reload-emergency']){
+  const samples=empty(name);
+  assert.equal(samples[0].frame.slideRack,null);
+  assert.equal(samples[1].frame.slideRack,null);
+  const grasp=samples[2].frame.slideRack;
+  const pull=samples[3].frame.slideRack;
+  assert.ok(grasp?.weight>.5,'support hand must reach rear slide');
+  assert.ok(pull?.pull>.5,'support hand must actually pull the slide');
+  assert.equal(samples.at(-1).frame.slideRack,null);
+ }
+ for(const name of ['reload','reload-retention','pistol-reload',
+   'pistol-reload-retention','pistol-reload-interrupt'])
+  for(const t of [0,.4,1,1.5,2,2.5])
+   assert.equal(sampleLabPistolFrame(name,t).slideRack,null,name);
+ const contact=labPistolContacts('glock-g19-gen3');
+ const frame=sampleLabPistolFrame('pistol-reload-emergency',2.13);
+ const held=secondaryUpperBodyTargets({
+  fraction:1,aim:0,moving:false,obstructed:false,
+  stance:'ready',labContacts:contact,
+  reloadProgress:frame.reload.progress,labSlideRack:frame.slideRack
+ });
+ const plain=secondaryUpperBodyTargets({
+  fraction:1,aim:0,moving:false,obstructed:false,
+  stance:'ready',labContacts:contact
+ });
+ assert.ok(held.support.y>plain.support.y+2,
+  'overhand must visibly climb from support grip to rear slide');
+ assert.ok(held.support.x<plain.support.x+3);
 });
 test('Lab uses the live operator rig and preserves the unissued-only M9 boundary',()=>{
  const lab=source('src/breach-operator-lab.ts');
@@ -125,4 +181,10 @@ test('Lab uses the live operator rig and preserves the unissued-only M9 boundary
  assert.ok(lab.includes('labPistolScale:sidearm?LAB_PISTOL_PREVIEW_SCALE'));
  assert.ok(lab.includes('PISTOL PREVIEW'));
  assert.ok(source('src/secondary-holster-visual.ts').includes('labScale?:number'));
+ assert.ok(lab.includes('labPistolContacts(sidearm)'));
+ assert.ok(lab.includes('labPistolSlideRack:pistolFrame?.slideRack'));
+ assert.ok(contract.includes('labPistolContacts?:LabPistolContacts'));
+ assert.ok(contract.includes('labPistolSlideRack?:'));
+ assert.ok(source('src/secondary-holster-visual.ts')
+  .includes('labPrimaryFromPivot?:Anchor3'));
 });

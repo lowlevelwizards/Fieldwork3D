@@ -54,6 +54,7 @@ import {initialSecondaryEquipment} from './secondary-equipment.ts';
 import {isM9AppearanceId} from './weapons/geometry/beretta-m9-silhouettes.ts';
 import {sampleLabPistolFrame,isLabPistolTrack,LAB_PISTOL_PREVIEW_SCALE}
  from './operator-lab-pistol-tracks.ts';
+import {labPistolContacts} from './operator-lab-pistol-contacts.ts';
 import {presentLabBerettaPreview,clearLabBerettaPreview}
  from './operator-lab-beretta-preview.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
@@ -208,6 +209,10 @@ function syncPosePickers(){
  // A selected pistol MUST NOT read "NO WEAPON" in the primary controls.
  if(unarmedOption)unarmedOption.textContent=sidearm?
   'PISTOL PREVIEW':'NO WEAPON';
+ const retentionButton=document.querySelector<HTMLButtonElement>(
+  '[data-pose="short-stock"]');
+ if(retentionButton)retentionButton.textContent=sidearm?
+  'CLOSE RETENTION':'SHORT STOCK';
  const sidearmHint=document.getElementById('poseSidearmHint');
  if(sidearmHint){
   sidearmHint.hidden=!sidearm;
@@ -1227,6 +1232,8 @@ let labSwitch:null|{from:Handling;to:Handling;
     wrist:THREE.Vector3;bend:THREE.Vector3}[]}=null;
 let rig:OperatorRig|null=null,track:LabTrack='idle';
 const labPistolHandWorld=new THREE.Vector3();
+const labPistolGripWorld=new THREE.Vector3();
+const labPistolWristWorld=new THREE.Vector3();
 /** Lazy visual peer for shoulder contact auditions. Reused while scrubbing. */
 let shoulderLeaderRig:OperatorRig|null=null;
 function ensureLabShoulderLeader():OperatorRig{
@@ -1980,6 +1987,7 @@ function draw(){
   // Shotgun reload is an explicit special case; no synthetic AR magazine.
   const sidearm=poseSidearm(poseWeaponPreset);
   const pistolFrame=sidearm?sampleLabPistolFrame(track,clock):null;
+  const pistolContacts=sidearm?labPistolContacts(sidearm):undefined;
   const selectedPosePreset=track==='reload-shotgun'?undefined:
    posePreset(poseWeaponPreset);
   const currentWeapon=(sidearm?'carbine':track==='reload-shotgun'?'shotgun':
@@ -2052,6 +2060,8 @@ function draw(){
      fraction:pistolFrame.fraction
     }:undefined,
     secondaryReload:pistolReload,
+    labPistolContacts:pistolContacts,
+    labPistolSlideRack:pistolFrame?.slideRack,
     labPistolStance:pistolFrame?.stance,
     labPistolStanceBlend:pistolFrame?.stanceBlend,
     labPistolPitch:pistolFrame?.pitch,
@@ -2289,6 +2299,12 @@ function draw(){
    rig.arms[1].hand.getWorldPosition(labPistolHandWorld).y.toFixed(3):'';
   canvas.dataset.poseSidearmSupportY=sidearm?
    rig.arms[0].hand.getWorldPosition(labPistolHandWorld).y.toFixed(3):'';
+  canvas.dataset.poseSidearmRack=pistolFrame?.slideRack?
+   pistolFrame.slideRack.weight.toFixed(3):'';
+  canvas.dataset.poseSidearmRackPull=pistolFrame?.slideRack?
+   pistolFrame.slideRack.pull.toFixed(3):'';
+  canvas.dataset.poseSidearmSupportX=sidearm?
+   rig.arms[0].hand.getWorldPosition(labPistolHandWorld).x.toFixed(3):'';
   canvas.dataset.poseSidearmReload=pistolReload?
    (pistolReload.elapsed/pistolReload.duration).toFixed(3):'';
   canvas.dataset.poseSidearmPresentation=sidearm?
@@ -2297,6 +2313,17 @@ function draw(){
    rig.hip.getObjectByName('operator-lab-beretta-model'):
    rig.hip.getObjectByName('secondary-holstered-pistol');
   canvas.dataset.poseSidearmMesh=String(!!sidearm&&!!heldPreview?.visible);
+  // Real rendered pistol trigger grip vs solved firing wrist (world units).
+  // This catches visually misplaced fists that hand-height tests miss.
+  const pistolCradle=sidearm?
+   rig.hip.getObjectByName('secondary-holstered-pistol'):null;
+  if(pistolCradle&&pistolContacts){
+   const socket=pistolContacts.primaryFromPivot;
+   const grip=pistolCradle.localToWorld(labPistolGripWorld.set(
+    socket.x,socket.y,socket.z).multiplyScalar(LAB_PISTOL_PREVIEW_SCALE));
+   const wrist=rig.arms[1].hand.getWorldPosition(labPistolWristWorld);
+   canvas.dataset.poseSidearmGripError=grip.distanceTo(wrist).toFixed(3);
+  }else canvas.dataset.poseSidearmGripError='';
   canvas.dataset.posePrimaryHidden=String(!!sidearm&&!rig.weapon.visible);
   canvas.dataset.poseFitSavedWeapon=poseArsenalSavedId??'';
   canvas.dataset.poseFitWeaponReceiver=exactWeaponConfig?.build?.parts.receiver??'';

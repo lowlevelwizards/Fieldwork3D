@@ -7,11 +7,20 @@ import type {Anchor3} from './breach-anatomy.ts';
 export type SecondaryPoseTarget=Readonly<{
  weight:number;firing:Anchor3;support:Anchor3;
 }>;
+/** Authored pistol art-space offsets for Lab pose presentation only. */
+export type LabPistolContacts=Readonly<{
+ primaryFromPivot:Anchor3;
+ supportOffset:Anchor3;
+ slideOffset:Anchor3;
+}>;
 const clamp=(v:number)=>Math.max(0,Math.min(1,Number.isFinite(v)?v:0));
 const smooth=(t:number)=>{const x=clamp(t);return x*x*(3-2*x);};
 const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;
 const blend=(a:Anchor3,b:Anchor3,t:number):Anchor3=>({
  x:lerp(a.x,b.x,t),y:lerp(a.y,b.y,t),z:lerp(a.z,b.z,t)
+});
+const add=(a:Anchor3,b:Anchor3):Anchor3=>({
+ x:a.x+b.x,y:a.y+b.y,z:a.z+b.z
 });
 /** At low readiness the pistol is held close to the sternum; ADS extends
  * both wrists together, not a rifle stock into the shoulder. Obstruction
@@ -26,6 +35,10 @@ export function secondaryUpperBodyTargets(input:Readonly<{
  stance?:'high'|'low'|'ready'|'retention';
  /** Lab-only transition toward the requested ready posture. */
  stanceBlend?:number;
+ /** Lab-only model-specific G19/G26/M9 contacts. */
+ labContacts?:LabPistolContacts;
+ /** Lab-only empty-reload support hand animation. */
+ labSlideRack?:Readonly<{weight:number;pull:number}>|null;
 }>):SecondaryPoseTarget{
  const weight=smooth((clamp(input.fraction)-.08)/.78);
  const ads=smooth(input.aim)*(input.moving ? .88 : 1);
@@ -33,38 +46,56 @@ export function secondaryUpperBodyTargets(input:Readonly<{
  // Only explicit Lab stances get the enlarged and more legible geometry.
  const laboratory=input.stance!==undefined;
  const baseReady:Anchor3=laboratory?
-  {x:9.4,y:-1.4,z:3.5}:{x:8.2,y:-3.0,z:3.3};
+  {x:9.6,y:-1.1,z:3.2}:{x:8.2,y:-3.0,z:3.3};
  const stanceReady:Anchor3=input.stance==='high'?
-  {x:6.8,y:4.0,z:3.5}:input.stance==='low'?
-  {x:9.6,y:-8.0,z:3.7}:baseReady;
+  // High ready stays elevated but clear of the chin and face.
+  {x:11.1,y:1.75,z:3.15}:input.stance==='low'?
+  // Low ready stays in front of the belt, not near the thigh.
+  {x:10.0,y:-4.05,z:3.3}:baseReady;
  const ready=blend(baseReady,stanceReady,
   clamp(input.stanceBlend??1));
  const extended:Anchor3=laboratory?
-  {x:15.0,y:3.4,z:1.8}:{x:13.4,y:-.25,z:2.0};
- const retention:Anchor3={x:5.7,y:-5.7,z:4.9};
+  {x:18.0,y:2.8,z:2.35}:{x:13.4,y:-.25,z:2.0};
+ const retention:Anchor3=laboratory?
+  {x:6.4,y:-2.45,z:4.9}:{x:5.7,y:-5.7,z:4.9};
  const firing=input.obstructed||input.stance==='retention'?retention:
   blend(ready,extended,ads);
  const supportBase:Anchor3=laboratory?
-  {x:8.0,y:-2.0,z:.6}:{x:6.9,y:-3.7,z:.6};
+  {x:9.1,y:-1.3,z:1.2}:{x:6.9,y:-3.7,z:.6};
  const supportStance:Anchor3=input.stance==='high'?
-  {x:6.1,y:3.3,z:1.0}:input.stance==='low'?
-  {x:8.1,y:-8.5,z:.9}:supportBase;
+  {x:10.4,y:1.5,z:1.15}:input.stance==='low'?
+  {x:9.4,y:-4.3,z:1.1}:supportBase;
  const supportReady=blend(supportBase,supportStance,
   clamp(input.stanceBlend??1));
  const supportAim:Anchor3=laboratory?
-  {x:13.4,y:2.7,z:.1}:{x:12.0,y:-.75,z:.25};
+  {x:17.15,y:2.9,z:1.1}:{x:12.0,y:-.75,z:.25};
  let support=input.obstructed||input.stance==='retention'?
-  {x:5.3,y:-5.8,z:1.5}:blend(supportReady,supportAim,ads);
+  // Support palm retracts independently to guard the chest, not over the
+  // firing hand in a cramped pseudo-rifle short-stock hold.
+  (laboratory?{x:3.85,y:-2.1,z:-2.3}:{x:5.3,y:-5.8,z:1.5}):
+  blend(supportReady,supportAim,ads);
+ if(input.labContacts&&input.stance!=='retention'&&!input.obstructed)
+  support=add(firing,input.labContacts.supportOffset);
  if(input.reloadProgress!==undefined&&input.reloadProgress!==null){
   const p=clamp(input.reloadProgress);
   // Travel to real carrier direction, then present an already-owned mag
   // to the pistol. Model/pouch ownership remains a separate S8.3 stage.
   const from=support;
   const pouch:Anchor3={x:1.5,y:-8.1,z:-7.8};
-  const magwell:Anchor3={x:7.4,y:-5.1,z:.7};
+  const magwell:Anchor3=input.labContacts?
+   {x:firing.x-.25,y:firing.y-2.15,z:firing.z-.7}:
+   {x:7.4,y:-5.1,z:.7};
   if(p<.28)support=blend(from,pouch,smooth(p/.28));
   else if(p<.67)support=blend(pouch,magwell,smooth((p-.28)/.39));
   else support=blend(magwell,from,smooth((p-.67)/.33));
+  if(input.labContacts&&p>=.72)
+   support=add(firing,input.labContacts.supportOffset);
+ }
+ if(input.labContacts&&input.labSlideRack&&input.stance!=='retention'){
+  // Rise to the real rear-slide point, pull rearward, release and regrip.
+  const top=add(firing,input.labContacts.slideOffset);
+  top.x-=1.45*clamp(input.labSlideRack.pull);
+  support=blend(support,top,clamp(input.labSlideRack.weight));
  }
  return {weight,firing,support};
 }
