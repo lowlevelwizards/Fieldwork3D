@@ -1,3 +1,5 @@
+// R6.3 baseline isolation: keep this historical D3.16B contract unchanged;
+// run its exact physical acceptance workflow against the current main source.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
