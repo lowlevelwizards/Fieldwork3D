@@ -93,7 +93,8 @@ export function orientLabPistolHand(scratch:OperatorPoseScratch,
  const output=scratch.armOutput;
  const hand=output.transforms[index*3+2];
  const q=output.rockQuaternion;
- const angle=index===1?.16+.34*pitch:retention?.24:.12+.30*pitch;
+ const angle=index===1?(.16+.34*pitch):
+  (retention?.24:(.12+.30*pitch));
  hand.quaternion.multiply(q.setFromAxisAngle(localZ,angle));
  if(index===0)
   hand.quaternion.multiply(q.setFromAxisAngle(localY,
