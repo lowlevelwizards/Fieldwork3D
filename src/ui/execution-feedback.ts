@@ -87,10 +87,16 @@ export class ExecutionNoticeFeed{
     const after=this.lastExecutionId??Math.max(0,(latestId??0)-1);
     const fresh=executionEvents.filter(e=>e.id>after);
     if(latestId!==undefined)this.lastExecutionId=latestId;
-    const structuredTexts=new Set(fresh.map(e=>e.text));
-    for(const event of events.slice(start))if(!structuredTexts.has(event)&&
-      !/ENTRY INTERRUPTED|SQUAD ENTRY CANCELLED/.test(event.toUpperCase()))
-      this.enqueue(event,now);
+    const structuredTexts=new Set(executionEvents.map(e=>e.text));
+    for(const event of events.slice(start)){
+      const message=event.toUpperCase();
+      // A typed event is the authoritative report. The rolling text log
+      // must never resurrect an already-cancelled/retired obstruction as
+      // a fresh warning just because its buffer shifted on the next tick.
+      const historical=/ENTRY INTERRUPTED|SQUAD ENTRY CANCELLED|ORDER CANCELLED|MOVE BLOCKED.*ORDER RETAINED|PATH BLOCKED.*ORDER RETAINED/.test(message);
+      if(!structuredTexts.has(event)&&!historical)
+        this.enqueue(event,now);
+    }
     for(const event of fresh){
       // A later operator state invalidates a previously displayed obstruction.
       this.queue=this.queue.filter(n=>n.actorId!==event.actor||

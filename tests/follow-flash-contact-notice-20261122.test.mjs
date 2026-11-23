@@ -108,6 +108,11 @@ test('resolved blocked orders and old entry interruptions do not persist in noti
  const later=feed.update(['ENTRY INTERRUPTED'], 'planning',1200,[],
    [{id:'rook',plan:[]}]);
  assert.equal(later?.text?.includes('ENTRY INTERRUPTED'),false);
+ // A shifted legacy event buffer is historical, not a new obstruction.
+ // Current typed notices still show when the matching order is active.
+ const stale=feed.update(['ROOK PATH BLOCKED · DOOR LOCKED · ORDER CANCELLED'],
+   'running',1600,[],[{id:'rook',plan:[]}]);
+ assert.notEqual(stale?.severity,'warning');
  const execution=read('src/breach-execution-state.ts');
  assert.match(execution,/ctx\.showHistoricalIssues!==false&&a\.interruptedDoorPlan/);
  const hud=read('src/ui/tactical-hud-controller.ts');
