@@ -188,6 +188,23 @@ export function knownFurnitureBlocksSnappedStart(
  return owner?owner.someCoverNearPoint(snap,8,hits):
   someCoverNearPoint(snap,8,hits);
 }
+/** A legal actor may stand beside a known doorway jamb while the nearest
+ * route-grid vertex clips the wall endpoint. The existing route() start
+ * rescue sweeps every connector against only KNOWN geometry; it cannot
+ * ghost through a wall, expose hidden walls or move the actual actor.
+ */
+export function knownWallBlocksSnappedStart(
+ intel:IntelState,from:Pt,world?:SessionWorldGeometry):boolean{
+ if(!intel.walls.size)return false;
+ const owner=ownerWorld(intel,world);
+ if(!intelPassable(from,intel,8,owner))return false;
+ const snap={x:Math.round(from.x/GRID)*GRID,
+   y:Math.round(from.y/GRID)*GRID};
+ const touchesKnownWall=(w:Segment,i:number)=>
+   intel.walls.has(i)&&pointToSegment(snap,w)<9;
+ return owner?owner.someWallNearPoint(snap,9,touchesKnownWall):
+   someWallNearPoint(snap,9,touchesKnownWall);
+}
 export const routeWithIntel=(intel:IntelState,from:Pt,to:Pt,
  world?:SessionWorldGeometry)=>{
  const owner=ownerWorld(intel,world);
@@ -195,7 +212,8 @@ export const routeWithIntel=(intel:IntelState,from:Pt,to:Pt,
  // of repeatedly resolving its WeakMap on each passability check.
  const canStand=(p:Pt)=>intelPassable(p,intel,8,owner);
  return route(from,to,canStand,
-  knownFurnitureBlocksSnappedStart(intel,from,owner));
+  knownFurnitureBlocksSnappedStart(intel,from,owner)||
+   knownWallBlocksSnappedStart(intel,from,owner));
 };
 export function intelFogLevel(intel:IntelState,site:Site|undefined,
   p:Pt,currentlyVisible:boolean,everSeen:boolean){
