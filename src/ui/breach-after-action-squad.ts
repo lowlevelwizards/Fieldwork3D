@@ -5,6 +5,7 @@
 import type {AfterActionReport,OperatorAfterAction,ContributionEvidence}
  from '../breach-after-action-report.ts';
 import type {ReplayManifest} from '../breach-replay-manifest.ts';
+import {SQUAD_IDENTIFICATION_COLORS} from '../campaign-state.ts';
 import type {AfterActionInventoryCloseout}
  from '../breach-after-action-inventory.ts';
 import {renderAfterActionCarrySummary,renderAfterActionTeamReadiness}
@@ -126,7 +127,8 @@ function scoreRank(op:OperatorAfterAction,operators:OperatorAfterAction[]){
  return (tied?'TIED #':'#')+op.rank;
 }
 function rankRow(op:OperatorAfterAction,operators:OperatorAfterAction[],
- selectedId:string|null,open:(id:string)=>void){
+ selectedId:string|null,open:(id:string)=>void,
+ color:string){
  const row=action('',()=>open(op.id),'fw-v3-roster-card fw-v4-rank-row');
  row.setAttribute('aria-pressed',String(op.id===selectedId));
  row.setAttribute('data-after-operator-id',op.id);
@@ -142,7 +144,17 @@ function rankRow(op:OperatorAfterAction,operators:OperatorAfterAction[],
  points.append(el('strong','',String(op.contribution)),
    el('small','','PTS'));
  row.append(rank,name,points);
- return row;
+ const card=el('div','fw-v7-operator-card');
+ card.setAttribute('data-after-card-id',op.id);
+ // Colors are a fixed UI palette, independent of wardrobe or armor.
+ const safeColor=SQUAD_IDENTIFICATION_COLORS.find(c=>c===color)??
+   SQUAD_IDENTIFICATION_COLORS[0];
+ card.setAttribute('style','--fw-after-operator-color:'+safeColor);
+ const dot=action('',()=>open(op.id),'fw-v7-operator-dot');
+ dot.setAttribute('aria-label','Open '+op.name+' operator record');
+ dot.setAttribute('title',op.name+' identification color');
+ card.append(row,dot);
+ return card;
 }
 function initialOverview(report:AfterActionReport,
  inventory?:AfterActionInventoryCloseout){
@@ -158,7 +170,7 @@ function initialOverview(report:AfterActionReport,
      totals[category]+=op.categories[category];
  root.append(contributionBar(totals),breakdown(totals));
  root.append(el('p','fw-v4-select-note',
-   'Tap an operator or their name to open the full recorded profile.'));
+   'Tap a name, character, or color dot to open the full recorded profile.'));
  root.append(methodology());
  if(inventory)root.append(renderAfterActionTeamReadiness(inventory));
  return root;
@@ -207,7 +219,8 @@ export function renderSquadView(report:AfterActionReport,
  _manifest:ReplayManifest|null,selectedId:string|null,
  choose:(id:string|null)=>void,more:(id:string)=>void,
  inspect?:((key:string)=>void),
- inventory?:AfterActionInventoryCloseout):HTMLElement{
+ inventory?:AfterActionInventoryCloseout,
+ colors?:ReadonlyMap<string,string>):HTMLElement{
  const section=el('section','fw-v3-squad fw-v4-squad');
  const operators=report.operators;
  if(!operators.length){
@@ -225,14 +238,23 @@ export function renderSquadView(report:AfterActionReport,
  roster.setAttribute('aria-label','Open operator records in contribution order');
  const selected=operators.find(op=>op.id===selectedId)??null;
  if(selected)section.classList.add('fw-v4-has-selection');
- for(const op of operators)
-   roster.append(rankRow(op,operators,selected?.id??null,more));
+ const deployed=(_manifest?.actors??[]).filter(actor=>actor.side==='blue');
+ for(const [index,op] of operators.entries()){
+   // Fallback identity follows deployed squad order, never the ranking.
+   // Otherwise a Quick Play operator changes colors when points change.
+   const slot=deployed.findIndex(actor=>actor.id===op.id);
+   const paletteIndex=slot>=0?slot:index;
+   const color=colors?.get(op.id)??
+     SQUAD_IDENTIFICATION_COLORS[paletteIndex%SQUAD_IDENTIFICATION_COLORS.length];
+   roster.append(rankRow(op,operators,selected?.id??null,more,color));
+ }
  const focus=el('div','fw-v3-squad-focus fw-v4-squad-focus');
- const viewer=el('div','fw-v4-squad-model','LOADING RECORDED 3D OPERATORS');
+ const viewer=el('div',selected?'fw-v4-squad-model':
+   'fw-v4-squad-model fw-v7-lineup-model','LOADING RECORDED 3D OPERATORS');
  viewer.setAttribute('data-after-squad-model','');
  viewer.setAttribute('aria-label',selected?
    'Historical 3D model for '+selected.name:
-   'Historical 3D squad lineup. Tap an operator to open their record, or drag to rotate');
+   'Historical 3D squad lineup. Each column is tappable; drag to rotate');
  focus.append(viewer,selected?selectedOverview(selected,operators,choose,more,inspect,inventory):
    initialOverview(report,inventory));
  content.append(roster,focus);section.append(content);

@@ -83,6 +83,7 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
  if(owner.presenter){
    owner.presenter.setEvidence(evidence);
    owner.presenter.setOperatorTapHandler(id=>selectSquadOperator(root,id));
+   owner.presenter.setLineupOrder(owners.get(root)?.report.operators.map(op=>op.id)??[]);
    owner.presenter.show(host,operatorId);return;
  }
  const identities=recorder.manifest?.actors??[];
@@ -126,6 +127,7 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
    }
    if(current){
      owner.presenter.setOperatorTapHandler(id=>selectSquadOperator(root,id));
+     owner.presenter.setLineupOrder(owners.get(root)?.report.operators.map(op=>op.id)??[]);
      const id=current.hasAttribute('data-after-squad-model')?
        owners.get(root)?.selectedOperator??null:
        current.dataset.afterModel??null;
@@ -154,6 +156,7 @@ type State={
   scroll:Partial<Record<AfterActionTab,number>>;
   lineupScroll:number;recordScroll:number;
   showIntel:boolean;inventory:AfterActionInventoryCloseout|null;
+  operatorColors:ReadonlyMap<string,string>|undefined;
   modelSnapshots:ReadonlyMap<string,THREE.Group>|undefined;
   timelineEvents:readonly AfterActionTimelineEvent[];
   timelineFilter:TimelineFilter;timelineSelectedKey:string|null;
@@ -202,6 +205,7 @@ const make=(tag:string,cls='',value?:string)=>{
 };
 export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
   options:{showIntel:boolean;inventory?:AfterActionInventoryCloseout|null;
+    operatorColors?:ReadonlyMap<string,string>;
     modelSnapshots?:ReadonlyMap<string,THREE.Group>}):void{
  const content=root.querySelector<HTMLElement>('#afterActionBody');
  const nav=root.querySelector<HTMLElement>('#afterActionTabs');
@@ -220,6 +224,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      scroll:{},lineupScroll:0,recordScroll:0,
      showIntel:options.showIntel,
      inventory:options.inventory??null,
+     operatorColors:options.operatorColors,
      modelSnapshots:options.modelSnapshots,
      timelineEvents:buildAfterActionTimeline(rec),
      timelineFilter:'key',timelineSelectedKey:null,timelineClusterId:null,
@@ -296,6 +301,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
  }else{
    state.showIntel=options.showIntel;
    if(options.inventory)state.inventory=options.inventory;
+   if(options.operatorColors)state.operatorColors=options.operatorColors;
    // A menu exit can release GPU resources while retaining this report.
    // Reopening the same completed mission remounts its presenter once.
    if(!models.has(root)&&!root.hidden)renderers.get(root)?.();
@@ -483,7 +489,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      screen=renderSquadView(s.report,s.recorder.manifest,
        s.selectedOperator,(id)=>choose(id),
        (id)=>selectSquadOperator(root,id),inspectContribution,
-       s.inventory??undefined);
+       s.inventory??undefined,s.operatorColors);
      if(s.operatorRecordOpen){
        const operator=s.report.operators.find(o=>o.id===s.selectedOperator);
        if(operator){

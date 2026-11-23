@@ -6,7 +6,7 @@ import type {CampaignMode} from '../breach-app-mode.ts';
 import {debrief,type Session} from '../breach-game.ts';
 import {sessionIntelligenceReview} from '../briefing/briefing-after-action.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
-import type {CampaignState} from '../campaign-state.ts';
+import {SQUAD_IDENTIFICATION_COLORS,type CampaignState} from '../campaign-state.ts';
 import type {DispatchIncidentContext} from '../dispatch-incident-context.ts';
 import type {ReplayActorIdentity} from '../breach-replay-manifest.ts';
 import type * as THREE from 'three';
@@ -104,6 +104,10 @@ export function renderMissionDebrief(input:{
     }));
     if(root)renderAfterActionWorkspace(root,recorder,{
       showIntel:!!state.operationDossier,
+      operatorColors:new Map((campaign?.operators??[]).map((op,index)=>[
+        op.id,op.squadColor??SQUAD_IDENTIFICATION_COLORS[
+          index%SQUAD_IDENTIFICATION_COLORS.length]
+      ])),
       modelSnapshots:input.captureAfterActionModels?.(
         recorder.manifest?.actors??[]),
       inventory:buildAfterActionInventoryCloseout({
