@@ -2331,8 +2331,10 @@ function draw(){
    rig.hip.getObjectByName('secondary-holstered-pistol'):null;
   if(pistolCradle&&pistolContacts){
    const socket=pistolContacts.primaryFromPivot;
+   // Cradle.localToWorld already applies its own scale. Supplying a
+   // pre-scaled socket would double-scale the grip error diagnostic.
    const grip=pistolCradle.localToWorld(labPistolGripWorld.set(
-    socket.x,socket.y,socket.z).multiplyScalar(LAB_PISTOL_PREVIEW_SCALE));
+    socket.x,socket.y,socket.z));
    const wrist=rig.arms[1].hand.getWorldPosition(labPistolWristWorld);
    canvas.dataset.poseSidearmGripError=grip.distanceTo(wrist).toFixed(3);
   }else canvas.dataset.poseSidearmGripError='';
