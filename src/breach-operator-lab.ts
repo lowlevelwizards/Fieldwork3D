@@ -54,6 +54,7 @@ import {initialSecondaryEquipment} from './secondary-equipment.ts';
 import {isM9AppearanceId} from './weapons/geometry/beretta-m9-silhouettes.ts';
 import {sampleLabPistolFrame,isLabPistolTrack,LAB_PISTOL_PREVIEW_SCALE}
  from './operator-lab-pistol-tracks.ts';
+import {labPistolContacts} from './operator-lab-pistol-contacts.ts';
 import {presentLabBerettaPreview,clearLabBerettaPreview}
  from './operator-lab-beretta-preview.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
@@ -1980,6 +1981,7 @@ function draw(){
   // Shotgun reload is an explicit special case; no synthetic AR magazine.
   const sidearm=poseSidearm(poseWeaponPreset);
   const pistolFrame=sidearm?sampleLabPistolFrame(track,clock):null;
+  const pistolContacts=sidearm?labPistolContacts(sidearm):undefined;
   const selectedPosePreset=track==='reload-shotgun'?undefined:
    posePreset(poseWeaponPreset);
   const currentWeapon=(sidearm?'carbine':track==='reload-shotgun'?'shotgun':
@@ -2052,6 +2054,8 @@ function draw(){
      fraction:pistolFrame.fraction
     }:undefined,
     secondaryReload:pistolReload,
+    labPistolContacts:pistolContacts,
+    labPistolSlideRack:pistolFrame?.slideRack,
     labPistolStance:pistolFrame?.stance,
     labPistolStanceBlend:pistolFrame?.stanceBlend,
     labPistolPitch:pistolFrame?.pitch,
@@ -2289,6 +2293,12 @@ function draw(){
    rig.arms[1].hand.getWorldPosition(labPistolHandWorld).y.toFixed(3):'';
   canvas.dataset.poseSidearmSupportY=sidearm?
    rig.arms[0].hand.getWorldPosition(labPistolHandWorld).y.toFixed(3):'';
+  canvas.dataset.poseSidearmRack=pistolFrame?.slideRack?
+   pistolFrame.slideRack.weight.toFixed(3):'';
+  canvas.dataset.poseSidearmRackPull=pistolFrame?.slideRack?
+   pistolFrame.slideRack.pull.toFixed(3):'';
+  canvas.dataset.poseSidearmSupportX=sidearm?
+   rig.arms[0].hand.getWorldPosition(labPistolHandWorld).x.toFixed(3):'';
   canvas.dataset.poseSidearmReload=pistolReload?
    (pistolReload.elapsed/pistolReload.duration).toFixed(3):'';
   canvas.dataset.poseSidearmPresentation=sidearm?
