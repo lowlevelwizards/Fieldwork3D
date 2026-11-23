@@ -85,8 +85,7 @@ test('the 22 new icons use the existing bold simplified glyph family',()=>{
   assert.ok(glyph.strokeWidth>=2.4,key+' must survive small icons');
   assert.ok(glyph.markup.length>50,key+' must have drawable geometry');
  }
- assert.equal(resolveTacticalIconId('replayMore'),null,
-  'view button decorates the dedicated inspect glyph directly');
+ assert.equal(resolveTacticalIconId('replayMore'),'inspect');
 });
 
 test('cross-screen wording and touch targets are explicit and accessible',()=>{
