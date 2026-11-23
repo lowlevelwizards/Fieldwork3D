@@ -45,6 +45,10 @@ jobs:
         run: |
           node --test tests/r7-0-ui-orchestration-audit.test.mjs
           node scripts/verification/r7-0-ui-orchestration-audit.mjs --check --out artifacts/refactor-r7-0
+      - name: R7.1 actual Session lifecycle, replay and HUD split
+        run: |
+          node --experimental-strip-types --test tests/r7-1-session-lifecycle.test.mjs
+          node --experimental-strip-types --test tests/breach-runtime-loop-step12.test.mjs
       - name: E4 combined replay and event-feed closeout evidence
         run: node --experimental-strip-types scripts/verification/refactor-e4-closeout.mjs --out artifacts/refactor-e4/closeout.json
       - name: E5 capture and long-session retention evidence

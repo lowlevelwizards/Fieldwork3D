@@ -44,8 +44,11 @@ test('R7.0 live source census protects real refresh, bookkeeping and shared gall
  assert.ok(r.c0.owners>=19);
  assert.deepEqual(r.refresh.cadence.scheduledMs,
   {planning:120,running:180,terminal:750});
- assert.ok(r.refresh.orchestratorCalls.some(x=>x.callee==='capturePlanning'));
- assert.ok(r.refresh.orchestratorCalls.some(x=>x.callee==='recordCompletedOperation'));
+ assert.ok(r.refresh.orchestratorCalls.some(x=>x.callee==='observeSessionLifecycle'));
+ assert.ok(r.refresh.entrypoints.some(x=>x.path==='src/breach-session-lifecycle-observer.ts'&&
+  x.callee==='capturePlanning'&&x.sites.length===1));
+ assert.ok(r.refresh.entrypoints.some(x=>x.path==='src/breach-session-lifecycle-observer.ts'&&
+  x.callee==='recordCompletedOperation'&&x.sites.length===1));
  assert.ok(r.refresh.orchestratorCalls.some(x=>x.callee==='renderSession'));
  assert.ok(r.equipment.galleryCallers.every(x=>x.sites.length>0));
  assert.ok(r.lifecycle.files.some(x=>x.path.includes('campaign-outfitter-gallery')&&

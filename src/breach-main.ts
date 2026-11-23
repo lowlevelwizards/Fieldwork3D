@@ -48,6 +48,7 @@ import {createOperatorStudioBridge} from './operator-studio-bridge.ts';
 import {createBreachEquipmentEditorBridge} from './breach-equipment-editor-bridge.ts';
 import {createBreachOperationsBoardController} from './breach-operations-board-controller.ts';
 import {createBreachRuntimeLoop} from './breach-runtime-loop.ts';
+import {createBreachSessionLifecycleObserver} from './breach-session-lifecycle-observer.ts';
 import {createBreachAppFlow} from './breach-app-flow.ts';
 import {parseBreachBootConfig,BREACH_LIGHTING_MODES} from './breach-boot-config.ts';
 import {loadIntelPreference,loadQuickPlayRoster,saveQuickPlayRoster} from './breach-persistence.ts';
@@ -205,7 +206,7 @@ const studioBridge=createOperatorStudioBridge({
   getSession:()=>state,isReplaying:()=>replaying,
   saveRoster,saveCampaign,
   applyQuickRoster:()=>applyRosterIdentity(state,persistentRoster),
-  onQuickSaved:()=>{renderOperationsBoard();updateHud();},
+  onQuickSaved:()=>{renderOperationsBoard();refreshTacticalUi();},
   onCampaignSaved:()=>showCampaignHome()
 });
 const openOperatorStudio=studioBridge.open;
@@ -256,6 +257,12 @@ function refreshDeployment():void{
 const operationHistory=()=>campaignFlow.operationHistory();
 const recordCompletedOperation=()=>campaignFlow.recordCompletedOperation();
 let replaying=false;
+const sessionLifecycleObserver=createBreachSessionLifecycleObserver({
+ observePhase:phase=>appFlow.observePhase(phase),recordCompletedOperation
+});
+function observeSessionLifecycle():void{
+ sessionLifecycleObserver.observe({session:state,recorder,replaying});
+}
 const replayPlayback=new ReplayPlaybackController();
 
 const replayQuickVideo=new ReplayQuickVideo(
@@ -333,7 +340,7 @@ let lastRangeTrial:RangeTrial|null=null;
 const weaponChooserUi=hudController.bindWeaponChooser({
  ui,weaponChooser,getSession:()=>state,getSelected:()=>selected,
  getMode:()=>appFlow.mode,isReplaying:()=>replaying,
- collapse:()=>collapseTacticalSheets('weapon'),refreshHud:updateHud
+ collapse:()=>collapseTacticalSheets('weapon'),refreshHud:refreshTacticalUi
 });
 function hideWeaponChooser(){weaponChooserUi.hide();}
 function showWeaponChooser(){weaponChooserUi.show();}
@@ -347,7 +354,7 @@ const equipmentEditor=createBreachEquipmentEditorBridge({
  saveCampaign,showHelp:showUiHelp,
  onQuickApplied:id=>{
    applyRosterIdentity(state,persistentRoster);
-   operationsBoardController.onQuickApplied(id);updateHud();
+   operationsBoardController.onQuickApplied(id);refreshTacticalUi();
  },
  onCampaignApplied:()=>showCampaignHome()
 });
@@ -359,7 +366,7 @@ const operationsBoardController=createBreachOperationsBoardController({
  setRoster:value=>{persistentRoster=value;},
  getMode:()=>appFlow.mode,isReplaying:()=>replaying,
  saveRoster,applyRoster:()=>applyRosterIdentity(state,persistentRoster),
- refreshHud:updateHud,
+ refreshHud:refreshTacticalUi,
  syncSheets:()=>missionScreens.syncSheets(),
  history:operationHistory,
  enterTrainingRange:()=>{
@@ -390,7 +397,7 @@ const missionScreens=createBreachMissionScreens({
  getScale:()=>requestedSiteScale,setScale:v=>{requestedSiteScale=v;},
  getIntel:()=>selectedIntelMode,setIntel:v=>{selectedIntelMode=v;},
  lightingModes:BREACH_LIGHTING_MODES,
- showHelp:showUiHelp,refreshHud:updateHud,
+ showHelp:showUiHelp,refreshHud:refreshTacticalUi,
  renderOperationsBoard,updateContext,
  renderFavorites:()=>replayLibrary.renderFavorites(),
  changeCamera:cameraMode,
@@ -437,7 +444,7 @@ function cancelTargeting(){
     const actor=uid(selected);
     if(actor)tacticalFeedback.emit('cancel',actor.p,'CANCELLED');
   }
-  paletteController.invalidate();updateHud();
+  paletteController.invalidate();refreshTacticalUi();
 }
 
 const audioController=createBreachAudioController({
@@ -543,7 +550,7 @@ function cameraMode(mode:ViewMode){
     ['top',ui.viewTop],['plan2d',ui.view2d]] as const){
     button.setAttribute('aria-pressed',String(m===viewMode));
   }
-  paletteController.invalidate();updateHud();
+  paletteController.invalidate();refreshTacticalUi();
 }
 function turnCamera(shift:number){
   if(stage&&viewMode!=='plan2d'){
@@ -591,7 +598,7 @@ function closeEntryMapPicker(confirmed:boolean):void{
     }
   }
   showMissionBriefing();
-  updateHud();
+  refreshTacticalUi();
 }
 const uid=(id:string)=>team(state).find(o=>o.id===id);
 function centerOperatorInView(point:Pt):void{
@@ -622,7 +629,7 @@ function selectUnit(id:string,center=true){
   // adopt another actor without moving the map beneath the finger.
   if(center&&!replaying)centerOperatorInView(actor.p);
   else{cancel2DCameraGlide();stage?.cancelFocusGlide();}
-  updateHud();
+  refreshTacticalUi();
 }
 // InteractionState owns temporary command arming; HUD owns guidance only.
 // Only plan authoring APIs can commit an order.
@@ -634,11 +641,11 @@ function showUiHelp(text:string,duration=4200):void{
 }
 
 const installTouchCommandHelp=(button:HTMLButtonElement)=>
-  bindTouchCommandHelp(button,showUiHelp,updateHud);
+  bindTouchCommandHelp(button,showUiHelp,refreshTacticalUi);
 function armFacing(mode:'look'|'watch'):void{
   if(state.phase!=='planning'||replaying)return;
   targeting.toggleFacing(mode,selectedNode);
-  updateHud();
+  refreshTacticalUi();
 }
 /** The tray never competes with the expanded TOOLS panel or GO/BACK. */
 function focusedDoor(a:TeamActor,node:ReturnType<typeof selectedPlanNode>){
@@ -707,7 +714,7 @@ hudController.bindContextActions({
  toggleTreatment:()=>paletteController.toggleTreatment(),
  closeTreatment:()=>paletteController.closeTreatment(),
  audio:audioController,
- invalidateFog:()=>fog2D.invalidate(),updateHud,armFacing,showUiHelp
+ invalidateFog:()=>fog2D.invalidate(),updateHud:refreshTacticalUi,armFacing,showUiHelp
 });
 
 function updateQuickStates():void{
@@ -774,7 +781,6 @@ function updateHud(){
     const next=team(state).find(a=>a.health>0);
     if(next)selected=next.id;
   }
-  appFlow.observePhase(state.phase);
   if(state.phase!=='planning')targeting.reset();
   // Read-only reconciliation prevents stale waypoint/WATCH UI following
   // undo, cancelled edits, execution or a mission transition.
@@ -784,8 +790,6 @@ function updateHud(){
   },actor?.plan??[],actor?activeWatchTarget(actor):null);
   selectedNode=selection.selectedNode;
   selectedActiveWatch=selection.selectedActiveWatch;
-  if(!replaying&&state.phase==='planning')recorder.capturePlanning(state);
-  recordCompletedOperation();
   refreshDeployment();
   missionScreens.syncBriefingCard();
   missionScreens.syncMissionPhase();
@@ -812,6 +816,13 @@ function updateHud(){
    trainingScreen.setReplayVisible(replaying);
    if(!replaying)trainingScreen.updateProgress(state);
   }
+}
+/** Explicit input commit: journal phase/plans before repaint. The RAF
+ * separately observes actual GO completions without a scheduled HUD update.
+ */
+function refreshTacticalUi():void{
+ observeSessionLifecycle();
+ updateHud();
 }
 function rect(x:number,y:number,w:number,h:number,color:string){
   draw.fillStyle=color;draw.fillRect(x,y,w,h);
@@ -918,7 +929,7 @@ function useSelectedGround(pt:Pt,transportRoute?:readonly Pt[]):void{
   set selectedNode(value){selectedNode=value;},
   get selectedActiveWatch(){return selectedActiveWatch;},
   set selectedActiveWatch(value){selectedActiveWatch=value;},
-  targeting,tacticalFeedback,audio:audioController,updateHud,rejectAt,showUiHelp,teach,
+  targeting,tacticalFeedback,audio:audioController,updateHud:refreshTacticalUi,rejectAt,showUiHelp,teach,
   onAuthoring:()=>{lastAuthoringAt=performance.now();}
  },pt,transportRoute);
 }
@@ -995,7 +1006,7 @@ const replayModeController=createReplayModeController({
    appFlow.exitReplay();
    replayLibrary.afterReplayExit();
  },
- updateHud
+ updateHud:refreshTacticalUi
 });
 function enterReplay(source:'library'|'debrief'='debrief'):boolean{
  // The flow transition must authorize the destination before playback starts.
@@ -1028,7 +1039,7 @@ function exitReplay(){
      appFlow.surface==='debrief')
      showUiHelp('DEBRIEF RETURN CONTEXT EXPIRED · CURRENT REPORT PRESERVED',4000);
  }
- updateHud();
+ refreshTacticalUi();
 }
 /** Replay Library: load metadata only until a recording is selected.
  * No campaign result, equipment persistence, or live session is modified.
@@ -1054,7 +1065,7 @@ const replayLibrary=createBreachReplayLibraryController({
   setRecorder:value=>{recorder=value;},
   getBookmarks:()=>replayAnalysisUi.replayBookmarks,
   applyLoadedBookmarks:marks=>replayAnalysisUi.restoreBookmarks(marks),
-  enterReplay:()=>enterReplay('library'),exitReplay,refreshHud:updateHud,
+  enterReplay:()=>enterReplay('library'),exitReplay,refreshHud:refreshTacticalUi,
   getFavoriteDraft:()=>state.site?{
     start:missionController.start,
     label:state.site.name+' · '+state.missionType.toUpperCase()
@@ -1212,7 +1223,7 @@ if(import.meta.env.DEV&&bootConfig.bodycamQa){
   get selected(){return selected;},set selected(value){selected=value;},
   get cssW(){return cssW;},get cssH(){return cssH;},
   replayKnowledge,replayCamera,replayPlayback,chooseReplayCamera,cameraMode,
-  seekReplay,updateReplayHud,updateHud,invalidateFog:()=>fog2D.invalidate(),
+  seekReplay,updateReplayHud,updateHud:refreshTacticalUi,invalidateFog:()=>fog2D.invalidate(),
   worldToScreen,resetIndoorSite:site=>reset(0,731,'hold',site)
  });
 }
@@ -1274,7 +1285,7 @@ function mountMissionSession(transition:MissionTransition):void{
   fog2D.invalidate();audioController.resetLive();
   recorder=transition.recorder;
   tacticalFeedback.clear();
-  if(!transition.deferScene){layout();updateHud();}
+  if(!transition.deferScene){layout();refreshTacticalUi();}
 }
 function reset(next=state.variant,siteSeed?:number,
   missionOverride?:Session['missionType'],prebuiltSite?:Site,
@@ -1306,7 +1317,7 @@ function restartMission():void{
   missionController.restoreStartingSetup(state,start,entry=>
     console.warn('[Restart mission] Original entry no longer valid',entry));
   recorder=missionController.recordInitial(state);
-  layout();updateHud();
+  layout();refreshTacticalUi();
 }
 /* Quick Play uses Map Lab-style progress checkpoints. Percentages represent
  * completed work, not predicted time; expensive 3D mesh creation remains
@@ -1350,7 +1361,7 @@ const quickPlayController=createBreachQuickPlayController({
   getSession:()=>state,
   startSession:(seed,site,mission)=>reset(state.variant,seed,mission,site,undefined,true),
   getStage:()=>stage,getViewMode:()=>viewMode,
-  layout,refreshHud:updateHud,
+  layout,refreshHud:refreshTacticalUi,
   prepareFirstFrame:()=>{
     if(stage&&viewMode!=='plan2d')
       stage.update(state,selected,0,doorFocusId,false,null,null,
@@ -1412,12 +1423,12 @@ const trainingScreen=createBreachTrainingScreen({
   // real shot/cover collision pipeline, never a fabricated target hit.
   targeting.armSuppress();
   showUiHelp('TARGET FIRE · TAP A PLATE TO PLACE FIRE, THEN GO · REAL HITS COUNT',5500);
-  updateHud();return true;
+  refreshTacticalUi();return true;
  },
  onResetTargets:()=>{
   if(appFlow.mode!=='training'||replaying)return false;
   const ok=resetPracticeTargets(state);
-  if(ok){recorder.capture(state,true);fog2D.invalidate();updateHud();}
+  if(ok){recorder.capture(state,true);fog2D.invalidate();refreshTacticalUi();}
   return ok;
  },
  onReturnToMenu:()=>{
@@ -1435,7 +1446,7 @@ const campaignFlow=createBreachCampaignFlow({
   getScale:()=>requestedSiteScale,setScale:value=>{requestedSiteScale=value;},
   getSession:()=>state,getSelected:()=>selected,isReplaying:()=>replaying,
   siteSize:ui.siteSize,siteSettings:ui.siteSettings,
-  briefingRoster:ui.briefingRoster,refreshHud:updateHud,
+  briefingRoster:ui.briefingRoster,refreshHud:refreshTacticalUi,
   randomSeed:randomSiteSeed,
   resetContract:job=>reset(0,job.seed,job.kind,undefined,job.risk,
     false,undefined,undefined,job.dispatchCase),
@@ -1460,7 +1471,7 @@ const toolbarButtons=hudController.bindToolbar({
  get doorFocusId(){return doorFocusId;},set doorFocusId(v){doorFocusId=v;},
  get weaponChooser(){return weaponChooser;},audio:audioController,
  showWeaponChooser,hideWeaponChooser,selectUnit,cancelTargeting,
- showUiHelp,updateHud,medicalCandidate:()=>medicalCandidate(selected),
+ showUiHelp,updateHud:refreshTacticalUi,medicalCandidate:()=>medicalCandidate(selected),
  casualtyCandidate:()=>casualtyCandidate(selected),
  openTreatment:()=>{
    if(state.phase!=='planning'||replaying)return;
@@ -1498,7 +1509,7 @@ hudController.bindShortcuts({
  exitReplay,seekReplay,selectUnit,armFacing,weaponChooser,hideWeaponChooser,
  operationsBoard,cancelTargeting,
  onExecute:()=>missionScreens.executePlay(true),
- onUndoRedo:redo=>{if(redo)redoPlan(state,selected);else undoPlan(state,selected);updateHud();},
+ onUndoRedo:redo=>{if(redo)redoPlan(state,selected);else undoPlan(state,selected);refreshTacticalUi();},
  getViewMode:()=>viewMode,cameraMode,turnCamera,
  isPhotoModeActive:()=>photoMode?.active??false
 });
@@ -1602,7 +1613,7 @@ tacticalGestures.install({
     }
   },
   release:commitPointerRelease,
-  complete:updateHud,
+  complete:refreshTacticalUi,
   wheel:e=>{
     const z=stage&&viewMode!=='plan2d'?stage.view.zoom:zoom;
     fitZoom(z*Math.exp(-e.deltaY*.001),e.clientX,e.clientY);
@@ -1710,7 +1721,7 @@ const runtimeLoop=createBreachRuntimeLoop({
  getReplayPresentation:()=>replayPresentation,
  setReplayPresentation:value=>{replayPresentation=value;},
  invalidateFog:()=>fog2D.invalidate(),advanceReplayCamera,
- updateHud,updateReplayHud,updateContext,advanceContextPalette,
+ updateHud,observeSessionLifecycle,updateReplayHud,updateContext,advanceContextPalette,
  renderFrame:render,drawTacticalFrameFeedback,
  isPhotoModeActive:()=>photoMode?.active??false,
  photoNeedsFrame:()=>photoMode?.needsFrame??false,
@@ -1736,7 +1747,7 @@ photoMode=createBreachPhotoModeController({
  isLoading:()=>quickPlayController.busy||quickPlayController.configuring,
  isMenu:()=>appFlow.mode==='menu'||appFlow.mode==='home'||studioBridge.visible,
  videoActive:()=>replayQuickVideo.active,
- requestHud:updateHud,invalidateFog:()=>fog2D.invalidate(),
+ requestHud:refreshTacticalUi,invalidateFog:()=>fog2D.invalidate(),
  restoreReplayCamera:()=>advanceReplayCamera(0,true),showHelp:showUiHelp
 });
 // Keep the control small and touch-accessible without reducing the space
@@ -1760,7 +1771,7 @@ liveProfilerButton.addEventListener('click',event=>{
 ui.tacticalHud.append(liveProfilerButton);
 syncLiveProfilerControl(runtimeLoop.isProfilerVisible(),
  runtimeLoop.isProfilerRecording());
-layout();cameraMode(viewMode);updateHud();
+layout();cameraMode(viewMode);refreshTacticalUi();
 if(appFlow.mode==='menu')campaignScreen.entry(!!campaignInSlot('legacy'),!!campaignInSlot('sandbox'),
      campaignSlot,!!campaignInSlot('dispatch'));
 runtimeLoop.start();

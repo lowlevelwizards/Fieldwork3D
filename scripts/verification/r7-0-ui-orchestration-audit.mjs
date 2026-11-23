@@ -24,6 +24,7 @@ export const R70_STAGES=Object.freeze([
 ]);
 export const R70_OWNERS=Object.freeze([
  {id:'composition',path:'src/breach-main.ts',authority:'composition',role:'UI refresh graph, Session mounting and replay/mission view coordination',markers:['function updateHud(', 'function releaseMissionPresentation(']},
+ {id:'lifecycle',path:'src/breach-session-lifecycle-observer.ts',authority:'session-notifications',role:'Phase, planning journal and terminal receipt adapter',markers:['export function createBreachSessionLifecycleObserver(', 'recorder.capturePlanning(session)']},
  {id:'frame',path:'src/breach-runtime-loop.ts',authority:'frame-clock',role:'One RAF, one fixed 60-Hz simulation step, scheduled UI notification',markers:['createBreachRuntimeLoop','hudPeriod=']},
  {id:'mission',path:'src/breach-mission-controller.ts',authority:'session-lifetime',role:'Session creation/transition/recording handoff',markers:['class BreachMissionController']},
  {id:'game',path:'src/breach-game.ts',authority:'simulation',role:'Session and order execution',markers:['export function newSession(', 'export function stepSession(']},
@@ -42,9 +43,9 @@ export const R70_OWNERS=Object.freeze([
  {id:'kit-preview',path:'src/equipment-preview.ts',authority:'preview-gpu',role:'CampaignKitPreview rendering and thumbnail resource lifetime',markers:['export class CampaignKitPreview']}
 ]);
 export const R70_MODES=Object.freeze({
- 'Planning/Tactical 2D or 3D':['composition','frame','mission','game','recorder','hud','notices','dom'],
- 'Running GO':['composition','frame','game','recorder','hud','notices','dom'],
- 'Replay/After Action':['composition','frame','recorder','hud','notices','dom'],
+ 'Planning/Tactical 2D or 3D':['composition','lifecycle','frame','mission','game','recorder','hud','notices','dom'],
+ 'Running GO':['composition','lifecycle','frame','game','recorder','hud','notices','dom'],
+ 'Replay/After Action':['composition','lifecycle','frame','recorder','hud','notices','dom'],
  'Campaign Home':['campaign-view','campaign-flow','campaign-domain'],
  'Campaign Armory':['campaign-view','campaign-flow','campaign-domain','outfitter','field-kit','squad-rail','kit-preview'],
  'Quick Play Operations':['composition','quick-ops','outfitter','field-kit','squad-rail','kit-preview'],
@@ -52,7 +53,7 @@ export const R70_MODES=Object.freeze({
 });
 const SIGNALS=Object.freeze({
  refresh:['updateHud','refreshHud','renderSession','renderQuickStates','renderOperationsBoard','renderSquadPrep','updateContext','updateReplayHud','syncBriefingCard','syncMissionPhase','syncNextSiteControls','syncSavedButtons','showCampaignHome'],
- bookkeeping:['capturePlanning','recordCompletedOperation','resolveOperation','saveCampaign','stepSession','applyVisibleCampaignAction'],
+ bookkeeping:['capturePlanning','recordCompletedOperation','observeSessionLifecycle','resolveOperation','saveCampaign','stepSession','applyVisibleCampaignAction'],
  shared:['createOutfitterGallery','createFieldGadgetEditor','createLoadoutSquadRail','renderModelThumbnail','renderModelThumbnailAsync'],
  lifetime:['dispose','disconnect','remove','cancelAnimationFrame','releaseMissionPresentation','mountMissionSession','resetNotices','requestAnimationFrame'],
  interaction:['addEventListener','removeEventListener','focus','renderNotice','reset','show','hide'],
@@ -61,8 +62,10 @@ const SIGNALS=Object.freeze({
 const SIGNAL_CATEGORY=new Map(Object.entries(SIGNALS).flatMap(([category,names])=>
  names.map(name=>[name,category])));
 export const R70_EDGES=Object.freeze([
- ['src/breach-main.ts','renderSession'],['src/breach-main.ts','capturePlanning'],
- ['src/breach-main.ts','recordCompletedOperation'],
+ ['src/breach-main.ts','renderSession'],['src/breach-main.ts','observeSessionLifecycle'],
+ ['src/breach-session-lifecycle-observer.ts','capturePlanning'],
+ ['src/breach-session-lifecycle-observer.ts','recordCompletedOperation'],
+ ['src/breach-runtime-loop.ts','observeSessionLifecycle'],
  ['src/breach-runtime-loop.ts','updateHud'],
  ['src/breach-operations-board-controller.ts','renderOperationsBoard'],
  ['src/ui/quick-play-configurator.ts','renderSquadPrep'],
@@ -151,7 +154,7 @@ export function inspectR70(root=ROOT){
   entrypoints:R70_EDGES.map(([path,callee])=>({
    path,callee,sites:site(byPath.get(path)?.rows??[],callee)})),
   orchestratorCalls:(byPath.get('src/breach-main.ts')?.rows??[])
-   .filter(x=>['renderSession','capturePlanning','recordCompletedOperation',
+   .filter(x=>['renderSession','observeSessionLifecycle','updateHud',
     'syncBriefingCard','syncMissionPhase','syncNextSiteControls',
     'syncSavedButtons','renderQuickStates'].includes(x.callee)),
   caveat:'AST callsites cannot prove runtime invocation rate, DOM writes, or safe removal.'
