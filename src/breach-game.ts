@@ -320,6 +320,8 @@ export type TeamActor=Operator & {
   escortLeaderId?:string|null;
   escortGoal?:Pt|null;
   lastEscortRouteAt?:number;
+  /** GO-time voice handoff, replayed only for visual standing/kneeling blend. */
+  lastEscortCommandAt?:number;
  /** D9: authoritative interval since last resolved spoken challenge. */
  lastChallengeAt?:number;
   lastFireRepositionAt:number;lastMissionEvadeAt:number;
