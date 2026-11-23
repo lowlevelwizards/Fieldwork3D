@@ -23,9 +23,11 @@ type Mounted={signature:string;root:THREE.Group;ownedRoots:THREE.Group[];
  gripWorld:THREE.Vector3;targetLocal:THREE.Vector3;
  targetWorldRotation:THREE.Quaternion;parentWorldRotation:THREE.Quaternion;
  flashWorld:THREE.Vector3;pouchRest:THREE.Vector3;
+ labPitchRotation:THREE.Quaternion;
 };
 const mounted=new WeakMap<THREE.Group,Mounted>();
 const WORLD_UP=new THREE.Vector3(0,1,0);
+const LAB_PITCH_AXIS=new THREE.Vector3(0,0,1);
 const pouchMaterial=()=>new THREE.MeshStandardMaterial({
  color:0x2a3430,roughness:.96,metalness:0,flatShading:true
 });
@@ -206,7 +208,8 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
   stowedQuaternion:cradle.quaternion.clone(),
   gripWorld:new THREE.Vector3(),targetLocal:new THREE.Vector3(),
   targetWorldRotation:new THREE.Quaternion(),parentWorldRotation:new THREE.Quaternion(),
-  flashWorld:new THREE.Vector3(),pouchRest:new THREE.Vector3()};
+  flashWorld:new THREE.Vector3(),pouchRest:new THREE.Vector3(),
+  labPitchRotation:new THREE.Quaternion()};
  mounted.set(hip,current);
  reconcilePouches(current,state!,chest,pack);
  return root;
@@ -221,7 +224,8 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
  */
 export function presentSecondaryDraw(hip:THREE.Group,
  firingHand:THREE.Object3D,secondary:SecondaryEquipment|undefined,
- fraction:number,operational=true,shotHeading?:number):boolean{
+ fraction:number,operational=true,shotHeading?:number,
+ labPitch=0):boolean{
  const mount=mounted.get(hip);
  if(!mount||!secondary?.weapon||mount.root.userData.secondaryWeaponId!==secondary.weapon){
   return false;
@@ -250,6 +254,11 @@ export function presentSecondaryDraw(hip:THREE.Group,
   mount.targetWorldRotation.setFromAxisAngle(
    WORLD_UP,-shotHeading!):
   chest.getWorldQuaternion(mount.targetWorldRotation);
+ // Laboratory display only: pitch the model for high/low-ready and recoil.
+ // Gameplay shot-time geometry and firing authority are unchanged.
+ if(Number.isFinite(labPitch)&&labPitch!==0)
+  targetWorldRotation.multiply(mount.labPitchRotation.setFromAxisAngle(
+   LAB_PITCH_AXIS,Math.max(-.9,Math.min(.9,labPitch))));
  const parentWorldRotation=mount.holster.getWorldQuaternion(mount.parentWorldRotation);
  const targetRotation=parentWorldRotation.invert().multiply(targetWorldRotation);
  // A curved, controlled draw path clears the holster before rotating into
