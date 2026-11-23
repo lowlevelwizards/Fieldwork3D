@@ -183,7 +183,9 @@ try{
    '.arsenal-wb-current')?.textContent?.includes('A2 Fixed'));
   // R13: factory/model changes must be possible without legacy dropdowns.
   await page.getByRole('button',{name:'CHOOSE MODEL'}).click();
-  await page.locator('.arsenal-wb-model-controls select').selectOption('mp5');
+  // The compact iPhone UI intentionally hides the desktop platform select:
+  // use the visible physical platform chip instead.
+  await page.locator('.arsenal-wb-platform-chip[data-platform="mp5"]').click();
   await page.locator('.arsenal-wb-model-controls input').fill('MP5K-PDW');
   await page.locator('.arsenal-wb-load-option').filter({hasText:'MP5K-PDW'}).click();
   const modelReview=await page.locator('.arsenal-wb-load-changes').textContent();
