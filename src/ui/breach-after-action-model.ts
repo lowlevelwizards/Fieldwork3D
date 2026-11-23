@@ -164,7 +164,13 @@ export function createAfterActionModelPresenter(
    const spacing=n>5?30:34;
    const base=squad?Math.max(158,88+n*17):100;
    lookAt.set(0,28,0);
-   const dist=base*zoom;
+   // Keep the outer bodies inside the camera on tall/narrow phone canvases.
+   // The four heading columns stay above their respective screen positions.
+   const halfWidth=((n-1)/2)*spacing+14;
+   const horizontalFit=squad?halfWidth/(
+     Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*
+     Math.max(.55,camera.aspect)):0;
+   const dist=Math.max(base*zoom,horizontalFit);
    // The camera does not spin the entire lineup as a single rigid object.
    camera.position.set(0,lookAt.y+Math.sin(pitch)*dist,
      -Math.cos(pitch)*dist);
