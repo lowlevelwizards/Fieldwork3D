@@ -154,7 +154,7 @@ function renderOperationsBoard(){
 
   actions.className='fw-squad-actions';
   const loadoutAction=document.createElement('button');
-  loadoutAction.type='button';loadoutAction.textContent='LOADOUT';
+  loadoutAction.type='button';loadoutAction.textContent='EQUIPMENT';
   loadoutAction.setAttribute('aria-label','Edit equipment for '+member.callsign);
   const toggleKit=()=>{
    const opening=expandedQuickKit!==member.id;

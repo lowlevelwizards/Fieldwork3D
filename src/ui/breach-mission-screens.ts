@@ -423,7 +423,7 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
   // Do not show a competing size control that its worker will not read.
   ui.siteSize.hidden=quickPlay||training;
   ui.variant.hidden=training;
-  ui.variant.textContent=quickPlay?'MISSION SETUP':'NEW SITE';
+  ui.variant.textContent=quickPlay?'MISSION SETUP':'GENERATE NEW SITE';
   ui.variant.disabled=campaignMission||training;
   ui.siteSize.disabled=campaignMission;
   ui.intelMode.disabled=campaignMission;

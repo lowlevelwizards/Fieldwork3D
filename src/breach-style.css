@@ -4205,3 +4205,23 @@ body.nvg-selected-view #breach3dCanvas{
   height:200px;min-height:170px
  }
 }
+
+/* Action-label audit: preserve readable contextual verbs, no ellipsis at
+   phone scale. Scope to primary tactical controls, not navigation buttons. */
+.context-tools .context-primary .command-label{
+ max-width:100%;white-space:normal;overflow:visible;text-overflow:clip;
+ overflow-wrap:normal;line-height:1.13;text-align:center;
+}
+@media(max-width:700px){
+ .context-tools[data-layout="dock"] .context-primary button,
+ .context-tools[data-layout="floating"] .context-primary button{
+  min-height:44px!important;height:auto;max-width:100%;
+ }
+ .context-tools[data-layout="dock"] .context-primary .command-label,
+ .context-tools[data-layout="floating"] .context-primary .command-label{
+  overflow:visible;text-overflow:clip;white-space:normal;
+ }
+ .quick-states .command-label{
+  white-space:normal;text-overflow:clip;line-height:1.12;text-align:center;
+ }
+}

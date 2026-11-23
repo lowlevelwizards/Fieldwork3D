@@ -6,6 +6,8 @@ export const FIELDWORK_TERMS=Object.freeze({
  missionSetup:'MISSION SETUP',campaign:'CAMPAIGN',
  debrief:'DEBRIEF',missionGrade:'GRADE',
  contribution:'CONTRIBUTION',combatReport:'COMBAT REPORT',
+ squadEquipment:'SQUAD EQUIPMENT',moments:'MOMENTS',
+ watchClip:'WATCH CLIP',watchIncident:'WATCH INCIDENT',
  replay:'REPLAY',clip:'CLIP',highlight:'HIGHLIGHT',
  incapacitated:'INCAPACITATED',surrendered:'SURRENDERED',
  newMission:'NEW MISSION',retryMission:'RETRY MISSION',
