@@ -2316,6 +2316,8 @@ function draw(){
    rig.arms[1].hand.position.z.toFixed(3):'';
   canvas.dataset.poseSidearmSupportLocalX=sidearm?
    rig.arms[0].hand.position.x.toFixed(3):'';
+  canvas.dataset.poseSidearmFiringLocalX=sidearm?
+   rig.arms[1].hand.position.x.toFixed(3):'';
   // Local +X is barrel-forward; compare actual solved palm positions.
   canvas.dataset.poseSidearmSupportAhead=sidearm?
    (rig.arms[0].hand.position.x-rig.arms[1].hand.position.x).toFixed(3):'';
