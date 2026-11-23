@@ -10,6 +10,7 @@ import {buildGlockAppearance,glockArtSockets,
 import type {SecondaryEquipment,SecondaryMagazineLocation}
  from './secondary-equipment.ts';
 import type {SecondaryTimedReload} from './secondary-timed-reload.ts';
+import type {Anchor3} from './breach-anatomy.ts';
 
 type Mounted={signature:string;root:THREE.Group;ownedRoots:THREE.Group[];
  holster:THREE.Group;cradle:THREE.Group;
@@ -23,7 +24,7 @@ type Mounted={signature:string;root:THREE.Group;ownedRoots:THREE.Group[];
  gripWorld:THREE.Vector3;targetLocal:THREE.Vector3;
  targetWorldRotation:THREE.Quaternion;parentWorldRotation:THREE.Quaternion;
  flashWorld:THREE.Vector3;pouchRest:THREE.Vector3;
- labPitchRotation:THREE.Quaternion;
+ labPitchRotation:THREE.Quaternion;labGripOffset:THREE.Vector3;
 };
 const mounted=new WeakMap<THREE.Group,Mounted>();
 const WORLD_UP=new THREE.Vector3(0,1,0);
@@ -209,7 +210,7 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
   gripWorld:new THREE.Vector3(),targetLocal:new THREE.Vector3(),
   targetWorldRotation:new THREE.Quaternion(),parentWorldRotation:new THREE.Quaternion(),
   flashWorld:new THREE.Vector3(),pouchRest:new THREE.Vector3(),
-  labPitchRotation:new THREE.Quaternion()};
+  labPitchRotation:new THREE.Quaternion(),labGripOffset:new THREE.Vector3()};
  mounted.set(hip,current);
  reconcilePouches(current,state!,chest,pack);
  return root;
@@ -225,7 +226,7 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
 export function presentSecondaryDraw(hip:THREE.Group,
  firingHand:THREE.Object3D,secondary:SecondaryEquipment|undefined,
  fraction:number,operational=true,shotHeading?:number,
- labPitch=0,labScale?:number):boolean{
+ labPitch=0,labScale?:number,labPrimaryFromPivot?:Anchor3):boolean{
  const mount=mounted.get(hip);
  if(!mount||!secondary?.weapon||mount.root.userData.secondaryWeaponId!==secondary.weapon){
   return false;
@@ -250,7 +251,6 @@ export function presentSecondaryDraw(hip:THREE.Group,
  mount.holster.updateWorldMatrix(true,false);
  firingHand.updateWorldMatrix(true,false);
  const gripWorld=firingHand.getWorldPosition(mount.gripWorld);
- const target=mount.holster.worldToLocal(mount.targetLocal.copy(gripWorld));
  // An actively aiming pistol must rotate its actual authored +X barrel
  // toward the SAME fixed-step yaw used by the shot resolver, not merely
  // the character's torso direction. Retain chest-relative fallback for
@@ -264,6 +264,15 @@ export function presentSecondaryDraw(hip:THREE.Group,
  if(Number.isFinite(labPitch)&&labPitch!==0)
   targetWorldRotation.multiply(mount.labPitchRotation.setFromAxisAngle(
    LAB_PITCH_AXIS,Math.max(-.9,Math.min(.9,labPitch))));
+ // Only the Lab corrects from the art's holster pivot to the *trigger
+ // grip*; live issued pistols retain their authoritative .37 shot origin.
+ const worldPivot=mount.targetLocal.copy(gripWorld);
+ if(labPrimaryFromPivot&&labScale!==undefined){
+  mount.labGripOffset.set(labPrimaryFromPivot.x,labPrimaryFromPivot.y,
+   labPrimaryFromPivot.z).multiplyScalar(scale).applyQuaternion(targetWorldRotation);
+  worldPivot.sub(mount.labGripOffset);
+ }
+ const target=mount.holster.worldToLocal(worldPivot);
  const parentWorldRotation=mount.holster.getWorldQuaternion(mount.parentWorldRotation);
  const targetRotation=parentWorldRotation.invert().multiply(targetWorldRotation);
  // A curved, controlled draw path clears the holster before rotating into
@@ -314,7 +323,7 @@ export function presentSecondaryMuzzleFlash(
  */
 export function presentSecondaryReload(hip:THREE.Group,
  supportHand:THREE.Object3D,kit:SecondaryEquipment|undefined,
- reload:SecondaryTimedReload|null|undefined):void{
+ reload:SecondaryTimedReload|null|undefined,labOnly=false):void{
  const mount=mounted.get(hip);
  if(!mount||!kit?.weapon||mount.root.userData.secondaryWeaponId!==kit.weapon)
   return;
@@ -334,6 +343,9 @@ export function presentSecondaryReload(hip:THREE.Group,
   mesh.rotation.set(0,0,0);
   mesh.visible=true;
   if(!active||id!==reload!.selectedId||!mesh.parent)continue;
+  // A just-seated physical magazine must not follow the support hand onto
+  // the rear slide in an empty-reload Lab study. Simulation meshes unchanged.
+  if(labOnly&&progress>=.72){mesh.visible=false;continue;}
   // No viewport- or RAF-owned motion. This is a seek-safe function of
   // the actual timed simulation reload phase and existing wrist.
   const lift=progress<=.26?0:progress>=.66?1:
