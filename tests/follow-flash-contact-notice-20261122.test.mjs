@@ -135,6 +135,9 @@ test('paused OPEN uses real hand reach and high-ready, flashburst overlay surviv
  const scene=read('src/breach-3d.ts');
  assert.match(scene,/preOpenDoorCandidate\(s,previewActor,plannedDoor!/);
  assert.match(scene,/handlingOverride:previewPreOpen\?'high':undefined/);
+ assert.match(scene,/velocity:0,aim:0,aimInstruction:null,pace:'walk'/);
+ assert.match(scene,/gripActive=!!physicalGrip&&physicalGrip\.releasedAt===null/);
+ assert.match(scene,/shotHeading:previewPreOpen\?doorFacing:drawActor\.weaponYaw/);
  const pose=read('src/breach-operator-animation-controller.ts');
  assert.match(pose,/if\(p\.flashHookPoint/);
  const fx=read('src/ui/breach-tactical-frame-feedback-controller.ts');
