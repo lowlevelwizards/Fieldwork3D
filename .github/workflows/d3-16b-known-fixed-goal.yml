@@ -35,7 +35,7 @@ jobs:
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
             11 2700 --site-index=8 --audit-seed=31149 --audit-scale=small \
             --progress > "$RUNNER_TEMP/d316b-motel.json"
-      - name: Preserve Ash destination and one actionable issue; seven cancellations remain real
+      - name: Preserve the actual adjusted Ash GO and one true Vale cancellation
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
@@ -44,15 +44,24 @@ jobs:
           const ash=m.operators.find(o=>o.id==='ash');
           const vale=m.operators.find(o=>o.id==='vale');
           console.log('D316B_MOTEL',JSON.stringify({ash,vale,summary:r.summary,events:m.orderCancelledEvents}));
-          if(!ash||ash.arrived||ash.remainingOrders!==1||ash.failedOrders!==0||
-             ash.activeOrder!=='move'||ash.remaining<30||ash.remaining>40||
-             !/MOVE BLOCKED · GO INSIDE FURNITURE · DRAG WAYPOINT TO CLEAR FLOOR/.test(ash.orderIssue??''))
-             throw Error('Ash goal was moved/cancelled, blocked hint ungrounded, or no real obstruction');
+          // D3.22A known-ground authoring may project a RAW room-center
+          // candidate to a nearby FULL-BODY standable authored PlanNode.
+          // The raw motel 31149 candidate (619.3,248) intersects a fixed
+          // toilet. That does not mean a SAFE, visibly adjusted PlanNode
+          // has been retired without physically reaching its actual GO.
+          const gap=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+          if(!ash||!ash.arrived||ash.remainingOrders!==0||ash.failedOrders!==0||
+             ash.activeOrder!==null||!ash.authoredGoal||
+             ash.authoredGoalStandable!==true||
+             gap(ash.goal,ash.authoredGoal)<.1||
+             gap(ash.goal,ash.authoredGoal)>13.01||
+             ash.authoredGoalDistance>5.5||ash.remaining>13)
+             throw Error('Motel Ash did not physically reach the actual standable authored GO after legal nudge');
           if(!vale||vale.failedOrders!==1||vale.arrived||vale.remainingOrders!==0)
              throw Error('locked-door cancellation no longer truthful');
-          if(r.summary.physicalArrivals!==6||r.summary.physicalCompletedFour!==1||
+          if(r.summary.physicalArrivals!==7||r.summary.physicalCompletedFour!==1||
              r.summary.successfulFour!==1||r.summary.terminallyCancelledOrders!==1||
-             r.summary.cancelledOperators!==1||r.summary.physicallyPendingOperators!==1||
+             r.summary.cancelledOperators!==1||r.summary.physicallyPendingOperators!==0||
              r.summary.exceptions||r.summary.physicsStepViolations||
              r.summary.corruptedPlans||r.summary.invalidPositions)
              throw Error('frozen motel physics or failure outcomes regressed');
