@@ -18,6 +18,7 @@ import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {nearestContextCivilian} from './breach-civilian-context-selection.ts';
+import {medicalTreatmentChoices} from './breach-medical-target-choices.ts';
 import {plannedSecondaryHand} from './secondary-switching.ts';
 import {selectedDoorStackFormation,cycleDoorStackFormation}
  from './breach-stack-formation-selection.ts';
@@ -46,6 +47,14 @@ export function dispatchTacticalContextCommand(input:{
    return {handled:true,outcome:accepted?'accepted':'rejected',
      ...(!accepted?{failureReason}:{}),...options};
  };
+ if(action.startsWith('ctxTreat:')){
+  const patientId=action.slice('ctxTreat:'.length);
+  const at=node?.p??finalPoint(a);
+  const permitted=medicalTreatmentChoices(state,a,at)
+    .some(patient=>patient.id===patientId&&patient.canTreat);
+  return finish(permitted&&planMedicalTreatment(state,selected,patientId,node?.id),
+    'PATIENT STABLE, UNREACHABLE, OR TREATMENT SUPPLIES UNAVAILABLE');
+ }
  if(action.startsWith('ctxPower:')){
   const parts=action.split(':');
   const on=parts[1]==='on';

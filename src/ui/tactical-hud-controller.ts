@@ -116,6 +116,7 @@ export type TacticalContextActionPorts={
  selectedNode:number|null;selectedActiveWatch:boolean;
  doorFocusId:string|null;doorMenuDismissedId:string|null;
  focusedDoor:()=>Door|undefined;medicalCandidate:(at:Pt)=>TeamActor|null;
+ toggleTreatment?:()=>void;closeTreatment?:()=>void;
  audio:ReturnType<typeof createBreachAudioController>;
  invalidateFog:()=>void;updateHud:()=>void;
  armFacing:(mode:'look'|'watch')=>void;
@@ -1059,6 +1060,8 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
         if(result.dismissDoorId!==undefined)
           config.doorMenuDismissedId=result.dismissDoorId;
         if(result.invalidateFog)config.invalidateFog();
+        if(action?.startsWith('ctxTreat:')&&result.outcome==='accepted')
+          config.closeTreatment?.();
         // The command API's boolean is authoritative; an event-log append
         // is not evidence that a command failed or succeeded.
         completeAction(door?doorCenter(door):node?.p??a.p,
@@ -1069,6 +1072,9 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
         config.updateHud();return;
       }
       switch(action){
+        case 'ctxTreat':
+          config.toggleTreatment?.();
+          config.audio.uiClickTone('select');config.updateHud();return;
         case 'ctxSuppress':
           targeting.armSuppress();
           feedback.emit('armed',node?.p??a.p,'SUPPRESS READY');

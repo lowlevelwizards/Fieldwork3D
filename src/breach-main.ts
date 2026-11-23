@@ -703,7 +703,10 @@ hudController.bindContextActions({
  get doorMenuDismissedId(){return doorMenuDismissedId;},
  set doorMenuDismissedId(v){doorMenuDismissedId=v;},
  focusedDoor:()=>{const a=uid(selected);return a?focusedDoor(a,selectedPlanNode()):undefined;},
- medicalCandidate:at=>medicalCandidate(selected,at),audio:audioController,
+ medicalCandidate:at=>medicalCandidate(selected,at),
+ toggleTreatment:()=>paletteController.toggleTreatment(),
+ closeTreatment:()=>paletteController.closeTreatment(),
+ audio:audioController,
  invalidateFog:()=>fog2D.invalidate(),updateHud,armFacing,showUiHelp
 });
 

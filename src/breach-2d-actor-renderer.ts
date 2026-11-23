@@ -322,7 +322,7 @@ function sprite(a:TeamActor){
 }
 function liveWeaponKnown(item:{ownerId:string;p:Pt},state:Session):boolean{
   const owner=state.operators.find(a=>a.id===item.ownerId);
-  const knowledge=getFrame().replayKnowledge;
+  const knowledge=replayKnowledge;
   // Reuse the existing observable owner check; unseen weapon positions do
   // not become a new source of full-map intelligence.
   return !!owner&&(getFrame().replaying?
