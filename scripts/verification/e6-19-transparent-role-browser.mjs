@@ -62,7 +62,14 @@ try{
    await page.locator('#briefingClose').click({timeout:30000});
    await page.waitForFunction(()=>
     document.getElementById('briefingPanel')?.hidden===true);
-   await page.locator('#play').click({timeout:30000});
+   // The opt-in benchmark export control overlaps Play at desktop sizes.
+   // Keyboard activation uses the same public button without pointer interception.
+   const play=page.locator('#play');
+   if(desktop){
+    await play.waitFor({state:'visible',timeout:30000});
+    if(!(await play.isEnabled()))throw Error('Desktop Play unavailable');
+    await play.press('Enter',{timeout:30000});
+   }else await play.click({timeout:30000});
    await page.waitForFunction(()=>
     document.getElementById('phase')?.textContent==='EXECUTING',
     null,{timeout:30000});
