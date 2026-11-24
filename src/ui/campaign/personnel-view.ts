@@ -1,5 +1,5 @@
 import {uiNode as node,uiButton as button} from '../dom-elements.ts';
-import type {CampaignState,Contract} from '../../campaign-state.ts';
+import type {CampaignState} from '../../campaign-state.ts';
 import type {CampaignHandlers} from '../../campaign-ui.ts';
 import {SQUAD_IDENTIFICATION_COLORS,SKILL_NAMES} from '../../campaign-state.ts';
 import {isDispatchPilot,mayChooseCampaignContent} from '../../dispatch-campaign-eligibility.ts';

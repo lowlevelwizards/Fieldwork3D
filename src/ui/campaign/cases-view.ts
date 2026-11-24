@@ -94,5 +94,5 @@ export function renderCampaignCases(c:CampaignState,selectedCaseId:string|null,
     jobs.append(browser);
    }
   }
- return jobs;
+ return {jobs,accepted};
 }

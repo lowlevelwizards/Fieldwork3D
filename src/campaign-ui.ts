@@ -24,8 +24,6 @@ import {effectiveDispatchSetup,currentDispatchReference,
  type DispatchCampaignDraft} from './dispatch-campaign-setup.ts';
 import {factionReference} from './faction-reference-catalog.ts';
 import {dispatchDepartmentView} from './dispatch-department-view.ts';
-import {campaignWeaponQuote,CAMPAIGN_WEAPON_PLATFORMS}
- from './campaign-weapon-procurement.ts';
 import {canAffordCampaignPurchase,
  armorRepairCost,weaponServiceCost,canApplyCampaignKitPreset}
  from './campaign-state.ts';
@@ -64,10 +62,8 @@ import type {CarryGearSlot} from './equipment-carry-gear-change.ts';
 import {createFieldGadgetEditor} from './ui/field-gadget-editor.ts';
 import {createLoadoutSquadRail} from './ui/loadout-squad-rail.ts';
 import {fieldQuantity,initialFieldInventory,type FieldInventory} from './equipment-field-inventory.ts';
-import {quoteCampaignSquadRefill,quoteCampaignOperatorRefill}
+import {quoteCampaignOperatorRefill}
  from './equipment-campaign-squad-refill.ts';
-import {FIELD_STOCK_PACKS,FIELD_STOCK_LIMIT}
- from './equipment-campaign-field-stock.ts';
 import {FieldInventoryUndoHistory} from './equipment-field-undo.ts';
 import {campaignIntelBalance,contractObjectiveIntel,campaignSquadPresent} from './campaign-state.ts';
 import {projectOperationsSummary} from './ui/campaign/operations-summary.ts';
@@ -422,7 +418,7 @@ export class CampaignScreen{
    'No operations completed. Select your first contract.');
   personnel.append(notice);
   grid.append(personnel);
-  const jobs=renderCampaignCases(c,this.selectedCaseId,id=>{this.selectedCaseId=id;},
+  const {jobs,accepted}=renderCampaignCases(c,this.selectedCaseId,id=>{this.selectedCaseId=id;},
    k=>this.contract(k,c),this.handlers.resumeContract,tab=>activateTab(tab));
   grid.append(jobs);
   let serviceRecord:HTMLElement|null=null;

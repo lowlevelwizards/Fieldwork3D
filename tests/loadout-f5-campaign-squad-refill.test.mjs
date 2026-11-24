@@ -99,10 +99,11 @@ test('F5: UI points only to HQ-authorized action; no duplicate ledger or free ga
  const src=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
  const flow=src('src/breach-campaign-flow.ts');
  const ui=src('src/campaign-ui.ts');
+ const logistics=src('src/ui/campaign/logistics-view.ts');
  const model=src('src/equipment-campaign-squad-refill.ts');
  assert.match(flow,/resupplySquad:\(\)=>applyVisibleCampaignAction\(refillCampaignSquad/);
- assert.match(ui,/quoteCampaignSquadRefill\(c\)/);
- assert.match(ui,/this\.handlers\.resupplySquad/);
+ assert.match(logistics,/quoteCampaignSquadRefill\(c\)/);
+ assert.match(logistics,/handlers\.resupplySquad/);
  assert.match(ui,/quoteCampaignOperatorRefill\(c,person\.id\)/);
  assert.match(model,/next=resupplyOperator\(next,id\)/);
  assert.match(model,/next=resupplyMedicalOperator\(next,id\)/);

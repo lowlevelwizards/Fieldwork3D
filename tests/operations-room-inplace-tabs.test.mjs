@@ -15,7 +15,7 @@ test('Operations Room switches already-built tab panels without rebuilding campa
  assert.match(tabs,/trigger\.tabIndex=selected\?0:-1/);
  assert.match(tabs,/tabs\[next\]\.focus\(\{preventScroll:true\}\)/);
  assert.match(tabs,/root\.scrollTop=0/);
- assert.match(home,/activateTab\(check\.action\)/);
+ assert.match(home,/activateTab\(destination\)/);
  assert.match(tabs,/activateTab\(tab\)/);
  assert.doesNotMatch(home,/this\.homeTab=tab;this\.root\.scrollTop=0;this\.home\(c\)/);
 });
@@ -24,7 +24,7 @@ test('Operations Room prioritizes deployment and groups administrative utilities
  const ui=readFileSync(new URL('../src/campaign-ui.ts',import.meta.url),'utf8');
  const home=ui.slice(ui.indexOf(' home(c:CampaignState,slot?:CampaignSlot){'),
   ui.indexOf(' private armory(c:CampaignState,id:string){'));
- assert.match(home,/VIEW AVAILABLE CONTRACTS/);
+ assert.match(home,/BROWSE CONTRACTS/);
  assert.match(home,/campaign-overview-primary-action/);
  assert.match(home,/SAVES & OTHER MODES/);
  assert.match(home,/utilityContent\.append\(/);

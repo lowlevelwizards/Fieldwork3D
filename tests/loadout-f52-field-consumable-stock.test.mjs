@@ -128,10 +128,11 @@ test('F5.2 UI wiring hides obsolete cuff purchase/refill, retains wedge stock ow
  const src=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
  const ui=src('src/campaign-ui.ts'),flow=src('src/breach-campaign-flow.ts');
  const state=src('src/campaign-state.ts');
+ const logistics=src('src/ui/campaign/logistics-view.ts');
  assert.match(ui,/maxWedges:c\.supplies\.wedges/);
  assert.doesNotMatch(ui,/maxCuffs:c\.supplies\.cuffs/);
- assert.match(ui,/FIELD_STOCK_PACKS\.wedges\.name/);
- assert.doesNotMatch(ui,/\[FIELD_STOCK_PACKS\.cuffs\.name,/);
+ assert.match(logistics,/FIELD_STOCK_PACKS\.wedges\.name/);
+ assert.doesNotMatch(logistics,/\[FIELD_STOCK_PACKS\.cuffs\.name,/);
  assert.match(ui,/this\.handlers\.resupplyField/);
  assert.match(flow,/purchaseFieldStock\(c,'wedges'\)/);
  assert.match(flow,/replenishCampaignFieldPieces\(c,id\)\.result/);

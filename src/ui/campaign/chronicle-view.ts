@@ -1,5 +1,5 @@
 import {uiNode as node,uiButton as button} from '../dom-elements.ts';
-import type {CampaignState,Contract} from '../../campaign-state.ts';
+import type {CampaignState} from '../../campaign-state.ts';
 import {isDispatchPilot} from '../../dispatch-campaign-eligibility.ts';
 import {campaignIncidentView} from '../../dispatch-incident-view.ts';
 import {dispatchCaseDossier} from '../../dispatch-case-dossier.ts';
