@@ -29,7 +29,7 @@ import {sharedService} from './campaign-history.ts';
 import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts';
 import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
  type LoadoutSlot} from './equipment-loadouts.ts';
-import {CampaignKitPreview,type EquipmentPreviewFocus} from './equipment-preview.ts';
+import type {EquipmentPreviewFocus} from './equipment-preview.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {WeaponWorkbenchPreview,type WeaponWorkbenchViewState}
@@ -48,7 +48,7 @@ import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
  from './ui/fieldwork-controls.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {createCampaignGearPicker} from './ui/campaign-gear-picker.ts';
-import {createOutfitterGallery} from './ui/campaign-outfitter-gallery.ts';
+import {createEquipmentWorkspace} from './ui/equipment-workspace.ts';
 import {fieldworkSelect} from './ui/fieldwork-select.ts';
 import './ui/campaign-outfitter-gallery.css';
 import {attachCarryGearChangePreview} from './ui/carry-gear-change-controls.ts';
@@ -125,8 +125,8 @@ export class CampaignScreen{
  private selectedRecordId:string|null=null;
  /** Keeps the selected case available while preparing squad or supplies. */
  private preparationContractId:string|null=null;
- private preview:CampaignKitPreview|null=null;
- private outfitterGallery:ReturnType<typeof createOutfitterGallery>|null=null;
+ private readonly equipmentWorkspace=createEquipmentWorkspace();
+ private get preview(){return this.equipmentWorkspace.preview;}
  private workbench:WeaponWorkbenchPreview|null=null;
  private weaponView=false;
  /** Temporary UI preference only; no Campaign save mutation. */
@@ -154,9 +154,6 @@ export class CampaignScreen{
   mass:number;mobility:number
  }|null=null;
  private readonly operatorViewAngles=new Map<string,number>();
- /** Persistent UI state across rerenders; not part of the loadout. */
- private readonly outfitterSelected=new Map<string,Map<string,string>>();
- private readonly outfitterScroll=new Map<string,Map<string,number>>();
  private inspectionWeaponVisible=true;
  /** Keep orbit/zoom only across small cosmetic swaps; refit a new core. */
  private readonly weaponWorkbenchViews=new Map<string,{
@@ -165,12 +162,12 @@ export class CampaignScreen{
  private workbenchCore:string|null=null;
  private workbenchVisualKey:string|null=null;
  private disposeGallery(){
-  this.outfitterGallery?.dispose();this.outfitterGallery=null;
+  this.equipmentWorkspace.beginRender();
  }
  private disposePreview(){
   if(this.preview&&this.lastArmoryRenderedId)
    this.operatorViewAngles.set(this.lastArmoryRenderedId,this.preview.getAzimuth());
-  this.preview?.dispose();this.preview=null;
+  this.equipmentWorkspace.releasePreview();
   if(this.workbench&&this.lastArmoryRenderedId&&this.workbenchCore){
    const view=this.workbench.getViewState();
    if(view)this.weaponWorkbenchViews.set(this.lastArmoryRenderedId,{
@@ -1495,7 +1492,7 @@ export class CampaignScreen{
   }
   if(!retainOperatorPreview&&!retainWorkbench)this.disposePreview();
   else if(retainWorkbench&&this.preview){
-   this.preview.dispose();this.preview=null;
+   this.equipmentWorkspace.releasePreview();
   }
   if(!sameOperator){
    this.activeKitGroup='weapon';this.activeKitWorkspace='equipment';
@@ -1967,10 +1964,7 @@ export class CampaignScreen{
   };
   const grouped=buildQuickLoadoutGroups(editor,this.activeKitGroup,setCategory);
   const benchRows=new Map<LoadoutSlot,HTMLElement>();
-  const selectedItems=this.outfitterSelected.get(id)??new Map<string,string>();
-  const scrollPositions=this.outfitterScroll.get(id)??new Map<string,number>();
-  this.outfitterSelected.set(id,selectedItems);
-  this.outfitterScroll.set(id,scrollPositions);
+  const {selectedItems}=this.equipmentWorkspace.memoryFor(id);
   const gallerySources=new Map<LoadoutSlot,HTMLSelectElement>();
   let showGallery:((slot:LoadoutSlot)=>void)|null=null;
   let closeAdvanced:(()=>void)|null=null;
@@ -2497,7 +2491,7 @@ export class CampaignScreen{
     galleryRoot.hidden=true;carryPanel.hidden=true;advanced.hidden=false;
    };
    openClothing=()=>{selectBenchSlot('top');};
-   const gallery=createOutfitterGallery({
+   const gallery=this.equipmentWorkspace.mountGallery(id,{
     host:galleryRoot,sources:gallerySources,kit:person.loadout,
     magazines:person.magazines,locked,
     renderModel:(slot,itemId)=>this.preview?.renderModelThumbnailAsync(
@@ -2507,7 +2501,6 @@ export class CampaignScreen{
       .find(button=>button.textContent?.trim()==='AUTO PACK');
      if(button&&!button.disabled)button.click();
     },
-    selectedItems,scrollPositions,
     onSelectCategory:slot=>selectBenchSlot(slot),
     onInspect:(slot,itemId)=>this.preview?.selectItemDot(
      itemId?{kind:'gear',slot,itemId}:null),
@@ -2535,7 +2528,6 @@ export class CampaignScreen{
     galleryRoot.hidden=true;advanced.hidden=true;carryPanel.hidden=false;
    }
    });
-   this.outfitterGallery=gallery;
    showGallery=slot=>gallery.show(slot);
    gallery.show(this.activeBenchSlot);
    main.dataset.kitWorkspace='unified';
@@ -2587,17 +2579,8 @@ export class CampaignScreen{
     this.workbench.showSocketChoices(remembered,savedSelect);
    else this.workbench.setActiveSlot(build?'body-receiver':this.selectedMount,false);
   }else{
-   if(retainOperatorPreview&&this.preview){
-    this.preview.setOperatorId(id);
-    this.preview.attachHost(preview,false);
-    this.preview.updateEquipment(person.weapon,person.appearanceSeed,person.loadout,
-     person.weaponConfiguration,person.magazines,person.wardrobe);
-   }else{
-    this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
-     person.appearanceSeed,person.loadout,person.weaponConfiguration,
-     person.magazines,person.wardrobe,
-     previewFocusForGroup[this.activeKitGroup],this.operatorViewAngles.get(id));
-   }
+   this.equipmentWorkspace.mountPreview(preview,person,
+    previewFocusForGroup[this.activeKitGroup],this.operatorViewAngles.get(id));
    // Operator geometry is the primary edit target; direct body-zone
    // buttons provide a precise fallback on small screens and for keyboard.
    this.preview?.setOnTapSlot(slot=>selectBenchSlot(slot,true));

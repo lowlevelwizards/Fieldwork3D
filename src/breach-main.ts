@@ -367,7 +367,7 @@ const operationsBoardController=createBreachOperationsBoardController({
  getMode:()=>appFlow.mode,isReplaying:()=>replaying,
  saveRoster,applyRoster:()=>applyRosterIdentity(state,persistentRoster),
  refreshHud:refreshTacticalUi,
- syncSheets:()=>missionScreens.syncSheets(),
+ syncSheets:()=>{operationsBoardController.syncVisibility();missionScreens.syncSheets();},
  history:operationHistory,
  enterTrainingRange:()=>{
    if(replaying)return;
@@ -385,6 +385,7 @@ const renderOperationsBoard=operationsBoardController.render;
 const missionScreens=createBreachMissionScreens({
  ui,operationsBoard,operationsToggle,boot:bootConfig,
  onPresentationChange:visible=>{
+  operationsBoardController.syncVisibility();
   appFlow.briefingVisibility(visible.briefing);
   appFlow.settingsVisibility(visible.settings);
  },
@@ -1261,6 +1262,7 @@ function releaseMissionPresentation():void{
   audioController.endReplay();
   campaignFlow.resetOutcome();
   operationsBoard.hidden=true;
+  operationsBoardController.syncVisibility();
   hideWeaponChooser();
   targeting.reset();document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;

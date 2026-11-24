@@ -29,11 +29,10 @@ import {initialFieldInventory,type FieldInventory} from './equipment-field-inven
 import {FieldInventoryUndoHistory} from './equipment-field-undo.ts';
 import {CarryKitUndoHistory,captureCarryUndo} from './equipment-carry-undo.ts';
 import {createLoadoutSquadRail} from './ui/loadout-squad-rail.ts';
-import {createOutfitterGallery} from './ui/campaign-outfitter-gallery.ts';
+import {createEquipmentWorkspace} from './ui/equipment-workspace.ts';
 import type {LoadoutSlot} from './equipment-loadouts.ts';
 import './ui/campaign-outfitter-gallery.css';
 import './ui/ux-r1-sheets.css';
-import {CampaignKitPreview} from './equipment-preview.ts';
 import type {OperationRecord} from './breach-operations.ts';
 
 export type OperationsBoardHooks={
@@ -52,17 +51,13 @@ let expandedQuickKit:string|null=null;
 let expandedQuickLoadoutGroup:QuickLoadoutGroup='carry';
 let quickBenchSlot:LoadoutSlot='primary';
 let quickKitView:'equipment'|'carry'|'advanced'='equipment';
-const gallerySelections=new Map<string,Map<string,string>>();
-const galleryScroll=new Map<string,Map<string,number>>();
+const equipmentWorkspace=createEquipmentWorkspace();
 let expandedQuickWeapon:string|null=null;
 /** Keep the intentional classic fallback open across part/weapon rerenders. */
 const expandedClassicWeaponControls=new Set<string>();
 let quickWorkbench:WeaponWorkbenchPreview|null=null;
 let quickWorkbenchId:string|null=null;
 let quickWorkbenchConfigKey:string|null=null;
-let quickKitPreview:CampaignKitPreview|null=null;
-let currentGallery:ReturnType<typeof createOutfitterGallery>|null=null;
-let quickKitPreviewId:string|null=null;
 let scrollToSelected=false;
 const fieldUndo=new FieldInventoryUndoHistory();
 const carryUndo=new CarryKitUndoHistory();
@@ -77,7 +72,9 @@ function rememberQuickWorkbenchView(){
 }
 
 function renderOperationsBoard(){
- currentGallery?.dispose();currentGallery=null;
+ equipmentWorkspace.beginRender();
+ if(config.board.hidden){dispose();return;}
+ let mountedKit=false;
  const priorScroll=scrollToSelected?0:config.board.scrollTop;
  scrollToSelected=false;
  // Rebuild HTML without throwing away the expensive weapon WebGL context.
@@ -163,7 +160,7 @@ function renderOperationsBoard(){
    else{
     // Closing the bench frees its WebGL context rather than leaving an idle
     // renderer attached to a detached operator preview.
-    quickKitPreview?.dispose();quickKitPreview=null;quickKitPreviewId=null;
+    equipmentWorkspace.releasePreview();
    }
    renderOperationsBoard();
   };
@@ -200,6 +197,7 @@ function renderOperationsBoard(){
   kit.append(kitTitle);
   // Keep closed kit lightweight: only mount the shared editor on demand.
   if(!kit.open){card.append(kit);config.board.append(card);continue;}
+  mountedKit=true;
   const previewHost=document.createElement('div');
   previewHost.className='fw-prep-operator-viewer';
   previewHost.hidden=false;
@@ -207,22 +205,7 @@ function renderOperationsBoard(){
   const modelStage=document.createElement('div');
   modelStage.className='fw-quick-board-model-stage';
   modelStage.append(previewHost);kit.append(modelStage);
-  const renderKitPreview=()=>{
-   if(!kit.open||!previewHost.isConnected||previewHost.hidden)return;
-   if(quickKitPreview&&quickKitPreviewId!==member.id){
-    quickKitPreview.setOperatorId(member.id);quickKitPreviewId=member.id;
-   }
-   if(!quickKitPreview){
-    quickKitPreview=new CampaignKitPreview(previewHost,member.id,member.weapon,
-     member.appearanceSeed,member.loadout,member.weaponConfiguration,
-     member.magazines,member.wardrobe);
-    quickKitPreviewId=member.id;
-   }else{
-    quickKitPreview.attachHost(previewHost,false);
-    quickKitPreview.updateEquipment(member.weapon,member.appearanceSeed,
-     member.loadout,member.weaponConfiguration,member.magazines,member.wardrobe);
-   }
-  };
+  const renderKitPreview=()=>equipmentWorkspace.mountPreview(previewHost,member);
   // The shared bench explicitly initializes its one preview after mounting.
   const advancedPanel=document.createElement('details');
   advancedPanel.className='fw-quick-board-advanced';
@@ -349,7 +332,7 @@ function renderOperationsBoard(){
     config.saveRoster();config.applyRoster();
     if(changed){
      renderField(changed);
-     quickKitPreview?.updateEquipment(changed.weapon,changed.appearanceSeed,
+     equipmentWorkspace.preview?.updateEquipment(changed.weapon,changed.appearanceSeed,
       changed.loadout,changed.weaponConfiguration,changed.magazines,changed.wardrobe);
     }
     if(previousFocus){
@@ -363,9 +346,9 @@ function renderOperationsBoard(){
    };
    const editor=createFieldGadgetEditor({
     loadout:current.loadout,magazines:current.magazines,
-    onInspectLocation:location=>quickKitPreview?.highlightCarryLocation(location),
-   onInspectItem:item=>quickKitPreview?.inspectCarryItem(item),
-   onModelThumbnail:item=>quickKitPreview?.renderModelThumbnail(item)??null,
+    onInspectLocation:location=>equipmentWorkspace.preview?.highlightCarryLocation(location),
+   onInspectItem:item=>equipmentWorkspace.preview?.inspectCarryItem(item),
+   onModelThumbnail:item=>equipmentWorkspace.preview?.renderModelThumbnail(item)??null,
     onMoveMagazine:(magazineId,to,focusLabel)=>{
      if(config.getSession().phase!=='planning'||config.isReplaying())return;
      const prior=config.getRoster();
@@ -380,7 +363,7 @@ function renderOperationsBoard(){
      carryUndoButton.disabled=changed?!canUndoCarry(changed):true;
      if(changed){
       renderField(changed);
-      quickKitPreview?.updateEquipment(changed.weapon,changed.appearanceSeed,
+      equipmentWorkspace.preview?.updateEquipment(changed.weapon,changed.appearanceSeed,
        changed.loadout,changed.weaponConfiguration,changed.magazines,changed.wardrobe);
       if(focusLabel){
        Array.from(fieldHost.querySelectorAll<HTMLElement>('button[aria-label]'))
@@ -671,9 +654,9 @@ function renderOperationsBoard(){
    onSelect:slot=>{
     quickBenchSlot=slot;
     showGallery(slot);
-    quickKitPreview?.clearTransientSelection();
-    quickKitPreview?.setSelectedSlot(slot);
-    quickKitPreview?.focusOn(previewFocusForOutfitterSlot(slot));
+    equipmentWorkspace.preview?.clearTransientSelection();
+    equipmentWorkspace.preview?.setSelectedSlot(slot);
+    equipmentWorkspace.preview?.focusOn(previewFocusForOutfitterSlot(slot));
    }
   });
   const selectZone=zones.select;
@@ -682,15 +665,11 @@ function renderOperationsBoard(){
   clothing.type='button';clothing.className='fw-quick-board-clothing';
   clothing.textContent='CLOTHING';clothing.addEventListener('click',()=>selectZone('top'));
   galleryHost.append(clothing);
-  const selectedItems=gallerySelections.get(member.id)??new Map<string,string>();
-  const scrollPositions=galleryScroll.get(member.id)??new Map<string,number>();
-  gallerySelections.set(member.id,selectedItems);
-  galleryScroll.set(member.id,scrollPositions);
   const editable=config.getSession().phase==='planning'&&!config.isReplaying();
-  const gallery=createOutfitterGallery({
+  const gallery=equipmentWorkspace.mountGallery(member.id,{
    host:galleryHost,sources,kit:member.loadout,magazines:member.magazines,
-   locked:!editable,selectedItems,scrollPositions,
-   renderModel:(slot,itemId)=>quickKitPreview?.renderModelThumbnailAsync(
+   locked:!editable,
+   renderModel:(slot,itemId)=>equipmentWorkspace.preview?.renderModelThumbnailAsync(
     {kind:'gear',slot,itemId})??null,
    onEquip:(slot,itemId)=>{
     if(config.getSession().phase!=='planning'||config.isReplaying())return;
@@ -719,14 +698,13 @@ function renderOperationsBoard(){
    onArsenal:()=>{if(!arsenalAction.disabled)config.openArsenal(member.id);},
    arsenalDisabled:arsenalAction.disabled,
    onSelectCategory:selectZone,
-   onInspect:(slot,itemId)=>quickKitPreview?.selectItemDot(
+   onInspect:(slot,itemId)=>equipmentWorkspace.preview?.selectItemDot(
     itemId?{kind:'gear',slot,itemId}:null),
    onAdvanced:()=>{
     quickKitView='carry';galleryHost.hidden=true;carryPanel.hidden=false;
     advancedPanel.open=false;
    }
   });
-  currentGallery=gallery;
   showGallery=gallery.show;
   kit.insertBefore(galleryHost,advancedPanel);
   // Keep carry contents in the gallery's place, not below the advanced
@@ -741,11 +719,14 @@ function renderOperationsBoard(){
   });
   selectZone(quickBenchSlot);
   card.append(kit);config.board.append(card);
-  requestAnimationFrame(()=>{
-   renderKitPreview();
-   quickKitPreview?.setOnTapSlot(selectZone);
-   quickKitPreview?.setSelectedSlot(quickBenchSlot);
-  });
+  equipmentWorkspace.deferPreviewMount(
+   ()=>kit.isConnected&&kit.open&&!previewHost.hidden&&!config.board.hidden,
+   ()=>{
+    const preview=renderKitPreview();
+    preview.setOnTapSlot(selectZone);
+    preview.setSelectedSlot(quickBenchSlot);
+   });
+
   // A newly opened details subtree can report zero width on iOS until
   // it is attached and laid out. Initialize after paint, not only on toggle.
   if(kit.open&&advancedPanel.open&&loadout.group.weapon.open&&legacyControls.open&&weaponEditor.open)
@@ -757,6 +738,7 @@ function renderOperationsBoard(){
    quickWorkbenchConfigKey=null;
   }
  }
+ if(!mountedKit)dispose();
  const hint=document.createElement('p');
  hint.textContent='Select an operator to edit. Close to resume planning.';
  config.board.append(hint);
@@ -769,9 +751,11 @@ function renderOperationsBoard(){
    renderOperationsBoard();
  }
  function dispose():void{
+   rememberQuickWorkbenchView();
    quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
    quickWorkbenchConfigKey=null;
-   quickKitPreview?.dispose();quickKitPreview=null;quickKitPreviewId=null;
+   equipmentWorkspace.dispose();
  }
- return {render:renderOperationsBoard,onQuickApplied,dispose};
+ function syncVisibility():void{if(config.board.hidden)dispose();}
+ return {render:renderOperationsBoard,onQuickApplied,dispose,syncVisibility};
 }
