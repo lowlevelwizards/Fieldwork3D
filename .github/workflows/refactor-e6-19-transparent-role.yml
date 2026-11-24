@@ -10,6 +10,7 @@ on:
       - 'src/rendering/breach-wall-presentation.ts'
       - 'src/worldgen/wall-surface-recipe.ts'
       - 'src/rendering/wall-surface-material.ts'
+      - 'src/rendering/pixel-materials.ts'
       - 'src/map-lab-main.ts'
       - 'map-lab.html'
       - 'tests/w2-wall-surface-recipe.test.mjs'
@@ -27,7 +28,7 @@ concurrency:
 jobs:
   transparent-provenance:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -104,7 +105,7 @@ jobs:
           OUT="$PWD/artifacts/w2-live"
           for desktop in 0 1; do
             (cd "$RUNNER_TEMP/w2-base" && FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/base-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs)
-            for mode in integrated baked; do
+            for mode in integrated baked packed; do
               FIELDWORK_WALL_WEAR="$mode" FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/$mode-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs
             done
           done
@@ -113,7 +114,7 @@ jobs:
           const read=(mode,desktop)=>JSON.parse(readFileSync('artifacts/w2-live/'+mode+'-'+desktop+'/summary.json','utf8'));
           for(const desktop of [0,1]){
             const base=read('base',desktop);
-            for(const mode of ['integrated','baked']){
+            for(const mode of ['integrated','baked','packed']){
               const test=read(mode,desktop);
               for(const key of ['initialKnowledge','initialVisible','secondVisible']){
                 if(base.wallProbe[key]!==test.wallProbe[key])throw Error('W2 disclosure changed: '+mode+' '+key);
