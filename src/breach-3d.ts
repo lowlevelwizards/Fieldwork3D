@@ -24,6 +24,7 @@ import type {SiteSceneBuildPort} from './rendering/breach-site-scene-builder.ts'
 import type {BrokenDoorHardwareVisual} from './rendering/breach-door-broken-hardware-visual.ts';
 import {fallenDoorHardwarePose} from './rendering/breach-door-broken-hardware-pose.ts';
 import {composeBreachSiteRender} from './rendering/breach-site-render-composition.ts';
+import {createBushVisualResources} from './rendering/perplung-bush-atom.ts';
 import {replaceTacticalFogGeometry} from './rendering/breach-fog-mesh-composition.ts';
 
 import {APPROVED_GRAPHIC_LIGHTING}
@@ -786,6 +787,7 @@ export class TacticalScene3D{
   private architecturalOpenings:{obj:THREE.Object3D;opening:WideOpening}[]=[];
   private wallMaterials=new Set<THREE.Material>();
   private effects=new THREE.Group();
+  private bushPreview:ReturnType<typeof createBushVisualResources>|null=null;
   private target=new THREE.Vector3(339,0,413);
   private currentElev=55*Math.PI/180;
   private readonly minZoom=.65;
@@ -1228,6 +1230,7 @@ export class TacticalScene3D{
     for(const actor of this.actors.values()){
       actor.beam.visible=false;actor.beamLast=null;
     }
+    this.bushPreview?.dispose();this.bushPreview=null;
     this.siteMaterials.reset();
     this.shadowUpdates.invalidate();
     for(const texture of this.sitePatinaTextures)texture.dispose();
@@ -1305,6 +1308,11 @@ export class TacticalScene3D{
       fixtureTemplates:scene.useFixtureTemplates?
         scene.architecturalVisualTemplates:undefined,
       includeServiceFixtureTemplates:scene.includeServiceFixtureTemplates,
+      previewBush:new URLSearchParams(location.search).get('vfxBush')==='1'?
+        (parent,width,height,depth)=>{
+          scene.bushPreview??=createBushVisualResources();
+          parent.add(scene.bushPreview.createMesh(width,height,depth));
+        }:undefined,
       registerVisualLease:lease=>scene.siteVisualLeases.push(lease),
       siteMaterials:scene.siteMaterials,
       mats:scene.mats,
@@ -1994,6 +2002,7 @@ export class TacticalScene3D{
     // Replay seeks always use the recorded timeline for deterministic results.
     const actorIdleSeconds=s.phase==='planning'&&!replay?
       this.idleLifeSeconds:poseSeconds;
+    if(this.bushPreview)this.bushPreview.clock.value=actorIdleSeconds;
     // The shadow map follows the active encounter to retain contact detail.
     // Share the frame's blue squad snapshot across shadow and Director views.
     // team(s) filters operators; repeated calls allocate arrays each frame.

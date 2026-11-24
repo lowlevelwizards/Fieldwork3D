@@ -11,3 +11,5 @@ Source: Perplung 8ffb7a0b870cf7158b63a6796a916bac3c8f89b4. Isolated prototype fr
 - Initial atom committed with atlas, normalized mesh, wind shader and regression tests. Not integrated or tested yet.
 
 Prototype checkpoint: shared resource owner and per-fixture shader phase from world position. Tagged meshes deliberately avoid generic rigid fixture merging until owner-aware replacement is validated. Explicitly remove mesh nodes before shared resource disposal. Tests written, awaiting CI.
+
+Integration checkpoint: ?vfxBush=1 replaces only exterior shrub-round/shrub-tall/bush intact visuals, before template selection. No new colliders; existing owner transform, fog visibility, topple/destroy and debris logic unchanged. Shared resources are lazy-created per site and disposed before generic site teardown. Preview remains default-off. Initial three atom tests and production verify passed on ee41456; integration not yet verified.
