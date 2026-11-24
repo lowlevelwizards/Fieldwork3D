@@ -362,7 +362,7 @@ export function prepareMotorRoute(
   // broken latch clears. Transient route only; no player-plan rewrite.
   if(a.nav.length)refreshRouteAfterForcedDoor(a,p,s);
   // D3.36 Garage: the real body can stop at a WALL whose coarse next
-  // NAV point is unstandable while a LATER node on the exact same
+  // NAV chord is physically obstructed while a LATER node on the exact same
   // previously selected route is reachable by a real full-body path.
   // Cold-rejoin that disposable tail, not the authored GO, only after
   // >=3s of physical failure and no active doorway/hand reservation.
@@ -375,7 +375,8 @@ export function prepareMotorRoute(
     const sweep=(from:Pt,to:Pt)=>
       sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
     if(claimColdExactExistingRouteRejoin(a,p,s.seconds,world.revision,
-       s.doors,sweep(a.p,a.nav[0]))){
+       s.doors,sweep(a.p,a.nav[0]),
+       bodyClear(a.nav[0],s.doors,OPERATOR_RADIUS,world))){
       const route=selectColdExactExistingRouteRejoin(
         a.p,p,a.nav,
         at=>bodyClear(at,s.doors,OPERATOR_RADIUS,world),sweep);

@@ -118,3 +118,18 @@ test('D3.36 frozen Garage authored Rook must physically reach his original GO',(
  assert.ok(moss?.outcome==='pending'||moss?.outcome==='arrived',
   'original Moss MOVE must never be silently cancelled');
 });
+
+test('Release repair: long blocked chord is eligible only with separately standable next node',()=>{
+ const goal={x:608.6,y:564.5},first={x:608,y:208};
+ const a={side:'blue',p:{x:668.3223130309741,y:208.79740637484},
+  plan:[{id:8,kind:'move',p:goal}],nav:[first,{x:608,y:320},{x:608,y:460},goal],
+  blockedTime:8.55,lastBlocker:'wall',squeeze:false,traversal:null,
+  traversalPending:false,autoSidestep:null,fireRetreatTarget:null,
+  doorTraversal:null,doorHandContact:null,retryRouteAt:0};
+ assert.equal(claimColdExactExistingRouteRejoin(a,goal,10,0,[],false,false),false);
+ assert.equal(claimColdExactExistingRouteRejoin(a,goal,10,0,[],true,true),false);
+ assert.equal(claimColdExactExistingRouteRejoin(a,goal,10,0,[],false,true),true);
+ assert.equal(claimColdExactExistingRouteRejoin(a,goal,20,0,[],false,true),false);
+ a.nav=[{x:570,y:208},...a.nav.slice(1)];
+ assert.equal(claimColdExactExistingRouteRejoin(a,goal,20,1,[],false,true),false);
+});
