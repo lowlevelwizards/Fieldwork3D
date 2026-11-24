@@ -109,7 +109,7 @@ jobs:
           const read=name=>JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/'+name+'.json','utf8'));
           const base=read('d317e-base-frozen'),candidate=read('d317e-frozen');
           const normalize=x=>JSON.parse(JSON.stringify(x,(key,value)=>
-            key==='elapsedMs'||key==='cpuMs'?undefined:value));
+            key==='elapsedMs'||key==='cpuMs'||key==='slowest'?undefined:value));
           const a=verifyA8PhysicalCohort(base,'frozen22'),b=verifyA8PhysicalCohort(candidate,'frozen22');
           console.log('VFX_BASE_FROZEN '+JSON.stringify(a));
           console.log('VFX_CANDIDATE_FROZEN '+JSON.stringify(b));
