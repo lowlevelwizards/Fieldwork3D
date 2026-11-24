@@ -77,6 +77,24 @@ export function mapBoxPixelUV(geometry:THREE.BoxGeometry,w:number,h:number,d:num
  uv.needsUpdate=true;
  return geometry;
 }
+/** W2: map local wall faces into the packed surface. Physical geometry
+ * and box groups are unchanged. Cache this UV layout separately. */
+export function mapPackedWallUV(geometry:THREE.BoxGeometry){
+ const uv=geometry.getAttribute('uv') as THREE.BufferAttribute;
+ const ranges=boxFaceVertexRanges(geometry);
+ for(let face=0;face<6;face++){
+  const {start,count}=ranges[face];
+  for(let i=start;i<start+count;i++){
+   if(face<4)uv.setXY(i,.5,.5/64);
+   else{
+    const u=face===4?uv.getX(i):1-uv.getX(i);
+    const row=face===4?3:34;
+    uv.setXY(i,u,(row+.5+(1-uv.getY(i))*28)/64);
+   }
+  }
+ }
+ uv.needsUpdate=true;return geometry;
+}
 export function mapPlanePixelUV(geometry:THREE.PlaneGeometry,w:number,d:number,
  x=0,z=0){
  const uv=geometry.getAttribute('uv') as THREE.BufferAttribute;
