@@ -44,10 +44,11 @@ try{
     const selected=team(s)[0].id,p=team(s)[0].p,root=scene.scene;
     scene.view.focus={x:p.x,y:p.y};scene.view.zoom=2.5;
     const draw=()=>scene.update(s,selected,1/60,null,true);
-    const sample=async()=>{
-     for(let i=0;i<8;i++)draw();
+    const sample=async(beforeFrame=()=>{})=>{
+     for(let i=0;i<8;i++){beforeFrame(i);draw();}
      const rows=[];
      for(let i=0;i<32;i++){
+      beforeFrame(i+8);
       const start=performance.now();draw();const elapsed=performance.now()-start,stats=scene.performanceStats();
       rows.push({elapsed,calls:stats.calls,triangles:stats.triangles,textures:stats.textureCount});
       await new Promise(requestAnimationFrame);
@@ -85,6 +86,22 @@ try{
      if(JSON.stringify(versions)!==JSON.stringify(after))throw Error('Unchanged settled buffer was uploaded');
      if(lights?(pointLights!==2||activeLights<1):pointLights!==0)throw Error('Light budget mismatch');
     }else if(batch||stain||puffs||grass||bushes||pointLights)throw Error('Unexpected preview in default');
+    // A fixed-age stress probe rewards the pause cache; separately exercise changing
+    // payloads at matched ages, without altering the existing release thresholds.
+    let liveStress=null;
+    if(variant==='base'||variant==='foundation'||variant==='suite'){
+     // Compare buffer versions before/after actual age progression, not just pose counts.
+     const opacityAttribute=traces?.geometry.attributes.dropletOpacity;
+     const beforeOpacity=opacityAttribute?.version;
+     s.shots.forEach(shot=>{shot.age=.10;});draw();
+     if(enabled&&(!(opacityAttribute.version>beforeOpacity)||Math.abs(opacityAttribute.getX(0)-.5)>1e-5))throw Error('Moving tracer opacity failed to update');
+     liveStress=await sample(i=>{
+      const age=.04+(i%8)*.015;
+      s.shots.forEach(shot=>{shot.age=age;});
+      s.flashBursts.forEach(burst=>{burst.age=age;});
+     });
+     s.shots.forEach(shot=>{shot.age=.08;});s.flashBursts.forEach(burst=>{burst.age=.1;});draw();
+    }
     if(JSON.stringify({shots:s.shots,marks:s.impactMarks,dropped:s.dropped,bursts:s.flashBursts,windows:s.windows})!==original)throw Error('Presentation mutated evidence');
     const snapshot=scene.renderer.domElement.toDataURL('image/png');
     pane.shattered=false;pane.open=false;pane.shatteredAt=undefined;s.seconds=0;
@@ -92,7 +109,7 @@ try{
     if(batch?.count||stain?.count||puffs?.count||traces?.count||pulses?.count||scene.windowShards?.count)throw Error('Empty/rewind left stale instances');
     scene.applySite(null);if(batch?.count||stain?.count||puffs?.count||traces?.count||pulses?.count||scene.windowShards?.count||root.getObjectByName('vfx-grass-preview'))throw Error('Reset left stale instances');
     scene.renderer.dispose();scene.renderer.forceContextLoss();
-    return {variant,viewport,seed:site.seed,idle,stress,counts,snapshot};
+    return {variant,viewport,seed:site.seed,idle,stress,liveStress,counts,snapshot};
    },{variant,enabled,lights,vegetation,smoke,viewport});
    assert.deepEqual(errors,[],'Shader/runtime errors');
    const {snapshot,...record}=result;results.push(record);
@@ -111,6 +128,7 @@ try{
   }
   for(const variant of ['foundation','suite']){
    const on=results.find(r=>r.viewport.width===width&&r.variant===variant);
+   console.log('VFX_V10_LIVE_STRESS '+JSON.stringify({width,variant,base:base.liveStress,candidate:on.liveStress}));
    if(on.idle.p95CpuWallMs>base.idle.p95CpuWallMs*1.05)blockers.push(width+' '+variant+' idle >5% regression');
    if(on.stress.p95Calls>=base.stress.p95Calls)blockers.push(width+' '+variant+' no stress draw savings');
    if(variant==='suite'&&on.stress.p95CpuWallMs>base.stress.p95CpuWallMs*.8)blockers.push(width+' suite missed 20% stress p95 target');
