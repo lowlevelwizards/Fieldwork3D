@@ -11,3 +11,5 @@ Stacked on V4 head 126e4db (not independently releasable until V4 and foundation
 
 ## Integration checkpoint
 ?vfxImpacts=1 implies V4 and uses the SAME color/opacity/transform instance mesh, capped at 140 total blood + material particles (not two separate pools). Per-impact surface, age, sight and personal replay policy retained. Legacy preview mode vfxBlood=1 still has its 80-slot cap and original blood transforms. Default remains unchanged. Test actual mixed shader submissions, draw savings and resets next. V4's exact WebGL stress passed (79 fewer draws at each viewport, no extra triangles, one texture; 51.5→47.0 ms phone and 61.4→55.5 ms desktop CPU wall). Separate rigid-fixture lane failed and release remains blocked.
+
+Mixed browser workload: 20 impacts cycling through all six surfaces (95 expected instances), original vs shared batch, same camera, two viewport sizes, shader errors, evidence immutability, empty/reset, texture and draw counts. Browser probe committed; awaiting CI. Higher triangle cost from richer particle count is reported, not assumed free.
