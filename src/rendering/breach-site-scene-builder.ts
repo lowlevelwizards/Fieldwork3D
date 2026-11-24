@@ -25,7 +25,7 @@ import {conditionWallPixels,wallPatinaDimensions} from '../worldgen/condition-wa
 import {planWallCapJoins} from './wall-cap-joins.ts';
 import {ageMaterialColor} from './condition-materials.ts';
 import {doubleSidedWallWear} from './wear-wall-geometry.ts';
-import {planWallSurface,wallSurfacePixels,type WallAudition,type WallSurfaceRecipe} from '../worldgen/wall-surface-recipe.ts';
+import {planWallSurface,wallSurfacePixels,bakedWallSurfacePixels,type WallAudition,type WallSurfaceRecipe} from '../worldgen/wall-surface-recipe.ts';
 import {integrateWallSurface} from './wall-surface-material.ts';
 import {wearPixels} from './pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './wear-opacity.ts';
@@ -88,7 +88,7 @@ export type SiteSceneBuildPort={
  roofMaterial:THREE.MeshStandardMaterial|null;
  windowPaneMaterial:THREE.MeshStandardMaterial|null;
  patinaRoomSurfaces:Array<{room:Room;texture:THREE.DataTexture}>;
- patinaWallSurfaces:Array<{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe}>;
+ patinaWallSurfaces:Array<{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;baked?:boolean;patterned?:boolean}>;
  wallAudition?:WallAudition;
  sitePatinaTextures:THREE.DataTexture[];
  sitePatinaMaterials:THREE.MeshBasicMaterial[];
@@ -425,16 +425,17 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         // condition slider can scrub without allocating or recompiling.
         const recipe=planWallSurface(site,index,WALL_VISUAL_HEIGHT);
         const {width,height}=wallPatinaDimensions(len);
+        const baked=host.wallAudition.composition==='baked',patterned=!!individualWall.map;
         const texture=new THREE.DataTexture(
-          wallSurfacePixels(recipe,effectiveCondition(site),width,height,host.wallAudition.effect),
+          baked?bakedWallSurfacePixels(recipe,effectiveCondition(site),width,height,host.wallAudition.effect,patterned):wallSurfacePixels(recipe,effectiveCondition(site),width,height,host.wallAudition.effect),
           width,height,THREE.RGBAFormat);
         texture.colorSpace=THREE.SRGBColorSpace;
         texture.magFilter=THREE.NearestFilter;
         texture.minFilter=THREE.NearestMipmapNearestFilter;
         texture.generateMipmaps=true;texture.needsUpdate=true;
         host.sitePatinaTextures.push(texture);
-        host.patinaWallSurfaces.push({index,texture,recipe});
-        integrateWallSurface(individualWall,texture,recipe);
+        host.patinaWallSurfaces.push({index,texture,recipe,baked,patterned});
+        integrateWallSurface(individualWall,texture,recipe,baked);
         body.userData.fieldworkWallSurface='w2-audition';
       }else if(effectiveCondition(site)>0){
         // Keep approximately one weathering texel per world unit along
