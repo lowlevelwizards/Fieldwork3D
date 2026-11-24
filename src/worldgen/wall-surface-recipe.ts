@@ -8,7 +8,7 @@ import {pixelPattern,TILE_PIXELS,TILE_WORLD_SIZE,type PixelSurface} from '../ren
 export const WALL_EFFECTS=['fade','contact','chip','damp','runoff','crack','repair'] as const;
 export type WallEffect=typeof WALL_EFFECTS[number];
 export type WallEffectFilter='all'|'none'|WallEffect;
-export type WallAudition={effect:WallEffectFilter;composition?:'shader'|'baked'};
+export type WallAudition={effect:WallEffectFilter;composition?:'shader'|'baked'|'packed'};
 export type SurfaceEvent={kind:WallEffect;cause:string;x:number;y:number;width:number;height:number;threshold:number;priority:number};
 export type WallSurfaceRecipe={length:number;height:number;face:-1|1;color:number;surface:PixelSurface;events:SurfaceEvent[]};
 const clamp=(n:number,a=0,b=1)=>Math.max(a,Math.min(b,n));
@@ -131,6 +131,25 @@ export function bakedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,wid
   const q=(ty*TILE_PIXELS+tx)*4;
   for(let i=0;i<3;i++)out[p+i]=linearByte((srgbLinear[base[i]]*(1-a)+srgbLinear[out[p+i]]*a)*(tile?srgbLinear[tile[q+i]]:1));
   out[p+3]=255;
+ }
+ return out;
+}
+
+/** Packed StandardMaterial pilot. Same RGBA8 budget as the legacy 64-row
+ * mask: two 29-row faces with one-row duplicated gutters, plus edge swatch.
+ * The lowered vertical resolution is an explicit audition tradeoff. */
+export const WALL_PACKED_ROWS=64;
+export const WALL_PACKED_FACE_ROWS=29;
+export const wallPackedFaceStart=(face:-1|1)=>face===1?3:34;
+export function packedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:number,filter:WallEffectFilter='all',patterned=true){
+ const out=new Uint8Array(width*WALL_PACKED_ROWS*4),base=rgb(recipe.color);
+ for(let p=0;p<out.length;p+=4){out.set(base,p);out[p+3]=255;}
+ for(const face of [1,-1] as const){
+  const pixels=bakedWallSurfacePixels({...recipe,face},level,width,WALL_PACKED_FACE_ROWS,face===recipe.face?filter:'none',patterned);
+  const rowBytes=width*4,start=wallPackedFaceStart(face);
+  out.set(pixels,start*rowBytes);
+  out.set(pixels.subarray(0,rowBytes),(start-1)*rowBytes);
+  out.set(pixels.subarray(pixels.length-rowBytes),(start+WALL_PACKED_FACE_ROWS)*rowBytes);
  }
  return out;
 }
