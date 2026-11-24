@@ -4,12 +4,13 @@ import type {Site} from '../breach-site.ts';
 import {wallExposure} from './wear-exposure.ts';
 import {wallPixelSurface} from './pixel-surface-selection.ts';
 import {buildingTheme} from './building-palettes.ts';
+import {pixelPattern,TILE_PIXELS,TILE_WORLD_SIZE,type PixelSurface} from '../rendering/pixel-recipes.ts';
 export const WALL_EFFECTS=['fade','contact','chip','damp','runoff','crack','repair'] as const;
 export type WallEffect=typeof WALL_EFFECTS[number];
 export type WallEffectFilter='all'|'none'|WallEffect;
-export type WallAudition={effect:WallEffectFilter};
+export type WallAudition={effect:WallEffectFilter;composition?:'shader'|'baked'};
 export type SurfaceEvent={kind:WallEffect;cause:string;x:number;y:number;width:number;height:number;threshold:number;priority:number};
-export type WallSurfaceRecipe={length:number;height:number;face:-1|1;color:number;events:SurfaceEvent[]};
+export type WallSurfaceRecipe={length:number;height:number;face:-1|1;color:number;surface:PixelSurface;events:SurfaceEvent[]};
 const clamp=(n:number,a=0,b=1)=>Math.max(a,Math.min(b,n));
 const hash=(n:number)=>((Math.imul(n^(n>>>16),0x45d9f3b)>>>0)/4294967295);
 const random=(seed:number,salt:number)=>hash(Math.imul(seed+salt,0x9e3779b1));
@@ -64,7 +65,7 @@ export function planWallSurface(site:Site,index:number,height:number):WallSurfac
   add('crack','edge-stress',edge+(edge===0?1:-1)*5,height*.22,12,20,65,50);
  if(site.condition==='renovation'&&random(seed,9)<.45)
   add('repair','renovation',length*(.22+.56*random(seed,10)),height*.45,17,18,22,95);
- return {length,height,face,color,events:events.sort((a,b)=>b.priority-a.priority||a.cause.localeCompare(b.cause))};
+ return {length,height,face,color,surface,events:events.sort((a,b)=>b.priority-a.priority||a.cause.localeCompare(b.cause))};
 }
 export function selectWallEvents(recipe:WallSurfaceRecipe,level:number,filter:WallEffectFilter='all'){
  const cap=level<=0?0:level<=25?1:level<=50?2:level<=75?3:4;
@@ -107,6 +108,29 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
    for(let i=0;i<3;i++)out[p+i]=Math.round((c[i]*a+out[p+i]*old*(1-a))/next);
    out[p+3]=Math.round(next*255);
   }
+ }
+ return out;
+}
+
+// Same finite texture budget as the mask pilot. Linear-light mixing
+// mirrors StandardMaterial; retain metric tile sampling, including mirrored
+// back-face coordinates and bottom-origin base tile vs top-origin finish.
+const srgbLinear=Float64Array.from({length:256},(_,i)=>{
+ const v=i/255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4);
+});
+const linearByte=(v:number)=>Math.round(255*(v<=.0031308?12.92*v:1.055*Math.pow(v,1/2.4)-.055));
+export function bakedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:number,height:number,filter:WallEffectFilter='all',patterned=true){
+ const out=wallSurfacePixels(recipe,level,width,height,filter),base=rgb(recipe.color);
+ const tile=patterned?pixelPattern(recipe.surface):null;
+ const mod=(v:number)=>((v%TILE_PIXELS)+TILE_PIXELS)%TILE_PIXELS;
+ for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+  const p=(y*width+x)*4,a=out[p+3]/255;
+  const wx=(x+.5)/width*recipe.length,wy=(y+.5)/height*recipe.height;
+  const tx=mod(Math.floor((recipe.face===1?wx:recipe.length-wx)/TILE_WORLD_SIZE*TILE_PIXELS));
+  const ty=mod(Math.floor((recipe.height-wy)/TILE_WORLD_SIZE*TILE_PIXELS));
+  const q=(ty*TILE_PIXELS+tx)*4;
+  for(let i=0;i<3;i++)out[p+i]=linearByte((srgbLinear[base[i]]*(1-a)+srgbLinear[out[p+i]]*a)*(tile?srgbLinear[tile[q+i]]:1));
+  out[p+3]=255;
  }
  return out;
 }
