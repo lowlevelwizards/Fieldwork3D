@@ -27,8 +27,10 @@ test('different-category selections and first display still render full choices'
 test('gallery owner still commits equipment through authoritative handlers',()=>{
  const campaign=readFileSync(new URL('../src/campaign-ui.ts',import.meta.url),'utf8');
  const quick=readFileSync(new URL('../src/ui/quick-play-configurator.ts',import.meta.url),'utf8');
- assert.match(campaign,/this\.outfitterGallery=gallery/);
- assert.match(quick,/squadGallery=gallery/);
+ const workspace=readFileSync(new URL('../src/ui/equipment-workspace.ts',import.meta.url),'utf8');
+ assert.match(campaign,/this\.equipmentWorkspace\.mountGallery\(id,\{/);
+ assert.match(quick,/equipmentWorkspace\.mountGallery\(selected\.id,\{/);
+ assert.match(workspace,/onEquip:\(slot,itemId\)=>\{if\(current\(\)\)options\.onEquip\(slot,itemId\)/);
  assert.match(src,/options\.onEquip\(active,choice\.id\)/);
  assert.match(src,/tile\.disabled=!choice\.issued/);
 });

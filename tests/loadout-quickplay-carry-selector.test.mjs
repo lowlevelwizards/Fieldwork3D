@@ -5,7 +5,7 @@ const read=p=>readFileSync(new URL('../src/'+p,import.meta.url),'utf8');
 test('Quick Play uses Campaign Outfitter gallery with one roster authority',()=>{
  const config=read('ui/quick-play-configurator.ts');
  const gallery=read('ui/campaign-outfitter-gallery.ts');
- assert.match(config,/createOutfitterGallery\(\{/);
+ assert.match(config,/equipmentWorkspace\.mountGallery\(selected\.id,\{/);
  assert.match(config,/catalogOutfitterSources\(selected\.loadout\)/);
  assert.doesNotMatch(config,/sources=new Map<LoadoutSlot,HTMLSelectElement>/);
  assert.match(config,/onEquipCarryGear\?\.\(selected\.id,slot,itemId\)/);

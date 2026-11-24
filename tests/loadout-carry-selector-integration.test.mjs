@@ -10,8 +10,8 @@ test('Campaign and both Quick Play entry points use shared carry quote and atomi
  const flow=read('breach-campaign-flow.ts');
  assert.match(gallery,/quoteCarryGearChange\(/);
  assert.match(gallery,/tile\.disabled=!choice\.issued/);
- assert.match(ops,/createOutfitterGallery\(\{/);
- assert.match(config,/createOutfitterGallery\(\{/);
+ assert.match(ops,/equipmentWorkspace\.mountGallery\(member\.id,\{/);
+ assert.match(config,/equipmentWorkspace\.mountGallery\(selected\.id,\{/);
  assert.match(ops,/equipRosterCarryGear\(before,member\.id,slot,itemId\)/);
  assert.match(ops,/carryUndo\.record\(member\.id,/);
  assert.match(ops,/captureCarryUndo\(old\.loadout,old\.magazines\)/);
