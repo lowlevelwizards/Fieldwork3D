@@ -73,5 +73,6 @@ test('P3.B all three production outfitters use async thumbnails, other consumers
   assert.match(code,/renderModel:\(slot,itemId\)=>[\w.?]+renderModelThumbnailAsync\(/,
    name+' should use async gallery provider');
  }
- assert.match(source('ui/quick-play-configurator.ts'),/createOutfitterGallery\(/);
+ assert.match(source('ui/quick-play-configurator.ts'),/equipmentWorkspace\.mountGallery\(/);
+ assert.match(source('ui/equipment-workspace.ts'),/renderModel:\(slot,itemId\)=>current\(\)\?options\.renderModel\(slot,itemId\):null/);
 });

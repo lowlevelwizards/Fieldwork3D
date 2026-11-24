@@ -16,16 +16,21 @@ test('gallery owns and releases IntersectionObserver and all queued frames',()=>
  assert.match(gallery,/if\(disposed\)return;[\s\S]*?if\(renderedSlot===slot\)return;\s*renderedSlot=slot;\s*active=slot/);
 });
 
-test('all three outfitter entry points dispose replaced galleries',()=>{
+test('all three outfitter entry points retire replaced galleries through the shared workspace',()=>{
  const campaign=read('campaign-ui.ts');
- assert.match(campaign,/private disposeGallery\(\)\{/);
- assert.match(campaign,/this\.outfitterGallery\?\.dispose\(\)/);
- assert.match(campaign,/this\.outfitterGallery=gallery/);
- assert.match(campaign,/hide\(\)\{this\.disposeGallery\(\)/);
  const quick=read('ui/quick-play-configurator.ts');
- assert.match(quick,/squadGallery\?\.dispose\(\);squadGallery=null/);
- assert.match(quick,/squadGallery=gallery/);
  const board=read('breach-operations-board-controller.ts');
- assert.match(board,/function renderOperationsBoard\(\)\{\s*currentGallery\?\.dispose\(\)/);
- assert.match(board,/currentGallery=gallery/);
+ const owner=read('ui/equipment-workspace.ts');
+ assert.match(campaign,/private disposeGallery\(\)\{\s*this\.equipmentWorkspace\.beginRender\(\)/);
+ assert.match(campaign,/this\.equipmentWorkspace\.mountGallery\(id,\{/);
+ assert.match(campaign,/hide\(\)\{this\.disposeGallery\(\)/);
+ assert.match(quick,/disposeSquadPreview=\(\)=>equipmentWorkspace\.dispose\(\)/);
+ assert.match(quick,/equipmentWorkspace\.beginRender\(\)/);
+ assert.match(quick,/equipmentWorkspace\.mountGallery\(selected\.id,\{/);
+ assert.match(board,/function renderOperationsBoard\(\)\{\s*equipmentWorkspace\.beginRender\(\)/);
+ assert.match(board,/equipmentWorkspace\.mountGallery\(member\.id,\{/);
+ assert.match(board,/equipmentWorkspace\.dispose\(\)/);
+ assert.match(owner,/function retireGallery\(\):void\{\s*galleryGeneration\+\+/);
+ assert.match(owner,/const previous=gallery;gallery=null;previous\?\.dispose\(\)/);
+ assert.match(owner,/function mountGallery[\s\S]*?retireGallery\(\);[\s\S]*?gallery=createGallery\(/);
 });

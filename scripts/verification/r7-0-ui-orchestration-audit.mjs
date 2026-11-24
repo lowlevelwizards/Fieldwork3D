@@ -18,7 +18,7 @@ export const R70_BASE='e73221724fdf4f73cfbd971a50cad8c1e63506d8';
 export const R70_STAGES=Object.freeze([
  {id:'R7.1',name:'Split lifecycle bookkeeping from HUD refresh',owner:'src/breach-main.ts',risk:'high',metric:'single completion receipt and planning snapshots on exact 60-Hz replayable steps'},
  {id:'R7.2',name:'Targeted UI invalidation with measured DOM writes',owner:'src/ui/tactical-hud-controller.ts',risk:'medium-high',metric:'changed DOM writes, input latency, fresh WATCH/target/notice states'},
- {id:'R7.3',name:'Shared equipment workspace orchestration',owner:'src/ui/campaign-outfitter-gallery.ts',risk:'medium-high',metric:'identical Campaign/Quick Play selections, valid authority, bounded preview lifetime'},
+ {id:'R7.3',name:'Shared equipment workspace orchestration',owner:'src/ui/equipment-workspace.ts',risk:'medium-high',metric:'identical Campaign/Quick Play selections, valid authority, bounded preview lifetime'},
  {id:'R7.4',name:'Bounded Campaign view controllers',owner:'src/campaign-ui.ts',risk:'medium',metric:'focus, back, scroll, operator and armory state parity'},
  {id:'R7.5',name:'Integration and selective subtraction',owner:'src/breach-main.ts',risk:'high',metric:'exact-head CI, browser comparison, prior + new Pages stamp'}
 ]);
@@ -38,6 +38,7 @@ export const R70_OWNERS=Object.freeze([
  {id:'campaign-domain',path:'src/campaign-state.ts',authority:'campaign-state',role:'Persistent campaign/economy/mission result functions',markers:['export function readCampaign(', 'export function resolveOperation(']},
  {id:'quick-ops',path:'src/breach-operations-board-controller.ts',authority:'quick-ops-view',role:'Quick Play operations/loadout board presentation and lifecycle',markers:['createBreachOperationsBoardController','function renderOperationsBoard(']},
  {id:'quick-creator',path:'src/ui/quick-play-configurator.ts',authority:'quick-creator-view',role:'Scenario creator, squad prep, in-mission UI-only state',markers:['createQuickPlayConfigurator','function render()']},
+ {id:'equipment-workspace',path:'src/ui/equipment-workspace.ts',authority:'equipment-view-lifetime',role:'Per-surface gallery memory, generation and preview mount retirement; no stock/roster authority',markers:['export function createEquipmentWorkspace(', 'function mountGallery(', 'function mountPreview(', 'function deferPreviewMount(']},
  {id:'outfitter',path:'src/ui/campaign-outfitter-gallery.ts',authority:'shared-equipment-view',role:'Shared horizontal gallery, lazy thumbs, cancellation, UI scroll state',markers:['export function createOutfitterGallery(', 'thumbnailGeneration++']},
  {id:'field-kit',path:'src/ui/field-gadget-editor.ts',authority:'shared-kit-view',role:'Mode-independent field-inventory editor, no stock authority',markers:['export function createFieldGadgetEditor(']},
  {id:'squad-rail',path:'src/ui/loadout-squad-rail.ts',authority:'shared-squad-view',role:'Preparation operator selection component',markers:['export function createLoadoutSquadRail(']},
@@ -48,14 +49,14 @@ export const R70_MODES=Object.freeze({
  'Running GO':['composition','lifecycle','frame','game','recorder','hud','notices','dom'],
  'Replay/After Action':['composition','lifecycle','frame','recorder','hud','notices','dom'],
  'Campaign Home':['campaign-view','campaign-flow','campaign-domain'],
- 'Campaign Armory':['campaign-view','campaign-flow','campaign-domain','outfitter','field-kit','squad-rail','kit-preview'],
- 'Quick Play Operations':['composition','quick-ops','outfitter','field-kit','squad-rail','kit-preview'],
- 'Quick Play Creator':['quick-creator','outfitter','field-kit','squad-rail','kit-preview']
+ 'Campaign Armory':['campaign-view','campaign-flow','campaign-domain','equipment-workspace','outfitter','field-kit','squad-rail','kit-preview'],
+ 'Quick Play Operations':['composition','quick-ops','equipment-workspace','outfitter','field-kit','squad-rail','kit-preview'],
+ 'Quick Play Creator':['quick-creator','equipment-workspace','outfitter','field-kit','squad-rail','kit-preview']
 });
 const SIGNALS=Object.freeze({
  refresh:['updateHud','refreshHud','renderSession','renderQuickStates','quickStateViewSignature','renderOperationsBoard','renderSquadPrep','updateContext','updateReplayHud','syncBriefingCard','syncMissionPhase','syncNextSiteControls','syncSavedButtons','showCampaignHome'],
  bookkeeping:['capturePlanning','recordCompletedOperation','observeSessionLifecycle','resolveOperation','saveCampaign','stepSession','applyVisibleCampaignAction'],
- shared:['createOutfitterGallery','createFieldGadgetEditor','createLoadoutSquadRail','renderModelThumbnail','renderModelThumbnailAsync'],
+ shared:['createOutfitterGallery','createGallery','mountGallery','mountPreview','deferPreviewMount','createFieldGadgetEditor','createLoadoutSquadRail','renderModelThumbnail','renderModelThumbnailAsync'],
  lifetime:['dispose','disconnect','remove','cancelAnimationFrame','releaseMissionPresentation','mountMissionSession','resetNotices','requestAnimationFrame'],
  interaction:['addEventListener','removeEventListener','focus','renderNotice','reset','show','hide'],
  dom:['append','replaceChildren','setAttribute','removeAttribute']
@@ -71,9 +72,14 @@ export const R70_EDGES=Object.freeze([
  ['src/ui/tactical-hud-controller.ts','quickStateViewSignature'],
  ['src/breach-operations-board-controller.ts','renderOperationsBoard'],
  ['src/ui/quick-play-configurator.ts','renderSquadPrep'],
- ['src/campaign-ui.ts','createOutfitterGallery'],
- ['src/breach-operations-board-controller.ts','createOutfitterGallery'],
- ['src/ui/quick-play-configurator.ts','createOutfitterGallery'],
+ ['src/campaign-ui.ts','mountGallery'],
+ ['src/breach-operations-board-controller.ts','mountGallery'],
+ ['src/ui/quick-play-configurator.ts','mountGallery'],
+ ['src/ui/equipment-workspace.ts','createGallery'],
+ ['src/campaign-ui.ts','mountPreview'],
+ ['src/breach-operations-board-controller.ts','mountPreview'],
+ ['src/ui/quick-play-configurator.ts','mountPreview'],
+ ['src/breach-operations-board-controller.ts','deferPreviewMount'],
  ['src/ui/campaign-outfitter-gallery.ts','disconnect'],
  ['src/ui/campaign-outfitter-gallery.ts','cancelAnimationFrame'],
  ['src/breach-main.ts','resetNotices']
@@ -168,16 +174,16 @@ export function inspectR70(root=ROOT){
    {mode:'Quick Play operations',owner:'quick-ops',policy:'roster modifications without Campaign purchase rules'},
    {mode:'Quick Play creator squad prep',owner:'quick-creator',policy:'scenario-local preparation; live tactical Session stays mounted'}
   ],
-  sharedComponents:['outfitter','field-kit','squad-rail','kit-preview'],
+  sharedComponents:['equipment-workspace','outfitter','field-kit','squad-rail','kit-preview'],
   galleryCallers:['src/campaign-ui.ts','src/breach-operations-board-controller.ts',
    'src/ui/quick-play-configurator.ts'].map(path=>({
-    path,sites:site(byPath.get(path)?.rows??[],'createOutfitterGallery')})),
+    path,sites:site(byPath.get(path)?.rows??[],'mountGallery')})),
   caveat:'Shared component calls are existing reuse, not proof the three orchestration policies are identical.'
  };
  const lifecycle={
   files:['src/campaign-ui.ts','src/breach-operations-board-controller.ts',
    'src/ui/quick-play-configurator.ts','src/ui/campaign-outfitter-gallery.ts',
-   'src/equipment-preview.ts'].map(path=>{
+   'src/ui/equipment-workspace.ts','src/equipment-preview.ts'].map(path=>{
     const rows=byPath.get(path)?.rows??[];
     return {path,observed:rows.filter(x=>x.category==='lifetime').slice(0,40),
      total:rows.filter(x=>x.category==='lifetime').length};
