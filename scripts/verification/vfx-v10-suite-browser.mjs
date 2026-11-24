@@ -23,16 +23,17 @@ try{
  }
  browser=await chromium.launch({headless:true,...(process.env.FIELDWORK_CI_CHROME==='1'?{channel:'chrome'}:{}),args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const results=[];
- for(const viewport of [{width:390,height:844},{width:1440,height:900}])for(const variant of ['base','foundation','suite','lights']){
+ for(const viewport of [{width:390,height:844},{width:1440,height:900}])for(const variant of ['base','foundation','suite','no-vegetation','no-smoke','lights']){
   const origin=servers[variant==='base'?0:1].origin;
-  const enabled=variant==='suite'||variant==='lights',lights=variant==='lights';
+  const enabled=variant!=='base'&&variant!=='foundation',lights=variant==='lights';
+  const vegetation=variant!=='no-vegetation',smoke=variant!=='no-smoke';
   const page=await browser.newPage({viewport,deviceScaleFactor:1}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   page.on('console',m=>{if(m.type()==='error'&&/WebGLProgram|Shader Error|INVALID_OPERATION|compile|linker/i.test(m.text()))errors.push(m.text());});
   try{
    await page.route('**/vfx-suite-probe?**',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'}));
-   await page.goto(origin+'/vfx-suite-probe?vfxSuite='+Number(enabled)+'&vfxLights='+Number(lights)+'&coldBench=1');
-   const result=await page.evaluate(async({variant,enabled,lights,viewport})=>{
+   await page.goto(origin+'/vfx-suite-probe?vfxSuite='+Number(enabled)+'&vfxLights='+Number(lights)+'&coldBench=1'+(vegetation?'':'&vfxGrass=0&vfxBush=0')+(smoke?'':'&vfxSmoke=0'));
+   const result=await page.evaluate(async({variant,enabled,lights,vegetation,smoke,viewport})=>{
     const {TacticalScene3D}=await import('/src/breach-3d.ts');
     const {generateSite}=await import('/src/breach-site.ts');
     const {newSession,team}=await import('/src/breach-game.ts');
@@ -75,10 +76,10 @@ try{
     const grass=root.getObjectByName('vfx-grass-preview');
     const counts={particles:batch?.count??0,puffs:puffs?.count??0,stains:stain?.count??0,shards:scene.windowShards?.count??0,bushes,grass:grass?.children.length??0,pointLights,activeLights};
     if(enabled){
-     if(counts.particles!==86||counts.puffs<=0||counts.shards!==4||!counts.grass||!counts.bushes||!stain)throw Error('Combined effect counts '+JSON.stringify(counts));
-     const versions=[stain.instanceMatrix.version,stain.instanceColor?.version,stain.geometry.attributes.stainStyle.version,scene.windowShards.instanceMatrix.version];
+     if(counts.particles!==(smoke?86:95)||(smoke?counts.puffs<=0:counts.puffs!==0)||counts.shards!==4||(vegetation?(!counts.grass||!counts.bushes):(counts.grass||counts.bushes))||!stain)throw Error('Combined effect counts '+JSON.stringify(counts));
+     const versions=[stain.instanceMatrix.version,stain.instanceColor?.version,stain.geometry.attributes.stainStyle.version,scene.windowShards.instanceMatrix.version,batch.instanceMatrix.version,puffs?.instanceMatrix.version];
      draw();
-     const after=[stain.instanceMatrix.version,stain.instanceColor?.version,stain.geometry.attributes.stainStyle.version,scene.windowShards.instanceMatrix.version];
+     const after=[stain.instanceMatrix.version,stain.instanceColor?.version,stain.geometry.attributes.stainStyle.version,scene.windowShards.instanceMatrix.version,batch.instanceMatrix.version,puffs?.instanceMatrix.version];
      if(JSON.stringify(versions)!==JSON.stringify(after))throw Error('Unchanged settled buffer was uploaded');
      if(lights?(pointLights!==2||activeLights<1):pointLights!==0)throw Error('Light budget mismatch');
     }else if(batch||stain||puffs||grass||bushes||pointLights)throw Error('Unexpected preview in default');
@@ -90,7 +91,7 @@ try{
     scene.applySite(null);if(batch?.count||stain?.count||puffs?.count||scene.windowShards?.count||root.getObjectByName('vfx-grass-preview'))throw Error('Reset left stale instances');
     scene.renderer.dispose();scene.renderer.forceContextLoss();
     return {variant,viewport,seed:site.seed,idle,stress,counts,snapshot};
-   },{variant,enabled,lights,viewport});
+   },{variant,enabled,lights,vegetation,smoke,viewport});
    assert.deepEqual(errors,[],'Shader/runtime errors');
    const {snapshot,...record}=result;results.push(record);
    writeFileSync(dir+'/'+viewport.width+'-'+variant+'.png',Buffer.from(snapshot.split(',')[1],'base64'));
@@ -101,6 +102,11 @@ try{
  const blockers=[];
  for(const width of [390,1440]){
   const base=results.find(r=>r.viewport.width===width&&r.variant==='base');
+  const suite=results.find(r=>r.viewport.width===width&&r.variant==='suite');
+  for(const variant of ['no-vegetation','no-smoke','lights']){
+   const on=results.find(r=>r.viewport.width===width&&r.variant===variant);
+   console.log('VFX_V10_ABLATION '+JSON.stringify({width,variant,idleDelta:on.idle.p95CpuWallMs-suite.idle.p95CpuWallMs,stressDelta:on.stress.p95CpuWallMs-suite.stress.p95CpuWallMs,drawDelta:on.stress.p95Calls-suite.stress.p95Calls,triangleDelta:on.stress.p95Triangles-suite.stress.p95Triangles}));
+  }
   for(const variant of ['foundation','suite']){
    const on=results.find(r=>r.viewport.width===width&&r.variant===variant);
    if(on.idle.p95CpuWallMs>base.idle.p95CpuWallMs*1.05)blockers.push(width+' '+variant+' idle >5% regression');
