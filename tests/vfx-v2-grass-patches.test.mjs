@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {buildGrassPatchMeshes} from '../src/rendering/perplung-grass-patches.ts';
-import {planGrassPatches,GRASS_MAX_PATCHES,GRASS_MAX_TUFTS} from '../src/rendering/perplung-grass-placement.ts';
+import {planGrassPatches,regroupGrassPatches,GRASS_MAX_PATCHES,GRASS_MAX_TUFTS} from '../src/rendering/perplung-grass-placement.ts';
 import {generateSite} from '../src/breach-site.ts';
 test('V2 grass placement deterministic and bounded across generated sites',()=>{
  for(const seed of [3,17,61,31149]){
@@ -40,4 +40,12 @@ test('V2 creates actual grass on a synthetic yard and rejects a paved overlap',(
  const tufts=planGrassPatches(site).flatMap(p=>p.tufts);
  assert.ok(tufts.length>0);
  for(const t of tufts)assert.ok(Math.abs(t.x-135)>20||Math.abs(t.z-100)>40);
+});
+
+test('V2 coarse batching preserves every tuft reference and reduces occupied cells',()=>{
+ const t={x:40,z:80,y:-1.4,width:7,height:8,yaw:.4,phase:1,variant:0,tint:1};
+ const a=[{key:'0:0',tufts:[t]},{key:'1:0',tufts:[{...t,x:120}]}];
+ const b=regroupGrassPatches(a);
+ assert.equal(b.length,1);assert.deepEqual(b[0].tufts,a.flatMap(p=>p.tufts));
+ assert.equal(b[0].tufts[0],t);assert.throws(()=>regroupGrassPatches(a,0));
 });

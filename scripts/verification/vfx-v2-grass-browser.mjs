@@ -19,14 +19,15 @@ try{
   args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const results=[];
  for(const viewport of [{width:390,height:844},{width:1440,height:900}]){
-  for(const enabled of [false,true]){
+  for(const variant of ['off','fine','coarse']){
+   const enabled=variant!=='off';
    const page=await browser.newPage({viewport,deviceScaleFactor:1});
    const errors=[];
    page.on('pageerror',e=>errors.push(e.message));
    page.on('console',m=>{if(m.type()==='error'&&/WebGLProgram|Shader Error|INVALID_OPERATION|compile|linker/i.test(m.text()))errors.push(m.text());});
    try{
     await page.route('**/vfx-grass-probe?**',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'}));
-    await page.goto(origin+'/vfx-grass-probe?vfxGrass='+(enabled?'1':'0')+'&coldBench=1');
+    await page.goto(origin+'/vfx-grass-probe?vfxGrass='+(enabled?'1':'0')+'&vfxGrassCell='+(variant==='coarse'?'192':'96')+'&coldBench=1');
     const sample=await page.evaluate(async({enabled,viewport})=>{
      const {TacticalScene3D}=await import('/src/breach-3d.ts');
      const {generateSite}=await import('/src/breach-site.ts');
@@ -90,19 +91,25 @@ try{
        p95CpuWallMs:p95('elapsed'),p95Calls:p95('calls'),p95Triangles:p95('triangles'),p95Textures:p95('textures'),snapshot};
     },{enabled,viewport});
     assert.deepEqual(errors,[],'Shader/runtime errors');
-    const {snapshot,...record}=sample;
-    writeFileSync(dir+'/'+viewport.width+'-'+Number(enabled)+'.png',Buffer.from(snapshot.split(',')[1],'base64'));
+    const {snapshot,...measured}=sample;
+    const record={...measured,variant};
+    writeFileSync(dir+'/'+viewport.width+'-'+variant+'.png',Buffer.from(snapshot.split(',')[1],'base64'));
     results.push(record);
     console.log('VFX_V2_BROWSER '+JSON.stringify(record));
    }finally{await page.close();}
   }
  }
  for(const width of [390,1440]){
-  const off=results.find(r=>r.viewport.width===width&&!r.enabled),on=results.find(r=>r.viewport.width===width&&r.enabled);
+  const off=results.find(r=>r.viewport.width===width&&r.variant==='off');
+  const fine=results.find(r=>r.viewport.width===width&&r.variant==='fine');
+  const coarse=results.find(r=>r.viewport.width===width&&r.variant==='coarse');
+  assert.ok(coarse.disposeEvents<fine.disposeEvents,'Coarse mode did not reduce owned patch count');
+  for(const on of [fine,coarse]){
   assert.equal(on.seed,off.seed);assert.equal(on.tufts,off.tufts);
   assert.ok(on.p95Calls-off.p95Calls<=on.patches*2+2,'Excess grass submissions');
   assert.ok(on.p95Triangles-off.p95Triangles<=on.tufts*8+8,'Excess grass triangles');
   assert.ok(on.p95Textures-off.p95Textures<=2,'Extra atlas textures');
+  }
  }
  writeFileSync(dir+'/summary.json',JSON.stringify(results,null,2)+'\n');
 }finally{await browser?.close();server.kill('SIGTERM');}

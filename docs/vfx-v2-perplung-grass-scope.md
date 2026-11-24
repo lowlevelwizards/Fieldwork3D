@@ -17,3 +17,6 @@ Opt-in tactical integration at ?vfxGrass=1; default production path remains unch
 
 ## Prototype checkpoint 4
 Initial CI 45422058034: production verify and all four focused V2 tests passed; generic browser jobs passed but did not enable the preview. Added a focused real TacticalScene3D WebGL A/B probe to existing E6.17 workflow, with generated house exterior, fixed camera, actual draw callbacks, texture/triangle counts, screenshots, disclosure and reset witness. Software WebGL CPU/driver time only; hardware acceptance remains open. V0/V1 exact-base frozen parity passed but absolute movement target is still red.
+
+## Browser checkpoint and optimization experiment
+Exact head c740921 / run 45423458867: all four WebGL rows passed, seed 3 (353 tufts, 26 fine patches). Phone off/on p95 CPU wall 55.4/58.4 ms, calls 757/769, triangles 30218/30986, textures 70/71. Desktop 48.8/54.8 ms, calls 596/609, triangles 26326/27154, textures 58/59. All 26 patch geometries disposed; disclosure checks passed. Cost is positive, not an overall performance win. Compare an opt-in 192-unit coarse cell against 96-unit fine and no grass; exact same tuft records, no density or art reduction. Coarser culling may submit more triangles, so require measured improvement before selecting. Physical hardware and screenshot review remain open.

@@ -55,3 +55,19 @@ export function planGrassPatches(site:Site):GrassPatch[]{
  }
  return [...patches.values()];
 }
+
+/** Preserve every accepted tuft, including deterministic style and placement.
+ * Coarser cells trade additional off-camera triangles for fewer draw calls.
+ * This does not rerun placement or change the density cap.
+ */
+export function regroupGrassPatches(patches:readonly GrassPatch[],size=192):GrassPatch[]{
+ if(!Number.isFinite(size)||size<GRASS_PATCH_SIZE)throw new RangeError('Invalid grass patch size');
+ const grouped=new Map<string,GrassPatch>();
+ for(const patch of patches)for(const tuft of patch.tufts){
+  const key=Math.floor(tuft.x/size)+':'+Math.floor(tuft.z/size);
+  let target=grouped.get(key);
+  if(!target){target={key,tufts:[]};grouped.set(key,target);}
+  target.tufts.push(tuft);
+ }
+ return [...grouped.values()];
+}

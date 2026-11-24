@@ -24,7 +24,7 @@ import type {SiteSceneBuildPort} from './rendering/breach-site-scene-builder.ts'
 import type {BrokenDoorHardwareVisual} from './rendering/breach-door-broken-hardware-visual.ts';
 import {fallenDoorHardwarePose} from './rendering/breach-door-broken-hardware-pose.ts';
 import {composeBreachSiteRender} from './rendering/breach-site-render-composition.ts';
-import {planGrassPatches} from './rendering/perplung-grass-placement.ts';
+import {planGrassPatches,regroupGrassPatches} from './rendering/perplung-grass-placement.ts';
 import {buildGrassPatchMeshes} from './rendering/perplung-grass-patches.ts';
 import {replaceTacticalFogGeometry} from './rendering/breach-fog-mesh-composition.ts';
 
@@ -1352,7 +1352,9 @@ export class TacticalScene3D{
       site,this.siteBuildPort(),this.graphicLookEnabled);
     this.graphicWorldMaterialCount=result.graphicMaterials;
     if(site&&new URLSearchParams(location.search).get('vfxGrass')==='1'){
-      const patches=planGrassPatches(site);
+      const fine=planGrassPatches(site);
+      const coarse=new URLSearchParams(location.search).get('vfxGrassCell')==='192';
+      const patches=coarse?regroupGrassPatches(fine):fine;
       if(patches.length){
         this.grassPreview=buildGrassPatchMeshes(patches);
         this.grassPreview.group.name='vfx-grass-preview';
