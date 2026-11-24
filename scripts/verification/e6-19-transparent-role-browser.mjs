@@ -5,7 +5,9 @@ import {spawn} from 'node:child_process';
 import {mkdirSync,writeFileSync,readFileSync,existsSync} from 'node:fs';
 import {chromium} from 'playwright';
 const port=4407,base='http://127.0.0.1:'+port;
-const dir='artifacts/refactor-e6-19/live-scene';
+const dir=process.env.FIELDWORK_WALL_OUTPUT||'artifacts/refactor-e6-19/live-scene';
+const wallMode=process.env.FIELDWORK_WALL_WEAR||'legacy';
+const wallQuery=wallMode==='legacy'?'':'&wallWear='+wallMode;
 mkdirSync(dir,{recursive:true});
 const server=spawn(process.execPath,[
  'node_modules/vite/bin/vite.js','--host','127.0.0.1',
@@ -37,7 +39,7 @@ try{
   page.on('pageerror',e=>errors.push(e.message));
   try{
    await page.goto(base+'/breach.html?coldBench=1&briefingIdle='+briefingIdle+
-    '&gpuWarmup=1&coldPrewarm=1',{waitUntil:'domcontentloaded'});
+    '&gpuWarmup=1&coldPrewarm=1'+wallQuery,{waitUntil:'domcontentloaded'});
    await page.getByRole('button',{name:'QUICK PLAY',exact:true})
     .click({timeout:60000});
    const setup=page.getByRole('dialog',{name:'Quick Play mission setup'});
@@ -130,6 +132,8 @@ try{
       main.drawCallsP95!==submit.nonShadowDrawCallsP95)
      throw Error('Missing or unreconciled E6.19 main-pass evidence: '+
       JSON.stringify({main,submit}));
+   if(wallMode!=='legacy'&&main.dominantTransparencyRoles.some(role=>role.role==='wall-weathering'&&role.drawsTotal>0))
+     throw Error('Integrated finish submitted independent weathering draws');
    if(live.topGaps.some(spike=>spike.precedingSubmitted3D&&
       spike.precedingDominantScenePhase===undefined))
       throw Error('Worst live gaps missing preceding 3D phase attribution');
@@ -166,7 +170,7 @@ try{
  // Run the same controlled camera/knowledge fixture on both checkouts. The
  // previous renderer's known-facade depth mismatch is retained as evidence,
  // not hidden by changing the baseline or requiring a legacy pass.
- if(process.env.GITHUB_HEAD_REF?.startsWith('refactor/w0-w1-')){
+ if(process.env.GITHUB_HEAD_REF?.startsWith('refactor/w0-w1-')||process.env.FIELDWORK_W2_PROBE==='1'){
   browser=await chromium.launch({headless:true,
    ...(process.env.FIELDWORK_CI_CHROME&&chrome?{executablePath:chrome}:{}),
    args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
@@ -176,8 +180,8 @@ try{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   page.on('console',m=>{if(m.type()==='error'&&/WebGLProgram|Shader Error|INVALID_OPERATION/i.test(m.text()))errors.push(m.text());});
   try{
-   await page.route('**/wall-presentation-probe',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'}));
-   await page.goto(base+'/wall-presentation-probe');
+   await page.route('**/wall-presentation-probe*',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'}));
+   await page.goto(base+'/wall-presentation-probe?probe=1'+wallQuery);
    evidence.wallProbe=await page.evaluate(async viewport=>{
     const {TacticalScene3D}=await import('/src/breach-3d.ts');
     const {generateSite}=await import('/src/breach-site.ts');
@@ -209,6 +213,8 @@ try{
     };
     const original=knowledge(s);
     scene.view.mode='iso';draw();checkTactical(s);
+    const visible=()=>JSON.stringify({walls:groups().filter(w=>w.mesh.parent.visible).map(w=>w.index),actors:[...scene.actors].filter(([,a])=>a.root.visible).map(([id])=>id),cover:[...scene.coverGroups].filter(([,g])=>g.visible).map(([id])=>id)});
+    const initialVisible=visible();
     check(scene.exteriorKnownFog.visible&&!scene.smoothFog.visible,'Exterior fog route changed');
     const exterior=groups().find(w=>w.exterior&&spatialSurfaceKnown(s,'wall',w.index));
     check(exterior,'No known exterior wall in fixture');
@@ -245,7 +251,7 @@ try{
     check(scene.smoothFog.visible&&!scene.exteriorKnownFog.visible,'Second mission inherited exterior fog');
     scene.root.traverse(obj=>check(!oldMeshes.has(obj),'Retired structural mesh survived'));
     check(scene.lastFogSession===next,'Fog cache retained previous session');
-    const result={candidate,faded,restored,depthMismatches,firstWalls:oldMeshes.size,secondWalls:inventory().length,secondMissionFog:true};
+    const result={candidate,faded,restored,depthMismatches,firstWalls:oldMeshes.size,secondWalls:inventory().length,secondMissionFog:true,initialKnowledge:original,initialVisible,secondVisible:visible()};
     scene.renderer.dispose();scene.renderer.forceContextLoss();
     return result;
    },viewport);
@@ -253,6 +259,7 @@ try{
    console.log('W1_WALL_PRESENTATION '+JSON.stringify(evidence.wallProbe));
   }finally{await page.close();await browser.close();browser=undefined;}
  }
+ evidence.wallMode=wallMode;
  evidence.comparison=evidence.runs.map(r=>({
   seed:r.seed,
   totalTransparentDraws:r.mainPassAttribution.transparentDrawsTotal,
