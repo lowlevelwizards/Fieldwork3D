@@ -112,8 +112,37 @@ export function makeBushMaterial(texture:THREE.Texture){
   shader.uniforms.fieldworkBushTime=clock;
   shader.vertexShader='attribute vec2 bushWind;\nuniform float fieldworkBushTime;\n'+shader.vertexShader;
   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',
-   '#include <begin_vertex>\nfloat rooted=pow(clamp(bushWind.y,0.0,1.0),1.5);\nfloat wave=sin(fieldworkBushTime*.52+bushWind.x)*.012+sin(fieldworkBushTime*.74+bushWind.x*1.37)*.005;\ntransformed+=rooted*wave*vec3(1.0,.15,.55);');
+   '#include <begin_vertex>\nfloat rooted=pow(clamp(bushWind.y,0.0,1.0),1.5);\nfloat phase=bushWind.x+dot(modelMatrix[3].xz,vec2(.071,.113));\nfloat wave=sin(fieldworkBushTime*.52+phase)*.012+sin(fieldworkBushTime*.74+phase*1.37)*.005;\ntransformed+=rooted*wave*vec3(1.0,.15,.55);');
  };
  material.customProgramCacheKey=()=> 'fieldwork-perplung-bush-v3';
  return {material,clock};
+}
+
+/** Own exactly one geometry, material and atlas per prototype scene.
+ * Call dispose BEFORE generic site graph teardown, to avoid double release.
+ * Independent fixtures retain their own transforms/visibility.
+ */
+export function createBushVisualResources(texture=makeBushTexture(),steps:2|4=2){
+ const geometry=makeBushGeometry(steps),{material,clock}=makeBushMaterial(texture);
+ const meshes=new Set<THREE.Mesh>();
+ let disposed=false;
+ return {geometry,material,clock,
+  createMesh(width:number,height:number,depth:number){
+   if(disposed)throw Error('Disposed bush resources');
+   if(![width,height,depth].every(n=>Number.isFinite(n)&&n>0))
+    throw new RangeError('Invalid bush dimensions');
+   const mesh=new THREE.Mesh(geometry,material);
+   mesh.scale.set(width,height,depth);
+   mesh.castShadow=false;mesh.receiveShadow=false;
+   // Keep shader-bearing geometry out of generic fixture merge/template passes.
+   mesh.userData.fieldworkDrawFamily='perplung-bush';
+   mesh.userData.fieldworkV3Bush=true;
+   meshes.add(mesh);return mesh;
+  },
+  dispose(){
+   if(disposed)return;disposed=true;
+   for(const mesh of meshes)mesh.removeFromParent();
+   meshes.clear();geometry.dispose();material.dispose();texture.dispose();
+  }
+ };
 }

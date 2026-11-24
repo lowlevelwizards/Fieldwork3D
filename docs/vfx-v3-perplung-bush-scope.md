@@ -9,3 +9,5 @@ Source: Perplung 8ffb7a0b870cf7158b63a6796a916bac3c8f89b4. Isolated prototype fr
 - Audit repeated fixture batching and shader/material ownership. Only batch multiple shrubs if independent disclosure, move and destruction remain correct and measurable performance improves; avoid unbounded geometry or cross-owner culling regressions. Explicitly manage material/texture/geometry lifetime.
 - Run deterministic tests, actual WebGL shader acceptance, fog/damage/site-swap/replay checks and same-seed A/B screenshots from iso/top/low camera. Measure draw calls, triangles, alpha overdraw and CPU/GPU frame-time on representative sites; physical-device data separate from software WebGL. No default switch or merge until gates are satisfied.
 - Initial atom committed with atlas, normalized mesh, wind shader and regression tests. Not integrated or tested yet.
+
+Prototype checkpoint: shared resource owner and per-fixture shader phase from world position. Tagged meshes deliberately avoid generic rigid fixture merging until owner-aware replacement is validated. Explicitly remove mesh nodes before shared resource disposal. Tests written, awaiting CI.

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {BUSH_TIERS,makeBushGeometry,makeBushMaterial} from '../src/rendering/perplung-bush-atom.ts';
+import {BUSH_TIERS,makeBushGeometry,makeBushMaterial,createBushVisualResources} from '../src/rendering/perplung-bush-atom.ts';
 import * as THREE from 'three';
 test('V3 five drooping shelves retain reference silhouette, tier shading and fixed stems',()=>{
  for(const steps of [2,4]){
@@ -33,4 +33,20 @@ test('V3 shared cutout material and clock preserve depth writes and shader cache
  assert.match(shader.vertexShader,/rooted\*wave/);
  clock.value=3;assert.equal(shader.uniforms.fieldworkBushTime.value,3);
  material.dispose();t.dispose();
+});
+
+test('V3 owner shares resources without joining independent disclosure groups',()=>{
+ const t=new THREE.Texture(),r=createBushVisualResources(t);
+ const a=new THREE.Group(),b=new THREE.Group();
+ const x=r.createMesh(25,23,21),y=r.createMesh(19,37,20);
+ a.add(x);b.add(y);a.visible=false;
+ assert.equal(x.parent,a);assert.equal(y.parent,b);
+ assert.equal(x.geometry,y.geometry);assert.equal(x.material,y.material);
+ assert.equal(y.scale.y,37);assert.equal(y.userData.fieldworkV3Bush,true);
+ let releases=0;
+ for(const resource of [r.geometry,r.material,t])
+  resource.addEventListener('dispose',()=>releases++);
+ r.dispose();r.dispose();
+ assert.equal(releases,3);assert.equal(a.children.length,0);assert.equal(b.children.length,0);
+ assert.throws(()=>r.createMesh(1,1,1),/Disposed/);
 });
