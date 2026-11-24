@@ -39,7 +39,7 @@ try{
      p.activateSite(p.site);p.session=p.newSession(0,seed,'floor-plan','standard',undefined,p.site);
     },{seed,archetype});
     const results=[];
-    for(const mode of ['legacy','shader','baked']){
+    for(const mode of ['legacy','shader','baked','packed']){
      const result=await page.evaluate(mode=>{
       const integrated=mode!=='legacy';
       const {scene,site,session,team}=window.w2Probe;
@@ -78,13 +78,14 @@ try{
        const initial=masks.map(m=>m.texture.image.data.slice());
        scene.previewConditionMasks(site,0);
        if(mode==='shader'&&masks.some(m=>m.texture.image.data.some((v,i)=>i%4===3&&v!==0)))throw Error('Clean slider retained effects');
-       if(mode==='baked'&&masks.some(m=>m.texture.image.data.some((v,i)=>i%4===3&&v!==255)))throw Error('Baked surface has nonopaque texels');
+       if((mode==='baked'||mode==='packed')&&masks.some(m=>m.texture.image.data.some((v,i)=>i%4===3&&v!==255)))throw Error('Baked surface has nonopaque texels');
        if(!masks.some((m,j)=>m.texture.image.data.some((v,i)=>v!==initial[j][i])))throw Error('Condition slider did not change surface');
        scene.previewConditionMasks(site,100);
        if(masks.some((m,j)=>m.texture.image.data.some((v,i)=>v!==initial[j][i])))throw Error('Condition roundtrip not deterministic');
        if(ids.some((id,i)=>id!==masks[i].texture.uuid))throw Error('Slider reallocated texture');
        draw();
       }
+      if(mode==='packed'&&inventory.some(w=>w.mesh.material.map!==masks.find(m=>m.index===w.index)?.texture))throw Error('Packed wall is not using standard map');
       const actual={mode,integrated,bodies:inventory.length,overlays,decals,textureBytes,frames};
       if(integrated&&(overlays||decals||frames.some(f=>f.weather)))throw Error('W2 retained independent wall weathering');
       return actual;
@@ -126,7 +127,7 @@ try{
   await lab.locator('#wallAuditionEffect').selectOption('all');
   await lab.locator('#wallAuditionMode').selectOption('legacy');
   check(await lab.locator('#wallAuditionEffect').isDisabled(),'Legacy mode effect isolation still enabled');
-  await lab.locator('#wallAuditionMode').selectOption('baked');
+  await lab.locator('#wallAuditionMode').selectOption('packed');
   await lab.locator('#wallAuditionEffect').selectOption('damp');
   await lab.locator('#wallAuditionEffect').selectOption('all');
   await lab.screenshot({path:dir+'/map-lab-controls.png'});
