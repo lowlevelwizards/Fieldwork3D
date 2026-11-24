@@ -67,9 +67,10 @@ test('D14.7-8 UI keeps Dispatch summaries optional and existing accept boundary'
  const ui=readFileSync(new URL('../src/campaign-ui.ts',import.meta.url),'utf8');
  assert.match(ui,/dossier\.situation\.emphasis/);
  assert.match(ui,/RISK ASSESSMENT/);
- assert.match(ui,/OPERATION CLOSEOUT NOTES/);
- assert.match(ui,/const notes=node\('details','campaign-case-history'\)/);
- assert.match(ui,/REPORTED \/ UNCONFIRMED/);
- assert.match(ui,/RECORDED OUTCOME/);
+ const chronicle=readFileSync(new URL('../src/ui/campaign/chronicle-view.ts',import.meta.url),'utf8');
+ assert.match(chronicle,/OPERATION CLOSEOUT NOTES/);
+ assert.match(chronicle,/const notes=node\('details','campaign-case-history'\)/);
+ assert.match(chronicle,/REPORTED \/ UNCONFIRMED/);
+ assert.match(chronicle,/RECORDED OUTCOME/);
  assert.match(ui,/this\.handlers\.chooseContract\(contract\.id\)/);
 });

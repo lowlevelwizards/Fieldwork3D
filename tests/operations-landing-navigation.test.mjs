@@ -33,9 +33,9 @@ test('compact title keeps safe accessibility and nested menu navigation',()=>{
  const css=source('campaign-style.css');
  const entry=ui.slice(ui.indexOf(' entry(hasSave:boolean'),
   ui.indexOf(' dispatchCreator(){'));
- assert.match(entry,/subpage\.addEventListener\('keydown'/);
- assert.match(entry,/event\.key!=='Escape'/);
- assert.match(entry,/trigger\.focus\(\{preventScroll:true\}\)/);
+ assert.match(source('ui/campaign/landing-navigation.ts'),/subpage\.addEventListener\('keydown'/);
+ assert.match(source('ui/campaign/landing-navigation.ts'),/event\.key!=='Escape'/);
+ assert.match(source('ui/campaign/landing-navigation.ts'),/trigger\.focus\(\{preventScroll:true\}\)/);
  assert.match(entry,/arsenal\.href='\.\/arsenal\.html'/);
  assert.match(css,/height:100dvh/);
  assert.match(css,/max-height:540px/);
@@ -109,7 +109,7 @@ test('desktop title scene uses available screen space without changing phone nav
  assert.match(css,/\.campaign-landing-intro\{display:none\}/);
  assert.match(entry,/node\('p','campaign-landing-intro'/);
  assert.match(entry,/main\.append\(hero,actions,utility\)/);
- assert.match(entry,/subpage\.hidden=true;main\.hidden=false/);
+ assert.match(source('ui/campaign/landing-navigation.ts'),/subpage\.hidden=true;main\.hidden=false/);
 });
 
 test('Operations uses wide workspace columns without narrowing mobile fallback',()=>{
@@ -124,17 +124,16 @@ test('Operations uses wide workspace columns without narrowing mobile fallback',
 
 test('Cases preserve deadline order and expose every offer through focused navigation',()=>{
  const ui=source('campaign-ui.ts');
- const cases=ui.slice(ui.indexOf("const jobs=node('section','campaign-section')"),
-  ui.indexOf('grid.append(jobs)'));
+ const cases=source('ui/campaign/cases-view.ts');
  assert.match(cases,/const openContracts=c\.contracts\.filter/);
  assert.match(cases,/const sorted=\[\.\.\.openContracts\]\.sort\(\(a,b\)=>/);
  assert.match(cases,/a\.deadline-b\.deadline\|\|a\.id\.localeCompare\(b\.id\)/);
  assert.match(cases,/campaign-uxr-case-browser/);
  assert.match(cases,/campaign-uxr-case-pages/);
  assert.match(cases,/campaign-uxr-case-position/);
- assert.match(cases,/const pages=sorted\.map\(k=>this\.contract\(k,c\)\)/);
+ assert.match(cases,/const pages=sorted\.map\(k=>renderContract\(k\)\)/);
  assert.match(cases,/const selectCase=\(index:number\)=>/);
- assert.match(cases,/this\.selectedCaseId=sorted\[current\]\.id/);
+ assert.match(cases,/onSelect\(sorted\[current\]\.id\)/);
  assert.match(cases,/Math\.abs\(deltaX\)>55/);
  assert.doesNotMatch(cases,/const visible=sorted\.slice\(0,3\)/);
  assert.match(cases,/button\('CONTINUE DEPLOYMENT'/);
@@ -153,8 +152,7 @@ test('Cases board stays single-column on phones and uses desktop columns when wi
 
 test('Squad shows one visual deployment team and a selected operator inspector',()=>{
  const ui=source('campaign-ui.ts');
- const personnel=ui.slice(ui.indexOf("const personnel=node('section','campaign-section')"),
-  ui.indexOf("const logistics=node('section','campaign-section')"));
+ const personnel=source('ui/campaign/personnel-view.ts');
  assert.match(personnel,/const personnelWorkspace=node\('div','campaign-personnel-workspace'\)/);
  assert.match(personnel,/personnelWorkspace\.append\(deployment\)/);
  assert.match(personnel,/const activeOperators=c\.operators\.filter\(p=>/);
@@ -168,9 +166,9 @@ test('Squad shows one visual deployment team and a selected operator inspector',
  assert.match(personnel,/rosterPanel\.append\(roster\)/);
  assert.match(personnel,/personnelWorkspace\.append\(rosterPanel\)/);
  assert.match(personnel,/personnel\.append\(personnelWorkspace\)/);
- assert.match(personnel,/this\.handlers\.assignSlot\(slot,p\.id\)/);
- assert.doesNotMatch(personnel,/this\.handlers\.assignSlot\(slot,picker\.value\)/);
- assert.match(personnel,/this\.handlers\.openStudio\(p\.id\)/);
+ assert.match(personnel,/handlers\.assignSlot\(slot,p\.id\)/);
+ assert.doesNotMatch(personnel,/handlers\.assignSlot\(slot,picker\.value\)/);
+ assert.match(personnel,/handlers\.openStudio\(p\.id\)/);
 });
 
 test('Squad desktop columns keep slot selectors usable and phone roster full width',()=>{
@@ -186,8 +184,7 @@ test('Squad desktop columns keep slot selectors usable and phone roster full wid
 
 test('Logistics has stock, replenish actions and armory in task-first DOM order',()=>{
  const ui=source('campaign-ui.ts');
- const logistics=ui.slice(ui.indexOf("const logistics=node('section','campaign-section')"),
-  ui.indexOf("const recruit=button('RECRUIT OPERATOR"));
+ const logistics=source('ui/campaign/logistics-view.ts');
  assert.match(logistics,/const logisticsWorkspace=node\('div','campaign-logistics-workspace'\)/);
  assert.match(logistics,/const supplyPanel=node\('section','campaign-logistics-supply-panel'\)/);
  assert.match(logistics,/node\('h2','','RESERVE SUPPLIES'\)/);
@@ -198,10 +195,10 @@ test('Logistics has stock, replenish actions and armory in task-first DOM order'
  assert.match(logistics,/procurement\.append\(node\('summary'[\s\S]*?inventory\)/);
  assert.match(logistics,/logisticsWorkspace\.append\(procurement\)/);
  assert.match(logistics,/logistics\.append\(logisticsWorkspace\)/);
- assert.match(logistics,/this\.handlers\.buyAmmo/);
- assert.match(logistics,/this\.handlers\.buyMedical/);
- assert.match(logistics,/this\.handlers\.buyFlash/);
- assert.match(logistics,/this\.handlers\.buyWeapon\(weapon\)/);
+ assert.match(logistics,/handlers\.buyAmmo/);
+ assert.match(logistics,/handlers\.buyMedical/);
+ assert.match(logistics,/handlers\.buyFlash/);
+ assert.match(logistics,/handlers\.buyWeapon\(weapon\)/);
  assert.match(logistics,/buy\.disabled=!quote\.canPurchase/);
 });
 
@@ -218,14 +215,13 @@ test('Logistics keeps one-column phones and separates supply and armory on deskt
 
 test('Records expose eight indexed reports and lazily disclose older history',()=>{
  const ui=source('campaign-ui.ts');
- const records=ui.slice(ui.indexOf("const chronicle=node('section','campaign-section campaign-chronicle')"),
-  ui.indexOf('const footer=node(\'div\',\'campaign-footer\')'));
+ const records=source('ui/campaign/chronicle-view.ts');
  assert.match(records,/const recentReports=c\.history\.slice\(-8\)\.reverse\(\)/);
  assert.match(records,/const renderOperation=\(report:\(typeof c\.history\)\[number\]\)=>/);
  assert.match(records,/const operationBoard=node\('div','campaign-operation-board campaign-uxr-record-index'\)/);
  assert.match(records,/const record=button\('',\(\)=>inspect\(i\),'campaign-uxr-record-row'\)/);
  assert.match(records,/inspected\.replaceChildren\(renderOperation\(report\)\)/);
- assert.match(records,/this\.selectedRecordId=report\.id/);
+ assert.match(records,/onSelect\(report\.id\)/);
  assert.match(records,/LATEST '\+recentReports\.length\+' OF '\+c\.history\.length/);
  assert.match(records,/if\(c\.history\.length>recentReports\.length\)/);
  assert.match(records,/const older=node\('details','campaign-operation-more'\)/);
@@ -249,11 +245,11 @@ test('Records cards use a responsive grid with accessible history disclosure',()
 
 test('Operations tabs show only real open-case and recorded-operation counters',()=>{
  const ui=source('campaign-ui.ts');
- const tabs=ui.slice(ui.indexOf("const nav=node('nav','campaign-tabs')"),
-  ui.indexOf('main.insertBefore(nav,grid)'));
- assert.match(tabs,/const openCaseCount=c\.contracts\.filter\(k=>/);
- assert.match(tabs,/k\.status==='available'&&k\.deadline>=c\.day\)\.length/);
- assert.match(tabs,/const recordedOperationCount=c\.history\.length/);
+ const tabs=source('ui/campaign/home-tabs.ts');
+ assert.match(ui,/createCampaignHomeTabs\(this\.root,sections,this\.homeTab/);
+ assert.match(ui,/const openCaseCount=c\.contracts\.filter\(k=>/);
+ assert.match(ui,/k\.status==='available'&&k\.deadline>=c\.day\)\.length/);
+ assert.match(ui,/const recordedOperationCount=c\.history\.length/);
  assert.match(tabs,/const count=tab==='contracts'\?openCaseCount:/);
  assert.match(tabs,/tab==='chronicle'\?recordedOperationCount:0/);
  assert.match(tabs,/if\(count\)\{/);
@@ -261,8 +257,8 @@ test('Operations tabs show only real open-case and recorded-operation counters',
  assert.match(tabs,/counter\.setAttribute\('aria-hidden','true'\)/);
  assert.match(tabs,/trigger\.setAttribute\('aria-label',accessibleLabel\)/);
  assert.match(tabs,/trigger\.setAttribute\('aria-controls',panel\.id\)/);
- assert.match(tabs,/trigger\.setAttribute\('aria-selected',String\(this\.homeTab===tab\)\)/);
- assert.match(tabs,/trigger\.tabIndex=this\.homeTab===tab\?0:-1/);
+ assert.match(tabs,/trigger\.setAttribute\('aria-selected',String\(selectedTab===tab\)\)/);
+ assert.match(tabs,/trigger\.tabIndex=selectedTab===tab\?0:-1/);
 });
 
 test('Counter layout preserves five evenly fitting phone tabs and selected contrast',()=>{
@@ -280,21 +276,23 @@ test('Operations preserves focused controls through purchase, treatment and assi
  const ui=source('campaign-ui.ts');
  const home=ui.slice(ui.indexOf(' home(c:CampaignState,slot?:CampaignSlot)'),
   ui.indexOf(' private armory(c:CampaignState,id:string)'));
- assert.match(home,/const wasInOperations=!this\.root\.hidden&&/);
- assert.match(home,/const focusedControl=wasInOperations&&this\.root\.contains\(document\.activeElement\)\?/);
- assert.match(home,/const focusedLabel=focusedControl\?\.getAttribute\('aria-label'\)/);
- assert.match(home,/if\(restoreScroll>0\)this\.root\.scrollTop=restoreScroll/);
- assert.match(home,/if\(focusedLabel\)\{/);
- assert.match(home,/\.find\(control=>control\.getAttribute\('aria-label'\)===focusedLabel&&/);
- assert.match(home,/!control\.matches\(':disabled'\)/);
- assert.match(home,/restored\?\?nav\.querySelector<HTMLElement>\('\[aria-selected="true"\]'\)/);
- assert.match(home,/\.focus\(\{preventScroll:true\}\)/);
+ const owner=source('ui/campaign/home-view-continuity.ts');
+ assert.match(home,/const homeView=captureCampaignHomeView\(this\.root\)/);
+ assert.match(home,/restoreCampaignHomeView\(this\.root,nav,homeView\)/);
+ assert.match(owner,/const wasInOperations=!root\.hidden&&/);
+ assert.match(owner,/const focusedControl=wasInOperations&&root\.contains\(root\.ownerDocument\.activeElement\)\?/);
+ assert.match(owner,/const focusedLabel=focusedControl\?\.getAttribute\('aria-label'\)/);
+ assert.match(owner,/if\(restoreScroll>0\)root\.scrollTop=restoreScroll/);
+ assert.match(owner,/if\(focusedLabel\)\{/);
+ assert.match(owner,/\.find\(control=>control\.getAttribute\('aria-label'\)===focusedLabel&&/);
+ assert.match(owner,/!control\.matches\(':disabled'\)/);
+ assert.match(owner,/restored\?\?nav\.querySelector<HTMLElement>\('\[aria-selected="true"\]'\)/);
+ assert.match(owner,/\.focus\(\{preventScroll:true\}\)/);
 });
 
 test('Operator action labels are unique by callsign while retaining existing handlers',()=>{
  const ui=source('campaign-ui.ts');
- const personnel=ui.slice(ui.indexOf("const personnel=node('section','campaign-section')"),
-  ui.indexOf("const logistics=node('section','campaign-section')"));
+ const personnel=source('ui/campaign/personnel-view.ts');
  for(const label of [
   "Open '+p.callsign+' loadout",
   "Resupply ammunition for '+p.callsign",
@@ -303,9 +301,9 @@ test('Operator action labels are unique by callsign while retaining existing han
   "Retire '+p.callsign"
  ])assert.ok(personnel.includes(label),'Missing operator-scoped control '+label);
  for(const handler of [
-  'this.handlers.resupply(p.id)','this.handlers.resupplyMedical(p.id)',
-  'this.handlers.treat(p.id)','this.handlers.retire(p.id)',
-  'this.handlers.assignSlot(slot,p.id)'
+  'handlers.resupply(p.id)','handlers.resupplyMedical(p.id)',
+  'handlers.treat(p.id)','handlers.retire(p.id)',
+  'handlers.assignSlot(slot,p.id)'
  ])assert.ok(personnel.includes(handler),'Existing action changed '+handler);
 });
 
@@ -330,8 +328,7 @@ test('Operations browser acceptance owns phone, desktop and keyboard behavior',(
 
 test('C5 Logistics preserves purchases, shows truthful low stock and discloses weapon eligibility',()=>{
  const ui=source('campaign-ui.ts');
- const logistics=ui.slice(ui.indexOf("const logistics=node('section','campaign-section')"),
-  ui.indexOf("const recruit=button('RECRUIT OPERATOR"));
+ const logistics=source('ui/campaign/logistics-view.ts');
  assert.match(logistics,/if\(needed>count\)fact\.classList\.add\('is-low'\)/);
  assert.match(logistics,/fact\.classList\.add\('is-low'\)/);
  assert.match(logistics,/buy\.disabled=!canAffordCampaignPurchase\(c,cost\)/);
@@ -341,7 +338,7 @@ test('C5 Logistics preserves purchases, shows truthful low stock and discloses w
  assert.match(logistics,/eligibility\.append\(status\)/);
  assert.match(logistics,/buy\.setAttribute\('aria-describedby',reasonId\)/);
  assert.match(logistics,/buy\.disabled=!quote\.canPurchase/);
- assert.match(logistics,/this\.handlers\.buyWeapon\(weapon\)/);
+ assert.match(logistics,/handlers\.buyWeapon\(weapon\)/);
 });
 test('C5 Logistics compact rows respect phone and desktop layout',()=>{
  const css=source('campaign-style.css');
@@ -358,8 +355,7 @@ test('C5 Logistics compact rows respect phone and desktop layout',()=>{
 
 test('C6 Operations preserve visible outcomes and full optional evidence',()=>{
  const ui=source('campaign-ui.ts');
- const records=ui.slice(ui.indexOf("const chronicle=node('section','campaign-section campaign-chronicle')"),
-  ui.indexOf("const footer=node('div','campaign-footer')"));
+ const records=source('ui/campaign/chronicle-view.ts');
  assert.match(records,/heading\.append\(identity,node\('span','campaign-operation-outcome'/);
  assert.match(records,/article\.append\(facts\)/);
  assert.match(records,/const recordDetail=node\('details','campaign-operation-detail'\)/);
@@ -388,10 +384,10 @@ test('C6 Records detail and milestone summaries stay keyboard reachable',()=>{
 test('C7 disclosure labels identify their individual case, weapon and operation',()=>{
  const ui=source('campaign-ui.ts');
  assert.match(ui,/caseSummary\.setAttribute\('aria-label','Case information: '\+view\.title/);
- assert.match(ui,/eligibilitySummary\.setAttribute\('aria-label'/);
- assert.match(ui,/for '\+weapon\.toUpperCase\(\)\+' platform'/);
- assert.match(ui,/recordSummary\.setAttribute\('aria-label'/);
- assert.match(ui,/\+' · DAY '\+report\.day/);
+ assert.match(source('ui/campaign/logistics-view.ts'),/eligibilitySummary\.setAttribute\('aria-label'/);
+ assert.match(source('ui/campaign/logistics-view.ts'),/for '\+weapon\.toUpperCase\(\)\+' platform'/);
+ assert.match(source('ui/campaign/chronicle-view.ts'),/recordSummary\.setAttribute\('aria-label'/);
+ assert.match(source('ui/campaign/chronicle-view.ts'),/\+' · DAY '\+report\.day/);
 });
 
 
@@ -399,18 +395,20 @@ test('C8 UI-only disclosure continuity survives in-place campaign refresh',()=>{
  const ui=source('campaign-ui.ts');
  const home=ui.slice(ui.indexOf(' home(c:CampaignState,slot?:CampaignSlot)'),
   ui.indexOf(' private armory(c:CampaignState,id:string)'));
- assert.match(home,/const openWorkspaceDetails=wasInOperations\?/);
- assert.match(home,/details\[data-campaign-detail\]\[open\]/);
- assert.match(home,/for\(const detail of this\.root\.querySelectorAll<HTMLDetailsElement>\(/);
- assert.match(home,/detail\.open=openWorkspaceDetails\.has/);
+ const owner=source('ui/campaign/home-view-continuity.ts');
+ assert.match(owner,/const openWorkspaceDetails=wasInOperations\?/);
+ assert.match(owner,/details\[data-campaign-detail\]\[open\]/);
+ assert.match(owner,/for\(const detail of root\.querySelectorAll<HTMLDetailsElement>\(/);
+ assert.match(owner,/detail\.open=openWorkspaceDetails\.has/);
+ const homeOwners=home+source('ui/campaign/logistics-view.ts')+source('ui/campaign/chronicle-view.ts');
  for(const key of [
   'campaign-context','more-history','personnel-milestones',
   'service-record','related-cases','closeout-notes',
   'save-utilities','department-profile'
- ])assert.ok(home.includes("dataset.campaignDetail='"+key+"'"),
+ ])assert.ok(homeOwners.includes("dataset.campaignDetail='"+key+"'"),
   'Disclosure missing persistence identity: '+key);
- assert.match(home,/recordDetail\.dataset\.campaignDetail='operation:'\+report\.id/);
- assert.match(home,/eligibility\.dataset\.campaignDetail='weapon:'\+weapon/);
+ assert.match(homeOwners,/recordDetail\.dataset\.campaignDetail='operation:'\+report\.id/);
+ assert.match(homeOwners,/eligibility\.dataset\.campaignDetail='weapon:'\+weapon/);
  assert.match(ui,/intelligence\.dataset\.campaignDetail='case:'\+c\.id/);
 });
 test('C8 browser smoke tests continuity after a real campaign purchase',()=>{

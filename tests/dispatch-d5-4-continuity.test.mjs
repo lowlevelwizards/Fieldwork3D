@@ -56,7 +56,7 @@ test('D5.4 wiring covers fallback briefing, live mission and debrief cache ident
  const main=source('breach-main.ts');
  const deb=source('ui/breach-mission-debrief.ts');
  const details=source('ui/breach-after-action-mission-details.ts');
- const ui=source('campaign-ui.ts');
+ const chronicle=source('ui/campaign/chronicle-view.ts');
  assert.match(screens,/incident\?\.title\?\?model.title/);
  assert.match(screens,/ui.briefingCampaignContext.textContent=incident\?/);
  assert.match(screens,/dispatchSettingsReference\.hidden=!incident/);
@@ -67,5 +67,5 @@ test('D5.4 wiring covers fallback briefing, live mission and debrief cache ident
  assert.match(deb,/previous.incidentKey===incidentKey/);
  assert.match(deb,/incident\?\.title\?\?brief.name/);
  assert.match(details,/DISPATCH INCIDENT/);
- assert.match(ui,/historicalDispatchIncident\(c,report\)/);
+ assert.match(chronicle,/historicalDispatchIncident\(c,report\)/);
 });

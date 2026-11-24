@@ -58,13 +58,14 @@ test('Quick Play and Campaign route headwear editing through canonical Studio wi
  const quick=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
  const picker=readFileSync(new URL('../src/operator-headwear-picker.ts',import.meta.url),'utf8');
  const css=readFileSync(new URL('../src/operator-headwear-picker.css',import.meta.url),'utf8');
- assert.match(campaign,/this\.handlers\.openStudio\(p\.id\)/,
+ const personnel=readFileSync(new URL('../src/ui/campaign/personnel-view.ts',import.meta.url),'utf8');
+ assert.match(personnel,/handlers\.openStudio\(p\.id\)/,
   'Campaign appearance button opens the single Studio editor');
  assert.match(quick,/openStudio:id=>openOperatorStudio\(id,'quick'\)/,
   'Quick Play appearance editing uses the canonical Studio bridge');
  assert.match(quick,/openStudio:id=>openOperatorStudio\(id,'campaign'\)/,
   'Campaign bridge preserves the correct campaign context');
- assert.doesNotMatch(campaign,/createHeadwearAppearancePicker\(/);
+ assert.doesNotMatch(campaign+personnel,/createHeadwearAppearancePicker\(/);
  assert.doesNotMatch(quick,/createHeadwearAppearancePicker\(/);
  assert.match(picker,/paintCamoPreview\(canvas,id\)/);
  assert.match(picker,/headwearColorChoices\(canon\)/);

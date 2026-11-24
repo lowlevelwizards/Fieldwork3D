@@ -203,7 +203,8 @@ test('D11.4 operations room labels evidence and receipts without new policing cl
  assert.match(ui,/DEPARTMENT SERVICE RECORD/);
  assert.match(ui,/OPERATIONAL STANDING/);
  assert.match(ui,/Unreviewed incidents are not counted/);
- assert.match(ui,/SUPPORT \+'/);
+ const chronicle=readFileSync(new URL('../src/ui/campaign/chronicle-view.ts',import.meta.url),'utf8');
+ assert.match(chronicle,/SUPPORT \+'/);
  assert.match(code,/advanceDispatchDepartment\(c.dispatchDepartment,r\)/);
  assert.match(code,/Dispatch Senior Service/);
 });

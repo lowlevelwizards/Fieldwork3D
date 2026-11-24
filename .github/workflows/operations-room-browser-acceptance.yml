@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'src/campaign-ui.ts'
+      - 'src/ui/campaign/**'
       - 'src/campaign-style.css'
       - 'scripts/smoke-operations-room-responsive.mjs'
       - '.github/workflows/operations-room-browser-acceptance.yml'
@@ -14,7 +15,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   responsive-browser:
-    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'ui/operations-room-') || startsWith(github.head_ref, 'ui/campaign-') || startsWith(github.head_ref, 'feature/uxr-') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'ui/operations-room-') || startsWith(github.head_ref, 'ui/campaign-') || startsWith(github.head_ref, 'feature/uxr-') || startsWith(github.head_ref, 'refactor/r7-4-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
