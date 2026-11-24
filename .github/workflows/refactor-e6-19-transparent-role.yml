@@ -27,7 +27,7 @@ concurrency:
 jobs:
   transparent-provenance:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -89,6 +89,40 @@ jobs:
         env:
           FIELDWORK_CI_CHROME: '1'
         run: node scripts/verification/w2-wall-audition-browser.mjs
+      - name: W2 exact-base live mobile and desktop comparison
+        if: ${{ startsWith(github.head_ref, 'refactor/w2-') }}
+        env:
+          FIELDWORK_CI_CHROME: '1'
+          FIELDWORK_W2_PROBE: '1'
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git worktree add --detach "$RUNNER_TEMP/w2-base" "$BASE_SHA"
+          ln -s "$PWD/node_modules" "$RUNNER_TEMP/w2-base/node_modules"
+          cp scripts/verification/e6-19-transparent-role-browser.mjs "$RUNNER_TEMP/w2-base/scripts/verification/"
+          mkdir -p artifacts/w2-live
+          OUT="$PWD/artifacts/w2-live"
+          for desktop in 0 1; do
+            (cd "$RUNNER_TEMP/w2-base" && FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/base-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs)
+            for mode in integrated baked; do
+              FIELDWORK_WALL_WEAR="$mode" FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/$mode-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs
+            done
+          done
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const read=(mode,desktop)=>JSON.parse(readFileSync('artifacts/w2-live/'+mode+'-'+desktop+'/summary.json','utf8'));
+          for(const desktop of [0,1]){
+            const base=read('base',desktop);
+            for(const mode of ['integrated','baked']){
+              const test=read(mode,desktop);
+              for(const key of ['initialKnowledge','initialVisible','secondVisible']){
+                if(base.wallProbe[key]!==test.wallProbe[key])throw Error('W2 disclosure changed: '+mode+' '+key);
+              }
+              if(test.wallProbe.depthMismatches!==0)throw Error('W2 depth mismatch');
+              if(test.runs.some((run,i)=>run.drawCallsP95>base.runs[i].drawCallsP95))throw Error('W2 increased live draws');
+            }
+          }
+          JS
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -97,5 +131,6 @@ jobs:
             artifacts/refactor-e6-19/live-scene/
             artifacts/w0-wall/
             artifacts/w2-wall-audition/
+            artifacts/w2-live/
           if-no-files-found: ignore
           retention-days: 14
