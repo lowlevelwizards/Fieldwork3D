@@ -73,7 +73,7 @@ import {sightRangeForSite} from './breach-visibility-range-policy.ts';
 import {projectedOperatorHeightPx,operatorShadowDetail,
  applyOperatorShadowLod,cavityQualityForDetail}
  from './operator-shadow-quality.ts';
-import {PixelTextureLibrary,mapBoxPixelUV,mapPlanePixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
+import {PixelTextureLibrary,mapBoxPixelUV,mapPackedWallUV,mapPlanePixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
 
 import {wearFinish} from './rendering/wear-finish.ts';
 
@@ -92,7 +92,7 @@ import {summarizeWear} from './worldgen/wear-diagnostics.ts';
 import {conditionFloorPixels} from './worldgen/condition-visual.ts';
 
 import {conditionWallPixels} from './worldgen/condition-wall.ts';
-import {wallSurfacePixels,bakedWallSurfacePixels,type WallAudition,type WallSurfaceRecipe} from './worldgen/wall-surface-recipe.ts';
+import {wallSurfacePixels,bakedWallSurfacePixels,packedWallSurfacePixels,type WallAudition,type WallSurfaceRecipe} from './worldgen/wall-surface-recipe.ts';
 import {type ObjectWear} from './worldgen/object-wear.ts';
 
 import {wearPixels} from './rendering/pixel-decals.ts';
@@ -858,11 +858,11 @@ export class TacticalScene3D{
   private sitePatinaTextures:THREE.DataTexture[]=[];
   private sitePatinaMaterials:THREE.MeshBasicMaterial[]=[];
   private patinaRoomSurfaces:{room:Room;texture:THREE.DataTexture}[]=[];
-  private patinaWallSurfaces:{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;baked?:boolean;patterned?:boolean}[]=[];
+  private patinaWallSurfaces:{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;baked?:boolean;patterned?:boolean;packed?:boolean}[]=[];
   /** Explicit diagnostic only; normal gameplay retains W1 until promotion. */
   wallAudition:WallAudition|undefined=(()=>{
     const mode=typeof location==='undefined'?null:new URLSearchParams(location.search).get('wallWear');
-    return mode==='integrated'||mode==='baked'?{effect:'all',composition:mode==='baked'?'baked':'shader'}:undefined;
+    return mode==='integrated'||mode==='baked'||mode==='packed'?{effect:'all',composition:mode==='integrated'?'shader':mode}:undefined;
   })();
   /** Live slider scrubbing changes pixel masks, not the physical scene. */
   previewConditionMasks(site:Site,level:number){
@@ -874,7 +874,7 @@ export class TacticalScene3D{
     for(const item of this.patinaWallSurfaces){
       const image=item.texture.image as {
         data:Uint8Array;width:number;height:number};
-      if(item.recipe)image.data.set(item.baked?bakedWallSurfacePixels(item.recipe,level,image.width,image.height,this.wallAudition?.effect??'all',item.patterned):wallSurfacePixels(item.recipe,level,image.width,image.height,this.wallAudition?.effect??'all'));
+      if(item.recipe)image.data.set(item.packed?packedWallSurfacePixels(item.recipe,level,image.width,this.wallAudition?.effect??'all',item.patterned):item.baked?bakedWallSurfacePixels(item.recipe,level,image.width,image.height,this.wallAudition?.effect??'all',item.patterned):wallSurfacePixels(item.recipe,level,image.width,image.height,this.wallAudition?.effect??'all'));
       else image.data.set(conditionWallPixels(site,item.index,level,
         image.width,image.height));
       item.texture.needsUpdate=true;
@@ -1158,11 +1158,11 @@ export class TacticalScene3D{
     }
   }
   private box(parent:THREE.Object3D,x:number,y:number,z:number,
-    w:number,h:number,d:number,material:THREE.Material,cast=true){
-    const key=w+':'+h+':'+d;
+    w:number,h:number,d:number,material:THREE.Material,cast=true,packedWall=false){
+    const key=w+':'+h+':'+d+(packedWall?':wall-packed':'');
     let geometry=this.boxGeometryCache.get(key);
     if(!geometry){
-      geometry=mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d);
+      geometry=packedWall?mapPackedWallUV(new THREE.BoxGeometry(w,h,d)):mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d);
       // Bound cache memory; uncommon one-off sizes remain independently owned.
       if(this.boxGeometryCache.size<384){
         this.boxGeometryCache.set(key,geometry);
