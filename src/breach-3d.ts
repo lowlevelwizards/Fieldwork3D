@@ -123,6 +123,7 @@ import {armedPrecontactStyle} from './breach-idle-life.ts';
 import {hostilePhysicalityAt} from './breach-hostile-physicality.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
+import {makeStainMarkBatch,makeBloodDropletBatch} from './rendering/breach-blood-preview.ts';
 import {presentSecondaryMuzzleFlash} from './secondary-holster-visual.ts';
 import {muzzleFlashCue,mostRecentActiveMuzzleShot,impactPulse,
  RecentMuzzleShotFrameIndex}
@@ -757,6 +758,9 @@ export class TacticalScene3D{
   // One instanced draw for every stain and impact mark, rather than a mesh
   // and transparent material allocation per hit.
   private impactDecalMesh:THREE.InstancedMesh|null=null;
+  private readonly bloodPreviewEnabled=new URLSearchParams(location.search).get('vfxBlood')==='1';
+  private stainPreview:ReturnType<typeof makeStainMarkBatch>|null=null;
+  private dropletPreview:ReturnType<typeof makeBloodDropletBatch>|null=null;
   private impactDecalMatrix=new THREE.Object3D();
   private bloodCameraDirection=new THREE.Vector3();
   private impactDecalColor=new THREE.Color();
@@ -1258,6 +1262,7 @@ export class TacticalScene3D{
     this.architecturalOpenings.length=0;
     this.observedDoorOpen.clear();
     if(this.impactDecalMesh)this.impactDecalMesh.count=0;
+    this.dropletPreview?.reset();
     this.combatEffects.reset();
     for(const effect of this.effectCache.values()){
       this.effects.remove(effect.root);
@@ -2802,6 +2807,7 @@ export class TacticalScene3D{
     // Shared geometry and bounded per-shot materials avoid frame-by-frame GC.
     const active=this.frameShotIds;active.clear();
     let visibleShots=0;
+    this.dropletPreview?.begin();
     // Dense bursts keep their newest effects; older traces are cosmetic.
     for(let index=s.shots.length-1;index>=0;index--){
       if(visibleShots>=20)break;
@@ -2833,7 +2839,7 @@ export class TacticalScene3D{
         const chips:THREE.Mesh[]=[];
         if(shot.surface==='wood'||shot.surface==='stone'||
           shot.surface==='metal'||shot.surface==='glass'||
-          shot.surface==='blood'){
+          shot.surface==='blood'&&!this.bloodPreviewEnabled){
           for(let i=0;i<(shot.surface==='blood'?4:3);i++){
             const chip=new THREE.Mesh(this.tracerGeometry,impactMaterial);
             chip.scale.set(shot.surface==='blood'?.9:.42,
@@ -2868,6 +2874,20 @@ export class TacticalScene3D{
       effect.impact.scale.setScalar(impact.scale);
       effect.impactMaterial.opacity=impact.opacity;
       effect.impact.visible=visibility.impact&&impact.active;
+      if(this.bloodPreviewEnabled&&shot.surface==='blood'&&visibility.impact&&shot.age<profile.lifetime&&impact.opacity>0){
+        for(let i=0;i<4;i++){
+          const theta=shot.id*2.41+i*2.094,progress=shot.age/.40;
+          const radius=(2+15*progress)*.7;
+          const x=end.x+Math.cos(theta)*radius,z=end.z+Math.sin(theta)*radius;
+          const y=Math.max(2,end.y+6*Math.sin(Math.PI*progress)+i*1.5-4*progress);
+          if(!omniscient&&!this.presentationSight.query(s,'effect',shot.id+':chip:'+i,{x,y:z}))continue;
+          if(!this.dropletPreview){
+            this.dropletPreview=makeBloodDropletBatch(this.tracerGeometry);
+            this.effects.add(this.dropletPreview.mesh);
+          }
+          this.dropletPreview.add(x,y,z,theta,i,progress,impact.opacity);
+        }
+      }
       for(let i=0;i<effect.chips.length;i++){
         const chip=effect.chips[i];
         const theta=(shot.id*2.41+i*2.094);
@@ -2882,9 +2902,13 @@ export class TacticalScene3D{
             shot.id+':chip:'+i,{x:chip.position.x,y:chip.position.z}));
       }
     }
+    this.dropletPreview?.finish();
     // Stable cap, one render call and no individual decal meshes/materials.
     if(!this.impactDecalMesh){
-      this.impactDecalMesh=new THREE.InstancedMesh(
+      if(this.bloodPreviewEnabled){
+        this.stainPreview=makeStainMarkBatch(IMPACT_MARK_LIMIT);
+        this.impactDecalMesh=this.stainPreview.mesh;
+      }else this.impactDecalMesh=new THREE.InstancedMesh(
         new THREE.CircleGeometry(1,9),
         new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,
           opacity:.82,depthTest:true,depthWrite:false,
@@ -2941,12 +2965,14 @@ export class TacticalScene3D{
       markDraw.setMatrixAt(markCount,this.impactDecalMatrix.matrix);
       this.impactDecalColor.setHex(dark).multiplyScalar(
         Math.max(.28,1-mark.age*.027));
+      this.stainPreview?.setStyle(markCount,mark.surface,mark.p.x,mark.p.y);
       markDraw.setColorAt(markCount++,this.impactDecalColor);
     }
     markDraw.count=markCount;
     if(markCount){
       markDraw.instanceMatrix.needsUpdate=true;
       if(markDraw.instanceColor)markDraw.instanceColor.needsUpdate=true;
+      this.stainPreview?.finish();
     }
     for(const [id,effect] of this.effectCache){
       if(active.has(id))continue;

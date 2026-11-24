@@ -10,3 +10,6 @@ Current tactical scene draws a shared 64-instance ground-mark batch (blood evide
 3. Retain tracer and nonblood paths. Update buffers only for changed visible evidence where feasible, including seek/reset. Explicit resource ownership and disposal; no frame allocation churn.
 4. Verify unchanged shot/impact evidence, cap, lifetime, deterministic seek/reorder, hidden/personal disclosure and wall clipping. Compare old and new draw counts and render CPU on identical shot stress; browser screenshots with side-by-side A/B and physical-device checks. Existing V1 target is net performance gain; do not enable V4 without measured results.
 5. Prototype: pure deterministic atlas alpha generator and unit tests. No gameplay integration or CI yet; isolated branch while foundational release gates are outstanding.
+
+## Integration checkpoint
+Opt-in ?vfxBlood=1 replaces blood-only chip meshes with one 80-instance batch, using the original shot-id/age trajectory and opacity, and samples a deterministic mask inside the existing mixed mark mesh. Nonblood mark style -1 bypasses sampling. No new evidence or simulation; original personal replay/sight gates and mark culling remain in place. Persistent scene-owned resources are reset across missions; helpers provide explicit disposal for future scene teardown. Transparent draw order may differ; verify visually. No CI yet.
