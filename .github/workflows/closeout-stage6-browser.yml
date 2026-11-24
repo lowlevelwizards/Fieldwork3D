@@ -33,10 +33,12 @@ jobs:
           else echo "Preinstalled Chrome is unavailable" >&2; exit 1
           fi
       - name: VFX baseline and candidate presenter comparison
-        if: ${{ startsWith(github.head_ref, 'refactor/vfx-') }}
+        if: ${{ github.head_ref == 'refactor/vfx-v0-v1-foundation' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           mkdir -p artifacts/closeout-stage6
-          git worktree add --detach "$RUNNER_TEMP/vfx-base" a05bd63ce633af9520fa7000c5d0f083ef81509d
+          git worktree add --detach "$RUNNER_TEMP/vfx-base" "$BASE_SHA"
           ln -s "$PWD/node_modules" "$RUNNER_TEMP/vfx-base/node_modules"
           cp scripts/bench-vfx-foundation.mjs "$RUNNER_TEMP/vfx-base/scripts/"
           (cd "$RUNNER_TEMP/vfx-base" && node --experimental-strip-types scripts/bench-vfx-foundation.mjs) | tee artifacts/closeout-stage6/vfx-base.jsonl
