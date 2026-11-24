@@ -54,3 +54,23 @@ test('V10 tracer and impact pulse batches preserve scalar pose, tint, capacity a
  assert.equal(b.opacity.getX(0),.5);
  b.reset();assert.equal(b.mesh.count,0);b.dispose();g.dispose();
 });
+
+test('V10 live effect updates isolate pose, opacity and tint uploads across slot reuse',()=>{
+ const g=new THREE.CylinderGeometry(.65,.65,1,6),b=makeBloodDropletBatch(g,20,'shot-tracer-batch');
+ const versions=()=>[b.mesh.instanceMatrix.version,b.opacity.version,b.mesh.instanceColor.version];
+ const frame=(x,alpha,tint)=>{b.begin();b.addPose(x,2,3,0,0,0,1,8,alpha,tint);b.finish();return versions();};
+ const initial=frame(1,.5,0xffde9d);
+ assert.deepEqual(frame(1,.5,0xffde9d),initial);
+ const fade=frame(1,.25,0xffde9d);
+ assert.deepEqual(fade,[initial[0],initial[1]+1,initial[2]]);
+ assert.equal(b.opacity.getX(0),.25);
+ const move=frame(2,.25,0xffde9d);
+ assert.deepEqual(move,[fade[0]+1,fade[1],fade[2]]);
+ const recolor=frame(2,.25,0xff9b73);
+ assert.deepEqual(recolor,[move[0],move[1],move[2]+1]);
+ const c=new THREE.Color();b.mesh.getColorAt(0,c);assert.equal(c.getHex(),0xff9b73);
+ b.begin();b.finish();assert.equal(b.mesh.count,0);
+ assert.deepEqual(frame(2,.25,0xff9b73),recolor);
+ b.reset();assert.deepEqual(frame(2,.25,0xff9b73),recolor.map(v=>v+1));
+ b.dispose();g.dispose();
+});
