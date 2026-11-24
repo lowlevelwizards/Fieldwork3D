@@ -128,6 +128,7 @@ import {IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
 import {TransientLightPreview} from './rendering/breach-transient-light-preview.ts';
 import {DustPuffBatch,puffCount,samplePuff,type PuffSample} from './rendering/breach-dust-puffs.ts';
 import {makeStainMarkBatch,makeBloodDropletBatch,BLOOD_DROPLET_CAPACITY} from './rendering/breach-blood-preview.ts';
+import {ImpactMarkSlotCache,MARK_MATRIX_DIRTY,MARK_COLOR_DIRTY,MARK_STYLE_DIRTY} from './rendering/breach-impact-mark-cache.ts';
 import {MATERIAL_IMPACT_PROFILES,MATERIAL_IMPACT_PARTICLE_LIMIT,sampleMaterialImpact,type ImpactParticleSample} from './rendering/breach-material-impact-atom.ts';
 import {presentSecondaryMuzzleFlash} from './secondary-holster-visual.ts';
 import {muzzleFlashCue,mostRecentActiveMuzzleShot,impactPulse,
@@ -768,6 +769,8 @@ export class TacticalScene3D{
   private readonly materialImpactScratch:ImpactParticleSample={x:0,y:0,z:0,yaw:0,roll:0,pitch:0,width:0,length:0,opacity:0,color:0};
   private stainPreview:ReturnType<typeof makeStainMarkBatch>|null=null;
   private dropletPreview:ReturnType<typeof makeBloodDropletBatch>|null=null;
+  private readonly persistentEvidencePreview=new URLSearchParams(location.search).get('vfxEvidence')==='1';
+  private readonly impactMarkSlots=new ImpactMarkSlotCache(IMPACT_MARK_LIMIT);
   private impactDecalMatrix=new THREE.Object3D();
   private bloodCameraDirection=new THREE.Vector3();
   private impactDecalColor=new THREE.Color();
@@ -1282,6 +1285,7 @@ export class TacticalScene3D{
     this.architecturalOpenings.length=0;
     this.observedDoorOpen.clear();
     if(this.impactDecalMesh)this.impactDecalMesh.count=0;
+    this.impactMarkSlots.reset();
     this.dropletPreview?.reset();
     this.combatEffects.reset();
     for(const effect of this.effectCache.values()){
@@ -3029,7 +3033,7 @@ export class TacticalScene3D{
      for(const actor of s.operators)
       if(this.actors.get(actor.id)?.root.visible)
        visibleBloodBlockers.push(actor.p);
-    let markCount=0;
+    let markCount=0,markDirty=0;
     for(let markIndex=0;markIndex<s.impactMarks.length;markIndex++){
       const mark=s.impactMarks[markIndex];
       if(replayDisclosurePolicy?.mode==='operator')continue;
@@ -3054,24 +3058,30 @@ export class TacticalScene3D{
         mark.surface==='wood'?0x3a2920:
         mark.surface==='stone'?0x38332c:
         mark.surface==='metal'?0x202b2e:0x514e42;
-      const groundRadius=radius;
-      this.impactDecalMatrix.position.set(mark.p.x,
-        mark.surface==='blood'?.85:(mark.height??1),mark.p.y);
-      this.impactDecalMatrix.rotation.set(-Math.PI/2,0,0);
-      this.impactDecalMatrix.scale.setScalar(groundRadius);
-      this.impactDecalMatrix.updateMatrix();
-      markDraw.setMatrixAt(markCount,this.impactDecalMatrix.matrix);
-      this.impactDecalColor.setHex(dark).multiplyScalar(
-        Math.max(.28,1-mark.age*.027));
-      this.stainPreview?.setStyle(markCount,mark.surface,mark.p.x,mark.p.y);
-      markDraw.setColorAt(markCount++,this.impactDecalColor);
+      const groundRadius=radius,markY=mark.surface==='blood'?.85:(mark.height??1);
+      const fade=Math.max(.28,1-mark.age*.027);
+      const style=this.stainPreview?.styleFor(mark.surface,mark.p.x,mark.p.y)??-1;
+      const dirty=this.persistentEvidencePreview?this.impactMarkSlots.update(markCount,
+        mark.p.x,markY,mark.p.y,groundRadius,dark,fade,style):
+        MARK_MATRIX_DIRTY|MARK_COLOR_DIRTY|MARK_STYLE_DIRTY;
+      if(dirty&MARK_MATRIX_DIRTY){
+        this.impactDecalMatrix.position.set(mark.p.x,markY,mark.p.y);
+        this.impactDecalMatrix.rotation.set(-Math.PI/2,0,0);
+        this.impactDecalMatrix.scale.setScalar(groundRadius);
+        this.impactDecalMatrix.updateMatrix();
+        markDraw.setMatrixAt(markCount,this.impactDecalMatrix.matrix);
+      }
+      if(dirty&MARK_COLOR_DIRTY){
+        this.impactDecalColor.setHex(dark).multiplyScalar(fade);
+        markDraw.setColorAt(markCount,this.impactDecalColor);
+      }
+      if(dirty&MARK_STYLE_DIRTY)this.stainPreview?.style.setX(markCount,style);
+      markCount++;markDirty|=dirty;
     }
     markDraw.count=markCount;
-    if(markCount){
-      markDraw.instanceMatrix.needsUpdate=true;
-      if(markDraw.instanceColor)markDraw.instanceColor.needsUpdate=true;
-      this.stainPreview?.finish();
-    }
+    if(markDirty&MARK_MATRIX_DIRTY)markDraw.instanceMatrix.needsUpdate=true;
+    if(markDirty&MARK_COLOR_DIRTY&&markDraw.instanceColor)markDraw.instanceColor.needsUpdate=true;
+    if(markDirty&MARK_STYLE_DIRTY)this.stainPreview?.finish();
     for(const [id,effect] of this.effectCache){
       if(active.has(id))continue;
       this.effects.remove(effect.root);
