@@ -1,3 +1,5 @@
+import {createCampaignHomeTabs,type CampaignHomeTab} from './ui/campaign/home-tabs.ts';
+import {createCampaignLandingNavigation} from './ui/campaign/landing-navigation.ts';
 import {captureCampaignHomeView,restoreCampaignHomeView} from './ui/campaign/home-view-continuity.ts';
 import {uiNode as node,uiButton as button} from './ui/dom-elements.ts';
 /** Campaign screens. Render only on navigation and state changes, never per frame. */
@@ -119,7 +121,7 @@ export class CampaignScreen{
  private currentSlot:CampaignSlot='legacy';
  private lastEntry={legacy:false,sandbox:false,dispatch:false,active:'legacy' as CampaignSlot};
  private armoryOperatorId:string|null=null;
- private homeTab:'overview'|'personnel'|'contracts'|'logistics'|'chronicle'='overview';
+ private homeTab:CampaignHomeTab='overview';
  private selectedSquadOperatorId:string|null=null;
  private selectedCaseId:string|null=null;
  private selectedSupplyIndex=0;
@@ -201,36 +203,7 @@ export class CampaignScreen{
   // Favor the actual active slot, not the historically first (legacy) handler.
   const selected=available.find(([slot])=>slot===active)??available[0];
   const selectedCampaign=selected?savedCampaigns[selected[0]]:null;
-  const main=node('main','campaign-shell campaign-landing');
-  main.setAttribute('aria-label','Fieldwork main menu');
-  const subpage=node('section','campaign-shell campaign-landing campaign-landing-subpage');
-  subpage.setAttribute('aria-label','Menu details');
-  subpage.hidden=true;
-  // Escape reverses local menu navigation without leaving the current game.
-  subpage.addEventListener('keydown',event=>{
-   if(event.key!=='Escape')return;
-   const back=subpage.querySelector<HTMLButtonElement>('.campaign-landing-back');
-   if(!back)return;
-   event.preventDefault();back.click();
-  });
-  const showSubpage=(title:string,lead:string,trigger:HTMLElement,
-   populate:(target:HTMLElement)=>void)=>{
-   const back=button('BACK',()=>{subpage.hidden=true;main.hidden=false;
-    trigger.focus({preventScroll:true});},'campaign-landing-back');
-   const head=node('header','campaign-landing-subhead');
-   head.append(back,node('h2','',title),node('p','',lead));
-   const content=node('div','campaign-landing-subcontent');
-   populate(content);
-   subpage.replaceChildren(head,content);
-   main.hidden=true;subpage.hidden=false;
-   back.focus({preventScroll:true});
-  };
-  const option=(title:string,detail:string,action:()=>void)=>{
-   const item=button('',action,'campaign-landing-option');
-   item.append(node('strong','',title),node('span','',detail));
-   item.setAttribute('aria-label',title+' — '+detail);
-   return item;
-  };
+  const {main,subpage,showSubpage,option}=createCampaignLandingNavigation();
   const openNew=(trigger:HTMLElement)=>showSubpage('NEW CAMPAIGN',
    'Choose a setting, then configure the experience.',trigger,target=>{
     target.append(
@@ -1377,72 +1350,11 @@ export class CampaignScreen{
     }
    }else this.preparationContractId=null;
   }
-  const nav=node('nav','campaign-tabs');
-  nav.setAttribute('role','tablist');
-  nav.setAttribute('aria-label','Operations Room sections');
-  const tabOrder=['overview','personnel','contracts','logistics','chronicle'] as const;
-  // Keep the five already-built sections alive while changing only visibility.
-  // This avoids rebuilding every roster, contract and logistics control per tap.
-  const activateTab=(tab:typeof tabOrder[number])=>{
-   if(this.homeTab===tab)return;
-   this.homeTab=tab;
-   for(const [id,panel] of Object.entries(sections))
-    panel.hidden=id!==tab;
-   for(const trigger of nav.querySelectorAll<HTMLButtonElement>('.campaign-tab')){
-    const selected=trigger.id==='campaign-tab-'+tab;
-    trigger.setAttribute('aria-selected',String(selected));
-    trigger.tabIndex=selected?0:-1;
-   }
-   this.root.scrollTop=0;
-  };
-  nav.addEventListener('keydown',event=>{
-   if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
-   const tabs=Array.from(nav.querySelectorAll<HTMLButtonElement>('.campaign-tab'));
-   const current=tabs.indexOf(document.activeElement as HTMLButtonElement);
-   if(current<0)return;
-   const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:
-    (current+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
-   event.preventDefault();
-   tabs[next].focus({preventScroll:true});
-   tabs[next].click();
-  });
-  // Counts come from the same campaign snapshot as the visible panel.
-  // They are navigation hints, not a second contract/record source of truth.
   const openCaseCount=c.contracts.filter(k=>
    k.status==='available'&&k.deadline>=c.day).length;
   const recordedOperationCount=c.history.length;
-  for(const [tab,label,accessible] of [
-   ['overview','Ops','Overview'],['personnel','Squad','Personnel'],
-   ['contracts','Cases','Contracts'],['logistics','Supply','Logistics'],
-   ['chronicle','Records','Chronicle']
-  ] as const){
-   const panel=sections[tab];
-   panel.id='campaign-panel-'+tab;panel.setAttribute('role','tabpanel');
-   panel.hidden=this.homeTab!==tab;
-   const trigger=button(label,()=>{
-    activateTab(tab)
-   },'campaign-tab');
-   trigger.id='campaign-tab-'+tab;
-   const count=tab==='contracts'?openCaseCount:
-    tab==='chronicle'?recordedOperationCount:0;
-   const context=tab==='contracts'?' available':
-    tab==='chronicle'?' recorded operations':'';
-   const accessibleLabel=count?accessible+' · '+count+context:accessible;
-   trigger.setAttribute('aria-label',accessibleLabel);
-   trigger.title=accessibleLabel;
-   if(count){
-    const counter=node('span','campaign-tab-count',String(count));
-    counter.setAttribute('aria-hidden','true');
-    trigger.append(counter);
-   }
-   trigger.setAttribute('role','tab');
-   trigger.setAttribute('aria-selected',String(this.homeTab===tab));
-   trigger.setAttribute('aria-controls',panel.id);
-   // One tab is in the sequential Tab order; arrows move between the others.
-   trigger.tabIndex=this.homeTab===tab?0:-1;
-   panel.setAttribute('aria-labelledby',trigger.id);
-   nav.append(trigger);
-  }
+  const {nav,activateTab}=createCampaignHomeTabs(this.root,sections,this.homeTab,
+   tab=>{this.homeTab=tab;},openCaseCount,recordedOperationCount);
   main.insertBefore(nav,grid);
   this.root.append(main);
   restoreCampaignHomeView(this.root,nav,homeView);

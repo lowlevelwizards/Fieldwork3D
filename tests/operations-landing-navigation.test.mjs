@@ -33,9 +33,9 @@ test('compact title keeps safe accessibility and nested menu navigation',()=>{
  const css=source('campaign-style.css');
  const entry=ui.slice(ui.indexOf(' entry(hasSave:boolean'),
   ui.indexOf(' dispatchCreator(){'));
- assert.match(entry,/subpage\.addEventListener\('keydown'/);
- assert.match(entry,/event\.key!=='Escape'/);
- assert.match(entry,/trigger\.focus\(\{preventScroll:true\}\)/);
+ assert.match(source('ui/campaign/landing-navigation.ts'),/subpage\.addEventListener\('keydown'/);
+ assert.match(source('ui/campaign/landing-navigation.ts'),/event\.key!=='Escape'/);
+ assert.match(source('ui/campaign/landing-navigation.ts'),/trigger\.focus\(\{preventScroll:true\}\)/);
  assert.match(entry,/arsenal\.href='\.\/arsenal\.html'/);
  assert.match(css,/height:100dvh/);
  assert.match(css,/max-height:540px/);
@@ -109,7 +109,7 @@ test('desktop title scene uses available screen space without changing phone nav
  assert.match(css,/\.campaign-landing-intro\{display:none\}/);
  assert.match(entry,/node\('p','campaign-landing-intro'/);
  assert.match(entry,/main\.append\(hero,actions,utility\)/);
- assert.match(entry,/subpage\.hidden=true;main\.hidden=false/);
+ assert.match(source('ui/campaign/landing-navigation.ts'),/subpage\.hidden=true;main\.hidden=false/);
 });
 
 test('Operations uses wide workspace columns without narrowing mobile fallback',()=>{
@@ -249,11 +249,11 @@ test('Records cards use a responsive grid with accessible history disclosure',()
 
 test('Operations tabs show only real open-case and recorded-operation counters',()=>{
  const ui=source('campaign-ui.ts');
- const tabs=ui.slice(ui.indexOf("const nav=node('nav','campaign-tabs')"),
-  ui.indexOf('main.insertBefore(nav,grid)'));
- assert.match(tabs,/const openCaseCount=c\.contracts\.filter\(k=>/);
- assert.match(tabs,/k\.status==='available'&&k\.deadline>=c\.day\)\.length/);
- assert.match(tabs,/const recordedOperationCount=c\.history\.length/);
+ const tabs=source('ui/campaign/home-tabs.ts');
+ assert.match(ui,/createCampaignHomeTabs\(this\.root,sections,this\.homeTab/);
+ assert.match(ui,/const openCaseCount=c\.contracts\.filter\(k=>/);
+ assert.match(ui,/k\.status==='available'&&k\.deadline>=c\.day\)\.length/);
+ assert.match(ui,/const recordedOperationCount=c\.history\.length/);
  assert.match(tabs,/const count=tab==='contracts'\?openCaseCount:/);
  assert.match(tabs,/tab==='chronicle'\?recordedOperationCount:0/);
  assert.match(tabs,/if\(count\)\{/);
@@ -261,8 +261,8 @@ test('Operations tabs show only real open-case and recorded-operation counters',
  assert.match(tabs,/counter\.setAttribute\('aria-hidden','true'\)/);
  assert.match(tabs,/trigger\.setAttribute\('aria-label',accessibleLabel\)/);
  assert.match(tabs,/trigger\.setAttribute\('aria-controls',panel\.id\)/);
- assert.match(tabs,/trigger\.setAttribute\('aria-selected',String\(this\.homeTab===tab\)\)/);
- assert.match(tabs,/trigger\.tabIndex=this\.homeTab===tab\?0:-1/);
+ assert.match(tabs,/trigger\.setAttribute\('aria-selected',String\(selectedTab===tab\)\)/);
+ assert.match(tabs,/trigger\.tabIndex=selectedTab===tab\?0:-1/);
 });
 
 test('Counter layout preserves five evenly fitting phone tabs and selected contrast',()=>{

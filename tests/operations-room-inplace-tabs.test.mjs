@@ -7,14 +7,16 @@ test('Operations Room switches already-built tab panels without rebuilding campa
  const start=ui.indexOf(' home(c:CampaignState,slot?:CampaignSlot){');
  const end=ui.indexOf(' private armory(c:CampaignState,id:string){',start);
  const home=ui.slice(start,end);
- assert.match(home,/const activateTab=\(tab:typeof tabOrder\[number\]\)=>/);
- assert.match(home,/panel\.hidden=id!==tab/);
- assert.match(home,/trigger\.setAttribute\('aria-selected',String\(selected\)\)/);
- assert.match(home,/trigger\.tabIndex=selected\?0:-1/);
- assert.match(home,/tabs\[next\]\.focus\(\{preventScroll:true\}\)/);
- assert.match(home,/this\.root\.scrollTop=0/);
+ const tabs=readFileSync(new URL('../src/ui/campaign/home-tabs.ts',import.meta.url),'utf8');
+ assert.match(home,/createCampaignHomeTabs\(this\.root,sections,this\.homeTab/);
+ assert.match(tabs,/const activateTab=\(tab:CampaignHomeTab\)=>/);
+ assert.match(tabs,/panel\.hidden=id!==tab/);
+ assert.match(tabs,/trigger\.setAttribute\('aria-selected',String\(selected\)\)/);
+ assert.match(tabs,/trigger\.tabIndex=selected\?0:-1/);
+ assert.match(tabs,/tabs\[next\]\.focus\(\{preventScroll:true\}\)/);
+ assert.match(tabs,/root\.scrollTop=0/);
  assert.match(home,/activateTab\(check\.action\)/);
- assert.match(home,/activateTab\(tab\)/);
+ assert.match(tabs,/activateTab\(tab\)/);
  assert.doesNotMatch(home,/this\.homeTab=tab;this\.root\.scrollTop=0;this\.home\(c\)/);
 });
 
