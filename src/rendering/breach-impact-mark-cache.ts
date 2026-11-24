@@ -5,7 +5,8 @@
 export const MARK_MATRIX_DIRTY=1,MARK_COLOR_DIRTY=2,MARK_STYLE_DIRTY=4;
 export class ImpactMarkSlotCache{
  private readonly values:Float64Array;
- constructor(readonly capacity:number){this.values=new Float64Array(capacity*7).fill(NaN);}
+ readonly capacity:number;
+ constructor(capacity:number){this.capacity=capacity;this.values=new Float64Array(capacity*7).fill(NaN);}
  update(i:number,x:number,y:number,z:number,radius:number,color:number,fade:number,style:number):number{
   if(!Number.isInteger(i)||i<0||i>=this.capacity)return 0;
   const a=this.values,k=i*7;
