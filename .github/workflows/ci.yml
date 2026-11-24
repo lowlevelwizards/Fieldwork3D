@@ -97,7 +97,7 @@ jobs:
       actions: read
 
   browser-acceptance:
-    if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'refactor/closeout-stage6-') || startsWith(github.head_ref, 'refactor/consolidation-') || startsWith(github.head_ref, 'feature/release1-') || startsWith(github.head_ref, 'feature/release2-') || startsWith(github.head_ref, 'feature/release3-') || startsWith(github.head_ref, 'feature/release4-') || startsWith(github.head_ref, 'feature/release5-') || startsWith(github.head_ref, 'feature/release6-')) }}
+    if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'refactor/vfx-') || startsWith(github.head_ref, 'refactor/closeout-stage6-') || startsWith(github.head_ref, 'refactor/consolidation-') || startsWith(github.head_ref, 'feature/release1-') || startsWith(github.head_ref, 'feature/release2-') || startsWith(github.head_ref, 'feature/release3-') || startsWith(github.head_ref, 'feature/release4-') || startsWith(github.head_ref, 'feature/release5-') || startsWith(github.head_ref, 'feature/release6-')) }}
     uses: ./.github/workflows/closeout-stage6-browser.yml
     permissions:
       contents: read

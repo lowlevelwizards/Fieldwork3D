@@ -65,6 +65,19 @@ jobs:
           cp scripts/audit-release-c11-missions.mjs c3-baseline/scripts/audit-release-c11-missions.mjs
           (cd c3-baseline && node --experimental-strip-types scripts/audit-release-c0.mjs ../c3-before-map.json)
           (cd c3-baseline && node --experimental-strip-types scripts/audit-release-c11-missions.mjs ../c3-before-missions.json)
+      - name: VFX exact PR base mission parity diagnostic (historic gate retained)
+        if: ${{ startsWith(github.head_ref, 'refactor/vfx-') }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: c3-vfx-exact-base
+      - name: Compare VFX mission semantics against exact PR base
+        if: ${{ startsWith(github.head_ref, 'refactor/vfx-') }}
+        run: |
+          ln -s "$PWD/node_modules" c3-vfx-exact-base/node_modules
+          cp scripts/audit-release-c11-missions.mjs c3-vfx-exact-base/scripts/audit-release-c11-missions.mjs
+          (cd c3-vfx-exact-base && node --experimental-strip-types scripts/audit-release-c11-missions.mjs ../c3-vfx-exact-base-missions.json)
+          node scripts/compare-release-c11-missions.mjs c3-vfx-exact-base-missions.json c3-after-missions.json c3-vfx-exact-base-delta.json
       - name: Reject physical map and mission world regression
         run: |
           node scripts/compare-release-c0.mjs c3-before-map.json c3-after-map.json c3-map-delta.json
@@ -83,3 +96,5 @@ jobs:
             c3-before-missions.json
             c3-after-missions.json
             c3-mission-delta.json
+            c3-vfx-exact-base-missions.json
+            c3-vfx-exact-base-delta.json

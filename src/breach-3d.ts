@@ -24,6 +24,10 @@ import type {SiteSceneBuildPort} from './rendering/breach-site-scene-builder.ts'
 import type {BrokenDoorHardwareVisual} from './rendering/breach-door-broken-hardware-visual.ts';
 import {fallenDoorHardwarePose} from './rendering/breach-door-broken-hardware-pose.ts';
 import {composeBreachSiteRender} from './rendering/breach-site-render-composition.ts';
+import {planGrassPatches,regroupGrassPatches} from './rendering/perplung-grass-placement.ts';
+import {buildGrassPatchMeshes} from './rendering/perplung-grass-patches.ts';
+import {createBushVisualResources} from './rendering/perplung-bush-atom.ts';
+import {resolveVfxPreview} from './rendering/breach-vfx-preview-config.ts';
 import {replaceTacticalFogGeometry} from './rendering/breach-fog-mesh-composition.ts';
 
 import {APPROVED_GRAPHIC_LIGHTING}
@@ -40,7 +44,9 @@ import {presentActor,presentDecor,presentArchitecturalOpening,
   presentUnrecordedRescueMarker,resolveDoorPresentation}
  from './rendering/breach-3d-disclosure-presenter.ts';
 
-import {windowShardPose,WINDOW_SHARDS_PER_PANE}
+import {windowShardPose,WINDOW_SHARDS_PER_PANE,WINDOW_SHARD_CAPACITY,
+ WINDOW_SETTLED_SHARDS_PER_PANE,settledWindowShardPose,WindowShardSlotCache,
+ type SettledWindowShardPose}
  from './rendering/window-shatter-presentation.ts';
 import {type CivilianRig} from './breach-civilian-visuals.ts';
 import {reconcileSceneActorLifetimes} from './rendering/breach-actor-frame-presenter.ts';
@@ -123,6 +129,11 @@ import {armedPrecontactStyle} from './breach-idle-life.ts';
 import {hostilePhysicalityAt} from './breach-hostile-physicality.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
+import {TransientLightPreview} from './rendering/breach-transient-light-preview.ts';
+import {DustPuffBatch,puffCount,samplePuff,type PuffSample} from './rendering/breach-dust-puffs.ts';
+import {makeStainMarkBatch,makeBloodDropletBatch,BLOOD_DROPLET_CAPACITY} from './rendering/breach-blood-preview.ts';
+import {ImpactMarkSlotCache,MARK_MATRIX_DIRTY,MARK_COLOR_DIRTY,MARK_STYLE_DIRTY} from './rendering/breach-impact-mark-cache.ts';
+import {MATERIAL_IMPACT_PROFILES,MATERIAL_IMPACT_PARTICLE_LIMIT,sampleMaterialImpact,type ImpactParticleSample} from './rendering/breach-material-impact-atom.ts';
 import {presentSecondaryMuzzleFlash} from './secondary-holster-visual.ts';
 import {muzzleFlashCue,mostRecentActiveMuzzleShot,impactPulse,
  RecentMuzzleShotFrameIndex}
@@ -757,6 +768,19 @@ export class TacticalScene3D{
   // One instanced draw for every stain and impact mark, rather than a mesh
   // and transparent material allocation per hit.
   private impactDecalMesh:THREE.InstancedMesh|null=null;
+  private readonly vfxPreview=resolveVfxPreview(new URLSearchParams(location.search));
+  private readonly materialImpactPreviewEnabled=this.vfxPreview.impacts;
+  private readonly bloodPreviewEnabled=this.vfxPreview.blood;
+  private readonly materialImpactScratch:ImpactParticleSample={x:0,y:0,z:0,yaw:0,roll:0,pitch:0,width:0,length:0,opacity:0,color:0};
+  private stainPreview:ReturnType<typeof makeStainMarkBatch>|null=null;
+  private dropletPreview:ReturnType<typeof makeBloodDropletBatch>|null=null;
+  private readonly shotPulsePreviewEnabled=this.vfxPreview.pulses;
+  private tracerBatch:ReturnType<typeof makeBloodDropletBatch>|null=null;
+  private impactPulseBatch:ReturnType<typeof makeBloodDropletBatch>|null=null;
+  private readonly shotPulseEuler=new THREE.Euler();
+  private readonly shotPulseQuaternion=new THREE.Quaternion();
+  private readonly persistentEvidencePreview=this.vfxPreview.evidence;
+  private readonly impactMarkSlots=new ImpactMarkSlotCache(IMPACT_MARK_LIMIT);
   private impactDecalMatrix=new THREE.Object3D();
   private bloodCameraDirection=new THREE.Vector3();
   private impactDecalColor=new THREE.Color();
@@ -786,6 +810,8 @@ export class TacticalScene3D{
   private architecturalOpenings:{obj:THREE.Object3D;opening:WideOpening}[]=[];
   private wallMaterials=new Set<THREE.Material>();
   private effects=new THREE.Group();
+  private grassPreview:ReturnType<typeof buildGrassPatchMeshes>|null=null;
+  private bushPreview:ReturnType<typeof createBushVisualResources>|null=null;
   private target=new THREE.Vector3(339,0,413);
   private currentElev=55*Math.PI/180;
   private readonly minZoom=.65;
@@ -871,6 +897,14 @@ export class TacticalScene3D{
   private readonly frameWindowsById=new Map<string,Session['windows'][number]>();
   private windowShards:THREE.InstancedMesh|null=null;
   private readonly shardMatrix=new THREE.Object3D();
+  private transientLights:TransientLightPreview|null=null;
+  private readonly smokePreviewEnabled=this.vfxPreview.smoke;
+  private dustPuffs:DustPuffBatch|null=null;
+  private readonly puffScratch:PuffSample={x:0,y:0,z:0,size:0,alpha:0,color:0,phase:0};
+  private readonly glassDebrisPreview=this.vfxPreview.glass;
+  private readonly shardSlots=new WindowShardSlotCache();
+  private readonly settledShardScratch:SettledWindowShardPose={x:0,y:0,z:0,rx:0,ry:0,rz:0,scale:1,heightScale:1};
+  private readonly settledPanes:Session['windows'][number][]=[];
   private coverGroups=new Map<number,THREE.Group>();
   private coverVisualStates=new Map<number,{intact:THREE.Group;debris:THREE.Group}>();
   private readonly coverFrameValues=new Map<number,{
@@ -954,6 +988,8 @@ export class TacticalScene3D{
     this.root.userData.fieldworkRenderCategory='environment';
     this.effects.userData.fieldworkRenderCategory='effects';
     this.scene.add(this.root,this.effects);
+    if(this.vfxPreview.lights)
+      this.transientLights=new TransientLightPreview(this.scene);
     // First paint and mission reload now use the same build/batch/grade path.
     this.composeSiteWorld(this.displayedSite);
     if(this.displayedSite)this.view.zoom=1.48;
@@ -1228,6 +1264,8 @@ export class TacticalScene3D{
     for(const actor of this.actors.values()){
       actor.beam.visible=false;actor.beamLast=null;
     }
+    this.grassPreview?.dispose();this.grassPreview=null;
+    this.bushPreview?.dispose();this.bushPreview=null;
     this.siteMaterials.reset();
     this.shadowUpdates.invalidate();
     for(const texture of this.sitePatinaTextures)texture.dispose();
@@ -1249,6 +1287,9 @@ export class TacticalScene3D{
     this.doors.clear();this.windowGlass.clear();
     this.frameWindowsById.clear();
     if(this.windowShards)this.windowShards.count=0;
+    this.shardSlots.reset();this.settledPanes.length=0;
+    this.transientLights?.reset();
+    this.dustPuffs?.reset();
     this.observedDoorGlass.clear();this.observedDoorBroken.clear();
     this.currentWear=[];this.objectWear=[];
     this.roofGroups.clear();
@@ -1258,6 +1299,9 @@ export class TacticalScene3D{
     this.architecturalOpenings.length=0;
     this.observedDoorOpen.clear();
     if(this.impactDecalMesh)this.impactDecalMesh.count=0;
+    this.impactMarkSlots.reset();
+    this.dropletPreview?.reset();
+    this.tracerBatch?.reset();this.impactPulseBatch?.reset();
     this.combatEffects.reset();
     for(const effect of this.effectCache.values()){
       this.effects.remove(effect.root);
@@ -1305,6 +1349,11 @@ export class TacticalScene3D{
       fixtureTemplates:scene.useFixtureTemplates?
         scene.architecturalVisualTemplates:undefined,
       includeServiceFixtureTemplates:scene.includeServiceFixtureTemplates,
+      previewBush:scene.vfxPreview.bush?
+        (parent,width,height,depth)=>{
+          scene.bushPreview??=createBushVisualResources();
+          parent.add(scene.bushPreview.createMesh(width,height,depth));
+        }:undefined,
       registerVisualLease:lease=>scene.siteVisualLeases.push(lease),
       siteMaterials:scene.siteMaterials,
       mats:scene.mats,
@@ -1346,6 +1395,16 @@ export class TacticalScene3D{
     const result=composeBreachSiteRender(
       site,this.siteBuildPort(),this.graphicLookEnabled);
     this.graphicWorldMaterialCount=result.graphicMaterials;
+    if(site&&this.vfxPreview.grass){
+      const fine=planGrassPatches(site);
+      const patches=this.vfxPreview.grassCell===192?regroupGrassPatches(fine):fine;
+      if(patches.length){
+        this.grassPreview=buildGrassPatchMeshes(patches);
+        this.grassPreview.group.name='vfx-grass-preview';
+        this.grassPreview.group.visible=false;
+        this.root.add(this.grassPreview.group);
+      }
+    }
     if(diagnostic)Object.assign(window,{__fieldworkE623SiteBuild:{
       elapsedMs:performance.now()-started,
       cache:this.architecturalVisualTemplates.stats(),
@@ -1864,6 +1923,7 @@ export class TacticalScene3D{
     }
     // Personal disclosure is observer-scoped, never camera-mount-scoped.
     const personalDisclosure=replayDisclosurePolicy?.mode==='operator';
+    this.transientLights?.begin();
     let beamDoorSignature:string|null=null;
     const bodycamAudition=!!this.replayBodycam&&(
       replayDisclosurePolicy?.mode==='operator'&&
@@ -1930,7 +1990,7 @@ export class TacticalScene3D{
         transparent:true,opacity:.76,depthWrite:false,side:THREE.DoubleSide});
       this.mats.push(shardMaterial);
       this.windowShards=new THREE.InstancedMesh(
-        new THREE.TetrahedronGeometry(.85,0),shardMaterial,96);
+        new THREE.TetrahedronGeometry(.85,0),shardMaterial,WINDOW_SHARD_CAPACITY);
       this.windowShards.count=0;
       this.windowShards.frustumCulled=false;
       this.windowShards.castShadow=false;
@@ -1938,7 +1998,8 @@ export class TacticalScene3D{
       this.windowShards.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       this.effects.add(this.windowShards);
     }
-    let shardCount=0;
+    let shardCount=0,shardWrites=0;
+    this.settledPanes.length=0;
     // Larger generated sites have many panes. An ephemeral index avoids
     // scanning the entire window list once per rendered pane.
     const indexWindows=this.windowGlass.size>8&&s.windows.length>8;
@@ -1957,20 +2018,47 @@ export class TacticalScene3D{
       // Time-stamped shards work in GO, paused playback and reverse scrubs.
       // In personal replay, unseen breakage never produces visible debris.
       if(!broken||!current||current.shatteredAt===undefined)continue;
-      for(let i=0;i<WINDOW_SHARDS_PER_PANE&&shardCount<96;i++){
+      if(this.glassDebrisPreview&&!personalWindows&&
+        (omniscient||this.presentationSight.query(s,'effect','glass:'+id,{x:current.x,y:current.y})))
+        this.settledPanes.push(current);
+      for(let i=0;i<WINDOW_SHARDS_PER_PANE&&shardCount<WINDOW_SHARD_CAPACITY;i++){
         const part=windowShardPose(current,s.seconds,i);
         if(!part)continue;
-        this.shardMatrix.position.set(part.x,part.y,part.z);
-        this.shardMatrix.rotation.set(part.rx,part.ry,part.rz);
-        this.shardMatrix.scale.setScalar(part.scale);
-        this.shardMatrix.updateMatrix();
-        this.windowShards.setMatrixAt(shardCount++,this.shardMatrix.matrix);
+        if(this.glassDebrisPreview&&(!personalWindows&&!omniscient&&
+          !this.presentationSight.query(s,'effect','glass:'+id+':burst:'+i,{x:part.x,y:part.z})))continue;
+        if(!this.glassDebrisPreview||this.shardSlots.changed(shardCount,part)){
+          this.shardMatrix.position.set(part.x,part.y,part.z);
+          this.shardMatrix.rotation.set(part.rx,part.ry,part.rz);
+          this.shardMatrix.scale.setScalar(part.scale);
+          this.shardMatrix.updateMatrix();
+          this.windowShards.setMatrixAt(shardCount,this.shardMatrix.matrix);shardWrites++;
+        }
+        shardCount++;
+      }
+    }
+    // Prioritize all current bursts; resting shards consume only spare slots.
+    if(this.glassDebrisPreview&&!personalWindows&&shardCount<WINDOW_SHARD_CAPACITY){
+      const part=this.settledShardScratch;
+      for(const pane of this.settledPanes){
+        for(let i=0;i<WINDOW_SETTLED_SHARDS_PER_PANE&&shardCount<WINDOW_SHARD_CAPACITY;i++){
+          if(!settledWindowShardPose(pane,s.seconds,i,part))continue;
+          if(!omniscient&&!this.presentationSight.query(s,'effect','glass:'+pane.id+':settled:'+i,{x:part.x,y:part.z}))continue;
+          if(this.shardSlots.changed(shardCount,part,part.heightScale)){
+            this.shardMatrix.position.set(part.x,part.y,part.z);
+            this.shardMatrix.rotation.set(part.rx,part.ry,part.rz);
+            this.shardMatrix.scale.set(part.scale,part.scale*part.heightScale,part.scale);
+            this.shardMatrix.updateMatrix();
+            this.windowShards.setMatrixAt(shardCount,this.shardMatrix.matrix);shardWrites++;
+          }
+          shardCount++;
+        }
+        if(shardCount>=WINDOW_SHARD_CAPACITY)break;
       }
     }
     if(this.windowShards.count!==shardCount){
       this.windowShards.count=shardCount;
     }
-    if(shardCount)this.windowShards.instanceMatrix.needsUpdate=true;
+    if(shardWrites)this.windowShards.instanceMatrix.needsUpdate=true;
     this.markScenePhase('environment');
     this.updateCamera(dt);
     this.markScenePhase('camera');
@@ -1994,6 +2082,12 @@ export class TacticalScene3D{
     // Replay seeks always use the recorded timeline for deterministic results.
     const actorIdleSeconds=s.phase==='planning'&&!replay?
       this.idleLifeSeconds:poseSeconds;
+    if(this.bushPreview)this.bushPreview.clock.value=actorIdleSeconds;
+    if(this.grassPreview){
+      this.grassPreview.clock.value=actorIdleSeconds;
+      this.grassPreview.group.visible=replayDisclosurePolicy?.mode!=='operator'&&
+        (omniscient||s.intel.mode==='exterior-known');
+    }
     // The shadow map follows the active encounter to retain contact detail.
     // Share the frame's blue squad snapshot across shadow and Director views.
     // team(s) filters operators; repeated calls allocate arrays each frame.
@@ -2374,6 +2468,10 @@ export class TacticalScene3D{
       const flashCue=muzzleFlashCue(flashWeapon,
         firing?.age??Infinity,flashAttachment);
       object.flash.visible=flashCue.active&&actor.health>0;
+      if(this.transientLights&&!personalDisclosure&&visible&&object.flash.visible&&firing&&
+        (omniscient||this.presentationSight.query(s,'effect','muzzle-light:'+firing.id,firing.start)))
+        this.transientLights.offer('muzzle',firing.id,firing.start.x,firing.muzzleHeight??15,
+          firing.start.y,firing.age,Math.min(1,flashCue.scale));
       const gunTip=actor.weaponConfiguration?
        resolveWeaponAssembly(actor.weaponConfiguration):null;
       object.flash.position.x=gunTip?.muzzleX??19.5;
@@ -2795,6 +2893,11 @@ export class TacticalScene3D{
     // Hidden and removed operators never leak an undisclosed position.
     this.contactShadowBatch.sync();
     this.markScenePhase('actors');
+    if(this.transientLights&&!personalDisclosure)
+      for(const burst of s.flashBursts){
+        if(!omniscient&&!this.presentationSight.query(s,'effect','flash-light:'+burst.id,burst.p))continue;
+        this.transientLights.offer('flash',burst.id,burst.p.x,13,burst.p.y,burst.age);
+      }
     this.combatEffects.update(s,omniscient,
       personalDisclosure,p=>this.presentationSight.query(
         s,'effect',p.x+','+p.y,p));
@@ -2802,6 +2905,9 @@ export class TacticalScene3D{
     // Shared geometry and bounded per-shot materials avoid frame-by-frame GC.
     const active=this.frameShotIds;active.clear();
     let visibleShots=0;
+    this.dropletPreview?.begin();
+    this.tracerBatch?.begin();this.impactPulseBatch?.begin();
+    this.dustPuffs?.begin();
     // Dense bursts keep their newest effects; older traces are cosmetic.
     for(let index=s.shots.length-1;index>=0;index--){
       if(visibleShots>=20)break;
@@ -2813,7 +2919,7 @@ export class TacticalScene3D{
       if(!visibility.flash&&!visibility.trace&&!visibility.impact)continue;
       active.add(shot.id);visibleShots++;
       let effect=this.effectCache.get(shot.id);
-      if(!effect){
+      if(!effect&&!this.shotPulsePreviewEnabled){
         const style=shot.side+'|'+(shot.surface??'dust');
         effect=this.shotEffectPool.acquire(style,()=>{
         const root=new THREE.Group();
@@ -2831,9 +2937,9 @@ export class TacticalScene3D{
         const impact=new THREE.Mesh(this.impactGeometry,impactMaterial);
         root.add(line,impact);
         const chips:THREE.Mesh[]=[];
-        if(shot.surface==='wood'||shot.surface==='stone'||
+        if(!this.materialImpactPreviewEnabled&&(shot.surface==='wood'||shot.surface==='stone'||
           shot.surface==='metal'||shot.surface==='glass'||
-          shot.surface==='blood'){
+          shot.surface==='blood'&&!this.bloodPreviewEnabled)){
           for(let i=0;i<(shot.surface==='blood'?4:3);i++){
             const chip=new THREE.Mesh(this.tracerGeometry,impactMaterial);
             chip.scale.set(shot.surface==='blood'?.9:.42,
@@ -2855,20 +2961,83 @@ export class TacticalScene3D{
       const end=this.shotEnd.set(
         shot.end.x,shot.impactHeight??12,shot.end.y);
       const flight=this.shotFlight.copy(end).sub(start);
-      effect.line.position.copy(start).addScaledVector(flight,.5);
-      effect.line.scale.set(1,flight.length(),1);
-      effect.line.quaternion.setFromUnitVectors(
-        this.tracerAxis,flight.normalize());
-      effect.line.visible=visibility.trace&&shot.age<.19;
-      effect.material.opacity=Math.max(0,1-shot.age/.20);
-      effect.impact.position.copy(end);
       const profile=impactProfile(shot.surface??'dust');
       const impact=impactPulse(shot.surface??'dust',shot.age,
         profile.lifetime);
-      effect.impact.scale.setScalar(impact.scale);
-      effect.impactMaterial.opacity=impact.opacity;
-      effect.impact.visible=visibility.impact&&impact.active;
-      for(let i=0;i<effect.chips.length;i++){
+      if(this.shotPulsePreviewEnabled){
+        if(visibility.trace&&shot.age<.19){
+          if(!this.tracerBatch){
+            this.tracerBatch=makeBloodDropletBatch(this.tracerGeometry,20,'shot-tracer-batch');
+            this.effects.add(this.tracerBatch.mesh);
+          }
+          const len=flight.length(),x=start.x+flight.x*.5,y=start.y+flight.y*.5,z=start.z+flight.z*.5;
+          const rot=this.shotPulseEuler.setFromQuaternion(
+            this.shotPulseQuaternion.setFromUnitVectors(this.tracerAxis,flight.normalize()));
+          this.tracerBatch.addPose(x,y,z,rot.x,rot.y,rot.z,1,len,
+            Math.max(0,1-shot.age/.20),shot.side==='blue'?0xffde9d:0xff9b73);
+        }
+        if(visibility.impact&&impact.active&&impact.opacity>0){
+          if(!this.impactPulseBatch){
+            this.impactPulseBatch=makeBloodDropletBatch(this.impactGeometry,20,'shot-pulse-batch');
+            this.effects.add(this.impactPulseBatch.mesh);
+          }
+          const color=shot.surface==='blood'?0xa65a4e:
+            shot.surface==='metal'?0xffd697:shot.surface==='glass'?0xc8e4df:
+            shot.surface==='wood'?0xdfb27a:shot.surface==='stone'?0xbeb9a2:0xe2d3b1;
+          this.impactPulseBatch.addPose(end.x,end.y,end.z,0,0,0,
+            impact.scale,impact.scale,impact.opacity,color);
+        }
+      }else if(effect){
+        effect.line.position.copy(start).addScaledVector(flight,.5);
+        effect.line.scale.set(1,flight.length(),1);
+        effect.line.quaternion.setFromUnitVectors(this.tracerAxis,flight.normalize());
+        effect.line.visible=visibility.trace&&shot.age<.19;
+        effect.material.opacity=Math.max(0,1-shot.age/.20);
+        effect.impact.position.copy(end);
+        effect.impact.scale.setScalar(impact.scale);
+        effect.impactMaterial.opacity=impact.opacity;
+        effect.impact.visible=visibility.impact&&impact.active;
+      }
+      if(this.bloodPreviewEnabled&&shot.surface==='blood'&&visibility.impact&&shot.age<profile.lifetime&&impact.opacity>0){
+        for(let i=0;i<4;i++){
+          const theta=shot.id*2.41+i*2.094,progress=shot.age/.40;
+          const radius=(2+15*progress)*.7;
+          const x=end.x+Math.cos(theta)*radius,z=end.z+Math.sin(theta)*radius;
+          const y=Math.max(2,end.y+6*Math.sin(Math.PI*progress)+i*1.5-4*progress);
+          if(!omniscient&&!this.presentationSight.query(s,'effect',shot.id+':chip:'+i,{x,y:z}))continue;
+          if(!this.dropletPreview){
+            this.dropletPreview=makeBloodDropletBatch(this.tracerGeometry,
+              this.materialImpactPreviewEnabled?MATERIAL_IMPACT_PARTICLE_LIMIT:BLOOD_DROPLET_CAPACITY);
+            this.effects.add(this.dropletPreview.mesh);
+          }
+          this.dropletPreview.add(x,y,z,theta,i,progress,impact.opacity);
+        }
+      }
+      const puffSurface=shot.surface??'dust';
+      if(this.smokePreviewEnabled&&visibility.impact&&
+        (puffSurface==='dust'||puffSurface==='wood'||puffSurface==='stone')){
+        const puff=this.puffScratch;
+        for(let i=0;i<puffCount(puffSurface);i++){
+          if(!samplePuff(puffSurface,shot.id,i,shot.age,end.x,end.y,end.z,puff))continue;
+          if(!omniscient&&!this.presentationSight.query(s,'effect','puff:'+shot.id+':'+i,{x:puff.x,y:puff.z}))continue;
+          if(!this.dustPuffs){this.dustPuffs=new DustPuffBatch();this.effects.add(this.dustPuffs.mesh);}
+          this.dustPuffs.add(puff);
+        }
+      }
+      if(this.materialImpactPreviewEnabled&&shot.surface!=='blood'&&visibility.impact&&
+        !(this.smokePreviewEnabled&&puffSurface==='dust')){
+        const surface=shot.surface??'dust',sample=this.materialImpactScratch;
+        for(let i=0;i<MATERIAL_IMPACT_PROFILES[surface].count;i++){
+          if(!sampleMaterialImpact(surface,shot.id,i,shot.age,end.x,end.y,end.z,sample))continue;
+          if(!omniscient&&!this.presentationSight.query(s,'effect',shot.id+':chip:'+i,{x:sample.x,y:sample.z}))continue;
+          if(!this.dropletPreview){
+            this.dropletPreview=makeBloodDropletBatch(this.tracerGeometry,MATERIAL_IMPACT_PARTICLE_LIMIT);
+            this.effects.add(this.dropletPreview.mesh);
+          }
+          this.dropletPreview.addMaterial(sample);
+        }
+      }
+      if(effect)for(let i=0;i<effect.chips.length;i++){
         const chip=effect.chips[i];
         const theta=(shot.id*2.41+i*2.094);
         const progress=shot.age/.40;
@@ -2882,9 +3051,28 @@ export class TacticalScene3D{
             shot.id+':chip:'+i,{x:chip.position.x,y:chip.position.z}));
       }
     }
+    this.dropletPreview?.finish();
+    this.tracerBatch?.finish();this.impactPulseBatch?.finish();
+    if(this.smokePreviewEnabled&&!personalDisclosure){
+      const puff=this.puffScratch;
+      for(let n=s.flashBursts.length-1;n>=Math.max(0,s.flashBursts.length-4);n--){
+        const burst=s.flashBursts[n];
+        if(!omniscient&&!this.presentationSight.query(s,'effect','puff-burst:'+burst.id,burst.p))continue;
+        for(let i=0;i<puffCount('flash');i++){
+          if(!samplePuff('flash',burst.id,i,burst.age,burst.p.x,13,burst.p.y,puff))continue;
+          if(!omniscient&&!this.presentationSight.query(s,'effect','puff-burst:'+burst.id+':'+i,{x:puff.x,y:puff.z}))continue;
+          if(!this.dustPuffs){this.dustPuffs=new DustPuffBatch();this.effects.add(this.dustPuffs.mesh);}
+          this.dustPuffs.add(puff);
+        }
+      }
+    }
+    this.dustPuffs?.finish();
     // Stable cap, one render call and no individual decal meshes/materials.
     if(!this.impactDecalMesh){
-      this.impactDecalMesh=new THREE.InstancedMesh(
+      if(this.bloodPreviewEnabled){
+        this.stainPreview=makeStainMarkBatch(IMPACT_MARK_LIMIT);
+        this.impactDecalMesh=this.stainPreview.mesh;
+      }else this.impactDecalMesh=new THREE.InstancedMesh(
         new THREE.CircleGeometry(1,9),
         new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,
           opacity:.82,depthTest:true,depthWrite:false,
@@ -2907,7 +3095,7 @@ export class TacticalScene3D{
      for(const actor of s.operators)
       if(this.actors.get(actor.id)?.root.visible)
        visibleBloodBlockers.push(actor.p);
-    let markCount=0;
+    let markCount=0,markDirty=0;
     for(let markIndex=0;markIndex<s.impactMarks.length;markIndex++){
       const mark=s.impactMarks[markIndex];
       if(replayDisclosurePolicy?.mode==='operator')continue;
@@ -2932,22 +3120,30 @@ export class TacticalScene3D{
         mark.surface==='wood'?0x3a2920:
         mark.surface==='stone'?0x38332c:
         mark.surface==='metal'?0x202b2e:0x514e42;
-      const groundRadius=radius;
-      this.impactDecalMatrix.position.set(mark.p.x,
-        mark.surface==='blood'?.85:(mark.height??1),mark.p.y);
-      this.impactDecalMatrix.rotation.set(-Math.PI/2,0,0);
-      this.impactDecalMatrix.scale.setScalar(groundRadius);
-      this.impactDecalMatrix.updateMatrix();
-      markDraw.setMatrixAt(markCount,this.impactDecalMatrix.matrix);
-      this.impactDecalColor.setHex(dark).multiplyScalar(
-        Math.max(.28,1-mark.age*.027));
-      markDraw.setColorAt(markCount++,this.impactDecalColor);
+      const groundRadius=radius,markY=mark.surface==='blood'?.85:(mark.height??1);
+      const fade=Math.max(.28,1-mark.age*.027);
+      const style=this.stainPreview?.styleFor(mark.surface,mark.p.x,mark.p.y)??-1;
+      const dirty=this.persistentEvidencePreview?this.impactMarkSlots.update(markCount,
+        mark.p.x,markY,mark.p.y,groundRadius,dark,fade,style):
+        MARK_MATRIX_DIRTY|MARK_COLOR_DIRTY|MARK_STYLE_DIRTY;
+      if(dirty&MARK_MATRIX_DIRTY){
+        this.impactDecalMatrix.position.set(mark.p.x,markY,mark.p.y);
+        this.impactDecalMatrix.rotation.set(-Math.PI/2,0,0);
+        this.impactDecalMatrix.scale.setScalar(groundRadius);
+        this.impactDecalMatrix.updateMatrix();
+        markDraw.setMatrixAt(markCount,this.impactDecalMatrix.matrix);
+      }
+      if(dirty&MARK_COLOR_DIRTY){
+        this.impactDecalColor.setHex(dark).multiplyScalar(fade);
+        markDraw.setColorAt(markCount,this.impactDecalColor);
+      }
+      if(dirty&MARK_STYLE_DIRTY)this.stainPreview?.style.setX(markCount,style);
+      markCount++;markDirty|=dirty;
     }
     markDraw.count=markCount;
-    if(markCount){
-      markDraw.instanceMatrix.needsUpdate=true;
-      if(markDraw.instanceColor)markDraw.instanceColor.needsUpdate=true;
-    }
+    if(markDirty&MARK_MATRIX_DIRTY)markDraw.instanceMatrix.needsUpdate=true;
+    if(markDirty&MARK_COLOR_DIRTY&&markDraw.instanceColor)markDraw.instanceColor.needsUpdate=true;
+    if(markDirty&MARK_STYLE_DIRTY)this.stainPreview?.finish();
     for(const [id,effect] of this.effectCache){
       if(active.has(id))continue;
       this.effects.remove(effect.root);
