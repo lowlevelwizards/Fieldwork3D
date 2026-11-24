@@ -39,10 +39,11 @@ try{
      p.activateSite(p.site);p.session=p.newSession(0,seed,'floor-plan','standard',undefined,p.site);
     },{seed,archetype});
     const results=[];
-    for(const integrated of [false,true]){
-     const result=await page.evaluate(integrated=>{
+    for(const mode of ['legacy','shader','baked']){
+     const result=await page.evaluate(mode=>{
+      const integrated=mode!=='legacy';
       const {scene,site,session,team}=window.w2Probe;
-      scene.wallAudition=integrated?{effect:'all'}:undefined;
+      scene.wallAudition=integrated?{effect:'all',composition:mode}:undefined;
       scene.applySite(site);scene.resetCamera();scene.setMode('iso');
       scene.view.zoom=1.25;
       const inventory=scene.walls.filter(w=>w.mesh.userData.fieldworkDrawFamily==='structural-wall-body');
@@ -57,7 +58,7 @@ try{
       draw();draw();
       let frames=[];
       try{
-       for(let i=0;i<6;i++){
+       for(let i=0;i<18;i++){
         let total=0,weather=0,body=0;
         renderer.renderBufferDirect=function(...args){
          total++;
@@ -74,23 +75,26 @@ try{
       if(integrated){
        if(masks.length!==inventory.length||masks.some(m=>!m.recipe))throw Error('W2 mask/segment ownership mismatch');
        const ids=masks.map(m=>m.texture.uuid);
+       const initial=masks.map(m=>m.texture.image.data.slice());
        scene.previewConditionMasks(site,0);
-       if(masks.some(m=>m.texture.image.data.some((v,i)=>i%4===3&&v!==0)))throw Error('Clean slider retained effects');
+       if(mode==='shader'&&masks.some(m=>m.texture.image.data.some((v,i)=>i%4===3&&v!==0)))throw Error('Clean slider retained effects');
+       if(mode==='baked'&&masks.some(m=>m.texture.image.data.some((v,i)=>i%4===3&&v!==255)))throw Error('Baked surface has nonopaque texels');
+       if(!masks.some((m,j)=>m.texture.image.data.some((v,i)=>v!==initial[j][i])))throw Error('Condition slider did not change surface');
        scene.previewConditionMasks(site,100);
-       if(!masks.some(m=>m.texture.image.data.some((v,i)=>i%4===3&&v>0)))throw Error('No visible authored effect bytes');
+       if(masks.some((m,j)=>m.texture.image.data.some((v,i)=>v!==initial[j][i])))throw Error('Condition roundtrip not deterministic');
        if(ids.some((id,i)=>id!==masks[i].texture.uuid))throw Error('Slider reallocated texture');
        draw();
       }
-      const actual={integrated,bodies:inventory.length,overlays,decals,textureBytes,frames};
+      const actual={mode,integrated,bodies:inventory.length,overlays,decals,textureBytes,frames};
       if(integrated&&(overlays||decals||frames.some(f=>f.weather)))throw Error('W2 retained independent wall weathering');
       return actual;
-     },integrated);
+     },mode);
      results.push(result);
-     await page.screenshot({path:dir+'/'+name+'-'+archetype+'-'+(integrated?'w2':'w1')+'.png'});
+     await page.screenshot({path:dir+'/'+name+'-'+archetype+'-'+mode+'.png'});
     }
     check(results[0].bodies===results[1].bodies,'Wall geometry inventory changed');
     check(results[0].overlays>0&&results[0].frames.some(f=>f.weather>0),'Legacy reference had no real weather submissions');
-    check(results[1].textureBytes===results[0].textureBytes,'Conditioned wall mask budget changed');
+    check(results.slice(1).every(r=>r.bodies===results[0].bodies&&r.textureBytes===results[0].textureBytes),'Conditioned wall geometry or texture budget changed');
     evidence.push({name,seed,archetype,results});
    }
    await page.evaluate(()=>{
@@ -122,7 +126,9 @@ try{
   await lab.locator('#wallAuditionEffect').selectOption('all');
   await lab.locator('#wallAuditionMode').selectOption('legacy');
   check(await lab.locator('#wallAuditionEffect').isDisabled(),'Legacy mode effect isolation still enabled');
-  await lab.locator('#wallAuditionMode').selectOption('integrated');
+  await lab.locator('#wallAuditionMode').selectOption('baked');
+  await lab.locator('#wallAuditionEffect').selectOption('damp');
+  await lab.locator('#wallAuditionEffect').selectOption('all');
   await lab.screenshot({path:dir+'/map-lab-controls.png'});
   check(!errors.length,'Map Lab errors: '+errors.join(' | '));
  }finally{await lab.close();}
