@@ -30,8 +30,9 @@ try{
    ...(process.env.FIELDWORK_CI_CHROME&&chrome?{executablePath:chrome}:{}),
    args:['--use-gl=angle','--use-angle=swiftshader',
     '--enable-unsafe-swiftshader']});
-  const page=await browser.newPage({viewport:{width:390,height:844},
-   deviceScaleFactor:1,hasTouch:true,isMobile:true,acceptDownloads:true});
+  const desktop=process.env.FIELDWORK_WALL_DESKTOP==='1';
+  const page=await browser.newPage({viewport:desktop?{width:1280,height:800}:{width:390,height:844},
+   deviceScaleFactor:1,hasTouch:!desktop,isMobile:!desktop,acceptDownloads:true});
   const errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   try{
@@ -127,6 +128,7 @@ try{
       throw Error('Worst live gaps missing preceding 3D phase attribution');
    if(errors.length)throw Error('JS runtime errors: '+errors.join(' | '));
    const path=dir+'/seed-'+seed+'-briefing-'+briefingIdle+'.json';
+   await page.screenshot({path:path.replace(/\.json$/,'.png')});
    writeFileSync(path,JSON.stringify(local,null,2)+'\n');
    evidence.runs.push({
     seed,briefingIdle,
