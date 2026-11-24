@@ -40,7 +40,9 @@ import {presentActor,presentDecor,presentArchitecturalOpening,
   presentUnrecordedRescueMarker,resolveDoorPresentation}
  from './rendering/breach-3d-disclosure-presenter.ts';
 
-import {windowShardPose,WINDOW_SHARDS_PER_PANE}
+import {windowShardPose,WINDOW_SHARDS_PER_PANE,WINDOW_SHARD_CAPACITY,
+ WINDOW_SETTLED_SHARDS_PER_PANE,settledWindowShardPose,WindowShardSlotCache,
+ type SettledWindowShardPose}
  from './rendering/window-shatter-presentation.ts';
 import {type CivilianRig} from './breach-civilian-visuals.ts';
 import {reconcileSceneActorLifetimes} from './rendering/breach-actor-frame-presenter.ts';
@@ -878,6 +880,10 @@ export class TacticalScene3D{
   private readonly frameWindowsById=new Map<string,Session['windows'][number]>();
   private windowShards:THREE.InstancedMesh|null=null;
   private readonly shardMatrix=new THREE.Object3D();
+  private readonly glassDebrisPreview=new URLSearchParams(location.search).get('vfxGlass')==='1';
+  private readonly shardSlots=new WindowShardSlotCache();
+  private readonly settledShardScratch:SettledWindowShardPose={x:0,y:0,z:0,rx:0,ry:0,rz:0,scale:1,heightScale:1};
+  private readonly settledPanes:Session['windows'][number][]=[];
   private coverGroups=new Map<number,THREE.Group>();
   private coverVisualStates=new Map<number,{intact:THREE.Group;debris:THREE.Group}>();
   private readonly coverFrameValues=new Map<number,{
@@ -1256,6 +1262,7 @@ export class TacticalScene3D{
     this.doors.clear();this.windowGlass.clear();
     this.frameWindowsById.clear();
     if(this.windowShards)this.windowShards.count=0;
+    this.shardSlots.reset();this.settledPanes.length=0;
     this.observedDoorGlass.clear();this.observedDoorBroken.clear();
     this.currentWear=[];this.objectWear=[];
     this.roofGroups.clear();
@@ -1938,7 +1945,7 @@ export class TacticalScene3D{
         transparent:true,opacity:.76,depthWrite:false,side:THREE.DoubleSide});
       this.mats.push(shardMaterial);
       this.windowShards=new THREE.InstancedMesh(
-        new THREE.TetrahedronGeometry(.85,0),shardMaterial,96);
+        new THREE.TetrahedronGeometry(.85,0),shardMaterial,WINDOW_SHARD_CAPACITY);
       this.windowShards.count=0;
       this.windowShards.frustumCulled=false;
       this.windowShards.castShadow=false;
@@ -1946,7 +1953,8 @@ export class TacticalScene3D{
       this.windowShards.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       this.effects.add(this.windowShards);
     }
-    let shardCount=0;
+    let shardCount=0,shardWrites=0;
+    this.settledPanes.length=0;
     // Larger generated sites have many panes. An ephemeral index avoids
     // scanning the entire window list once per rendered pane.
     const indexWindows=this.windowGlass.size>8&&s.windows.length>8;
@@ -1965,20 +1973,47 @@ export class TacticalScene3D{
       // Time-stamped shards work in GO, paused playback and reverse scrubs.
       // In personal replay, unseen breakage never produces visible debris.
       if(!broken||!current||current.shatteredAt===undefined)continue;
-      for(let i=0;i<WINDOW_SHARDS_PER_PANE&&shardCount<96;i++){
+      if(this.glassDebrisPreview&&!personalWindows&&
+        (omniscient||this.presentationSight.query(s,'effect','glass:'+id,{x:current.x,y:current.y})))
+        this.settledPanes.push(current);
+      for(let i=0;i<WINDOW_SHARDS_PER_PANE&&shardCount<WINDOW_SHARD_CAPACITY;i++){
         const part=windowShardPose(current,s.seconds,i);
         if(!part)continue;
-        this.shardMatrix.position.set(part.x,part.y,part.z);
-        this.shardMatrix.rotation.set(part.rx,part.ry,part.rz);
-        this.shardMatrix.scale.setScalar(part.scale);
-        this.shardMatrix.updateMatrix();
-        this.windowShards.setMatrixAt(shardCount++,this.shardMatrix.matrix);
+        if(this.glassDebrisPreview&&(!personalWindows&&!omniscient&&
+          !this.presentationSight.query(s,'effect','glass:'+id+':burst:'+i,{x:part.x,y:part.z})))continue;
+        if(!this.glassDebrisPreview||this.shardSlots.changed(shardCount,part)){
+          this.shardMatrix.position.set(part.x,part.y,part.z);
+          this.shardMatrix.rotation.set(part.rx,part.ry,part.rz);
+          this.shardMatrix.scale.setScalar(part.scale);
+          this.shardMatrix.updateMatrix();
+          this.windowShards.setMatrixAt(shardCount,this.shardMatrix.matrix);shardWrites++;
+        }
+        shardCount++;
+      }
+    }
+    // Prioritize all current bursts; resting shards consume only spare slots.
+    if(this.glassDebrisPreview&&!personalWindows&&shardCount<WINDOW_SHARD_CAPACITY){
+      const part=this.settledShardScratch;
+      for(const pane of this.settledPanes){
+        for(let i=0;i<WINDOW_SETTLED_SHARDS_PER_PANE&&shardCount<WINDOW_SHARD_CAPACITY;i++){
+          if(!settledWindowShardPose(pane,s.seconds,i,part))continue;
+          if(!omniscient&&!this.presentationSight.query(s,'effect','glass:'+pane.id+':settled:'+i,{x:part.x,y:part.z}))continue;
+          if(this.shardSlots.changed(shardCount,part,part.heightScale)){
+            this.shardMatrix.position.set(part.x,part.y,part.z);
+            this.shardMatrix.rotation.set(part.rx,part.ry,part.rz);
+            this.shardMatrix.scale.set(part.scale,part.scale*part.heightScale,part.scale);
+            this.shardMatrix.updateMatrix();
+            this.windowShards.setMatrixAt(shardCount,this.shardMatrix.matrix);shardWrites++;
+          }
+          shardCount++;
+        }
+        if(shardCount>=WINDOW_SHARD_CAPACITY)break;
       }
     }
     if(this.windowShards.count!==shardCount){
       this.windowShards.count=shardCount;
     }
-    if(shardCount)this.windowShards.instanceMatrix.needsUpdate=true;
+    if(shardWrites)this.windowShards.instanceMatrix.needsUpdate=true;
     this.markScenePhase('environment');
     this.updateCamera(dt);
     this.markScenePhase('camera');
