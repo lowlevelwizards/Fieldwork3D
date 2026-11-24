@@ -53,12 +53,19 @@ jobs:
         env:
           FIELDWORK_CI_CHROME: '1'
         run: node scripts/verification/e6-17-main-pass-browser.mjs
+      - name: V4 saturated blood effect actual WebGL A/B
+        if: ${{ github.head_ref == 'feature/vfx-v4-blood-prototype' }}
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/vfx-v4-blood-browser.mjs
       - name: Summarize actual 90-frame main-pass owner and transparency budgets
         run: node scripts/verification/performance-p6-mainpass-budget.mjs artifacts/refactor-e6-17/live-scene/summary.json artifacts/refactor-e6-17/live-scene/p6-mainpass-budget.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: e6-17-live-scene-phase-evidence
-          path: artifacts/refactor-e6-17/live-scene/
+          path: |
+            artifacts/refactor-e6-17/live-scene/
+            artifacts/vfx-v4-blood/
           if-no-files-found: ignore
           retention-days: 14

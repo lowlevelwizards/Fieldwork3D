@@ -13,3 +13,5 @@ Current tactical scene draws a shared 64-instance ground-mark batch (blood evide
 
 ## Integration checkpoint
 Opt-in ?vfxBlood=1 replaces blood-only chip meshes with one 80-instance batch, using the original shot-id/age trajectory and opacity, and samples a deterministic mask inside the existing mixed mark mesh. Nonblood mark style -1 bypasses sampling. No new evidence or simulation; original personal replay/sight gates and mark culling remain in place. Persistent scene-owned resources are reset across missions; helpers provide explicit disposal for future scene teardown. Transparent draw order may differ; verify visually. No CI yet.
+
+Legacy unclassified impact surface type corrected in d29c3e8. Added actual tactical renderer A/B stress probe with 20 simultaneous recorded blood impacts, 24 mixed marks, 80 instance saturation, evidence immutability, zero stale counts, screenshots and real draw accounting. The harness uses synthetic recorded evidence; not a combat simulation benchmark. Software WebGL timing only.
