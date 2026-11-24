@@ -1,3 +1,4 @@
+import {captureCampaignHomeView,restoreCampaignHomeView} from './ui/campaign/home-view-continuity.ts';
 import {uiNode as node,uiButton as button} from './ui/dom-elements.ts';
 /** Campaign screens. Render only on navigation and state changes, never per frame. */
 import {SQUAD_IDENTIFICATION_COLORS,type CampaignState,type Contract}
@@ -380,19 +381,7 @@ export class CampaignScreen{
   });
  }
  home(c:CampaignState,slot?:CampaignSlot){
-  // Preserve the user's place when a purchase or treatment refreshes this view.
-  // Opening the campaign from a menu, briefing or loadout still starts at the top.
-  const wasInOperations=!this.root.hidden&&
-   !!this.root.querySelector('.campaign-tabs');
-  const restoreScroll=wasInOperations?this.root.scrollTop:0;
-  // Capture open, keyed disclosures before the DOM is replaced. This is UI
-  // state only: supply, squad and treatment actions never mutate the save.
-  const openWorkspaceDetails=wasInOperations?
-   new Set(Array.from(this.root.querySelectorAll<HTMLDetailsElement>(
-    'details[data-campaign-detail][open]')).map(el=>el.dataset.campaignDetail??'')):new Set<string>();
-  const focusedControl=wasInOperations&&this.root.contains(document.activeElement)?
-   document.activeElement as HTMLElement:null;
-  const focusedLabel=focusedControl?.getAttribute('aria-label');
+  const homeView=captureCampaignHomeView(this.root);
   if(slot)this.currentSlot=slot;
   if(this.armoryOperatorId){
    const target=c.operators.find(x=>x.id===this.armoryOperatorId&&x.status!=='lost'&&x.status!=='retired');
@@ -1456,22 +1445,7 @@ export class CampaignScreen{
   }
   main.insertBefore(nav,grid);
   this.root.append(main);
-  // The same disclosure identities survive in-place rerenders. Native details
-  // keep their own keyboard behavior; re-open only items the user had expanded.
-  for(const detail of this.root.querySelectorAll<HTMLDetailsElement>(
-   'details[data-campaign-detail]')){
-   detail.open=openWorkspaceDetails.has(detail.dataset.campaignDetail??'');
-  }
-  if(restoreScroll>0)this.root.scrollTop=restoreScroll;
-  // Purchases, treatment and assignments rebuild this view. Return keyboard
-  // focus to the same named control without jumping the saved scroll position.
-  if(focusedLabel){
-   const restored=Array.from(this.root.querySelectorAll<HTMLElement>('[aria-label]'))
-    .find(control=>control.getAttribute('aria-label')===focusedLabel&&
-     !control.matches(':disabled'));
-   (restored??nav.querySelector<HTMLElement>('[aria-selected="true"]'))
-    ?.focus({preventScroll:true});
-  }
+  restoreCampaignHomeView(this.root,nav,homeView);
  }
  private armory(c:CampaignState,id:string){
   const sameOperator=this.lastArmoryRenderedId===id;
