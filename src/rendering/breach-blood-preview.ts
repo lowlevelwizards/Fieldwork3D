@@ -39,7 +39,7 @@ export function makeStainMarkBatch(capacity:number){
 }
 
 export const BLOOD_DROPLET_CAPACITY=80;
-export function makeBloodDropletBatch(tracer:THREE.BufferGeometry,capacity=BLOOD_DROPLET_CAPACITY){
+export function makeBloodDropletBatch(tracer:THREE.BufferGeometry,capacity=BLOOD_DROPLET_CAPACITY,drawFamily?:string){
  const geometry=tracer.clone();
  const opacity=new THREE.InstancedBufferAttribute(new Float32Array(capacity),1);
  opacity.setUsage(THREE.DynamicDrawUsage);geometry.setAttribute('dropletOpacity',opacity);
@@ -56,7 +56,7 @@ export function makeBloodDropletBatch(tracer:THREE.BufferGeometry,capacity=BLOOD
  const mesh=new THREE.InstancedMesh(geometry,material,capacity);
  mesh.count=0;mesh.frustumCulled=false;
  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
- mesh.userData.fieldworkDrawFamily=capacity===BLOOD_DROPLET_CAPACITY?'blood-droplet-batch':'material-impact-batch';
+ mesh.userData.fieldworkDrawFamily=drawFamily??(capacity===BLOOD_DROPLET_CAPACITY?'blood-droplet-batch':'material-impact-batch');
  const temp=new THREE.Object3D(),tint=new THREE.Color();
  let count=0,dirty=false;
  const slots=new EffectSlotCache(capacity,10),payload=[0,0,0,0,0,0,0,0,0,0];
@@ -74,7 +74,7 @@ export function makeBloodDropletBatch(tracer:THREE.BufferGeometry,capacity=BLOOD
   mesh.setMatrixAt(count,temp.matrix);mesh.setColorAt(count,tint.setHex(color));
   opacity.setX(count,alpha);count++;return true;
  }
- return {mesh,opacity,
+ return {mesh,opacity,addPose:write,
   begin(){count=0;dirty=false;},
   add(x:number,y:number,z:number,theta:number,i:number,progress:number,alpha:number){
    return write(x,y,z,i*.73,theta,Math.PI*.5+progress*1.8,.9,1.9,alpha,0xa65a4e);

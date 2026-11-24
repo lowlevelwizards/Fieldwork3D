@@ -44,3 +44,13 @@ test('V10 unchanged mixed particles skip uploads across paused frames',()=>{
  assert.equal(frame(.2),first+1);assert.equal(frame(.1),first+2);
  b.reset();assert.equal(frame(.1),first+3);b.dispose();g.dispose();
 });
+
+test('V10 tracer and impact pulse batches preserve scalar pose, tint, capacity and reset',()=>{
+ const g=new THREE.IcosahedronGeometry(1,1),b=makeBloodDropletBatch(g,20,'shot-pulse-batch');
+ b.begin();for(let i=0;i<25;i++)b.addPose(i,3,4,0,0,0,2,2,.5,0xffd697);b.finish();
+ assert.equal(b.mesh.count,20);assert.equal(b.mesh.userData.fieldworkDrawFamily,'shot-pulse-batch');
+ const m=new THREE.Matrix4();b.mesh.getMatrixAt(0,m);
+ assert.deepEqual(m.elements.slice(12,15),[0,3,4]);assert.equal(m.elements[0],2);
+ assert.equal(b.opacity.getX(0),.5);
+ b.reset();assert.equal(b.mesh.count,0);b.dispose();g.dispose();
+});

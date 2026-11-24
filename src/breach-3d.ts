@@ -774,6 +774,11 @@ export class TacticalScene3D{
   private readonly materialImpactScratch:ImpactParticleSample={x:0,y:0,z:0,yaw:0,roll:0,pitch:0,width:0,length:0,opacity:0,color:0};
   private stainPreview:ReturnType<typeof makeStainMarkBatch>|null=null;
   private dropletPreview:ReturnType<typeof makeBloodDropletBatch>|null=null;
+  private readonly shotPulsePreviewEnabled=this.vfxPreview.pulses;
+  private tracerBatch:ReturnType<typeof makeBloodDropletBatch>|null=null;
+  private impactPulseBatch:ReturnType<typeof makeBloodDropletBatch>|null=null;
+  private readonly shotPulseEuler=new THREE.Euler();
+  private readonly shotPulseQuaternion=new THREE.Quaternion();
   private readonly persistentEvidencePreview=this.vfxPreview.evidence;
   private readonly impactMarkSlots=new ImpactMarkSlotCache(IMPACT_MARK_LIMIT);
   private impactDecalMatrix=new THREE.Object3D();
@@ -1296,6 +1301,7 @@ export class TacticalScene3D{
     if(this.impactDecalMesh)this.impactDecalMesh.count=0;
     this.impactMarkSlots.reset();
     this.dropletPreview?.reset();
+    this.tracerBatch?.reset();this.impactPulseBatch?.reset();
     this.combatEffects.reset();
     for(const effect of this.effectCache.values()){
       this.effects.remove(effect.root);
@@ -2900,6 +2906,7 @@ export class TacticalScene3D{
     const active=this.frameShotIds;active.clear();
     let visibleShots=0;
     this.dropletPreview?.begin();
+    this.tracerBatch?.begin();this.impactPulseBatch?.begin();
     this.dustPuffs?.begin();
     // Dense bursts keep their newest effects; older traces are cosmetic.
     for(let index=s.shots.length-1;index>=0;index--){
@@ -2912,7 +2919,7 @@ export class TacticalScene3D{
       if(!visibility.flash&&!visibility.trace&&!visibility.impact)continue;
       active.add(shot.id);visibleShots++;
       let effect=this.effectCache.get(shot.id);
-      if(!effect){
+      if(!effect&&!this.shotPulsePreviewEnabled){
         const style=shot.side+'|'+(shot.surface??'dust');
         effect=this.shotEffectPool.acquire(style,()=>{
         const root=new THREE.Group();
@@ -2954,19 +2961,43 @@ export class TacticalScene3D{
       const end=this.shotEnd.set(
         shot.end.x,shot.impactHeight??12,shot.end.y);
       const flight=this.shotFlight.copy(end).sub(start);
-      effect.line.position.copy(start).addScaledVector(flight,.5);
-      effect.line.scale.set(1,flight.length(),1);
-      effect.line.quaternion.setFromUnitVectors(
-        this.tracerAxis,flight.normalize());
-      effect.line.visible=visibility.trace&&shot.age<.19;
-      effect.material.opacity=Math.max(0,1-shot.age/.20);
-      effect.impact.position.copy(end);
       const profile=impactProfile(shot.surface??'dust');
       const impact=impactPulse(shot.surface??'dust',shot.age,
         profile.lifetime);
-      effect.impact.scale.setScalar(impact.scale);
-      effect.impactMaterial.opacity=impact.opacity;
-      effect.impact.visible=visibility.impact&&impact.active;
+      if(this.shotPulsePreviewEnabled){
+        if(visibility.trace&&shot.age<.19){
+          if(!this.tracerBatch){
+            this.tracerBatch=makeBloodDropletBatch(this.tracerGeometry,20,'shot-tracer-batch');
+            this.effects.add(this.tracerBatch.mesh);
+          }
+          const len=flight.length(),x=start.x+flight.x*.5,y=start.y+flight.y*.5,z=start.z+flight.z*.5;
+          const rot=this.shotPulseEuler.setFromQuaternion(
+            this.shotPulseQuaternion.setFromUnitVectors(this.tracerAxis,flight.normalize()));
+          this.tracerBatch.addPose(x,y,z,rot.x,rot.y,rot.z,1,len,
+            Math.max(0,1-shot.age/.20),shot.side==='blue'?0xffde9d:0xff9b73);
+        }
+        if(visibility.impact&&impact.active&&impact.opacity>0){
+          if(!this.impactPulseBatch){
+            this.impactPulseBatch=makeBloodDropletBatch(this.impactGeometry,20,'shot-pulse-batch');
+            this.effects.add(this.impactPulseBatch.mesh);
+          }
+          const color=shot.surface==='blood'?0xa65a4e:
+            shot.surface==='metal'?0xffd697:shot.surface==='glass'?0xc8e4df:
+            shot.surface==='wood'?0xdfb27a:shot.surface==='stone'?0xbeb9a2:0xe2d3b1;
+          this.impactPulseBatch.addPose(end.x,end.y,end.z,0,0,0,
+            impact.scale,impact.scale,impact.opacity,color);
+        }
+      }else if(effect){
+        effect.line.position.copy(start).addScaledVector(flight,.5);
+        effect.line.scale.set(1,flight.length(),1);
+        effect.line.quaternion.setFromUnitVectors(this.tracerAxis,flight.normalize());
+        effect.line.visible=visibility.trace&&shot.age<.19;
+        effect.material.opacity=Math.max(0,1-shot.age/.20);
+        effect.impact.position.copy(end);
+        effect.impact.scale.setScalar(impact.scale);
+        effect.impactMaterial.opacity=impact.opacity;
+        effect.impact.visible=visibility.impact&&impact.active;
+      }
       if(this.bloodPreviewEnabled&&shot.surface==='blood'&&visibility.impact&&shot.age<profile.lifetime&&impact.opacity>0){
         for(let i=0;i<4;i++){
           const theta=shot.id*2.41+i*2.094,progress=shot.age/.40;
@@ -3006,7 +3037,7 @@ export class TacticalScene3D{
           this.dropletPreview.addMaterial(sample);
         }
       }
-      for(let i=0;i<effect.chips.length;i++){
+      if(effect)for(let i=0;i<effect.chips.length;i++){
         const chip=effect.chips[i];
         const theta=(shot.id*2.41+i*2.094);
         const progress=shot.age/.40;
@@ -3021,6 +3052,7 @@ export class TacticalScene3D{
       }
     }
     this.dropletPreview?.finish();
+    this.tracerBatch?.finish();this.impactPulseBatch?.finish();
     if(this.smokePreviewEnabled&&!personalDisclosure){
       const puff=this.puffScratch;
       for(let n=s.flashBursts.length-1;n>=Math.max(0,s.flashBursts.length-4);n--){

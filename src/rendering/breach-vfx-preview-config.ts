@@ -6,6 +6,6 @@ export function resolveVfxPreview(params:URLSearchParams){
  const on=(key:string)=>params.has(key)?params.get(key)==='1':suite;
  const impacts=on('vfxImpacts');
  return {suite,grass:on('vfxGrass'),grassCell:params.get('vfxGrassCell')==='96'||!suite&&params.get('vfxGrassCell')!=='192'?96:192,
-  bush:on('vfxBush'),blood:impacts||on('vfxBlood'),impacts,glass:on('vfxGlass'),
+  bush:on('vfxBush'),blood:impacts||on('vfxBlood'),impacts,pulses:impacts&&on('vfxPulses'),glass:on('vfxGlass'),
   smoke:on('vfxSmoke'),evidence:on('vfxEvidence'),lights:params.get('vfxLights')==='1'} as const;
 }

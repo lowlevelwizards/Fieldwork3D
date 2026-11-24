@@ -66,20 +66,22 @@ try{
     pane.shattered=true;pane.open=true;pane.integrity=0;pane.shatteredAt=0;
     const original=JSON.stringify({shots:s.shots,marks:s.impactMarks,dropped:s.dropped,bursts:s.flashBursts,windows:s.windows});
     const stress=await sample();
-    let batch,stain,puffs,bushes=0,pointLights=0,activeLights=0;
+    let batch,stain,puffs,traces,pulses,bushes=0,pointLights=0,activeLights=0;
     root.traverse(n=>{if(n.userData.fieldworkDrawFamily==='material-impact-batch')batch=n;
       if(n.userData.fieldworkDrawFamily==='mixed-impact-stain')stain=n;
+      if(n.userData.fieldworkDrawFamily==='shot-tracer-batch')traces=n;
+      if(n.userData.fieldworkDrawFamily==='shot-pulse-batch')pulses=n;
       if(n.userData.fieldworkDrawFamily==='vfx-dust-puffs')puffs=n;
       if(n.userData.fieldworkV3Bush)bushes++;
       if(n.isPointLight&&n.userData.fieldworkRenderCategory==='effects'){pointLights++;if(n.intensity>0)activeLights++;}
     });
     const grass=root.getObjectByName('vfx-grass-preview');
-    const counts={particles:batch?.count??0,puffs:puffs?.count??0,stains:stain?.count??0,shards:scene.windowShards?.count??0,bushes,grass:grass?.children.length??0,pointLights,activeLights};
+    const counts={traces:traces?.count??0,pulses:pulses?.count??0,particles:batch?.count??0,puffs:puffs?.count??0,stains:stain?.count??0,shards:scene.windowShards?.count??0,bushes,grass:grass?.children.length??0,pointLights,activeLights};
     if(enabled){
-     if(counts.particles!==(smoke?86:95)||(smoke?counts.puffs<=0:counts.puffs!==0)||counts.shards!==4||(vegetation?(!counts.grass||!counts.bushes):(counts.grass||counts.bushes))||!stain)throw Error('Combined effect counts '+JSON.stringify(counts));
-     const versions=[stain.instanceMatrix.version,stain.instanceColor?.version,stain.geometry.attributes.stainStyle.version,scene.windowShards.instanceMatrix.version,batch.instanceMatrix.version,puffs?.instanceMatrix.version];
+     if(counts.traces!==20||counts.pulses!==20||counts.particles!==(smoke?86:95)||(smoke?counts.puffs<=0:counts.puffs!==0)||counts.shards!==4||(vegetation?(!counts.grass||!counts.bushes):(counts.grass||counts.bushes))||!stain)throw Error('Combined effect counts '+JSON.stringify(counts));
+     const versions=[stain.instanceMatrix.version,stain.instanceColor?.version,stain.geometry.attributes.stainStyle.version,scene.windowShards.instanceMatrix.version,batch.instanceMatrix.version,puffs?.instanceMatrix.version,traces?.instanceMatrix.version,pulses?.instanceMatrix.version];
      draw();
-     const after=[stain.instanceMatrix.version,stain.instanceColor?.version,stain.geometry.attributes.stainStyle.version,scene.windowShards.instanceMatrix.version,batch.instanceMatrix.version,puffs?.instanceMatrix.version];
+     const after=[stain.instanceMatrix.version,stain.instanceColor?.version,stain.geometry.attributes.stainStyle.version,scene.windowShards.instanceMatrix.version,batch.instanceMatrix.version,puffs?.instanceMatrix.version,traces?.instanceMatrix.version,pulses?.instanceMatrix.version];
      if(JSON.stringify(versions)!==JSON.stringify(after))throw Error('Unchanged settled buffer was uploaded');
      if(lights?(pointLights!==2||activeLights<1):pointLights!==0)throw Error('Light budget mismatch');
     }else if(batch||stain||puffs||grass||bushes||pointLights)throw Error('Unexpected preview in default');
@@ -87,8 +89,8 @@ try{
     const snapshot=scene.renderer.domElement.toDataURL('image/png');
     pane.shattered=false;pane.open=false;pane.shatteredAt=undefined;s.seconds=0;
     s.shots=[];s.impactMarks=[];s.dropped=[];s.flashBursts=[];draw();
-    if(batch?.count||stain?.count||puffs?.count||scene.windowShards?.count)throw Error('Empty/rewind left stale instances');
-    scene.applySite(null);if(batch?.count||stain?.count||puffs?.count||scene.windowShards?.count||root.getObjectByName('vfx-grass-preview'))throw Error('Reset left stale instances');
+    if(batch?.count||stain?.count||puffs?.count||traces?.count||pulses?.count||scene.windowShards?.count)throw Error('Empty/rewind left stale instances');
+    scene.applySite(null);if(batch?.count||stain?.count||puffs?.count||traces?.count||pulses?.count||scene.windowShards?.count||root.getObjectByName('vfx-grass-preview'))throw Error('Reset left stale instances');
     scene.renderer.dispose();scene.renderer.forceContextLoss();
     return {variant,viewport,seed:site.seed,idle,stress,counts,snapshot};
    },{variant,enabled,lights,vegetation,smoke,viewport});
