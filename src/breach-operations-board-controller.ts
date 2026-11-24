@@ -130,13 +130,18 @@ function renderOperationsBoard(){
   card.dataset.operatorId=member.id;
   card.open=expandedQuickOperator===member.id;
   card.addEventListener('toggle',()=>{
+   if(!card.isConnected||config.board.hidden)return;
    if(card.open){
+    const wasSelected=expandedQuickOperator===member.id;
     expandedQuickOperator=member.id;
+    if(!wasSelected){renderOperationsBoard();return;}
     for(const other of config.board.querySelectorAll<HTMLDetailsElement>(
      'details[data-squad-card]')){
      if(other!==card&&other.open)other.open=false;
     }
-   }else if(expandedQuickOperator===member.id)expandedQuickOperator=null;
+   }else if(expandedQuickOperator===member.id){
+    expandedQuickOperator=null;dispose();
+   }
   });
   const name=document.createElement('summary');
   const identity=document.createElement('strong');identity.textContent=member.callsign.toUpperCase();
@@ -189,7 +194,8 @@ function renderOperationsBoard(){
   card.append(actions);
   const kit=document.createElement('details');
   kit.open=expandedQuickKit===member.id;
-  kit.addEventListener('toggle',()=>{if(kit.open)expandedQuickKit=member.id;
+  kit.addEventListener('toggle',()=>{if(!kit.isConnected||config.board.hidden)return;
+   if(kit.open)expandedQuickKit=member.id;
    else if(expandedQuickKit===member.id)expandedQuickKit=null;});
   const kitTitle=document.createElement('summary');
   kitTitle.textContent='LOADOUT · '+member.weapon.toUpperCase();
@@ -446,6 +452,7 @@ function renderOperationsBoard(){
    // A detached prior UI may emit a delayed <details> toggle event. It must
    // not dispose or reparent the current operator's live WebGL context.
    if(!kit.isConnected)return;
+   if(config.board.hidden||!card.open)return;
    const active=kit.open&&advancedPanel.open&&loadout.group.weapon.open&&
     legacyControls.open&&weaponEditor.open;
    if(!active){if(quickWorkbenchId===member.id){
@@ -711,6 +718,7 @@ function renderOperationsBoard(){
   // workbench disclosure where it would require an extra vertical scroll.
   kit.insertBefore(carryPanel,advancedPanel);
   advancedPanel.addEventListener('toggle',()=>{
+   if(!kit.isConnected||config.board.hidden)return;
    if(advancedPanel.open){
     quickKitView='advanced';galleryHost.hidden=true;carryPanel.hidden=true;
    }else if(quickKitView==='advanced'){
@@ -720,7 +728,7 @@ function renderOperationsBoard(){
   selectZone(quickBenchSlot);
   card.append(kit);config.board.append(card);
   equipmentWorkspace.deferPreviewMount(
-   ()=>kit.isConnected&&kit.open&&!previewHost.hidden&&!config.board.hidden,
+   ()=>kit.isConnected&&card.open&&kit.open&&!previewHost.hidden&&!config.board.hidden,
    ()=>{
     const preview=renderKitPreview();
     preview.setOnTapSlot(selectZone);
