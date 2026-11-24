@@ -92,7 +92,7 @@ import {summarizeWear} from './worldgen/wear-diagnostics.ts';
 import {conditionFloorPixels} from './worldgen/condition-visual.ts';
 
 import {conditionWallPixels} from './worldgen/condition-wall.ts';
-import {wallSurfacePixels,bakedWallSurfacePixels,packedWallSurfacePixels,type WallAudition,type WallSurfaceRecipe} from './worldgen/wall-surface-recipe.ts';
+import {packedWallSurfacePixels,type WallAudition,type WallSurfaceRecipe} from './worldgen/wall-surface-recipe.ts';
 import {type ObjectWear} from './worldgen/object-wear.ts';
 
 import {wearPixels} from './rendering/pixel-decals.ts';
@@ -858,11 +858,11 @@ export class TacticalScene3D{
   private sitePatinaTextures:THREE.DataTexture[]=[];
   private sitePatinaMaterials:THREE.MeshBasicMaterial[]=[];
   private patinaRoomSurfaces:{room:Room;texture:THREE.DataTexture}[]=[];
-  private patinaWallSurfaces:{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;baked?:boolean;patterned?:boolean;packed?:boolean}[]=[];
+  private patinaWallSurfaces:{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;patterned?:boolean}[]=[];
   /** Explicit diagnostic only; normal gameplay retains W1 until promotion. */
   wallAudition:WallAudition|undefined=(()=>{
     const mode=typeof location==='undefined'?null:new URLSearchParams(location.search).get('wallWear');
-    return mode==='integrated'||mode==='baked'||mode==='packed'?{effect:'all',composition:mode==='integrated'?'shader':mode}:undefined;
+    return mode==='integrated'||mode==='packed'?{effect:'all'}:undefined;
   })();
   /** Live slider scrubbing changes pixel masks, not the physical scene. */
   previewConditionMasks(site:Site,level:number){
@@ -874,7 +874,7 @@ export class TacticalScene3D{
     for(const item of this.patinaWallSurfaces){
       const image=item.texture.image as {
         data:Uint8Array;width:number;height:number};
-      if(item.recipe)image.data.set(item.packed?packedWallSurfacePixels(item.recipe,level,image.width,this.wallAudition?.effect??'all',item.patterned):item.baked?bakedWallSurfacePixels(item.recipe,level,image.width,image.height,this.wallAudition?.effect??'all',item.patterned):wallSurfacePixels(item.recipe,level,image.width,image.height,this.wallAudition?.effect??'all'));
+      if(item.recipe)image.data.set(packedWallSurfacePixels(item.recipe,level,image.width,this.wallAudition?.effect??'all',item.patterned));
       else image.data.set(conditionWallPixels(site,item.index,level,
         image.width,image.height));
       item.texture.needsUpdate=true;

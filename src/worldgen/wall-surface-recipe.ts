@@ -4,13 +4,13 @@ import type {Site} from '../breach-site.ts';
 import {wallExposure} from './wear-exposure.ts';
 import {wallPixelSurface} from './pixel-surface-selection.ts';
 import {buildingTheme} from './building-palettes.ts';
-import {pixelPattern,TILE_PIXELS,TILE_WORLD_SIZE,type PixelSurface} from '../rendering/pixel-recipes.ts';
+import type {PixelSurface} from '../rendering/pixel-recipes.ts';
 export const WALL_EFFECTS=['fade','contact','chip','damp','runoff','crack','repair'] as const;
 export type WallEffect=typeof WALL_EFFECTS[number];
 export type WallEffectFilter='all'|'none'|WallEffect;
-export type WallAudition={effect:WallEffectFilter;composition?:'shader'|'baked'|'packed'};
+export type WallAudition={effect:WallEffectFilter};
 export type SurfaceEvent={kind:WallEffect;cause:string;x:number;y:number;width:number;height:number;threshold:number;priority:number};
-export type WallSurfaceRecipe={length:number;height:number;face:-1|1;color:number;surface:PixelSurface;events:SurfaceEvent[]};
+export type WallSurfaceRecipe={length:number;height:number;face:-1|1;color:number;surface:PixelSurface;band?:{color:number;top:number};events:SurfaceEvent[]};
 const clamp=(n:number,a=0,b=1)=>Math.max(a,Math.min(b,n));
 const hash=(n:number)=>((Math.imul(n^(n>>>16),0x45d9f3b)>>>0)/4294967295);
 const random=(seed:number,salt:number)=>hash(Math.imul(seed+salt,0x9e3779b1));
@@ -20,7 +20,9 @@ export function planWallSurface(site:Site,index:number,height:number):WallSurfac
  const w=site.walls[index],dx=w.b.x-w.a.x,dy=w.b.y-w.a.y;
  const length=Math.hypot(dx,dy)||1,seed=site.seed^Math.imul(index+1,65161);
  const exposure=wallExposure(site,index);
- const surface=wallPixelSurface(site.archetype),color=buildingTheme(site.archetype,site.seed).wall;
+ const surface=wallPixelSurface(site.archetype),theme=buildingTheme(site.archetype,site.seed),color=theme.wall;
+ // A coherent building-wide accent, not a random color for each wall.
+ const band=['garage','utility','warehouse','clinic','retail'].includes(site.archetype??'')||site.archetype==='house'&&site.seed%3===0?{color:theme.door,top:height*.67}:undefined;
  const mx=(w.a.x+w.b.x)/2,my=(w.a.y+w.b.y)/2,nx=-dy/length,ny=dx/length;
  const roomAt=(side:number)=>site.rooms.find(r=>mx+nx*9*side>r.x+1&&mx+nx*9*side<r.x+r.w-1&&my+ny*9*side>r.y+1&&my+ny*9*side<r.y+r.h-1);
  const wet=(side:number)=>['bathroom','restroom','laundry','utility'].includes(roomAt(side)?.purpose??'');
@@ -41,13 +43,13 @@ export function planWallSurface(site:Site,index:number,height:number):WallSurfac
    const pos=project(p.x,p.y);
    if(pos.distance>6||Math.abs(nearest(pos.along)-pos.along)>8)continue;
    const at=nearest(pos.along),inset=at===0?1:-1;
-   add('contact','door:'+door.id,at+inset*5,height*.78,10,7,12,100);
-   if(random(seed,7)<.65)add('chip','jamb:'+door.id,at+inset*2,height*.88,5,9,47,92);
+   add('contact','door:'+door.id,at+inset*5,height*.78,14,9,12,100);
+   if(random(seed,7)<.65)add('chip','jamb:'+door.id,at+inset*2,height*.88,7,12,47,92);
    break;
   }
  }
  if(exposure.exterior||wet(face)){
-  if(random(seed,4)<(wet(face)?.85:.55))add('damp','moisture-base',length*(.2+.6*random(seed,5)),height-5,Math.min(length,22+random(seed,6)*18),13,30,80);
+  if(random(seed,4)<(wet(face)?.85:.55))add('damp','moisture-base',length*(.2+.6*random(seed,5)),height-7,Math.min(length,30+random(seed,6)*24),18,30,80);
  }
  if(exposure.exterior)for(const window of site.windows??[]){
   if(window.interior||window.vertical!==(Math.abs(dy)>Math.abs(dx)))continue;
@@ -62,10 +64,10 @@ export function planWallSurface(site:Site,index:number,height:number):WallSurfac
   add('runoff','sill:'+window.id,x,y+Math.min(sill/2,8),6,Math.min(sill,16),30,90);
  }
  if(['plaster','brick','cinderblock','concrete'].includes(surface)&&random(seed,8)<.32)
-  add('crack','edge-stress',edge+(edge===0?1:-1)*5,height*.22,12,20,65,50);
+  add('crack','edge-stress',edge+(edge===0?1:-1)*5,height*.22,15,24,65,50);
  if(site.condition==='renovation'&&random(seed,9)<.45)
   add('repair','renovation',length*(.22+.56*random(seed,10)),height*.45,17,18,22,95);
- return {length,height,face,color,surface,events:events.sort((a,b)=>b.priority-a.priority||a.cause.localeCompare(b.cause))};
+ return {length,height,face,color,surface,band,events:events.sort((a,b)=>b.priority-a.priority||a.cause.localeCompare(b.cause))};
 }
 export function selectWallEvents(recipe:WallSurfaceRecipe,level:number,filter:WallEffectFilter='all'){
  const cap=level<=0?0:level<=25?1:level<=50?2:level<=75?3:4;
@@ -83,8 +85,8 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
   const strength=clamp((level-event.threshold+10)/35,.18,1);
   const palette:Record<WallEffect,RGB>={
    fade:tint(base,[235,232,217],.26),contact:tint(base,[72,76,70],.5),
-   chip:tint(base,[178,171,155],.75),damp:tint(base,[75,93,76],.64),
-   runoff:tint(base,[83,97,85],.58),crack:tint(base,[65,67,61],.74),
+   chip:tint(base,[178,171,155],.75),damp:tint(base,[60,78,60],.74),
+   runoff:tint(base,[63,82,68],.68),crack:tint(base,[65,67,61],.74),
    repair:tint(base,[231,222,199],.4)
   };
   const c=palette[event.kind];
@@ -98,7 +100,7 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
     case 'fade':a=v<.68-edge?.23:0;break;
     case 'contact':a=(Math.abs(v+.35)<.18&&Math.abs(u)<.84||Math.abs(v-.35)<.13&&u>-.45)?.58:0;break;
     case 'chip':a=Math.abs(u)<.74-edge&&Math.abs(v)<.76&&(v>.05||Math.abs(u)<.32)?.85:0;break;
-    case 'damp':a=v>-.48+edge&&Math.abs(u)<.95?(v>.48?.7:.48):0;break;
+    case 'damp':a=v>-.48+edge&&Math.abs(u)<.95?(v>.48?.84:.60):0;break;
     case 'runoff':a=v>-.93&&((Math.abs(u+.42)<.24*(1.25-v*.45)&&v<.85)||(Math.abs(u-.38)<.20&&v<.32))?.67:0;break;
     case 'crack':a=Math.abs(u-(Math.floor((v+1)*5)%3-1)*.23)<.14&&Math.abs(v)<.91?.86:0;break;
     case 'repair':a=Math.abs(u)<.82&&Math.abs(v)<.79?.62:0;break;
@@ -121,15 +123,32 @@ const srgbLinear=Float64Array.from({length:256},(_,i)=>{
 const linearByte=(v:number)=>Math.round(255*(v<=.0031308?12.92*v:1.055*Math.pow(v,1/2.4)-.055));
 export function bakedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:number,height:number,filter:WallEffectFilter='all',patterned=true){
  const out=wallSurfacePixels(recipe,level,width,height,filter),base=rgb(recipe.color);
- const tile=patterned?pixelPattern(recipe.surface):null;
- const mod=(v:number)=>((v%TILE_PIXELS)+TILE_PIXELS)%TILE_PIXELS;
+ const accent=recipe.band?rgb(recipe.band.color):base;
+ // Use large physical modules instead of downsampling fine repeated tiles.
+ // Mortar and joints are at least one output texel wide at packed resolution.
+ const texelX=recipe.length/width,texelY=recipe.height/height;
+ const mod=(n:number,d:number)=>((n%d)+d)%d;
  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
   const p=(y*width+x)*4,a=out[p+3]/255;
   const wx=(x+.5)/width*recipe.length,wy=(y+.5)/height*recipe.height;
-  const tx=mod(Math.floor((recipe.face===1?wx:recipe.length-wx)/TILE_WORLD_SIZE*TILE_PIXELS));
-  const ty=mod(Math.floor((recipe.height-wy)/TILE_WORLD_SIZE*TILE_PIXELS));
-  const q=(ty*TILE_PIXELS+tx)*4;
-  for(let i=0;i<3;i++)out[p+i]=linearByte((srgbLinear[base[i]]*(1-a)+srgbLinear[out[p+i]]*a)*(tile?srgbLinear[tile[q+i]]:1));
+  const physicalY=recipe.height-wy;
+  const surface=recipe.surface;
+  let shade=1;
+  if(patterned){
+   if(surface==='cinderblock'||surface==='brick'){
+    const course=surface==='brick'?7:12,block=course*2,row=Math.floor(physicalY/course);
+    if(mod(physicalY,course)<Math.max(texelY,1)||mod(wx+(row%2)*block/2,block)<Math.max(texelX,1))shade=.74;
+    else if((Math.floor((wx+(row%2)*block/2)/block)+row*3)%5===0)shade=.92;
+   }else if(surface==='panel'){
+    if(mod(wx,24)<Math.max(1,texelX))shade=.70;
+   }else if(surface==='siding'){
+    if(mod(physicalY,9)<Math.max(1,texelY))shade=.76;
+   }else if(surface==='concrete'){
+    if(mod(wx,48)<Math.max(1,texelX))shade=.83;
+   }
+  }
+  const color=patterned&&recipe.band&&wy>=recipe.band.top?tint(base,accent,.62):base;
+  for(let i=0;i<3;i++)out[p+i]=linearByte((srgbLinear[color[i]]*(1-a)+srgbLinear[out[p+i]]*a)*shade);
   out[p+3]=255;
  }
  return out;

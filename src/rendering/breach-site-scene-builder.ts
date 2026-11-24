@@ -25,8 +25,7 @@ import {conditionWallPixels,wallPatinaDimensions} from '../worldgen/condition-wa
 import {planWallCapJoins} from './wall-cap-joins.ts';
 import {ageMaterialColor} from './condition-materials.ts';
 import {doubleSidedWallWear} from './wear-wall-geometry.ts';
-import {planWallSurface,wallSurfacePixels,bakedWallSurfacePixels,packedWallSurfacePixels,type WallAudition,type WallSurfaceRecipe} from '../worldgen/wall-surface-recipe.ts';
-import {integrateWallSurface} from './wall-surface-material.ts';
+import {planWallSurface,packedWallSurfacePixels,type WallAudition,type WallSurfaceRecipe} from '../worldgen/wall-surface-recipe.ts';
 import {wearPixels} from './pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './wear-opacity.ts';
 import {type PixelOverlay} from './pixel-overlays.ts';
@@ -88,7 +87,7 @@ export type SiteSceneBuildPort={
  roofMaterial:THREE.MeshStandardMaterial|null;
  windowPaneMaterial:THREE.MeshStandardMaterial|null;
  patinaRoomSurfaces:Array<{room:Room;texture:THREE.DataTexture}>;
- patinaWallSurfaces:Array<{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;baked?:boolean;patterned?:boolean;packed?:boolean}>;
+ patinaWallSurfaces:Array<{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;patterned?:boolean}>;
  wallAudition?:WallAudition;
  sitePatinaTextures:THREE.DataTexture[];
  sitePatinaMaterials:THREE.MeshBasicMaterial[];
@@ -413,7 +412,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       const individualWall=(host.wallAudition?host.solid(theme.wall,.94,wallPixelSurface(site.archetype)):wallMat).clone();
       host.wallMaterials.add(individualWall);
       const body=host.box(group,x,WALL_VISUAL_HEIGHT/2,z,
-        len,WALL_VISUAL_HEIGHT,9,individualWall,true,host.wallAudition?.composition==='packed');
+        len,WALL_VISUAL_HEIGHT,9,individualWall,true,!!host.wallAudition);
       body.rotation.y=angle;
       body.userData.fieldworkDrawFamily='structural-wall-body';
       // Dynamic reason is assigned by the existing cutaway loop.
@@ -425,18 +424,17 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         // condition slider can scrub without allocating or recompiling.
         const recipe=planWallSurface(site,index,WALL_VISUAL_HEIGHT);
         const {width,height}=wallPatinaDimensions(len);
-        const baked=host.wallAudition.composition==='baked',packed=host.wallAudition.composition==='packed',patterned=!!individualWall.map;
+        const patterned=!!individualWall.map;
         const texture=new THREE.DataTexture(
-          packed?packedWallSurfacePixels(recipe,effectiveCondition(site),width,host.wallAudition.effect,patterned):baked?bakedWallSurfacePixels(recipe,effectiveCondition(site),width,height,host.wallAudition.effect,patterned):wallSurfacePixels(recipe,effectiveCondition(site),width,height,host.wallAudition.effect),
+          packedWallSurfacePixels(recipe,effectiveCondition(site),width,host.wallAudition.effect,patterned),
           width,height,THREE.RGBAFormat);
         texture.colorSpace=THREE.SRGBColorSpace;
         texture.magFilter=THREE.NearestFilter;
         texture.minFilter=THREE.NearestMipmapNearestFilter;
         texture.generateMipmaps=true;texture.needsUpdate=true;
         host.sitePatinaTextures.push(texture);
-        host.patinaWallSurfaces.push({index,texture,recipe,baked,patterned,packed});
-        if(packed){individualWall.map=texture;individualWall.color.setHex(0xffffff);individualWall.needsUpdate=true;}
-        else integrateWallSurface(individualWall,texture,recipe,baked);
+        host.patinaWallSurfaces.push({index,texture,recipe,patterned});
+        individualWall.map=texture;individualWall.color.setHex(0xffffff);individualWall.needsUpdate=true;
         body.userData.fieldworkWallSurface='w2-audition';
       }else if(effectiveCondition(site)>0){
         // Keep approximately one weathering texel per world unit along

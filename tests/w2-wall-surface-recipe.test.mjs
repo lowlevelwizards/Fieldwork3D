@@ -3,8 +3,6 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {planWallSurface,selectWallEvents,wallSurfacePixels,bakedWallSurfacePixels,packedWallSurfacePixels,wallPackedFaceStart,WALL_PACKED_FACE_ROWS,WALL_EFFECTS} from '../src/worldgen/wall-surface-recipe.ts';
 import {mapPackedWallUV,boxFaceVertexRanges} from '../src/rendering/pixel-materials.ts';
-import {integrateWallSurface} from '../src/rendering/wall-surface-material.ts';
-import {enableWorldGraphicMaterial} from '../src/breach-graphic-world-lighting.ts';
 import {applyWallMaterialState} from '../src/rendering/breach-wall-presentation.ts';
 const site={seed:23,archetype:'house',condition:'renovation',conditionLevel:100,
  walls:[{a:{x:0,y:0},b:{x:120,y:0}}],doors:[{id:'entry',a:{x:-20,y:0},b:{x:0,y:0}}],
@@ -82,23 +80,18 @@ test('packed standard map stays bounded, isolates faces and maps crown to top ro
  }
  g.dispose();
 });
-test('one shader shape, shared geometry/map intact, graphic hook and depth independent',()=>{
- const base=new THREE.MeshStandardMaterial({map:new THREE.Texture()});
- const a=base.clone(),b=base.clone(),mask=new THREE.DataTexture(new Uint8Array(4),1,1);
- integrateWallSurface(a,mask,recipe());
- integrateWallSurface(b,mask,{...recipe(),length:200,face:1});
- assert.equal(a.customProgramCacheKey(),b.customProgramCacheKey());
- assert.equal(a.map,base.map);
- assert.equal(base.userData.fieldworkR718WorldGraphic,undefined);
- assert.ok(enableWorldGraphicMaterial(a));
- const shader={uniforms:{},vertexShader:'#include <begin_vertex>',fragmentShader:'#include <map_fragment>\n#include <lights_fragment_end>'};
- a.onBeforeCompile(shader,{});
- assert.equal(shader.uniforms.fwWallMask.value,mask);
- assert.match(shader.fragmentShader,/diffuseColor.rgb=mix/);
- assert.match(shader.fragmentShader,/fwWorldBand/);
- assert.doesNotMatch(shader.fragmentShader,/diffuseColor\.a\s*=/);
+test('standard material preserves W1 structural opacity and depth independent of surface pixels',()=>{
+ const a=new THREE.MeshStandardMaterial({map:new THREE.DataTexture(packedWallSurfacePixels(recipe(),100,128),128,64)});
  applyWallMaterialState(a,{transparent:true,depthWrite:false,opacity:.38});
  assert.equal(a.opacity,.38);assert.equal(a.depthWrite,false);
  applyWallMaterialState(a,{transparent:true,depthWrite:true,opacity:1});
  assert.equal(a.depthWrite,true);assert.equal(a.opacity,1);
+});
+test('industrial finish has bold mortar and coherent lower band',()=>{
+ const r={...recipe(),surface:'cinderblock',band:{top:38,color:0x52766d}};
+ const pixels=bakedWallSurfacePixels(r,0,128,29);
+ const colors=new Set();
+ for(let i=0;i<pixels.length;i+=4)colors.add(pixels.slice(i,i+3).join(','));
+ assert.ok(colors.size>=4,'Material structure or lower band missing');
+ assert.notDeepEqual(pixels,bakedWallSurfacePixels({...r,band:undefined},0,128,29));
 });

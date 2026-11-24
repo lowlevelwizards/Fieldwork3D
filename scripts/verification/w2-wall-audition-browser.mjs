@@ -39,11 +39,11 @@ try{
      p.activateSite(p.site);p.session=p.newSession(0,seed,'floor-plan','standard',undefined,p.site);
     },{seed,archetype});
     const results=[];
-    for(const mode of ['legacy','shader','baked','packed']){
+    for(const mode of ['legacy','packed']){
      const result=await page.evaluate(mode=>{
       const integrated=mode!=='legacy';
       const {scene,site,session,team}=window.w2Probe;
-      scene.wallAudition=integrated?{effect:'all',composition:mode}:undefined;
+      scene.wallAudition=integrated?{effect:'all'}:undefined;
       scene.applySite(site);scene.resetCamera();scene.setMode('iso');
       scene.view.zoom=1.25;
       const inventory=scene.walls.filter(w=>w.mesh.userData.fieldworkDrawFamily==='structural-wall-body');
@@ -77,8 +77,7 @@ try{
        const ids=masks.map(m=>m.texture.uuid);
        const initial=masks.map(m=>m.texture.image.data.slice());
        scene.previewConditionMasks(site,0);
-       if(mode==='shader'&&masks.some(m=>m.texture.image.data.some((v,i)=>i%4===3&&v!==0)))throw Error('Clean slider retained effects');
-       if((mode==='baked'||mode==='packed')&&masks.some(m=>m.texture.image.data.some((v,i)=>i%4===3&&v!==255)))throw Error('Baked surface has nonopaque texels');
+       if(mode==='packed'&&masks.some(m=>m.texture.image.data.some((v,i)=>i%4===3&&v!==255)))throw Error('Baked surface has nonopaque texels');
        if(!masks.some((m,j)=>m.texture.image.data.some((v,i)=>v!==initial[j][i])))throw Error('Condition slider did not change surface');
        scene.previewConditionMasks(site,100);
        if(masks.some((m,j)=>m.texture.image.data.some((v,i)=>v!==initial[j][i])))throw Error('Condition roundtrip not deterministic');
@@ -119,7 +118,7 @@ try{
   await lab.goto(base+'/map-lab.html?seed=23&scale=small&condition=100');
   await lab.waitForFunction(()=>document.getElementById('info')?.textContent?.includes('CONDITION: 100'),null,{timeout:180000});
   await lab.locator('summary').filter({hasText:'ARCHITECTURAL SURFACE AUDITION'}).click();
-  await lab.locator('#wallAuditionMode').selectOption('integrated');
+  await lab.locator('#wallAuditionMode').selectOption('packed');
   await lab.locator('#wallAuditionEffect').selectOption('contact');
   await lab.locator('#conditionClean').click();
   await lab.waitForFunction(()=>document.getElementById('conditionValue')?.textContent?.startsWith('0 / 100'));
