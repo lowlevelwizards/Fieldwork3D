@@ -60,6 +60,9 @@ jobs:
           FIELDWORK_CI_CHROME: '1'
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
+          # The PR merge checkout is shallow. Fetch only the exact base object.
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git cat-file -e "$BASE_SHA^{commit}"
           git worktree add --detach "$RUNNER_TEMP/wall-base" "$BASE_SHA"
           ln -s "$PWD/node_modules" "$RUNNER_TEMP/wall-base/node_modules"
           cp scripts/verification/e6-19-transparent-role-browser.mjs "$RUNNER_TEMP/wall-base/scripts/verification/"
