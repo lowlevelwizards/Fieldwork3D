@@ -7,6 +7,8 @@ on:
       - 'src/rendering/breach-site-scene-builder.ts'
       - 'src/rendering/breach-site-openings-builder.ts'
       - 'src/breach-3d.ts'
+      - 'src/rendering/breach-wall-presentation.ts'
+      - 'tests/w1-wall-presentation.test.mjs'
       - 'tests/refactor-e6-19-transparent-role.test.mjs'
       - 'scripts/verification/e6-19-transparent-role-browser.mjs'
       - '.github/workflows/refactor-e6-19-transparent-role.yml'
@@ -42,16 +44,42 @@ jobs:
             tests/refactor-e6-15-live-scene-attribution.test.mjs \
             tests/refactor-e6-14-live-execution-cold.test.mjs \
             tests/refactor-e6-13-briefing-idle.test.mjs
+      - name: W1 focused segment, fog and replay policy
+        if: ${{ startsWith(github.head_ref, 'refactor/w0-w1-') }}
+        run: |
+          node --experimental-strip-types --test tests/w1-wall-presentation.test.mjs tests/breach-fog-visibility.test.mjs tests/visibility-07-cutaway.test.mjs tests/replay-r7-cutaway.test.mjs tests/breach-roadmap3-3d-disclosure.test.mjs
       - name: Production typecheck and build
         run: npm run build
       - name: Two seed real browser transparent draw roles and fog/briefing parity
         env:
           FIELDWORK_CI_CHROME: '1'
         run: node scripts/verification/e6-19-transparent-role-browser.mjs
+      - name: W0 exact base and matched desktop captures
+        if: ${{ startsWith(github.head_ref, 'refactor/w0-w1-') }}
+        env:
+          FIELDWORK_CI_CHROME: '1'
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # The PR merge checkout is shallow. Fetch only the exact base object.
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git cat-file -e "$BASE_SHA^{commit}"
+          git worktree add --detach "$RUNNER_TEMP/wall-base" "$BASE_SHA"
+          ln -s "$PWD/node_modules" "$RUNNER_TEMP/wall-base/node_modules"
+          cp scripts/verification/e6-19-transparent-role-browser.mjs "$RUNNER_TEMP/wall-base/scripts/verification/"
+          mkdir -p artifacts/w0-wall
+          cp -r artifacts/refactor-e6-19/live-scene artifacts/w0-wall/candidate-phone
+          (cd "$RUNNER_TEMP/wall-base" && node scripts/verification/e6-19-transparent-role-browser.mjs)
+          cp -r "$RUNNER_TEMP/wall-base/artifacts/refactor-e6-19/live-scene" artifacts/w0-wall/base-phone
+          FIELDWORK_WALL_DESKTOP=1 node scripts/verification/e6-19-transparent-role-browser.mjs
+          cp -r artifacts/refactor-e6-19/live-scene artifacts/w0-wall/candidate-desktop
+          (cd "$RUNNER_TEMP/wall-base" && FIELDWORK_WALL_DESKTOP=1 node scripts/verification/e6-19-transparent-role-browser.mjs)
+          cp -r "$RUNNER_TEMP/wall-base/artifacts/refactor-e6-19/live-scene" artifacts/w0-wall/base-desktop
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: e6-19-transparent-role-evidence
-          path: artifacts/refactor-e6-19/live-scene/
+          path: |
+            artifacts/refactor-e6-19/live-scene/
+            artifacts/w0-wall/
           if-no-files-found: ignore
           retention-days: 14

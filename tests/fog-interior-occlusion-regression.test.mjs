@@ -89,11 +89,13 @@ test('an enclosed courtyard stays unknown while an open shipping court is outsid
 });
 test('3D covers hidden ground without drawing over nearer known geometry',()=>{
  const code=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
+ const wallPolicy=readFileSync(new URL('../src/rendering/breach-wall-presentation.ts',import.meta.url),'utf8');
  assert.match(code,/map:this\.fogTexture,transparent:true,depthTest:true,opacity:1/);
  assert.match(code,/this\.smoothFog\.renderOrder=1000;/);
  assert.match(code,/this\.exteriorKnownFog\.renderOrder=1000;/);
- assert.match(code,/wall\.mesh\.renderOrder=surfaceTransparent\?1001:0;/);
- assert.match(code,/surfaceTransparent=translucent\|\|knownFacade/);
+ assert.match(wallPolicy,/renderOrder:surfaceTransparent\?1001:0/);
+ assert.match(code,/mesh\.renderOrder=state\.renderOrder/);
+ assert.match(wallPolicy,/surfaceTransparent=translucent\|\|knownFacade/);
  const meshComposition=readFileSync(new URL(
   '../src/rendering/breach-fog-mesh-composition.ts',import.meta.url),'utf8');
  assert.match(code,/replaceTacticalFogGeometry\(this\.smoothFog,this\.exteriorKnownFog,site\)/);

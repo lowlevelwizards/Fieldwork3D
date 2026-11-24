@@ -88,11 +88,13 @@ test('E6.19 classifications are metadata-only and preserve real cutaway/fog cont
  const scene=source('src/rendering/breach-site-scene-builder.ts');
  const loop=source('src/breach-3d.ts');
  const profiler=source('src/rendering/breach-live-main-pass-profiler.ts');
+ const wallPolicy=source('src/rendering/breach-wall-presentation.ts');
  assert.match(scene,/fieldworkTransparencyRole='wall-weathering'/);
  assert.match(scene,/fieldworkTransparencyRole='room-roof'/);
  assert.match(scene,/fieldworkTransparencyRole='room-floor-weathering'/);
- assert.match(loop,/translucent\?'camera-wall-cutaway':'known-exterior-wall'/);
- assert.match(loop,/wall\.mesh\.renderOrder=surfaceTransparent\?1001:0/);
+ assert.match(wallPolicy,/translucent\?'camera-wall-cutaway':'known-exterior-wall'/);
+ assert.match(wallPolicy,/renderOrder:surfaceTransparent\?1001:0/);
+ assert.match(loop,/mesh\.renderOrder=state\.renderOrder/);
  assert.match(scene,/node\.renderOrder=1002/);
  assert.doesNotMatch(profiler,/readPixels\(|\.flush\(|requestAnimationFrame\(/);
  assert.match(loop,/this\.liveMainPassProfiler=this\.liveShadowSubmitProfiler\?/);

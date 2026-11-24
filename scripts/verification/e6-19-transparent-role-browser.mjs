@@ -30,8 +30,9 @@ try{
    ...(process.env.FIELDWORK_CI_CHROME&&chrome?{executablePath:chrome}:{}),
    args:['--use-gl=angle','--use-angle=swiftshader',
     '--enable-unsafe-swiftshader']});
-  const page=await browser.newPage({viewport:{width:390,height:844},
-   deviceScaleFactor:1,hasTouch:true,isMobile:true,acceptDownloads:true});
+  const desktop=process.env.FIELDWORK_WALL_DESKTOP==='1';
+  const page=await browser.newPage({viewport:desktop?{width:1280,height:800}:{width:390,height:844},
+   deviceScaleFactor:1,hasTouch:!desktop,isMobile:!desktop,acceptDownloads:true});
   const errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   try{
@@ -61,7 +62,14 @@ try{
    await page.locator('#briefingClose').click({timeout:30000});
    await page.waitForFunction(()=>
     document.getElementById('briefingPanel')?.hidden===true);
-   await page.locator('#play').click({timeout:30000});
+   // The opt-in benchmark export control overlaps Play at desktop sizes.
+   // Keyboard activation uses the same public button without pointer interception.
+   const play=page.locator('#play');
+   if(desktop){
+    await play.waitFor({state:'visible',timeout:30000});
+    if(!(await play.isEnabled()))throw Error('Desktop Play unavailable');
+    await play.press('Enter',{timeout:30000});
+   }else await play.click({timeout:30000});
    await page.waitForFunction(()=>
     document.getElementById('phase')?.textContent==='EXECUTING',
     null,{timeout:30000});
@@ -127,6 +135,7 @@ try{
       throw Error('Worst live gaps missing preceding 3D phase attribution');
    if(errors.length)throw Error('JS runtime errors: '+errors.join(' | '));
    const path=dir+'/seed-'+seed+'-briefing-'+briefingIdle+'.json';
+   await page.screenshot({path:path.replace(/\.json$/,'.png')});
    writeFileSync(path,JSON.stringify(local,null,2)+'\n');
    evidence.runs.push({
     seed,briefingIdle,
@@ -151,6 +160,97 @@ try{
     taggedFraction:main.transparentTaggedDrawsTotal/main.transparentDrawsTotal,
     errors:errors.length,artifact:path
    });
+  }finally{await page.close();await browser.close();browser=undefined;}
+ }
+ // W1 regression on the actual renderer, separate from timed live captures.
+ // Run the same controlled camera/knowledge fixture on both checkouts. The
+ // previous renderer's known-facade depth mismatch is retained as evidence,
+ // not hidden by changing the baseline or requiring a legacy pass.
+ if(process.env.GITHUB_HEAD_REF?.startsWith('refactor/w0-w1-')){
+  browser=await chromium.launch({headless:true,
+   ...(process.env.FIELDWORK_CI_CHROME&&chrome?{executablePath:chrome}:{}),
+   args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+  const desktop=process.env.FIELDWORK_WALL_DESKTOP==='1';
+  const viewport=desktop?{width:1280,height:800}:{width:390,height:844};
+  const page=await browser.newPage({viewport,deviceScaleFactor:1});
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  page.on('console',m=>{if(m.type()==='error'&&/WebGLProgram|Shader Error|INVALID_OPERATION/i.test(m.text()))errors.push(m.text());});
+  try{
+   await page.route('**/wall-presentation-probe',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'}));
+   await page.goto(base+'/wall-presentation-probe');
+   evidence.wallProbe=await page.evaluate(async viewport=>{
+    const {TacticalScene3D}=await import('/src/breach-3d.ts');
+    const {generateSite}=await import('/src/breach-site.ts');
+    const {newSession,team}=await import('/src/breach-game.ts');
+    const {activateSite}=await import('/src/breach-core.ts');
+    const {spatialSurfaceKnown}=await import('/src/breach-presentation.ts');
+    const check=(ok,why)=>{if(!ok)throw Error(why);};
+    const makeSite=seed=>generateSite(seed,'standard',undefined,{mission:'intel'},{archetype:'house'});
+    const site=makeSite(23);activateSite(site);
+    const s=newSession(0,site.seed,'exterior-known','standard',undefined,site);
+    const scene=new TacticalScene3D();scene.resize(viewport.width,viewport.height);scene.applySite(site);
+    const candidate=Array.isArray(scene.wallOwners);
+    const selected=team(s)[0].id;
+    const draw=(session=s,id=selected,omniscient=false)=>scene.update(session,id,1,null,omniscient);
+    const inventory=()=>scene.walls;
+    const groups=()=>inventory().filter(w=>w.mesh.userData.fieldworkDrawFamily==='structural-wall-body');
+    const knowledge=session=>JSON.stringify({walls:[...session.intel.walls],rooms:[...session.intel.rooms],doors:[...session.intel.doors],cover:[...session.intel.cover],seen:[...session.seenGround]});
+    const checkTactical=session=>{
+     for(const w of groups())check(w.mesh.parent.visible===spatialSurfaceKnown(session,'wall',w.index),'Wall disclosure mismatch '+w.index);
+    };
+    let depthMismatches=0;
+    const checkPieces=()=>{
+     for(const w of inventory()){
+      const m=w.mesh.material;
+      if(m.depthWrite!==(m.opacity>=.995))depthMismatches++;
+     }
+     if(candidate)for(const owner of scene.wallOwners)
+      for(const mesh of owner.pieces)check(mesh.material.opacity===owner.opacity,'Split segment fade '+owner.index);
+    };
+    const original=knowledge(s);
+    scene.view.mode='iso';draw();checkTactical(s);
+    check(scene.exteriorKnownFog.visible&&!scene.smoothFog.visible,'Exterior fog route changed');
+    const exterior=groups().find(w=>w.exterior&&spatialSurfaceKnown(s,'wall',w.index));
+    check(exterior,'No known exterior wall in fixture');
+    const {a,b}=exterior.segment,mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+    scene.view.focus=mid;scene.view.zoom=2.5;
+    // Set a subject just inside either side of the tested wall; rotating
+    // the camera must produce an actual fade and restore it without changing intel.
+    const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);
+    scene.setReplayDirectorSubjects([{x:mid.x-dy/len*16,y:mid.y+dx/len*16}]);
+    let faded=false,restored=false;
+    for(let i=0;i<16;i++){
+     scene.view.yaw=i*Math.PI/4;draw();checkTactical(s);checkPieces();
+     const m=exterior.mesh.material;
+     if(m.opacity<.995)faded=true;
+     else if(faded){restored=true;break;}
+    }
+    check(faded&&restored,'Camera rotation did not exercise cut and restore');
+    check(knowledge(s)===original,'Camera altered knowledge');
+    if(candidate)check(depthMismatches===0,'Incorrect structural depth writing');
+    scene.setReplayDirectorSubjects([]);
+    scene.setReplayDirectorCameraAnchor(mid,108,'wide');draw();
+    check(inventory().every(w=>w.mesh.material.opacity===1),'Wide Director retained cutaway');
+    scene.setReplayDirectorCameraAnchor(null);draw();
+    scene.setPhotoLiveBodycam(true);
+    scene.setReplayBodycam({actorId:selected,mount:'chest',stabilization:'balanced',fov:95});draw();
+    check(inventory().every(w=>!w.mesh.material.transparent&&w.mesh.material.depthWrite&&w.mesh.material.opacity===1),'Bodycam retained tactical wall fade');
+    scene.setReplayBodycam(null);scene.setPhotoLiveBodycam(false);
+    const oldMeshes=new Set(inventory().map(w=>w.mesh));
+    const other=makeSite(97);activateSite(other);
+    const next=newSession(0,other.seed,'true-blind','standard',undefined,other);
+    scene.applySite(other);
+    if(candidate)check(scene.wallOwners.every(w=>w.opacity===1),'Site reset retained segment fade');
+    draw(next,team(next)[0].id);checkTactical(next);
+    check(scene.smoothFog.visible&&!scene.exteriorKnownFog.visible,'Second mission inherited exterior fog');
+    scene.root.traverse(obj=>check(!oldMeshes.has(obj),'Retired structural mesh survived'));
+    check(scene.lastFogSession===next,'Fog cache retained previous session');
+    const result={candidate,faded,restored,depthMismatches,firstWalls:oldMeshes.size,secondWalls:inventory().length,secondMissionFog:true};
+    scene.renderer.dispose();scene.renderer.forceContextLoss();
+    return result;
+   },viewport);
+   if(errors.length)throw Error('Wall probe runtime errors: '+errors.join(' | '));
+   console.log('W1_WALL_PRESENTATION '+JSON.stringify(evidence.wallProbe));
   }finally{await page.close();await browser.close();browser=undefined;}
  }
  evidence.comparison=evidence.runs.map(r=>({
