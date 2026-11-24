@@ -8,3 +8,6 @@ Stacked on V4 head 126e4db (not independently releasable until V4 and foundation
 - Current standalone sample atom uses existing impact profile counts/lifetimes and shared scratch. Verify material dimensions and lifetimes, finite deterministic samples, no stale counts, no additional draw per chip. Keep ground mark atlas and tracer path unchanged.
 - Browser same-scene old/new A/B across mixed material stress and different camera views; verify submission/triangle costs, disclosure/seek/reset, alpha ordering and captures. Avoid performance claims before measured; dust billboards and more persistent glass are later stages.
 - Initial prototype is unintegrated and untested. No default change.
+
+## Integration checkpoint
+?vfxImpacts=1 implies V4 and uses the SAME color/opacity/transform instance mesh, capped at 140 total blood + material particles (not two separate pools). Per-impact surface, age, sight and personal replay policy retained. Legacy preview mode vfxBlood=1 still has its 80-slot cap and original blood transforms. Default remains unchanged. Test actual mixed shader submissions, draw savings and resets next. V4's exact WebGL stress passed (79 fewer draws at each viewport, no extra triangles, one texture; 51.5→47.0 ms phone and 61.4→55.5 ms desktop CPU wall). Separate rigid-fixture lane failed and release remains blocked.

@@ -23,3 +23,16 @@ test('V4 one bounded droplet batch preserves independent opacity, reset and rewi
  assert.deepEqual(m.elements.slice(12,15),[1,2,3]);b.reset();
  assert.equal(b.mesh.count,0);b.dispose();g.dispose();
 });
+
+test('V5 mixed material and blood share one bounded instance mesh with independent tint',()=>{
+ const g=new THREE.CylinderGeometry(.65,.65,1,6),b=makeBloodDropletBatch(g,140);
+ b.begin();b.add(1,2,3,0,0,0,.5);
+ b.addMaterial({x:4,y:5,z:6,pitch:0,yaw:1,roll:2,width:.2,length:3,opacity:.3,color:0xffd298});
+ b.finish();assert.equal(b.mesh.count,2);
+ const c=new THREE.Color();b.mesh.getColorAt(0,c);assert.equal(c.getHex(),0xa65a4e);
+ b.mesh.getColorAt(1,c);assert.equal(c.getHex(),0xffd298);
+ assert.ok(Math.abs(b.opacity.getX(1)-.3)<1e-6);
+ b.begin();for(let i=0;i<200;i++)b.add(1,2,3,0,0,0,.5);
+ b.finish();assert.equal(b.mesh.count,140);
+ b.reset();assert.equal(b.mesh.count,0);b.dispose();g.dispose();
+});

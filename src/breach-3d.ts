@@ -123,7 +123,8 @@ import {armedPrecontactStyle} from './breach-idle-life.ts';
 import {hostilePhysicalityAt} from './breach-hostile-physicality.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
-import {makeStainMarkBatch,makeBloodDropletBatch} from './rendering/breach-blood-preview.ts';
+import {makeStainMarkBatch,makeBloodDropletBatch,BLOOD_DROPLET_CAPACITY} from './rendering/breach-blood-preview.ts';
+import {MATERIAL_IMPACT_PROFILES,MATERIAL_IMPACT_PARTICLE_LIMIT,sampleMaterialImpact,type ImpactParticleSample} from './rendering/breach-material-impact-atom.ts';
 import {presentSecondaryMuzzleFlash} from './secondary-holster-visual.ts';
 import {muzzleFlashCue,mostRecentActiveMuzzleShot,impactPulse,
  RecentMuzzleShotFrameIndex}
@@ -758,7 +759,9 @@ export class TacticalScene3D{
   // One instanced draw for every stain and impact mark, rather than a mesh
   // and transparent material allocation per hit.
   private impactDecalMesh:THREE.InstancedMesh|null=null;
-  private readonly bloodPreviewEnabled=new URLSearchParams(location.search).get('vfxBlood')==='1';
+  private readonly materialImpactPreviewEnabled=new URLSearchParams(location.search).get('vfxImpacts')==='1';
+  private readonly bloodPreviewEnabled=this.materialImpactPreviewEnabled||new URLSearchParams(location.search).get('vfxBlood')==='1';
+  private readonly materialImpactScratch:ImpactParticleSample={x:0,y:0,z:0,yaw:0,roll:0,pitch:0,width:0,length:0,opacity:0,color:0};
   private stainPreview:ReturnType<typeof makeStainMarkBatch>|null=null;
   private dropletPreview:ReturnType<typeof makeBloodDropletBatch>|null=null;
   private impactDecalMatrix=new THREE.Object3D();
@@ -2837,9 +2840,9 @@ export class TacticalScene3D{
         const impact=new THREE.Mesh(this.impactGeometry,impactMaterial);
         root.add(line,impact);
         const chips:THREE.Mesh[]=[];
-        if(shot.surface==='wood'||shot.surface==='stone'||
+        if(!this.materialImpactPreviewEnabled&&(shot.surface==='wood'||shot.surface==='stone'||
           shot.surface==='metal'||shot.surface==='glass'||
-          shot.surface==='blood'&&!this.bloodPreviewEnabled){
+          shot.surface==='blood'&&!this.bloodPreviewEnabled)){
           for(let i=0;i<(shot.surface==='blood'?4:3);i++){
             const chip=new THREE.Mesh(this.tracerGeometry,impactMaterial);
             chip.scale.set(shot.surface==='blood'?.9:.42,
@@ -2882,10 +2885,23 @@ export class TacticalScene3D{
           const y=Math.max(2,end.y+6*Math.sin(Math.PI*progress)+i*1.5-4*progress);
           if(!omniscient&&!this.presentationSight.query(s,'effect',shot.id+':chip:'+i,{x,y:z}))continue;
           if(!this.dropletPreview){
-            this.dropletPreview=makeBloodDropletBatch(this.tracerGeometry);
+            this.dropletPreview=makeBloodDropletBatch(this.tracerGeometry,
+              this.materialImpactPreviewEnabled?MATERIAL_IMPACT_PARTICLE_LIMIT:BLOOD_DROPLET_CAPACITY);
             this.effects.add(this.dropletPreview.mesh);
           }
           this.dropletPreview.add(x,y,z,theta,i,progress,impact.opacity);
+        }
+      }
+      if(this.materialImpactPreviewEnabled&&shot.surface!=='blood'&&visibility.impact){
+        const surface=shot.surface??'dust',sample=this.materialImpactScratch;
+        for(let i=0;i<MATERIAL_IMPACT_PROFILES[surface].count;i++){
+          if(!sampleMaterialImpact(surface,shot.id,i,shot.age,end.x,end.y,end.z,sample))continue;
+          if(!omniscient&&!this.presentationSight.query(s,'effect',shot.id+':chip:'+i,{x:sample.x,y:sample.z}))continue;
+          if(!this.dropletPreview){
+            this.dropletPreview=makeBloodDropletBatch(this.tracerGeometry,MATERIAL_IMPACT_PARTICLE_LIMIT);
+            this.effects.add(this.dropletPreview.mesh);
+          }
+          this.dropletPreview.addMaterial(sample);
         }
       }
       for(let i=0;i<effect.chips.length;i++){
