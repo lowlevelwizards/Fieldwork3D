@@ -280,15 +280,18 @@ test('Operations preserves focused controls through purchase, treatment and assi
  const ui=source('campaign-ui.ts');
  const home=ui.slice(ui.indexOf(' home(c:CampaignState,slot?:CampaignSlot)'),
   ui.indexOf(' private armory(c:CampaignState,id:string)'));
- assert.match(home,/const wasInOperations=!this\.root\.hidden&&/);
- assert.match(home,/const focusedControl=wasInOperations&&this\.root\.contains\(document\.activeElement\)\?/);
- assert.match(home,/const focusedLabel=focusedControl\?\.getAttribute\('aria-label'\)/);
- assert.match(home,/if\(restoreScroll>0\)this\.root\.scrollTop=restoreScroll/);
- assert.match(home,/if\(focusedLabel\)\{/);
- assert.match(home,/\.find\(control=>control\.getAttribute\('aria-label'\)===focusedLabel&&/);
- assert.match(home,/!control\.matches\(':disabled'\)/);
- assert.match(home,/restored\?\?nav\.querySelector<HTMLElement>\('\[aria-selected="true"\]'\)/);
- assert.match(home,/\.focus\(\{preventScroll:true\}\)/);
+ const owner=source('ui/campaign/home-view-continuity.ts');
+ assert.match(home,/const homeView=captureCampaignHomeView\(this\.root\)/);
+ assert.match(home,/restoreCampaignHomeView\(this\.root,nav,homeView\)/);
+ assert.match(owner,/const wasInOperations=!root\.hidden&&/);
+ assert.match(owner,/const focusedControl=wasInOperations&&root\.contains\(root\.ownerDocument\.activeElement\)\?/);
+ assert.match(owner,/const focusedLabel=focusedControl\?\.getAttribute\('aria-label'\)/);
+ assert.match(owner,/if\(restoreScroll>0\)root\.scrollTop=restoreScroll/);
+ assert.match(owner,/if\(focusedLabel\)\{/);
+ assert.match(owner,/\.find\(control=>control\.getAttribute\('aria-label'\)===focusedLabel&&/);
+ assert.match(owner,/!control\.matches\(':disabled'\)/);
+ assert.match(owner,/restored\?\?nav\.querySelector<HTMLElement>\('\[aria-selected="true"\]'\)/);
+ assert.match(owner,/\.focus\(\{preventScroll:true\}\)/);
 });
 
 test('Operator action labels are unique by callsign while retaining existing handlers',()=>{
@@ -399,10 +402,11 @@ test('C8 UI-only disclosure continuity survives in-place campaign refresh',()=>{
  const ui=source('campaign-ui.ts');
  const home=ui.slice(ui.indexOf(' home(c:CampaignState,slot?:CampaignSlot)'),
   ui.indexOf(' private armory(c:CampaignState,id:string)'));
- assert.match(home,/const openWorkspaceDetails=wasInOperations\?/);
- assert.match(home,/details\[data-campaign-detail\]\[open\]/);
- assert.match(home,/for\(const detail of this\.root\.querySelectorAll<HTMLDetailsElement>\(/);
- assert.match(home,/detail\.open=openWorkspaceDetails\.has/);
+ const owner=source('ui/campaign/home-view-continuity.ts');
+ assert.match(owner,/const openWorkspaceDetails=wasInOperations\?/);
+ assert.match(owner,/details\[data-campaign-detail\]\[open\]/);
+ assert.match(owner,/for\(const detail of root\.querySelectorAll<HTMLDetailsElement>\(/);
+ assert.match(owner,/detail\.open=openWorkspaceDetails\.has/);
  for(const key of [
   'campaign-context','more-history','personnel-milestones',
   'service-record','related-cases','closeout-notes',
