@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {planWallSurface,selectWallEvents,wallSurfacePixels,WALL_EFFECTS} from '../src/worldgen/wall-surface-recipe.ts';
+import {planWallSurface,selectWallEvents,wallSurfacePixels,bakedWallSurfacePixels,WALL_EFFECTS} from '../src/worldgen/wall-surface-recipe.ts';
 import {integrateWallSurface} from '../src/rendering/wall-surface-material.ts';
 import {enableWorldGraphicMaterial} from '../src/breach-graphic-world-lighting.ts';
 import {applyWallMaterialState} from '../src/rendering/breach-wall-presentation.ts';
@@ -46,6 +46,16 @@ test('condition thresholds, isolated effects, fixed placement and bounded covera
  const drip=wallSurfacePixels(r,100,128,64,'runoff');
  assert.ok(coverage(drip)>0);
  assert.ok(drip.slice(0,Math.floor(64*(56-24)/56)*128*4).every(x=>x===0),'runoff above sill');
+});
+test('baked finish preserves clean base color and structural alpha',()=>{
+ const r=recipe(),plain=bakedWallSurfacePixels(r,0,128,64,'all',false);
+ const base=[r.color>>16&255,r.color>>8&255,r.color&255,255];
+ for(let i=0;i<plain.length;i+=4)assert.deepEqual([...plain.slice(i,i+4)],base);
+ const aged=bakedWallSurfacePixels(r,100,128,64,'all',false);
+ assert.notDeepEqual(aged,plain);
+ assert.ok(aged.every((v,i)=>i%4!==3||v===255));
+ assert.deepEqual(aged,bakedWallSurfacePixels(r,100,128,64,'all',false));
+ assert.notDeepEqual(bakedWallSurfacePixels({...r,surface:'cinderblock'},0,128,64),plain);
 });
 test('one shader shape, shared geometry/map intact, graphic hook and depth independent',()=>{
  const base=new THREE.MeshStandardMaterial({map:new THREE.Texture()});
