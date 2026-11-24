@@ -46,7 +46,7 @@ typeInput.value=BUILDING_ARCHETYPES[(initial>>>0)%BUILDING_ARCHETYPES.length];
 const stage=new TacticalScene3D();
 const wallMode=el<HTMLSelectElement>('wallAuditionMode');
 const wallEffect=el<HTMLSelectElement>('wallAuditionEffect');
-wallMode.value=stage.wallAudition?(stage.wallAudition.composition==='baked'?'baked':'integrated'):'legacy';
+wallMode.value=stage.wallAudition?(stage.wallAudition.composition==='packed'?'packed':stage.wallAudition.composition==='baked'?'baked':'integrated'):'legacy';
 wallEffect.disabled=!stage.wallAudition;
 stage.setMode('iso');stage.view.zoom=1.25;
 let markers:{node:HTMLElement;p:Pt;orientation?:number}[]=[];
@@ -150,7 +150,7 @@ function previewCondition(){
  paintConditionDiagnostics();
 }
 wallMode.addEventListener('change',()=>{
- stage.wallAudition=wallMode.value==='legacy'?undefined:{effect:wallEffect.value as WallEffectFilter,composition:wallMode.value==='baked'?'baked':'shader'};
+ stage.wallAudition=wallMode.value==='legacy'?undefined:{effect:wallEffect.value as WallEffectFilter,composition:wallMode.value==='packed'?'packed':wallMode.value==='baked'?'baked':'shader'};
  wallEffect.disabled=!stage.wallAudition;
  if(siteReady)previewCondition();
 });
