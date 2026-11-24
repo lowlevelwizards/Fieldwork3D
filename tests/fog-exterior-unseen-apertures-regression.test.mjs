@@ -77,7 +77,7 @@ test('a closed garage shutter remains opaque to exterior LOS',()=>{
 test('3D façade foreground stays while the interior fog no longer has slots',()=>{
  const scene=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
  const fog=readFileSync(new URL('../src/breach-fog-mask.ts',import.meta.url),'utf8');
- assert.match(scene,/const knownFacade=wall.exterior/);
+ assert.match(scene,/const knownFacade=owner\.exterior&&!omniscient&&!bodycamAudition&&\s*spatialSurfaceKnown\(s,'wall',owner\.index\)/);
  const openings=readFileSync(new URL(
    '../src/rendering/breach-site-openings-builder.ts',import.meta.url),'utf8');
  assert.match(openings,/host\.promoteFacadeDetails\(frame\);/);
