@@ -92,6 +92,7 @@ import {summarizeWear} from './worldgen/wear-diagnostics.ts';
 import {conditionFloorPixels} from './worldgen/condition-visual.ts';
 
 import {conditionWallPixels} from './worldgen/condition-wall.ts';
+import {wallSurfacePixels,type WallAudition,type WallSurfaceRecipe} from './worldgen/wall-surface-recipe.ts';
 import {type ObjectWear} from './worldgen/object-wear.ts';
 
 import {wearPixels} from './rendering/pixel-decals.ts';
@@ -857,7 +858,9 @@ export class TacticalScene3D{
   private sitePatinaTextures:THREE.DataTexture[]=[];
   private sitePatinaMaterials:THREE.MeshBasicMaterial[]=[];
   private patinaRoomSurfaces:{room:Room;texture:THREE.DataTexture}[]=[];
-  private patinaWallSurfaces:{index:number;texture:THREE.DataTexture}[]=[];
+  private patinaWallSurfaces:{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe}[]=[];
+  /** Explicit diagnostic only; normal gameplay retains W1 until promotion. */
+  wallAudition:WallAudition|undefined=typeof location!=='undefined'&&new URLSearchParams(location.search).get('wallWear')==='integrated'?{effect:'all'}:undefined;
   /** Live slider scrubbing changes pixel masks, not the physical scene. */
   previewConditionMasks(site:Site,level:number){
     for(const item of this.patinaRoomSurfaces){
@@ -868,7 +871,8 @@ export class TacticalScene3D{
     for(const item of this.patinaWallSurfaces){
       const image=item.texture.image as {
         data:Uint8Array;width:number;height:number};
-      image.data.set(conditionWallPixels(site,item.index,level,
+      if(item.recipe)image.data.set(wallSurfacePixels(item.recipe,level,image.width,image.height,this.wallAudition?.effect??'all'));
+      else image.data.set(conditionWallPixels(site,item.index,level,
         image.width,image.height));
       item.texture.needsUpdate=true;
     }
@@ -1373,6 +1377,7 @@ export class TacticalScene3D{
       set windowPaneMaterial(value){scene.windowPaneMaterial=value;},
       patinaRoomSurfaces:scene.patinaRoomSurfaces,
       patinaWallSurfaces:scene.patinaWallSurfaces,
+      wallAudition:scene.wallAudition,
       sitePatinaTextures:scene.sitePatinaTextures,
       sitePatinaMaterials:scene.sitePatinaMaterials,
       wallMaterials:scene.wallMaterials,
