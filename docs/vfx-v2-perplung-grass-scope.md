@@ -14,3 +14,6 @@ Deterministic bounded placement and static instanced patch renderer added, with 
 
 ## Prototype checkpoint 3
 Opt-in tactical integration at ?vfxGrass=1; default production path remains unchanged. Scene disposes the old patch owner before generic site teardown; builds new grass after static composition to avoid changing shared graphic material shader hooks. Existing tactical clock controls wind (including replay seeks). Prototype only draws for omniscient/exterior-known views, never personal replay. This is deliberately conservative until fog and camera acceptance. No on-device or GPU measurements yet.
+
+## Prototype checkpoint 4
+Initial CI 45422058034: production verify and all four focused V2 tests passed; generic browser jobs passed but did not enable the preview. Added a focused real TacticalScene3D WebGL A/B probe to existing E6.17 workflow, with generated house exterior, fixed camera, actual draw callbacks, texture/triangle counts, screenshots, disclosure and reset witness. Software WebGL CPU/driver time only; hardware acceptance remains open. V0/V1 exact-base frozen parity passed but absolute movement target is still red.
