@@ -36,3 +36,11 @@ test('V5 mixed material and blood share one bounded instance mesh with independe
  b.finish();assert.equal(b.mesh.count,140);
  b.reset();assert.equal(b.mesh.count,0);b.dispose();g.dispose();
 });
+
+test('V10 unchanged mixed particles skip uploads across paused frames',()=>{
+ const g=new THREE.CylinderGeometry(.65,.65,1,6),b=makeBloodDropletBatch(g,140);
+ const frame=age=>{b.begin();b.add(1,2,3,0,0,age,.5);b.finish();return b.mesh.instanceMatrix.version;};
+ const first=frame(.1);assert.equal(frame(.1),first);
+ assert.equal(frame(.2),first+1);assert.equal(frame(.1),first+2);
+ b.reset();assert.equal(frame(.1),first+3);b.dispose();g.dispose();
+});

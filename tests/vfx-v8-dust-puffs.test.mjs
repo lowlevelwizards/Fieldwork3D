@@ -22,3 +22,14 @@ test('V8 one fixed shadowless billboard batch, overflow and empty rewind',()=>{
  b.begin();b.finish();assert.equal(b.mesh.count,0);
  b.add(p);b.finish();b.reset();assert.equal(b.mesh.count,0);b.dispose();
 });
+
+test('V10 paused puffs skip uploads but rewind and compaction rewrite',()=>{
+ const b=new DustPuffBatch(),p=scratch();
+ samplePuff('dust',1,0,.1,3,4,5,p);
+ const frame=()=>{b.begin();b.add(p);b.finish();return b.mesh.instanceMatrix.version;};
+ const first=frame();assert.equal(frame(),first);
+ samplePuff('dust',1,0,.2,3,4,5,p);assert.equal(frame(),first+1);
+ b.begin();b.finish();assert.equal(b.mesh.count,0);
+ samplePuff('dust',1,0,.1,3,4,5,p);assert.equal(frame(),first+2);
+ b.reset();assert.equal(frame(),first+3);b.dispose();
+});

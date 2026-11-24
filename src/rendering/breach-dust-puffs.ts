@@ -3,6 +3,7 @@
  * One fixed-capacity billboard batch, view-facing in every camera pass.
  */
 import * as THREE from 'three';
+import {EffectSlotCache} from './breach-effect-slot-cache.ts';
 export type PuffKind='dust'|'wood'|'stone'|'flash';
 const profiles={
  dust:{count:3,life:.44,size:4.2,spread:11,lift:6,alpha:.25,color:0xb0a797},
@@ -30,6 +31,9 @@ export class DustPuffBatch{
  private readonly color=new THREE.Color();
  private readonly matrix=new THREE.Matrix4();
  private count=0;
+ private dirty=false;
+ private readonly slots=new EffectSlotCache(PUFF_LIMIT,7);
+ private readonly payload=[0,0,0,0,0,0,0];
  constructor(){
   const g=new THREE.PlaneGeometry(2,2);
   this.alphaPhase.setUsage(THREE.DynamicDrawUsage);this.tint.setUsage(THREE.DynamicDrawUsage);
@@ -39,10 +43,10 @@ export class DustPuffBatch{
     attribute vec2 puffAlphaPhase;
     attribute vec3 puffTint;
     varying vec2 vPuff;
-    varying vec2 vAlphaPhase;
+    varying vec3 vAlphaOffset;
     varying vec3 vTint;
     void main(){
-     vPuff=uv*2.0-1.0;vAlphaPhase=puffAlphaPhase;vTint=puffTint;
+     vPuff=uv*2.0-1.0;vAlphaOffset=vec3(puffAlphaPhase.x,cos(puffAlphaPhase.y)*.24,sin(puffAlphaPhase.y)*.24);vTint=puffTint;
      vec4 center=modelViewMatrix*instanceMatrix*vec4(0.0,0.0,0.0,1.0);
      float size=length(instanceMatrix[0].xyz);
      center.xy+=position.xy*size;
@@ -50,14 +54,14 @@ export class DustPuffBatch{
     }`,
    fragmentShader:`
     varying vec2 vPuff;
-    varying vec2 vAlphaPhase;
+    varying vec3 vAlphaOffset;
     varying vec3 vTint;
     void main(){
      vec2 p=vPuff;
-     vec2 offset=vec2(cos(vAlphaPhase.y),sin(vAlphaPhase.y))*.24;
+     vec2 offset=vAlphaOffset.yz;
      float body=max(1.0-length(p)*1.35,0.0);
      float lobe=max(1.0-length(p-offset)*1.7,0.0);
-     float alpha=max(body*body,lobe*lobe*.75)*vAlphaPhase.x;
+     float alpha=max(body*body,lobe*lobe*.75)*vAlphaOffset.x;
      if(alpha<.003)discard;
      gl_FragColor=vec4(vTint,alpha);
      #include <tonemapping_fragment>
@@ -69,19 +73,22 @@ export class DustPuffBatch{
   this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   this.mesh.userData.fieldworkDrawFamily='vfx-dust-puffs';
  }
- begin(){this.count=0;}
+ begin(){this.count=0;this.dirty=false;}
  add(p:PuffSample):boolean{
   if(this.count>=PUFF_LIMIT||p.alpha<=0)return false;
-  const i=this.count++;
+  const i=this.count++,a=this.payload;
+  a[0]=p.x;a[1]=p.y;a[2]=p.z;a[3]=p.size;a[4]=p.alpha;a[5]=p.color;a[6]=p.phase;
+  if(!this.slots.changed(i,a))return true;
+  this.dirty=true;
   this.matrix.makeScale(p.size,p.size,p.size).setPosition(p.x,p.y,p.z);
   this.mesh.setMatrixAt(i,this.matrix);
   this.alphaPhase.setXY(i,p.alpha,p.phase);
   this.color.setHex(p.color);this.tint.setXYZ(i,this.color.r,this.color.g,this.color.b);
   return true;
  }
- finish(){this.mesh.count=this.count;if(this.count){
+ finish(){this.mesh.count=this.count;if(this.dirty){
   this.mesh.instanceMatrix.needsUpdate=true;this.alphaPhase.needsUpdate=true;this.tint.needsUpdate=true;
  }}
- reset(){this.count=0;this.mesh.count=0;}
+ reset(){this.count=0;this.mesh.count=0;this.dirty=false;this.slots.reset();}
  dispose(){this.reset();this.mesh.removeFromParent();this.mesh.dispose();this.mesh.geometry.dispose();this.mesh.material.dispose();}
 }
