@@ -53,6 +53,9 @@ jobs:
         run: |
           node --experimental-strip-types --test tests/r7-2-targeted-ui-invalidation.test.mjs
           node --experimental-strip-types scripts/verification/r7-2-ui-evidence.mjs --check --out artifacts/refactor-r7-2
+      - name: R7.3 shared equipment view ownership and retained transaction boundaries
+        run: |
+          node --experimental-strip-types --test tests/r7-3-equipment-workspace.test.mjs tests/outfitter-gallery-lifecycle.test.mjs tests/performance-p7-gallery-noop.test.mjs tests/performance-p3-async-thumbnails.test.mjs tests/loadout-quickplay-preview-integration.test.mjs tests/loadout-quickplay-carry-selector.test.mjs tests/loadout-carry-selector-integration.test.mjs
       - name: E4 combined replay and event-feed closeout evidence
         run: node --experimental-strip-types scripts/verification/refactor-e4-closeout.mjs --out artifacts/refactor-e4/closeout.json
       - name: E5 capture and long-session retention evidence

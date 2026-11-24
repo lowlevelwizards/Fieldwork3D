@@ -88,7 +88,7 @@ function renderOperationsBoard(){
  const close=document.createElement('button');
  close.type='button';close.textContent='CLOSE';
  close.addEventListener('click',()=>{
- config.board.hidden=true;config.syncSheets();config.toggleButton.focus();
+ config.board.hidden=true;dispose();config.syncSheets();config.toggleButton.focus();
 });
  heading.append(close);
  const more=document.createElement('details');more.className='fw-squad-more';
@@ -98,7 +98,7 @@ function renderOperationsBoard(){
  range.textContent='TEST RANGE';range.title='Nonpersistent equipment range';
  range.addEventListener('click',()=>{
   if(config.getSession().phase!=='planning'||config.isReplaying())return;
-  config.board.hidden=true;config.syncSheets();
+  config.board.hidden=true;dispose();config.syncSheets();
   config.enterTrainingRange();
  });
  more.append(range);heading.append(more);config.board.append(heading);
@@ -174,7 +174,7 @@ function renderOperationsBoard(){
   look.type='button';look.textContent='APPEARANCE';
   look.setAttribute('aria-label','Customize '+member.callsign+' in Operator Studio');
   look.addEventListener('click',()=>{
-   config.board.hidden=true;config.syncSheets();
+   config.board.hidden=true;dispose();config.syncSheets();
    config.openStudio(member.id);
   });
   const rename=document.createElement('button');

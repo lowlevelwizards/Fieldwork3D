@@ -367,7 +367,7 @@ const operationsBoardController=createBreachOperationsBoardController({
  getMode:()=>appFlow.mode,isReplaying:()=>replaying,
  saveRoster,applyRoster:()=>applyRosterIdentity(state,persistentRoster),
  refreshHud:refreshTacticalUi,
- syncSheets:()=>{operationsBoardController.syncVisibility();missionScreens.syncSheets();},
+ syncSheets:()=>missionScreens.syncSheets(),
  history:operationHistory,
  enterTrainingRange:()=>{
    if(replaying)return;

@@ -18,6 +18,7 @@ const tests=[
  'tests/r6-4-action-integration.test.mjs',
  'tests/r7-1-session-lifecycle.test.mjs',
  'tests/r7-2-targeted-ui-invalidation.test.mjs',
+ 'tests/r7-3-equipment-workspace.test.mjs',
  'tests/contact-medical-choice-20261122.test.mjs',
  'tests/consolidation-stage7-domain-ownership.test.mjs',
  'tests/consolidation-stage8-world-ownership.test.mjs',
