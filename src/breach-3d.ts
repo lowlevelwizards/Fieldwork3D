@@ -126,6 +126,7 @@ import {hostilePhysicalityAt} from './breach-hostile-physicality.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
 import {TransientLightPreview} from './rendering/breach-transient-light-preview.ts';
+import {DustPuffBatch,puffCount,samplePuff,type PuffSample} from './rendering/breach-dust-puffs.ts';
 import {makeStainMarkBatch,makeBloodDropletBatch,BLOOD_DROPLET_CAPACITY} from './rendering/breach-blood-preview.ts';
 import {MATERIAL_IMPACT_PROFILES,MATERIAL_IMPACT_PARTICLE_LIMIT,sampleMaterialImpact,type ImpactParticleSample} from './rendering/breach-material-impact-atom.ts';
 import {presentSecondaryMuzzleFlash} from './secondary-holster-visual.ts';
@@ -882,6 +883,9 @@ export class TacticalScene3D{
   private windowShards:THREE.InstancedMesh|null=null;
   private readonly shardMatrix=new THREE.Object3D();
   private transientLights:TransientLightPreview|null=null;
+  private readonly smokePreviewEnabled=new URLSearchParams(location.search).get('vfxSmoke')==='1';
+  private dustPuffs:DustPuffBatch|null=null;
+  private readonly puffScratch:PuffSample={x:0,y:0,z:0,size:0,alpha:0,color:0,phase:0};
   private readonly glassDebrisPreview=new URLSearchParams(location.search).get('vfxGlass')==='1';
   private readonly shardSlots=new WindowShardSlotCache();
   private readonly settledShardScratch:SettledWindowShardPose={x:0,y:0,z:0,rx:0,ry:0,rz:0,scale:1,heightScale:1};
@@ -1268,6 +1272,7 @@ export class TacticalScene3D{
     if(this.windowShards)this.windowShards.count=0;
     this.shardSlots.reset();this.settledPanes.length=0;
     this.transientLights?.reset();
+    this.dustPuffs?.reset();
     this.observedDoorGlass.clear();this.observedDoorBroken.clear();
     this.currentWear=[];this.objectWear=[];
     this.roofGroups.clear();
@@ -2861,6 +2866,7 @@ export class TacticalScene3D{
     const active=this.frameShotIds;active.clear();
     let visibleShots=0;
     this.dropletPreview?.begin();
+    this.dustPuffs?.begin();
     // Dense bursts keep their newest effects; older traces are cosmetic.
     for(let index=s.shots.length-1;index>=0;index--){
       if(visibleShots>=20)break;
@@ -2942,7 +2948,19 @@ export class TacticalScene3D{
           this.dropletPreview.add(x,y,z,theta,i,progress,impact.opacity);
         }
       }
-      if(this.materialImpactPreviewEnabled&&shot.surface!=='blood'&&visibility.impact){
+      const puffSurface=shot.surface??'dust';
+      if(this.smokePreviewEnabled&&visibility.impact&&
+        (puffSurface==='dust'||puffSurface==='wood'||puffSurface==='stone')){
+        const puff=this.puffScratch;
+        for(let i=0;i<puffCount(puffSurface);i++){
+          if(!samplePuff(puffSurface,shot.id,i,shot.age,end.x,end.y,end.z,puff))continue;
+          if(!omniscient&&!this.presentationSight.query(s,'effect','puff:'+shot.id+':'+i,{x:puff.x,y:puff.z}))continue;
+          if(!this.dustPuffs){this.dustPuffs=new DustPuffBatch();this.effects.add(this.dustPuffs.mesh);}
+          this.dustPuffs.add(puff);
+        }
+      }
+      if(this.materialImpactPreviewEnabled&&shot.surface!=='blood'&&visibility.impact&&
+        !(this.smokePreviewEnabled&&puffSurface==='dust')){
         const surface=shot.surface??'dust',sample=this.materialImpactScratch;
         for(let i=0;i<MATERIAL_IMPACT_PROFILES[surface].count;i++){
           if(!sampleMaterialImpact(surface,shot.id,i,shot.age,end.x,end.y,end.z,sample))continue;
@@ -2969,6 +2987,20 @@ export class TacticalScene3D{
       }
     }
     this.dropletPreview?.finish();
+    if(this.smokePreviewEnabled&&!personalDisclosure){
+      const puff=this.puffScratch;
+      for(let n=s.flashBursts.length-1;n>=Math.max(0,s.flashBursts.length-4);n--){
+        const burst=s.flashBursts[n];
+        if(!omniscient&&!this.presentationSight.query(s,'effect','puff-burst:'+burst.id,burst.p))continue;
+        for(let i=0;i<puffCount('flash');i++){
+          if(!samplePuff('flash',burst.id,i,burst.age,burst.p.x,13,burst.p.y,puff))continue;
+          if(!omniscient&&!this.presentationSight.query(s,'effect','puff-burst:'+burst.id+':'+i,{x:puff.x,y:puff.z}))continue;
+          if(!this.dustPuffs){this.dustPuffs=new DustPuffBatch();this.effects.add(this.dustPuffs.mesh);}
+          this.dustPuffs.add(puff);
+        }
+      }
+    }
+    this.dustPuffs?.finish();
     // Stable cap, one render call and no individual decal meshes/materials.
     if(!this.impactDecalMesh){
       if(this.bloodPreviewEnabled){
