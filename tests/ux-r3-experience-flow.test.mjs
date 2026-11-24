@@ -69,7 +69,8 @@ test('Quick Play restoration removes nested cosmetic editor but preserves loadou
 test('Campaign directly offers the canonical Studio and groups full kit',()=>{
  const campaign=src('src/campaign-ui.ts'),
   css=src('src/campaign-style.css');
- assert.match(campaign,/button\('APPEARANCE',\(\)=>this\.handlers\.openStudio\(p\.id\)\)/);
+ const personnel=src('src/ui/campaign/personnel-view.ts');
+ assert.match(personnel,/button\('APPEARANCE',\(\)=>handlers\.openStudio\(p\.id\)\)/);
  assert.match(campaign,/button\('APPEARANCE · OPEN STUDIO',\(\)=>this\.handlers\.openStudio\(id\)\)/);
  assert.match(campaign,/const grouped=buildQuickLoadoutGroups\(editor,this\.activeKitGroup/);
  assert.match(campaign,/grouped\.field\(loadoutGroupForSlot\(slot\)\)\.append\(wrap\)/);
@@ -81,7 +82,7 @@ test('Campaign directly offers the canonical Studio and groups full kit',()=>{
  assert.doesNotMatch(campaign,/createHeadwearAppearancePicker\(/);
  assert.match(campaign,/this\.handlers\.equipAttachment\(id,slot,partId,acquire\)/);
  assert.match(campaign,/this\.handlers\.moveMagazine\(/);
- assert.match(campaign,/c\.inventory\.weapons\[weapon\]/);
+ assert.match(personnel,/c\.inventory\.weapons\[weapon\]/);
  assert.match(campaign,/const locked=!!c\.activeContractId/);
  assert.match(css,/\.campaign-person-actions/);
  assert.match(css,/\.campaign-kit-editor \.fw-loadout-group/);

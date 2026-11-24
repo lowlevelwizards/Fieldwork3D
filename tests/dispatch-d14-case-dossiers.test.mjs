@@ -106,7 +106,8 @@ test('D14.2 UI only extends Dispatch contract briefing and does not change objec
  assert.match(ui,/REPORTING LIMITS/);
  assert.match(ui,/this\.handlers\.chooseContract\(contract\.id\)/);
  assert.match(read('src/dispatch-case-dossier.ts'),/MAX_LINKS=6/);
- assert.match(ui,/RELATED CASE HISTORY/);
- assert.match(ui,/const linked=c.contracts.filter/);
+ const chronicle=read('src/ui/campaign/chronicle-view.ts');
+ assert.match(chronicle,/RELATED CASE HISTORY/);
+ assert.match(chronicle,/const linked=c.contracts.filter/);
  assert.match(read('src/campaign-style.css'),/campaign-case-history summary/);
 });
