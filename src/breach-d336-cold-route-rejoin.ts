@@ -1,6 +1,6 @@
 /** D3.36: cold, full-size MOTOR-EXACT rejoin of an already authored MOVE.
  * A genuinely stationary operator may retain an intel/grid NAV whose next
- * waypoint is inside a solid wall, despite a legal route to a LATER node
+ * waypoint is inside a solid wall or its swept chord crosses one, despite a legal route to a LATER node
  * on the same transient path. No new global goal or doorway authority.
  *
  * This is a route PROPOSAL only. The existing fixed motor and actor/hinge
@@ -24,10 +24,13 @@ const claimed=new WeakMap<TeamActor,Claim>();
  * actual blocked first grid chord and no active hand/hinge crossing.
  * A remote stale door observation does not own the actor's future feet.
  * One attempt per unchanged physical location and world revision.
+ * A standable but occluded grid node may be farther than a snapped
+ * wall-overlap point. Permit a bounded 72u chord only with separate
+ * standability proof; the exact swept connector remains mandatory.
  */
 export function claimColdExactExistingRouteRejoin(
  actor:TeamActor,goal:Pt,seconds:number,worldRevision:number,
- doors:readonly Door[],firstClear:boolean
+ doors:readonly Door[],firstClear:boolean,firstStandable=false
 ):boolean{
  const order=actor.plan[0],nav=actor.nav;
  if(actor.side!=='blue'||order?.kind!=='move'||
@@ -38,7 +41,7 @@ export function claimColdExactExistingRouteRejoin(
     actor.squeeze||actor.traversal||actor.traversalPending||
     actor.autoSidestep||actor.fireRetreatTarget||
     !Number.isFinite(seconds)||!Number.isFinite(worldRevision)||
-    firstClear||distance(actor.p,nav[0])>28||
+    firstClear||distance(actor.p,nav[0])>(firstStandable?72:28)||
     distance(actor.p,goal)<30||
     seconds<actor.retryRouteAt)return false;
  if(actor.doorHandContact&&actor.doorHandContact.releasedAt===null)

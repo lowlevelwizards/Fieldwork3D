@@ -153,3 +153,30 @@ export function claimColdFuturePortalProbe(
   goalX:goal.x,goalY:goal.y,leafFraction,position:{...actor.p}});
  return true;
 }
+
+/** Cold exact connector after three real leaf-overlap escapes. Independent
+ * of the future-door allowance: failed proposals must not consume it.
+ * Only an ordinary authored MOVE at a stable wide-open leaf may probe.
+ * Once per unchanged order, leaf and physical neighborhood.
+ */
+const exactEscapeBudgets=new WeakMap<TeamActor,FuturePortalBudget>();
+export function claimExactEscapedLeafConnector(
+ actor:TeamActor,doorId:string,goal:Pt,leafFraction:number,seconds:number
+):boolean{
+ const order=actor.plan[0];
+ if(order?.kind!=='move'||order.entryDoorId||order.stackDoorId||
+    actor.side!=='blue'||actor.traversal||actor.traversalPending||
+    actor.autoSidestep||actor.fireRetreatTarget||
+    actor.doorHandContact?.releasedAt===null||
+    actor.doorTraversal?.handContact||
+    (actor.doorTraversal?.waypoints.length??0)>0||
+    !Number.isFinite(leafFraction)||leafFraction<.98||
+    !hasRepeatedPhysicalLeafEscapeEvidence(actor,seconds,goal,doorId))return false;
+ const old=exactEscapeBudgets.get(actor);
+ if(old&&old.orderId===order.id&&old.doorId===doorId&&
+    old.goalX===goal.x&&old.goalY===goal.y&&
+    Math.abs(old.leafFraction-leafFraction)<.14&&gap(old.position,actor.p)<32)return false;
+ exactEscapeBudgets.set(actor,{orderId:order.id,doorId,goalX:goal.x,goalY:goal.y,
+  leafFraction,position:{...actor.p}});
+ return true;
+}
