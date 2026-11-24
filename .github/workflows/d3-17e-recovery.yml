@@ -74,6 +74,8 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with: {node-version: '24'}
       - run: npm install --no-audit --no-fund
@@ -88,6 +90,32 @@ jobs:
             --route-transitions --d329-cancellation-door-witness \
             --trace-cases=13919313:entry:ash,14136777:entry:ash,14462973:authored:ash \
             > "$RUNNER_TEMP/d317e-frozen.json"
+      - name: VFX exact-base frozen cohort parity (diagnostic; absolute gate remains)
+        if: ${{ github.head_ref == 'refactor/vfx-v0-v1-foundation' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/d317e-base" "$BASE_SHA"
+          ln -s "$PWD/node_modules" "$RUNNER_TEMP/d317e-base/node_modules"
+          (cd "$RUNNER_TEMP/d317e-base" && node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d315b4-blind22 --progress --route-quality \
+            --route-transitions --d329-cancellation-door-witness \
+            --trace-cases=13919313:entry:ash,14136777:entry:ash,14462973:authored:ash) \
+            > "$RUNNER_TEMP/d317e-base-frozen.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          import {verifyA8PhysicalCohort} from './scripts/verification/ci-a8-physical-acceptance.mjs';
+          const read=name=>JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/'+name+'.json','utf8'));
+          const base=read('d317e-base-frozen'),candidate=read('d317e-frozen');
+          const normalize=x=>JSON.parse(JSON.stringify(x,(key,value)=>
+            key==='elapsedMs'||key==='cpuMs'||key==='slowest'?undefined:value));
+          const a=verifyA8PhysicalCohort(base,'frozen22'),b=verifyA8PhysicalCohort(candidate,'frozen22');
+          console.log('VFX_BASE_FROZEN '+JSON.stringify(a));
+          console.log('VFX_CANDIDATE_FROZEN '+JSON.stringify(b));
+          assert.deepEqual(normalize(candidate),normalize(base),'Candidate changed physical simulation relative to exact PR base');
+          console.log('VFX_FROZEN_EXACT_PARITY true (absolute acceptance evaluated separately)');
+          NODE
       - name: A8 independent real-body, event-matched locked-door and recovered-loop truth
         run: |
           # 80 historic arrivals would require passing through twelve

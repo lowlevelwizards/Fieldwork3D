@@ -67,6 +67,8 @@ export type SiteSceneBuildPort={
  visualTemplates?:StaticVisualTemplateLibrary;
  fixtureTemplates?:StaticVisualTemplateLibrary;
  includeServiceFixtureTemplates?:boolean;
+ /** V3 audition: owner-local exterior shrub replacement only. */
+ previewBush?:(parent:THREE.Group,width:number,height:number,depth:number)=>void;
  registerVisualLease?:(lease:StaticVisualLease)=>void;
  siteMaterials:SiteMaterialLifetime<THREE.Material>;
  mats:THREE.Material[];
@@ -536,11 +538,16 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         olive:host.solid(age(finish.fabric,'fabric',variant),.9,'fabric'),
         metal:host.solid(age(0x586665,'industrial-steel',variant),.78,'industrial-steel')
       };
-      const templateLease=host.fixtureTemplates&&host.registerVisualLease?
+      const bushHeight=visual.fixture==='shrub-round'?23:
+        visual.fixture==='shrub-tall'?37:visual.fixture==='bush'?25:0;
+      const previewBush=!!host.previewBush&&!fixtureRoom&&bushHeight>0;
+      const templateLease=!previewBush&&host.fixtureTemplates&&host.registerVisualLease?
         acquireRigidFixtureTemplate(host.fixtureTemplates,visual,i,localCtx,palette,
           host.includeServiceFixtureTemplates===true):
         null;
-      if(templateLease){
+      if(previewBush){
+        host.previewBush!(intact,visual.w,bushHeight,visual.h);
+      }else if(templateLease){
         // Direct children preserve the existing per-cover instancing and
         // disclosure ownership. The lease only manages shared GPU buffers.
         host.registerVisualLease?.(

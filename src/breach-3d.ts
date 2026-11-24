@@ -24,6 +24,10 @@ import type {SiteSceneBuildPort} from './rendering/breach-site-scene-builder.ts'
 import type {BrokenDoorHardwareVisual} from './rendering/breach-door-broken-hardware-visual.ts';
 import {fallenDoorHardwarePose} from './rendering/breach-door-broken-hardware-pose.ts';
 import {composeBreachSiteRender} from './rendering/breach-site-render-composition.ts';
+import {planGrassPatches,regroupGrassPatches} from './rendering/perplung-grass-placement.ts';
+import {buildGrassPatchMeshes} from './rendering/perplung-grass-patches.ts';
+import {createBushVisualResources} from './rendering/perplung-bush-atom.ts';
+import {resolveVfxPreview} from './rendering/breach-vfx-preview-config.ts';
 import {replaceTacticalFogGeometry} from './rendering/breach-fog-mesh-composition.ts';
 
 import {APPROVED_GRAPHIC_LIGHTING}
@@ -764,12 +768,13 @@ export class TacticalScene3D{
   // One instanced draw for every stain and impact mark, rather than a mesh
   // and transparent material allocation per hit.
   private impactDecalMesh:THREE.InstancedMesh|null=null;
-  private readonly materialImpactPreviewEnabled=new URLSearchParams(location.search).get('vfxImpacts')==='1';
-  private readonly bloodPreviewEnabled=this.materialImpactPreviewEnabled||new URLSearchParams(location.search).get('vfxBlood')==='1';
+  private readonly vfxPreview=resolveVfxPreview(new URLSearchParams(location.search));
+  private readonly materialImpactPreviewEnabled=this.vfxPreview.impacts;
+  private readonly bloodPreviewEnabled=this.vfxPreview.blood;
   private readonly materialImpactScratch:ImpactParticleSample={x:0,y:0,z:0,yaw:0,roll:0,pitch:0,width:0,length:0,opacity:0,color:0};
   private stainPreview:ReturnType<typeof makeStainMarkBatch>|null=null;
   private dropletPreview:ReturnType<typeof makeBloodDropletBatch>|null=null;
-  private readonly persistentEvidencePreview=new URLSearchParams(location.search).get('vfxEvidence')==='1';
+  private readonly persistentEvidencePreview=this.vfxPreview.evidence;
   private readonly impactMarkSlots=new ImpactMarkSlotCache(IMPACT_MARK_LIMIT);
   private impactDecalMatrix=new THREE.Object3D();
   private bloodCameraDirection=new THREE.Vector3();
@@ -800,6 +805,8 @@ export class TacticalScene3D{
   private architecturalOpenings:{obj:THREE.Object3D;opening:WideOpening}[]=[];
   private wallMaterials=new Set<THREE.Material>();
   private effects=new THREE.Group();
+  private grassPreview:ReturnType<typeof buildGrassPatchMeshes>|null=null;
+  private bushPreview:ReturnType<typeof createBushVisualResources>|null=null;
   private target=new THREE.Vector3(339,0,413);
   private currentElev=55*Math.PI/180;
   private readonly minZoom=.65;
@@ -886,10 +893,10 @@ export class TacticalScene3D{
   private windowShards:THREE.InstancedMesh|null=null;
   private readonly shardMatrix=new THREE.Object3D();
   private transientLights:TransientLightPreview|null=null;
-  private readonly smokePreviewEnabled=new URLSearchParams(location.search).get('vfxSmoke')==='1';
+  private readonly smokePreviewEnabled=this.vfxPreview.smoke;
   private dustPuffs:DustPuffBatch|null=null;
   private readonly puffScratch:PuffSample={x:0,y:0,z:0,size:0,alpha:0,color:0,phase:0};
-  private readonly glassDebrisPreview=new URLSearchParams(location.search).get('vfxGlass')==='1';
+  private readonly glassDebrisPreview=this.vfxPreview.glass;
   private readonly shardSlots=new WindowShardSlotCache();
   private readonly settledShardScratch:SettledWindowShardPose={x:0,y:0,z:0,rx:0,ry:0,rz:0,scale:1,heightScale:1};
   private readonly settledPanes:Session['windows'][number][]=[];
@@ -976,7 +983,7 @@ export class TacticalScene3D{
     this.root.userData.fieldworkRenderCategory='environment';
     this.effects.userData.fieldworkRenderCategory='effects';
     this.scene.add(this.root,this.effects);
-    if(new URLSearchParams(location.search).get('vfxLights')==='1')
+    if(this.vfxPreview.lights)
       this.transientLights=new TransientLightPreview(this.scene);
     // First paint and mission reload now use the same build/batch/grade path.
     this.composeSiteWorld(this.displayedSite);
@@ -1252,6 +1259,8 @@ export class TacticalScene3D{
     for(const actor of this.actors.values()){
       actor.beam.visible=false;actor.beamLast=null;
     }
+    this.grassPreview?.dispose();this.grassPreview=null;
+    this.bushPreview?.dispose();this.bushPreview=null;
     this.siteMaterials.reset();
     this.shadowUpdates.invalidate();
     for(const texture of this.sitePatinaTextures)texture.dispose();
@@ -1334,6 +1343,11 @@ export class TacticalScene3D{
       fixtureTemplates:scene.useFixtureTemplates?
         scene.architecturalVisualTemplates:undefined,
       includeServiceFixtureTemplates:scene.includeServiceFixtureTemplates,
+      previewBush:scene.vfxPreview.bush?
+        (parent,width,height,depth)=>{
+          scene.bushPreview??=createBushVisualResources();
+          parent.add(scene.bushPreview.createMesh(width,height,depth));
+        }:undefined,
       registerVisualLease:lease=>scene.siteVisualLeases.push(lease),
       siteMaterials:scene.siteMaterials,
       mats:scene.mats,
@@ -1375,6 +1389,16 @@ export class TacticalScene3D{
     const result=composeBreachSiteRender(
       site,this.siteBuildPort(),this.graphicLookEnabled);
     this.graphicWorldMaterialCount=result.graphicMaterials;
+    if(site&&this.vfxPreview.grass){
+      const fine=planGrassPatches(site);
+      const patches=this.vfxPreview.grassCell===192?regroupGrassPatches(fine):fine;
+      if(patches.length){
+        this.grassPreview=buildGrassPatchMeshes(patches);
+        this.grassPreview.group.name='vfx-grass-preview';
+        this.grassPreview.group.visible=false;
+        this.root.add(this.grassPreview.group);
+      }
+    }
     if(diagnostic)Object.assign(window,{__fieldworkE623SiteBuild:{
       elapsedMs:performance.now()-started,
       cache:this.architecturalVisualTemplates.stats(),
@@ -2052,6 +2076,12 @@ export class TacticalScene3D{
     // Replay seeks always use the recorded timeline for deterministic results.
     const actorIdleSeconds=s.phase==='planning'&&!replay?
       this.idleLifeSeconds:poseSeconds;
+    if(this.bushPreview)this.bushPreview.clock.value=actorIdleSeconds;
+    if(this.grassPreview){
+      this.grassPreview.clock.value=actorIdleSeconds;
+      this.grassPreview.group.visible=replayDisclosurePolicy?.mode!=='operator'&&
+        (omniscient||s.intel.mode==='exterior-known');
+    }
     // The shadow map follows the active encounter to retain contact detail.
     // Share the frame's blue squad snapshot across shadow and Director views.
     // team(s) filters operators; repeated calls allocate arrays each frame.

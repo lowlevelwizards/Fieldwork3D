@@ -1,0 +1,22 @@
+# V2 — Perplung grass, isolated art prototype
+Source Perplung 8ffb7a0b870cf7158b63a6796a916bac3c8f89b4 (Bush Study 04, carries Grass Pass 02). This branch begins at current production main, independent of the blocked V0/V1 candidate. Do not merge or integrate until V0/V1 release reconciliation. Rebase on the released foundation first.
+
+## Complete scope
+1. Port the exact 512x128 four-variant rounded-blade atlas, two crossed cards, gradient and pale midrib. Adapt Fieldwork's color/scale after comparison in actual gameplay cameras, not before. Prototype art atom committed; not connected to runtime.
+2. Build a deterministic patch planner from real yard/garden and verified ground ownership; no blades in paved surfaces, walls, room interiors, doors or around physical fixture bases. Preserve original worldgen, collision, cover, line-of-sight and replay authority.
+3. Production: one alpha-tested atlas and shared shader, four variants via instance attributes, root-anchored GPU wind with bounded phase and no per-tuft CPU updates. Static patch instance buffers; cull entire patches using conservative wind bounds; no per-blade geometry, shadows, or new texture per zone.
+4. Wire to tactical exterior builder, not the standalone GrassPatchField. Ensure site lifetime owns geometry/instance buffers and atlas is reused or explicitly disposed. Maintain fog disclosure, existing landscape footprints and site reset. No overlapping speculative renderer.
+5. Add optional QA toggle / comparative captures for camera angles and zoom; test determinism, placement exclusions, atlas padding, root anchoring, cap, resource reset, shader compile and culling. Measure same seed/camera/device idle, moving and dense exterior with A/B on exact foundation commit. Report GPU submits, triangles, texture count, CPU/GPU frame-time and p95; alpha overdraw must be measured, not assumed cheap.
+6. Existing tactical grass is largely ground plane, so adding tufts has an incremental GPU cost. Keep bounded density, avoid regressions, seek measured net headroom from exterior batching and V0/V1; do not claim that adding grass alone accelerates rendering. Preserve existing shrubs until V3 replaces their presentation. No merge unless performance and visual acceptance are supported.
+
+## Prototype checkpoint 2
+Deterministic bounded placement and static instanced patch renderer added, with per-instance atlas variant, phase and tint, one clock uniform, conservative wind bounds and explicit disposal. Not wired to production yet. Verify room coordinate convention, public street and cover exclusions, GPU shader compile, and performance before integration. Tests authored, not yet executed.
+
+## Prototype checkpoint 3
+Opt-in tactical integration at ?vfxGrass=1; default production path remains unchanged. Scene disposes the old patch owner before generic site teardown; builds new grass after static composition to avoid changing shared graphic material shader hooks. Existing tactical clock controls wind (including replay seeks). Prototype only draws for omniscient/exterior-known views, never personal replay. This is deliberately conservative until fog and camera acceptance. No on-device or GPU measurements yet.
+
+## Prototype checkpoint 4
+Initial CI 45422058034: production verify and all four focused V2 tests passed; generic browser jobs passed but did not enable the preview. Added a focused real TacticalScene3D WebGL A/B probe to existing E6.17 workflow, with generated house exterior, fixed camera, actual draw callbacks, texture/triangle counts, screenshots, disclosure and reset witness. Software WebGL CPU/driver time only; hardware acceptance remains open. V0/V1 exact-base frozen parity passed but absolute movement target is still red.
+
+## Browser checkpoint and optimization experiment
+Exact head c740921 / run 45423458867: all four WebGL rows passed, seed 3 (353 tufts, 26 fine patches). Phone off/on p95 CPU wall 55.4/58.4 ms, calls 757/769, triangles 30218/30986, textures 70/71. Desktop 48.8/54.8 ms, calls 596/609, triangles 26326/27154, textures 58/59. All 26 patch geometries disposed; disclosure checks passed. Cost is positive, not an overall performance win. Compare an opt-in 192-unit coarse cell against 96-unit fine and no grass; exact same tuft records, no density or art reduction. Coarser culling may submit more triangles, so require measured improvement before selecting. Physical hardware and screenshot review remain open.
