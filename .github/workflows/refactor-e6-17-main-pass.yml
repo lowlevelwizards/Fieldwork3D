@@ -25,6 +25,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -63,6 +65,28 @@ jobs:
         env:
           FIELDWORK_CI_CHROME: '1'
         run: node scripts/verification/vfx-v5-material-impact-browser.mjs
+      - name: V2 real tactical grass A/B probe
+        if: ${{ github.head_ref == 'feature/vfx-v2-grass-prototype' }}
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/vfx-v2-grass-browser.mjs
+      - name: V3 real tactical shrub A/B probe
+        if: ${{ github.head_ref == 'feature/vfx-v3-bush-prototype' }}
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/vfx-v3-bush-browser.mjs
+      - name: V10 all focused effects tests
+        if: ${{ github.head_ref == 'refactor/vfx-v10-integration' }}
+        run: node --experimental-strip-types --test tests/vfx-v*.test.mjs tests/breach-vfx-foundation.test.mjs
+      - name: V10 exact-base full suite and separately enabled lights
+        if: ${{ github.head_ref == 'refactor/vfx-v10-integration' }}
+        env:
+          FIELDWORK_CI_CHROME: '1'
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/vfx-v10-base" "$BASE_SHA"
+          ln -s "$PWD/node_modules" "$RUNNER_TEMP/vfx-v10-base/node_modules"
+          VFX_BASE_ROOT="$RUNNER_TEMP/vfx-v10-base" node scripts/verification/vfx-v10-suite-browser.mjs
       - name: Summarize actual 90-frame main-pass owner and transparency budgets
         run: node scripts/verification/performance-p6-mainpass-budget.mjs artifacts/refactor-e6-17/live-scene/summary.json artifacts/refactor-e6-17/live-scene/p6-mainpass-budget.json
       - uses: actions/upload-artifact@v4
@@ -73,5 +97,8 @@ jobs:
             artifacts/refactor-e6-17/live-scene/
             artifacts/vfx-v4-blood/
             artifacts/vfx-v5-material-impacts/
+            artifacts/vfx-v2-grass/
+            artifacts/vfx-v3-bush/
+            artifacts/vfx-v10-suite/
           if-no-files-found: ignore
           retention-days: 14

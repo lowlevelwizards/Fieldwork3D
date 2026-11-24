@@ -91,7 +91,7 @@ jobs:
             --trace-cases=13919313:entry:ash,14136777:entry:ash,14462973:authored:ash \
             > "$RUNNER_TEMP/d317e-frozen.json"
       - name: VFX exact-base frozen cohort parity (diagnostic; absolute gate remains)
-        if: ${{ github.head_ref == 'refactor/vfx-v0-v1-foundation' }}
+        if: ${{ startsWith(github.head_ref, 'refactor/vfx-') }}
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
