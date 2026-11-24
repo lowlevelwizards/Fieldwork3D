@@ -46,7 +46,7 @@ typeInput.value=BUILDING_ARCHETYPES[(initial>>>0)%BUILDING_ARCHETYPES.length];
 const stage=new TacticalScene3D();
 const wallMode=el<HTMLSelectElement>('wallAuditionMode');
 const wallEffect=el<HTMLSelectElement>('wallAuditionEffect');
-wallMode.value=stage.wallAudition?'integrated':'legacy';
+wallMode.value=stage.wallAudition?(stage.wallAudition.composition==='baked'?'baked':'integrated'):'legacy';
 wallEffect.disabled=!stage.wallAudition;
 stage.setMode('iso');stage.view.zoom=1.25;
 let markers:{node:HTMLElement;p:Pt;orientation?:number}[]=[];
@@ -150,7 +150,7 @@ function previewCondition(){
  paintConditionDiagnostics();
 }
 wallMode.addEventListener('change',()=>{
- stage.wallAudition=wallMode.value==='integrated'?{effect:wallEffect.value as WallEffectFilter}:undefined;
+ stage.wallAudition=wallMode.value==='legacy'?undefined:{effect:wallEffect.value as WallEffectFilter,composition:wallMode.value==='baked'?'baked':'shader'};
  wallEffect.disabled=!stage.wallAudition;
  if(siteReady)previewCondition();
 });
@@ -405,7 +405,7 @@ async function useGeneratedSite(id:number,site:Site,audit:SiteAudit,choice:LabSc
   playSite.href='./breach.html?seed='+site.seed+
     '&scale='+(site.scale??'medium')+'&condition='+selectedCondition;
   history.replaceState(null,'','?seed='+site.seed+'&scale='+choice+
-    '&condition='+selectedCondition+(stage.wallAudition?'&wallWear=integrated':''));
+    '&condition='+selectedCondition+(stage.wallAudition?'&wallWear='+wallMode.value:''));
   siteReady=true;currentAudit=audit;
   updateLabels();showFunctionalQuality(site,audit);paintConditionDiagnostics();
   showProgress(100,'SITE READY',(site.archetype??'BUILDING').toUpperCase()+
