@@ -27,7 +27,7 @@ import {composeBreachSiteRender} from './rendering/breach-site-render-compositio
 import {planGrassPatches,regroupGrassPatches} from './rendering/perplung-grass-placement.ts';
 import {buildGrassPatchMeshes} from './rendering/perplung-grass-patches.ts';
 import {createBushVisualResources} from './rendering/perplung-bush-atom.ts';
-import {resolveVfxPreview} from './rendering/breach-vfx-preview-config.ts';
+import {PRODUCTION_VFX} from './rendering/breach-vfx-preview-config.ts';
 import {replaceTacticalFogGeometry} from './rendering/breach-fog-mesh-composition.ts';
 
 import {APPROVED_GRAPHIC_LIGHTING}
@@ -770,7 +770,7 @@ export class TacticalScene3D{
   // One instanced draw for every stain and impact mark, rather than a mesh
   // and transparent material allocation per hit.
   private impactDecalMesh:THREE.InstancedMesh|null=null;
-  private readonly vfxPreview=resolveVfxPreview(new URLSearchParams(location.search));
+  private readonly vfxPreview=PRODUCTION_VFX;
   private readonly materialImpactPreviewEnabled=this.vfxPreview.impacts;
   private readonly bloodPreviewEnabled=this.vfxPreview.blood;
   private readonly materialImpactScratch:ImpactParticleSample={x:0,y:0,z:0,yaw:0,roll:0,pitch:0,width:0,length:0,opacity:0,color:0};
