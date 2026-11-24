@@ -1,11 +1,8 @@
-/** V10: one explicit experimental suite. Production defaults unchanged.
- * Shadowless lights remain separately opt-in until wall bleed is solved.
+/** V11: the complete VFX suite is unconditional in production.
+ * No query-string or persisted setting may disable these rendering paths.
+ * Keep the coarse grass layout used by the integrated V10 suite.
  */
-export function resolveVfxPreview(params:URLSearchParams){
- const suite=params.get('vfxSuite')==='1';
- const on=(key:string)=>params.has(key)?params.get(key)==='1':suite;
- const impacts=on('vfxImpacts');
- return {suite,grass:on('vfxGrass'),grassCell:params.get('vfxGrassCell')==='96'||!suite&&params.get('vfxGrassCell')!=='192'?96:192,
-  bush:on('vfxBush'),blood:impacts||on('vfxBlood'),impacts,pulses:impacts&&on('vfxPulses'),glass:on('vfxGlass'),
-  smoke:on('vfxSmoke'),evidence:on('vfxEvidence'),lights:params.get('vfxLights')==='1'} as const;
-}
+export const PRODUCTION_VFX=Object.freeze({
+ suite:true,grass:true,grassCell:192,bush:true,blood:true,impacts:true,
+ pulses:true,glass:true,smoke:true,evidence:true,lights:true,
+} as const);

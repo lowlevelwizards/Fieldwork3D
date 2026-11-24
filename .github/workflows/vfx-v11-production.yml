@@ -1,0 +1,36 @@
+name: V11 production VFX
+on:
+  pull_request:
+    paths:
+      - 'src/breach-3d.ts'
+      - 'src/rendering/breach-vfx-preview-config.ts'
+      - 'scripts/verification/vfx-v11-production-browser.mjs'
+      - 'tests/vfx-v10-preview-config.test.mjs'
+      - '.github/workflows/vfx-v11-production.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  production:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/vfx-v*.test.mjs tests/breach-vfx-foundation.test.mjs
+      - run: npm run build
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - run: node scripts/verification/vfx-v11-production-browser.mjs
+        env:
+          FIELDWORK_CI_CHROME: '1'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v11-production-vfx
+          path: artifacts/vfx-v11-production/
+          if-no-files-found: ignore
