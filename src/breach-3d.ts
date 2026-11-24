@@ -125,6 +125,7 @@ import {armedPrecontactStyle} from './breach-idle-life.ts';
 import {hostilePhysicalityAt} from './breach-hostile-physicality.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
+import {TransientLightPreview} from './rendering/breach-transient-light-preview.ts';
 import {makeStainMarkBatch,makeBloodDropletBatch,BLOOD_DROPLET_CAPACITY} from './rendering/breach-blood-preview.ts';
 import {MATERIAL_IMPACT_PROFILES,MATERIAL_IMPACT_PARTICLE_LIMIT,sampleMaterialImpact,type ImpactParticleSample} from './rendering/breach-material-impact-atom.ts';
 import {presentSecondaryMuzzleFlash} from './secondary-holster-visual.ts';
@@ -880,6 +881,7 @@ export class TacticalScene3D{
   private readonly frameWindowsById=new Map<string,Session['windows'][number]>();
   private windowShards:THREE.InstancedMesh|null=null;
   private readonly shardMatrix=new THREE.Object3D();
+  private transientLights:TransientLightPreview|null=null;
   private readonly glassDebrisPreview=new URLSearchParams(location.search).get('vfxGlass')==='1';
   private readonly shardSlots=new WindowShardSlotCache();
   private readonly settledShardScratch:SettledWindowShardPose={x:0,y:0,z:0,rx:0,ry:0,rz:0,scale:1,heightScale:1};
@@ -967,6 +969,8 @@ export class TacticalScene3D{
     this.root.userData.fieldworkRenderCategory='environment';
     this.effects.userData.fieldworkRenderCategory='effects';
     this.scene.add(this.root,this.effects);
+    if(new URLSearchParams(location.search).get('vfxLights')==='1')
+      this.transientLights=new TransientLightPreview(this.scene);
     // First paint and mission reload now use the same build/batch/grade path.
     this.composeSiteWorld(this.displayedSite);
     if(this.displayedSite)this.view.zoom=1.48;
@@ -1263,6 +1267,7 @@ export class TacticalScene3D{
     this.frameWindowsById.clear();
     if(this.windowShards)this.windowShards.count=0;
     this.shardSlots.reset();this.settledPanes.length=0;
+    this.transientLights?.reset();
     this.observedDoorGlass.clear();this.observedDoorBroken.clear();
     this.currentWear=[];this.objectWear=[];
     this.roofGroups.clear();
@@ -1879,6 +1884,7 @@ export class TacticalScene3D{
     }
     // Personal disclosure is observer-scoped, never camera-mount-scoped.
     const personalDisclosure=replayDisclosurePolicy?.mode==='operator';
+    this.transientLights?.begin();
     let beamDoorSignature:string|null=null;
     const bodycamAudition=!!this.replayBodycam&&(
       replayDisclosurePolicy?.mode==='operator'&&
@@ -2417,6 +2423,10 @@ export class TacticalScene3D{
       const flashCue=muzzleFlashCue(flashWeapon,
         firing?.age??Infinity,flashAttachment);
       object.flash.visible=flashCue.active&&actor.health>0;
+      if(this.transientLights&&!personalDisclosure&&visible&&object.flash.visible&&firing&&
+        (omniscient||this.presentationSight.query(s,'effect','muzzle-light:'+firing.id,firing.start)))
+        this.transientLights.offer('muzzle',firing.id,firing.start.x,firing.muzzleHeight??15,
+          firing.start.y,firing.age,Math.min(1,flashCue.scale));
       const gunTip=actor.weaponConfiguration?
        resolveWeaponAssembly(actor.weaponConfiguration):null;
       object.flash.position.x=gunTip?.muzzleX??19.5;
@@ -2838,6 +2848,11 @@ export class TacticalScene3D{
     // Hidden and removed operators never leak an undisclosed position.
     this.contactShadowBatch.sync();
     this.markScenePhase('actors');
+    if(this.transientLights&&!personalDisclosure)
+      for(const burst of s.flashBursts){
+        if(!omniscient&&!this.presentationSight.query(s,'effect','flash-light:'+burst.id,burst.p))continue;
+        this.transientLights.offer('flash',burst.id,burst.p.x,13,burst.p.y,burst.age);
+      }
     this.combatEffects.update(s,omniscient,
       personalDisclosure,p=>this.presentationSight.query(
         s,'effect',p.x+','+p.y,p));
