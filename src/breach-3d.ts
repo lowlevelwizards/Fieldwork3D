@@ -24,6 +24,8 @@ import type {SiteSceneBuildPort} from './rendering/breach-site-scene-builder.ts'
 import type {BrokenDoorHardwareVisual} from './rendering/breach-door-broken-hardware-visual.ts';
 import {fallenDoorHardwarePose} from './rendering/breach-door-broken-hardware-pose.ts';
 import {composeBreachSiteRender} from './rendering/breach-site-render-composition.ts';
+import {planGrassPatches} from './rendering/perplung-grass-placement.ts';
+import {buildGrassPatchMeshes} from './rendering/perplung-grass-patches.ts';
 import {replaceTacticalFogGeometry} from './rendering/breach-fog-mesh-composition.ts';
 
 import {APPROVED_GRAPHIC_LIGHTING}
@@ -786,6 +788,8 @@ export class TacticalScene3D{
   private architecturalOpenings:{obj:THREE.Object3D;opening:WideOpening}[]=[];
   private wallMaterials=new Set<THREE.Material>();
   private effects=new THREE.Group();
+  // V2 prototype is opt-in only; no production default change before A/B.
+  private grassPreview:ReturnType<typeof buildGrassPatchMeshes>|null=null;
   private target=new THREE.Vector3(339,0,413);
   private currentElev=55*Math.PI/180;
   private readonly minZoom=.65;
@@ -1228,6 +1232,7 @@ export class TacticalScene3D{
     for(const actor of this.actors.values()){
       actor.beam.visible=false;actor.beamLast=null;
     }
+    this.grassPreview?.dispose();this.grassPreview=null;
     this.siteMaterials.reset();
     this.shadowUpdates.invalidate();
     for(const texture of this.sitePatinaTextures)texture.dispose();
@@ -1346,6 +1351,15 @@ export class TacticalScene3D{
     const result=composeBreachSiteRender(
       site,this.siteBuildPort(),this.graphicLookEnabled);
     this.graphicWorldMaterialCount=result.graphicMaterials;
+    if(site&&new URLSearchParams(location.search).get('vfxGrass')==='1'){
+      const patches=planGrassPatches(site);
+      if(patches.length){
+        this.grassPreview=buildGrassPatchMeshes(patches);
+        this.grassPreview.group.name='vfx-grass-preview';
+        this.grassPreview.group.visible=false;
+        this.root.add(this.grassPreview.group);
+      }
+    }
     if(diagnostic)Object.assign(window,{__fieldworkE623SiteBuild:{
       elapsedMs:performance.now()-started,
       cache:this.architecturalVisualTemplates.stats(),
@@ -1994,6 +2008,12 @@ export class TacticalScene3D{
     // Replay seeks always use the recorded timeline for deterministic results.
     const actorIdleSeconds=s.phase==='planning'&&!replay?
       this.idleLifeSeconds:poseSeconds;
+    if(this.grassPreview){
+      this.grassPreview.clock.value=actorIdleSeconds;
+      // Conservative: do not add new unknown-site/personal replay clues.
+      this.grassPreview.group.visible=replayDisclosurePolicy?.mode!=='operator'&&
+        (omniscient||s.intel.mode==='exterior-known');
+    }
     // The shadow map follows the active encounter to retain contact detail.
     // Share the frame's blue squad snapshot across shadow and Director views.
     // team(s) filters operators; repeated calls allocate arrays each frame.

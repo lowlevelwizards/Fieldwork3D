@@ -31,3 +31,13 @@ test('V2 static instance patch uses one draw and conservative culling bounds, re
  let disposed=0;texture.addEventListener('dispose',()=>disposed++);
  p.dispose();p.dispose();assert.equal(disposed,1);assert.equal(p.group.children.length,0);
 });
+
+test('V2 creates actual grass on a synthetic yard and rejects a paved overlap',()=>{
+ const site={seed:7,layout:'courtyard',rooms:[],walls:[],doors:[],cover:[],spawn:[],
+  exteriorZones:[{id:'yard-test',kind:'yard',x:100,y:100,w:150,h:150},
+   {id:'parking-test',kind:'parking',x:135,y:100,w:40,h:80}],
+  bounds:{minX:0,minY:0,maxX:200,maxY:200}};
+ const tufts=planGrassPatches(site).flatMap(p=>p.tufts);
+ assert.ok(tufts.length>0);
+ for(const t of tufts)assert.ok(Math.abs(t.x-135)>20||Math.abs(t.z-100)>40);
+});

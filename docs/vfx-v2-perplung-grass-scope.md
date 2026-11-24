@@ -11,3 +11,6 @@ Source Perplung 8ffb7a0b870cf7158b63a6796a916bac3c8f89b4 (Bush Study 04, carries
 
 ## Prototype checkpoint 2
 Deterministic bounded placement and static instanced patch renderer added, with per-instance atlas variant, phase and tint, one clock uniform, conservative wind bounds and explicit disposal. Not wired to production yet. Verify room coordinate convention, public street and cover exclusions, GPU shader compile, and performance before integration. Tests authored, not yet executed.
+
+## Prototype checkpoint 3
+Opt-in tactical integration at ?vfxGrass=1; default production path remains unchanged. Scene disposes the old patch owner before generic site teardown; builds new grass after static composition to avoid changing shared graphic material shader hooks. Existing tactical clock controls wind (including replay seeks). Prototype only draws for omniscient/exterior-known views, never personal replay. This is deliberately conservative until fog and camera acceptance. No on-device or GPU measurements yet.
