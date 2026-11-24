@@ -61,4 +61,6 @@ test('V1 casing matrices refresh on backward seek',()=>{
  batch.getMatrixAt(0,before);
  s.seconds=.1;p.update(s,true,false,allow);batch.getMatrixAt(0,after);
  assert.notDeepEqual(before.elements,after.elements);
+ s.seconds=5;p.update(s,true,false,allow);batch.getMatrixAt(0,after);
+ assert.deepEqual(before.elements,after.elements);
 });

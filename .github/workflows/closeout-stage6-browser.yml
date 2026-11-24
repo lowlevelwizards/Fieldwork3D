@@ -9,11 +9,13 @@ concurrency:
   cancel-in-progress: true
 jobs:
   tactical-flow:
-    if: ${{ github.event_name == 'workflow_dispatch' || (startsWith(github.head_ref, 'refactor/closeout-stage6-') || startsWith(github.head_ref, 'refactor/consolidation-') || (startsWith(github.head_ref, 'feature/release1-') || startsWith(github.head_ref, 'feature/release2-') || startsWith(github.head_ref, 'feature/release3-') || startsWith(github.head_ref, 'feature/release4-') || startsWith(github.head_ref, 'feature/release5-') || startsWith(github.head_ref, 'feature/release6-'))) }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (startsWith(github.head_ref, 'refactor/vfx-') || startsWith(github.head_ref, 'refactor/closeout-stage6-') || startsWith(github.head_ref, 'refactor/consolidation-') || (startsWith(github.head_ref, 'feature/release1-') || startsWith(github.head_ref, 'feature/release2-') || startsWith(github.head_ref, 'feature/release3-') || startsWith(github.head_ref, 'feature/release4-') || startsWith(github.head_ref, 'feature/release5-') || startsWith(github.head_ref, 'feature/release6-'))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -30,6 +32,15 @@ jobs:
           elif test -x /opt/google/chrome/chrome; then /opt/google/chrome/chrome --version
           else echo "Preinstalled Chrome is unavailable" >&2; exit 1
           fi
+      - name: VFX baseline and candidate presenter comparison
+        if: ${{ startsWith(github.head_ref, 'refactor/vfx-') }}
+        run: |
+          mkdir -p artifacts/closeout-stage6
+          git worktree add --detach "$RUNNER_TEMP/vfx-base" a05bd63ce633af9520fa7000c5d0f083ef81509d
+          ln -s "$PWD/node_modules" "$RUNNER_TEMP/vfx-base/node_modules"
+          cp scripts/bench-vfx-foundation.mjs "$RUNNER_TEMP/vfx-base/scripts/"
+          (cd "$RUNNER_TEMP/vfx-base" && node --experimental-strip-types scripts/bench-vfx-foundation.mjs) | tee artifacts/closeout-stage6/vfx-base.jsonl
+          node --experimental-strip-types scripts/bench-vfx-foundation.mjs | tee artifacts/closeout-stage6/vfx-candidate.jsonl
       - name: Real WebGL tactical mission, replay, restart and editor navigation on phone and desktop
         env:
           FIELDWORK_CI_CHROME: '1'
@@ -49,7 +60,7 @@ jobs:
           retention-days: 14
 
   replay-and-lab:
-    if: ${{ github.event_name == 'workflow_dispatch' || (startsWith(github.head_ref, 'refactor/closeout-stage6-') || startsWith(github.head_ref, 'refactor/consolidation-') || (startsWith(github.head_ref, 'feature/release1-') || startsWith(github.head_ref, 'feature/release2-') || startsWith(github.head_ref, 'feature/release3-') || startsWith(github.head_ref, 'feature/release4-') || startsWith(github.head_ref, 'feature/release5-') || startsWith(github.head_ref, 'feature/release6-'))) }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (startsWith(github.head_ref, 'refactor/vfx-') || startsWith(github.head_ref, 'refactor/closeout-stage6-') || startsWith(github.head_ref, 'refactor/consolidation-') || (startsWith(github.head_ref, 'feature/release1-') || startsWith(github.head_ref, 'feature/release2-') || startsWith(github.head_ref, 'feature/release3-') || startsWith(github.head_ref, 'feature/release4-') || startsWith(github.head_ref, 'feature/release5-') || startsWith(github.head_ref, 'feature/release6-'))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:

@@ -162,7 +162,7 @@ export class BreachCombatEffectsPresenter{
       // Settled cartridges retain their previous instance matrices.
       if(this.casingIds[casingCount]!==brass.id||
          s.seconds<this.lastCasingTime||
-         (s.seconds!==this.lastCasingTime&&s.seconds-brass.at<2)){
+         (s.seconds!==this.lastCasingTime&&this.lastCasingTime-brass.at<2)){
         const p=casingAt(brass,s.seconds);
         this.casingMatrix.position.set(p.x,p.y,p.z);
         this.casingMatrix.rotation.set(.9,p.rotation,1.2);
