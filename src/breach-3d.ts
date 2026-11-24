@@ -145,7 +145,8 @@ import {paintFogMemory,paintFogVisibility,occupiedFogRooms,
   from './breach-fog-mask.ts';
 
 import {fogSessionFingerprint,fogMemoryFingerprint} from './breach-fog-cache.ts';
-import {wallOccludesFriendly,transitionWallOpacity} from './breach-camera-occlusion.ts';
+import {wallOccludesFriendly} from './breach-camera-occlusion.ts';
+import {groupWallPresentation,resolveWallPresentation,applyWallMaterialState,type WallPresentationOwner} from './rendering/breach-wall-presentation.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {sampleBodycamSocket,applyBodycamCamera,smoothBodycamSample,
   type BodycamSetting,type BodycamSample} from './breach-replay-bodycam.ts';
@@ -800,7 +801,7 @@ export class TacticalScene3D{
   private impactGeometry=new THREE.IcosahedronGeometry(1,1);
   private walls:{mesh:THREE.Mesh;mid:Pt;segment:Segment;
     index:number;exterior:boolean}[]=[];
-  private wallFade=new Map<THREE.Mesh,number>();
+  private wallOwners:WallPresentationOwner<THREE.Mesh>[]=[];
   private readonly roofGroups=new Map<string,THREE.Group>();
   private roofMaterial:THREE.MeshStandardMaterial|null=null;
   private intelSurfaces:{obj:THREE.Object3D;kind:'wall'|'cover';
@@ -1283,7 +1284,7 @@ export class TacticalScene3D{
     this.siteVisualLeases.length=0;
     for(const material of this.wallMaterials)material.dispose();
     this.wallMaterials.clear();
-    this.walls.length=0;this.wallFade.clear();
+    this.walls.length=0;this.wallOwners=[];
     this.doors.clear();this.windowGlass.clear();
     this.frameWindowsById.clear();
     if(this.windowShards)this.windowShards.count=0;
@@ -1395,6 +1396,7 @@ export class TacticalScene3D{
     const result=composeBreachSiteRender(
       site,this.siteBuildPort(),this.graphicLookEnabled);
     this.graphicWorldMaterialCount=result.graphicMaterials;
+    this.wallOwners=groupWallPresentation(this.walls);
     if(site&&this.vfxPreview.grass){
       const fine=planGrassPatches(site);
       const patches=this.vfxPreview.grassCell===192?regroupGrassPatches(fine):fine;
@@ -2175,41 +2177,27 @@ export class TacticalScene3D{
       this.replayDirectorSubjects:pawn?[pawn]:[];
     const maxCutDistance=Math.max(40,Math.min(150,
       90/Math.tan(Math.max(.38,this.view.pitch))));
-    for(const wall of this.walls){
-      const cut=!bodycamAudition&&this.view.mode==='iso'&&
-        (!physicalDirector||this.replayDirectorLens==='ortho')&&
-        subjects.some(subject=>wallOccludesFriendly(
-          wall.segment,subject,{x:fromCamera.x,y:fromCamera.z},maxCutDistance));
-      // CUTAWAY never makes the whole building transparent. Only walls
-      // between the camera and the selected friendly/Director subjects fade.
-      // Historical knowledge and object visibility remain authoritative.
-      // For orthographic Director, the player-side friendly silhouette
-      // remains readable behind a camera-facing wall. Wall structure
-      // stays recognizable as a faint cutaway, never an operator fade.
-      const opacity=bodycamAudition?1:physicalDirector?
-        cut?.12:1:transitionWallOpacity(
-          this.wallFade.get(wall.mesh)??1,cut,dt,
-          this.replayXrayOn?0.19:0.38);
-      this.wallFade.set(wall.mesh,opacity);
-      const translucent=opacity<.995;
-      // Known exterior wall surfaces retain their foreground/cutaway
-      // rendering policy. The ground-aligned fog itself now depth-tests:
-      // unknown interiors stay covered without crossing visible silhouettes.
-      const knownFacade=wall.exterior&&!omniscient&&!bodycamAudition&&
-        spatialSurfaceKnown(s,'wall',wall.index);
-      const surfaceTransparent=translucent||knownFacade;
-      const material=wall.mesh.material as THREE.MeshStandardMaterial;
-      if(material.transparent!==surfaceTransparent){
-        material.transparent=surfaceTransparent;
-        material.depthWrite=!translucent;material.needsUpdate=true;
+    // One camera/knowledge resolution per authoritative segment. The
+    // disclosure parent still controls visibility independently of fading.
+    const cameraDirection={x:fromCamera.x,y:fromCamera.z};
+    const allowCut=!bodycamAudition&&this.view.mode==='iso'&&
+      (!physicalDirector||this.replayDirectorLens==='ortho');
+    for(const owner of this.wallOwners){
+      const cut=allowCut&&subjects.some(subject=>wallOccludesFriendly(
+        owner.segment,subject,cameraDirection,maxCutDistance));
+      const knownFacade=owner.exterior&&!omniscient&&!bodycamAudition&&
+        spatialSurfaceKnown(s,'wall',owner.index);
+      const state=resolveWallPresentation(owner.opacity,cut,dt,
+        bodycamAudition,physicalDirector,this.replayXrayOn,knownFacade);
+      owner.opacity=state.opacity;
+      for(const mesh of owner.pieces){
+        const material=mesh.material as THREE.MeshStandardMaterial;
+        applyWallMaterialState(material,state);
+        mesh.userData.fieldworkTransparencyRole=state.role;
+        mesh.renderOrder=state.renderOrder;
+        const patina=mesh.userData.patinaMaterial as THREE.MeshBasicMaterial|undefined;
+        if(patina)patina.opacity=state.patinaOpacity;
       }
-      material.opacity=opacity;
-      wall.mesh.userData.fieldworkTransparencyRole=surfaceTransparent?
-        (translucent?'camera-wall-cutaway':'known-exterior-wall'):'opaque';
-      const patina=wall.mesh.userData.patinaMaterial as THREE.MeshBasicMaterial|undefined;
-      if(patina)patina.opacity=Math.max(physicalDirector?.08:.24,
-        1-(1-opacity)*1.226);
-      wall.mesh.renderOrder=surfaceTransparent?1001:0;
     }
     // The selected endpoint is stable across this entire render. Do not
     // rebuild team/plan arrays once per door on large generated sites.
