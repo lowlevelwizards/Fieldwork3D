@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {planWallSurface,selectWallEvents,wallSurfacePixels,bakedWallSurfacePixels,WALL_EFFECTS} from '../src/worldgen/wall-surface-recipe.ts';
+import {planWallSurface,selectWallEvents,wallSurfacePixels,bakedWallSurfacePixels,packedWallSurfacePixels,wallPackedFaceStart,WALL_PACKED_FACE_ROWS,WALL_EFFECTS} from '../src/worldgen/wall-surface-recipe.ts';
+import {mapPackedWallUV,boxFaceVertexRanges} from '../src/rendering/pixel-materials.ts';
 import {integrateWallSurface} from '../src/rendering/wall-surface-material.ts';
 import {enableWorldGraphicMaterial} from '../src/breach-graphic-world-lighting.ts';
 import {applyWallMaterialState} from '../src/rendering/breach-wall-presentation.ts';
@@ -56,6 +57,30 @@ test('baked finish preserves clean base color and structural alpha',()=>{
  assert.ok(aged.every((v,i)=>i%4!==3||v===255));
  assert.deepEqual(aged,bakedWallSurfacePixels(r,100,128,64,'all',false));
  assert.notDeepEqual(bakedWallSurfacePixels({...r,surface:'cinderblock'},0,128,64),plain);
+});
+test('packed standard map stays bounded, isolates faces and maps crown to top rows',()=>{
+ const r=recipe(),width=128,stride=width*4;
+ const clean=packedWallSurfacePixels(r,0,width,'all',false);
+ const aged=packedWallSurfacePixels(r,100,width,'all',false);
+ assert.equal(aged.length,width*64*4);
+ assert.ok(aged.every((v,i)=>i%4!==3||v===255));
+ const start=wallPackedFaceStart(r.face),other=wallPackedFaceStart(-r.face);
+ assert.notDeepEqual(aged.slice(start*stride,(start+WALL_PACKED_FACE_ROWS)*stride),clean.slice(start*stride,(start+WALL_PACKED_FACE_ROWS)*stride));
+ assert.deepEqual(aged.slice((other-1)*stride,(other+WALL_PACKED_FACE_ROWS+1)*stride),clean.slice((other-1)*stride,(other+WALL_PACKED_FACE_ROWS+1)*stride));
+ assert.deepEqual(aged.slice((start-1)*stride,start*stride),aged.slice(start*stride,(start+1)*stride));
+ assert.deepEqual(aged.slice((start+WALL_PACKED_FACE_ROWS)*stride,(start+WALL_PACKED_FACE_ROWS+1)*stride),aged.slice((start+WALL_PACKED_FACE_ROWS-1)*stride,(start+WALL_PACKED_FACE_ROWS)*stride));
+ const g=new THREE.BoxGeometry(120,56,9);
+ const positions=g.getAttribute('position').array.slice();
+ mapPackedWallUV(g);
+ assert.deepEqual(g.getAttribute('position').array,positions);
+ const uv=g.getAttribute('uv'),pos=g.getAttribute('position');
+ for(const [face,{start,count}] of boxFaceVertexRanges(g).entries())for(let i=start;i<start+count;i++){
+  if(face<4){assert.equal(uv.getY(i),.5/64);continue;}
+  assert.equal(uv.getX(i),pos.getX(i)>0?1:0);
+  const expected=(wallPackedFaceStart(face===4?1:-1)+.5+(pos.getY(i)>0?0:28))/64;
+  assert.equal(uv.getY(i),expected);
+ }
+ g.dispose();
 });
 test('one shader shape, shared geometry/map intact, graphic hook and depth independent',()=>{
  const base=new THREE.MeshStandardMaterial({map:new THREE.Texture()});
