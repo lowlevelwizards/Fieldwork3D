@@ -31,7 +31,7 @@ import {tryAutoClearClutter} from './breach-motor-clutter.ts';
 import {d,clone,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {sweptRejoinExistingRoute,takeRepeatedDoorEscapeRoute,
  finishDoorEscapeRejoin,claimColdFrameApproachProbe,
- claimColdFuturePortalProbe}
+ claimColdFuturePortalProbe,claimExactEscapedLeafConnector}
  from './breach-door-escape-rejoin.ts';
 import {joinedLocalOpenLeafStage} from './breach-door-escape-stage.ts';
 import {sweptProfileClear,squeezeFacing,twoSidedSqueezePressure}
@@ -189,6 +189,23 @@ export function restoreRepeatedDoorEscapeRoute(
  // by an intel continuation with the real authored goal still last.
  const stageDoor=a.doorTraversal?.doorId?
    s.doors.find(door=>door.id===a.doorTraversal?.doorId):undefined;
+ // A repeated real escape can leave the body clear but a coarse NAV
+ // chord blocked by a solid wall/jamb. Before a new future-door detour,
+ // try the same bounded exact-motor connector as the cold wall repair.
+ // Preserve original later nodes and use the existing specialist proof.
+ if(!rejoined.length&&stageDoor?.open&&!stageDoor.locked&&
+    !stageDoor.jammed&&!stageDoor.wedged&&!stageDoor.heldBy&&
+    Math.abs(stageDoor.angularVelocity??0)<.16&&original.length>=3&&
+    !sweep(a.p,original[0])&&
+    claimExactEscapedLeafConnector(a,stageDoor.id,goal,
+      stageDoor.openFraction??0,s.seconds)){
+   const exact=selectColdExactExistingRouteRejoin(a.p,goal,original,
+     at=>bodyClear(at,s.doors,OPERATOR_RADIUS,world),sweep);
+   if(exact.length&&watchClearanceAllowed(a.p,exact[0],goal,
+       !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)){
+     rejoined=exact;
+   }else noteDoorHandoffRejection(s,a,'h:exact-escaped-leaf-connector-unavailable');
+ }
  let usedLocalStage=false;
  if(!rejoined.length&&stageDoor&&
     pointToSegment(a.p,doorLeafSegment(stageDoor))<OPERATOR_RADIUS+44){

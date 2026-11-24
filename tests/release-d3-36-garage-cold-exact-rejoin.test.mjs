@@ -11,6 +11,7 @@ import {fileURLToPath} from 'node:url';
 import {claimColdExactExistingRouteRejoin,
  selectColdExactExistingRouteRejoin}
  from '../src/breach-d336-cold-route-rejoin.ts';
+import {claimExactEscapedLeafConnector,noteRepeatedDoorLeafEscape} from '../src/breach-door-escape-rejoin.ts';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 
@@ -132,4 +133,22 @@ test('Release repair: long blocked chord is eligible only with separately standa
  assert.equal(claimColdExactExistingRouteRejoin(a,goal,20,0,[],false,true),false);
  a.nav=[{x:570,y:208},...a.nav.slice(1)];
  assert.equal(claimColdExactExistingRouteRejoin(a,goal,20,1,[],false,true),false);
+});
+
+test('Release repair: early exact connector requires three real escape witnesses and one cold allowance',()=>{
+ const goal={x:80,y:0},nav=[{x:10,y:0},{x:32,y:0},goal];
+ const a={side:'blue',p:{x:0,y:0},plan:[{id:1,kind:'move',p:goal}],nav,
+  traversal:null,traversalPending:false,autoSidestep:null,fireRetreatTarget:null,
+  doorHandContact:null,doorTraversal:{doorId:'D1',handContact:false,waypoints:[]}};
+ assert.equal(claimExactEscapedLeafConnector(a,'D1',goal,1,1),false);
+ noteRepeatedDoorLeafEscape(a,1,goal,'D1',nav);
+ noteRepeatedDoorLeafEscape(a,1.1,goal,'D1',nav);
+ assert.equal(claimExactEscapedLeafConnector(a,'D1',goal,1,1.2),false);
+ noteRepeatedDoorLeafEscape(a,1.2,goal,'D1',nav);
+ assert.equal(claimExactEscapedLeafConnector(a,'D1',goal,.8,1.3),false);
+ a.doorHandContact={releasedAt:null};
+ assert.equal(claimExactEscapedLeafConnector(a,'D1',goal,1,1.3),false);
+ a.doorHandContact=null;
+ assert.equal(claimExactEscapedLeafConnector(a,'D1',goal,1,1.3),true);
+ assert.equal(claimExactEscapedLeafConnector(a,'D1',goal,1,1.4),false);
 });
