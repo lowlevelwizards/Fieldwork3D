@@ -51,6 +51,8 @@ test('R7.0 live source census protects real refresh, bookkeeping and shared gall
   x.callee==='recordCompletedOperation'&&x.sites.length===1));
  assert.ok(r.refresh.orchestratorCalls.some(x=>x.callee==='renderSession'));
  assert.ok(r.equipment.galleryCallers.every(x=>x.sites.length>0));
+ assert.ok(r.owners.find(x=>x.id==='equipment-workspace').markers.every(x=>x.found));
+ assert.ok(r.refresh.entrypoints.some(x=>x.path==='src/ui/equipment-workspace.ts'&&x.callee==='createGallery'&&x.sites.length===1));
  assert.ok(r.lifecycle.files.some(x=>x.path.includes('campaign-outfitter-gallery')&&
   x.observed.some(s=>s.callee==='disconnect')));
  assert.ok(r.owners.find(x=>x.id==='quick-ops').counts.refresh>0);
