@@ -476,9 +476,14 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
     for(const joint of capJoins.junctions){
       const parent=wallGroups[joint.owner];
       if(!parent)continue;
+      const jointMaterial=capMat.clone();host.wallMaterials.add(jointMaterial);
       const connector=host.box(parent,joint.p.x,WALL_VISUAL_HEIGHT+.35,
-        joint.p.y,11,2.12,11,capMat,false);
+        joint.p.y,11,2.12,11,jointMaterial,false);
       connector.castShadow=false;
+      const segment=site.walls[joint.owner];
+      connector.userData.fieldworkDrawFamily='structural-wall-cap-joint';
+      host.walls.push({mesh:connector,mid:joint.p,segment,index:joint.owner,
+        exterior:accessibleExteriorWall(site,segment)});
     }
     const openingHost:SiteOpeningsHost={
       root:host.root,
@@ -782,19 +787,22 @@ export function buildSiteWorld(site:Site|null,host:SiteSceneBuildPort):void {
       const p1=segment.a,p2=segment.b;
       const dx=p2.x-p1.x,dz=p2.y-p1.y;
       const len=Math.hypot(dx,dz);
+      const bodyMaterial=host.solid(i===4?0x81877d:0xb4a991).clone();host.wallMaterials.add(bodyMaterial);
       const mesh=host.box(host.root,(p1.x+p2.x)/2,WALL_VISUAL_HEIGHT/2,
-        (p1.y+p2.y)/2,len+3,WALL_VISUAL_HEIGHT,9,host.solid(i===4?0x81877d:0xb4a991));
+        (p1.y+p2.y)/2,len+3,WALL_VISUAL_HEIGHT,9,bodyMaterial);
       mesh.rotation.y=-Math.atan2(dz,dx);
       host.walls.push({mesh,mid:{x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2},segment,index:i,exterior:i<5});
       // Dark skirting separates the wall footprint from similar floor values.
+      const footMaterial=host.solid(0x36453f).clone();host.wallMaterials.add(footMaterial);
       const skirting=host.box(host.root,mesh.position.x,2,mesh.position.z,
-        len+4,4,12,host.solid(0x36453f),false);
+        len+4,4,12,footMaterial,false);
       skirting.rotation.y=mesh.rotation.y;
        host.walls.push({mesh:skirting,mid:{x:mesh.position.x,y:mesh.position.z},segment,index:i,exterior:i<5});
       // A dark, legible wall cap communicates height in either camera mode.
+      const capMaterial=host.solid(0x51483a).clone();host.wallMaterials.add(capMaterial);
       const cap=host.box(host.root,mesh.position.x,WALL_VISUAL_HEIGHT+.3,
         mesh.position.z,
-        len+4,2,11,host.solid(0x51483a),false);cap.rotation.y=mesh.rotation.y;
+        len+4,2,11,capMaterial,false);cap.rotation.y=mesh.rotation.y;
       host.walls.push({mesh:cap,mid:{x:mesh.position.x,y:mesh.position.z},segment,index:i,exterior:i<5});
     }
     for(const x of [209,502]){
