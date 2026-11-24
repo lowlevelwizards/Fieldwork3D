@@ -28,7 +28,7 @@ export function makeStainMarkBatch(capacity:number){
  mesh.count=0;mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);mesh.frustumCulled=false;
  mesh.userData.fieldworkDrawFamily='mixed-impact-stain';
  return {mesh,texture,style,
-  setStyle(index:number,surface:string,x:number,y:number){
+  setStyle(index:number,surface:string|undefined,x:number,y:number){
    style.setX(index,surface==='blood'?stainVariant(x,y):-1);
   },
   finish(){style.needsUpdate=true;},
