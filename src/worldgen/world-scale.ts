@@ -2,6 +2,7 @@
  * Operators are approximately 42 units high, cutaway wall panels 40 units.
  * All physical assets use the same footprints in gameplay and the showroom.
  */
+import {VEHICLE_DIMENSIONS} from './vehicle-catalog.ts';
 export const WORLD_UNITS_PER_METRE=20;
 export const OPERATOR_REFERENCE_HEIGHT=42;
 export const UNIT_TO_METRES=1/WORLD_UNITS_PER_METRE;
@@ -100,10 +101,7 @@ export const CANONICAL_ASSET_DIMENSIONS:Readonly<Record<string,readonly [number,
  'trash':[15,15,17],
  'packages':[19,17,16],
  'picture-frame':[20,3,23],
- 'sedan':[96,39,33],
- 'pickup':[110,43,39],
- 'van':[109,44,47],
- 'suv':[101,43,42],
+ ...VEHICLE_DIMENSIONS,
  'tree-broadleaf':[52,52,105],
  'tree-conifer':[44,44,116],
  'tree-scrub':[43,43,67],

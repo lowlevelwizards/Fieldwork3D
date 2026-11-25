@@ -3,6 +3,11 @@ on:
   pull_request:
     paths:
       - 'src/worldgen/vehicle-*.ts'
+      - 'src/worldgen/world-scale.ts'
+      - 'src/worldgen/asset-catalog.ts'
+      - 'src/worldgen/asset-library.ts'
+      - 'src/worldgen/fixture-visuals.ts'
+      - 'src/rendering/breach-site-scene-builder.ts'
       - 'tests/veh-*.test.mjs'
       - '.github/workflows/veh-vehicle.yml'
   workflow_dispatch:

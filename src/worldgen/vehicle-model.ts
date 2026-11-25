@@ -113,11 +113,11 @@ export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIM
  }
  for(const s of [-1,1]){
   const z0=s*.22,z1=s*.40;
-  end(.491,belt-.09,belt-.025,z0,z1,head);
-  end(-.491,belt-.09,belt-.025,z0,z1,tail);
+  end(.491,belt-.15,belt-.095,z0,z1,head);
+  end(-.491,belt-.13,belt-.065,z0,z1,tail);
  }
- end(.492,belt-.18,belt-.10,-.18,.18,trim);
- end(-.492,belt-.18,belt-.12,-.10,.10,hub);
+ end(.492,belt-.24,belt-.16,-.18,.18,trim);
+ end(-.492,belt-.21,belt-.15,-.10,.10,hub);
  const stripe=config==='police'?0x39556e:config==='medical'?0xa6564a:config==='delivery'?0x648577:config==='municipal'?0xb19a55:config==='contractor'?0x696e5a:undefined;
  if(stripe!==undefined)side(-.37,.34,belt-.14,belt-.07,.431,stripe);
  if(config==='police'||config==='medical'||config==='taxi'){

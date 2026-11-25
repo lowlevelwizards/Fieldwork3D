@@ -12,16 +12,19 @@ import {renderDetailedFixture} from './detailed-fixture-visuals.ts';
 import {renderCharacterFixture} from './asset-character-visuals.ts';
 import {renderFoliageCardFixture} from './foliage-card-visuals.ts';
 import {conditionColor,conditionRoughness} from './asset-condition.ts';
+import {renderVehicleFixture} from './vehicle-visual.ts';
 export type FixtureVisualContext={
  box:(parent:THREE.Object3D,x:number,y:number,z:number,
    w:number,h:number,d:number,material:THREE.Material,cast?:boolean)=>THREE.Mesh;
  solid:(hex:number,roughness?:number,surface?:PixelSurface)=>THREE.MeshStandardMaterial;
+ vehicleMaterial?:()=>THREE.MeshStandardMaterial;
 };
 export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
  ctx:FixtureVisualContext,wood:THREE.Material,steel:THREE.Material,
  olive:THREE.Material,metal:THREE.Material):void{
       const fixture=c.fixture??'crate';
       const asset=propDefinition(fixture);
+      if(renderVehicleFixture(group,c,i,ctx.vehicleMaterial))return;
       const nativeSurface=fixturePixelSurface(fixture);
       // In normal gameplay the original context is reused without overrides.
       const visualCtx:FixtureVisualContext=!c.artCondition&&!c.artSurface?ctx:{

@@ -26,3 +26,30 @@ test('all compiled models have one opaque geometry, finite attributes and bounde
   }finally{geo.dispose();}
  }
 });
+
+import * as THREE from 'three';
+import {renderVehicleFixture,acquireVehicleTemplate,createVehicleMaterial} from '../src/worldgen/vehicle-visual.ts';
+import {StaticVisualTemplateLibrary} from '../src/rendering/fieldwork-visual-template-library.ts';
+import {propDefinition} from '../src/worldgen/asset-catalog.ts';
+test('shared scene preview and cached vehicle mesh agree; cache owns one geometry',()=>{
+ const cache=new StaticVisualTemplateLibrary();
+ const mat=createVehicleMaterial();
+ try{
+  for(const family of VEHICLE_FAMILIES){
+   const asset=propDefinition(family);assert.ok(asset);
+   assert.deepEqual([asset.width,asset.depth,asset.height],VEHICLE_DIMENSIONS[family]);
+   const c={x:4,y:6,w:asset.width,h:asset.depth,fixture:family,artVariant:2};
+   const group=new THREE.Group();
+   assert.equal(renderVehicleFixture(group,c,0,()=>mat),true);
+   const a=acquireVehicleTemplate(cache,c,0,()=>mat),b=acquireVehicleTemplate(cache,c,0,()=>mat);
+   assert.ok(a&&b);assert.equal(group.children.length,1);
+   const model=group.children[0],cached=a.root.children[0];
+   assert.equal(cached.geometry,b.root.children[0].geometry);
+   assert.deepEqual(cached.position.toArray(),model.position.toArray());
+   assert.deepEqual(cached.geometry.getAttribute('position').array,model.geometry.getAttribute('position').array);
+   model.geometry.dispose();a.release();b.release();
+  }
+  assert.equal(cache.stats().geometries,6);
+  assert.equal(cache.stats().leases,0);
+ }finally{cache.clear();mat.dispose();}
+});

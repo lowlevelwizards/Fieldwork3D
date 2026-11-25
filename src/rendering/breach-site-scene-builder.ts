@@ -42,6 +42,7 @@ import {planInteriorFragments,type InteriorFragment} from '../worldgen/interior-
 import {visibleSurfaceHeight} from '../worldgen/decoration-anchors.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from '../worldgen/fixture-visuals.ts';
 import {consolidateStaticFixtureParts} from './breach-fixture-draw-batching.ts';
+import {acquireVehicleTemplate,createVehicleMaterial} from '../worldgen/vehicle-visual.ts';
 import {acquireRigidFixtureTemplate,adoptRigidFixtureVisual}
  from './breach-fixture-template.ts';
 import {consolidateOwnedStaticSiteDetails} from './breach-owner-static-merge.ts';
@@ -604,7 +605,9 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
     const doorTrim=host.solid(age(theme.trim,'painted-wood'),.9,'painted-wood');
     const metal=host.solid(0x586665,.78,'industrial-steel');
     buildSiteDoors(site,openingHost,{theme,doorTrim,metal});
+    let vehicleMaterial:THREE.MeshStandardMaterial|undefined;
     const fixtureCtx:FixtureVisualContext={
+      vehicleMaterial:()=>vehicleMaterial??=(host.siteMaterials.track(createVehicleMaterial())),
       box:(parent,x,y,z,w,h,d,material,cast)=>
         host.box(parent,x,y,z,w,h,d,material,cast),
       solid:(hex,roughness,surface)=>host.solid(age(hex,surface),roughness,surface),
@@ -647,8 +650,9 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         visual.fixture==='shrub-tall'?37:visual.fixture==='bush'?25:0;
       const previewBush=!!host.previewBush&&!fixtureRoom&&bushHeight>0;
       const templateLease=!previewBush&&host.fixtureTemplates&&host.registerVisualLease?
+        (acquireVehicleTemplate(host.fixtureTemplates,visual,i,fixtureCtx.vehicleMaterial!)??
         acquireRigidFixtureTemplate(host.fixtureTemplates,visual,i,localCtx,palette,
-          host.includeServiceFixtureTemplates===true):
+          host.includeServiceFixtureTemplates===true)):
         null;
       if(previewBush){
         host.previewBush!(intact,visual.w,bushHeight,visual.h);
