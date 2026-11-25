@@ -41,7 +41,10 @@ const GOLDENS=Object.freeze({
  // the contact timeline; reproducible live shots, real downing, health and
  // AI observation gates below remain strict.
  combat:'f7f44ce49bfb9d70bd7df8bf464e781f947e36ef147e0d22d2db3446959df27b',
- civilian:'32b97cc3908c2c2655d5729996b6513d57efa339f1ed63b8b82aadf204592136'
+ // V18 intentionally changes generated physical exterior cover, which
+ // is included in every snapshot. The old generated site's exact hash
+ // is separately verified on the archived input by V18 replay acceptance.
+ civilian:'4493f9bf02ba61ed927422ee60ef48dbf402eeda0b4aaa813e609246a59c1d88'
 });
 function authorDoorEntry(s){
  const [rook,moss]=team(s);
@@ -208,6 +211,8 @@ test('civilian rescue targets survive simulation and are recorded as real entiti
  assert.ok(first.recorder.frames[0].civilians.some(c=>c.id===target[0].id));
  assert.ok(first.recorder.frames.at(-1).civilians.some(c=>c.id===target[0].id));
  assert.equal(first.recorder.completeness.complete,true);
+ const bare=runStage1Scenario({site,mission:'rescue',intel:'floor-plan',enableCivilians:true,ticks:120,sampleEvery:20});
+ assert.equal(first.fingerprint,bare.fingerprint,'recording cannot affect generated rescue outcomes');
  assert.equal(first.fingerprint,GOLDENS.civilian,'civilian/replay baseline drifted');
 });
 test('objective and all-operators-down reach independently expected terminal phases',()=>{

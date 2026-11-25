@@ -13,6 +13,8 @@ on:
       - 'src/worldgen/exterior-furnishing-diagnostics.ts'
       - 'src/map-lab-main.ts'
       - 'scripts/verification/v18-exterior-browser.mjs'
+      - 'scripts/verification/v18-replay-compat.mjs'
+      - 'tests/breach-roadmap2-stage1-contracts.test.mjs'
       - 'tests/v18-exterior-finishes.test.mjs'
       - 'tests/v18-exterior-role-program.test.mjs'
       - '.github/workflows/v18-exterior.yml'
@@ -54,6 +56,9 @@ jobs:
           ref: ${{ github.event.pull_request.base.sha || 'main' }}
           path: v18-before
       - run: npm install --prefix v18-before --no-audit --no-fund
+      - run: node --experimental-strip-types scripts/verification/v18-replay-compat.mjs
+        env:
+          V18_BASE_DIR: v18-before
       - run: node scripts/verification/v18-exterior-browser.mjs
         env:
           V18_BASE_DIR: v18-before
