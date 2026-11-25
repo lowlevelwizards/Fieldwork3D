@@ -104,15 +104,46 @@ try{
     }
     if(JSON.stringify({shots:s.shots,marks:s.impactMarks,dropped:s.dropped,bursts:s.flashBursts,windows:s.windows})!==original)throw Error('Presentation mutated evidence');
     const snapshot=scene.renderer.domElement.toDataURL('image/png');
+    const captures={};
     pane.shattered=false;pane.open=false;pane.shatteredAt=undefined;s.seconds=0;
     s.shots=[];s.impactMarks=[];s.dropped=[];s.flashBursts=[];draw();
     if(batch?.count||stain?.count||puffs?.count||traces?.count||pulses?.count||scene.windowShards?.count)throw Error('Empty/rewind left stale instances');
+    // V15: exercise the normal simulation effect expiry, then inspect the
+    // production GPU batch after all tracer/muzzle-flash records have gone.
+    const {advanceTransientSimulationEffects}=await import('/src/breach-simulation-phases.ts');
+    const cloudPoint={x:p.x,y:p.y+25};
+    s.seconds=.41;s.shots=[{id:9000,shooterId:selected,targetId:null,start:{...p},end:cloudPoint,
+      age:.39,hit:false,side:'blue',surface:'dust',impactHeight:1,muzzleHeight:26,
+      healthBefore:0,healthAfter:0,down:false}];
+    advanceTransientSimulationEffects(s,.02);
+    s.seconds=.8;draw();
+    if(s.shots.length||traces?.count||pulses?.count||!puffs?.count)throw Error('V15 cloud tail did not outlive shot');
+    const cloudCount=puffs.count;
+    const cloudScale=Math.hypot(...puffs.instanceMatrix.array.slice(0,3));
+    if(cloudScale<8)throw Error('V15 cloud still too small');
+    captures.dust=scene.renderer.domElement.toDataURL('image/png');
+    s.seconds=4;advanceTransientSimulationEffects(s,.02);draw();
+    if(puffs.count||s.atmosphere?.length)throw Error('Expired cloud lingered');
+    // One shard mesh, deliberately larger planar pieces in air and on floor.
+    pane.shattered=true;pane.open=true;pane.shatteredAt=4;s.seconds=4.15;
+    scene.view.focus={x:pane.x,y:pane.y};draw();
+    const burst=scene.windowShards.count;
+    scene.windowShards.geometry.computeBoundingBox();
+    const bb=scene.windowShards.geometry.boundingBox;
+    if(burst!==6||bb.max.x-bb.min.x<2.5||bb.max.z-bb.min.z<3.5||bb.max.y-bb.min.y>.5)
+      throw Error('V15 glass silhouette or burst budget mismatch');
+    captures.glassBurst=scene.renderer.domElement.toDataURL('image/png');
+    s.seconds=5.5;draw();
+    if(scene.windowShards.count!==4)throw Error('V15 settled shard budget mismatch');
+    captures.glassSettled=scene.renderer.domElement.toDataURL('image/png');
+    const atmosphereWitness={cloudCount,cloudScale,burst,settled:scene.windowShards.count};
     scene.applySite(null);if(batch?.count||stain?.count||puffs?.count||traces?.count||pulses?.count||scene.windowShards?.count||root.getObjectByName('vfx-grass-preview'))throw Error('Reset left stale instances');
     scene.renderer.dispose();scene.renderer.forceContextLoss();
-    return {variant,viewport,seed:site.seed,idle,stress,liveStress,counts,snapshot};
+    return {variant,viewport,seed:site.seed,idle,stress,liveStress,counts,atmosphereWitness,snapshot,captures};
    },{variant,enabled,lights,vegetation,smoke,viewport});
    assert.deepEqual(errors,[],'Shader/runtime errors');
-   const {snapshot,...record}=result;results.push(record);
+   const {snapshot,captures,...record}=result;results.push(record);
+   for(const [name,data] of Object.entries(captures))writeFileSync(dir+'/'+viewport.width+'-'+variant+'-'+name+'.png',Buffer.from(data.split(',')[1],'base64'));
    writeFileSync(dir+'/'+viewport.width+'-'+variant+'.png',Buffer.from(snapshot.split(',')[1],'base64'));
    console.log('VFX_V11_BROWSER '+JSON.stringify(record));
   }finally{await page.close();}
