@@ -50,6 +50,11 @@ function orient(source:DebrisSource,out:SettledWindowShardPose){
  const x=out.x-source.x,z=out.z-source.y,co=Math.cos(source.yaw),si=Math.sin(source.yaw);
  out.x=source.x+x*co-z*si;out.z=source.y+x*si+z*co;out.ry-=source.yaw;
 }
+/** Narrow boards, flatter metal plates, chunky soft/masonry pieces. Width is
+ * never expanded, so the existing conservative containment disc stays valid. */
+export function fractureWidthScale(kind:DebrisSource['kind']):number{
+ return kind==='wood'?.48:kind==='metal'?.72:1;
+}
 export function fractureDebrisPose(source:DebrisSource,time:number,index:number,settled:boolean,out:SettledWindowShardPose):boolean{
  if(settled){if(!settledWindowShardPose(source,time,index,out))return false;}
  else{if(!windowShardPoseInto(source,time,index,out))return false;

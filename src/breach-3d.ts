@@ -54,7 +54,7 @@ import {windowShardPoseInto,WINDOW_SHARDS_PER_PANE,WINDOW_SHARD_CAPACITY,
  type SettledWindowShardPose}
  from './rendering/window-shatter-presentation.ts';
 import {type CivilianRig} from './breach-civilian-visuals.ts';
-import {doorDebrisSource,coverDebrisSource,fractureDebrisPose,debrisPoseContained,FractureSourceScratch} from './rendering/breach-fracture-debris.ts';
+import {doorDebrisSource,coverDebrisSource,fractureDebrisPose,fractureWidthScale,debrisPoseContained,FractureSourceScratch} from './rendering/breach-fracture-debris.ts';
 import {reconcileSceneActorLifetimes} from './rendering/breach-actor-frame-presenter.ts';
 import {shouldPrewarmContactRig,withinContactPrewarmBudget,
   withPreparedVisibleRoot}
@@ -2090,16 +2090,16 @@ export class TacticalScene3D{
     let shardCount=0,shardWrites=0,colorWrites=0,opacityWrites=0;
     const shardMesh=this.windowShards;
     const debrisWorld=sessionWorldGeometry(s);
-    const submit=(part:SettledWindowShardPose|import('./rendering/window-shatter-presentation.ts').WindowShardPose,color:number,heightScale=1,glass=true)=>{
+    const submit=(part:SettledWindowShardPose|import('./rendering/window-shatter-presentation.ts').WindowShardPose,color:number,heightScale=1,glass=true,widthScale=1)=>{
       if(shardCount>=WINDOW_SHARD_CAPACITY)return;
       const alpha=glass?Math.fround(.85):1;
       if(this.shardOpacity.getX(shardCount)!==alpha){
         this.shardOpacity.setX(shardCount,alpha);opacityWrites++;
       }
-      if(this.shardSlots.changed(shardCount,part,heightScale)){
+      if(this.shardSlots.changed(shardCount,part,heightScale,widthScale)){
         this.shardMatrix.position.set(part.x,part.y,part.z);
         this.shardMatrix.rotation.set(part.rx,part.ry,part.rz);
-        this.shardMatrix.scale.set(part.scale,part.scale*heightScale,part.scale);
+        this.shardMatrix.scale.set(part.scale*widthScale,part.scale*heightScale,part.scale);
         this.shardMatrix.updateMatrix();shardMesh.setMatrixAt(shardCount,this.shardMatrix.matrix);shardWrites++;
       }
       if(this.shardColors[shardCount]!==color){
@@ -2157,7 +2157,7 @@ export class TacticalScene3D{
           if(!fractureDebrisPose(source,s.seconds,i,false,part)||
             !debrisPoseContained(debrisWorld,source,part,part.heightScale))continue;
           if(!omniscient&&!this.presentationSight.query(s,'effect','fracture:'+source.id+':burst:'+i,{x:part.x,y:part.z}))continue;
-          submit(part,source.color,part.heightScale,source.kind==='glass');
+          submit(part,source.color,part.heightScale,source.kind==='glass',fractureWidthScale(source.kind));
         }
         if(shardCount>=WINDOW_SHARD_CAPACITY)break;
       }
@@ -2182,7 +2182,7 @@ export class TacticalScene3D{
           if(!fractureDebrisPose(source,s.seconds,i,true,part)||
             !debrisPoseContained(debrisWorld,source,part,part.heightScale))continue;
           if(!omniscient&&!this.presentationSight.query(s,'effect','fracture:'+source.id+':settled:'+i,{x:part.x,y:part.z}))continue;
-          submit(part,source.color,part.heightScale,source.kind==='glass');
+          submit(part,source.color,part.heightScale,source.kind==='glass',fractureWidthScale(source.kind));
         }
         if(shardCount>=WINDOW_SHARD_CAPACITY)break;
       }
@@ -3265,6 +3265,7 @@ export class TacticalScene3D{
         if(!omniscient&&!this.presentationSight.query(s,'effect','cloud:'+cue.key,cue.p))continue;
         for(let i=0;i<puffCount(kind);i++){
           if(!samplePuff(kind,cue.id,i,age,cue.p.x,cue.height,cue.p.y,puff))continue;
+          if(cue.tint!==undefined)puff.color=cue.tint;
           if(!omniscient&&!this.presentationSight.query(s,'effect','cloud:'+cue.key+':'+i,{x:puff.x,y:puff.z}))continue;
           if(!this.dustPuffs){this.dustPuffs=new DustPuffBatch();this.effects.add(this.dustPuffs.mesh);}
           if(!this.dustPuffs.add(puff))break;

@@ -191,12 +191,17 @@ function choose(kind:Sample){
   retainImpactMark(session,{id:session.nextEffectId++,shotId:shot.id,p:point,age:0,surface:'glass',height,surfaceRef:ref});
   focus({x:pane.x,y:pane.y});label(pane.shattered?'Glass · shattered, settled fragments':`Glass · damaged ${3-pane.integrity}/3 · repeat to fracture`);draw();return;
  }
- if(kind==='hit'||kind==='down'||kind==='pool'){
+ if(kind==='pool'){
+  build('arena');
+  registerWound(target.medical,session.nextShotId++,'torso',2,session.seconds);
+  focus(target.p);label('Blood · isolated small drops accumulate into a pool');draw();return;
+ }
+ if(kind==='hit'||kind==='down'){
   if(target.health<=0){target.health=4;target.downedAt=null;target.medical={wounds:[],bloodLoss:0};}
   const shot=emit('blood',target.p,26,true,kind!=='hit');
   retainImpactMark(session,{id:session.nextEffectId++,shotId:shot.id,p:{...target.p},surface:'blood',age:0,height:.85,bloodKind:'splat',bloodAmount:kind==='hit'?1:3},site.walls);
-  if(kind==='pool'||kind==='down')registerWound(target.medical,shot.id,'torso',2,session.seconds);
-  focus(target.p);label(kind==='hit'?'Blood · oversized directional hit': 'Blood · small drops accumulate into a persistent pool');
+  if(kind==='down')registerWound(target.medical,shot.id,'torso',2,session.seconds);
+  focus(target.p);label(kind==='hit'?'Blood · rounded directional hit': 'Blood · downed actor, continued bleeding');
  }else if(kind==='stone'){
   const index=3,wall=site.walls[index],p={x:200,y:600};
   const ref=segmentAttachment('wall',index,undefined,wall,{x:p.x,y:p.y+20},{x:p.x,y:p.y-20},.5,28);

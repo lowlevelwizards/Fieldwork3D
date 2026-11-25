@@ -66,14 +66,14 @@ export function settledWindowShardPose(
  * replay and different site contents can replace any slot on the next frame.
  */
 export class WindowShardSlotCache{
- private readonly values=new Float64Array(WINDOW_SHARD_CAPACITY*8).fill(NaN);
- changed(index:number,p:WindowShardPose,heightScale=1):boolean{
+ private readonly values=new Float64Array(WINDOW_SHARD_CAPACITY*9).fill(NaN);
+ changed(index:number,p:WindowShardPose,heightScale=1,widthScale=1):boolean{
   if(index<0||index>=WINDOW_SHARD_CAPACITY)return false;
-  const a=this.values,k=index*8;
+  const a=this.values,k=index*9;
   if(a[k]===p.x&&a[k+1]===p.y&&a[k+2]===p.z&&a[k+3]===p.rx&&
-     a[k+4]===p.ry&&a[k+5]===p.rz&&a[k+6]===p.scale&&a[k+7]===heightScale)return false;
+     a[k+4]===p.ry&&a[k+5]===p.rz&&a[k+6]===p.scale&&a[k+7]===heightScale&&a[k+8]===widthScale)return false;
   a[k]=p.x;a[k+1]=p.y;a[k+2]=p.z;a[k+3]=p.rx;a[k+4]=p.ry;
-  a[k+5]=p.rz;a[k+6]=p.scale;a[k+7]=heightScale;return true;
+  a[k+5]=p.rz;a[k+6]=p.scale;a[k+7]=heightScale;a[k+8]=widthScale;return true;
  }
  reset(){this.values.fill(NaN);}
 }

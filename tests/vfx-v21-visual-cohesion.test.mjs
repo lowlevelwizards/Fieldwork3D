@@ -7,7 +7,7 @@ import {MATERIALS} from '../src/breach-materials.ts';
 import {retainCollapsePuff,retainAtmosphereTails,ATMOSPHERE_LIMIT} from '../src/breach-atmosphere-evidence.ts';
 import {createCasingGeometry,casingVisualProfile} from '../src/rendering/breach-casing-art.ts';
 import {sampleMaterialImpact,MATERIAL_IMPACT_PROFILES} from '../src/rendering/breach-material-impact-atom.ts';
-import {coverDebrisSource,fractureDebrisPose} from '../src/rendering/breach-fracture-debris.ts';
+import {coverDebrisSource,fractureDebrisPose,fractureWidthScale} from '../src/rendering/breach-fracture-debris.ts';
 import {samplePuff,puffCount} from '../src/rendering/breach-dust-puffs.ts';
 test('V21 first drops stay small, four nearby drops promote, moving drops stay behind',()=>{
  const s={impactMarks:[]};
@@ -34,9 +34,9 @@ test('V21 furniture survives more strikes, collapses once with larger material d
  assert.equal(coverInitialIntegrity({fixture:'vehicle'}),MATERIALS['sheet-metal'].integrity);
  for(let i=0;i<5;i++)assert.equal(damageCover(box,.45,i),'damaged');
  assert.equal(damageCover(box,2,5),'collapsed');assert.equal(damageCover(box,2,6),'immune');
- const source=coverDebrisSource(box,0),pose={};assert.ok(fractureDebrisPose(source,5.1,0,false,pose));assert.ok(pose.scale>=3.5);
+ const source=coverDebrisSource(box,0),pose={};assert.ok(fractureDebrisPose(source,5.1,0,false,pose));assert.ok(pose.scale>=3.5);assert.ok(fractureWidthScale('wood')<fractureWidthScale('stone'));
  const s={seconds:5,nextEffectId:1,shots:[],flashBursts:[]};retainCollapsePuff(s,box);
- assert.equal(s.atmosphere[0].kind,'collapse');assert.equal(s.atmosphere[0].p.x,100);
+ assert.equal(s.atmosphere[0].kind,'collapse');assert.equal(s.atmosphere[0].p.x,100);assert.equal(s.atmosphere[0].tint,0xc9ae87);
  for(let i=0;i<100;i++)retainCollapsePuff(s,box);assert.equal(s.atmosphere.length,ATMOSPHERE_LIMIT);
  s.seconds=8;retainAtmosphereTails(s,.02);assert.equal(s.atmosphere.length,0);
 });
