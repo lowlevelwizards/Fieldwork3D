@@ -14,6 +14,8 @@ on:
       - 'scripts/verification/w5-fog-depth-browser.mjs'
       - 'src/rendering/breach-wall-presentation.ts'
       - 'src/worldgen/wall-surface-recipe.ts'
+      - 'src/worldgen/wall-story-residue.ts'
+      - 'tests/w6-wall-story-residue.test.mjs'
       - 'src/rendering/wall-surface-atlas.ts'
       - 'src/rendering/wall-structural-packet.ts'
       - 'tests/w4-wall-structural-packet.test.mjs'
@@ -73,6 +75,9 @@ jobs:
       - name: W5 critical fog ownership, mask and depth contracts
         if: ${{ startsWith(github.head_ref, 'refactor/w5-') }}
         run: node --experimental-strip-types --test tests/w5-fog-depth-disclosure.test.mjs tests/breach-p7-fog-layer-performance.test.mjs tests/fog-second-generated-quickplay-20261123.test.mjs tests/fog-exterior-unseen-apertures-regression.test.mjs tests/fog-procedural-site-bounds-regression.test.mjs tests/w1-wall-presentation.test.mjs tests/breach-roadmap2-stage3-integration.test.mjs
+      - name: W6 fixture-anchor and atlas budget contracts
+        if: ${{ startsWith(github.head_ref, 'refactor/w6-') }}
+        run: node --experimental-strip-types --test tests/w6-wall-story-residue.test.mjs tests/w2-wall-surface-recipe.test.mjs tests/w3-wall-surface-atlas.test.mjs tests/w4-wall-structural-packet.test.mjs
       - name: Production typecheck and build
         run: npm run build
       - name: W5 critical real canvas and WebGL disclosure

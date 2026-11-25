@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type {Site} from '../breach-site.ts';
+import {planFixtureWallResidue} from '../worldgen/wall-story-residue.ts';
 import {wallPatinaDimensions} from '../worldgen/condition-wall.ts';
 import {planWallFaces,atlasWallStrip,type WallFacePair,type WallEffectFilter} from '../worldgen/wall-surface-recipe.ts';
 export type WallAtlasSlot={index:number;row:number;texture:THREE.DataTexture;pair:WallFacePair;patterned:boolean;trimPalette?:{trim:number;cap:number}};
@@ -42,7 +43,8 @@ export function updateWallAtlas(slots:Iterable<WallAtlasSlot>,level:number,filte
  for(const page of pages)page.needsUpdate=true;
  return pages.size;
 }
-export function buildWallAtlas(site:Site,height:number,level:number,filter:WallEffectFilter,patterned:boolean,trimPalette?:{trim:number;cap:number}):WallAtlas{
+export function buildWallAtlas(site:Site,height:number,level:number,filter:WallEffectFilter,patterned:boolean,trimPalette?:{trim:number;cap:number},storyEnabled=false):WallAtlas{
+ const story=storyEnabled?planFixtureWallResidue(site,height):undefined;
  const widths=site.walls.flatMap((w,index)=>{
   const length=Math.hypot(w.b.x-w.a.x,w.b.y-w.a.y);
   return length<5?[]:[{index,width:wallPatinaDimensions(length).width}];
@@ -55,7 +57,7 @@ export function buildWallAtlas(site:Site,height:number,level:number,filter:WallE
   texture.minFilter=THREE.NearestMipmapNearestFilter;texture.generateMipmaps=true;
   texture.name='w3-wall-atlas:'+page.width+'x'+rows;
   pages.push(texture);
-  page.indices.forEach((index,i)=>slots.set(index,{index,row:i*64,texture,pair:planWallFaces(site,index,height),patterned,trimPalette}));
+  page.indices.forEach((index,i)=>slots.set(index,{index,row:i*64,texture,pair:planWallFaces(site,index,height,story),patterned,trimPalette}));
  }
  updateWallAtlas(slots.values(),level,filter);
  return {pages,slots};
