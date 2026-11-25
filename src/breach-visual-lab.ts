@@ -71,6 +71,7 @@ function emit(surface:NonNullable<ShotEvent['surface']>,end:Pt,height:number,hit
 const casingSelect=(id:string)=>document.getElementById(id) as HTMLInputElement|HTMLSelectElement;
 const casingDebug=document.getElementById('casingDebugOverlay') as unknown as SVGSVGElement;
 const casingWeapon=casingSelect('casingWeapon') as HTMLSelectElement;
+let debugSession:Session|null=null,debugProjection='';
 for(const preset of FAMILY_PRESETS){
  const option=document.createElement('option');option.value=preset.id;option.textContent=preset.name;
  casingWeapon.append(option);
@@ -80,9 +81,14 @@ pistolOption.value='glock';pistolOption.textContent='Glock · held pistol';casin
 function drawCasingDebug(){
  const enabled=active==='casings'&&(casingSelect('casingDebug') as HTMLInputElement).checked;
  casingDebug.style.display=enabled?'block':'none';
- if(!enabled){if(casingDebug.childElementCount)casingDebug.replaceChildren();return;}
- casingDebug.setAttribute('viewBox','0 0 '+innerWidth+' '+innerHeight);
+ if(!enabled){if(casingDebug.childElementCount)casingDebug.replaceChildren();debugSession=null;return;}
  const project=(p:{x:number;y:number;z:number})=>stage.project({x:p.x,y:p.z},p.y);
+ const key=[innerWidth,innerHeight,session.casings.length,...[
+  {x:0,y:0,z:0},{x:100,y:0,z:0},{x:0,y:100,z:0},{x:0,y:0,z:100}
+ ].flatMap(p=>{const v=project(p);return [Math.round(v.x*4),Math.round(v.y*4)];})].join(':');
+ if(debugSession===session&&debugProjection===key)return;
+ debugSession=session;debugProjection=key;
+ casingDebug.setAttribute('viewBox','0 0 '+innerWidth+' '+innerHeight);
  const ns='http://www.w3.org/2000/svg';
  const nodes:SVGElement[]=[];
  for(const c of session.casings){
@@ -105,6 +111,7 @@ function casingSample(){
  active='casings';
  const value=casingWeapon.value;
  const preset=FAMILY_PRESETS.find(p=>p.id===value);
+ if(value==='legacy'){rook.weapon='carbine';rook.weaponConfiguration=initialWeaponConfiguration('carbine');}
  const pistol=value==='glock'?'glock-g19x' as const:undefined;
  if(preset){rook.weapon=preset.weapon;rook.weaponConfiguration={
   ...initialWeaponConfiguration(preset.weapon),build:{family:preset.family,parts:{...preset.parts}}};}
@@ -139,10 +146,11 @@ function casingSample(){
  draw();
 }
 function choose(kind:Sample){
+ const prior=active;
  active=kind;paused=false;document.getElementById('pause')!.textContent='PAUSE';
  if(kind==='casings'){casingSample();return;}
  const next=kind==='glass'||kind==='vegetation'?'exterior':'arena';
- if(next!==mode)build(next);
+ if(next!==mode||prior==='casings')build(next);
  // Keep each effect sample repeatable without preserving stale injury state.
  if(kind==='hit'||kind==='down'||kind==='pool'){
   if(target.health<=0)build('arena');

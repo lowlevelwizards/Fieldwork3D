@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import type {Session} from '../breach-game.ts';
 import type {Pt} from '../breach-core.ts';
 import {casingAt,CASING_LIMIT} from '../breach-effects.ts';
-import {createCasingGeometry,casingVisualProfile} from './breach-casing-art.ts';
+import {createCasingGeometry,casingVisualProfile,applyCasingBaseFinish} from './breach-casing-art.ts';
 import {sampleThrow} from '../breach-flash.ts';
 import {enableWorldGraphicMaterial} from '../breach-graphic-world-lighting.ts';
 import {ShotVisualPool} from './breach-shot-visual-pool.ts';
@@ -146,6 +146,7 @@ export class BreachCombatEffectsPresenter{
       const brass=new THREE.MeshStandardMaterial({
         color:0xffffff,roughness:.48,metalness:.52,flatShading:true});
       if(this.graphicLookEnabled)enableWorldGraphicMaterial(brass);
+      applyCasingBaseFinish(brass);
       this.mats.push(brass);
       this.casingMesh=new THREE.InstancedMesh(
         createCasingGeometry(),brass,CASING_LIMIT);

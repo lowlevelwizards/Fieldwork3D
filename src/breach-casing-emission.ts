@@ -9,6 +9,19 @@ import {doorLeafSegment} from './breach-core.ts';
 import {coverImpactFraction,coverHeight} from './breach-cover-height.ts';
 import {windowPaneSegment} from './breach-windows.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {roomPixelSurface,zonePixelSurface} from './worldgen/pixel-surface-selection.ts';
+import type {Site} from './breach-site.ts';
+import type {CasingPoint} from './breach-casing-trajectory.ts';
+/** Existing art surface categories inform cosmetic settling only. */
+export function casingSurfaceFriction(site:Site|null,p:CasingPoint):number{
+ const room=site?.rooms.find(r=>p.x>=r.x&&p.x<=r.x+r.w&&p.z>=r.y&&p.z<=r.y+r.h);
+ const zone=site?.exteriorZones?.find(z=>Math.abs(p.x-z.x)<=z.w/2&&Math.abs(p.z-z.y)<=z.h/2);
+ const surface=room?roomPixelSurface(site?.archetype,room.purpose??room.kind):
+  zone?zonePixelSurface(zone.kind,site?.condition):undefined;
+ if(surface==='carpet'||surface==='grass'||surface==='scruffy-grass'||surface==='packed-earth')return .32;
+ if(surface==='tile'||surface==='linoleum'||surface==='sealed-concrete')return .9;
+ return .65;
+}
 export function emitSpentCasing(s:Session,a:TeamActor,id:number,muzzle:MuzzleSample,
  secondaryWeapon?:GlockAppearanceId,options?:{at?:number;visualScale?:number;friction?:number}):EjectedCasing{
  // The fallback is a receiver-based body anchor for historical/custom
@@ -61,7 +74,8 @@ export function emitSpentCasing(s:Session,a:TeamActor,id:number,muzzle:MuzzleSam
   return h;
  };
  const occupied=s.casings.map(c=>c.flight?casingLanding(c.flight):casingAt(c,c.at+3));
- const flight=planCasingFlight(id,origin,yaw,trace,occupied,floor,options?.friction,support);
+ const flight=planCasingFlight(id,origin,yaw,trace,occupied,floor,
+  options?.friction??(p=>casingSurfaceFriction(world.site,p)),support);
  const casing:EjectedCasing={id,at,weapon:secondaryWeapon?'smg':a.weapon,
   ...(secondaryWeapon?{secondaryWeapon}:{}),side:a.side,...origin,heading:yaw,flight,
   ...(options?.visualScale!==undefined?{visualScale:options.visualScale}:{})};

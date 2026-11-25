@@ -5,7 +5,7 @@ import {planCasingFlight,sampleCasingFlight,casingLanding,casingSeed} from '../s
 import {casingAt,CASING_LIMIT} from '../src/breach-effects.ts';
 import {casingPort} from '../src/breach-casing-sockets.ts';
 import {muzzleAtShot} from '../src/breach-muzzle.ts';
-import {initialWeaponConfiguration} from '../src/equipment-weapon-assemblies.ts';
+import {initialWeaponConfiguration,resolveWeaponAssembly} from '../src/equipment-weapon-assemblies.ts';
 import {FAMILY_PRESETS} from '../src/equipment-weapon-families.ts';
 import {newSession,team} from '../src/breach-game.ts';
 import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
@@ -46,7 +46,13 @@ test('V20 family receiver sockets follow the shared pose; only requested at igni
   const ordinary=muzzleAtShot(input),sample=muzzleAtShot({...input,sampleEjection:true});
   assert.equal(ordinary.ejection,undefined);
   assert.ok(sample.ejection,preset.id);
-  assert.ok(Math.hypot(sample.ejection.x-sample.x,sample.ejection.z-sample.z)>5,preset.id);
+  // Distance between rigid artwork landmarks is invariant under the
+  // accepted pose. Very short family variants need not exceed 5 world units.
+  const assembly=resolveWeaponAssembly(config),port=casingPort(preset.weapon,config);
+  const actual=Math.hypot(sample.ejection.x-sample.x,sample.ejection.y-sample.y,sample.ejection.z-sample.z);
+  const expected=Math.hypot((assembly.muzzleX-port.x)*assembly.lengthScale,assembly.muzzleY-port.y,port.z);
+  assert.ok(assembly.muzzleX>port.x&&actual>0,preset.id);
+  assert.ok(Math.abs(actual-expected)<1e-7,preset.id+' rigid artwork delta');
   assert.deepEqual({...sample,ejection:undefined},{...ordinary,ejection:undefined});
   assert.ok(casingPort(preset.weapon,config).z>0);
   const crouch=muzzleAtShot({...input,posture:'crouch',sampleEjection:true});

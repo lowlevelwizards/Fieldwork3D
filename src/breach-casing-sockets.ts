@@ -16,8 +16,8 @@ export function casingPort(weapon:WeaponId,configuration?:WeaponConfiguration):C
   case 'ak':return port(AK_VISUAL_ANATOMY,1.98);
   case 'fal':return port(FAL_VISUAL_ANATOMY,1.18);
   case 'fnc':return port(FNC_VISUAL_ANATOMY,1.75);
-  case 'hk':return weapon==='smg'?port(MP5_VISUAL_ANATOMY,1.532):
-    weapon==='carbine'?port(HK556_VISUAL_ANATOMY,1.65):port(HK_VISUAL_ANATOMY,1.775);
+  case 'hk':return b.parts.receiver.startsWith('hk-mp5')?port(MP5_VISUAL_ANATOMY,1.532):
+    /^(hk33|hk53)/.test(b.parts.receiver)?port(HK556_VISUAL_ANATOMY,1.65):port(HK_VISUAL_ANATOMY,1.775);
   case 'r870':return {x:.28,y:.64,z:1.785};
   case 'g36':return {x:1.5,y:.4,z:1.65};
  }

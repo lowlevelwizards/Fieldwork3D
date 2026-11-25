@@ -20,7 +20,7 @@ export function casingLanding(f:CasingFlight):CasingPoint{
 }
 export function planCasingFlight(id:number,origin:CasingPoint,heading:number,
  trace:CasingTrace=clearTrace,occupied:readonly CasingPoint[]=[],floor=.56,
- friction=.65,support:(p:CasingPoint)=>number=()=>floor):CasingFlight{
+ friction:number|((p:CasingPoint)=>number)=.65,support:(p:CasingPoint)=>number=()=>floor):CasingFlight{
  const random=(channel:number)=>casingSeed(id,channel);
  const legs:CasingLeg[]=[];
  let ground=floor;
@@ -79,7 +79,8 @@ export function planCasingFlight(id:number,origin:CasingPoint,heading:number,
     min=Math.min(min,Math.hypot(other.x-p.x,other.z-p.z));
   return min;
  };
- const slide=(3+random(4)*5)*Math.max(.2,Math.min(1,friction));
+ const drag=typeof friction==='number'?friction:friction(at);
+ const slide=(3+random(4)*5)*Math.max(.2,Math.min(1,drag));
  let best=point(at.x,ground,at.z),bestClear=clearance(best);
  // First candidate follows momentum; bounded alternatives scatter only
  // when a nearby retained casing would otherwise occupy the same spot.

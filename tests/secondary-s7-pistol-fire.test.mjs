@@ -62,7 +62,10 @@ test('S7: shared combat resolver owns exact-round ignition and event identity',(
  assert.match(resolver,/weapon:secondaryWeapon\?\?a\.weapon,secondaryWeapon/);
  for(const inherited of ['nearShotLane','observedCivilianFireLane',
   'assessFriendlyLane','strikeSurface','resolveArmorImpact',
-  'recordCivilianHarm','registerWound','s.shots.push','s.casings.push'])
+  'recordCivilianHarm','registerWound','s.shots.push','emitSpentCasing(s,a,shotId,muzzle,secondaryWeapon)'])
   assert.ok(resolver.includes(inherited),inherited+' must remain shared');
+ const emitter=src('breach-casing-emission.ts');
+ assert.match(emitter,/secondaryWeapon\?\{secondaryWeapon\}/);
+ assert.match(emitter,/s\.casings\.push\(casing\)/);
  assert.ok(!src('secondary-shot-geometry.ts').includes('Math.random'));
 });
