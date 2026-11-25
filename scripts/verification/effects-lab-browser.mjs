@@ -14,6 +14,7 @@ try{
  for(const viewport of [{width:390,height:844},{width:1440,height:900}]){
   const page=await browser.newPage({viewport,deviceScaleFactor:1}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
+  page.on('console',m=>{if(m.type()==='error'&&/shader|WebGLProgram/i.test(m.text()))errors.push(m.text());});
   // Validate the actual delivered HTML menu entry before opening the lab.
   const markup=await (await page.request.get(origin+'/index.html')).text();
   assert.match(markup,/<a[^>]+href="\.\/breach-visual-lab\.html"[^>]*>EFFECTS LAB<\/a>/);
@@ -47,6 +48,25 @@ try{
    assert.match(await page.locator('#status').innerText(),/fractured leaf|collapsed/);
    await page.screenshot({path:dir+'/'+viewport.width+'-'+id+'-burst.png'});
   }
+  await page.locator('.casing-controls summary').click();
+  await page.locator('#casingCount').fill('12');
+  await page.locator('#casingDebug').check();
+  await page.locator('#casings').click();
+  assert.match(await page.locator('#status').innerText(),/Spent casings · 12 planned/);
+  await page.locator('#casingDebugOverlay path').first().waitFor({state:'attached'});
+  assert.equal(await page.locator('#casingDebugOverlay path').count(),12);
+  await page.locator('#speed').selectOption('1');
+  await page.waitForTimeout(2500);
+  await page.screenshot({path:dir+'/'+viewport.width+'-casings.png'});
+  await page.locator('#casingWeapon').selectOption('glock');
+  await page.locator('#casingObstacle').selectOption('wall');
+  await page.locator('#casings').click();
+  assert.match(await page.locator('#status').innerText(),/Glock/);
+  await page.screenshot({path:dir+'/'+viewport.width+'-casing-glock-barrier.png'});
+  await page.locator('.casing-controls summary').click();
+  await page.locator('#hit').click();
+  assert.match(await page.locator('#status').innerText(),/Blood/);
+  assert.equal(await page.locator('#casingDebugOverlay path').count(),0);
   await page.locator('#pause').click();await page.locator('#step').click();await page.locator('#gameZoom').click();
   assert.deepEqual(errors,[]);assert.equal(await page.locator('#breach3dCanvas').count(),1);
   await page.close();

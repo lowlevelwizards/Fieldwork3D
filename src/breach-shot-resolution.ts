@@ -32,7 +32,7 @@ import {urgentFireMode} from './breach-fire-urgency.ts';
 import {resolveArmorImpact} from './equipment-armor.ts';
 import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
 import {glassImpactDamage} from './breach-glass-damage.ts';
-import {CASING_LIMIT} from './breach-effects.ts';
+import {emitSpentCasing} from './breach-casing-emission.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
 import {recordActualDown} from './breach-capture-vitals.ts';
@@ -153,7 +153,7 @@ export function createShotResolver(ports:ShotResolverPorts){
       1.30+Math.max(0,sightClearance.compression)*.38:1);
   const proposedYaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
   const shotClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
-    weaponYaw:proposedYaw,shoulderOffset:a.aimSideOffset??0,
+    weaponYaw:proposedYaw,shoulderOffset:a.aimSideOffset??0,sampleEjection:true,
     weapon:a.weapon,secondaryWeapon,
     weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
     velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,COVER,WALLS,
@@ -319,11 +319,7 @@ export function createShotResolver(ports:ShotResolverPorts){
     surface:impact.surface,
     ...(materialImpacts?.length?{materialImpacts}:{}),
   });
-  s.casings.push({id:shotId,at:s.seconds,
-    weapon:secondaryWeapon?'smg':a.weapon,secondaryWeapon,side:a.side,
-    x:muzzle.x-4*Math.cos(a.weaponYaw),z:muzzle.z-4*Math.sin(a.weaponYaw),
-    y:muzzle.y-3,heading:a.weaponYaw});
-  if(s.casings.length>CASING_LIMIT)s.casings.shift();
+  emitSpentCasing(s,a,shotId,muzzle,secondaryWeapon);
   hear(s,a.p,weapon.noise*mods.noise,'gunshot');
   battleEvent(s,'shot',a,a.p,a.name+' FIRED '+weapon.label);
   // A shot heard behind the team suggests an imprecise location.

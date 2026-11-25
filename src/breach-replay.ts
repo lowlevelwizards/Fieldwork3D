@@ -697,6 +697,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
     publishSessionCoverToActiveSite(s);
   }
   s.shots=f.shots.map(shotCopy);
+  // V20 flight records are immutable at emission and read-only during playback.
   s.casings=(f.casings??[]).map(x=>({...x}));
   s.dropped=f.dropped.map(m=>({...m,p:position(m.p)}));
   s.impactMarks=f.impactMarks.map(m=>({...m,p:position(m.p),...(m.surfaceRef?{surfaceRef:{...m.surfaceRef}}:{})}));

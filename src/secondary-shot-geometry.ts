@@ -8,11 +8,12 @@ import {glockArtSockets} from './weapons/geometry/glock-family-silhouettes.ts';
 import {secondaryUpperBodyTargets} from './secondary-upper-body-pose.ts';
 import {legRestRise} from './breach-leg-geometry.ts';
 import type {MuzzleSample} from './breach-muzzle.ts';
+import {GLOCK_CASING_PORT} from './breach-casing-sockets.ts';
 export const HELD_GLOCK_SCALE=.37; // The physically issued S4 cradle scale.
 export type SecondaryMuzzleInput=Readonly<{
  x:number;z:number;heading:number;weaponYaw:number;
  aim:number;velocity:number;posture?:'stand'|'crouch';
- coverStanceDrop?:number;weapon:GlockAppearanceId;
+ coverStanceDrop?:number;weapon:GlockAppearanceId;sampleEjection?:boolean;
 }>;
 export function secondaryMuzzleAtShot(p:SecondaryMuzzleInput):MuzzleSample{
  const grip=secondaryUpperBodyTargets({fraction:1,aim:p.aim,
@@ -29,6 +30,15 @@ export function secondaryMuzzleAtShot(p:SecondaryMuzzleInput):MuzzleSample{
  const muzzleRight=HELD_GLOCK_SCALE*
   (sockets.muzzle.z-sockets.holsterPivot.z);
  const yaw=p.weaponYaw;
+ const ejection=p.sampleEjection?(()=>{
+  const dx=HELD_GLOCK_SCALE*(GLOCK_CASING_PORT.x-sockets.holsterPivot.x);
+  const dz=HELD_GLOCK_SCALE*(GLOCK_CASING_PORT.z-sockets.holsterPivot.z);
+  return {x:p.x+bodyX+Math.cos(yaw)*dx-Math.sin(yaw)*dz,
+   z:p.z+bodyZ+Math.sin(yaw)*dx+Math.cos(yaw)*dz,
+   y:26+legRestRise(p.velocity,p.posture??'stand')+grip.y+
+    HELD_GLOCK_SCALE*(GLOCK_CASING_PORT.y-sockets.holsterPivot.y)-
+    (p.posture==='crouch'?8:0)-(p.coverStanceDrop??0)};
+ })():undefined;
  return {x:p.x+bodyX+Math.cos(yaw)*muzzleForward-
     Math.sin(yaw)*muzzleRight,
   z:p.z+bodyZ+Math.sin(yaw)*muzzleForward+
@@ -36,5 +46,5 @@ export function secondaryMuzzleAtShot(p:SecondaryMuzzleInput):MuzzleSample{
   y:26+legRestRise(p.velocity,p.posture??'stand')+
    grip.y+HELD_GLOCK_SCALE*(sockets.muzzle.y-sockets.holsterPivot.y)-
    (p.posture==='crouch'?8:0)-(p.coverStanceDrop??0),
-  yaw,pitch:0};
+  yaw,pitch:0,...(ejection?{ejection}:{})};
 }
