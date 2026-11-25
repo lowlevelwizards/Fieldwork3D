@@ -36,3 +36,34 @@ test('V18 frontage row offers bounded additional slots without moving special an
  assert.notDeepEqual(exteriorRoleRequests('retail',z,0),exteriorRoleRequests('retail',z,1));
  assert.deepEqual(exteriorRoleRequests('retail',z,1),exteriorRoleRequests('retail',z,1));
 });
+
+import {exteriorDoorReserves,intersectsExteriorDoorReserve} from '../src/worldgen/exterior-door-reserve.ts';
+import {addExteriorProperty} from '../src/worldgen/exterior-sites.ts';
+import {auditGeneratedSite} from '../src/breach-site-audit.ts';
+test('V18 protects the full doorway approach footprint, not merely the prop center',()=>{
+ for(const rotated of [false,true]){
+  const door={a:rotated?{x:100,y:80}:{x:80,y:100},b:rotated?{x:100,y:120}:{x:120,y:100}};
+  const reserves=exteriorDoorReserves([door]);
+  const box=rotated?{x:175,y:100,w:40,h:20}:{x:100,y:175,w:20,h:40};
+  assert.ok(Math.hypot(box.x-100,box.y-100)>68);
+  assert.ok(intersectsExteriorDoorReserve(reserves,box));
+  const far={...box,x:rotated?200:box.x,y:rotated?box.y:200};
+  assert.equal(intersectsExteriorDoorReserve(reserves,far),false);
+ }
+});
+test('V18 all new exterior furnishing respects reserved door footprints on four facades',()=>{
+ for(const side of ['north','south','east','west']){
+  const horizontal=side==='north'||side==='south';
+  const entrance={x:side==='west'?225:side==='east'?475:350,y:side==='north'?230:side==='south'?430:330};
+  const door={id:'FRONT',a:{x:entrance.x-(horizontal?24:0),y:entrance.y-(horizontal?0:24)},b:{x:entrance.x+(horizontal?24:0),y:entrance.y+(horizontal?0:24)}};
+  const lot={seed:117,archetype:'restaurant',entrySide:side,rooms:[{id:'R',kind:'room',x:225,y:230,w:250,h:200}],bounds:{minX:0,minY:0,maxX:700,maxY:700},doors:[door],entrance,cover:[],spawn:[],enemies:[],objective:{x:-99,y:-99},extract:{x:-99,y:-99}};
+  const result=addExteriorProperty(lot,117);
+  assert.ok(result.cover.length>0);
+  const reserves=exteriorDoorReserves(lot.doors);
+  assert.ok(result.cover.every(o=>!intersectsExteriorDoorReserve(reserves,o)));
+ }
+});
+test('V18 regression witness: small restaurant seed 117 must retain baseline doorway flow',()=>{
+ const result=auditGeneratedSite(117,'small');
+ assert.equal(result.mobilityQuality.blockedApproaches+result.mobilityQuality.blockedFlow,0,JSON.stringify({family:result.planFamily,issues:result.mobilityQuality.issues,errors:result.errors}));
+});

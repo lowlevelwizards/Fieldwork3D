@@ -4,6 +4,7 @@
 import {type Site,type ExteriorZone} from '../breach-site.ts';
 import {seeded} from './seeded-rng.ts';
 import {exteriorRoleRequests,exteriorRoleBudget} from './exterior-role-program.ts';
+import {exteriorDoorReserves,intersectsExteriorDoorReserve} from './exterior-door-reserve.ts';
 import {type Obstacle} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {arrivalAccessLane,overlapsArrivalLane} from './property-access-lane.ts';
@@ -106,6 +107,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
  const streetPlan=planPublicStreet({...site,exteriorZones:zones});
  const doorCenters=site.doors.map(d=>({
    x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2}));
+ const doorReserves=exteriorDoorReserves(site.doors);
  const cover=site.cover.slice();
  const protectedPoints=[...site.spawn,...site.enemies,site.objective,site.extract,site.entrance];
  const worldBounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
@@ -179,7 +181,8 @@ export function addExteriorProperty(site:Site,seed:number):Site{
       if(overlapsArrivalLane(site,zone,canopy))continue;
     }
     if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+32&&Math.abs(p.y-y)<h/2+32))continue;
-    if(doorCenters.some(d=>(d.x-x)**2+(d.y-y)**2<68*68))continue;
+    if(doorCenters.some(d=>(d.x-x)**2+(d.y-y)**2<68*68)||
+      intersectsExteriorDoorReserve(doorReserves,candidate))continue;
     if(overlapsArrivalLane(site,zone,candidate))continue;
     if(cover.some(o=>overlaps(o,candidate)))continue;
     cover.push(candidate);accepted=true;break;
@@ -216,7 +219,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
      if(overlapsPublicStreetRoad(site,candidate,streetPlan))continue;
      if(protectedPoints.some(p=>Math.abs(p.x-candidate.x)<w/2+23&&
        Math.abs(p.y-candidate.y)<h/2+23))continue;
-     if(cover.some(other=>overlaps(other,candidate)))continue;
+     if(intersectsExteriorDoorReserve(doorReserves,candidate)||cover.some(other=>overlaps(other,candidate)))continue;
      if(site.rooms.some(room=>candidate.x+w/2>room.x&&
        candidate.x-w/2<room.x+room.w&&candidate.y+h/2>room.y&&
        candidate.y-h/2<room.y+room.h))continue;
@@ -247,7 +250,8 @@ export function addExteriorProperty(site:Site,seed:number):Site{
        y+h/2>room.y&&y-h/2<room.y+room.h))continue;
      if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+31&&
        Math.abs(p.y-y)<h/2+31))continue;
-     if(doorCenters.some(d=>(d.x-x)**2+(d.y-y)**2<66*66))continue;
+     if(doorCenters.some(d=>(d.x-x)**2+(d.y-y)**2<66*66)||
+       intersectsExteriorDoorReserve(doorReserves,candidate))continue;
      if(overlapsArrivalLane(site,zone,candidate))continue;
      if(TREE_FIXTURES.has(point.fixture)){
        const canopy={...candidate,w:asset.width,h:asset.depth};

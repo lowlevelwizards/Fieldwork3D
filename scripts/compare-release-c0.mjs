@@ -38,6 +38,8 @@ console.log('Release C0 before/after',JSON.stringify({
  improved:report.improved,regressed:report.regressed,
  addedRouteBlocks:report.addedRouteBlocks}));
 if(out)writeFileSync(out,JSON.stringify(report,null,2)+'\n');
+for(const row of delta.filter(x=>x.blockedRoutesDelta>0))
+ console.error('Added route block',JSON.stringify(row));
 if(after.summary.invalid>before.summary.invalid||
    report.qualityDelta< -2||report.addedRouteBlocks>0){
  console.error('Regression gate: physical quality, validity or blocked paths worsened');
