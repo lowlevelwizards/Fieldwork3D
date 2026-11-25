@@ -94,6 +94,8 @@ export function shareUnchangedReplayFrame(
     }
   }
   for(const key of shareableFields){
+    // Optional VFX histories must remain absent on quiet/legacy frames.
+    if(!Object.prototype.hasOwnProperty.call(frame,key)||!Object.prototype.hasOwnProperty.call(prior,key))continue;
     if(sameValue(prior[key],frame[key])){
       // The snapshots are internal immutable film data. Each frame still
       // presents all fields, and playback builds its own mutable state.
