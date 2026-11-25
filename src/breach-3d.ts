@@ -141,6 +141,7 @@ import {hostilePhysicalityAt} from './breach-hostile-physicality.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
 import {TransientLightPreview} from './rendering/breach-transient-light-preview.ts';
+import {createMuzzleFlashGeometry,muzzleFlashAspect} from './rendering/breach-muzzle-flash-art.ts';
 import {DustPuffBatch,puffCount,samplePuff,type PuffSample} from './rendering/breach-dust-puffs.ts';
 import type {PuffKind} from './breach-atmosphere-evidence.ts';
 import {makeStainMarkBatch,makeBloodDropletBatch,BLOOD_DROPLET_CAPACITY} from './rendering/breach-blood-preview.ts';
@@ -939,6 +940,8 @@ export class TacticalScene3D{
   private windowShards:THREE.InstancedMesh|null=null;
   private readonly shardMatrix=new THREE.Object3D();
   private transientLights:TransientLightPreview|null=null;
+  private readonly muzzleFlashGeometry=createMuzzleFlashGeometry();
+  private readonly muzzleFlashMaterial=new THREE.MeshBasicMaterial({color:0xffffff,vertexColors:true,transparent:true,opacity:.94,depthWrite:false});
   private readonly smokePreviewEnabled=this.vfxPreview.smoke;
   private dustPuffs:DustPuffBatch|null=null;
   private readonly puffScratch:PuffSample={x:0,y:0,z:0,size:0,alpha:0,color:0,phase:0};
@@ -1035,7 +1038,8 @@ export class TacticalScene3D{
     this.effects.userData.fieldworkRenderCategory='effects';
     this.scene.add(this.root,this.effects);
     if(this.vfxPreview.lights)
-      this.transientLights=new TransientLightPreview(this.scene);
+      this.transientLights=new TransientLightPreview(this.scene,
+        this.graphicLookEnabled?this.renderer:undefined);
     // First paint and mission reload now use the same build/batch/grade path.
     this.composeSiteWorld(this.displayedSite);
     if(this.displayedSite)this.view.zoom=1.48;
@@ -1255,6 +1259,8 @@ export class TacticalScene3D{
     if(!actor||actor.side==='blue')return;
     this.scene.remove(actor.root,actor.status,actor.beam);
     this.contactShadowBatch.unregister(id);
+    // The flash is scene-owned, not part of the retired rig's resource tree.
+    actor.flash.removeFromParent();
     actor.physical.dispose();
     // Contact shadow proxies share geometry and material with the persistent
     // instanced batch. Only these per-actor meshes own disposable resources.
@@ -1882,9 +1888,7 @@ export class TacticalScene3D{
     const {root,weapon,pack}=physical;
     if(this.graphicLookEnabled)
      weapon.userData.fieldworkWeaponPresentation=true;
-    const flash=new THREE.Mesh(new THREE.OctahedronGeometry(3.5),
-      new THREE.MeshBasicMaterial({color:0xffd59e,transparent:true,
-        opacity:.94,depthWrite:false}));
+    const flash=new THREE.Mesh(this.muzzleFlashGeometry,this.muzzleFlashMaterial);
     // Flash belongs to the firearm, not an independent actor-root guess.
     flash.position.set(19.5,0,0);flash.visible=false;weapon.add(flash);
     // One fixed-size buffer per soldier. Only filled when muzzle/door state moves.
@@ -2556,12 +2560,15 @@ export class TacticalScene3D{
       if(this.transientLights&&!personalDisclosure&&visible&&object.flash.visible&&firing&&
         (omniscient||this.presentationSight.query(s,'effect','muzzle-light:'+firing.id,firing.start)))
         this.transientLights.offer('muzzle',firing.id,firing.start.x,firing.muzzleHeight??15,
-          firing.start.y,firing.age,Math.min(1,flashCue.scale));
+          firing.start.y,firing.age,flashCue.lightStrength);
       const gunTip=actor.weaponConfiguration?
        resolveWeaponAssembly(actor.weaponConfiguration):null;
       object.flash.position.x=gunTip?.muzzleX??19.5;
       object.flash.position.y=gunTip?.muzzleY??0;
-      if(flashCue.active)object.flash.scale.setScalar(flashCue.scale);
+      if(flashCue.active){
+        const aspect=muzzleFlashAspect(flashWeapon,drawnPistol,flashAttachment);
+        object.flash.scale.set(flashCue.scale*aspect.x,flashCue.scale*aspect.y,flashCue.scale*aspect.z);
+      }
       // A paused OPEN requested beside the REAL doorway should preview
       // contact even if an unrelated, already-positioned MOVE precedes it.
       // Reach is checked against the live feet, not the future waypoint.
@@ -2983,6 +2990,7 @@ export class TacticalScene3D{
         if(!omniscient&&!this.presentationSight.query(s,'effect','flash-light:'+burst.id,burst.p))continue;
         this.transientLights.offer('flash',burst.id,burst.p.x,13,burst.p.y,burst.age);
       }
+    this.transientLights?.confine(sessionWorldGeometry(s),s.doors);
     this.combatEffects.update(s,omniscient,
       personalDisclosure,p=>this.presentationSight.query(
         s,'effect',p.x+','+p.y,p));

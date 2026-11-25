@@ -12,9 +12,12 @@ export function muzzleFlashCue(weapon:WeaponId,age:number,
  const duration=lifetime[weapon];
  const signature=attachment==='muzzle-suppressor'?.25:
   attachment==='muzzle-hider'?.65:1;
- const active=age>=0&&age<duration&&signature>0;
+ const active=Number.isFinite(age)&&age>=0&&age<duration&&signature>0;
  return {active,duration,scale:active?
-   (.3+1.55*Math.max(0,1-age/duration))*signature:0};
+   (.3+1.55*Math.max(0,1-age/duration))*signature:0,
+  // Light has its own age envelope; do not feed the already-decayed
+  // mesh scale through a second falloff or saturate attachment signature.
+  lightStrength:active?signature:0};
 }
 /** Select the freshest still-visible *recorded* muzzle event in a burst.
  * Reverse scan is bounded by the session's existing shot-history cap and

@@ -10,6 +10,7 @@ import {sampleThrow} from '../breach-flash.ts';
 import {enableWorldGraphicMaterial} from '../breach-graphic-world-lighting.ts';
 import {ShotVisualPool} from './breach-shot-visual-pool.ts';
 import {presentTransientEvidence} from './breach-3d-disclosure-presenter.ts';
+import {createDetonationGeometry,sampleDetonationArt,type DetonationArtSample} from './breach-detonation-art.ts';
 /** Retain at most this many dropped-magazine visual meshes. The physical
  * inventory, evidence and replay history remain unmodified. */
 export const MAX_DROPPED_MAGAZINE_VISUALS=64;
@@ -22,7 +23,8 @@ export class BreachCombatEffectsPresenter{
   private readonly magazineSlots:MagazineSlot[]=[];
   private grenadeGeometry:THREE.IcosahedronGeometry|null=null;
   private grenadeMaterial:THREE.MeshStandardMaterial|null=null;
-  private flashGeometry:THREE.SphereGeometry|null=null;
+  private flashGeometry:THREE.BufferGeometry|null=null;
+  private readonly flashSample:DetonationArtSample={scale:0,verticalScale:0,opacity:0};
   private readonly pool=new ShotVisualPool<THREE.Mesh>(MAX_TRANSIENT_EFFECT_SPARES);
   private geometryCreates=0;
   private materialCreates=0;
@@ -123,11 +125,11 @@ export class BreachCombatEffectsPresenter{
   }
   private createFlash():THREE.Mesh{
     if(!this.flashGeometry){
-      this.flashGeometry=new THREE.SphereGeometry(1,12,8);this.geometryCreates++;
+      this.flashGeometry=createDetonationGeometry();this.geometryCreates++;
     }
     this.meshCreates++;this.materialCreates++;
     return new THREE.Mesh(this.flashGeometry,
-      new THREE.MeshBasicMaterial({color:0xfff1c7,transparent:true,
+      new THREE.MeshBasicMaterial({color:0xffffff,vertexColors:true,transparent:true,
         opacity:.8,depthWrite:false}));
   }
   update(s:Session,omniscient:boolean,personal:boolean,
@@ -200,9 +202,11 @@ export class BreachCombatEffectsPresenter{
         grenade.p.y);
     }
     const liveBursts=this.frameFlashIds;liveBursts.clear();
-    for(const burst of s.flashBursts)liveBursts.add(burst.id);
+    for(const burst of s.flashBursts)
+      if(sampleDetonationArt(burst.age,this.flashSample))liveBursts.add(burst.id);
     this.retire(this.detonations,liveBursts,'flash');
     for(const burst of s.flashBursts){
+      if(!sampleDetonationArt(burst.age,this.flashSample))continue;
       const visible=presentTransientEvidence(burst.p,omniscient,personal,visibleAt);
       let mesh=this.detonations.get(burst.id);
       if(!visible&&!mesh)continue;
@@ -213,9 +217,9 @@ export class BreachCombatEffectsPresenter{
       mesh.visible=visible;
       if(!visible)continue;
       mesh.position.set(burst.p.x,13,burst.p.y);
-      mesh.scale.setScalar(5+70*burst.age);
-      (mesh.material as THREE.MeshBasicMaterial).opacity=
-        Math.max(0,.78*(1-burst.age/.7));
+      const cue=this.flashSample;
+      mesh.scale.set(cue.scale,cue.verticalScale,cue.scale);
+      (mesh.material as THREE.MeshBasicMaterial).opacity=cue.opacity;
     }
   }
 }
