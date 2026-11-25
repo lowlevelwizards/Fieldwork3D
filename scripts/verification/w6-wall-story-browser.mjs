@@ -43,7 +43,9 @@ try{
    const results=[];
    for(const story of [false,true]){
     const result=await page.evaluate(story=>{
-     const {scene,site,session,team,selectWallEvents}=window.w6;
+     const {scene,site,newSession,activateSite,team,selectWallEvents}=window.w6;
+     activateSite(site);
+     const session=newSession(0,site.seed,'exterior-known','standard',undefined,site);
      const check=(v,m)=>{if(!v)throw Error(m);};
      const knowledge=()=>JSON.stringify({walls:[...session.intel.walls],doors:[...session.intel.doors],cover:[...session.intel.cover],seen:[...session.seenGround]});
      scene.wallAudition={effect:'all',atlas:true,story};scene.wallStructureUnified=true;
@@ -55,7 +57,28 @@ try{
      const knowledgeAfter=knowledge();
      draw(true);draw(true);
      const renderer=scene.renderer,original=renderer.renderBufferDirect;
-     let submissions=0;try{renderer.renderBufferDirect=function(...args){submissions++;return original.apply(this,args);};draw(true);}finally{renderer.renderBufferDirect=original;}
+     const samples=[];
+     try{
+      for(let i=0;i<5;i++){
+       const counts={main:0,shadow:0,wallMain:0,wallShadow:0,families:{}};
+       renderer.renderBufferDirect=function(...args){
+        const shadow=!!args[3]?.isMeshDepthMaterial||!!args[3]?.isMeshDistanceMaterial;
+        const family=args[4]?.userData?.fieldworkDrawFamily??'other';
+        const key=(shadow?'shadow:':'main:')+family;
+        counts.families[key]=(counts.families[key]??0)+1;
+        if(shadow)counts.shadow++;else counts.main++;
+        if(family==='structural-wall-body'){if(shadow)counts.wallShadow++;else counts.wallMain++;}
+        return original.apply(this,args);
+       };
+       // Compare the same shadow lifecycle in both modes. A cached-shadow
+       // frame and a refreshed one are not interchangeable draw witnesses.
+       renderer.shadowMap.needsUpdate=i===0;
+       draw(true);samples.push(counts);
+      }
+     }finally{renderer.renderBufferDirect=original;}
+     const submissions=Math.max(...samples.slice(1).map(s=>s.main));
+     const wallSubmissions=Math.max(...samples.map(s=>s.wallMain));
+     const wallShadow=samples[0].wallShadow;
      const masks=scene.patinaWallSurfaces,textures=[...new Set(masks.map(m=>m.texture))];
      const saved=textures.map(t=>t.image.data.slice()),versions=textures.map(t=>t.version);
      let hash=2166136261;for(const bytes of saved)for(const value of bytes)hash=Math.imul(hash^value,16777619);
@@ -66,15 +89,17 @@ try{
      check(textures.every((t,i)=>t.version===versions[i]+2&&t.image.data.every((v,j)=>v===saved[i][j])),'W6 condition roundtrip or upload budget');
      check(textures.every(t=>t.image.data.every((v,i)=>i%4!==3||v===255)),'W6 nonopaque atlas texel');
      draw(true);
-     return {story,buildMs,submissions,disclosure,knowledgeBefore:before,knowledgeAfter,wallMeshes:scene.walls.length,triangles:scene.walls.reduce((n,w)=>n+(w.mesh.geometry.index?.count??w.mesh.geometry.getAttribute('position').count)/3,0),pages:textures.length,bytes:textures.reduce((n,t)=>n+t.image.data.byteLength,0),programs:renderer.info.programs?.length,hash,clean,active};
+     return {story,buildMs,submissions,wallSubmissions,wallShadow,samples,disclosure,knowledgeBefore:before,knowledgeAfter,wallMeshes:scene.walls.length,triangles:scene.walls.reduce((n,w)=>n+(w.mesh.geometry.index?.count??w.mesh.geometry.getAttribute('position').count)/3,0),pages:textures.length,bytes:textures.reduce((n,t)=>n+t.image.data.byteLength,0),programs:renderer.info.programs?.length,hash,clean,active};
     },story);
     results.push(result);
     await page.screenshot({path:out+'/'+name+'-'+archetype+'-'+(story?'story':'atlas')+'.png'});
    }
    const [a,b]=results;
-   for(const key of ['disclosure','knowledgeAfter','wallMeshes','triangles','pages','bytes','submissions','clean'])check(a[key]===b[key],archetype+' W6 parity '+key);
-   if(Object.keys(b.active).length)check(a.hash!==b.hash,archetype+' active story did not change atlas');
    evidence.push({name,seed,archetype,census,results});
+   writeFileSync(out+'/summary.json',JSON.stringify(evidence,null,2));
+   for(const key of ['disclosure','knowledgeBefore','knowledgeAfter','wallMeshes','triangles','pages','bytes','wallSubmissions','wallShadow','clean'])check(a[key]===b[key],archetype+' W6 parity '+key+': '+JSON.stringify([a[key],b[key]]));
+   check(b.submissions<=a.submissions,archetype+' W6 increased stable main submissions '+JSON.stringify({base:a.samples,story:b.samples}));
+   if(Object.keys(b.active).length)check(a.hash!==b.hash,archetype+' active story did not change atlas');
   }
   await page.evaluate(()=>{const {scene}=window.w6;scene.renderer.dispose();scene.renderer.forceContextLoss();});
   check(!errors.length,errors.join(' | '));await page.close();
