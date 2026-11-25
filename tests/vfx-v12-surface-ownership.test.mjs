@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {segmentAttachment,coverAttachment,wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose,isGroundImpactMark} from '../src/breach-impact-surface.ts';
 import {strikeSurface} from '../src/breach-ballistic-resolution.ts';
 import {newSession} from '../src/breach-game.ts';
+import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {doorLeafSegment} from '../src/breach-core.ts';
 import {retainImpactMark} from '../src/breach-impact-evidence-buffer.ts';
@@ -86,4 +87,17 @@ test('intact picture glass can own a mark, broken or open glass cannot',()=>{
  assert.equal(windowMarkPose(ref,pane).z,.66);
  assert.equal(windowMarkPose(ref,{...pane,shattered:true}),null);
  assert.equal(windowMarkPose(ref,{...pane,open:true}),null);
+});
+
+test('replay snapshots preserve immutable surface ownership through seek and reapply',()=>{
+ const s=newSession();
+ const ref=segmentAttachment('wall',0,undefined,wall,{x:20,y:-10},{x:20,y:10},.5,25);
+ s.impactMarks=[{id:7,shotId:3,p:{x:20,y:0},height:25,age:0,surface:'stone',surfaceRef:ref}];
+ const frame=snapshot(s);
+ s.impactMarks[0].surfaceRef.localY=42;
+ assert.equal(frame.impactMarks[0].surfaceRef.localY,25);
+ applyReplayFrame(s,frame);
+ assert.equal(s.impactMarks[0].surfaceRef.localY,25);
+ s.impactMarks[0].surfaceRef.localY=9;
+ assert.equal(frame.impactMarks[0].surfaceRef.localY,25);
 });

@@ -528,7 +528,7 @@ function renderGroundMarks(){
        y:current.y+(-si*pose.x+co*pose.z)*current.h/authored.h};
     }
    }else if(ref.kind==='window'){
-    const pane=s.windows[ref.index];if(!pane)continue;
+    const pane=s.windows[ref.index];if(!pane||!windowPresentationKnown(s,pane,omni))continue;
     const pose=windowMarkPose(ref,pane);
     if(pose)point={x:pose.x,y:pose.z};
    }

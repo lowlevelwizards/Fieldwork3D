@@ -142,7 +142,7 @@ export function coverMarkLocalPose(ref:SurfaceAttachment,authored:Obstacle,curre
  * glazing is reserved for the fracture presentation; no floating marks. */
 export function windowMarkPose(ref:SurfaceAttachment,pane:WindowState,radius=2.5):SurfaceMarkPose|null{
  if(ref.kind!=='window'||ref.ownerId!==pane.id||pane.open||pane.shattered||
-  pane.style!=='picture'||!!pane.treatment)return null;
+  pane.style!=='picture'||(pane.treatment!==undefined&&pane.treatment!=='none'))return null;
  const y=ref.localY,base=pane.sillHeight??14,head=pane.headHeight??windowVisualHeadHeight(pane.style);
  const along=ref.along-pane.width/2;
  const r=Math.min(radius,pane.width/2-1.7-Math.abs(along),y-base-.2,head-y-.2);

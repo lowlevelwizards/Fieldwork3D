@@ -9,6 +9,8 @@ on:
       - 'src/breach-shot-environment.ts'
       - 'src/breach-3d.ts'
       - 'tests/vfx-v12-surface-ownership.test.mjs'
+      - 'scripts/verification/vfx-v12-surface-browser.mjs'
+      - '.github/workflows/vfx-v12-surface-ownership.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,3 +26,15 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: node --experimental-strip-types --test tests/vfx-v*.test.mjs tests/breach-roadmap4-ballistic-resolution.test.mjs tests/breach-roadmap2-impact-evidence.test.mjs tests/breach-roadmap2-stage10-combat.test.mjs tests/breach-window-blood-reactivity.test.mjs tests/replay-r2-ballistics.test.mjs tests/secondary-s7-live-shot.test.mjs tests/civilian-b5b-ballistics.test.mjs
       - run: npm run build
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - run: node scripts/verification/vfx-v12-surface-browser.mjs
+        env:
+          FIELDWORK_CI_CHROME: '1'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v12-surface-witnesses
+          path: artifacts/vfx-v12-surfaces/
+          if-no-files-found: ignore
