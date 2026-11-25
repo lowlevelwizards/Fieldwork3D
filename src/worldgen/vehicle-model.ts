@@ -4,8 +4,9 @@
  */
 import * as THREE from 'three';
 import {VEHICLE_DIMENSIONS,type VehicleRecipe} from './vehicle-catalog.ts';
+import {vehicleShape,type VehicleSideProfile} from './vehicle-shape.ts';
 type P=[number,number,number];
-type Profile=readonly (readonly [number,number])[];
+type Profile=VehicleSideProfile;
 const glass=0x35434b,rubber=0x242a2b,hub=0x858c88,trim=0x434947,head=0xe0d9b8,tail=0xa45146;
 export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIMENSIONS[recipe.family]):THREE.BufferGeometry{
  const [w,d,h]=dimensions;
@@ -45,18 +46,10 @@ export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIM
   quad([x*w,y0*h,z0*d],[x*w,y1*h,z0*d],[x*w,y1*h,z1*d],[x*w,y0*h,z1*d],hex,[0,0,0]);
  }
  const f=recipe.family,config=recipe.configuration;
- const truck=f==='light-truck',pickup=f==='pickup',van=f==='van',suv=f==='suv',compact=f==='hatchback';
- const belt=truck?.39:van?.47:suv?.52:pickup?.53:.54;
- const lower=truck?.15:.18;
- prism([[-.49,lower], [.49,lower],[.49,belt-.09],[.37,belt],[-.39,belt],[-.49,belt-.06]],.43,body);
+ const truck=f==='light-truck',pickup=f==='pickup',van=f==='van',suv=f==='suv';
+ const {belt,lower,body:bodyProfile,cabin,cw}=vehicleShape(f);
+ prism(bodyProfile,.43,body);
  box(-.495,.495,lower-.045,lower+.045,.455,trim);
- const cabin:Profile=truck?[[.10,belt],[.46,belt],[.39,.81],[.12,.81]]:
- pickup?[[ -.10,belt],[.33,belt],[.17,.94],[-.10,.94]]:
- van?[[-.44,belt],[.39,belt],[.22,.96],[-.43,.96]]:
- suv?[[-.42,belt],[.29,belt],[.13,.96],[-.36,.96]]:
- compact?[[-.40,belt],[.28,belt],[.10,.96],[-.28,.96]]:
- [[-.29,belt],[.30,belt],[.10,.96],[-.16,.96]];
- const cw=truck?.42:van?.43:.365;
  prism(cabin,cw,body);
  const [rear,front,frontTop,rearTop]=cabin;
  const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;

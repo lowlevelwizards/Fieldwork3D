@@ -32,3 +32,6 @@ Verified previous pilot: 49 vehicles across 19/44 sites; 12 targeted tests, Type
 
 ## Checkpoint 10 — default rendering resource path and tactical browser witness
 Vehicle templates now use the existing renderer cache regardless of unrelated fixture-cache feature flags; shared buffers are protected during batch disposal. Static vehicles skip generic wear overlays and furniture debris construction (condition remains baked). Added paired actual tactical scene captures and resource/draw measurements with repeated site application; these are software WebGL measurements, not hardware FPS. Public perpendicular lots with sufficient capacity regain reserved bay/transfer markings, with corresponding vehicle exclusions. Validation pending; no production enablement yet.
+
+## Checkpoint 11 — versioned coarse height profile
+New generated vehicles retain a solid planar movement envelope while existing height-aware cover checks clip against shared normalized body/cabin silhouettes (and coarse cargo bodies). Only explicitly versioned new vehicle records opt in; archived obstacles and explicit top-height overrides retain their existing box rule. Render art variants remain separate from the serialized physical configuration. No per-frame mesh query. Exact wheel/glass/mark projection and detailed destruction are not implemented. Tests pending on this head.

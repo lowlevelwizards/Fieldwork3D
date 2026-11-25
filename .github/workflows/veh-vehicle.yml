@@ -4,6 +4,8 @@ on:
     paths:
       - 'src/worldgen/vehicle-*.ts'
       - 'src/breach-reactive-cover.ts'
+      - 'src/breach-core.ts'
+      - 'src/breach-cover-height.ts'
       - 'scripts/verification/veh-lab-browser.mjs'
       - 'src/vehicle-lab-main.ts'
       - 'vehicle-lab.html'

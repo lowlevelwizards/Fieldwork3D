@@ -73,3 +73,17 @@ test('static vehicles keep their footprint under generic furniture collapse',()=
   assert.deepEqual(c,before);assert.equal(traversalSurface(c),'solid');
  }
 });
+
+import {coverImpactFraction} from '../src/breach-cover-height.ts';
+test('new vehicle cover follows coarse shared body and roof; archived box behavior is unchanged',()=>{
+ const car={x:0,y:0,w:96,h:39,fixture:'sedan',vehicleProfile:{version:1,configuration:'civilian'}};
+ const through=(x,z,c=car)=>coverImpactFraction({x,y:-50},{x,y:50},z,z,c);
+ assert.notEqual(through(0,27),null);
+ assert.equal(through(40,27),null);
+ assert.notEqual(through(40,10),null);
+ const {vehicleProfile,...legacy}=car;
+ assert.notEqual(through(40,27,legacy),null);
+ const rotated={...car,w:39,h:96,orientation:1};
+ assert.equal(coverImpactFraction({x:-50,y:-40},{x:50,y:-40},27,27,rotated),null);
+ assert.notEqual(coverImpactFraction({x:-50,y:0},{x:50,y:0},27,27,rotated),null);
+});

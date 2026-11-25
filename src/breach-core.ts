@@ -46,6 +46,8 @@ export type Obstacle={x:number;y:number;w:number;h:number;low?:boolean;
   topHeight?:number;
   /** Render-only deterministic trim selection; ignored by collision and AI. */
   artVariant?:number;
+  /** New generated vehicles use a versioned coarse body/cabin cover profile. */
+  vehicleProfile?:{version:1;configuration:string};
   /** Cardinal local-facing turn, with w/h already representing rotated tactical bounds. */
   orientation?:0|1|2|3;
   /** Preview-only finish overrides; never used by tactical logic. */

@@ -3,7 +3,7 @@
  */
 import type {Site,ExteriorZone} from '../breach-site.ts';
 import type {Obstacle} from '../breach-core.ts';
-import {VEHICLE_DIMENSIONS,VEHICLE_CONFIGURATIONS,VEHICLE_PAINTS,type VehicleFamily} from './vehicle-catalog.ts';
+import {VEHICLE_DIMENSIONS,VEHICLE_CONFIGURATIONS,VEHICLE_PAINTS,vehicleRecipe,type VehicleFamily} from './vehicle-catalog.ts';
 import {parkingStallCandidates,parkingStallCount,reservedParkingBay} from './parking-stalls.ts';
 import {arrivalAccessLane,overlapsArrivalLane} from './property-access-lane.ts';
 import {exteriorDoorReserves,intersectsExteriorDoorReserve} from './exterior-door-reserve.ts';
@@ -93,6 +93,7 @@ export function planVehiclePlacement(site:Site,seed=site.seed,modernOnly=false):
      if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+32&&Math.abs(p.y-y)<h/2+32)){reject('encounter');continue;}
      if([...site.cover,...vehicles].some(o=>intersects(o,c,17))){reject('occupied');continue;}
      c.artVariant=artVariant(family,site,rng);
+     c.vehicleProfile={version:1,configuration:vehicleRecipe(family,c.artVariant).configuration};
      c.artCondition=site.condition==='vacant'?'vacant':site.condition==='neglected'?'neglected':site.condition==='busy'?'used':'clean';
      vehicles.push(c);usedSlots.add(slotKey);diag.accepted++;found=true;break;
     }
