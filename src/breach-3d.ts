@@ -3102,7 +3102,7 @@ export class TacticalScene3D{
       if(replayDisclosurePolicy?.mode==='operator')continue;
       let attached:SurfaceMarkPose|null=null;
       const ref=mark.surfaceRef;
-      const artRadius=damageRadius(mark.surface);
+      const artRadius=damageRadius(mark.surface,mark.damageCount);
       if(mark.surface!=='blood'&&ref){
         if(ref.kind==='wall'){
           const owner=this.wallOwners.find(w=>w.index===ref.index);
@@ -3169,7 +3169,7 @@ export class TacticalScene3D{
       const dark=mark.surface==='blood'?bloodMarkTint(mark):damageTint(mark.surface);
       const groundRadius=radius,markY=attached?.y??(mark.surface==='blood'?.85:1);
       const nx=attached?.nx??0,ny=attached?.ny??1,nz=attached?.nz??0;
-      const fade=mark.surface==='blood'?1:Math.max(.28,1-mark.age*.027);
+      const fade=mark.surface==='blood'||mark.surfaceRef?1:Math.max(.28,1-mark.age*.027);
       const style=this.stainPreview?.styleFor(mark.surface,mark.p.x,mark.p.y,mark.bloodKind)??-1;
       const dirty=this.persistentEvidencePreview?this.impactMarkSlots.update(markCount,
         markPoint.x,markY,markPoint.y,groundRadius,dark,fade,style,nx,ny,nz):
