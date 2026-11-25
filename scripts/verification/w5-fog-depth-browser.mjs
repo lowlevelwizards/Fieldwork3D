@@ -6,7 +6,7 @@ const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host','1
 const out='artifacts/w5-fog';mkdirSync(out,{recursive:true});
 const delay=ms=>new Promise(r=>setTimeout(r,ms));let browser;
 try{
- let ready=false;for(let i=0;i<120;i++){try{if((await fetch(base+'/breach.html')).ok){ready=true;break;}}catch{}await delay(200);}
+ let ready=false;for(let i=0;i<120;i++){try{if((await fetch(base+'/index.html')).ok){ready=true;break;}}catch{}await delay(200);}
  if(!ready)throw Error('W5 Vite unavailable');
  const chrome=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/opt/google/chrome/chrome'].find(existsSync);
  browser=await chromium.launch({headless:true,...(chrome?{executablePath:chrome}:{}),args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
@@ -34,6 +34,11 @@ try{
    s.seenGround=new Set(['micro:20,15']);paintFogMask(ctx,s);check(alpha(125,155)===255&&alpha(205,155)<180,'Same-size memory replacement leaked');
    s.intel.mode='full-view';paintFogMask(ctx,s);check(alpha(125,155)===0&&alpha(205,155)===0,'Full view not cleared');
    s.intel.mode='true-blind';paintFogMask(ctx,s);check(alpha(125,155)===255,'Return from full view leaked');
+   s.seenGround.clear();s.operators=[{id:'blue',side:'blue',health:2,p:{x:100,y:150},heading:0,posture:'stand'}];
+   synthetic.walls=[{a:{x:150,y:0},b:{x:150,y:130}},{a:{x:150,y:170},b:{x:150,y:300}}];
+   s.doors=[{id:'test',a:{x:150,y:130},b:{x:150,y:170},open:false,openFraction:0}];
+   paintFogMask(ctx,s);check(alpha(180,150)===255,'Closed door leaked ground');
+   s.doors[0].open=true;s.doors[0].openFraction=1;paintFogMask(ctx,s);check(alpha(180,150)<20,'Open door failed to reveal visible ground');
    const scene=new TacticalScene3D();scene.resize(width,height);document.body.appendChild(scene.canvas);
    const make=(seed,archetype)=>generateSite(seed,'standard',undefined,{mission:'intel'},{archetype});
    const site=make(23,'townhouse');activateSite(site);

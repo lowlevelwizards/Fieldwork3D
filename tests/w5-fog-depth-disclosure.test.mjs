@@ -9,6 +9,9 @@ test('W5 invalidates exact site/session, revisions and rewind, bounds unchanged 
  assert.deepEqual(g.poll(s,0,.1),{paint:true,memoryInvalid:true});
  for(let i=0;i<20;i++)assert.equal(g.poll(s,.016,.1).paint,false);
  s.operators[0].heading=1;
+ assert.equal(g.poll(s,0,.1,false,true).paint,true);
+ assert.equal(g.poll(s,0,.1,false,true).paint,false);
+ s.operators[0].heading=2;
  assert.equal(g.poll(s,.1,.1).paint,true);
  s.seenGround.add('micro:1,1');s.seenGroundRevision++;
  assert.deepEqual(g.poll(s,0,.1),{paint:true,memoryInvalid:true});

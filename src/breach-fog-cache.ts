@@ -72,7 +72,7 @@ export class FogRefreshGate {
  get owner(){return this.session;}
  private elapsed=Infinity;
  invalidate(){this.session=null;this.elapsed=Infinity;this.signature='';}
- poll(s:Session,dt:number,period:number,replaying=false):{paint:boolean;memoryInvalid:boolean}{
+ poll(s:Session,dt:number,period:number,replaying=false,forceProbe=false):{paint:boolean;memoryInvalid:boolean}{
   this.elapsed+=Math.max(0,dt);
   const ownerChanged=this.session!==s||this.site!==s.site;
   const memoryInvalid=ownerChanged||this.mode!==s.intel.mode||
@@ -81,7 +81,7 @@ export class FogRefreshGate {
   const seek=replaying&&Math.abs(s.seconds-this.observedSeconds)>.15;
   this.observedSeconds=s.seconds;
   const urgent=memoryInvalid||this.objectRevision!==s.objectRevision||seek;
-  if(!urgent&&this.elapsed<period)return {paint:false,memoryInvalid:false};
+  if(!urgent&&!forceProbe&&this.elapsed<period)return {paint:false,memoryInvalid:false};
   const signature=fogSessionFingerprint(s);
   const paint=urgent||signature!==this.signature;
   // Reset the probe cadence even if unchanged: don't hash every idle RAF.
