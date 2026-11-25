@@ -3004,7 +3004,7 @@ export class TacticalScene3D{
             this.impactPulseBatch=makeBloodDropletBatch(this.impactGeometry,20,'shot-pulse-batch');
             this.effects.add(this.impactPulseBatch.mesh);
           }
-          const color=shot.surface==='blood'?0xb43d3b:MATERIAL_IMPACT_PROFILES[shot.surface??'dust'].pulseColor;
+          const color=shot.surface==='blood'?0xa65a4e:MATERIAL_IMPACT_PROFILES[shot.surface??'dust'].pulseColor;
           this.impactPulseBatch.addPose(end.x,end.y,end.z,0,0,0,
             impact.scale,impact.scale,impact.opacity,color);
         }
@@ -3194,6 +3194,7 @@ export class TacticalScene3D{
           const door=ref.ownerId?this.frameDoorsById.get(ref.ownerId):undefined;
           const visual=ref.ownerId?this.doors.get(ref.ownerId):undefined;
           if(!door||!visual?.root.visible||!visual.leaf.visible||visual.leaf.userData.impactCut)continue;
+          if((door.style==='glazed'||door.style==='french')&&!visual.glassPane?.visible)continue;
           const local=doorMarkLocalPose(ref,door,artRadius);
           if(local){
             visual.leaf.updateWorldMatrix(true,false);

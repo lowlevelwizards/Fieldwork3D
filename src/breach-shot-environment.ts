@@ -11,6 +11,7 @@ import {length} from './breach-plan.ts';
 import {damageCover} from './breach-reactive-cover.ts';
 import {materialResponse} from './breach-impact-responses.ts';
 import {damageWindow} from './breach-windows.ts';
+import {GLASS_INTEGRITY} from './breach-glass-damage.ts';
 import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
 
 type ShotEnvironmentPorts={
@@ -85,16 +86,20 @@ function damageStruckCover(s:Session,hits:readonly {index:number;fraction:number
 /** Persist actual glass-door damage only after a fired projectile. The metal
  * frame and physical leaf remain operational; only glazing shatters. */
 function shatterStruckDoorGlass(s:Session,
- hits:readonly {index:number;fraction:number}[],maxFraction=1){
+ hits:readonly {index:number;fraction:number}[],maxFraction=1,force=1){
+ const touched=new Set<number>();
  for(const hit of hits){
-  if(hit.fraction>maxFraction+.00001)continue;
+  if(hit.fraction>maxFraction+.00001||touched.has(hit.index))continue;
+  touched.add(hit.index);
   const door=s.doors[hit.index];
   if(!door||door.glassShattered||
      !['glazed','french'].includes(door.style??''))continue;
-  door.glassShattered=true;s.objectRevision++;
+  door.glassIntegrity=Math.max(0,(door.glassIntegrity??GLASS_INTEGRITY)-force);
+  s.objectRevision++;
   const at=doorCenter(door);
   hear(s,at,175,'glass');
-  battleEvent(s,'impact',null,at,'GLASS DOOR SHATTERED');
+  if(door.glassIntegrity===0){door.glassShattered=true;door.glassShatteredAt=s.seconds;
+   battleEvent(s,'impact',null,at,'GLASS DOOR SHATTERED');}
  }
 }
 /** Keep decorative evidence bounded separately from authoritative hits.

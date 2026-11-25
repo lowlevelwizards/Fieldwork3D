@@ -45,7 +45,7 @@ test('four deterministic chunky burst shapes use recorded elevation and directio
  for(let i=0;i<BLOOD_BURST_COUNT;i++){
   const a={},b={};assert.equal(sampleBloodBurst(3,i,.1,0,20,24,30,a),true);
   sampleBloodBurst(3,i,.1,0,20,24,30,b);assert.deepEqual(a,b);
-  assert.ok(a.width>2.5&&a.length>4&&a.opacity>.8&&a.x>20&&a.y>20);
+  assert.ok(a.width>2.5&&a.length>4&&a.opacity>.55&&a.opacity<.75&&a.x>20&&a.y>20);
   assert.equal(sampleBloodBurst(3,i,.4,0,20,24,30,a),false);
  }
 });

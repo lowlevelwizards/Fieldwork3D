@@ -59,12 +59,20 @@ export function wallMarkPose(ref:SurfaceAttachment,wall:Segment,radius=3.2):Surf
 }
 /** Render-local leaf coordinates; caller uses the actual interpolated mesh transform. */
 export function doorMarkLocalPose(ref:SurfaceAttachment,door:Door,radius=3.2):SurfaceMarkPose|null{
- if(ref.kind!=='door'||ref.ownerId!==door.id||['glazed','french','screen','mesh-gate','louvered'].includes(door.style??''))return null;
+ if(ref.kind!=='door'||ref.ownerId!==door.id||['screen','mesh-gate','louvered'].includes(door.style??''))return null;
  const len=Math.hypot(door.b.x-door.a.x,door.b.y-door.a.y);
  const left=door.kind==='sliding'||door.kind==='shutter'?-len/2:door.hinge==='b'?-len:0;
  const right=door.kind==='sliding'||door.kind==='shutter'?len/2:door.hinge==='b'?0:len;
  const x=ref.localX,y=ref.localY,face=ref.localZ;
  if(![x,y,len].every(Number.isFinite)||Math.abs(face)!==1)return null;
+ if(door.style==='glazed'||door.style==='french'){
+  if(door.glassShattered)return null;
+  const middle=(left+right)/2;
+  let r=Math.min(radius,x-left-4,right-x-4,y-4,DOOR_LEAF_VISUAL_HEIGHT-y-4);
+  if(door.style==='french')r=Math.min(r,Math.abs(x-middle)-1.2,Math.abs(y-15)-1.2,Math.abs(y-32)-1.2);
+  if(r<.5)return null;
+  return {x,y,z:face*.66,nx:0,ny:0,nz:face,radius:r};
+ }
  const r=Math.min(radius,x-left-3,right-x-3,y-1,DOOR_LEAF_VISUAL_HEIGHT-y-1);
  if(r<.5)return null;
  const half=door.kind==='shutter'?2:doorProportions(door).leafThickness/2;
@@ -138,14 +146,21 @@ export function coverMarkLocalPose(ref:SurfaceAttachment,authored:Obstacle,curre
  }
  return best;
 }
-/** Only simple intact picture panes get a surface mark. More complex
- * glazing is reserved for the fracture presentation; no floating marks. */
+/** Intact authored glazing receives marks between its visible trim bands.
+ * Open, broken or treated panes remain fail-closed. */
 export function windowMarkPose(ref:SurfaceAttachment,pane:WindowState,radius=2.5):SurfaceMarkPose|null{
  if(ref.kind!=='window'||ref.ownerId!==pane.id||pane.open||pane.shattered||
-  pane.style!=='picture'||(pane.treatment!==undefined&&pane.treatment!=='none'))return null;
+  (pane.treatment!==undefined&&pane.treatment!=='none'))return null;
  const y=ref.localY,base=pane.sillHeight??14,head=pane.headHeight??windowVisualHeadHeight(pane.style);
  const along=ref.along-pane.width/2;
- const r=Math.min(radius,pane.width/2-1.7-Math.abs(along),y-base-.2,head-y-.2);
+ let r=Math.min(radius,pane.width/2-1.7-Math.abs(along),y-base-.2,head-y-.2);
+ const h=head-base,style=pane.style??'standard';
+ // Match the authored pane and keep damage clear of visible mullions.
+ if(style==='standard'||style==='bay')r=Math.min(r,Math.abs(y-(base+h*.48))-1.4);
+ if(style==='awning')r=Math.min(r,Math.abs(y-(base+h*.5))-.7,head-y-3);
+ if(style==='industrial'||style==='wire'||style==='storefront')for(const f of style==='storefront'?[-.25,.25]:[-.28,0,.28])r=Math.min(r,Math.abs(along-f*pane.width)-1);
+ if(style==='wire')for(const dy of [4,10,16,22])if(base+dy<head-2)r=Math.min(r,Math.abs(y-base-dy)-.6);
+ if(style==='bay')r=Math.min(r,Math.abs(Math.abs(along)-pane.width*.37)-1.4);
  if(!Number.isFinite(r)||r<.5||Math.abs(ref.face)!==1)return null;
  const nx=pane.vertical?-ref.face:0,nz=pane.vertical?0:ref.face;
  return {x:pane.x+(pane.vertical?0:along)+nx*.66,y,z:pane.y+(pane.vertical?along:0)+nz*.66,nx,ny:0,nz,radius:r};

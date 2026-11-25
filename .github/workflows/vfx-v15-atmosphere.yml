@@ -20,5 +20,5 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - run: node --experimental-strip-types --test tests/vfx-v*.test.mjs tests/perf-window-effects.test.mjs tests/map-18-vegetation.test.mjs
+      - run: node --experimental-strip-types --test tests/vfx-v*.test.mjs tests/perf-window-effects.test.mjs tests/map-18-vegetation.test.mjs tests/lw-windows.test.mjs tests/lw-glass-impact.test.mjs tests/physicality-glass-door-damage.test.mjs
       - run: npm run build
