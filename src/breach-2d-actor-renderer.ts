@@ -182,7 +182,7 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
 }
 function sprite(a:TeamActor){
   const {state,replaying,selected,replayPlanScope,replayNameTags,replayContactMarkers}=getFrame();
-  if(a.side==='red'&&!(replaying&&replayKnowledge.omniscient)){
+  if(a.side==='red'&&!(replaying&&replayKnowledge.omniscient&&!replayKnowledge.observerId)){
     const visible=presentActor(state,a,replaying&&replayKnowledge.omniscient,
       replaying?replayKnowledge.disclosure():null);
     if(!visible){
@@ -333,7 +333,7 @@ function liveWeaponKnown(item:{ownerId:string;p:Pt},state:Session):boolean{
 }
 function contacts(){
   const {state,replaying,replayAnalysis,replayContactMarkers,viewMode}=getFrame();
-  if(replaying&&replayAnalysis&&replayContactMarkers)
+  if(replaying&&replayAnalysis&&replayContactMarkers&&replayKnowledge.disclosure().mode==='full')
     for(const a of enemies(state)){
     if(a.health<=0)continue;
     const start=viewMode==='plan2d'?a.p:worldToScreen(a.p,22);
@@ -362,7 +362,7 @@ function contacts(){
   // Physical firearm identity comes from the same replayed Session data as
   // the 3D evidence marker. Never expose an unseen hostile's former location.
   for(const item of state.droppedFirearms??[]){
-    if(item.status==='retrieved'||!liveWeaponKnown(item,state))continue;
+    if(item.status==='retrieved'||personal||!effectVisible(item.p)||!liveWeaponKnown(item,state))continue;
     const x=item.p.x,y=item.p.y;
     if(item.status==='secured'){
       rect(x-8,y-5,16,10,'#bca97b');

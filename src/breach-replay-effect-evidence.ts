@@ -7,7 +7,7 @@ import type {Pt} from './breach-core.ts';
 import {isGroundImpactMark} from './breach-impact-surface.ts';
 import {recordedReplayKnowledge} from './breach-replay-visibility.ts';
 import {reuseFrozenReplayValue} from './breach-replay-sharing.ts';
-export const EFFECT_SAMPLE_POINT_LIMIT=12;
+export const EFFECT_SAMPLE_POINT_LIMIT=8;
 export const EFFECT_SAMPLE_OBSERVER_LIMIT=4;
 export const EFFECT_SAMPLE_MAX_AGE=.075;
 // kind, id, world x, world z, immutable event/revision token.
@@ -22,14 +22,13 @@ export function groundEffectRow(mark:ImpactMark):EffectEvidenceRow{
  return ['ground',mark.id,mark.p.x,mark.p.y,
   JSON.stringify([mark.surface,mark.bloodKind,mark.bloodAmount,mark.damageCount,mark.shotId])];
 }
-const sameRow=(a:EffectEvidenceRow,b:EffectEvidenceRow)=>a.every((v,i)=>v===b[i]);
+const sameRow=(a:readonly unknown[],b:EffectEvidenceRow)=>a.length===5&&a.every((v,i)=>v===b[i]);
 export function captureEffectEvidence(s:Session,prior?:ReplayEffectEvidence,
  visible:(s:Session,a:TeamActor,p:Pt)=>boolean=observerPointVisible):ReplayEffectEvidence|undefined{
  const rows:EffectEvidenceRow[]=[];
  for(let i=s.shots.length-1,n=0;i>=0&&n<4;i--){
   const shot=s.shots[i];
   if(shot.age<0||shot.age>.4)continue;
-  if(shot.age<=.12)rows.push(shotEffectRow(shot,'muzzle'));
   rows.push(shotEffectRow(shot,'impact'));n++;
  }
  for(let i=s.impactMarks.length-1,n=0;i>=0&&n<4&&rows.length<EFFECT_SAMPLE_POINT_LIMIT;i--){
@@ -65,7 +64,7 @@ export function effectSampleAllows(sample:ReplayEffectEvidence|undefined,
    !Array.isArray(sample.rows)||sample.rows.length>EFFECT_SAMPLE_POINT_LIMIT||
    !Array.isArray(sample.observers)||sample.observers.length>EFFECT_SAMPLE_OBSERVER_LIMIT)return false;
  const observer=sample.observers.find(o=>Array.isArray(o)&&o[0]===observerId);
- if(!observer||!Number.isInteger(observer[1]))return false;
+ if(!observer||!Number.isInteger(observer[1])||observer[1]<0||observer[1]>=(1<<sample.rows.length))return false;
  const index=sample.rows.findIndex(r=>Array.isArray(r)&&r.length===5&&sameRow(r,row));
  return index>=0&&(observer[1]&(1<<index))!==0;
 }
