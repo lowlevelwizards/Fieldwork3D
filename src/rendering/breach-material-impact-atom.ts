@@ -3,13 +3,13 @@
  * Mutate caller scratch: no allocation, random state or advancing simulation.
  */
 export type MaterialImpactSurface='wood'|'stone'|'metal'|'glass'|'dust';
-type Profile={count:number;life:number;speed:number;lift:number;gravity:number;width:number;length:number;color:number};
+type Profile={count:number;life:number;speed:number;lift:number;gravity:number;width:number;length:number;color:number;pulse:number;pulseColor:number;spread:number};
 export const MATERIAL_IMPACT_PROFILES:Readonly<Record<MaterialImpactSurface,Readonly<Profile>>>=Object.freeze({
- wood:Object.freeze({count:4,life:.42,speed:27,lift:20,gravity:96,width:.40,length:3.6,color:0xbf9d77}),
- stone:Object.freeze({count:6,life:.36,speed:25,lift:18,gravity:108,width:.75,length:1.35,color:0xaaa8a1}),
- metal:Object.freeze({count:5,life:.24,speed:50,lift:27,gravity:90,width:.22,length:3.8,color:0xffd298}),
- glass:Object.freeze({count:7,life:.32,speed:29,lift:16,gravity:100,width:.35,length:1.7,color:0xc8e4df}),
- dust:Object.freeze({count:3,life:.31,speed:14,lift:12,gravity:25,width:1.3,length:1.55,color:0xb0a797})
+ wood:Object.freeze({count:4,life:.40,speed:32,lift:25,gravity:96,width:1.65,length:7.2,color:0xd5a267,pulse:6.5,pulseColor:0xdfb27a,spread:15}),
+ stone:Object.freeze({count:6,life:.40,speed:29,lift:23,gravity:108,width:2.5,length:3.4,color:0xd1c5ae,pulse:7.0,pulseColor:0xe0d4bd,spread:15}),
+ metal:Object.freeze({count:5,life:.36,speed:58,lift:30,gravity:90,width:1.1,length:8.4,color:0xffde8c,pulse:5.8,pulseColor:0xffe3a4,spread:19}),
+ glass:Object.freeze({count:7,life:.40,speed:33,lift:20,gravity:100,width:1.25,length:4.3,color:0xd0f0ee,pulse:5.8,pulseColor:0xd3f2ee,spread:14}),
+ dust:Object.freeze({count:3,life:.40,speed:18,lift:15,gravity:25,width:3.0,length:3.2,color:0xc8b59b,pulse:5.6,pulseColor:0xe2d3b1,spread:11})
 });
 export type ImpactParticleSample={x:number;y:number;z:number;yaw:number;roll:number;pitch:number;width:number;length:number;opacity:number;color:number};
 export const MATERIAL_IMPACT_PARTICLE_LIMIT=140; // 20 visible impacts × max seven particles
@@ -28,6 +28,6 @@ export function sampleMaterialImpact(surface:MaterialImpactSurface,id:number,ind
  out.pitch=surface==='metal'?0:seed*2+age*5;
  const growth=surface==='dust'?1+t*1.7:1;
  out.width=p.width*growth;out.length=p.length*growth;
- out.opacity=(1-t)*(surface==='dust'?.45:1);out.color=p.color;
+ out.opacity=(1-t*t)*(surface==='dust'?.62:1);out.color=p.color;
  return true;
 }

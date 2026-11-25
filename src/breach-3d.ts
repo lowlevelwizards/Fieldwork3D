@@ -2988,9 +2988,7 @@ export class TacticalScene3D{
             this.impactPulseBatch=makeBloodDropletBatch(this.impactGeometry,20,'shot-pulse-batch');
             this.effects.add(this.impactPulseBatch.mesh);
           }
-          const color=shot.surface==='blood'?0xb43d3b:
-            shot.surface==='metal'?0xffd697:shot.surface==='glass'?0xc8e4df:
-            shot.surface==='wood'?0xdfb27a:shot.surface==='stone'?0xbeb9a2:0xe2d3b1;
+          const color=shot.surface==='blood'?0xb43d3b:MATERIAL_IMPACT_PROFILES[shot.surface??'dust'].pulseColor;
           this.impactPulseBatch.addPose(end.x,end.y,end.z,0,0,0,
             impact.scale,impact.scale,impact.opacity,color);
         }

@@ -1,0 +1,10 @@
+# V14 — material impacts and persistent damage
+Base aba04a98ef30812acfcd413cd03812fa21614906; lab upgrade is separately reviewed. All production effects remain on.
+## Scope
+1. Consolidate the visual material profile (particle size/count, lifespan, movement, tint, pulse) and exaggerate silhouette at tactical zoom. Keep existing 140 solid instance cap and 20 pulse cap; do not expand simulation hit authority or introduce per-particle physics.
+2. Route actual committed intermediate intersections into bounded transient presentation, with stable identities, no duplicate final stops, disclosure before particles, and replay parity. Do not let hidden shots reveal their origin.
+3. Build shared surface damage masks and contrast per material. Retain attached marks on supported wall, door, solid props and training targets; preserve edge clipping and owner transforms. Extend only explicitly supported fixture receivers.
+4. Retain bounded mission-long surface evidence, spatially combine nearby marks on the same owner/face rather than replacing unrelated evidence. Protect V13 blood capacity and keep replay data bounded. Older unowned raised marks remain suppressed.
+5. Validate actual training target and committed material events, real gameplay zoom desktop/mobile WebGL, Effects Lab samples, fog and replay rewind, and exact-base frame cost. No change to scoring, health, penetration, RNG or material authority. Art approval and hardware measurements remain separate gates.
+## Checkpoint 1
+Same 4 wood, 6 stone, 5 metal, 7 glass, 3 dust particles as before. Wood width 0.40→1.65 length 3.6→7.2; stone width .75→2.5 length 1.35→3.4; metal width .22→1.1 length 3.8→8.4; glass width .35→1.25 length 1.7→4.3. Pulse scales 2.1–3.5→5.6–7.0. Profile lifespan stays within existing .4s shot retention. Existing dust cloud remains V15 work; glass fracture debris V16. Material profiles now supply shared legacy profile values and pulse dimensions/colors. No new draws or resources intended; actual visual/performance evidence pending. Intermediate transient response, damage atlas, persistent evidence and broad owner coverage not yet implemented.

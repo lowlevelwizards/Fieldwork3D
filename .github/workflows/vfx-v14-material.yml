@@ -1,0 +1,24 @@
+name: V14 material readability
+on:
+  pull_request:
+    paths:
+      - 'src/rendering/breach-material-impact-atom.ts'
+      - 'src/breach-effects.ts'
+      - 'src/breach-combat-cues.ts'
+      - 'src/breach-3d.ts'
+      - 'tests/vfx-v5-material-impact.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  material:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/vfx-v*.test.mjs tests/lw-impact-responses.test.mjs tests/phase-a-combat-cues.test.mjs
+      - run: npm run build
