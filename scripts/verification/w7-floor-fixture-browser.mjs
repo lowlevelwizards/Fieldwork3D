@@ -80,11 +80,42 @@ try{
      check(textures.every((t,i)=>t.version===versions[i]+2&&t.image.data.every((v,j)=>v===saved[i][j])),'floor condition roundtrip/upload budget');
      check(JSON.stringify(site)===snapshot,'authoritative site mutated');
      draw(true);
+     window.w7.current={site,session,draw};
      const marks=planCompiledFloorWear(site);
      return {compiled,buildMs,repeated,knowledgeBefore:before,knowledgeAfter:after,disclosure,samples,meshCounts,rooms:site.rooms.length,pages:textures.length,bytes:textures.reduce((n,t)=>n+t.image.data.byteLength,0),mipBytes:textures.reduce((n,t)=>n+Math.ceil(t.image.data.byteLength*(t.generateMipmaps?4/3:1)),0),marks:marks.reduce((a,m)=>(a[m.kind]=(a[m.kind]??0)+1,a),{}),stableMain:Math.max(...samples.slice(1).map(s=>s.main)),shadow:samples[0].shadow};
     },{seed,archetype,compiled});
     results.push(result);
     await page.screenshot({path:out+'/'+name+'-'+archetype+'-'+(compiled?'compiled':'legacy')+'.png'});
+    if(archetype==='restaurant'||archetype==='garage'){
+     const special=await page.evaluate(()=>{
+      const {scene,current:{session,draw}}=window.w7;
+      const witnesses=[...scene.coverVisualStates].filter(([,v])=>{
+       let marked=false;v.intact.traverse(o=>{if(o.userData.fieldworkDrawFamily==='fixture-wear-integrated')marked=true;});return marked;
+      });
+      const [index,visual]=witnesses[0]??[];
+      const source=index!==undefined?session.coverState[index]:undefined;
+      const saved=source?{...source}:undefined;
+      let transitions=false;
+      if(source&&visual){
+       const owner=scene.coverGroups.get(index);
+       const oldX=owner.position.x;
+       source.x+=5;source.toppled=true;draw(true);
+       if(!visual.intact.visible||visual.debris.visible||Math.abs(owner.position.x-oldX-5)>.01||owner.rotation.x===0)throw Error('W7 moved/toppled fixture lost ownership');
+       source.destroyed=true;draw(true);
+       if(visual.intact.visible||!visual.debris.visible||owner.rotation.x!==0)throw Error('W7 destroyed fixture retained intact wear');
+       Object.assign(source,saved);source.toppled=saved.toppled;source.destroyed=saved.destroyed;draw(true);
+       if(!visual.intact.visible||visual.debris.visible||Math.abs(owner.position.x-oldX)>.01)throw Error('W7 restored fixture lost ownership');
+       transitions=true;
+      }
+      session.lightingMode='night';scene.view.zoom=2.25;
+      if(source)scene.view.focus={x:source.x,y:source.y};
+      scene.updateCamera(1);draw(true);
+      return {transitions,witnesses:witnesses.length,lighting:session.lightingMode};
+     });
+     result.special=special;
+     if(compiled)check(special.transitions,'no fixture transition witness '+archetype);
+     await page.screenshot({path:out+'/'+name+'-'+archetype+'-'+(compiled?'compiled':'legacy')+'-night-close.png'});
+    }
    }
    const [a,b]=results;evidence.push({name,seed,archetype,results});writeFileSync(out+'/summary.json',JSON.stringify(evidence,null,2));
    for(const k of ['knowledgeBefore','knowledgeAfter','disclosure','rooms'])check(a[k]===b[k],archetype+' W7 parity '+k);
@@ -94,7 +125,17 @@ try{
    check(JSON.stringify(a.repeated)===JSON.stringify(b.repeated),'repeated fixture batching changed '+archetype+' '+JSON.stringify([a.repeated,b.repeated]));
    check(b.shadow===a.shadow,'shadow count changed '+archetype+' '+JSON.stringify([a.samples[0],b.samples[0]]));
   }
-  await page.evaluate(()=>{const {scene}=window.w7;scene.renderer.dispose();scene.renderer.forceContextLoss();});
+  await page.evaluate(()=>{
+   const {scene,current:{site}}=window.w7;scene.floorWearCompiled=true;
+   const clean={...site,conditionLevel:0};scene.applySite(clean);
+   const slots=scene.patinaRoomSurfaces,tex=[...new Set(slots.map(s=>s.texture))];
+   if(slots.length!==clean.rooms.length||!tex.every(t=>t.image.data.every((v,i)=>i%4!==3||v===0)))throw Error('W7 clean start missing slots');
+   scene.previewConditionMasks(clean,100);
+   if(!tex.some(t=>t.image.data.some((v,i)=>i%4===3&&v>0)))throw Error('W7 clean start cannot age');
+   scene.previewConditionMasks(clean,0);
+   if(!tex.every(t=>t.image.data.every((v,i)=>i%4!==3||v===0)))throw Error('W7 clean start cannot reset');
+   scene.renderer.dispose();scene.renderer.forceContextLoss();
+  });
   check(!errors.length,errors.join(' | '));await page.close();
  }
  check(evidence.some(e=>e.results[1].meshCounts.fixtureIntegrated>0),'no projected fixture witness');
