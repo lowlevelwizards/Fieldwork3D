@@ -20,7 +20,8 @@ test('W7 bounded atlas allocates exactly one 64x64 slot per room including clean
  assert.deepEqual(bytes.slice(offset+64*64*4),saved.slice(offset+64*64*4));
  writeFloorMaskSlot(site,slot,0);assert.deepEqual(bytes,saved);
  atlas.pages.forEach(t=>t.dispose());
- assert.equal(resolveFloorWear(null),false);assert.equal(resolveFloorWear('compiled'),true);
+ assert.equal(resolveFloorWear(null),true);assert.equal(resolveFloorWear('compiled'),true);
+ assert.equal(resolveFloorWear('legacy'),false);assert.equal(resolveFloorWear('unknown'),true);
 });
 test('W7 top-only mask UV preserves physical slab and repeating material UV exactly',()=>{
  const texture=new THREE.DataTexture(new Uint8Array(64*128*4),64,128);

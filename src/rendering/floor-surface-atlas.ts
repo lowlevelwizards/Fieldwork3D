@@ -10,7 +10,8 @@ import {mapBoxPixelUV} from './pixel-materials.ts';
 export const FLOOR_MASK_SIZE=64;
 export type FloorMaskSlot={room:Room;texture:THREE.DataTexture;row:number};
 export type FloorMaskAtlas={pages:THREE.DataTexture[];slots:Map<string,FloorMaskSlot>};
-export function resolveFloorWear(mode:string|null){return mode==='compiled';}
+/** W7 production default; explicit legacy remains the A/B and rollback path. */
+export function resolveFloorWear(mode:string|null){return mode!=='legacy';}
 export function planFloorMaskPages(count:number):number[]{
  const pages:number[]=[];
  while(count>0){const n=2**Math.floor(Math.log2(Math.min(count,32)));pages.push(n);count-=n;}

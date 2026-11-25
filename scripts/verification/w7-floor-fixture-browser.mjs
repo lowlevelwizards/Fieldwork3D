@@ -25,7 +25,9 @@ try{
    const {newSession,team}=await import('/src/breach-game.ts');
    const {activateSite}=await import('/src/breach-core.ts');
    const {planCompiledFloorWear}=await import('/src/worldgen/floor-wear-plan.ts');
-   const scene=new TacticalScene3D();scene.resize(width,height);
+   const scene=new TacticalScene3D();
+   if(!scene.floorWearCompiled)throw Error('W7 production default missing');
+   scene.resize(width,height);
    if(!scene.canvas.isConnected)document.body.appendChild(scene.canvas);
    window.w7={scene,generateSite,newSession,team,activateSite,planCompiledFloorWear};
   },{width,height});
@@ -88,7 +90,7 @@ try{
     await page.screenshot({path:out+'/'+name+'-'+archetype+'-'+(compiled?'compiled':'legacy')+'.png'});
     if(archetype==='restaurant'||archetype==='garage'){
      const special=await page.evaluate(()=>{
-      const {scene,current:{session,draw}}=window.w7;
+      const {scene,current:{site,session,draw}}=window.w7;
       const witnesses=[...scene.coverVisualStates].filter(([,v])=>{
        let marked=false;v.intact.traverse(o=>{if(o.userData.fieldworkDrawFamily==='fixture-wear-integrated')marked=true;});return marked;
       });
@@ -108,7 +110,8 @@ try{
        transitions=true;
       }
       session.lightingMode='night';scene.view.zoom=2.25;
-      if(source)scene.view.focus={x:source.x,y:source.y};
+      const room=site.rooms.find(r=>['kitchen','workshop','bay'].includes(r.purpose??''))??site.rooms[0];
+      if(room)scene.view.focus={x:room.x+room.w/2,y:room.y+room.h/2};
       scene.updateCamera(1);draw(true);
       return {transitions,witnesses:witnesses.length,lighting:session.lightingMode};
      });
