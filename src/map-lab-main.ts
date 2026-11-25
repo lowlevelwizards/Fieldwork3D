@@ -46,11 +46,15 @@ typeInput.value=BUILDING_ARCHETYPES[(initial>>>0)%BUILDING_ARCHETYPES.length];
 const stage=new TacticalScene3D();
 const wallMode=el<HTMLSelectElement>('wallAuditionMode');
 const wallEffect=el<HTMLSelectElement>('wallAuditionEffect');
-wallMode.value=stage.wallAudition?(stage.wallAudition.atlas?'atlas':'packed'):'legacy';
+wallMode.value=stage.wallAudition?(stage.wallAudition.story?'story':stage.wallAudition.atlas?'atlas':'packed'):'legacy';
 wallEffect.disabled=!stage.wallAudition;
 function updateWallEffectOptions(){
- for(const option of wallEffect.options)if(option.value==='moss'||option.value==='rust')option.disabled=!stage.wallAudition?.atlas;
- if(!stage.wallAudition?.atlas&&['moss','rust'].includes(wallEffect.value)){wallEffect.value='all';if(stage.wallAudition)stage.wallAudition.effect='all';}
+ const storyEffects=['grease','splash','workgrime'];
+ for(const option of wallEffect.options){
+  if(['moss','rust'].includes(option.value))option.disabled=!stage.wallAudition?.atlas;
+  if(storyEffects.includes(option.value))option.disabled=!stage.wallAudition?.story;
+ }
+ if((!stage.wallAudition?.atlas&&['moss','rust'].includes(wallEffect.value))||(!stage.wallAudition?.story&&storyEffects.includes(wallEffect.value))){wallEffect.value='all';if(stage.wallAudition)stage.wallAudition.effect='all';}
 }
 updateWallEffectOptions();
 stage.setMode('iso');stage.view.zoom=1.25;
@@ -147,7 +151,7 @@ function paintConditionDiagnostics(){
 function previewCondition(){
  const site=session.site;if(!site)return;
  playSite.href='./breach.html?seed='+site.seed+
-   '&scale='+(site.scale??'medium')+'&condition='+selectedCondition;
+   '&scale='+(site.scale??'medium')+'&condition='+selectedCondition+'&wallWear='+wallMode.value;
  const view={...stage.view,focus:{...stage.view.focus}};
  stage.applySite({...site,conditionLevel:selectedCondition});
  Object.assign(stage.view,view);
@@ -155,7 +159,7 @@ function previewCondition(){
  paintConditionDiagnostics();
 }
 wallMode.addEventListener('change',()=>{
- stage.wallAudition=wallMode.value==='legacy'?undefined:{effect:wallEffect.value as WallEffectFilter,atlas:wallMode.value==='atlas'};
+ stage.wallAudition=wallMode.value==='legacy'?undefined:{effect:wallEffect.value as WallEffectFilter,atlas:wallMode.value==='atlas'||wallMode.value==='story',story:wallMode.value==='story'};
  wallEffect.disabled=!stage.wallAudition;
  updateWallEffectOptions();
  if(siteReady)previewCondition();
@@ -180,7 +184,7 @@ conditionInput.addEventListener('input',()=>{
  const site=session.site;
  if(site){
   playSite.href='./breach.html?seed='+site.seed+
-   '&scale='+(site.scale??'medium')+'&condition='+selectedCondition;
+   '&scale='+(site.scale??'medium')+'&condition='+selectedCondition+'&wallWear='+wallMode.value;
   // A single queued frame updates existing patina maps. Full scene/fixture
   // regeneration is deferred until the slider settles.
   if(maskPreviewFrame===null)maskPreviewFrame=requestAnimationFrame(()=>{
@@ -409,7 +413,7 @@ async function useGeneratedSite(id:number,site:Site,audit:SiteAudit,choice:LabSc
     'ms · worker total '+timing.workerMs+'ms · preview '+previewMs+'ms';
   seedInput.value=String(site.seed);
   playSite.href='./breach.html?seed='+site.seed+
-    '&scale='+(site.scale??'medium')+'&condition='+selectedCondition;
+    '&scale='+(site.scale??'medium')+'&condition='+selectedCondition+'&wallWear='+wallMode.value;
   history.replaceState(null,'','?seed='+site.seed+'&scale='+choice+
     '&condition='+selectedCondition+'&wallWear='+wallMode.value);
   siteReady=true;currentAudit=audit;

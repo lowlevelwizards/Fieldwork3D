@@ -420,7 +420,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         node.renderOrder=1002;
       });
     };
-    const atlas=host.wallAudition?.atlas?buildWallAtlas(site,WALL_VISUAL_HEIGHT,finishCondition,host.wallAudition.effect,!!host.solid(theme.wall,.94,wallPixelSurface(site.archetype)).map,host.wallStructureUnified?{trim:theme.trim,cap:theme.cap}:undefined):undefined;
+    const atlas=host.wallAudition?.atlas?buildWallAtlas(site,WALL_VISUAL_HEIGHT,finishCondition,host.wallAudition.effect,!!host.solid(theme.wall,.94,wallPixelSurface(site.archetype)).map,host.wallStructureUnified?{trim:theme.trim,cap:theme.cap}:undefined,host.wallAudition.story):undefined;
     if(atlas)host.sitePatinaTextures.push(...atlas.pages);
     const capJoins=planWallCapJoins(site.walls);
     const unified=!!host.wallStructureUnified&&!!atlas;

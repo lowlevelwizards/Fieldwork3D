@@ -1,20 +1,22 @@
 /** W2 audition: static architecture is a material plus a sparse set of
  * anchored finish events. No tactical state, time or mutable RNG. */
 import type {Site} from '../breach-site.ts';
+import type {FixtureWallResidue} from './wall-story-residue.ts';
 import {wallExposure} from './wear-exposure.ts';
 import {wallPixelSurface} from './pixel-surface-selection.ts';
 import {buildingTheme} from './building-palettes.ts';
 import type {PixelSurface} from '../rendering/pixel-recipes.ts';
-export const WALL_EFFECTS=['fade','contact','chip','damp','runoff','crack','repair','moss','rust'] as const;
+export const WALL_EFFECTS=['fade','contact','chip','damp','runoff','crack','repair','moss','rust','grease','splash','workgrime'] as const;
 export type WallEffect=typeof WALL_EFFECTS[number];
 export type WallEffectFilter='all'|'none'|WallEffect;
-export type WallAudition={effect:WallEffectFilter;atlas?:boolean};
-/** Production default: all eligible W3 effects. Explicit historical
+export type WallAudition={effect:WallEffectFilter;atlas?:boolean;story?:boolean};
+/** Production default: W6 fixture story plus eligible W3 effects. Explicit historical
  * comparison modes remain available for Map Lab and controlled A/B. */
 export function resolveWallSurfaceMode(mode:string|null):WallAudition|undefined{
  if(mode==='legacy')return undefined;
  if(mode==='packed'||mode==='integrated')return {effect:'all'};
- return {effect:'all',atlas:true};
+ if(mode==='atlas'||mode==='compiled'||mode==='separate'||mode==='unified')return {effect:'all',atlas:true};
+ return {effect:'all',atlas:true,story:true};
 }
 export type SurfaceEvent={kind:WallEffect;cause:string;x:number;y:number;width:number;height:number;threshold:number;priority:number};
 export type WallSurfaceRecipe={length:number;height:number;face:-1|1;color:number;surface:PixelSurface;band?:{color:number;top:number};directional?:boolean;events:SurfaceEvent[]};
@@ -23,7 +25,7 @@ const hash=(n:number)=>((Math.imul(n^(n>>>16),0x45d9f3b)>>>0)/4294967295);
 const random=(seed:number,salt:number)=>hash(Math.imul(seed+salt,0x9e3779b1));
 /** Physical local x follows segment a->b, y increases down from crown.
  * This pilot paints one eligible broad face; W3 packs independent faces. */
-export function planWallSurface(site:Site,index:number,height:number,requestedFace?:-1|1):WallSurfaceRecipe{
+export function planWallSurface(site:Site,index:number,height:number,requestedFace?:-1|1,story?:FixtureWallResidue):WallSurfaceRecipe{
  const w=site.walls[index],dx=w.b.x-w.a.x,dy=w.b.y-w.a.y;
  const length=Math.hypot(dx,dy)||1,seed=site.seed^Math.imul(index+1,65161);
  const exposure=wallExposure(site,index);
@@ -106,6 +108,7 @@ export function planWallSurface(site:Site,index:number,height:number,requestedFa
   add('crack','edge-stress',edge+(edge===0?1:-1)*5,height*.22,15,24,65,50);
  if(site.condition==='renovation'&&random(seed,9)<.45)
   add('repair','renovation',length*(.22+.56*random(seed,10)),height*.45,17,18,22,95);
+ if(requestedFace!==undefined&&story)for(const event of story.get(index)?.get(face)??[])add(event.kind,event.cause,event.x,event.y,event.width,event.height,event.threshold,event.priority);
  return {length,height,face,color,surface,band,directional:requestedFace!==undefined,events:events.sort((a,b)=>b.priority-a.priority||a.cause.localeCompare(b.cause))};
 }
 export function selectWallEvents(recipe:WallSurfaceRecipe,level:number,filter:WallEffectFilter='all'){
@@ -128,7 +131,8 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
    fade:tint(base,[235,232,217],bold?.39:.26),contact:tint(base,[72,76,70],bold?.71:.5),
    chip:tint(base,[178,171,155],.75),damp:tint(base,[60,78,60],.74),
    runoff:tint(base,[63,82,68],.68),crack:tint(base,[65,67,61],.74),
-   repair:tint(base,[231,222,199],.4),moss:tint(base,[65,89,52],.79),rust:tint(base,[139,71,37],.77)
+   repair:tint(base,[231,222,199],.4),moss:tint(base,[65,89,52],.79),rust:tint(base,[139,71,37],.77),
+   grease:tint(base,[112,89,50],.65),splash:tint(base,[87,109,105],.53),workgrime:tint(base,[67,65,61],.72)
   };
   const c=palette[event.kind];
   // Visit only the physical stamp rectangle, rather than every texel
@@ -154,6 +158,9 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
     case 'repair':a=Math.abs(u)<.82&&Math.abs(v)<.79?(bold?.80:.62):0;break;
     case 'moss':a=v>-.48+edge*2&&Math.abs(u)<.9&&(Math.abs(step)%3!==1||v>.45)?.85:0;break;
     case 'rust':a=v>-.85&&Math.abs(u)<(v<-.2?.64:.25+.15*(1-v))?.84:0;break;
+    case 'grease':a=Math.abs(u)<.86-edge&&v>-.76+edge?(v>.25?.65:.39):0;break;
+    case 'splash':a=(v>.1&&Math.abs(u)<.87-edge||v>-.72&&Math.abs(u+.44)<.13||v>-.5&&Math.abs(u-.31)<.15)?.54:0;break;
+    case 'workgrime':a=Math.abs(u)<.88&&Math.abs(v)<.66-edge&&(Math.abs(v+.2)<.24||Math.abs(v-.35)<.21)?.76:0;break;
    }
    if(!a)continue;
    a*=strength;const p=(py*width+px)*4,old=out[p+3]/255,next=a+old*(1-a);
@@ -227,8 +234,8 @@ export function packedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,wi
 
 /** Independent W3 front/back face authorship. Both use a common local
  * physical x direction, and effects never cross the segment boundary. */
-export function planWallFaces(site:Site,index:number,height:number){
- return {front:planWallSurface(site,index,height,1),back:planWallSurface(site,index,height,-1)};
+export function planWallFaces(site:Site,index:number,height:number,story?:FixtureWallResidue){
+ return {front:planWallSurface(site,index,height,1,story),back:planWallSurface(site,index,height,-1,story)};
 }
 export type WallFacePair=ReturnType<typeof planWallFaces>;
 /** 64 rows per strip, guards aligned to four-pixel mip blocks.
