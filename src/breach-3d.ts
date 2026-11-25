@@ -866,6 +866,7 @@ export class TacticalScene3D{
   private patinaRoomSurfaces:{room:Room;texture:THREE.DataTexture}[]=[];
   private patinaWallSurfaces:{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;patterned?:boolean;atlasSlot?:WallAtlasSlot}[]=[];
   /** W3 is the production default; legacy and packed are comparison modes. */
+  wallStructureCompiled=typeof location!=='undefined'&&new URLSearchParams(location.search).get('wallStructure')==='compiled';
   wallAudition:WallAudition|undefined=(()=>{
     const mode=typeof location==='undefined'?null:new URLSearchParams(location.search).get('wallWear');
     return resolveWallSurfaceMode(mode);
@@ -1390,6 +1391,7 @@ export class TacticalScene3D{
       patinaRoomSurfaces:scene.patinaRoomSurfaces,
       patinaWallSurfaces:scene.patinaWallSurfaces,
       wallAudition:scene.wallAudition,
+      wallStructureCompiled:scene.wallStructureCompiled,
       sitePatinaTextures:scene.sitePatinaTextures,
       sitePatinaMaterials:scene.sitePatinaMaterials,
       wallMaterials:scene.wallMaterials,
