@@ -35,6 +35,8 @@ export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
   /** A glass leaf keeps its frame after the glazing has shattered. */
   glassShattered?:boolean;
   glassIntegrity?:number;glassShatteredAt?:number;
+  // Scalar fracture pose at the committed break; remains fixed when the leaf moves.
+  glassBreakX?:number;glassBreakY?:number;glassBreakWidth?:number;glassBreakYaw?:number;
   wedged?:boolean;wedgeOwnerId?:string;}
 export type Obstacle={x:number;y:number;w:number;h:number;low?:boolean;
   /** Stable seed-authored identity; old replay/site records may omit it. */
@@ -50,6 +52,7 @@ export type Obstacle={x:number;y:number;w:number;h:number;low?:boolean;
   artCondition?:'clean'|'used'|'neglected'|'vacant';
   artSurface?:import('./rendering/pixel-recipes.ts').PixelSurface;
   integrity?:number;destroyed?:boolean;
+  destroyedAt?:number;collapseX?:number;collapseY?:number;collapseW?:number;collapseD?:number;collapseHeight?:number;
   /** Runtime topple state shared across collision, visuals and replay. */
   toppled?:boolean;};
 export type Side='blue'|'red';

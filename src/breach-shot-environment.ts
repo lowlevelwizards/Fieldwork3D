@@ -12,6 +12,7 @@ import {damageCover} from './breach-reactive-cover.ts';
 import {materialResponse} from './breach-impact-responses.ts';
 import {damageWindow} from './breach-windows.ts';
 import {GLASS_INTEGRITY} from './breach-glass-damage.ts';
+import {recordDoorFracture} from './breach-fracture-record.ts';
 import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
 
 type ShotEnvironmentPorts={
@@ -61,7 +62,7 @@ function damageStruckCover(s:Session,hits:readonly {index:number;fraction:number
     (piece.fixture==='target-no-shoot'?'NO-SHOOT':'TRAINING')+
     ' TARGET STRUCK · '+piece.id);
   }
-  const result=damageCover(piece,force);
+  const result=damageCover(piece,force,s.seconds);
   if(result==='immune')continue;
   s.objectRevision++;
   if(result==='collapsed'){
@@ -98,7 +99,7 @@ function shatterStruckDoorGlass(s:Session,
   s.objectRevision++;
   const at=doorCenter(door);
   hear(s,at,175,'glass');
-  if(door.glassIntegrity===0){door.glassShattered=true;door.glassShatteredAt=s.seconds;
+  if(door.glassIntegrity===0){door.glassShattered=true;recordDoorFracture(door,s.seconds);
    battleEvent(s,'impact',null,at,'GLASS DOOR SHATTERED');}
  }
 }

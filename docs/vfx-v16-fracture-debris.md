@@ -1,0 +1,10 @@
+# V16 — fracture and destruction debris
+Base dc12cff973cb29e335b6b5d02b0603b961c9156e. Preserve user-requested V15 staged glass and restrained palette. No new physics, weapon balance, or collision changes.
+## Complete scope
+1. Normalize fracture evidence at the existing authoritative world transitions: window, interior aperture, glazed leaf, destructible fixture. Capture the leaf pose at break and pre-collapse footprint; scalar replay-owned metadata. Do not fabricate events for legacy state.
+2. Share one bounded opaque angular debris mesh across glass, wood, masonry, metal and soft-material chips. Existing 96 slots, prioritize active bursts over settled evidence. Distinct palette and silhouette, fixed origin, deterministic rewind, no per-fragment physics or extra collision. Preserve actual intact/destroyed fixture model.
+3. Ensure settled chips remain near the original owner and respect walls, known space and camera disclosure. Avoid duplicates between aperture and fixture glass, avoid replay leakage, and retain no stale scene data. Reduce avoidable allocations and unchanged instance uploads.
+4. Audit collapse/door break and aperture authoring paths; link only actual gameplay events. Future fragmentation explosive damage is deferred until a real detonation authority exists; do not invent a visual-only gameplay event. No new destruction of permanent structures.
+5. Extend Effects Lab with glass door and collapse examples, desktop/mobile default zoom captures, exact burst/settle count and fixed-location/rewind tests, real committed collapse checks and performance comparison. Human art approval remains separate.
+## Checkpoint 1
+Records committed glass leaf fracture origin/yaw and collapse footprint/time. Existing replay clone handles scalar metadata. Door/cover debris source descriptors and deterministic poses reuse window shard mesh with instance tint; existing window geometry/count retained. Adds lab samples, focused replay and damage tests, and Pages preflight. Per-source wall clipping, further silhouette variation, live WebGL matrix/count witnesses, exact performance and subjective art remain pending. No claim of deployment.
