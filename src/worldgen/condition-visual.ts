@@ -34,13 +34,20 @@ export function conditionFloorPixels(site:Site,room:Room,level=effectiveConditio
  const surface=roomPixelSurface(site.archetype,room.purpose??room.kind);
  const out=new Uint8Array(size*size*4);
  const t=clamp(level/100),s=(site.seed^(room.x*113|0)^(room.y*271|0))>>>0;
- const fixtures=site.cover.filter(o=>o.fixture&&o.x>=room.x&&o.x<=room.x+room.w&&
-   o.y>=room.y&&o.y<=room.y+room.h);
+ // Only intact, functionally relevant sources contribute broad buildup.
+ // Local spills and mineral marks are separately anchored by W7.
+ const role=room.purpose??room.kind;
+ const washable=surface==='tile'||surface==='linoleum';
+ const clinical=site.archetype==='clinic';
+ const wetSource=new Set(['sink','utility-sink','handwash-station','dish-station','toilet','bathtub','shower','laundry-machine','ice-machine','stove','commercial-range','fryer']);
+ const workSource=new Set(['vehicle-lift','compressor','generator','tank','workbench','tool-chest','rack','shelf']);
+ const fixtures=site.cover.filter(o=>o.fixture&&!o.destroyed&&!o.toppled&&o.x>=room.x&&o.x<=room.x+room.w&&
+   o.y>=room.y&&o.y<=room.y+room.h&&((['bathroom','restroom','half-bath','laundry','utility','kitchen','service','exam','treatment'].includes(role)&&wetSource.has(o.fixture))||(['bay','workshop','maintenance','loading','equipment','storage','packing','control'].includes(role)&&workSource.has(o.fixture))));
  const wet=['bathroom','restroom','laundry','utility','kitchen'].includes(room.purpose??'');
  const industrial=['bay','workshop','maintenance','loading','equipment'].includes(room.purpose??'');
  // Industrial and sanitary finishes age cooler than timber. Broad stain
  // placement still follows real fixtures and room edges, not random dirt.
- const tint=industrial?[64,68,62]:wet?[72,73,65]:
+ const tint=clinical?[100,108,101]:industrial?[64,68,62]:washable?[88,89,81]:wet?[72,73,65]:
   surface==='wood'?[79,67,50]:surface==='carpet'?[72,67,57]:
   (surface==='concrete'||surface==='sealed-concrete')?[71,73,68]:
   [72,70,60];
@@ -61,8 +68,10 @@ export function conditionFloorPixels(site:Site,room:Room,level=effectiveConditio
   // Favor coherent color regions, edge accumulation, and intermittent
   // source stains. Keep dark channels strong enough at tactical zoom.
   const patches=clamp((broad-.38)*2.2)*(.35+.65*medium);
-  let coverage=.14+.32*patches+.32*corner+.22*source+
-    .14*asym*(medium>.48?1:.2)+.08*(fine-.5);
+  let coverage=.075+.30*patches+.32*corner+.15*source+
+    .09*asym*(medium>.48?1:.2)+.06*(fine-.5);
+  // Washable finishes retain calmer clean fields. Porous and industrial
+  // substrates retain stronger age witnesses at edges and real sources.
   // Darken actual repeated tile grout and weathered wood seams rather
   // than laying uniform stains over clean underlying material.
   const wx=room.x+u*room.w,wy=room.y+v*room.h;
@@ -77,7 +86,7 @@ export function conditionFloorPixels(site:Site,room:Room,level=effectiveConditio
     if(Math.abs(u-crack)<.012)coverage+=.34*(t-.55)/.45;
   }
   coverage=clamp(coverage);
-  const opacity=Math.round(255*Math.pow(t,1.38)*coverage*1.55);
+  const opacity=Math.round(255*Math.pow(t,1.38)*coverage*(clinical?1.02:washable?1.24:1.55));
   const i=(y*size+x)*4;
   out[i]=Math.round(tint[0]*(.85+.26*medium));
   out[i+1]=Math.round(tint[1]*(.83+.30*medium));

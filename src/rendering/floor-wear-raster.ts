@@ -4,8 +4,7 @@ import {FLOOR_WEAR_COLOR} from '../worldgen/floor-wear-plan.ts';
 import type {WearKind,WearMark} from '../worldgen/environment-wear.ts';
 import {wearPixels} from './pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './wear-opacity.ts';
-const linear=Array.from({length:256},(_,i)=>{const x=i/255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4;});
-const encode=(x:number)=>Math.round(255*Math.max(0,Math.min(1,x<=.0031308?x*12.92:1.055*x**(1/2.4)-.055)));
+import {SRGB_BYTE_TO_LINEAR as linear,linearToSRGBByte as encode} from './surface-color-space.ts';
 const masks=new Map<WearKind,Uint8Array>();
 export function rasterFloorWear(out:Uint8Array,room:Room,inset:number,marks:readonly WearMark[],size:number,boost=1){
  const w=room.w-inset,d=room.h-inset,left=room.x+inset/2,top=room.y+inset/2;
