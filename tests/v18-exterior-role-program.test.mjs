@@ -67,3 +67,26 @@ test('V18 regression witness: small restaurant seed 117 must retain baseline doo
  const result=auditGeneratedSite(117,'small');
  assert.equal(result.mobilityQuality.blockedApproaches+result.mobilityQuality.blockedFlow,0,JSON.stringify({family:result.planFamily,issues:result.mobilityQuality.issues,errors:result.errors}));
 });
+
+import {exteriorClusterCandidates,preferExteriorCluster,EXTERIOR_CLUSTER_GAP} from '../src/worldgen/exterior-cluster-candidates.ts';
+test('V18 companions prefer accepted furniture edges and keep physical gap',()=>{
+ const z={id:'rear-property',kind:'garden',x:150,y:150,w:280,h:140};
+ const anchor={x:100,y:150,w:53,h:37,fixture:'picnic-table'};
+ const points=exteriorClusterCandidates(z,anchor,19,20);
+ assert.ok(points.length>=2&&points.length<=4);
+ assert.ok(points.every(p=>Math.abs(p.x-anchor.x)>=(anchor.w+19)/2+EXTERIOR_CLUSTER_GAP||
+   Math.abs(p.y-anchor.y)>=(anchor.h+20)/2+EXTERIOR_CLUSTER_GAP));
+ assert.ok(points.every(p=>Math.abs(p.x-z.x)+19/2<=z.w/2-9&&Math.abs(p.y-z.y)+20/2<=z.h/2-9));
+ assert.deepEqual(points,exteriorClusterCandidates(z,anchor,19,20));
+});
+test('V18 service companion ranks existing legal work-edge positions on the same lane side',()=>{
+ const z=zone('service','rear-property');
+ const anchor={x:180,y:120,w:52,h:33};
+ const points=[{x:20,y:120},{x:150,y:80},{x:195,y:80}];
+ const ordered=preferExteriorCluster(z,points,anchor);
+ assert.deepEqual(ordered,[points[2],points[1],points[0]]);
+ assert.equal(ordered.length,points.length);
+ const requests=exteriorRoleRequests('warehouse',z);
+ assert.equal(requests.find(r=>r.role==='refuse-support').clusterWith,'refuse');
+ assert.equal(requests.find(r=>r.role==='freight-support').clusterWith,'freight');
+});

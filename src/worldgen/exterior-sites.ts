@@ -4,6 +4,7 @@
 import {type Site,type ExteriorZone} from '../breach-site.ts';
 import {seeded} from './seeded-rng.ts';
 import {exteriorRoleRequests,exteriorRoleBudget} from './exterior-role-program.ts';
+import {exteriorClusterCandidates,preferExteriorCluster} from './exterior-cluster-candidates.ts';
 import {exteriorDoorReserves,intersectsExteriorDoorReserve} from './exterior-door-reserve.ts';
 import {type Obstacle} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
@@ -115,6 +116,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
   const requests=exteriorRoleRequests(kind,zone,seed);
   const budget=exteriorRoleBudget(zone);
   let acceptedRoles=0;
+  const acceptedByRole=new Map<string,Obstacle>();
   for(const request of requests){
    if(acceptedRoles>=budget||cover.length-site.cover.length>=20)break;
    // Independent per-zone/role stream: a rejected asset never shifts
@@ -122,6 +124,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    let roleSeed=seed^0x15b8ad1;
    for(const ch of zone.id+':'+request.role)roleSeed=Math.imul(roleSeed^ch.charCodeAt(0),16777619);
    const rng=seeded(roleSeed);
+   const anchor=request.clusterWith?acceptedByRole.get(request.clusterWith):undefined;
    // Try every legal alternative in this bounded semantic recipe.
    // No relaxation of the existing door, spawn, road or overlap rules.
    for(const item of request.alternatives){
@@ -146,9 +149,11 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    const edgeSpots=serviceEdge?serviceYardEdgeCandidates(zone,w,h,item):[];
    if(zone.w<w+22||zone.h<h+22)continue;
    let accepted=false;
-   const fixed=expandFrontageCandidates(zone,item,streetSpots)??(serviceEdge?edgeSpots:null);
+   const baseFixed=expandFrontageCandidates(zone,item,streetSpots)??(serviceEdge?edgeSpots:null);
+   const fixed=anchor&&baseFixed&&streetSpots===null?preferExteriorCluster(zone,baseFixed,anchor):baseFixed;
+   const nearby=anchor&&!fixed?exteriorClusterCandidates(zone,anchor,w,h):[];
    for(let attempt=0;attempt<(fixed?fixed.length:12);attempt++){
-    const edge=fixed?.[attempt];
+    const edge=fixed?.[attempt]??nearby[attempt];
     const x=edge?.x??zone.x+(rng()-.5)*Math.max(0,zone.w-w-20);
     const y=edge?.y??zone.y+(rng()-.5)*Math.max(0,zone.h-h-18);
     // A commercial machine and its customer-facing side must actually sit
@@ -185,7 +190,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
       intersectsExteriorDoorReserve(doorReserves,candidate))continue;
     if(overlapsArrivalLane(site,zone,candidate))continue;
     if(cover.some(o=>overlaps(o,candidate)))continue;
-    cover.push(candidate);accepted=true;break;
+    cover.push(candidate);acceptedByRole.set(request.role,candidate);accepted=true;break;
    }
    if(accepted){acceptedRoles++;break;}
    }
