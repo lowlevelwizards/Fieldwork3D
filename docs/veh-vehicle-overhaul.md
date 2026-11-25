@@ -29,3 +29,6 @@ Open pickup bed floor/tailgate now visible, contractor toolbox, canvas truck pro
 
 ## Checkpoint 9 — domestic and industrial roles
 Verified previous pilot: 49 vehicles across 19/44 sites; 12 targeted tests, TypeScript, asset smoke and Ground Zero passed. Reconciled main's furniture integrity change while retaining vehicle noncollapse. Added narrow residential driveway strip with a dedicated curb cut and preserved yard, no commercial markings; industrial deep lots get wide loading bays and truck/van/pickup selection. These remain opt-in, awaiting fresh audit and browser results. No rear-yard truck is invented without frontage access.
+
+## Checkpoint 10 — default rendering resource path and tactical browser witness
+Vehicle templates now use the existing renderer cache regardless of unrelated fixture-cache feature flags; shared buffers are protected during batch disposal. Static vehicles skip generic wear overlays and furniture debris construction (condition remains baked). Added paired actual tactical scene captures and resource/draw measurements with repeated site application; these are software WebGL measurements, not hardware FPS. Public perpendicular lots with sufficient capacity regain reserved bay/transfer markings, with corresponding vehicle exclusions. Validation pending; no production enablement yet.

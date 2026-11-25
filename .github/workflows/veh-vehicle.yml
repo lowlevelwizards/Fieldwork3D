@@ -20,6 +20,7 @@ on:
       - 'src/worldgen/asset-library.ts'
       - 'src/worldgen/fixture-visuals.ts'
       - 'src/rendering/breach-site-scene-builder.ts'
+      - 'src/breach-3d.ts'
       - 'src/breach-materials.ts'
       - 'src/worldgen/pixel-surface-selection.ts'
       - 'tests/veh-*.test.mjs'

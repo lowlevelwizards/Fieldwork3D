@@ -84,7 +84,11 @@ export function planVehiclePlacement(site:Site,seed=site.seed,modernOnly=false):
      if(intersectsStreet(c,street?.sidewalk??null)||intersectsStreet(c,street?.curbRamp??null)){reject('sidewalk');continue;}
      if(lane&&overlapsArrivalLane(site,zone,c)){reject('arrival');continue;}
      if(intersectsServiceAccess(zone,c)){reject('service');continue;}
-     if(reserved&&(broad?Math.abs(x-reserved.x):Math.abs(y-reserved.y))<stride*.5){reject('reserved');continue;}
+     if(reserved){
+      const at=broad?x:y,center=broad?reserved.x:reserved.y,half=(broad?w:h)/2;
+      const transfer=center+reserved.side*(reserved.bayWidth/2+5);
+      if(Math.abs(at-center)<stride*.5||Math.abs(at-transfer)<half+8){reject('reserved');continue;}
+     }
      if(intersectsExteriorDoorReserve(reserves,c)){reject('door');continue;}
      if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+32&&Math.abs(p.y-y)<h/2+32)){reject('encounter');continue;}
      if([...site.cover,...vehicles].some(o=>intersects(o,c,17))){reject('occupied');continue;}

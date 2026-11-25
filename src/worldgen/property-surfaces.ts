@@ -103,6 +103,17 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
       if(broad)add(zone,'stall-end-line',p.alongCenter,edge,p.alongLength,1.5);
       else add(zone,'stall-end-line',edge,p.alongCenter,1.5,p.alongLength);
      }
+     const reserved=reservedParkingBay(site,zone);
+     if(reserved){
+      const {x,y,bayWidth,short,side}=reserved;
+      if(broad){
+       add(zone,'reserved-parking',x,y,bayWidth,short*.55);
+       for(let n=-1;n<=1;n++)add(zone,'access-hatch',x+side*(bayWidth/2+5)+n*3.5,y,1.5,short*.48);
+      }else{
+       add(zone,'reserved-parking',x,y,short*.55,bayWidth);
+       for(let n=-1;n<=1;n++)add(zone,'access-hatch',x,y+side*(bayWidth/2+5)+n*3.5,short*.48,1.5);
+      }
+     }
    }else if(zone.kind==='parking'){
      if(zone.id==='arrival-forecourt'&&frontCenter&&!street){
        const vertical=entry==='south'||entry==='north';

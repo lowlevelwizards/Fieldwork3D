@@ -51,7 +51,20 @@ export function reservedParkingBay(
  zone:ExteriorZone
 ):{x:number;y:number;bayWidth:number;short:number;broad:boolean;
    side:1|-1}|null{
- if(zone.kind!=='parking'||zone.vehicleParking)return null;
+ if(zone.kind!=='parking')return null;
+ const modern=zone.vehicleParking;
+ if(modern){
+  // A public perpendicular lot with enough capacity retains a visibly
+  // reserved bay and an adjacent transfer strip, not a generic car slot.
+  if(modern.role!=='public'||modern.mode!=='perpendicular'||modern.count<4)return null;
+  const broad=modern.axis==='x',stride=modern.alongLength/modern.count;
+  const lane=arrivalAccessLane(site,zone),transverse=broad?lane?.x:lane?.y;
+  const candidates=Array.from({length:modern.count},(_,i)=>modern.alongCenter+(i+.5-modern.count/2)*stride)
+   .filter(pos=>transverse===undefined||Math.abs(pos-transverse)>stride/2+22)
+   .sort((a,b)=>Math.abs(a-(transverse??modern.alongCenter))-Math.abs(b-(transverse??modern.alongCenter)));
+  const pos=candidates[0];if(pos===undefined)return null;
+  return {x:broad?pos:modern.rowCenter,y:broad?modern.rowCenter:pos,bayWidth:Math.min(42,stride*.65),short:modern.rowDepth,broad,side:pos<(transverse??modern.alongCenter)?1:-1};
+ }
  const broad=zone.w>=zone.h,slots=parkingStallCount(zone);
  const long=broad?zone.w:zone.h,short=broad?zone.h:zone.w;
  if(slots<2||long<132||short<55)return null;
