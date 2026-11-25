@@ -16,6 +16,7 @@ on:
       - 'src/worldgen/wall-surface-recipe.ts'
       - 'src/worldgen/wall-story-residue.ts'
       - 'tests/w6-wall-story-residue.test.mjs'
+      - 'scripts/verification/w6-wall-story-browser.mjs'
       - 'src/rendering/wall-surface-atlas.ts'
       - 'src/rendering/wall-structural-packet.ts'
       - 'tests/w4-wall-structural-packet.test.mjs'
@@ -83,6 +84,9 @@ jobs:
       - name: W5 critical real canvas and WebGL disclosure
         if: ${{ startsWith(github.head_ref, 'refactor/w5-') }}
         run: node scripts/verification/w5-fog-depth-browser.mjs
+      - name: W6 generated site visual, fog and resource parity
+        if: ${{ startsWith(github.head_ref, 'refactor/w6-') }}
+        run: node scripts/verification/w6-wall-story-browser.mjs
       - name: Two seed real browser transparent draw roles and fog/briefing parity
         if: ${{ !startsWith(github.head_ref, 'refactor/w5-') }}
         env:
@@ -210,5 +214,6 @@ jobs:
             artifacts/w2-live/
             artifacts/w4-live/
             artifacts/w5-fog/
+            artifacts/w6-story/
           if-no-files-found: ignore
           retention-days: 14
