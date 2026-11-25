@@ -91,6 +91,8 @@ export type SiteSceneBuildPort={
  patinaRoomSurfaces:Array<{room:Room;texture:THREE.DataTexture;floorSlot?:FloorMaskSlot}>;
  floorWearCompiled?:boolean;
  fixtureWearStrength?:{value:number};
+ pendingFixtureWear?:Array<()=>void>;
+ retiredFixtureWearGeometry?:Set<THREE.BufferGeometry>;
  patinaWallSurfaces:Array<{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;patterned?:boolean;atlasSlot?:WallAtlasSlot}>;
  wallAudition?:WallAudition;
  wallStructureCompiled?:boolean;
@@ -218,6 +220,15 @@ export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
     host.repeatedFixtures?.flush(host.root,new Set([
       ...host.sharedBoxGeometries,
       ...(host.fixtureTemplates?.sharedGeometries()??[])]));
+    // Preserve exact existing cross-owner instance membership before adding
+    // unique fixture UVs. An owner with detached parts is not a safe ray target.
+    for(const apply of host.pendingFixtureWear??[])apply();
+    if(host.pendingFixtureWear)host.pendingFixtureWear.length=0;
+    if(host.retiredFixtureWearGeometry?.size){
+      host.root.traverse(node=>{if(node instanceof THREE.Mesh)host.retiredFixtureWearGeometry!.delete(node.geometry);});
+      for(const geometry of host.retiredFixtureWearGeometry)geometry.dispose();
+      host.retiredFixtureWearGeometry.clear();
+    }
 }
 
 /** Own no resources; renderer's material/scene lifetime remains authoritative. */
@@ -599,6 +610,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       solid:(hex,roughness,surface)=>host.solid(age(hex,surface),roughness,surface),
     };
     const fixtureWearCache=new Map<string,THREE.MeshStandardMaterial>();
+    host.pendingFixtureWear=[];host.retiredFixtureWearGeometry=new Set();
     site.cover.forEach((c,i)=>{
       const group=new THREE.Group();host.root.add(group);
       host.coverGroups.set(i,group);
@@ -665,11 +677,16 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       if(!templateLease)consolidateStaticFixtureParts(intact);
       if(host.floorWearCompiled&&!previewBush&&host.fixtureWearStrength)for(const mark of marksOn('fixture',i)){
         const height=visibleSurfaceHeight(c.fixture??'crate');if(height<8)continue;
-        projectFixtureWear(intact,mark,(mark.u-.5)*visual.w,
+        const originalChildren=[...intact.children];
+        host.pendingFixtureWear!.push(()=>{
+          if(originalChildren.some(child=>child.parent!==intact))return;
+          projectFixtureWear(intact,mark,(mark.u-.5)*visual.w,
           Math.min(height-2,Math.max(3,mark.v*height)),visual.h/2+.8,fixturePixelSurface(c.fixture),{
-            textures:host.wearTextures,cache:fixtureWearCache,boost:host.fixtureWearStrength,
-            track:m=>host.siteMaterials.track(m),shared:host.sharedBoxGeometries,template:!!templateLease
+            textures:host.wearTextures,cache:fixtureWearCache,boost:host.fixtureWearStrength!,
+            track:m=>host.siteMaterials.track(m),shared:host.sharedBoxGeometries,template:!!templateLease,
+            retireGeometry:g=>host.retiredFixtureWearGeometry!.add(g)
           });
+        });
       }
       for(let j=0;j<3;j++){
         const sx=(j%3-1)*visual.w*.105,sz=(Math.floor(j/3)-.5)*visual.h*.15;

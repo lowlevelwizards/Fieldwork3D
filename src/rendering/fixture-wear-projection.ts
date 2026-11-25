@@ -50,7 +50,7 @@ function materialFor(base:THREE.MeshStandardMaterial,surface:PixelSurface,mark:O
  m.needsUpdate=true;track(m);cache.set(key,m);return m;
 }
 export function projectFixtureWear(root:THREE.Group,mark:ObjectWear,x:number,y:number,z:number,surface:PixelSurface,
- options:{textures:Map<WearKind,THREE.DataTexture>;cache:Cache;boost:Strength;track:(m:THREE.Material)=>void;shared:ReadonlySet<THREE.BufferGeometry>;template:boolean}):boolean{
+ options:{textures:Map<WearKind,THREE.DataTexture>;cache:Cache;boost:Strength;track:(m:THREE.Material)=>void;shared:ReadonlySet<THREE.BufferGeometry>;template:boolean;retireGeometry?:(g:THREE.BufferGeometry)=>void}):boolean{
  root.updateWorldMatrix(true,true);
  const ray=new THREE.Raycaster(),dir=new THREE.Vector3(0,0,-1).transformDirection(root.matrixWorld);
  // Bounded front-facing trials, never project through a visible incompatible face.
@@ -69,7 +69,10 @@ export function projectFixtureWear(root:THREE.Group,mark:ObjectWear,x:number,y:n
   // source buffer is released only if no sibling still references it.
   mesh.geometry=geometry;
   let referenced=false;root.traverse(o=>{if(o instanceof THREE.Mesh&&o.geometry===geo)referenced=true;});
-  if(!options.template&&!options.shared.has(geo)&&!referenced)geo.dispose();
+  // A source geometry can also be referenced by a different fixture or
+  // a repeated instance. Do not infer global ownership from this subtree.
+  // The caller owns the site-level retirement set, checked after all patches.
+  if(!options.template&&!options.shared.has(geo)&&!referenced)options.retireGeometry?.(geo);
   let texture=options.textures.get(mark.kind);
   if(!texture){texture=new THREE.DataTexture(wearPixels(mark.kind),32,32);
    texture.colorSpace=THREE.SRGBColorSpace;texture.magFilter=THREE.NearestFilter;

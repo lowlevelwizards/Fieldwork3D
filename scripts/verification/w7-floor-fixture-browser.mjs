@@ -67,6 +67,7 @@ try{
      const slots=scene.patinaRoomSurfaces,textures=[...new Set(slots.map(s=>s.texture))];
      const saved=textures.map(t=>t.image.data.slice()),versions=textures.map(t=>t.version);
      const meshCounts={compiledFloors:0,legacyFloors:0,fixtureIntegrated:0,fixtureDecals:0};
+     const repeated=scene.repeatedFixtures.stats;
      scene.root.traverse(n=>{const family=n.userData.fieldworkDrawFamily;
       if(family==='room-floor-compiled'){meshCounts.compiledFloors++;check(n.material.depthWrite&&!n.material.transparent,'compiled floor not opaque');}
       if(family==='room-floor-weathering')meshCounts.legacyFloors++;
@@ -80,7 +81,7 @@ try{
      check(JSON.stringify(site)===snapshot,'authoritative site mutated');
      draw(true);
      const marks=planCompiledFloorWear(site);
-     return {compiled,buildMs,knowledgeBefore:before,knowledgeAfter:after,disclosure,samples,meshCounts,rooms:site.rooms.length,pages:textures.length,bytes:textures.reduce((n,t)=>n+t.image.data.byteLength,0),mipBytes:textures.reduce((n,t)=>n+Math.ceil(t.image.data.byteLength*(t.generateMipmaps?4/3:1)),0),marks:marks.reduce((a,m)=>(a[m.kind]=(a[m.kind]??0)+1,a),{}),stableMain:Math.max(...samples.slice(1).map(s=>s.main)),shadow:samples[0].shadow};
+     return {compiled,buildMs,repeated,knowledgeBefore:before,knowledgeAfter:after,disclosure,samples,meshCounts,rooms:site.rooms.length,pages:textures.length,bytes:textures.reduce((n,t)=>n+t.image.data.byteLength,0),mipBytes:textures.reduce((n,t)=>n+Math.ceil(t.image.data.byteLength*(t.generateMipmaps?4/3:1)),0),marks:marks.reduce((a,m)=>(a[m.kind]=(a[m.kind]??0)+1,a),{}),stableMain:Math.max(...samples.slice(1).map(s=>s.main)),shadow:samples[0].shadow};
     },{seed,archetype,compiled});
     results.push(result);
     await page.screenshot({path:out+'/'+name+'-'+archetype+'-'+(compiled?'compiled':'legacy')+'.png'});
@@ -90,7 +91,8 @@ try{
    check(b.meshCounts.compiledFloors===b.rooms&&b.meshCounts.legacyFloors===0,'compiled floor ownership '+archetype);
    check(b.pages<=a.pages&&b.bytes===a.bytes&&b.mipBytes<=a.mipBytes,'floor atlas budget '+archetype);
    check(b.stableMain<a.stableMain,'no main draw reduction '+archetype+' '+JSON.stringify([a.stableMain,b.stableMain]));
-   check(b.shadow===a.shadow,'shadow count changed '+archetype+' '+JSON.stringify([a.shadow,b.shadow]));
+   check(JSON.stringify(a.repeated)===JSON.stringify(b.repeated),'repeated fixture batching changed '+archetype+' '+JSON.stringify([a.repeated,b.repeated]));
+   check(b.shadow===a.shadow,'shadow count changed '+archetype+' '+JSON.stringify([a.samples[0],b.samples[0]]));
   }
   await page.evaluate(()=>{const {scene}=window.w7;scene.renderer.dispose();scene.renderer.forceContextLoss();});
   check(!errors.length,errors.join(' | '));await page.close();

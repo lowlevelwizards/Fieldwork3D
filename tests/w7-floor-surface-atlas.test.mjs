@@ -94,3 +94,11 @@ test('W7 fixture wear modifies a real opaque face without extra meshes or shared
  assert.match(shader.fragmentShader,/fwWearA/);
  mesh.geometry.dispose();geo.dispose();material.map.dispose();material.dispose();owned.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());
 });
+
+import {readFileSync} from 'node:fs';
+test('W7 projection occurs only after existing repeated-fixture membership is finalized',()=>{
+ const source=readFileSync(new URL('../src/rendering/breach-site-scene-builder.ts',import.meta.url),'utf8');
+ assert.ok(source.indexOf('host.repeatedFixtures?.flush(')<source.indexOf('for(const apply of host.pendingFixtureWear'));
+ assert.match(source,/originalChildren.some\(child=>child.parent!==intact\)/);
+ assert.match(source,/host.root.traverse\(node=>\{if\(node instanceof THREE.Mesh\)host.retiredFixtureWearGeometry!.delete\(node.geometry\)/);
+});
