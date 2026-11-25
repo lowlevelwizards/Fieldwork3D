@@ -1,0 +1,52 @@
+import * as THREE from 'three';
+import type {Site} from '../breach-site.ts';
+import {wallPatinaDimensions} from '../worldgen/condition-wall.ts';
+import {planWallFaces,atlasWallStrip,type WallFacePair,type WallEffectFilter} from '../worldgen/wall-surface-recipe.ts';
+export type WallAtlasSlot={index:number;row:number;texture:THREE.DataTexture;pair:WallFacePair;patterned:boolean};
+export type WallAtlas={pages:THREE.DataTexture[];slots:Map<number,WallAtlasSlot>};
+/** Width buckets and power-of-two strip counts ensure no unused pixel
+ * allocation, power-of-two mip boundaries and a bounded 2048-row page. */
+export function planAtlasPages(widths:readonly {index:number;width:number}[]){
+ const buckets=new Map<number,number[]>();
+ for(const {index,width} of widths){
+  if(![64,128,256].includes(width))throw Error('Invalid wall atlas width');
+  const ids=buckets.get(width)??[];ids.push(index);buckets.set(width,ids);
+ }
+ const pages:{width:number;indices:number[]}[]=[];
+ for(const [width,ids] of [...buckets].sort((a,b)=>a[0]-b[0])){
+  let start=0;
+  while(start<ids.length){
+   const count=2**Math.floor(Math.log2(Math.min(32,ids.length-start)));
+   pages.push({width,indices:ids.slice(start,start+count)});start+=count;
+  }
+ }
+ return pages;
+}
+export function writeAtlasSlot(slot:WallAtlasSlot,level:number,filter:WallEffectFilter){
+ const image=slot.texture.image as {data:Uint8Array;width:number;height:number};
+ image.data.set(atlasWallStrip(slot.pair,level,image.width,filter,slot.patterned),slot.row*image.width*4);
+}
+export function updateWallAtlas(slots:Iterable<WallAtlasSlot>,level:number,filter:WallEffectFilter){
+ const pages=new Set<THREE.DataTexture>();
+ for(const slot of slots){writeAtlasSlot(slot,level,filter);pages.add(slot.texture);}
+ for(const page of pages)page.needsUpdate=true;
+ return pages.size;
+}
+export function buildWallAtlas(site:Site,height:number,level:number,filter:WallEffectFilter,patterned:boolean):WallAtlas{
+ const widths=site.walls.flatMap((w,index)=>{
+  const length=Math.hypot(w.b.x-w.a.x,w.b.y-w.a.y);
+  return length<5?[]:[{index,width:wallPatinaDimensions(length).width}];
+ });
+ const pages:THREE.DataTexture[]=[],slots=new Map<number,WallAtlasSlot>();
+ for(const page of planAtlasPages(widths)){
+  const rows=page.indices.length*64;
+  const texture=new THREE.DataTexture(new Uint8Array(page.width*rows*4),page.width,rows,THREE.RGBAFormat);
+  texture.colorSpace=THREE.SRGBColorSpace;texture.magFilter=THREE.NearestFilter;
+  texture.minFilter=THREE.NearestMipmapNearestFilter;texture.generateMipmaps=true;
+  texture.name='w3-wall-atlas:'+page.width+'x'+rows;
+  pages.push(texture);
+  page.indices.forEach((index,i)=>slots.set(index,{index,row:i*64,texture,pair:planWallFaces(site,index,height),patterned}));
+ }
+ updateWallAtlas(slots.values(),level,filter);
+ return {pages,slots};
+}

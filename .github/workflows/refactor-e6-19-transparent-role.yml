@@ -8,6 +8,14 @@ on:
       - 'src/rendering/breach-site-openings-builder.ts'
       - 'src/breach-3d.ts'
       - 'src/rendering/breach-wall-presentation.ts'
+      - 'src/worldgen/wall-surface-recipe.ts'
+      - 'src/rendering/wall-surface-atlas.ts'
+      - 'tests/w3-wall-surface-atlas.test.mjs'
+      - 'src/rendering/pixel-materials.ts'
+      - 'src/map-lab-main.ts'
+      - 'map-lab.html'
+      - 'tests/w2-wall-surface-recipe.test.mjs'
+      - 'scripts/verification/w2-wall-audition-browser.mjs'
       - 'tests/w1-wall-presentation.test.mjs'
       - 'tests/refactor-e6-19-transparent-role.test.mjs'
       - 'scripts/verification/e6-19-transparent-role-browser.mjs'
@@ -21,7 +29,7 @@ concurrency:
 jobs:
   transparent-provenance:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -48,6 +56,10 @@ jobs:
         if: ${{ startsWith(github.head_ref, 'refactor/w0-w1-') }}
         run: |
           node --experimental-strip-types --test tests/w1-wall-presentation.test.mjs tests/breach-fog-visibility.test.mjs tests/visibility-07-cutaway.test.mjs tests/replay-r7-cutaway.test.mjs tests/breach-roadmap3-3d-disclosure.test.mjs
+      - name: W2 anchored effect, material, condition and fog contracts
+        if: ${{ (startsWith(github.head_ref, 'refactor/w2-') || startsWith(github.head_ref, 'refactor/w3-')) }}
+        run: |
+          node --experimental-strip-types --test tests/w2-wall-surface-recipe.test.mjs tests/w3-wall-surface-atlas.test.mjs tests/w1-wall-presentation.test.mjs tests/texture5-07-hot-update.test.mjs tests/texture5-12-wall-sources.test.mjs tests/facade-geometry-polish-20261112.test.mjs tests/breach-fog-visibility.test.mjs tests/fog-exterior-unseen-apertures-regression.test.mjs tests/replay-r7-cutaway.test.mjs
       - name: Production typecheck and build
         run: npm run build
       - name: Two seed real browser transparent draw roles and fog/briefing parity
@@ -68,12 +80,52 @@ jobs:
           cp scripts/verification/e6-19-transparent-role-browser.mjs "$RUNNER_TEMP/wall-base/scripts/verification/"
           mkdir -p artifacts/w0-wall
           cp -r artifacts/refactor-e6-19/live-scene artifacts/w0-wall/candidate-phone
-          (cd "$RUNNER_TEMP/wall-base" && node scripts/verification/e6-19-transparent-role-browser.mjs)
+          (cd "$RUNNER_TEMP/wall-base" && FIELDWORK_WALL_WEAR=legacy node scripts/verification/e6-19-transparent-role-browser.mjs)
           cp -r "$RUNNER_TEMP/wall-base/artifacts/refactor-e6-19/live-scene" artifacts/w0-wall/base-phone
           FIELDWORK_WALL_DESKTOP=1 node scripts/verification/e6-19-transparent-role-browser.mjs
           cp -r artifacts/refactor-e6-19/live-scene artifacts/w0-wall/candidate-desktop
-          (cd "$RUNNER_TEMP/wall-base" && FIELDWORK_WALL_DESKTOP=1 node scripts/verification/e6-19-transparent-role-browser.mjs)
+          (cd "$RUNNER_TEMP/wall-base" && FIELDWORK_WALL_WEAR=legacy FIELDWORK_WALL_DESKTOP=1 node scripts/verification/e6-19-transparent-role-browser.mjs)
           cp -r "$RUNNER_TEMP/wall-base/artifacts/refactor-e6-19/live-scene" artifacts/w0-wall/base-desktop
+      - name: W2 same-site visual audition and resource verification
+        if: ${{ (startsWith(github.head_ref, 'refactor/w2-') || startsWith(github.head_ref, 'refactor/w3-')) }}
+        env:
+          FIELDWORK_CI_CHROME: '1'
+          FIELDWORK_W3_ATLAS: '1'
+        run: node scripts/verification/w2-wall-audition-browser.mjs
+      - name: W2 exact-base live mobile and desktop comparison
+        if: ${{ (startsWith(github.head_ref, 'refactor/w2-') || startsWith(github.head_ref, 'refactor/w3-')) }}
+        env:
+          FIELDWORK_CI_CHROME: '1'
+          FIELDWORK_W2_PROBE: '1'
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git worktree add --detach "$RUNNER_TEMP/w2-base" "$BASE_SHA"
+          ln -s "$PWD/node_modules" "$RUNNER_TEMP/w2-base/node_modules"
+          cp scripts/verification/e6-19-transparent-role-browser.mjs "$RUNNER_TEMP/w2-base/scripts/verification/"
+          mkdir -p artifacts/w2-live
+          OUT="$PWD/artifacts/w2-live"
+          for desktop in 0 1; do
+            (cd "$RUNNER_TEMP/w2-base" && FIELDWORK_WALL_WEAR=legacy FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/base-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs)
+            for mode in packed default; do
+              FIELDWORK_WALL_WEAR="$mode" FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/$mode-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs
+            done
+          done
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const read=(mode,desktop)=>JSON.parse(readFileSync('artifacts/w2-live/'+mode+'-'+desktop+'/summary.json','utf8'));
+          for(const desktop of [0,1]){
+            const base=read('base',desktop);
+            for(const mode of ['packed','default']){
+              const test=read(mode,desktop);
+              for(const key of ['initialKnowledge','initialVisible','secondVisible']){
+                if(base.wallProbe[key]!==test.wallProbe[key])throw Error('W2 disclosure changed: '+mode+' '+key);
+              }
+              if(test.wallProbe.depthMismatches!==0)throw Error('W2 depth mismatch');
+              if(test.runs.some((run,i)=>run.drawCallsP95>base.runs[i].drawCallsP95))throw Error('W2 increased live draws');
+            }
+          }
+          JS
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -81,5 +133,7 @@ jobs:
           path: |
             artifacts/refactor-e6-19/live-scene/
             artifacts/w0-wall/
+            artifacts/w2-wall-audition/
+            artifacts/w2-live/
           if-no-files-found: ignore
           retention-days: 14

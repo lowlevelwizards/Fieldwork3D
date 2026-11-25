@@ -74,7 +74,7 @@ import {sightRangeForSite} from './breach-visibility-range-policy.ts';
 import {projectedOperatorHeightPx,operatorShadowDetail,
  applyOperatorShadowLod,cavityQualityForDetail}
  from './operator-shadow-quality.ts';
-import {PixelTextureLibrary,mapBoxPixelUV,mapPlanePixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
+import {PixelTextureLibrary,mapBoxPixelUV,mapPackedWallUV,mapAtlasWallUV,mapPlanePixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
 
 import {wearFinish} from './rendering/wear-finish.ts';
 
@@ -93,6 +93,8 @@ import {summarizeWear} from './worldgen/wear-diagnostics.ts';
 import {conditionFloorPixels} from './worldgen/condition-visual.ts';
 
 import {conditionWallPixels} from './worldgen/condition-wall.ts';
+import {packedWallSurfacePixels,resolveWallSurfaceMode,type WallAudition,type WallSurfaceRecipe} from './worldgen/wall-surface-recipe.ts';
+import {writeAtlasSlot,type WallAtlasSlot} from './rendering/wall-surface-atlas.ts';
 import {type ObjectWear} from './worldgen/object-wear.ts';
 
 import {wearPixels} from './rendering/pixel-decals.ts';
@@ -862,7 +864,12 @@ export class TacticalScene3D{
   private sitePatinaTextures:THREE.DataTexture[]=[];
   private sitePatinaMaterials:THREE.MeshBasicMaterial[]=[];
   private patinaRoomSurfaces:{room:Room;texture:THREE.DataTexture}[]=[];
-  private patinaWallSurfaces:{index:number;texture:THREE.DataTexture}[]=[];
+  private patinaWallSurfaces:{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;patterned?:boolean;atlasSlot?:WallAtlasSlot}[]=[];
+  /** W3 is the production default; legacy and packed are comparison modes. */
+  wallAudition:WallAudition|undefined=(()=>{
+    const mode=typeof location==='undefined'?null:new URLSearchParams(location.search).get('wallWear');
+    return resolveWallSurfaceMode(mode);
+  })();
   /** Live slider scrubbing changes pixel masks, not the physical scene. */
   previewConditionMasks(site:Site,level:number){
     for(const item of this.patinaRoomSurfaces){
@@ -870,13 +877,17 @@ export class TacticalScene3D{
       image.data.set(conditionFloorPixels(site,item.room,level));
       item.texture.needsUpdate=true;
     }
+    const dirtyAtlasPages=new Set<THREE.DataTexture>();
     for(const item of this.patinaWallSurfaces){
+      if(item.atlasSlot){writeAtlasSlot(item.atlasSlot,level,this.wallAudition?.effect??'all');dirtyAtlasPages.add(item.texture);continue;}
       const image=item.texture.image as {
         data:Uint8Array;width:number;height:number};
-      image.data.set(conditionWallPixels(site,item.index,level,
+      if(item.recipe)image.data.set(packedWallSurfacePixels(item.recipe,level,image.width,this.wallAudition?.effect??'all',item.patterned));
+      else image.data.set(conditionWallPixels(site,item.index,level,
         image.width,image.height));
       item.texture.needsUpdate=true;
     }
+    for(const page of dirtyAtlasPages)page.needsUpdate=true;
   }
   private currentWear:WearMark[]=[];
   private objectWear:ObjectWear[]=[];
@@ -1156,11 +1167,11 @@ export class TacticalScene3D{
     }
   }
   private box(parent:THREE.Object3D,x:number,y:number,z:number,
-    w:number,h:number,d:number,material:THREE.Material,cast=true){
-    const key=w+':'+h+':'+d;
-    let geometry=this.boxGeometryCache.get(key);
+    w:number,h:number,d:number,material:THREE.Material,cast=true,packedWall=false,atlasSlot?:WallAtlasSlot){
+    const key=w+':'+h+':'+d+(packedWall?':wall-packed':'');
+    let geometry=atlasSlot?mapAtlasWallUV(new THREE.BoxGeometry(w,h,d),atlasSlot.row,atlasSlot.texture.image.height):this.boxGeometryCache.get(key);
     if(!geometry){
-      geometry=mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d);
+      geometry=packedWall?mapPackedWallUV(new THREE.BoxGeometry(w,h,d)):mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d);
       // Bound cache memory; uncommon one-off sizes remain independently owned.
       if(this.boxGeometryCache.size<384){
         this.boxGeometryCache.set(key,geometry);
@@ -1378,6 +1389,7 @@ export class TacticalScene3D{
       set windowPaneMaterial(value){scene.windowPaneMaterial=value;},
       patinaRoomSurfaces:scene.patinaRoomSurfaces,
       patinaWallSurfaces:scene.patinaWallSurfaces,
+      wallAudition:scene.wallAudition,
       sitePatinaTextures:scene.sitePatinaTextures,
       sitePatinaMaterials:scene.sitePatinaMaterials,
       wallMaterials:scene.wallMaterials,
