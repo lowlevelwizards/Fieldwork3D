@@ -1,3 +1,4 @@
+import {drawTacticalPersonStatus,visibleTacticalPerson} from './ui/tactical-person-status.ts';
 import {
   createBreachCanvasGestureController,type TacticalPointer}
  from './breach-canvas-gesture-controller.ts';
@@ -437,6 +438,7 @@ let selectedNode:number|null=null;
 let selectedActiveWatch=false;
 let doorMenuDismissedId:string|null=null;
 let doorFocusId:string|null=null;
+let personFocusId:string|null=null;
 let draggingNode:Pt|null=null;
 let draggingWatchTarget=false;
 function cancelTargeting(){
@@ -623,7 +625,7 @@ function centerOperatorInView(point:Pt):void{
 function selectUnit(id:string,center=true){
   const actor=uid(id);if(!actor||actor.health<=0)return;
   hideWeaponChooser();
-  audioController.uiClickTone('select');selected=id;targeting.reset();
+  audioController.uiClickTone('select');selected=id;targeting.reset();personFocusId=null;
   selectedNode=null;selectedActiveWatch=false;doorFocusId=null;
   doorMenuDismissedId=null;
   // Only explicit selection recenters. A route handle drag may temporarily
@@ -631,6 +633,12 @@ function selectUnit(id:string,center=true){
   if(center&&!replaying)centerOperatorInView(actor.p);
   else{cancel2DCameraGlide();stage?.cancelFocusGlide();}
   refreshTacticalUi();
+}
+function selectPerson(id:string):void{
+  if(!visibleTacticalPerson(state,id))return;
+  personFocusId=id;doorFocusId=null;selectedNode=null;selectedActiveWatch=false;
+  audioController.uiClickTone('select');paletteController.invalidate();
+  showUiHelp('PERSON SELECTED · NO MOVEMENT ORDER',2200);refreshTacticalUi();
 }
 // InteractionState owns temporary command arming; HUD owns guidance only.
 // Only plan authoring APIs can commit an order.
@@ -692,7 +700,7 @@ function updateContext(){
   const nearbyDoor=selectedWatch?undefined:focusedDoor(a,node);
   const door=doorFocusId?nearbyDoor:undefined;
   paletteController.showFromAuthorizedState({
-    state,actor:a,selected,node,selectedWatch,nearbyDoor,door,
+    state,actor:a,selected,node,selectedWatch,nearbyDoor,door,personFocusId,
     medicalCandidate:at=>medicalCandidate(selected,at),
     width:cssW,height:cssH,lastAuthoringAt
   });
@@ -710,6 +718,7 @@ hudController.bindContextActions({
  get doorFocusId(){return doorFocusId;},set doorFocusId(v){doorFocusId=v;},
  get doorMenuDismissedId(){return doorMenuDismissedId;},
  set doorMenuDismissedId(v){doorMenuDismissedId=v;},
+ get personFocusId(){return personFocusId;},
  focusedDoor:()=>{const a=uid(selected);return a?focusedDoor(a,selectedPlanNode()):undefined;},
  medicalCandidate:at=>medicalCandidate(selected,at),
  toggleTreatment:()=>paletteController.toggleTreatment(),
@@ -915,6 +924,10 @@ function render(dt=0):void{
   photoClean:(photoMode?.active??false)||(photoMode?.replayClean??false),
   world2D,fog2D,actor2D,route2D,replay2D,projected2D
  });
+ if(!replaying&&!photoMode?.active&&!photoMode?.replayClean){
+  if(personFocusId&&!visibleTacticalPerson(state,personFocusId))personFocusId=null;
+  drawTacticalPersonStatus(draw,state,worldToScreen,viewMode==='plan2d',dpr,personFocusId);
+ }
  // A successful actual frame confirms more than the presence of the HUD.
  document.documentElement.dataset.fieldworkFirstSceneFrame='1';
 }
@@ -1280,7 +1293,7 @@ function mountMissionSession(transition:MissionTransition):void{
   if(!transition.deferScene)stage?.applySite(state.site??null);
   selected='rook';
   selectedNode=null;selectedActiveWatch=false;
-  doorFocusId=null;draggingNode=null;draggingWatchTarget=false;
+  doorFocusId=null;personFocusId=null;draggingNode=null;draggingWatchTarget=false;
   tacticalGestures.clear();cursor=null;trace=null;
   cancel2DCameraGlide();stage?.cancelFocusGlide();
   zoom=1;panX=panY=0;
@@ -1644,6 +1657,8 @@ function insertAtRouteLine(screen:Pt,pointerKind:string):boolean{
 /** Map gestures have resolved; this is the gameplay-only commit boundary. */
 function commitPointerRelease(e:PointerEvent,p:TacticalPointer,
  cancelled:boolean,pointerCount:number):void{
+ if(!cancelled&&pointerCount===1&&p.pick?.kind!=='person'&&
+    !['cameraMulti','cameraOrbit','cameraPan'].includes(p.mode)&&(!p.moved||p.dragCommitted))personFocusId=null;
  dispatchTacticalPointerRelease({
  get state(){return state;},get replaying(){return replaying;},
  replayBodycam,get replayTraceMode(){return replayDisplay.options.replayTraceMode;},
@@ -1658,7 +1673,7 @@ function commitPointerRelease(e:PointerEvent,p:TacticalPointer,
  get flashMode(){return targeting.flashMode;},get pushMode(){return targeting.pushMode;},
  get firePlacement(){return targeting.firePlacement;},get evacMode(){return targeting.evacMode;},
  get trace(){return trace;},get viewMode(){return viewMode;},tacticalFeedback,pointerAimWorld,pointerWorld,
- worldToScreen,followReplayOperator,historicalShotVisible,selectUnit,
+ worldToScreen,followReplayOperator,historicalShotVisible,selectUnit,selectPerson,
  useSelectedGround,showUiHelp,adoptPointerOwner,uid,rejectAt,teach,
  insertAtRouteLine,selectedPlanNode
 },e,p,cancelled,pointerCount);

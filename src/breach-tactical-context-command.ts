@@ -37,10 +37,12 @@ const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function dispatchTacticalContextCommand(input:{
  state:Session;selected:string;actor:TeamActor;
  node:TeamActor['plan'][number]|undefined;door:Door|undefined;
- selectedActiveWatch:boolean;action:string;
+ selectedActiveWatch:boolean;action:string;personFocusId?:string|null;
  medicalCandidate:(at:Pt)=>TeamActor|null
 }):ContextCommandResult{
  const {state,selected,actor:a,node,door,action}=input;
+ const focusedEnemies=enemies(state).filter(e=>!input.personFocusId||e.id===input.personFocusId);
+ const focusedCivilians=state.civilians.filter(c=>!input.personFocusId||c.id===input.personFocusId);
  const current=plannedControl(state,selected,node?.id);
  // Command rules remain authoritative. Keep the old event-log messages, but
  // never infer acceptance from whether another system happened to log text.
@@ -103,7 +105,7 @@ export function dispatchTacticalContextCommand(input:{
   }
   case 'ctxChallengeSuspect':{
    const from=finalPoint(a);
-   const target=enemies(state).filter(e=>e.health>0&&
+   const target=focusedEnemies.filter(e=>e.health>0&&
       !e.surrendered&&distance(from,e.p)<SUSPECT_CHALLENGE_RANGE&&
       assessTacticalAction({
         action:'challenge-suspect',phase:'selection',
@@ -120,7 +122,7 @@ export function dispatchTacticalContextCommand(input:{
   }
   case 'ctxRestrainSuspect':{
    const at=finalPoint(a);
-   const target=enemies(state).filter(e=>e.health>0&&e.surrendered&&
+   const target=focusedEnemies.filter(e=>e.health>0&&e.surrendered&&
      !e.restrained&&assessTacticalAction({
        action:'restrain-suspect',phase:'selection',
        actorAvailable:true,targetAvailable:true,domainEligible:true,
@@ -135,7 +137,7 @@ export function dispatchTacticalContextCommand(input:{
   }
   case 'ctxSearchSuspect':{
    const at=finalPoint(a);
-   const target=enemies(state).filter(e=>e.health>0&&e.surrendered&&
+   const target=focusedEnemies.filter(e=>e.health>0&&e.surrendered&&
      e.restrained===true&&!e.suspectSearched&&
      assessTacticalAction({
        action:'search-suspect',phase:'selection',
@@ -167,7 +169,7 @@ export function dispatchTacticalContextCommand(input:{
   case 'ctxEscortSuspect':
   case 'ctxStopEscortSuspect':{
    const at=finalPoint(a),stopping=action==='ctxStopEscortSuspect';
-   const candidate=enemies(state).filter(e=>e.health>0&&
+   const candidate=focusedEnemies.filter(e=>e.health>0&&
      e.surrendered&&
      (stopping?!!e.escortLeaderId:e.escortLeaderId!==a.id)&&
      assessTacticalAction({
@@ -192,7 +194,7 @@ export function dispatchTacticalContextCommand(input:{
    const mode=action==='ctxSecureCivilian'?'secure':
      action==='ctxFollowCivilian'?'follow':
      action==='ctxStopFollowingCivilian'?'stop-following':'restrain';
-   const civ=nearestContextCivilian(state.civilians,finalPoint(a),
+   const civ=nearestContextCivilian(focusedCivilians,finalPoint(a),
      mode,state.mission,p=>liveVisibility(state,p),
      (from,to)=>sweptBodyClear(from,to,state.doors,
        mode==='follow'||mode==='stop-following'?1.5:5.5,
@@ -209,7 +211,7 @@ export function dispatchTacticalContextCommand(input:{
    case 'ctxDragCapture':
   case 'ctxCarryCapture':{
    const at=finalPoint(a);
-   const prisoner=enemies(state).find(e=>e.id===state.captureTarget&&
+   const prisoner=focusedEnemies.find(e=>e.id===state.captureTarget&&
       e.health<=0&&captureVitalStatus(e)!=='deceased'&&
        (!e.carriedById||e.carriedById===a.id)&&
       distance(at,e.p)<34&&liveVisibility(state,e.p)&&
@@ -221,7 +223,7 @@ export function dispatchTacticalContextCommand(input:{
   }
   case 'ctxDragCivilian':
   case 'ctxCarryCivilian':{
-   const civ=state.civilians.filter(c=>c.health<=0&&
+   const civ=focusedCivilians.filter(c=>c.health<=0&&
     (!c.carriedById||c.carriedById===a.id)&&
     liveVisibility(state,c.p)&&distance(finalPoint(a),c.p)<34)
     .sort((x,y)=>distance(finalPoint(a),x.p)-

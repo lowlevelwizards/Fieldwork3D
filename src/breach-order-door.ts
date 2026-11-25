@@ -172,12 +172,17 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
       a.lastDoorAt=s.seconds;a.lastDoorId=door.id;
       a.lastDoorMethod=n.method??'open';
       if(n.method==='kick'){
-        a.kickFoot=selectActualKickFoot(s,a,door);
         // Capture the leaf BEFORE the .53 impact impulse. Follow-through
         // never chases its moving hinge, including in replay.
         const leaf=doorLeafSegment(door);
         a.kickImpactPoint={x:leaf.a.x+(leaf.b.x-leaf.a.x)*.78,
           y:leaf.a.y+(leaf.b.y-leaf.a.y)*.78};
+        // This already-authorized stationary kick must publish a visible
+        // leg even if strict support sampling rejects the ideal plant.
+        // Lower-body IK still clamps the boot to anatomical reach.
+        const lateral=-(a.kickImpactPoint.x-a.p.x)*Math.sin(a.heading)+
+          (a.kickImpactPoint.y-a.p.y)*Math.cos(a.heading);
+        a.kickFoot=selectActualKickFoot(s,a,door)??(lateral<0?0:1);
       }else a.kickImpactPoint=null;
     }
     a.actionTimer+=dt;
@@ -212,6 +217,7 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
           // Kicks into an occupied sweep impact the actual body. A validated
           // displacement clears room for the hinge; pinned actors remain solid.
           const impactLeaf=doorLeafSegment({...door,openFraction:physicalImpact});
+          const initialLeaf=doorLeafSegment({...door,openFraction:impactStart});
           for(const struck of s.operators){
             if(struck===a||struck.health<=0||
                !doorWouldStrikeActors({...door,openFraction:impactStart},physicalImpact,
@@ -231,14 +237,20 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
             // First try the real radial impact, then a short slip along
             // either edge when the defender is pinned against furniture.
             // Every candidate is swept and other characters remain solid.
+            // The moving leaf's displacement, not the nearest final-face
+            // normal alone, determines which way it pushes the actor.
+            const motionX=closest.x-(initialLeaf.a.x+(initialLeaf.b.x-initialLeaf.a.x)*along);
+            const motionY=closest.y-(initialLeaf.a.y+(initialLeaf.b.y-initialLeaf.a.y)*along);
+            const motionLength=Math.hypot(motionX,motionY);
             const directions=[
+              ...(motionLength>.001?[{x:motionX/motionLength,y:motionY/motionLength}]:[]),
               {x:dx/mag,y:dy/mag},
               {x:lx/length,y:ly/length},
               {x:-lx/length,y:-ly/length}
             ];
             let displaced=false;
             for(const dir of directions){
-              for(const distance of [18,12,7,3]){
+              for(const distance of [24,18,12,7,3]){
                 const dest={x:struck.p.x+dir.x*distance,
                   y:struck.p.y+dir.y*distance};
                 if(!sweptBodyClear(struck.p,dest,s.doors,8,sessionWorldGeometry(s))||

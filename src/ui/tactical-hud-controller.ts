@@ -121,6 +121,7 @@ export type TacticalContextActionPorts={
  readonly actor:TeamActor|null;readonly node:TeamActor['plan'][number]|undefined;
  selectedNode:number|null;selectedActiveWatch:boolean;
  doorFocusId:string|null;doorMenuDismissedId:string|null;
+ readonly personFocusId?:string|null;
  focusedDoor:()=>Door|undefined;medicalCandidate:(at:Pt)=>TeamActor|null;
  toggleTreatment?:()=>void;closeTreatment?:()=>void;
  audio:ReturnType<typeof createBreachAudioController>;
@@ -1070,7 +1071,7 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
       const door=config.doorFocusId?config.focusedDoor():undefined;
       if(surface===config.ui.context){
         const currentScope=(door?'door:'+door.id:node?'node:'+node.id:
-          config.selectedActiveWatch?'active-watch':'here')+'/'+config.selected;
+          config.selectedActiveWatch?'active-watch':'here')+'/'+config.selected+(config.personFocusId?'/person:'+config.personFocusId:'');
         if(surface.dataset.scopeKey!==currentScope)return;
       }
       const action=button.dataset.action;
@@ -1086,7 +1087,7 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
       const result=dispatchTacticalContextCommand({
         state:config.state,selected:config.selected,actor:a,node,door,action:action??'',
         selectedActiveWatch:config.selectedActiveWatch,
-        medicalCandidate:config.medicalCandidate
+        medicalCandidate:config.medicalCandidate,personFocusId:config.personFocusId
       });
       if(result.handled){
         if(result.armTransport){
