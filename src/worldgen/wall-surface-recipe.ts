@@ -5,7 +5,7 @@ import {wallExposure} from './wear-exposure.ts';
 import {wallPixelSurface} from './pixel-surface-selection.ts';
 import {buildingTheme} from './building-palettes.ts';
 import type {PixelSurface} from '../rendering/pixel-recipes.ts';
-export const WALL_EFFECTS=['fade','contact','chip','damp','runoff','crack','repair'] as const;
+export const WALL_EFFECTS=['fade','contact','chip','damp','runoff','crack','repair','moss','rust'] as const;
 export type WallEffect=typeof WALL_EFFECTS[number];
 export type WallEffectFilter='all'|'none'|WallEffect;
 export type WallAudition={effect:WallEffectFilter;atlas?:boolean};
@@ -65,6 +65,24 @@ export function planWallSurface(site:Site,index:number,height:number,requestedFa
  if(exposed||wet(face)){
   if(random(seed,4)<(wet(face)?.85:.55))add('damp','moisture-base',length*(.2+.6*random(seed,5)),height-7,Math.min(length,30+random(seed,6)*24),18,30,80);
  }
+ // W3 only: require an exposed mineral foundation beside a planted zone
+ // and a pre-existing moisture event. No vegetation on dry internal paint.
+ if(requestedFace!==undefined&&exposed&&['brick','cinderblock','concrete'].includes(surface)){
+  const damp=events.find(e=>e.kind==='damp');
+  const adjacentGarden=(site.exteriorZones??[]).find(zone=>{
+   if(zone.kind!=='yard'&&zone.kind!=='garden')return false;
+   const x=mx+nx*face*12,y=my+ny*face*12;
+   return x>=zone.x-4&&x<=zone.x+zone.w+4&&y>=zone.y-4&&y<=zone.y+zone.h+4;
+  });
+  if(damp&&adjacentGarden&&random(seed,12)<.7)
+   add('moss','moisture:'+adjacentGarden.id,damp.x,height-4,Math.min(damp.width,22),9,65,83);
+ }
+ // A panel seam is actual ferrous cladding in this finish recipe.
+ // Begin corrosion on that seam, not arbitrarily in a plaster field.
+ if(requestedFace!==undefined&&exposed&&surface==='panel'&&length>=30&&random(seed,13)<.65){
+  const seam=Math.max(24,Math.min(Math.floor((length-2)/24)*24,Math.round(length*.45/24)*24));
+  add('rust','panel-seam:'+seam,seam,height*.79,8,18,50,85);
+ }
  if(exposed)for(const window of site.windows??[]){
   if(window.interior||window.vertical!==(Math.abs(dy)>Math.abs(dx)))continue;
   const pos=project(window.x,window.y);
@@ -102,7 +120,7 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
    fade:tint(base,[235,232,217],.26),contact:tint(base,[72,76,70],.5),
    chip:tint(base,[178,171,155],.75),damp:tint(base,[60,78,60],.74),
    runoff:tint(base,[63,82,68],.68),crack:tint(base,[65,67,61],.74),
-   repair:tint(base,[231,222,199],.4)
+   repair:tint(base,[231,222,199],.4),moss:tint(base,[65,89,52],.79),rust:tint(base,[139,71,37],.77)
   };
   const c=palette[event.kind];
   for(let py=0;py<height;py++)for(let px=0;px<width;px++){
@@ -119,6 +137,8 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
     case 'runoff':a=v>-.93&&((Math.abs(u+.42)<.24*(1.25-v*.45)&&v<.85)||(Math.abs(u-.38)<.20&&v<.32))?.67:0;break;
     case 'crack':a=Math.abs(u-(Math.floor((v+1)*5)%3-1)*.23)<.14&&Math.abs(v)<.91?.86:0;break;
     case 'repair':a=Math.abs(u)<.82&&Math.abs(v)<.79?.62:0;break;
+    case 'moss':a=v>-.48+edge*2&&Math.abs(u)<.9&&(Math.abs(step)%3!==1||v>.45)?.85:0;break;
+    case 'rust':a=v>-.85&&Math.abs(u)<(v<-.2?.64:.25+.15*(1-v))?.84:0;break;
    }
    if(!a)continue;
    a*=strength;const p=(py*width+px)*4,old=out[p+3]/255,next=a+old*(1-a);
