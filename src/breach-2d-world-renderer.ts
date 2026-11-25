@@ -536,8 +536,8 @@ function renderGroundMarks(){
     if(pose)point={x:pose.x,y:pose.z};
    }
    if(!point||!omni&&!liveVisibility(s,point))continue;
-   draw.globalAlpha=Math.max(.28,.9-mark.age*.027);
-   circle(point.x,point.y,2.5,mark.surface==='metal'?'#242b2b':'#3a3028');
+   draw.globalAlpha=.9;
+   circle(point.x,point.y,2.5+.4*((mark.damageCount??1)-1),mark.surface==='metal'?'#242b2b':'#3a3028');
    draw.globalAlpha=1;
   }
  }

@@ -1,6 +1,8 @@
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {bloodMarkRadius,bloodMarkTint} from './breach-blood-evidence.ts';
+import {damageRadius,damageTint} from './rendering/breach-stain-atlas.ts';
+import {isIntermediateMaterialCue,MAX_MATERIAL_CUES} from './breach-material-cues.ts';
 import {sampleBloodBurst,BLOOD_BURST_COUNT} from './rendering/breach-blood-burst.ts';
 import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose,isGroundImpactMark,type SurfaceMarkPose} from './breach-impact-surface.ts';
 import {hostileNpcTransitionKey,hostileCustodyWalkBlend}
@@ -2988,9 +2990,7 @@ export class TacticalScene3D{
             this.impactPulseBatch=makeBloodDropletBatch(this.impactGeometry,20,'shot-pulse-batch');
             this.effects.add(this.impactPulseBatch.mesh);
           }
-          const color=shot.surface==='blood'?0xb43d3b:
-            shot.surface==='metal'?0xffd697:shot.surface==='glass'?0xc8e4df:
-            shot.surface==='wood'?0xdfb27a:shot.surface==='stone'?0xbeb9a2:0xe2d3b1;
+          const color=shot.surface==='blood'?0xb43d3b:MATERIAL_IMPACT_PROFILES[shot.surface??'dust'].pulseColor;
           this.impactPulseBatch.addPose(end.x,end.y,end.z,0,0,0,
             impact.scale,impact.scale,impact.opacity,color);
         }
@@ -3057,6 +3057,50 @@ export class TacticalScene3D{
             shot.id+':chip:'+i,{x:chip.position.x,y:chip.position.z}));
       }
     }
+    // Final-shot effects have priority. Use spare slots in the same
+    // batches for independently disclosed intermediate material contacts.
+    // No extra tracer, muzzle event, or visibility inferred from the shooter.
+    if(!personalDisclosure&&this.materialImpactPreviewEnabled){
+      let count=0;
+      for(let n=s.shots.length-1;n>=Math.max(0,s.shots.length-20)&&count<20;n--){
+        const shot=s.shots[n];
+        for(let j=0;j<Math.min(MAX_MATERIAL_CUES,shot.materialImpacts?.length??0)&&count<20;j++){
+          const cue=shot.materialImpacts![j],surface=cue.surface;
+          if(!isIntermediateMaterialCue(shot,cue))continue;
+          if(!omniscient&&!this.presentationSight.query(s,'effect','material:'+cue.id,cue.p))continue;
+          const p=MATERIAL_IMPACT_PROFILES[surface],pulse=impactPulse(surface,shot.age,p.life);
+          if(!pulse.active)continue;
+          count++;
+          if(this.shotPulsePreviewEnabled){
+            if(!this.impactPulseBatch){
+              this.impactPulseBatch=makeBloodDropletBatch(this.impactGeometry,20,'shot-pulse-batch');
+              this.effects.add(this.impactPulseBatch.mesh);
+            }
+            this.impactPulseBatch.addPose(cue.p.x,cue.height,cue.p.y,0,0,0,pulse.scale,pulse.scale,pulse.opacity,p.pulseColor);
+          }
+          const sample=this.materialImpactScratch;
+          if(!(this.smokePreviewEnabled&&surface==='dust'))
+           for(let i=0;i<p.count;i++){
+            if(!sampleMaterialImpact(surface,cue.id,i,shot.age,cue.p.x,cue.height,cue.p.y,sample))continue;
+            if(!omniscient&&!this.presentationSight.query(s,'effect','material:'+cue.id+':chip:'+i,{x:sample.x,y:sample.z}))continue;
+            if(!this.dropletPreview){
+              this.dropletPreview=makeBloodDropletBatch(this.tracerGeometry,MATERIAL_IMPACT_PARTICLE_LIMIT);
+              this.effects.add(this.dropletPreview.mesh);
+            }
+            this.dropletPreview.addMaterial(sample);
+           }
+          if(this.smokePreviewEnabled&&(surface==='dust'||surface==='wood'||surface==='stone')){
+            const puff=this.puffScratch;
+            for(let i=0;i<puffCount(surface);i++){
+              if(!samplePuff(surface,cue.id,i,shot.age,cue.p.x,cue.height,cue.p.y,puff))continue;
+              if(!omniscient&&!this.presentationSight.query(s,'effect','material:'+cue.id+':puff:'+i,{x:puff.x,y:puff.z}))continue;
+              if(!this.dustPuffs){this.dustPuffs=new DustPuffBatch();this.effects.add(this.dustPuffs.mesh);}
+              this.dustPuffs.add(puff);
+            }
+          }
+        }
+      }
+    }
     this.dropletPreview?.finish();
     this.tracerBatch?.finish();this.impactPulseBatch?.finish();
     if(this.smokePreviewEnabled&&!personalDisclosure){
@@ -3103,16 +3147,17 @@ export class TacticalScene3D{
       if(replayDisclosurePolicy?.mode==='operator')continue;
       let attached:SurfaceMarkPose|null=null;
       const ref=mark.surfaceRef;
+      const artRadius=damageRadius(mark.surface,mark.damageCount);
       if(mark.surface!=='blood'&&ref){
         if(ref.kind==='wall'){
           const owner=this.wallOwners.find(w=>w.index===ref.index);
           if(!owner||owner.opacity<.995||!owner.pieces.some(m=>m.visible&&(!m.parent||m.parent.visible)))continue;
-          attached=wallMarkPose(ref,owner.segment);
+          attached=wallMarkPose(ref,owner.segment,artRadius);
         }else if(ref.kind==='door'){
           const door=ref.ownerId?this.frameDoorsById.get(ref.ownerId):undefined;
           const visual=ref.ownerId?this.doors.get(ref.ownerId):undefined;
           if(!door||!visual?.root.visible||!visual.leaf.visible||visual.leaf.userData.impactCut)continue;
-          const local=doorMarkLocalPose(ref,door);
+          const local=doorMarkLocalPose(ref,door,artRadius);
           if(local){
             visual.leaf.updateWorldMatrix(true,false);
             this.impactDecalPoint.set(local.x,local.y,local.z).applyMatrix4(visual.leaf.matrixWorld);
@@ -3123,7 +3168,7 @@ export class TacticalScene3D{
           const authored=s.site?.cover[ref.index],current=s.coverState[ref.index];
           const group=this.coverGroups.get(ref.index),visual=this.coverVisualStates.get(ref.index);
           if(!authored||!current||!group?.visible||!visual?.intact.visible)continue;
-          const local=coverMarkLocalPose(ref,authored,current);
+          const local=coverMarkLocalPose(ref,authored,current,artRadius);
           if(local){
             group.updateWorldMatrix(true,false);
             this.impactDecalPoint.set(local.x,local.y,local.z).applyMatrix4(group.matrixWorld);
@@ -3135,7 +3180,7 @@ export class TacticalScene3D{
         }else if(ref.kind==='window'){
           const pane=s.windows[ref.index],glass=ref.ownerId?this.windowGlass.get(ref.ownerId):undefined;
           if(!pane||!glass?.visible||!glass.parent?.visible)continue;
-          attached=windowMarkPose(ref,pane);
+          attached=windowMarkPose(ref,pane,artRadius);
         }
         // Unsupported collider/art correspondence fails closed.
         if(!attached)continue;
@@ -3166,13 +3211,10 @@ export class TacticalScene3D{
           groundMarkHiddenByWallFromCamera(markPoint,bloodCamera,s.site?.walls??WALLS,WALL_VISUAL_HEIGHT,y))continue;
       }
       if(markCount>=IMPACT_MARK_LIMIT)break;
-      const dark=mark.surface==='blood'?bloodMarkTint(mark):
-        mark.surface==='wood'?0x3a2920:
-        mark.surface==='stone'?0x38332c:
-        mark.surface==='metal'?0x202b2e:0x514e42;
+      const dark=mark.surface==='blood'?bloodMarkTint(mark):damageTint(mark.surface);
       const groundRadius=radius,markY=attached?.y??(mark.surface==='blood'?.85:1);
       const nx=attached?.nx??0,ny=attached?.ny??1,nz=attached?.nz??0;
-      const fade=mark.surface==='blood'?1:Math.max(.28,1-mark.age*.027);
+      const fade=mark.surface==='blood'||mark.surfaceRef?1:Math.max(.28,1-mark.age*.027);
       const style=this.stainPreview?.styleFor(mark.surface,mark.p.x,mark.p.y,mark.bloodKind)??-1;
       const dirty=this.persistentEvidencePreview?this.impactMarkSlots.update(markCount,
         markPoint.x,markY,markPoint.y,groundRadius,dark,fade,style,nx,ny,nz):

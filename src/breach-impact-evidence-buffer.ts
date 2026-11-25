@@ -6,12 +6,33 @@ import type {ImpactMark,Session} from './breach-game.ts';
 import {IMPACT_MARK_LIMIT,BLOOD_MARK_LIMIT} from './breach-effects.ts';
 import type {Segment} from './breach-core.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
+/** Stable local coordinates avoid combining hits on opposite faces or
+ * following a moved object's previous world location. */
+function sameDamageFace(a:ImpactMark,b:ImpactMark):boolean{
+ const x=a.surfaceRef,y=b.surfaceRef;
+ if(!x||!y||a.surface!==b.surface||x.kind!==y.kind||x.index!==y.index||x.ownerId!==y.ownerId)return false;
+ if(x.kind==='door')return x.localZ===y.localZ;
+ if(x.kind==='cover')return x.nx===y.nx&&x.ny===y.ny&&x.nz===y.nz&&
+  x.coverTurn===y.coverTurn&&x.coverW===y.coverW&&x.coverD===y.coverD&&x.coverToppled===y.coverToppled;
+ return x.face===y.face;
+}
+const localDistance=(a:NonNullable<ImpactMark['surfaceRef']>,b:NonNullable<ImpactMark['surfaceRef']>)=>
+ Math.hypot(a.localX-b.localX,a.localY-b.localY,a.localZ-b.localZ);
 export function retainImpactMark(s:Pick<Session,'impactMarks'>,mark:ImpactMark,walls:readonly Segment[]=[]):void{
- // The final stop may already be represented by its committed material event.
- if(mark.surfaceRef&&mark.shotId!==undefined&&s.impactMarks.some(other=>
-   other.shotId===mark.shotId&&other.surfaceRef?.kind===mark.surfaceRef?.kind&&
-   other.surfaceRef?.index===mark.surfaceRef?.index&&other.surfaceRef?.ownerId===mark.surfaceRef?.ownerId&&
-   Math.hypot(other.p.x-mark.p.x,other.p.y-mark.p.y)<.01))return;
+ // A final stop may already be represented by its committed material
+ // event. Check the latest merged shot, without changing original ID.
+ if(mark.surfaceRef&&mark.surface!=='blood'){
+  const ref=mark.surfaceRef;
+  const nearby=s.impactMarks.find(other=>sameDamageFace(other,mark)&&
+   localDistance(other.surfaceRef!,ref)<3.5);
+  if(nearby){
+   if(mark.shotId!==undefined&&(nearby.lastDamageShotId??nearby.shotId)===mark.shotId)return;
+   const count=Math.min(4,(nearby.damageCount??1)+1);
+   if(count!==(nearby.damageCount??1)){nearby.damageCount=count;nearby.age=0;}
+   nearby.lastDamageShotId=mark.shotId;
+   return;
+  }
+ }
  if(mark.surface==='blood'){
   const kind=mark.bloodKind??'splat';
   const existing=s.impactMarks.find(other=>{
@@ -33,7 +54,8 @@ export function retainImpactMark(s:Pick<Session,'impactMarks'>,mark:ImpactMark,w
  }
  s.impactMarks.push(mark);
  while(s.impactMarks.length>IMPACT_MARK_LIMIT){
-  const other=s.impactMarks.findIndex(m=>m.surface!=='blood');
+  const transient=s.impactMarks.findIndex(m=>m.surface!=='blood'&&!m.surfaceRef);
+  const other=transient>=0?transient:s.impactMarks.findIndex(m=>m.surface!=='blood');
   s.impactMarks.splice(other<0?0:other,1);
  }
 }

@@ -1,5 +1,6 @@
 /** Build 133: deterministic lightweight spent-cartridge and surface effects. */
 import type {WeaponId} from './breach-combat.ts';
+import {MATERIAL_IMPACT_PROFILES} from './rendering/breach-material-impact-atom.ts';
 export type EjectedCasing={
  id:number;at:number;weapon:WeaponId;side:'blue'|'red';
  /** Optional real Glock chamber identity; legacy casing shape remains valid. */
@@ -27,10 +28,8 @@ export function casingAt(c:EjectedCasing,time:number){
    y:t<landing?air:floor+bounce,
    settled,rotation:c.id*1.37+Math.min(t,landing+.5)*10};
 }
-export const impactProfile=(surface:'blood'|'wood'|'metal'|'stone'|'glass'|'dust')=>
- surface==='glass'?{count:7,spread:9,lifetime:.32,color:0xc8e4df}:
- surface==='metal'?{count:5,spread:13,lifetime:.24,color:0xffd298}:
- surface==='wood'?{count:4,spread:11,lifetime:.42,color:0xbf9d77}:
- surface==='stone'?{count:6,spread:12,lifetime:.36,color:0xaaa8a1}:
- surface==='blood'?{count:4,spread:15,lifetime:.40,color:0xb43d3b}:
- {count:3,spread:7,lifetime:.31,color:0xb0a797};
+export const impactProfile=(surface:'blood'|'wood'|'metal'|'stone'|'glass'|'dust')=>{
+ if(surface==='blood')return {count:4,spread:15,lifetime:.40,color:0xb43d3b};
+ const p=MATERIAL_IMPACT_PROFILES[surface];
+ return {count:p.count,spread:p.spread,lifetime:p.life,color:p.color};
+};
