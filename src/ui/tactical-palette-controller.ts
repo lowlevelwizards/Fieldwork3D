@@ -57,6 +57,7 @@ export type PaletteLiveInput={
  state:Session;actor:TeamActor;selected:string;
  node:TeamActor['plan'][number]|undefined;
  selectedWatch:Pt|null;nearbyDoor:Door|undefined;door:Door|undefined;
+ personFocusId?:string|null;
  medicalCandidate:(at:Pt)=>TeamActor|null;
  width:number;height:number;lastAuthoringAt:number;
 };
@@ -170,13 +171,13 @@ export function createTacticalPaletteController(config:{
     }
   }
   function show({
-    state,actor:a,selected,node,selectedWatch,door,
+    state,actor:a,selected,node,selectedWatch,door,personFocusId,
     actions,medicalChoices=[],width:cssW,height:cssH,lastAuthoringAt
   }:PaletteContext){
     setPresentation(placement);
     context.dataset.owner=selected;
     const identity=(door?'door:'+door.id:node?'node:'+node.id:
-      selectedWatch?'active-watch':'here')+'/'+selected;
+      selectedWatch?'active-watch':'here')+'/'+selected+(personFocusId?'/person:'+personFocusId:'');
     if(treatmentScope!==identity){
       treatmentScope=identity;treatmentExpanded=false;
     }
@@ -387,6 +388,8 @@ export function createTacticalPaletteController(config:{
       width:cssW,height:cssH,lastAuthoringAt}=input;
   const current=plannedControl(state,selected,node?.id);
   const at=node?.p??finalPoint(a);
+  const focusedEnemies=enemies(state).filter(e=>!input.personFocusId||e.id===input.personFocusId);
+  const focusedCivilians=state.civilians.filter(c=>!input.personFocusId||c.id===input.personFocusId);
   // A nearby object is not automatically known to the squad.
   // Match the known-cover gate already used by the physical PUSH preview.
   const nearMovable=state.coverState.some((o,i)=>
@@ -444,7 +447,7 @@ export function createTacticalPaletteController(config:{
   // contact order the motor/game authority will reject.
   const civilianContact=(mode:'secure'|'follow'|'restrain'|'stop-following')=>
     routeEndCivilianActions?nearestContextCivilian(
-      state.civilians,at,mode,state.mission,
+      focusedCivilians,at,mode,state.mission,
       p=>liveVisibility(state,p),
       (from,to)=>sweptBodyClear(from,to,state.doors,
         1.5,
@@ -454,17 +457,17 @@ export function createTacticalPaletteController(config:{
   const followingAtPlan=civilianContact('stop-following');
   const restraintAtPlan=civilianContact('restrain');
   const suspectAtPlan=routeEndCivilianActions?
-    nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&
+    nearestPaletteCandidate(focusedEnemies,at,e=>e.health>0&&
       !e.surrendered&&team(state).some(observer=>inSight(observer,e,state))&&
       sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)),
       SUSPECT_CHALLENGE_RANGE):null;
   const restrainedSuspectAtPlan=routeEndCivilianActions?
-    nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&
+    nearestPaletteCandidate(focusedEnemies,at,e=>e.health>0&&
       e.surrendered&&!e.restrained&&
       liveVisibility(state,e.p)&&
       sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)),PERSON_CONTACT_REACH):null;
   const searchableAtPlan=routeEndCivilianActions?
-    nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&
+    nearestPaletteCandidate(focusedEnemies,at,e=>e.health>0&&
       e.surrendered&&e.restrained===true&&!e.suspectSearched&&
       liveVisibility(state,e.p)&&
       sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)),34):null;
@@ -473,26 +476,26 @@ export function createTacticalPaletteController(config:{
       liveVisibility(state,w.p)&&
       sweptBodyClear(at,w.p,state.doors,1.5,sessionWorldGeometry(state)),58):null;
   const escortableSuspectAtPlan=routeEndCivilianActions?
-    nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&e.surrendered&&
+    nearestPaletteCandidate(focusedEnemies,at,e=>e.health>0&&e.surrendered&&
       e.escortLeaderId!==a.id&&
       liveVisibility(state,e.p)&&
       sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)),
       SUSPECT_ESCORT_VOICE_RANGE):null;
   const followingSuspectAtPlan=routeEndCivilianActions?
-    nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&e.surrendered&&
+    nearestPaletteCandidate(focusedEnemies,at,e=>e.health>0&&e.surrendered&&
       !!e.escortLeaderId&&
       sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)),
       SUSPECT_ESCORT_VOICE_RANGE):null;
   const downedCaptureAtPlan=routeEndCivilianActions&&
     state.missionType==='capture'&&!!state.captureTarget?
-    nearestPaletteCandidate(enemies(state),at,e=>
+    nearestPaletteCandidate(focusedEnemies,at,e=>
       e.id===state.captureTarget&&e.health<=0&&
       captureVitalStatus(e)!=='deceased'&&
       (!e.carriedById||e.carriedById===a.id)&&
       liveVisibility(state,e.p)&&
       sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)),34):null;
   const casualtyAtPlan=routeEndCivilianActions?
-    nearestPaletteCandidate(state.civilians,at,c=>
+    nearestPaletteCandidate(focusedCivilians,at,c=>
       c.health<=0&&!c.carriedById&&liveVisibility(state,c.p)):null;
   const secondaryHand=plannedSecondaryHand(a.secondarySwitch,a.plan,node?.id);
   const secondaryKit=a.equipment?.secondary;
@@ -544,7 +547,7 @@ export function createTacticalPaletteController(config:{
     watchActive,nodeFirePolicy:node?.firePolicyState
   });
   show({
-    state,actor:a,selected,node,selectedWatch,door,actions:choices,
+    state,actor:a,selected,node,selectedWatch,door,personFocusId:input.personFocusId,actions:choices,
     medicalChoices:treatmentCandidates,
     width:cssW,height:cssH,lastAuthoringAt
   });
