@@ -14,3 +14,6 @@ Added deterministic parking-only candidate planner with diagnostics, canonical r
 
 ## Checkpoint 4 — dedicated lab and diagnostics
 Vehicle Lab is a Vite entry linked from both developer menus. Uses the same leased vehicle mesh, supports family/configuration/paint/condition, 5 camera views, family lineup, 1/5/10/20/50 repeat stress preview, cached vs instanced comparison and canonical footprint. It has isolated lighting, not a substitute for tactical scene captures. Added 44-site shadow parking manifest via the targeted workflow. Corrected scene material tracking to preserve the concrete material type. Visual browser acceptance and real-site placement remain pending.
+
+## Checkpoint 5 — surface identity and lifecycle
+All families now use existing sheet-metal physical material and metal visual substrate rather than the legacy softwood fallback. Added prominent van identity panels, medical symbol, municipal cargo stripe, SUV rack and additional fleet/taxi/aid stripes in the same compiled mesh. Lab resize cleanup is explicit. Fine texture atlas, exact tactical cover profile and human art review still pending; do not enable placement before measured eligibility and critical movement tests.

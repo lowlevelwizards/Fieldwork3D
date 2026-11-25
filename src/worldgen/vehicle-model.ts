@@ -118,8 +118,21 @@ export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIM
  }
  end(.492,belt-.24,belt-.16,-.18,.18,trim);
  end(-.492,belt-.21,belt-.15,-.10,.10,hub);
- const stripe=config==='police'?0x39556e:config==='medical'?0xa6564a:config==='delivery'?0x648577:config==='municipal'?0xb19a55:config==='contractor'?0x696e5a:undefined;
+ const stripe=config==='police'?0x39556e:config==='medical'?0xa6564a:config==='delivery'?0x648577:config==='municipal'?0xb19a55:config==='contractor'?0x696e5a:config==='fleet'?0x778585:config==='taxi'?0x544e3c:config==='aid'?0x4f7d83:undefined;
  if(stripe!==undefined)side(-.37,.34,belt-.14,belt-.07,.431,stripe);
+ // Large, integrated identity blocks remain legible from the iso camera.
+ // They are vertex-coloured faces in the single mesh, not decals/objects.
+ if(van&&['delivery','medical','contractor'].includes(config)){
+  side(-.36,-.05,belt+.08,.79,.431,config==='medical'?0xd6d5c8:config==='delivery'?0x648577:0x696e5a);
+  if(config==='medical'){
+   side(-.24,-.17,belt+.13,.75,.432,0x466d79);
+   side(-.30,-.11,belt+.20,belt+.28,.433,0x466d79);
+  }
+ }
+ if(truck&&config==='municipal')side(-.42,.025,.63,.71,.461,0xb19a55);
+ if(suv&&(config==='military'||config==='aid')){
+  box(-.32,.04,.96,.985,.31,trim);
+ }
  if(config==='police'||config==='medical'||config==='taxi'){
   const roof=frontTop[1];
   box(.0,.13,roof,Math.min(1,roof+.04),.20,config==='taxi'?0xb7a05f:config==='medical'?0xa6564a:0x567c9e);

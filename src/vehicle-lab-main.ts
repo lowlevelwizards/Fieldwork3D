@@ -78,5 +78,5 @@ function draw(){
 }
 family.addEventListener('change',()=>{updateConfigs();rebuild();});
 for(const el of [configuration,paint,condition,count,batch,footprint])el.addEventListener('change',rebuild);
-view.addEventListener('change',draw);new ResizeObserver(draw).observe(viewport);rebuild();
-window.addEventListener('pagehide',()=>{clear();cache.clear();material.dispose();outlineMaterial.dispose();ground.geometry.dispose();ground.material.dispose();renderer.dispose();},{once:true});
+view.addEventListener('change',draw);const resize=new ResizeObserver(draw);resize.observe(viewport);rebuild();
+window.addEventListener('pagehide',event=>{if(event.persisted)return;resize.disconnect();clear();cache.clear();material.dispose();outlineMaterial.dispose();ground.geometry.dispose();ground.material.dispose();renderer.dispose();});

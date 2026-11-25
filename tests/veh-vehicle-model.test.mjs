@@ -53,3 +53,12 @@ test('shared scene preview and cached vehicle mesh agree; cache owns one geometr
   assert.equal(cache.stats().leases,0);
  }finally{cache.clear();mat.dispose();}
 });
+
+import {materialForFixture} from '../src/breach-materials.ts';
+import {fixturePixelSurface} from '../src/worldgen/pixel-surface-selection.ts';
+test('all vehicle families share metal physical and visual substrate contracts',()=>{
+ for(const family of ['vehicle',...VEHICLE_FAMILIES]){
+  assert.equal(materialForFixture(family),'sheet-metal');
+  assert.equal(fixturePixelSurface(family),'metal');
+ }
+});

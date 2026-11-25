@@ -18,7 +18,7 @@ export const MATERIALS:Record<MaterialId,MaterialDefinition>={
  brick:{id:'brick',resistance:.45,integrity:5,penetrable:false,impact:'stone'},
  concrete:{id:'concrete',resistance:.8,integrity:9,penetrable:false,impact:'stone'}
 };
-const metalFixtures=new Set(['locker','fridge','stove','vehicle','generator',
+const metalFixtures=new Set(['locker','fridge','stove','vehicle','sedan','hatchback','pickup','suv','van','light-truck','generator',
  'tank','filing-cabinet','vehicle-lift','shutter','control-panel']);
 const softFixtures=new Set(['sofa','armchair','bed','exam-bed','mattress']);
 const strongWood=new Set(['workbench','wardrobe','cabinet','bookcase','counter',
