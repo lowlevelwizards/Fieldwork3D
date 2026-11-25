@@ -6,8 +6,8 @@ import {mkdirSync,writeFileSync,readFileSync,existsSync} from 'node:fs';
 import {chromium} from 'playwright';
 const port=4407,base='http://127.0.0.1:'+port;
 const dir=process.env.FIELDWORK_WALL_OUTPUT||'artifacts/refactor-e6-19/live-scene';
-const wallMode=process.env.FIELDWORK_WALL_WEAR||'legacy';
-const wallQuery=wallMode==='legacy'?'':'&wallWear='+wallMode;
+const wallMode=process.env.FIELDWORK_WALL_WEAR||'default';
+const wallQuery=wallMode==='default'?'':'&wallWear='+wallMode;
 mkdirSync(dir,{recursive:true});
 const server=spawn(process.execPath,[
  'node_modules/vite/bin/vite.js','--host','127.0.0.1',
@@ -194,6 +194,10 @@ try{
     const s=newSession(0,site.seed,'exterior-known','standard',undefined,site);
     const scene=new TacticalScene3D();scene.resize(viewport.width,viewport.height);scene.applySite(site);
     const candidate=Array.isArray(scene.wallOwners);
+    if(new URLSearchParams(location.search).get('wallWear')===null){
+     check(scene.wallAudition?.atlas===true&&scene.wallAudition.effect==='all','Default wall renderer not W3');
+     check(scene.patinaWallSurfaces.length>0&&scene.patinaWallSurfaces.every(w=>w.atlasSlot),'Default walls lack shared atlas');
+    }
     const selected=team(s)[0].id;
     const draw=(session=s,id=selected,omniscient=false)=>scene.update(session,id,1,null,omniscient);
     const inventory=()=>scene.walls;
