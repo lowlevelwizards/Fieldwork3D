@@ -14,6 +14,8 @@ import {type Site,type WindowOpening} from './breach-site.ts';
 import {assetLibrary,assetLibraryCategories,type AssetLibraryEntry} from './worldgen/asset-library.ts';
 import {OPERATOR_REFERENCE_HEIGHT,WORLD_UNITS_PER_METRE,metres} from './worldgen/world-scale.ts';
 import {CHARACTER_FIXTURE_IDS} from './worldgen/asset-character-visuals.ts';
+import {vehicleFamily} from './worldgen/vehicle-catalog.ts';
+const hasShowroomVariant=(id:string)=>!!vehicleFamily(id)||CHARACTER_FIXTURE_IDS.has(id);
 import {assetReviewInventory} from './worldgen/asset-review.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
 import {assetPrimarySurface,assetMaterialDescription} from './worldgen/material-inspection.ts';
@@ -329,13 +331,13 @@ function select(item:AssetLibraryEntry){
     ' m) · cover: '+item.cover+
    ' · '+(item.solid?'physical':'visual-only')+
    '\n'+item.origin+' / '+item.presentation+
-   (CHARACTER_FIXTURE_IDS.has(item.id)?
+   (hasShowroomVariant(item.id)?
      ' · silhouette trim '+((showroomVariants.get(item.id)??0)+1)+' / 3':'')+
    (item.presentation==='shared-shape'?' (generic model — review recommended)':'')+
    (item.rooms.length?'\nRooms: '+item.rooms.join(', '):'');
  for(const marker of labels)marker.node.setAttribute('aria-pressed',
    String(marker.node.dataset.assetId===selectedId));
- el<HTMLButtonElement>('variant').disabled=!CHARACTER_FIXTURE_IDS.has(item.id);
+ el<HTMLButtonElement>('variant').disabled=!hasShowroomVariant(item.id);
  showSelectionOutline();
 }
 /** Keep the preview canvas above the bottom inspector. The 3D projection
@@ -469,7 +471,7 @@ el<HTMLButtonElement>('bounds').addEventListener('click',()=>{
  showSelectionOutline();
 });
 el<HTMLButtonElement>('variant').addEventListener('click',()=>{
- if(!selectedId||!CHARACTER_FIXTURE_IDS.has(selectedId))return;
+ if(!selectedId||!hasShowroomVariant(selectedId))return;
  showroomVariants.set(selectedId,((showroomVariants.get(selectedId)??0)+1)%3);
  refresh();focusSelected();
 });

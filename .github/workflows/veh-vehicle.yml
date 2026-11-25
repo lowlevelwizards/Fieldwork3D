@@ -21,6 +21,9 @@ on:
       - 'src/worldgen/asset-catalog.ts'
       - 'src/worldgen/asset-library.ts'
       - 'src/worldgen/fixture-visuals.ts'
+      - 'src/worldgen/asset-character-visuals.ts'
+      - 'src/worldgen/asset-review.ts'
+      - 'src/asset-lab-main.ts'
       - 'src/rendering/breach-site-scene-builder.ts'
       - 'src/breach-3d.ts'
       - 'src/breach-materials.ts'
@@ -40,7 +43,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - run: node --experimental-strip-types --test tests/veh-vehicle-model.test.mjs tests/veh-placement.test.mjs tests/map-17-vehicles.test.mjs tests/map-24-vehicle-identity.test.mjs
+      - run: node --experimental-strip-types --test tests/veh-vehicle-model.test.mjs tests/veh-placement.test.mjs tests/map-17-vehicles.test.mjs tests/map-24-vehicle-identity.test.mjs tests/map-21-asset-character-pass.test.mjs tests/texture3-01-routing.test.mjs
       - run: npm run check
       - run: node --experimental-strip-types scripts/audit-veh-parking.mjs
       - uses: actions/upload-artifact@v4

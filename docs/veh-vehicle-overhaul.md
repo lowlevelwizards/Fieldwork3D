@@ -35,3 +35,6 @@ Vehicle templates now use the existing renderer cache regardless of unrelated fi
 
 ## Checkpoint 11 — versioned coarse height profile
 New generated vehicles retain a solid planar movement envelope while existing height-aware cover checks clip against shared normalized body/cabin silhouettes (and coarse cargo bodies). Only explicitly versioned new vehicle records opt in; archived obstacles and explicit top-height overrides retain their existing box rule. Render art variants remain separate from the serialized physical configuration. No per-frame mesh query. Exact wheel/glass/mark projection and detailed destruction are not implemented. Tests pending on this head.
+
+## Checkpoint 12 — single art authority
+Removed both unreachable legacy car mesh branches and private wheel/pane helpers; retained the prism helper used by nonvehicle props. The old vehicle identifier remains a supported sedan alias; all art previews use the shared new renderer. Asset Lab variant selection recognizes all six families, and art-review metadata reflects a rebuilt model pending visual signoff. Updated older source-pattern and character-mesh tests to assert actual shared geometry contracts. Domestic/loading pilot passed 15 targeted tests and measured 56 vehicles across 25 of 44 sites. This cleanup is not yet validated.
