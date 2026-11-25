@@ -26,10 +26,10 @@ function recordingMask(){
   moveTo(x,y){path.push({x,y});},
   lineTo(x,y){path.push({x,y});},
   closePath(){},
-  fill(){records.push({style:typeof this.fillStyle==='object'?'graded-cone':this.fillStyle,mode:this.globalCompositeOperation,
+  fill(){records.push({style:typeof this.fillStyle==='object'?this.fillStyle.kind:this.fillStyle,mode:this.globalCompositeOperation,
     points:path.map(p=>({...p}))});},
-  createRadialGradient(){
-   return {addColorStop(){}};
+  createRadialGradient(...args){
+   return {kind:args[5]===7?'foot':'graded-cone',addColorStop(){}};
   }
  };
  return {ctx,records};
@@ -55,21 +55,19 @@ test('two freshly generated missions each clear ONLY their own operator-foot pat
    'local visible ground cannot change authoritative discovery');
   for(const [session,records] of [[first,before],[second,after]]){
    const living=team(session).filter(a=>a.health>0);
-   const feet=records.filter(r=>r.style==='#fff');
+   const feet=records.filter(r=>r.style==='foot');
    assert.equal(feet.length,living.length);
    assert.ok(records.every(r=>r.mode==='destination-out'));
    for(let i=0;i<living.length;i++){
     const p=living[i].p,vertices=feet[i].points;
-    assert.equal(vertices.length,4);
-    assert.ok(near(vertices[0].x,p.x-5)&&near(vertices[0].y,p.y-5));
-    assert.ok(near(vertices[2].x,p.x+5)&&near(vertices[2].y,p.y+5));
-    assert.ok(Math.hypot(5,5)<8,
-     'the visible square stays strictly inside the real body radius');
+    assert.equal(vertices.length,16);
+    assert.ok(vertices.every(v=>near(Math.hypot(v.x-p.x,v.y-p.y),7)),
+     'the feathered footprint stays strictly inside the real body radius');
    }
   }
   assert.notDeepEqual(
-   before.filter(r=>r.style==='#fff').map(r=>r.points),
-   after.filter(r=>r.style==='#fff').map(r=>r.points),
+   before.filter(r=>r.style==='foot').map(r=>r.points),
+   after.filter(r=>r.style==='foot').map(r=>r.points),
    'second map must never re-use first mission actor anchors');
   assert.notEqual(sessionWorldGeometry(first).site,sessionWorldGeometry(second).site);
  }finally{activateSite(null);}

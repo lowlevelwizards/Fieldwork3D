@@ -43,13 +43,20 @@ try{
    const make=(seed,archetype)=>generateSite(seed,'standard',undefined,{mission:'intel'},{archetype});
    const site=make(23,'townhouse');activateSite(site);
    const state=newSession(0,site.seed,'exterior-known','standard',undefined,site);
-   scene.applySite(site);scene.setMode('iso');
+   scene.wallDepthOpaque=false;scene.applySite(site);scene.setMode('iso');
    const id=team(state)[0].id,draw=(ss=state,selected=id,all=false,dt=1)=>scene.update(ss,selected,dt,null,all);
    const inventory=()=>scene.walls.filter(w=>w.mesh.userData.fieldworkDrawFamily==='structural-wall-body');
    const known=()=>JSON.stringify({walls:[...state.intel.walls],doors:[...state.intel.doors],cover:[...state.intel.cover],seen:[...state.seenGround]});
    const visible=()=>JSON.stringify({walls:inventory().filter(w=>w.mesh.parent.visible).map(w=>w.index),actors:[...scene.actors].filter(([,a])=>a.root.visible).map(([i])=>i),cover:[...scene.coverGroups].filter(([,g])=>g.visible).map(([i])=>i)});
    scene.wallDepthOpaque=false;draw();const before=visible(),knowledge=known();
-   scene.wallDepthOpaque=true;draw();check(visible()===before&&known()===knowledge,'Depth audition changed disclosure');
+   scene.wallDepthOpaque=true;scene.applySite(site);scene.setMode('iso');draw();check(visible()===before&&known()===knowledge,'Depth audition changed disclosure');
+   check(scene.root.userData.fieldworkW5OpaqueFacadeMaterials>0,'No facade materials converted');
+   let opaqueDetails=0,glass=0;
+   scene.root.traverse(n=>{if(!n.isMesh||Array.isArray(n.material))return;
+    if(n.userData.fogFacade&&n.userData.fieldworkTransparencyRole==='opaque'){check(!n.material.transparent&&n.material.depthWrite&&n.renderOrder===0,'Facade depth mismatch');opaqueDetails++;}
+    if(n.userData.fieldworkTransparencyRole==='facade-existing-translucent'){check(n.material.transparent,'Glass/overlay incorrectly opaque');glass++;}
+   });
+   check(opaqueDetails>0,'No opaque facade pieces');
    const ext=inventory().find(w=>w.exterior&&spatialSurfaceKnown(state,'wall',w.index));check(ext,'No exterior wall');
    const {a,b}=ext.segment,mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2},dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);
    scene.view.focus=mid;scene.view.zoom=2;
@@ -73,7 +80,7 @@ try{
    check(inventory().every(w=>w.mesh.parent.visible===spatialSurfaceKnown(next,'wall',w.index)),'Second mission disclosed unknown walls');
    const b2=maskBounds(other);check(scene.fogCanvas.width>0&&scene.smoothFog.position.x===(b2.minX+b2.maxX)/2,'Second site projection wrong');
    window.w5Scene=scene;
-   return {pixels,faded,restored,secondMission:true,disclosureParity:true,uploads:scene.fogTextureUpdateRequests};
+   return {pixels,faded,restored,secondMission:true,disclosureParity:true,opaqueDetails,glass,uploads:scene.fogTextureUpdateRequests};
   },{width,height});
   await page.screenshot({path:out+'/'+name+'.png'});
   if(errors.length)throw Error(errors.join(' | '));results.push({name,...result});await page.close();

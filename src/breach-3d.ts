@@ -1402,6 +1402,7 @@ export class TacticalScene3D{
       wallAudition:scene.wallAudition,
       wallStructureCompiled:scene.wallStructureCompiled,
       wallStructureUnified:scene.wallStructureUnified,
+      wallDepthOpaque:scene.wallDepthOpaque,
       sitePatinaTextures:scene.sitePatinaTextures,
       sitePatinaMaterials:scene.sitePatinaMaterials,
       wallMaterials:scene.wallMaterials,
@@ -2322,7 +2323,7 @@ export class TacticalScene3D{
             child.userData.directorCutMat=clone;
           }
           const local=child.userData.directorCutMat as THREE.MeshStandardMaterial;
-          const needsTransparency=leafCut||facade;
+          const needsTransparency=leafCut||facade&&!this.wallDepthOpaque;
           if(local.transparent!==needsTransparency||
              local.depthWrite===leafCut){
             local.transparent=needsTransparency;
@@ -2330,7 +2331,7 @@ export class TacticalScene3D{
             local.needsUpdate=true;
           }
           local.opacity=leafCut?.12:1;
-          child.renderOrder=leafCut?1001:facade?1002:0;
+          child.renderOrder=leafCut?1001:facade&&!this.wallDepthOpaque?1002:0;
         });
       }
       const reachable=selectedActor&&selectedActor.health>0&&
