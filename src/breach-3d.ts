@@ -139,6 +139,7 @@ import {hostilePhysicalityAt} from './breach-hostile-physicality.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
 import {TransientLightPreview} from './rendering/breach-transient-light-preview.ts';
+import {createMuzzleFlashGeometry,muzzleFlashAspect} from './rendering/breach-muzzle-flash-art.ts';
 import {DustPuffBatch,puffCount,samplePuff,type PuffSample} from './rendering/breach-dust-puffs.ts';
 import type {PuffKind} from './breach-atmosphere-evidence.ts';
 import {makeStainMarkBatch,makeBloodDropletBatch,BLOOD_DROPLET_CAPACITY} from './rendering/breach-blood-preview.ts';
@@ -1866,8 +1867,8 @@ export class TacticalScene3D{
     const {root,weapon,pack}=physical;
     if(this.graphicLookEnabled)
      weapon.userData.fieldworkWeaponPresentation=true;
-    const flash=new THREE.Mesh(new THREE.OctahedronGeometry(3.5),
-      new THREE.MeshBasicMaterial({color:0xffd59e,transparent:true,
+    const flash=new THREE.Mesh(createMuzzleFlashGeometry(),
+      new THREE.MeshBasicMaterial({color:0xffffff,vertexColors:true,transparent:true,
         opacity:.94,depthWrite:false}));
     // Flash belongs to the firearm, not an independent actor-root guess.
     flash.position.set(19.5,0,0);flash.visible=false;weapon.add(flash);
@@ -2540,12 +2541,15 @@ export class TacticalScene3D{
       if(this.transientLights&&!personalDisclosure&&visible&&object.flash.visible&&firing&&
         (omniscient||this.presentationSight.query(s,'effect','muzzle-light:'+firing.id,firing.start)))
         this.transientLights.offer('muzzle',firing.id,firing.start.x,firing.muzzleHeight??15,
-          firing.start.y,firing.age,Math.min(1,flashCue.scale));
+          firing.start.y,firing.age,flashCue.lightStrength);
       const gunTip=actor.weaponConfiguration?
        resolveWeaponAssembly(actor.weaponConfiguration):null;
       object.flash.position.x=gunTip?.muzzleX??19.5;
       object.flash.position.y=gunTip?.muzzleY??0;
-      if(flashCue.active)object.flash.scale.setScalar(flashCue.scale);
+      if(flashCue.active){
+        const aspect=muzzleFlashAspect(flashWeapon,drawnPistol,flashAttachment);
+        object.flash.scale.set(flashCue.scale*aspect.x,flashCue.scale*aspect.y,flashCue.scale*aspect.z);
+      }
       // A paused OPEN requested beside the REAL doorway should preview
       // contact even if an unrelated, already-positioned MOVE precedes it.
       // Reach is checked against the live feet, not the future waypoint.
