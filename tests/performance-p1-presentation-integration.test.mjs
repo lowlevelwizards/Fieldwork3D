@@ -52,6 +52,10 @@ test('P1.2 scene keeps personal replay bypass and full source fallback',()=>{
  assert.match(s,/presentationSight\.query\(s,'decor',i,p\)/);
  assert.match(s,/presentationSight\.query\(s,'opening',i,p\)/);
  assert.match(s,/s,'door',door\.id,doorCenter\(door\)/);
- assert.match(s,/s,'impact',markIndex,mark\.p/);
+ // Surface marks may move with their owner; memoize the actual world point
+ // under the stable evidence id, not the mutable array offset.
+ assert.match(s,/const markPoint=attached\?\{x:attached\.x,y:attached\.z\}:mark\.p/);
+ assert.match(s,/s,'impact',mark\.id,markPoint/);
+ assert.match(s,/if\(replayDisclosurePolicy\?\.mode==='operator'\)continue/);
  assert.match(s,/presentationSightPolicy=presentationSightPolicy\(/);
 });

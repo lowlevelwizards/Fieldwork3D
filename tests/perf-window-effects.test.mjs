@@ -31,7 +31,8 @@ test('unobstructed high shot crosses physical low window sill',()=>{
 test('persistent gunfire effects have independent bounded budgets',()=>{
  assert.equal(CASING_LIMIT,96);
  assert.equal(IMPACT_MARK_LIMIT,64);
- assert.equal(BLOOD_MARK_LIMIT,24);
+ // V13 explicitly raises the blood budget; total impact capacity is unchanged.
+ assert.equal(BLOOD_MARK_LIMIT,32);
  assert.ok(BLOOD_MARK_LIMIT<IMPACT_MARK_LIMIT);
  const casing={id:7,at:0,weapon:'carbine',side:'blue',
    x:100,z:100,y:22,heading:0};
