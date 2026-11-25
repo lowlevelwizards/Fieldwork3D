@@ -50,3 +50,6 @@ Finish W0–W7 as one coherent visual and resource pipeline, with recognizable r
 
 ## Decisions pending evidence
 Which common atlas/helper extraction produces net benefit; whether door marks justify integration; which historical references to retain vs quarantine; where color/wear adjustments are needed; whether cumulative target can be demonstrated exactly. W8 starts with audit and capture, not predetermined shader rewrite. No scope changes to gameplay.
+
+## W8.0 checkpoint
+W7 public Pages confirmed successful (45698679427). Historical pre-W0 renderer exposes the same structural family tags, site construction and TacticalScene3D update API; its structural local decals are identified by ancestry rather than tag alone. Add isolated cross-version baseline workflow with pinned pre-W0 and W7 worktrees, canonical W7-generated Site JSON passed unchanged to each renderer, exhaustive actual main/shadow family census and strict exact-W7 disclosure checks, 23/97 historical anchors at both viewports, eight representative desktop sites, tactical/close/night/far captures. Historical comparability must be explicitly reported, not inferred from seed alone. No production visual or rendering changes in this checkpoint. Static measurements are not live p95 acceptance; W8.5 remains separate. Await actual evidence before selecting art changes.

@@ -1,0 +1,52 @@
+name: W8 architectural baseline and cumulative acceptance
+on:
+  pull_request:
+    paths:
+      - 'scripts/verification/w8-architectural-baseline.mjs'
+      - 'docs/w8-architectural-finalization-scope.md'
+      - '.github/workflows/w8-architectural-baseline.yml'
+      - 'src/rendering/breach-site-scene-builder.ts'
+      - 'src/rendering/wall-surface-atlas.ts'
+      - 'src/rendering/floor-surface-atlas.ts'
+      - 'src/rendering/fixture-wear-projection.ts'
+      - 'src/rendering/condition-materials.ts'
+      - 'src/worldgen/wall-surface-recipe.ts'
+      - 'src/worldgen/condition-visual.ts'
+      - 'src/worldgen/floor-wear-plan.ts'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: w8-baseline-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  baseline:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/w8-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Pin exact pre-W0 and W7 worktrees
+        run: |
+          git fetch --no-tags --depth=1 origin 6644f06ba4fc4c74a8ff653b873714c1898d9249 8d3f36830a01d2932ff96c8f063e9072a82b4d37
+          git worktree add --detach "$RUNNER_TEMP/w8-pre" 6644f06ba4fc4c74a8ff653b873714c1898d9249
+          git worktree add --detach "$RUNNER_TEMP/w8-w7" 8d3f36830a01d2932ff96c8f063e9072a82b4d37
+          ln -s "$PWD/node_modules" "$RUNNER_TEMP/w8-pre/node_modules"
+          ln -s "$PWD/node_modules" "$RUNNER_TEMP/w8-w7/node_modules"
+          echo "W8_REFERENCE_ROOT=$RUNNER_TEMP/w8-pre" >> "$GITHUB_ENV"
+          echo "W8_W7_ROOT=$RUNNER_TEMP/w8-w7" >> "$GITHUB_ENV"
+      - name: Actual same-site cross-version draw census and visual captures
+        run: node scripts/verification/w8-architectural-baseline.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: w8-architectural-baseline
+          path: artifacts/w8-baseline/
+          retention-days: 14
