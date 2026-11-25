@@ -40,6 +40,7 @@ jobs:
             tests/vfx-v10-preview-config.test.mjs \
             tests/w3-wall-surface-atlas.test.mjs \
             tests/w4-wall-structural-packet.test.mjs \
+            tests/w5-fog-depth-disclosure.test.mjs \
             tests/vfx-v12-surface-ownership.test.mjs \
             tests/vfx-v13-blood-evidence.test.mjs \
             tests/vfx-v15-atmosphere.test.mjs \

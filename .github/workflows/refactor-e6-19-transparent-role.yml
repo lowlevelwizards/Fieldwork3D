@@ -7,6 +7,11 @@ on:
       - 'src/rendering/breach-site-scene-builder.ts'
       - 'src/rendering/breach-site-openings-builder.ts'
       - 'src/breach-3d.ts'
+      - 'src/breach-fog-cache.ts'
+      - 'src/breach-fog-mask.ts'
+      - 'src/breach-2d-visibility-renderer.ts'
+      - 'tests/w5-fog-depth-disclosure.test.mjs'
+      - 'scripts/verification/w5-fog-depth-browser.mjs'
       - 'src/rendering/breach-wall-presentation.ts'
       - 'src/worldgen/wall-surface-recipe.ts'
       - 'src/rendering/wall-surface-atlas.ts'
@@ -65,9 +70,16 @@ jobs:
       - name: W4 structural ownership and geometry parity
         if: ${{ startsWith(github.head_ref, 'refactor/w4-') }}
         run: node --experimental-strip-types --test tests/w4-wall-structural-packet.test.mjs tests/w3-wall-surface-atlas.test.mjs tests/w1-wall-presentation.test.mjs tests/facade-geometry-polish-20261112.test.mjs tests/fog-exterior-unseen-apertures-regression.test.mjs tests/replay-r7-cutaway.test.mjs
+      - name: W5 critical fog ownership, mask and depth contracts
+        if: ${{ startsWith(github.head_ref, 'refactor/w5-') }}
+        run: node --experimental-strip-types --test tests/w5-fog-depth-disclosure.test.mjs tests/breach-p7-fog-layer-performance.test.mjs tests/fog-second-generated-quickplay-20261123.test.mjs tests/fog-exterior-unseen-apertures-regression.test.mjs tests/fog-procedural-site-bounds-regression.test.mjs tests/w1-wall-presentation.test.mjs tests/breach-roadmap2-stage3-integration.test.mjs
       - name: Production typecheck and build
         run: npm run build
+      - name: W5 critical real canvas and WebGL disclosure
+        if: ${{ startsWith(github.head_ref, 'refactor/w5-') }}
+        run: node scripts/verification/w5-fog-depth-browser.mjs
       - name: Two seed real browser transparent draw roles and fog/briefing parity
+        if: ${{ !startsWith(github.head_ref, 'refactor/w5-') }}
         env:
           FIELDWORK_CI_CHROME: '1'
         run: node scripts/verification/e6-19-transparent-role-browser.mjs
@@ -192,5 +204,6 @@ jobs:
             artifacts/w2-wall-audition/
             artifacts/w2-live/
             artifacts/w4-live/
+            artifacts/w5-fog/
           if-no-files-found: ignore
           retention-days: 14

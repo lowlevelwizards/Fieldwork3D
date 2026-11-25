@@ -66,13 +66,19 @@ test('far sight is graded inside actual LOS rather than fully erased',()=>{
   }};
  try{
   paintFogVisibility(ctx,s);
-  assert.equal(gradients.length,team(s).filter(a=>a.health>0).length);
-  assert.equal(fills.length,gradients.length*2,
-   'each real directional cone has one tiny foot-space visual relief');
-  assert.ok(fills.every(f=>f.mode==='destination-out'));
-  assert.equal(fills.filter(f=>gradients.includes(f.style)).length,gradients.length);
-  assert.equal(fills.filter(f=>f.style==='#fff').length,gradients.length);
-  for(const gradient of gradients){
+  const living=team(s).filter(a=>a.health>0).length;
+  assert.equal(gradients.length,living*2);
+  assert.equal(fills.length,gradients.length,
+   'each real directional cone has one feathered foot-space relief');
+  assert.ok(fills.every(f=>f.mode==='destination-out'&&gradients.includes(f.style)));
+  const near=gradients.filter(g=>g.radii[5]===7);
+  assert.equal(near.length,living);
+  for(const gradient of near){
+   assert.equal(gradient.stops[0].color,'rgba(255,255,255,1)');
+   assert.equal(gradient.stops.at(-1).color,'rgba(255,255,255,0)');
+   assert.equal(gradient.radii[2],2);
+  }
+  for(const gradient of gradients.filter(g=>g.radii[5]!==7)){
    assert.equal(gradient.stops[0].color,'rgba(255,255,255,1)');
    assert.equal(gradient.stops.at(-1).color,'rgba(255,255,255,.08)');
    assert.ok(gradient.radii[5]<=600,

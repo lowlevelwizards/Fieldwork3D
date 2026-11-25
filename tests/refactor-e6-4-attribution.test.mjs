@@ -106,6 +106,6 @@ test('E6.4 does not throttle visible rigs, introduce fog disclosure, or change c
  assert.match(scene,/poseOperator\(object\.physical,\{/);
  assert.match(scene,/paintFogMemory\(this\.fogMemoryContext,s,this\.fogDiagnostic\)/);
  assert.match(scene,/paintFogVisibility\(this\.fogContext,s\)/);
- assert.match(scene,/fogSessionFingerprint\(s\)/);
- assert.match(scene,/this\.fogAt>=\(this\.quality\.mode===/);
+ assert.match(scene,/fogRefresh\.poll\(s,dt,/);
+ assert.match(scene,/this\.fogRefresh\.poll\(s,dt,this\.quality\.mode===/);
 });

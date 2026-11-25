@@ -87,7 +87,8 @@ test('E6.1 contact protections and E6.3 fog render responsibilities remain intac
  assert.match(scene,/object\.root\.visible=visible;/);
  assert.match(scene,/paintFogMemory\(this\.fogMemoryContext,s,this\.fogDiagnostic\)/);
  assert.match(scene,/paintFogVisibility\(this\.fogContext,s\)/);
- assert.match(scene,/sessionChanged\|\|fogSignature!==this\.lastFogSignature/);
+ assert.match(scene,/this\.fogRefresh\.poll\(s,dt,/);
+ assert.match(fogCode,/signature!==this\.signature/);
  assert.match(scene,/this\.fogTexture\.needsUpdate=true;/);
  assert.match(scene,/this\.fogTextureUpdateRequests\+\+;/);
  assert.match(scene,/fogTextureBytesPerRequest:this\.fogCanvas\.width\*this\.fogCanvas\.height\*4/);

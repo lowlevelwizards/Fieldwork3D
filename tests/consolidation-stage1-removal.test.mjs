@@ -56,7 +56,7 @@ test('A1: only 3D fog rollback is retired; 2D shared painter remains functional'
  assert.ok(painter.includes('export function paintFogMask('));
  assert.ok(twoD.includes('paintFogMask('));
  assert.ok(threeD.includes('fogMemoryFingerprint('));
- assert.ok(threeD.includes('fogSessionFingerprint('));
+ assert.ok(threeD.includes('fogRefresh.poll('));
 });
 
 test('A1: supported QA and compatibility toggles remain intentionally intact',()=>{

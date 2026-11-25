@@ -4,7 +4,7 @@
  */
 import type {Session} from './breach-game.ts';
 import type {ViewMode} from './breach-3d.ts';
-import {fogSessionFingerprint} from './breach-fog-cache.ts';
+import {FogRefreshGate} from './breach-fog-cache.ts';
 import {paintFogMask,maskBounds,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
 import {paintReplayPersonalGround} from './breach-replay-ground-overlay.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
@@ -25,10 +25,8 @@ if(!fogContext)throw Error('Fog canvas unavailable');
 const replayGroundCanvas=document.createElement('canvas');
 const replayGroundContext=replayGroundCanvas.getContext('2d');
 if(!replayGroundContext)throw Error('Replay ground canvas unavailable');
-let fogStamp=-1;
-let fogSession:Session|null=null;
-let fogSignature='';
-let fogMode='';let fogSeenRevision=-1;
+const fogRefresh=new FogRefreshGate();
+let fogTime=-1;
 function renderReplayPersonalGround():void{
   const state=getState(),replaying=isReplaying(),viewMode=getViewMode();
   if(!replaying||!replayKnowledge.groundLensOn||viewMode!=='plan2d'||
@@ -58,24 +56,16 @@ function fog(){
   if(replaying&&replayKnowledge.omniscient){
     // Returning from unrestricted playback to squad sight must rebuild the
     // mask even when the recorded timestamp has not changed.
-    fogStamp=-1;fogSignature='';
+    fogRefresh.invalidate();fogTime=-1;
     return;
   }
-  const nextSignature=fogSessionFingerprint(state);
-  // Preserve the existing ~18 Hz active-play repaint budget. A paused
-  // mission can change aim or open a door at the SAME simulation timestamp;
-  // only that stationary-time mutation should bypass the cadence. Mode,
-  // discovery and session swaps must always invalidate immediately.
-  const mustRedraw=fogStamp<0||fogSession!==state||
-    fogMode!==state.intel.mode||
-    fogSeenRevision!==state.seenGroundRevision||
-    state.seconds<fogStamp||state.seconds-fogStamp>.055||
-    (state.seconds===fogStamp&&fogSignature!==nextSignature);
-  if(mustRedraw){
-    fogStamp=state.seconds;fogSession=state;fogSignature=nextSignature;
-    fogMode=state.intel.mode;fogSeenRevision=state.seenGroundRevision;
-    paintFogMask(fogContext!,state,debugPalette?'palette':'normal');
-  }
+  const dt=fogTime<0?0:Math.max(0,state.seconds-fogTime);
+  const stationary=state.seconds===fogTime;
+  fogTime=state.seconds;
+  // Paused aim changes at the same simulation timestamp must still be
+  // noticed. Only changed signatures actually repaint the texture.
+  const decision=fogRefresh.poll(state,dt,.055,replaying,stationary);
+  if(decision.paint)paintFogMask(fogContext!,state,debugPalette?'palette':'normal');
   // Site-specific mask resolution and envelope must map back to the same
   // site-space coordinates as floors, doors and the 3D texture. Generated
   // maps are not restricted to the historical 640 x 740 practice bounds.
@@ -85,5 +75,5 @@ function fog(){
 }
 
  return {renderPersonalGround:renderReplayPersonalGround,renderFog:fog,
-   invalidate:()=>{fogStamp=-1;}};
+   invalidate:()=>{fogRefresh.invalidate();fogTime=-1;}};
 }

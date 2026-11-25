@@ -9,13 +9,14 @@ test('143D: sight mask still obeys solid wall occlusion',()=>{
   assert.ok(center.length>0);
   assert.ok(center.every(p=>p.x<=131));
 });
-test('143D: fog uses black masking and temporal updates in both views',()=>{
+test('143D: fog uses opaque concealment and temporal updates in both views',()=>{
   const root=new URL('../src/',import.meta.url);
   const mask=readFileSync(new URL('breach-fog-mask.ts',root),'utf8');
-  const plan=readFileSync(new URL('breach-main.ts',root),'utf8');
+  const plan=readFileSync(new URL('breach-2d-visibility-renderer.ts',root),'utf8');
   const scene=readFileSync(new URL('breach-3d.ts',root),'utf8');
-  assert.match(mask,/fillStyle='#000'/);
-  assert.match(mask,/filter='blur\(1.5px\)'/);
-  assert.match(plan,/fogStamp>\.055/);
-  assert.match(scene,/fogAt>=\.055/);
+  assert.match(mask,/UNKNOWN_FOG_COLOR='#122022'/);
+  assert.match(mask,/globalCompositeOperation='destination-out'/);
+  assert.match(mask,/ctx\.filter='none'/);
+  assert.match(plan,/fogRefresh\.poll\(state,dt,\.055/);
+  assert.match(scene,/fogRefresh\.poll\(s,dt,this\.quality\.mode==='quality'\?\.055:\.10/);
 });

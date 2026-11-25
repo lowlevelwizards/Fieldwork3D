@@ -131,6 +131,6 @@ test('C3 cache identity is representation-only, with no new replay LOS',()=>{
  assert.match(knowledge,/this\.groundCacheEvidence=null/);
  assert.match(fog,/paintReplayPersonalGround\(replayGroundContext!,state\.site,observed\)/);
  assert.doesNotMatch(fog,/observerPointVisible|inSight\(|stepSession\(/);
- assert.match(read('breach-3d.ts'),/fogSessionFingerprint\(s\)/);
- assert.match(fog,/fogSessionFingerprint\(state\)/);
+ assert.match(read('breach-3d.ts'),/fogRefresh\.poll\(s,dt,/);
+ assert.match(fog,/fogRefresh\.poll\(state,dt,/);
 });

@@ -93,6 +93,7 @@ export type SiteSceneBuildPort={
  wallAudition?:WallAudition;
  wallStructureCompiled?:boolean;
  wallStructureUnified?:boolean;
+ wallDepthOpaque?:boolean;
  sitePatinaTextures:THREE.DataTexture[];
  sitePatinaMaterials:THREE.MeshBasicMaterial[];
  wallMaterials:Set<THREE.Material>;
@@ -191,6 +192,23 @@ export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
       host.root.userData.fieldworkE621Pilot={source,compiled,
         avoided:source-compiled,arches,interiorWindows,
         interiorFrames,rigidLeaves};
+    }
+    // W5: retain the proven E6.20/21 rigid assembly compiler. After it
+    // finishes, restore opaque facade materials to the ordinary depth pass.
+    // Only site-owned promoted clones qualify, never glass or wear overlays.
+    if(host.wallDepthOpaque){
+      const converted=new Set<THREE.Material>();
+      host.root.traverse(node=>{
+        if(!(node instanceof THREE.Mesh)||Array.isArray(node.material)||
+          node.userData.fieldworkTransparencyRole!=='known-exterior-detail')return;
+        const m=node.material;
+        if(m.opacity!==1||!m.depthTest||!m.depthWrite||m.alphaTest!==0||m.alphaHash||m.blending!==THREE.NormalBlending)return;
+        if(!converted.has(m)){m.transparent=false;m.needsUpdate=true;converted.add(m);}
+        node.userData.fogFacade=true;
+        node.userData.fieldworkTransparencyRole='opaque';
+        node.renderOrder=0;
+      });
+      host.root.userData.fieldworkW5OpaqueFacadeMaterials=converted.size;
     }
     // Bake immobile exterior/ground fixtures per spatial cell. Keep owner-
     // scoped doors, cover and fog groups independent; never touch descendants.
