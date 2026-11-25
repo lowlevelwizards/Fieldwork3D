@@ -64,8 +64,7 @@ export class DustPuffBatch{
     void main(){
      vec2 p=vPuff;
      vec2 offset=vAlphaOffset.yz;
-     // Broad uneven cloud lobes, opaque-looking body and soft edge.
-     // Small analytic breakup avoids a costly procedural noise loop.
+     // Two broad round lobes and soft edge, no procedural grain.
      vec2 axis=normalize(offset+vec2(.0001));
      vec2 across=vec2(-axis.y,axis.x);
      vec2 q=vec2(dot(p,axis),dot(p,across));

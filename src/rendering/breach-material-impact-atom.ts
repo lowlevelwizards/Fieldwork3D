@@ -18,7 +18,7 @@ export function fixtureImpactAccent(fixture?:string):'paper'|'fabric'|'cardboard
  if(!fixture)return;
  if(/desk|filing-cabinet|bookcase|bookshelf/.test(fixture))return 'paper';
  if(/sofa|armchair|bed|mattress|upholster/.test(fixture))return 'fabric';
- if(/cardboard|carton/.test(fixture))return 'cardboard';
+ if(/cardboard|carton|^box$|product-box/.test(fixture))return 'cardboard';
 }
 export function sampleMaterialImpact(surface:MaterialImpactSurface,id:number,index:number,age:number,
  x:number,y:number,z:number,out:ImpactParticleSample,fixture?:string):boolean{

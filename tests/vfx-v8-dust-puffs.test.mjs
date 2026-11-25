@@ -4,7 +4,7 @@ import {DustPuffBatch,PUFF_LIMIT,puffCount,samplePuff} from '../src/rendering/br
 import {PUFF_LIFE} from '../src/breach-atmosphere-evidence.ts';
 const scratch=()=>({x:0,y:0,z:0,size:0,alpha:0,color:0,phase:0});
 test('V8 deterministic expanding dust and flash puffs expire from recorded age',()=>{
- for(const kind of ['dust','wood','stone','flash','muzzle']){
+ for(const kind of ['dust','wood','stone','flash','muzzle','collapse']){
   const a=scratch(),b=scratch();
   assert.ok(samplePuff(kind,7,0,.1,12,3,17,a));
   assert.ok(samplePuff(kind,7,0,.2,12,3,17,b));

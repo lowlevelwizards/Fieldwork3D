@@ -30,7 +30,7 @@ const targetTemplate=enemies(legacy)[0];
 if(!targetTemplate)throw Error('Missing lab actor template');
 const arena=buildTrainingSite({...DEFAULT_TRAINING_CONFIG,squadSize:1});
 arena.cover.push(
- {id:'lab-wood',fixture:'crate',x:310,y:665,w:28,h:26,low:true,topHeight:20},
+ {id:'lab-wood',fixture:'desk',x:310,y:665,w:28,h:26,low:true,topHeight:20},
  {id:'lab-metal',fixture:'support-column',x:390,y:665,w:16,h:16,low:false,topHeight:40});
 // An explicit glazed leaf in the authored lab fixture set.
 if(arena.doors.length)arena.doors[0].style='glazed';
@@ -174,7 +174,7 @@ function choose(kind:Sample){
   if(box?.destroyed){build('arena');box=session.coverState.find(c=>c.id==='lab-wood');}
   if(!box)return;
   damageCover(box,10,session.seconds);retainCollapsePuff(session,box);session.objectRevision++;
-  focus(box);label('Wood fixture · collapsed, splinter debris');draw();return;
+  focus(box);label('Wood fixture · collapsed, larger debris and dust');draw();return;
  }
  if(kind==='glass'){
   const pane=session.windows.find(w=>!w.shattered);
@@ -210,7 +210,7 @@ function choose(kind:Sample){
   const ref=coverAttachment(index,box,{x:p.x,y:p.y+20},{x:p.x,y:p.y-20},.5,height);
   const shot=emit(kind,p,height);shot.impactFixture=box.fixture;
   retainImpactMark(session,{id:session.nextEffectId++,p,age:0,surface:kind,height,shotId:shot.id,surfaceRef:ref});
-  focus({x:box.x,y:box.y});label(kind==='wood'?'Wood · splinters and dust':'Metal · sparks');
+  focus({x:box.x,y:box.y});label(kind==='wood'?'Wood desk · splinters, paper and dust':'Metal · sparks');
  }else if(kind==='flash'){
   const p={x:245,y:655};session.flashBursts.push({id:session.nextEffectId++,p,age:0});
   focus(p);label('Flashbang · illumination and residual dust');
