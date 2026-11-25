@@ -15,6 +15,7 @@ import {advanceTransientSimulationEffects} from './breach-simulation-phases.ts';
 type Sample='miss'|'hit'|'down'|'pool'|'stone'|'wood'|'metal'|'dust'|'glass'|'flash'|'muzzle'|'vegetation';
 const stage=new TacticalScene3D(),legacy=newSession();
 const targetTemplate=enemies(legacy)[0];
+if(!targetTemplate)throw Error('Missing lab actor template');
 const arena=buildTrainingSite({...DEFAULT_TRAINING_CONFIG,squadSize:1});
 arena.cover.push(
  {id:'lab-wood',fixture:'crate',x:310,y:665,w:28,h:26,low:true,topHeight:20},
@@ -58,6 +59,10 @@ function choose(kind:Sample){
  active=kind;paused=false;document.getElementById('pause')!.textContent='PAUSE';
  const next=kind==='glass'||kind==='vegetation'?'exterior':'arena';
  if(next!==mode)build(next);
+ // Keep each effect sample repeatable without preserving stale injury state.
+ if(kind==='hit'||kind==='down'||kind==='pool'){
+  if(target.health<=0)build('arena');
+ }
  if(kind==='vegetation'){
   const zone=site.exteriorZones?.find(z=>z.kind==='garden'||z.kind==='yard');
   if(zone)focus({x:zone.x+zone.w/2,y:zone.y+zone.h/2});
@@ -106,7 +111,7 @@ function tick(dt:number){
 }
 const action=(id:string,fn:()=>void)=>document.getElementById(id)?.addEventListener('click',fn);
 for(const kind of ['miss','hit','down','pool','stone','wood','metal','dust','glass','flash','muzzle','vegetation'] as const)action(kind,()=>choose(kind));
-action('reset',reset);action('repeat',()=>choose(active));action('stabilize',()=>{
+action('reset',()=>{paused=false;document.getElementById('pause')!.textContent='PAUSE';reset();});action('repeat',()=>choose(active));action('stabilize',()=>{
  for(const wound of target.medical.wounds)stabilizeWound(target.medical,wound.id);
  label('Stabilized · existing pools remain');draw();
 });
@@ -118,7 +123,7 @@ action('closeZoom',()=>{stage.view.zoom=3;stage.updateCamera(0);});
 document.getElementById('speed')?.addEventListener('change',e=>{speed=Number((e.target as HTMLSelectElement).value);});
 const pointers=new Map<number,Pt>();let lastMid:Pt|null=null,lastGap=0;
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
-const canvas=stage.canvas;canvas.style.touchAction='none';
+const canvas=stage.canvas;canvas.style.touchAction='none';canvas.style.pointerEvents='auto';
 canvas.addEventListener('pointerdown',e=>{
  e.preventDefault();canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
  if(pointers.size===2){const [a,b]=[...pointers.values()];lastMid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};lastGap=dist(a,b);}

@@ -14,6 +14,9 @@ try{
  for(const viewport of [{width:390,height:844},{width:1440,height:900}]){
   const page=await browser.newPage({viewport,deviceScaleFactor:1}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
+  // Validate the actual delivered HTML menu entry before opening the lab.
+  const markup=await (await page.request.get(origin+'/index.html')).text();
+  assert.match(markup,/<a[^>]+href="\.\/breach-visual-lab\.html"[^>]*>EFFECTS LAB<\/a>/);
   await page.goto(origin+'/breach-visual-lab.html');await page.waitForSelector('body[data-ready=true]');
   await page.locator('#speed').selectOption('.25');
   for(const id of ['hit','pool','stabilize','stone','wood','metal','dust','flash','muzzle','glass','vegetation','reset']){
