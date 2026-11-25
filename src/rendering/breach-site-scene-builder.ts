@@ -22,6 +22,7 @@ import {buildingTheme,roomFloor,roomFixtureFinishes,roomAccessoryColor} from '..
 import {effectiveCondition} from '../worldgen/condition-visual.ts';
 import {conditionFloorPixels} from '../worldgen/condition-visual.ts';
 import {conditionWallPixels,wallPatinaDimensions} from '../worldgen/condition-wall.ts';
+import {planWallTrimPackets,compileWallTrimGeometry,compileUnifiedWallGeometry,restrictWallShadowToBody} from './wall-structural-packet.ts';
 import {planWallCapJoins} from './wall-cap-joins.ts';
 import {ageMaterialColor} from './condition-materials.ts';
 import {doubleSidedWallWear} from './wear-wall-geometry.ts';
@@ -90,6 +91,8 @@ export type SiteSceneBuildPort={
  patinaRoomSurfaces:Array<{room:Room;texture:THREE.DataTexture}>;
  patinaWallSurfaces:Array<{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;patterned?:boolean;atlasSlot?:WallAtlasSlot}>;
  wallAudition?:WallAudition;
+ wallStructureCompiled?:boolean;
+ wallStructureUnified?:boolean;
  sitePatinaTextures:THREE.DataTexture[];
  sitePatinaMaterials:THREE.MeshBasicMaterial[];
  wallMaterials:Set<THREE.Material>;
@@ -399,9 +402,12 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         node.renderOrder=1002;
       });
     };
-    const atlas=host.wallAudition?.atlas?buildWallAtlas(site,WALL_VISUAL_HEIGHT,finishCondition,host.wallAudition.effect,!!host.solid(theme.wall,.94,wallPixelSurface(site.archetype)).map):undefined;
+    const atlas=host.wallAudition?.atlas?buildWallAtlas(site,WALL_VISUAL_HEIGHT,finishCondition,host.wallAudition.effect,!!host.solid(theme.wall,.94,wallPixelSurface(site.archetype)).map,host.wallStructureUnified?{trim:theme.trim,cap:theme.cap}:undefined):undefined;
     if(atlas)host.sitePatinaTextures.push(...atlas.pages);
     const capJoins=planWallCapJoins(site.walls);
+    const unified=!!host.wallStructureUnified&&!!atlas;
+    const compiledTrim=(!!host.wallStructureCompiled||unified)&&!!atlas;
+    const trimPackets=compiledTrim?planWallTrimPackets(site.walls,WALL_VISUAL_HEIGHT,theme.trim,theme.cap,capJoins):[];
     const wallGroups:THREE.Group[]=[];
     for(const [index,wall] of site.walls.entries()){
       const group=new THREE.Group();host.root.add(group);
@@ -427,6 +433,15 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         individualWall.map=atlasSlot.texture;individualWall.color.setHex(0xffffff);individualWall.needsUpdate=true;
         host.patinaWallSurfaces.push({index,texture:atlasSlot.texture,atlasSlot});
         body.userData.fieldworkWallSurface='w3-atlas';
+        if(unified){
+          const packet=compileUnifiedWallGeometry(body.geometry,trimPackets[index],angle,WALL_VISUAL_HEIGHT,atlasSlot);
+          // Atlas body geometry is site-owned, not a shared cached box.
+          body.geometry.dispose();body.geometry=packet.geometry;
+          restrictWallShadowToBody(body,packet.shadowIndexCount,packet.bodySphere);
+          body.userData.fieldworkUnifiedWall=true;
+          body.userData.fieldworkShadowIndexCount=packet.shadowIndexCount;
+          body.userData.fieldworkTrimSourceCount=trimPackets[index].parts.length;
+        }
       }else if(host.wallAudition){
         // Map Lab allocates one bounded mask even on clean walls so the
         // condition slider can scrub without allocating or recompiling.
@@ -479,6 +494,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       if(!host.wallAudition)for(const mark of marksOn('wall',index))
         host.addSurfaceWear(body,mark,(mark.u-.5)*len,(mark.v-.5)*(WALL_VISUAL_HEIGHT-8),
           mark.face==='back'?-4.6:4.6,wallPixelSurface(site.archetype));
+      if(!compiledTrim){
       const individualFoot=skirting.clone();
        host.wallMaterials.add(individualFoot);
        const foot=host.box(group,x,2,z,len,4,12,individualFoot,false);
@@ -499,8 +515,23 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       cap.rotation.y=angle;
       cap.userData.fieldworkDrawFamily='structural-wall-cap';
       host.walls.push({mesh:cap,mid:{x,y:z},segment:wall,index,exterior});
+      }
     }
-    for(const joint of capJoins.junctions){
+    if(compiledTrim){
+      for(const packet of trimPackets){
+        if(unified&&atlas?.slots.has(packet.index))continue;
+        const geometry=compileWallTrimGeometry(packet);if(!geometry)continue;
+        const material=capMat.clone();material.map=null;material.color.setHex(0xffffff);material.vertexColors=true;
+        host.wallMaterials.add(material);
+        const mesh=new THREE.Mesh(geometry,material);mesh.position.set(packet.mid.x,0,packet.mid.y);
+        mesh.castShadow=false;mesh.receiveShadow=true;
+        mesh.userData.fieldworkDrawFamily='structural-wall-trim-packet';
+        mesh.userData.fieldworkTrimSourceCount=packet.parts.length;
+        wallGroups[packet.index].add(mesh);
+        const segment=site.walls[packet.index];
+        host.walls.push({mesh,mid:packet.mid,segment,index:packet.index,exterior:accessibleExteriorWall(site,segment)});
+      }
+    }else for(const joint of capJoins.junctions){
       const parent=wallGroups[joint.owner];
       if(!parent)continue;
       const jointMaterial=capMat.clone();host.wallMaterials.add(jointMaterial);

@@ -7,7 +7,7 @@ import {chromium} from 'playwright';
 const port=4407,base='http://127.0.0.1:'+port;
 const dir=process.env.FIELDWORK_WALL_OUTPUT||'artifacts/refactor-e6-19/live-scene';
 const wallMode=process.env.FIELDWORK_WALL_WEAR||'default';
-const wallQuery=wallMode==='default'?'':'&wallWear='+wallMode;
+const wallQuery=['compiled','unified','separate'].includes(wallMode)?'&wallStructure='+wallMode:wallMode==='default'?'':'&wallWear='+wallMode;
 mkdirSync(dir,{recursive:true});
 const server=spawn(process.execPath,[
  'node_modules/vite/bin/vite.js','--host','127.0.0.1',
@@ -194,10 +194,15 @@ try{
     const s=newSession(0,site.seed,'exterior-known','standard',undefined,site);
     const scene=new TacticalScene3D();scene.resize(viewport.width,viewport.height);scene.applySite(site);
     const candidate=Array.isArray(scene.wallOwners);
+    if(new URLSearchParams(location.search).get('wallStructure')==='compiled'){
+     const trim=scene.walls.filter(w=>w.mesh.userData.fieldworkDrawFamily==='structural-wall-trim-packet');
+     check(trim.length>0&&trim.every(w=>!w.mesh.castShadow),'Missing non-shadow compiled trim packets');
+    }
     if(new URLSearchParams(location.search).get('wallWear')===null){
      check(scene.wallAudition?.atlas===true&&scene.wallAudition.effect==='all','Default wall renderer not W3');
      check(scene.patinaWallSurfaces.length>0&&scene.patinaWallSurfaces.every(w=>w.atlasSlot),'Default walls lack shared atlas');
     }
+    if(new URLSearchParams(location.search).get('wallStructure')==='unified'||(scene.wallStructureUnified===true&&scene.wallAudition?.atlas))check(scene.walls.filter(w=>w.mesh.userData.fieldworkDrawFamily==='structural-wall-body').every(w=>w.mesh.userData.fieldworkUnifiedWall),'Missing unified structural bodies');
     const selected=team(s)[0].id;
     const draw=(session=s,id=selected,omniscient=false)=>scene.update(session,id,1,null,omniscient);
     const inventory=()=>scene.walls;

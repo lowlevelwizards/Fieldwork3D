@@ -70,8 +70,13 @@ test('round-lifetime render scratch and fixed-tick door history are bounded',()=
  const scene=source('src/breach-3d.ts');
  const loop=source('src/breach-runtime-loop.ts');
  const builder=source('src/rendering/breach-site-scene-builder.ts');
- assert.match(scene,/private readonly bloodBlockerScratch:Pt\[\]=\[\]/);
- assert.match(scene,/visibleBloodBlockers\.length=0/);
+ // V12/V13 use authoritative wall occlusion and a bounded persistent slot cache;
+ // the old per-frame actor-center blocker list was intentionally removed.
+ assert.match(scene,/private readonly impactMarkSlots=new ImpactMarkSlotCache\(IMPACT_MARK_LIMIT\)/);
+ assert.match(scene,/this\.impactMarkSlots\.reset\(\)/);
+ assert.match(scene,/if\(markCount>=IMPACT_MARK_LIMIT\)break/);
+ assert.match(scene,/groundBloodFootprintOccluded\(/);
+ assert.doesNotMatch(scene,/bloodBlockerScratch|visibleBloodBlockers/);
  assert.match(loop,/if\(!previousRenderDoors\)previousRenderDoors=\{\}/);
  assert.match(loop,/previousRenderActors=null;previousRenderDoors=null/);
  assert.match(builder,/consolidateStaticFixtureParts\(intact\)/);

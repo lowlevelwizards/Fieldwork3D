@@ -10,6 +10,8 @@ on:
       - 'src/rendering/breach-wall-presentation.ts'
       - 'src/worldgen/wall-surface-recipe.ts'
       - 'src/rendering/wall-surface-atlas.ts'
+      - 'src/rendering/wall-structural-packet.ts'
+      - 'tests/w4-wall-structural-packet.test.mjs'
       - 'tests/w3-wall-surface-atlas.test.mjs'
       - 'src/rendering/pixel-materials.ts'
       - 'src/map-lab-main.ts'
@@ -60,6 +62,9 @@ jobs:
         if: ${{ (startsWith(github.head_ref, 'refactor/w2-') || startsWith(github.head_ref, 'refactor/w3-')) }}
         run: |
           node --experimental-strip-types --test tests/w2-wall-surface-recipe.test.mjs tests/w3-wall-surface-atlas.test.mjs tests/w1-wall-presentation.test.mjs tests/texture5-07-hot-update.test.mjs tests/texture5-12-wall-sources.test.mjs tests/facade-geometry-polish-20261112.test.mjs tests/breach-fog-visibility.test.mjs tests/fog-exterior-unseen-apertures-regression.test.mjs tests/replay-r7-cutaway.test.mjs
+      - name: W4 structural ownership and geometry parity
+        if: ${{ startsWith(github.head_ref, 'refactor/w4-') }}
+        run: node --experimental-strip-types --test tests/w4-wall-structural-packet.test.mjs tests/w3-wall-surface-atlas.test.mjs tests/w1-wall-presentation.test.mjs tests/facade-geometry-polish-20261112.test.mjs tests/fog-exterior-unseen-apertures-regression.test.mjs tests/replay-r7-cutaway.test.mjs
       - name: Production typecheck and build
         run: npm run build
       - name: Two seed real browser transparent draw roles and fog/briefing parity
@@ -126,6 +131,57 @@ jobs:
             }
           }
           JS
+      - name: W4 same-site structural audition
+        if: ${{ startsWith(github.head_ref, 'refactor/w4-') }}
+        env:
+          FIELDWORK_CI_CHROME: '1'
+          FIELDWORK_W4_STRUCTURE: '1'
+        run: node scripts/verification/w2-wall-audition-browser.mjs
+      - name: W4 exact-base W3 vs compiled trim
+        if: ${{ startsWith(github.head_ref, 'refactor/w4-') }}
+        env:
+          FIELDWORK_CI_CHROME: '1'
+          FIELDWORK_W2_PROBE: '1'
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git worktree add --detach "$RUNNER_TEMP/w4-base" "$BASE_SHA"
+          ln -s "$PWD/node_modules" "$RUNNER_TEMP/w4-base/node_modules"
+          cp scripts/verification/e6-19-transparent-role-browser.mjs "$RUNNER_TEMP/w4-base/scripts/verification/"
+          OUT="$PWD/artifacts/w4-live"
+          mkdir -p "$OUT"
+          for desktop in 0 1; do
+            (cd "$RUNNER_TEMP/w4-base" && FIELDWORK_WALL_WEAR=separate FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/base-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs)
+            for mode in compiled unified; do
+              FIELDWORK_WALL_WEAR="$mode" FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/$mode-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs
+            done
+            # Counterbalance run order for the selected unified architecture.
+            FIELDWORK_WALL_WEAR=unified FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/unified-repeat-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs
+            (cd "$RUNNER_TEMP/w4-base" && FIELDWORK_WALL_WEAR=separate FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/base-repeat-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs)
+          done
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const read=(mode,d)=>JSON.parse(readFileSync('artifacts/w4-live/'+mode+'-'+d+'/summary.json','utf8'));
+          for(const d of [0,1]){
+            const base=read('base',d);
+            const repeatBase=read('base-repeat',d);
+            for(const mode of ['compiled','unified','unified-repeat']){
+            const test=read(mode,d),reference=mode==='unified-repeat'?repeatBase:base;
+            for(const key of ['initialKnowledge','initialVisible','secondVisible'])
+              if(reference.wallProbe[key]!==test.wallProbe[key])throw Error('W4 disclosure changed: '+key);
+            if(test.wallProbe.depthMismatches!==0)throw Error('W4 depth mismatch');
+            for(const [i,run] of test.runs.entries()){
+              if(run.drawCallsP95>=reference.runs[i].drawCallsP95)throw Error('W4 failed to reduce live draws');
+              if(run.renderSubmission.shadowDrawCallsP95!==reference.runs[i].renderSubmission.shadowDrawCallsP95)throw Error('W4 changed shadow draws');
+            }
+            }
+            for(const [i,run] of read('unified',d).runs.entries()){
+              const repeat=read('unified-repeat',d).runs[i];
+              const ratios=[run.sceneP95Ms/base.runs[i].sceneP95Ms,repeat.sceneP95Ms/repeatBase.runs[i].sceneP95Ms];
+              console.log('W4_REPEAT_TIMING '+JSON.stringify({desktop:d,seed:run.seed,ratios,repeatRegression:ratios.every(r=>r>1.05)}));
+            }
+          }
+          JS
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -135,5 +191,6 @@ jobs:
             artifacts/w0-wall/
             artifacts/w2-wall-audition/
             artifacts/w2-live/
+            artifacts/w4-live/
           if-no-files-found: ignore
           retention-days: 14

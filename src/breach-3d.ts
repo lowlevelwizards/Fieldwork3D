@@ -98,6 +98,7 @@ import {conditionFloorPixels} from './worldgen/condition-visual.ts';
 
 import {conditionWallPixels} from './worldgen/condition-wall.ts';
 import {packedWallSurfacePixels,resolveWallSurfaceMode,type WallAudition,type WallSurfaceRecipe} from './worldgen/wall-surface-recipe.ts';
+import {installWallShadowBounds,resolveWallStructureMode} from './rendering/wall-structural-packet.ts';
 import {writeAtlasSlot,type WallAtlasSlot} from './rendering/wall-surface-atlas.ts';
 import {type ObjectWear} from './worldgen/object-wear.ts';
 
@@ -869,6 +870,8 @@ export class TacticalScene3D{
   private patinaRoomSurfaces:{room:Room;texture:THREE.DataTexture}[]=[];
   private patinaWallSurfaces:{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;patterned?:boolean;atlasSlot?:WallAtlasSlot}[]=[];
   /** W3 is the production default; legacy and packed are comparison modes. */
+  wallStructureUnified=resolveWallStructureMode(typeof location==='undefined'?null:new URLSearchParams(location.search).get('wallStructure'))==='unified';
+  wallStructureCompiled=resolveWallStructureMode(typeof location==='undefined'?null:new URLSearchParams(location.search).get('wallStructure'))==='compiled';
   wallAudition:WallAudition|undefined=(()=>{
     const mode=typeof location==='undefined'?null:new URLSearchParams(location.search).get('wallWear');
     return resolveWallSurfaceMode(mode);
@@ -967,6 +970,8 @@ export class TacticalScene3D{
     this.renderer.shadowMap.enabled=true;
     this.renderer.shadowMap.autoUpdate=false;
     this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    // W4 uses original body bounds during shadow culling, not the larger trim packet.
+    installWallShadowBounds(this.renderer.shadowMap as unknown as Parameters<typeof installWallShadowBounds>[0],()=>this.wallStructureUnified?this.walls:[]);
     // E6.16 does not install hooks in normal gameplay.
     this.liveShadowSubmitProfiler=
       new URLSearchParams(location.search).get('coldBench')==='1'?
@@ -1393,6 +1398,8 @@ export class TacticalScene3D{
       patinaRoomSurfaces:scene.patinaRoomSurfaces,
       patinaWallSurfaces:scene.patinaWallSurfaces,
       wallAudition:scene.wallAudition,
+      wallStructureCompiled:scene.wallStructureCompiled,
+      wallStructureUnified:scene.wallStructureUnified,
       sitePatinaTextures:scene.sitePatinaTextures,
       sitePatinaMaterials:scene.sitePatinaMaterials,
       wallMaterials:scene.wallMaterials,
