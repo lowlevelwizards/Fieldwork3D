@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - run: node --experimental-strip-types --test tests/v18-exterior-role-program.test.mjs
+      - run: node --experimental-strip-types --test tests/v18-exterior-role-program.test.mjs tests/worldgen-28a-entrance-lane.test.mjs tests/worldgen-28b-parking-layout.test.mjs tests/worldgen-28c-service-yards.test.mjs tests/exterior-realism-stage1-20261108.test.mjs tests/exterior-amenities-service-20261108.test.mjs tests/exterior-landscape-service-f-20261108.test.mjs tests/outdoor-service-seating-20261108.test.mjs
       - run: node --experimental-strip-types scripts/audit-v18-exteriors.mjs 4
       - uses: actions/upload-artifact@v4
         with:

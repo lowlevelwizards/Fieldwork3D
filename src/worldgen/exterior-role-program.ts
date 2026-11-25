@@ -13,6 +13,8 @@ const tree=role('shade','tree-broadleaf','tree-scrub');
 const bin=role('small-refuse','trash-bin','recycling-bin');
 const sign=role('wayfinding','wayfinding-sign','parking-sign');
 const lights=role('street-infrastructure','street-lamp','hydrant');
+const hydrant=role('municipal-water','hydrant');
+const vending=role('customer-service','vending-machine');
 export function exteriorRoleRequests(kind:BuildingArchetype,zone:ExteriorZone):readonly ExteriorRoleRequest[]{
  const residential=['house','townhouse','apartment','motel'].includes(kind);
  const industrial=['garage','warehouse','utility'].includes(kind);
@@ -29,12 +31,12 @@ export function exteriorRoleRequests(kind:BuildingArchetype,zone:ExteriorZone):r
  if(front&&zone.kind==='parking'){
   const parking=role('parking-identification','parking-sign');
   return kind==='clinic'?[seat,sign,parking,role('edge-protection','bollard'),bin,lights]:
-    [parking,sign,seat,role('bike-parking','bike-rack'),role('edge-protection','bollard'),bin,lights];
+    [parking,sign,vending,seat,lights,hydrant,role('bike-parking','bike-rack'),role('edge-protection','bollard'),bin];
  }
  if(front&&zone.kind==='driveway')return [role('edge-protection','bollard'),sign,lights,bin];
  if(front&&['house','townhouse'].includes(kind))return [role('postal','mailbox'),tree,bin,role('porch-seating','patio-chair','picnic-table'),lights];
  if(front&&kind==='apartment')return [seat,tree,bin,lights];
- if(front)return [sign,seat,role('bike-parking','bike-rack'),bin,lights];
+ if(front)return [sign,seat,vending,lights,hydrant,role('bike-parking','bike-rack'),bin];
  if(zone.kind==='patio')return kind==='restaurant'?[role('outdoor-dining','picnic-table','patio-chair'),role('additional-seat','patio-chair'),bin]:[seat,bin,role('amenity','bike-rack','patio-chair')];
  if(zone.kind==='garden')return residential?[tree,role('outdoor-living','picnic-table','patio-chair'),role('yard-use','grill','shed'),bin]:[tree,seat,bin];
  if(zone.kind==='yard')return residential?[bin,tree,role('yard-storage','shed','storage-tote')]:[bin,seat];

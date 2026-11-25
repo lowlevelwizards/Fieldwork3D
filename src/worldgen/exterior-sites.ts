@@ -3,6 +3,7 @@
  */
 import {type Site,type ExteriorZone} from '../breach-site.ts';
 import {seeded} from './seeded-rng.ts';
+import {exteriorRoleRequests,exteriorRoleBudget} from './exterior-role-program.ts';
 import {type Obstacle} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {arrivalAccessLane,overlapsArrivalLane} from './property-access-lane.ts';
@@ -21,7 +22,6 @@ import {outdoorFixtureAllowed,frontageEdgeCandidates}
  from './outdoor-fixture-policy.ts';
 const overlaps=(a:Obstacle,b:Obstacle)=>Math.abs(a.x-b.x)<(a.w+b.w)/2+17&&Math.abs(a.y-b.y)<(a.h+b.h)/2+17;
 export function addExteriorProperty(site:Site,seed:number):Site{
- const rng=seeded(seed^0x15b8ad1);
  const minX=Math.min(...site.rooms.map(r=>r.x));
  const maxX=Math.max(...site.rooms.map(r=>r.x+r.w));
  const minY=Math.min(...site.rooms.map(r=>r.y));
@@ -105,66 +105,26 @@ export function addExteriorProperty(site:Site,seed:number):Site{
  const streetPlan=planPublicStreet({...site,exteriorZones:zones});
  const doorCenters=site.doors.map(d=>({
    x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2}));
- const available=industrial?
-  ['barrel','crate','tire-stack','pallet','bollard','utility-cabinet']:
-  residential?
-  ['tree-broadleaf','shrub-round','hedge','picnic-table','tree-scrub','mailbox','trash-bin']:
-  ['planter','shrub-tall','patio-chair','dumpster','bike-rack'];
- const byZone:Partial<Record<ExteriorZone['kind'],readonly string[]>>={
-   // Current vehicle models are intentionally retired from generated maps
-   // until their silhouettes, scale, and parking semantics are rebuilt.
-   // Parking areas read as genuinely empty bays, not random cover walls.
-   parking:['parking-sign','bollard','bike-rack','public-bench',
-      'planter','vending-machine','wayfinding-sign','street-lamp','hydrant'],
-   driveway:residential?['mailbox','trash-bin','shrub-round']:
-     ['bollard','parking-sign','planter','street-lamp'],
-   service:industrial?['utility-cabinet','dumpster','screened-dumpster',
-      'recycling-bin','storage-tote',
-      'bollard','crate','shipping-container','trash-bin','supply-cart']:
-     ['dumpster','screened-dumpster','recycling-bin','trash-bin',
-       'supply-cart','bike-rack','planter'],
-   patio:kind==='restaurant'?
-      ['patio-chair','picnic-table','public-bench','planter','trash-bin']:
-      ['planter','patio-chair','bike-rack','trash-bin','grill'],
-   garden:residential?['tree-broadleaf','shrub-round','shrub-tall',
-      'picnic-table','shed','grill']:['planter','shrub-tall','picnic-table'],
-   yard:residential?['tree-broadleaf','tree-scrub','shrub-round',
-      'shrub-tall','trash-bin','hydrant','street-lamp']:
-     ['planter','shrub-tall','bollard','trash-bin','wayfinding-sign',
-       'vending-machine','street-lamp','hydrant'],
- };
  const cover=site.cover.slice();
  const protectedPoints=[...site.spawn,...site.enemies,site.objective,site.extract,site.entrance];
  const worldBounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
  for(const zone of zones){
-  const count=zone.id.startsWith('court-')?0:
-    zone.kind==='garden'?3:
-    zone.kind==='parking'?3:
-    zone.kind==='yard'&&zone.id==='arrival-forecourt'&&!residential?3:2;
-  for(let i=0;i<count;i++){
-   // Props must belong to the authored land-use zone, not to a generic
-   // "outside" bucket. No legacy car family is eligible for new maps.
-   const choices=(byZone[zone.kind]??available).filter(item=>
-     !retiredShrub(item)&&outdoorFixtureAllowed(site,zone,item));
-   if(!choices.length)continue;
-   // First object establishes what this exterior space is *for*. Subsequent
-   // objects add character; no vehicle in a garden or dumpsters at the
-   // public-facing cafe seating area.
-   const anchor:Partial<Record<ExteriorZone['kind'],string>>={
-     parking:kind==='clinic'?'public-bench':'parking-sign',
-     driveway:industrial?'bollard':
-       residential?'mailbox':'planter',
-     service:industrial?(seed%4===0?'screened-dumpster':'utility-cabinet'):
-       'dumpster',
-     patio:kind==='restaurant'?'patio-chair':'planter',
-     garden:residential?'tree-broadleaf':'shrub-tall',
-     yard:zone.id==='arrival-forecourt'&&
-       ['house','townhouse'].includes(kind)?'mailbox':
-       residential?'shrub-round':'planter'
-   };
-   const preferred=anchor[zone.kind];
-   const item=i===0&&preferred&&!retiredShrub(preferred)&&outdoorFixtureAllowed(site,zone,preferred)?
-     preferred:choices[Math.floor(rng()*choices.length)];
+  const requests=exteriorRoleRequests(kind,zone);
+  const budget=exteriorRoleBudget(zone);
+  let acceptedRoles=0;
+  for(const request of requests){
+   if(acceptedRoles>=budget||cover.length-site.cover.length>=20)break;
+   // Independent per-zone/role stream: a rejected asset never shifts
+   // another role or a subsequent zone's random candidate sequence.
+   let roleSeed=seed^0x15b8ad1;
+   for(const ch of zone.id+':'+request.role)roleSeed=Math.imul(roleSeed^ch.charCodeAt(0),16777619);
+   const rng=seeded(roleSeed);
+   // Try every legal alternative in this bounded semantic recipe.
+   // No relaxation of the existing door, spawn, road or overlap rules.
+   for(const item of request.alternatives){
+    if(retiredShrub(item)||!outdoorFixtureAllowed(site,zone,item))continue;
+    if(cover.slice(site.cover.length).some(o=>o.fixture===item&&
+      Math.abs(o.x-zone.x)<=zone.w/2&&Math.abs(o.y-zone.y)<=zone.h/2))continue;
    const asset=propDefinition(item);if(!asset)continue;
    const footprint=landscapePhysicalFootprint(item,asset.width,asset.depth);
    // Public fixtures face the actual street and keep the same physical
@@ -223,7 +183,8 @@ export function addExteriorProperty(site:Site,seed:number):Site{
     if(cover.some(o=>overlaps(o,candidate)))continue;
     cover.push(candidate);accepted=true;break;
    }
-   if(!accepted)continue;
+   if(accepted){acceptedRoles++;break;}
+   }
   }
  }
  // Wheel stops are actual low physical parking-block fixtures in empty
@@ -237,7 +198,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    const lane=arrivalAccessLane(site,zone);
    let inserted=0;
    for(const slot of candidates){
-     if(inserted>=2)break;
+     if(inserted>=2||cover.length-site.cover.length>=24)break;
      const w=broad?block.width:block.depth;
      const h=broad?block.depth:block.width;
      const candidate:Obstacle={
@@ -267,6 +228,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
  for(const zone of zones){
    const points=landscapeEdgeCandidates(zone,seed);
    for(const point of points){
+     if(cover.length-site.cover.length>=24)break;
      if(retiredShrub(point.fixture))continue;
      const asset=propDefinition(point.fixture);if(!asset)continue;
      const footprint=landscapePhysicalFootprint(point.fixture,
