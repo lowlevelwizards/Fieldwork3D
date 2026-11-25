@@ -174,10 +174,7 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
 // Same finite texture budget as the mask pilot. Linear-light mixing
 // mirrors StandardMaterial; retain metric tile sampling, including mirrored
 // back-face coordinates and bottom-origin base tile vs top-origin finish.
-const srgbLinear=Float64Array.from({length:256},(_,i)=>{
- const v=i/255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4);
-});
-const linearByte=(v:number)=>Math.round(255*(v<=.0031308?12.92*v:1.055*Math.pow(v,1/2.4)-.055));
+import {SRGB_BYTE_TO_LINEAR as srgbLinear,linearToSRGBByte as linearByte} from '../rendering/surface-color-space.ts';
 export function bakedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:number,height:number,filter:WallEffectFilter='all',patterned=true){
  const out=wallSurfacePixels(recipe,level,width,height,filter),base=rgb(recipe.color);
  const accent=recipe.band?tint(base,rgb(recipe.band.color),.62):base;

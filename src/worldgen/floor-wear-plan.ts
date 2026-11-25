@@ -54,6 +54,7 @@ export function planCompiledFloorWear(site:Site,level=effectiveCondition(site)):
   const list=sources.get(room.id)??[];list.push({fixture,index,kind});sources.set(room.id,list);
  }
  const used=new Set<number>();
+ const anchoredDeposits=new Set<string>();
  const result=planStaticFloorWear(input).flatMap(mark=>{
   const room=rooms.get(mark.roomId);if(!room)return [];
   const surface=roomPixelSurface(site.archetype,room.purpose??room.kind);
@@ -63,7 +64,11 @@ export function planCompiledFloorWear(site:Site,level=effectiveCondition(site)):
   candidates.sort((a,b)=>Math.hypot(a.fixture.x-mark.x,a.fixture.y-mark.y)-Math.hypot(b.fixture.x-mark.x,b.fixture.y-mark.y));
   const anchor=candidates[0];
   if(!anchor||!floorCanWear(surface,kind))return [{...mark,kind:'scuff' as const}];
-  used.add(anchor.index);
+  const depositKey=anchor.index+':'+kind;
+  if(anchoredDeposits.has(depositKey))return [];
+  anchoredDeposits.add(depositKey);used.add(anchor.index);
+  // Several old planners can describe the same deposit. Keep one visible
+  // witness per real source/kind rather than stacking identical dark stamps.
   return [{...mark,...approach(room,anchor.fixture,mark.width,mark.depth)}];
  });
  // Sparse explicit witnesses for real fixtures absent from legacy planners.

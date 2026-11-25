@@ -1,0 +1,107 @@
+name: W8 architectural baseline and cumulative acceptance
+on:
+  pull_request:
+    paths:
+      - 'scripts/verification/w8-architectural-baseline.mjs'
+      - 'docs/w8-architectural-finalization-scope.md'
+      - '.github/workflows/w8-architectural-baseline.yml'
+      - 'src/rendering/breach-site-scene-builder.ts'
+      - 'src/rendering/wall-surface-atlas.ts'
+      - 'src/rendering/floor-surface-atlas.ts'
+      - 'src/rendering/fixture-wear-projection.ts'
+      - 'src/rendering/condition-materials.ts'
+      - 'src/worldgen/wall-surface-recipe.ts'
+      - 'src/worldgen/condition-visual.ts'
+      - 'src/worldgen/floor-wear-plan.ts'
+      - 'src/worldgen/wear-sources.ts'
+      - 'tests/w8-material-condition.test.mjs'
+      - 'src/rendering/surface-atlas-pages.ts'
+      - 'src/rendering/surface-color-space.ts'
+      - 'src/breach-3d.ts'
+      - 'scripts/verification/w8-live-acceptance.mjs'
+      - 'tests/w8-surface-consolidation.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: w8-baseline-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  baseline:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/w8-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: W8 focused material and condition contracts
+        run: node --experimental-strip-types --test tests/w8-material-condition.test.mjs tests/condition5-01.test.mjs tests/texture5-04-materials.test.mjs tests/texture5-15-acceptance.test.mjs tests/visual-foundation-f3-wear-identity.test.mjs tests/w6-wall-story-residue.test.mjs tests/w7-floor-surface-atlas.test.mjs tests/w3-wall-surface-atlas.test.mjs tests/w4-wall-structural-packet.test.mjs tests/w8-surface-consolidation.test.mjs
+      - name: W8 lighting, structural junction and disclosure contracts
+        run: node --experimental-strip-types --test tests/w5-fog-depth-disclosure.test.mjs tests/fog-second-generated-quickplay-20261123.test.mjs tests/facade-geometry-polish-20261112.test.mjs tests/fog-exterior-unseen-apertures-regression.test.mjs tests/replay-r7-cutaway.test.mjs tests/w1-wall-presentation.test.mjs tests/package-c2-render-composition.test.mjs
+      - name: Pin exact pre-W0 and W7 worktrees
+        run: |
+          git fetch --no-tags --depth=1 origin 6644f06ba4fc4c74a8ff653b873714c1898d9249 8d3f36830a01d2932ff96c8f063e9072a82b4d37
+          git worktree add --detach "$RUNNER_TEMP/w8-pre" 6644f06ba4fc4c74a8ff653b873714c1898d9249
+          git worktree add --detach "$RUNNER_TEMP/w8-w7" 8d3f36830a01d2932ff96c8f063e9072a82b4d37
+          ln -s "$PWD/node_modules" "$RUNNER_TEMP/w8-pre/node_modules"
+          ln -s "$PWD/node_modules" "$RUNNER_TEMP/w8-w7/node_modules"
+          echo "W8_REFERENCE_ROOT=$RUNNER_TEMP/w8-pre" >> "$GITHUB_ENV"
+          echo "W8_W7_ROOT=$RUNNER_TEMP/w8-w7" >> "$GITHUB_ENV"
+      - name: Pin exact current release base
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '1420e25c00d50be56db9a9ed76de5b6ea30a62ca' }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git worktree add --detach "$RUNNER_TEMP/w8-base" "$BASE_SHA"
+          ln -s "$PWD/node_modules" "$RUNNER_TEMP/w8-base/node_modules"
+          echo "W8_BASE_ROOT=$RUNNER_TEMP/w8-base" >> "$GITHUB_ENV"
+      - name: Actual same-site cross-version draw census and visual captures
+        run: node scripts/verification/w8-architectural-baseline.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: w8-architectural-baseline
+          path: artifacts/w8-baseline/
+          retention-days: 14
+  live:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/w8-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        desktop: ['0','1']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Pin live comparison base
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '1420e25c00d50be56db9a9ed76de5b6ea30a62ca' }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git worktree add --detach "$RUNNER_TEMP/w8-live-base" "$BASE_SHA"
+          ln -s "$PWD/node_modules" "$RUNNER_TEMP/w8-live-base/node_modules"
+          echo "W8_BASE_ROOT=$RUNNER_TEMP/w8-live-base" >> "$GITHUB_ENV"
+      - name: Counterbalanced live 90-callback pairs
+        env:
+          FIELDWORK_WALL_DESKTOP: ${{ matrix.desktop }}
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/w8-live-acceptance.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: w8-live-${{ matrix.desktop }}
+          path: artifacts/w8-live/
+          retention-days: 14
