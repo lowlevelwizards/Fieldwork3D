@@ -2212,21 +2212,29 @@ function resolveCloseContact(s:Session){
       if(b===a||b.side===a.side||b.health<=0||b.surrendered||
         s.seconds-b.lastBashAt<.9)continue;
       const gap=d(a.p,b.p);
-      if(gap>=17||gap<.01)continue;
+      // The full 8-unit body capsules usually stop before the old 17-unit
+      // trigger, making close contact unreliable. Allow a short reach beyond
+      // body contact, but never through intervening solid geometry.
+      if(gap>=OPERATOR_RADIUS*2+6||gap<.01)continue;
+      if(!sweptBodyClear(a.p,b.p,s.doors,1.5,sessionWorldGeometry(s)))continue;
       const toward=angle(a.p,b.p);
       if(gap>10&&Math.abs(angleDifference(a.heading,toward))>1.45)
         continue;
       const ux=(b.p.x-a.p.x)/gap,uy=(b.p.y-a.p.y)/gap;
-      for(const shift of [16,10,5]){
+      for(const shift of [20,14,8,4]){
         const pushed={x:b.p.x+ux*shift,y:b.p.y+uy*shift};
         if(!sweptBodyClear(b.p,pushed,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)))continue;
         if(s.operators.some(o=>o!==a&&o!==b&&o.health>0&&
-          d(o.p,pushed)<11))continue;
+          d(o.p,pushed)<OPERATOR_RADIUS*2)||
+          s.civilians.some(c=>c.health>0&&d(c.p,pushed)<OPERATOR_RADIUS*2))continue;
         b.priorP=clone(b.p);b.p=pushed;break;
       }
       a.lastBashAt=s.seconds;a.lastBashRole='push';
       b.lastBashAt=s.seconds;b.lastBashRole='receive';
       b.fireCd=Math.max(b.fireCd,.62);b.aim=Math.max(0,b.aim-.65);
+      // Reuse the existing physical-contact interruption so AI cannot
+      // immediately erase the displacement by walking back into contact.
+      b.doorStunUntil=Math.max(b.doorStunUntil??0,s.seconds+.48);
       b.stability=Math.max(0,b.stability-.3);
       b.suppression=Math.min(1,b.suppression+.6);
       b.velocity=0;b.nav=[];
