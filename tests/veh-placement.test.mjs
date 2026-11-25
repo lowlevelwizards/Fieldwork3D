@@ -89,3 +89,15 @@ test('wide industrial forecourt has actual loading bays that fit commercial truc
  assert.ok(planPropertySurfaces(next).some(m=>m.kind==='loading-zone'));
  assert.ok(planVehiclePlacement(next,9,true).vehicles.length>0);
 });
+
+test('final frontage retrofit preserves baseline room program and complete encounter selection',()=>{
+ for(const [seed,mission] of [[21,'clear'],[21,'hold'],[21,'intel'],[16,'rescue'],[21,'rescue'],[4,'hold'],[11,'clear']]){
+  const context={mission,enableCivilians:true};
+  const legacy=generateSite(seed,'small',undefined,context,{vehiclePlacement:false});
+  const modern=generateSite(seed,'small',undefined,context);
+  for(const key of ['rooms','walls','doors','windows','structures','spawn','enemies','objective','extract','encounter','planFamily','identity'])assert.deepEqual(modern[key],legacy[key],seed+':'+mission+':'+key);
+  const baselineInterior=legacy.cover.filter(c=>legacy.rooms.some(r=>c.x>=r.x&&c.x<=r.x+r.w&&c.y>=r.y&&c.y<=r.y+r.h)).map(({id,...c})=>c);
+  const modernInterior=modern.cover.filter(c=>modern.rooms.some(r=>c.x>=r.x&&c.x<=r.x+r.w&&c.y>=r.y&&c.y<=r.y+r.h)).map(({id,...c})=>c);
+  assert.deepEqual(modernInterior,baselineInterior);
+ }
+});

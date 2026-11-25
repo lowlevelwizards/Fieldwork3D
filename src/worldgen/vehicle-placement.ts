@@ -48,7 +48,9 @@ export function planVehiclePlacement(site:Site,seed=site.seed,modernOnly=false):
  const vehicles:Obstacle[]=[],diagnostics:VehiclePlacementResult['diagnostics']=[];
  const bounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
  const street=planPublicStreet(site),reserves=exteriorDoorReserves(site.doors);
- const protectedPoints=[...site.spawn,...site.enemies,site.objective,site.extract,site.entrance];
+ const protectedPoints=[...site.spawn,...site.enemies,site.objective,site.extract,site.entrance,
+  ...(site.encounter?.actors??[]).flatMap(a=>[a.position,...(a.routine??[])]),
+  ...(site.encounter?.neutrals??[]).flatMap(a=>[a.position,...(a.routine??[])])];
  for(const zone of site.exteriorZones??[]){
   if((zone.kind!=='parking'&&!zone.vehicleParking)||(modernOnly&&!zone.vehicleParking))continue;
   const target=targetFor(site,zone);

@@ -104,6 +104,10 @@ export function generateSite(seed:number,scale:SiteScale='standard',
  let bestGrade:ReturnType<typeof measureSiteCompleteness>|undefined;
  let firstSuccess=-1;
  const sampleDiversity=shouldSampleTopologyAlternative(seed,scale);
+ // Select the same canonical architecture and encounter as the existing
+ // generator, then retrofit its finished frontage. Parking may not change
+ // mission selection, room programs, enemy/civilian positions or retries.
+ const finish=(site:Site)=>withSitePropIds(generationOptions.vehiclePlacement!==false?attachPlannedVehicles(site):site);
  for(let attempt=0;attempt<6;attempt++){
   // One optional alternate after the first navigable map; do not multiply
   // full scene generation on every mobile load.
@@ -119,10 +123,9 @@ export function generateSite(seed:number,scale:SiteScale='standard',
    // Unintentional loose furniture must not block the approach to a real
    // door. Keep this deterministic, conservative and pre-spawn: essential
    // fixtures are never deleted to manufacture a route.
-   const furnished=applyArchetype(orientArchitecturalSite(geometry,seed),seed,generationOptions.vehiclePlacement!==false);
+   const furnished=applyArchetype(orientArchitecturalSite(geometry,seed),seed);
    const accessible=repairDoorwayClutter(furnished).site;
-   const encounterSite=attachEncounterPlan(accessible,contextWithIntent);
-   const candidate=generationOptions.vehiclePlacement!==false?attachPlannedVehicles(encounterSite):encounterSite;
+   const candidate=attachEncounterPlan(accessible,contextWithIntent);
    onProgress?.('scoring',attempt);
    const grade=measureSiteCompleteness(candidate);
    if(!bestGrade||preferCompleteCandidate(grade,bestGrade)||
@@ -133,20 +136,20 @@ export function generateSite(seed:number,scale:SiteScale='standard',
    if(firstSuccess<0){
     firstSuccess=attempt;
     if(!sampleDiversity&&!shouldTryAnotherLayout(grade,scale))
-      return withSitePropIds(candidate);
+      return finish(candidate);
    }
    // Only the first eligible complete site earns ONE extra comparison.
    // Once selected, never run an unbounded search for a desired shape.
-   if(grade.score===0&&!sampleDiversity)return withSitePropIds(candidate);
+   if(grade.score===0&&!sampleDiversity)return finish(candidate);
    if(sampleDiversity&&firstSuccess>=0&&attempt===firstSuccess+1)
-     return withSitePropIds(best!);
+     return finish(best!);
   }catch(error){
    // Preserve useful failure evidence for offline diagnosis. Retry decisions
    // remain unchanged; do not silently hide why all variants failed.
    failures.push(error instanceof Error?error.message:String(error));
   }
  }
- if(best)return withSitePropIds(best);
+ if(best)return finish(best);
  throw new Error('Cannot generate connected '+kind+' site for seed '+seed+
   (failures.length?' (last: '+failures.at(-1)+')':''));
 }
