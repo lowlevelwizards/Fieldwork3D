@@ -13,6 +13,10 @@ export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIM
  const pos:number[]=[],colors:number[]=[];
  const paint=new THREE.Color(recipe.paint);
  if(recipe.condition!=='clean')paint.lerp(new THREE.Color(0x8c8877),recipe.condition==='used'?.08:.22);
+ if(recipe.configuration==='military')paint.lerp(new THREE.Color(0x747653),.7);
+ if(recipe.configuration==='unmarked')paint.lerp(new THREE.Color(0x343c40),.7);
+ if(recipe.configuration==='taxi')paint.lerp(new THREE.Color(0xbba055),.65);
+ if(recipe.configuration==='economy')paint.lerp(new THREE.Color(0xaba69a),.24);
  const body=paint.getHex();
  function tri(a:P,b:P,c:P,hex:number,inside:P){
   const u=new THREE.Vector3(b[0]-a[0],b[1]-a[1],b[2]-a[2]);
@@ -80,7 +84,8 @@ export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIM
  slopedWindow(front,frontTop,1);
  if(!van||config==='passenger')slopedWindow(rear,rearTop,-1);
  if(pickup){
-  box(-.45,-.12,belt-.06,belt-.015,.38,trim);
+  box(-.45,-.12,belt+.005,belt+.025,.32,trim);
+  box(-.47,-.435,belt-.02,belt+.13,.43,body);
   // Bed sides are two thin longitudinal strips; open bed stays open.
   for(const s of [-1,1]){
    const z0=s*.32*d,z1=s*.43*d;
@@ -89,11 +94,13 @@ export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIM
    const center:P=[(x0+x1)/2,(y0+y1)/2,(z0+z1)/2];
    for(const [a,b,c,e] of [[0,1,2,3],[4,5,6,7],[0,4,7,3],[1,5,6,2],[3,2,6,7],[0,1,5,4]])quad(p[a],p[b],p[c],p[e],body,center);
   }
-  if(config==='covered'||config==='cargo')box(-.46,-.12,belt+.02,config==='covered'?.89:.73,.39,config==='covered'?body:0x85816c);
+  if(config==='covered'||config==='cargo')box(-.43,-.12,belt+.025,config==='covered'?.89:.73,.32,config==='covered'?body:0x85816c);
+  if(config==='contractor')box(-.25,-.12,belt+.025,belt+.16,.31,trim);
  }
  if(truck){
   box(-.47,.08,belt-.03,belt+.03,.44,trim);
-  if(config!=='flatbed')box(-.47,.075,belt+.03,.98,.46,config==='canvas'||config==='military'?0x777b5b:body);
+  if(config==='canvas'||config==='military')prism([[-.47,belt+.03],[.075,belt+.03],[.075,.91],[.045,.98],[-.44,.98],[-.47,.91]],.46,0x777b5b);
+  else if(config!=='flatbed')box(-.47,.075,belt+.03,.98,.46,body);
  }
  // Eight-sided wheels: one cylinder surface and coloured outside cap,
  // no second hub cylinder. All four are baked into the final mesh.
@@ -118,6 +125,7 @@ export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIM
  }
  end(.492,belt-.24,belt-.16,-.18,.18,trim);
  end(-.492,belt-.21,belt-.15,-.10,.10,hub);
+ if(recipe.condition!=='clean')side(-.40,.36,lower+.06,lower+.115,.431,paint.clone().lerp(new THREE.Color(0x77715f),recipe.condition==='used'?.13:.35).getHex());
  const stripe=config==='police'?0x39556e:config==='medical'?0xa6564a:config==='delivery'?0x648577:config==='municipal'?0xb19a55:config==='contractor'?0x696e5a:config==='fleet'?0x778585:config==='taxi'?0x544e3c:config==='aid'?0x4f7d83:undefined;
  if(stripe!==undefined)side(-.37,.34,belt-.14,belt-.07,.431,stripe);
  // Large, integrated identity blocks remain legible from the iso camera.

@@ -62,3 +62,14 @@ test('all vehicle families share metal physical and visual substrate contracts',
   assert.equal(fixturePixelSurface(family),'metal');
  }
 });
+
+import {damageCover} from '../src/breach-reactive-cover.ts';
+import {traversalSurface} from '../src/breach-traversal-surfaces.ts';
+test('static vehicles keep their footprint under generic furniture collapse',()=>{
+ for(const family of ['vehicle',...VEHICLE_FAMILIES]){
+  const asset=propDefinition(family),c={x:0,y:0,w:asset.width,h:asset.depth,fixture:family};
+  const before={...c};
+  assert.equal(damageCover(c,100), 'immune');
+  assert.deepEqual(c,before);assert.equal(traversalSurface(c),'solid');
+ }
+});

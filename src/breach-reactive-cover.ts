@@ -4,12 +4,13 @@
 import type {Obstacle} from './breach-core.ts';
 import {materialForFixture,MATERIALS} from './breach-materials.ts';
 import {coverHeight} from './breach-cover-height.ts';
+import {vehicleFamily} from './worldgen/vehicle-catalog.ts';
 export type CoverDamageState='intact'|'damaged'|'collapsed'|'immune';
 const permanent=new Set(['vehicle','vehicle-lift','generator','tank',
  'window-sill','fence','concrete-column']);
 export function damageCover(obstacle:Obstacle,amount:number,at?:number):CoverDamageState{
  if(!Number.isFinite(amount)||amount<=0)return 'immune';
- if(permanent.has(obstacle.fixture??'')||obstacle.destroyed)return 'immune';
+ if(permanent.has(obstacle.fixture??'')||vehicleFamily(obstacle.fixture??'')||obstacle.destroyed)return 'immune';
  const material=obstacle.material??materialForFixture(obstacle.fixture);
  const max=MATERIALS[material].integrity;
  const before=obstacle.integrity??max;
