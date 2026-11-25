@@ -10,6 +10,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const check=(ok,msg)=>{if(!ok)throw Error(msg)};
 let browser;
 const evidence=[];
+const w3=process.env.FIELDWORK_W3_ATLAS==='1';
 try{
  let ready=false;
  for(let i=0;i<150;i++){try{if((await fetch(base+'/map-lab.html')).ok){ready=true;break;}}catch{}await sleep(150);}
@@ -39,11 +40,11 @@ try{
      p.activateSite(p.site);p.session=p.newSession(0,seed,'floor-plan','standard',undefined,p.site);
     },{seed,archetype});
     const results=[];
-    for(const mode of ['legacy','packed']){
+    for(const mode of w3?['legacy','packed','atlas']:['legacy','packed']){
      const result=await page.evaluate(mode=>{
       const integrated=mode!=='legacy';
       const {scene,site,session,team}=window.w2Probe;
-      scene.wallAudition=integrated?{effect:'all'}:undefined;
+      scene.wallAudition=integrated?{effect:'all',atlas:mode==='atlas'}:undefined;
       scene.applySite(site);scene.resetCamera();scene.setMode('iso');
       scene.view.zoom=1.25;
       const inventory=scene.walls.filter(w=>w.mesh.userData.fieldworkDrawFamily==='structural-wall-body');
@@ -71,21 +72,26 @@ try{
         frames.push({total,weather,body,ms:performance.now()-start});
        }
       }finally{renderer.renderBufferDirect=original;}
-      const textureBytes=masks.reduce((sum,item)=>sum+item.texture.image.data.byteLength,0);
+      const textures=[...new Set(masks.map(item=>item.texture))];
+      const textureBytes=textures.reduce((sum,t)=>sum+t.image.data.byteLength,0);
+      const textureCount=textures.length;
       if(integrated){
-       if(masks.length!==inventory.length||masks.some(m=>!m.recipe))throw Error('W2 mask/segment ownership mismatch');
+       if(masks.length!==inventory.length||masks.some(m=>mode==='atlas'?!m.atlasSlot:!m.recipe))throw Error('W2 mask/segment ownership mismatch');
        const ids=masks.map(m=>m.texture.uuid);
-       const initial=masks.map(m=>m.texture.image.data.slice());
+       const initial=textures.map(t=>t.image.data.slice());
+       const versions=textures.map(t=>t.version);
        scene.previewConditionMasks(site,0);
-       if(mode==='packed'&&masks.some(m=>m.texture.image.data.some((v,i)=>i%4===3&&v!==255)))throw Error('Baked surface has nonopaque texels');
-       if(!masks.some((m,j)=>m.texture.image.data.some((v,i)=>v!==initial[j][i])))throw Error('Condition slider did not change surface');
+       if(textures.some(t=>t.image.data.some((v,i)=>i%4===3&&v!==255)))throw Error('Baked surface has nonopaque texels');
+       if(!textures.some((t,j)=>t.image.data.some((v,i)=>v!==initial[j][i])))throw Error('Condition slider did not change surface');
        scene.previewConditionMasks(site,100);
-       if(masks.some((m,j)=>m.texture.image.data.some((v,i)=>v!==initial[j][i])))throw Error('Condition roundtrip not deterministic');
+       if(textures.some((t,j)=>t.image.data.some((v,i)=>v!==initial[j][i])))throw Error('Condition roundtrip not deterministic');
        if(ids.some((id,i)=>id!==masks[i].texture.uuid))throw Error('Slider reallocated texture');
+       if(textures.some((t,i)=>t.version!==versions[i]+2))throw Error('Slider updated a page more than once per edit');
        draw();
       }
-      if(mode==='packed'&&inventory.some(w=>w.mesh.material.map!==masks.find(m=>m.index===w.index)?.texture))throw Error('Packed wall is not using standard map');
-      const actual={mode,integrated,bodies:inventory.length,overlays,decals,textureBytes,frames};
+      if(integrated&&inventory.some(w=>w.mesh.material.map!==masks.find(m=>m.index===w.index)?.texture))throw Error('Packed wall is not using standard map');
+      const actual={mode,integrated,bodies:inventory.length,overlays,decals,textureBytes,textureCount,gpuTextures:renderer.info.memory.textures,geometries:renderer.info.memory.geometries,frames};
+      if(mode==='atlas'&&textureCount>=inventory.length)throw Error('Atlas did not reduce texture objects');
       if(integrated&&(overlays||decals||frames.some(f=>f.weather)))throw Error('W2 retained independent wall weathering');
       return actual;
      },mode);
@@ -99,7 +105,7 @@ try{
    }
    await page.evaluate(()=>{
     const {scene,site}=window.w2Probe;
-    const masks=scene.patinaWallSurfaces.map(m=>m.texture);
+    const masks=[...new Set(scene.patinaWallSurfaces.map(m=>m.texture))];
     const disposals=new Map(masks.map(t=>[t.uuid,0]));
     for(const t of masks)t.addEventListener('dispose',()=>disposals.set(t.uuid,disposals.get(t.uuid)+1));
     scene.applySite(site);
@@ -126,7 +132,7 @@ try{
   await lab.locator('#wallAuditionEffect').selectOption('all');
   await lab.locator('#wallAuditionMode').selectOption('legacy');
   check(await lab.locator('#wallAuditionEffect').isDisabled(),'Legacy mode effect isolation still enabled');
-  await lab.locator('#wallAuditionMode').selectOption('packed');
+  await lab.locator('#wallAuditionMode').selectOption(w3?'atlas':'packed');
   await lab.locator('#wallAuditionEffect').selectOption('damp');
   await lab.locator('#wallAuditionEffect').selectOption('all');
   await lab.screenshot({path:dir+'/map-lab-controls.png'});
