@@ -17,7 +17,7 @@ test('fixture residue is deterministic, face-local, height-anchored and absent w
  const shop={...site,rooms:[{...site.rooms[0],purpose:'workshop'}],cover:[fixture('workbench',35,16)]};
  assert.equal(planFixtureWallResidue(shop,56).get(0).get(1)[0].kind,'workgrime');
 });
-test('W6 uses existing condition cap, face strip and texture resources; production remains W3',()=>{
+test('W6 uses existing condition cap, face strip and texture resources; production uses story with explicit W3 fallback',()=>{
  const plan=planFixtureWallResidue(site,56),plain=planWallFaces(site,0,56),story=planWallFaces(site,0,56,plan);
  assert.deepEqual(story.back,plain.back);
  assert.deepEqual(atlasWallStrip(story,0,128),atlasWallStrip(plain,0,128));
@@ -28,7 +28,8 @@ test('W6 uses existing condition cap, face strip and texture resources; producti
  assert.notDeepEqual(old.pages[0].image.data,next.pages[0].image.data);
  assert.ok(next.pages[0].image.data.every((v,i)=>i%4!==3||v===255));
  old.pages.forEach(t=>t.dispose());next.pages.forEach(t=>t.dispose());
- assert.deepEqual(resolveWallSurfaceMode(null),{effect:'all',atlas:true});
+ assert.deepEqual(resolveWallSurfaceMode(null),{effect:'all',atlas:true,story:true});
+ assert.deepEqual(resolveWallSurfaceMode('atlas'),{effect:'all',atlas:true});
  assert.deepEqual(resolveWallSurfaceMode('story'),{effect:'all',atlas:true,story:true});
 });
 

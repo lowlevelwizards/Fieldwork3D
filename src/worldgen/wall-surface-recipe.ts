@@ -10,13 +10,13 @@ export const WALL_EFFECTS=['fade','contact','chip','damp','runoff','crack','repa
 export type WallEffect=typeof WALL_EFFECTS[number];
 export type WallEffectFilter='all'|'none'|WallEffect;
 export type WallAudition={effect:WallEffectFilter;atlas?:boolean;story?:boolean};
-/** Production default: all eligible W3 effects. Explicit historical
+/** Production default: W6 fixture story plus eligible W3 effects. Explicit historical
  * comparison modes remain available for Map Lab and controlled A/B. */
 export function resolveWallSurfaceMode(mode:string|null):WallAudition|undefined{
- if(mode==='story')return {effect:'all',atlas:true,story:true};
  if(mode==='legacy')return undefined;
  if(mode==='packed'||mode==='integrated')return {effect:'all'};
- return {effect:'all',atlas:true};
+ if(mode==='atlas'||mode==='compiled'||mode==='separate'||mode==='unified')return {effect:'all',atlas:true};
+ return {effect:'all',atlas:true,story:true};
 }
 export type SurfaceEvent={kind:WallEffect;cause:string;x:number;y:number;width:number;height:number;threshold:number;priority:number};
 export type WallSurfaceRecipe={length:number;height:number;face:-1|1;color:number;surface:PixelSurface;band?:{color:number;top:number};directional?:boolean;events:SurfaceEvent[]};

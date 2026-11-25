@@ -92,8 +92,9 @@ test('W3 doorway wear is visibly wider than W2 without changing clean finish or 
  assert.deepEqual(atlasWallStrip(planWallFaces(site,0,56),0,128,'all'),clean);
 });
 
-test('production defaults to all W3 effects; historical comparison modes are explicit',()=>{
- for(const mode of [null,'','atlas','unknown','0'])assert.deepEqual(resolveWallSurfaceMode(mode),{effect:'all',atlas:true});
+test('production defaults to W6; historical W3/W4 comparison modes are explicit',()=>{
+ for(const mode of [null,'','story','unknown','0','default'])assert.deepEqual(resolveWallSurfaceMode(mode),{effect:'all',atlas:true,story:true});
+ for(const mode of ['atlas','compiled','separate','unified'])assert.deepEqual(resolveWallSurfaceMode(mode),{effect:'all',atlas:true});
  assert.equal(resolveWallSurfaceMode('legacy'),undefined);
  assert.deepEqual(resolveWallSurfaceMode('packed'),{effect:'all'});
  const a=resolveWallSurfaceMode(null);a.effect='none';assert.equal(resolveWallSurfaceMode(null).effect,'all');
