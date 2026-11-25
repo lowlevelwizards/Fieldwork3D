@@ -40,6 +40,8 @@ jobs:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
       - name: W8 focused material and condition contracts
         run: node --experimental-strip-types --test tests/w8-material-condition.test.mjs tests/condition5-01.test.mjs tests/texture5-04-materials.test.mjs tests/texture5-15-acceptance.test.mjs tests/visual-foundation-f3-wear-identity.test.mjs tests/w6-wall-story-residue.test.mjs tests/w7-floor-surface-atlas.test.mjs tests/w3-wall-surface-atlas.test.mjs tests/w4-wall-structural-packet.test.mjs tests/w8-surface-consolidation.test.mjs
+      - name: W8 lighting, structural junction and disclosure contracts
+        run: node --experimental-strip-types --test tests/w5-fog-depth-disclosure.test.mjs tests/fog-second-generated-quickplay-20261123.test.mjs tests/facade-geometry-polish-20261112.test.mjs tests/fog-exterior-unseen-apertures-regression.test.mjs tests/replay-r7-cutaway.test.mjs tests/w1-wall-presentation.test.mjs tests/package-c2-render-composition.test.mjs
       - name: Pin exact pre-W0 and W7 worktrees
         run: |
           git fetch --no-tags --depth=1 origin 6644f06ba4fc4c74a8ff653b873714c1898d9249 8d3f36830a01d2932ff96c8f063e9072a82b4d37

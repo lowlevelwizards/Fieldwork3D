@@ -74,7 +74,10 @@ try{
       if(o.userData.fieldworkDrawFamily==='surface-wear-decal')familyByObject.set(o,'fixture-local-wear');
      });
      const structural=new Set(['structural-wall-body','structural-wall-skirting','structural-wall-cap','structural-wall-cap-joint','structural-wall-trim-packet']);
-     const classify=o=>familyByObject.get(o)??o?.userData?.fieldworkDrawFamily??'unclassified';
+     // Attribute residual draws to their actual ownership without guessing from color.
+     for(const [index,g] of scene.coverGroups)g.traverse(o=>{if(!o.userData.fieldworkDrawFamily&&!familyByObject.has(o))familyByObject.set(o,'fixture-owner:'+index);});
+     for(const [id,d] of scene.doors)d.root.traverse(o=>{if(!o.userData.fieldworkDrawFamily&&!familyByObject.has(o))familyByObject.set(o,'door-owner:'+id);});
+     const classify=o=>familyByObject.get(o)??o?.userData?.fieldworkDrawFamily??(o?.isInstancedMesh?'unclassified-instanced':'unclassified');
      const renderer=scene.renderer,original=renderer.renderBufferDirect;
      const samples=[];
      for(const all of [false,true]){
@@ -148,6 +151,10 @@ try{
   for(const mode of ['known','full']){
    const value=r=>({structural:max(r,mode,'structural'),wallWithWear:max(r,mode,'wallWithWear'),main:max(r,mode,'main'),shadow:r.samples.find(s=>s.view===mode).shadow});
    const now=value(c),prior=value(w),historical=h?value(h):null;
+   const mainFamilies=r=>stable(r,mode).reduce((a,s)=>s.main>=(a?.main??-1)?s:a,null).mainFamilies;
+   const a=mainFamilies(w),b=mainFamilies(c);
+   const familyDelta=Object.fromEntries([...new Set([...Object.keys(a),...Object.keys(b)])].filter(k=>(a[k]??0)!==(b[k]??0)).map(k=>[k,(b[k]??0)-(a[k]??0)]));
+   if(now.main!==prior.main)console.log('W8_FAMILY_DELTA '+JSON.stringify({seed:c.seed,view:c.view,mode,familyDelta}));
    for(const k of ['structural','wallWithWear','main','shadow'])check(now[k]<=prior[k],'W8 draw regression '+c.seed+' '+mode+' '+k+' '+JSON.stringify({prior,now}));
    for(const k of ['wallMipBytes','floorMipBytes','patinaMipBytes'])check(c.atlas[k]<=w.atlas[k],'W8 atlas budget regression '+c.seed+' '+k);
    const historicalComparable=h?['knownBefore','knownAfter','initialVisible','initialCover','fullVisible','siteCounts'].every(k=>JSON.stringify(h[k])===JSON.stringify(c[k])):false;

@@ -23,17 +23,19 @@ const weathering:Readonly<Record<VisualMaterialRole,number>>={
 export function ageMaterialColor(hex:number,surface:PixelSurface|undefined,
  level:number,variation=0):number{
  const role=surfaceVisualRole(surface??'metal');
- // Bright paint, ceramic and polymer keep more of their authored hue.
- // Raw steel retains its existing cool material response; timber and cloth
- // remain warm rather than converging on the same dark neutral.
- const retention=role==='paint'?.72:role==='ceramic'?.65:role==='polymer'?.8:
-  role==='wood'||role==='fabric'?.88:1;
- const t=clamp(Math.pow(clamp(level/100),1.3)*
-  (.52+Math.max(-1,Math.min(1,variation))*.05)*weathering[role]*retention);
+ const condition=Math.pow(clamp(level/100),1.3);
+ const t=clamp(condition*(.52+Math.max(-1,Math.min(1,variation))*.05)*weathering[role]);
  if(t<=0)return hex;
- // Coating role controls lighting, but the substrate controls aging hue.
- const rgb=surface==='painted-wood'?[99,85,67]:surface==='painted-metal'||surface==='enamel-metal'?[84,91,86]:targets[role];
+ const rgb=targets[role];
  const a=(hex>>>16)&255,b=(hex>>>8)&255,c=hex&255;
  const mix=(start:number,to:number)=>Math.round(start*(1-t)+to*t);
- return (mix(a,rgb[0])<<16)|(mix(b,rgb[1])<<8)|mix(c,rgb[2]);
+ // First preserve the existing quantized palette bucket. Recalibrate the
+ // result, not the input or variant coefficient: equal old colors on a
+ // given surface at this site condition must stay equal after calibration.
+ const original=[mix(a,rgb[0]),mix(b,rgb[1]),mix(c,rgb[2])];
+ const lift=surface==='painted-wood'?[15,11,5]:surface==='painted-metal'||surface==='enamel-metal'?[9,13,14]:
+  role==='paint'?[12,12,11]:role==='ceramic'?[23,23,22]:role==='polymer'?[8,8,7]:
+  role==='wood'||role==='fabric'?[5,4,3]:[0,0,0];
+ const adjusted=original.map((value,i)=>Math.min(255,value+Math.round(lift[i]*condition)));
+ return (adjusted[0]<<16)|(adjusted[1]<<8)|adjusted[2];
 }
