@@ -89,15 +89,11 @@ export class PresentationSightMemo{
    const prior=this.frameValues.get(pointKey);
    if(prior!==undefined){this.hits++;this.frameHits++;return prior;}
   }
-  const remember=(value:boolean)=>{
-   if(pointKey!==null&&this.frameValues.size<MAX_ENTRIES)this.frameValues.set(pointKey,value);
-   return value;
-  };
-  if(!this.reuse){this.bypasses++;return remember(this.source(s,p));}
+  if(!this.reuse){this.bypasses++;return this.rememberFrame(pointKey,this.source(s,p));}
   const key=category+':'+id+':'+p.x+','+p.y;
   const prior=this.values.get(key);
   if(prior!==undefined){
-   this.hits++;return remember(prior);
+   this.hits++;return this.rememberFrame(pointKey,prior);
   }
   this.misses++;this.missByKind[category]++;
   const result=this.source(s,p);
@@ -105,7 +101,11 @@ export class PresentationSightMemo{
    this.values.clear();this.evictions++;
   }
   this.values.set(key,result);
-  return remember(result);
+  return this.rememberFrame(pointKey,result);
+ }
+ private rememberFrame(key:string|null,value:boolean):boolean{
+  if(key!==null&&this.frameValues.size<MAX_ENTRIES)this.frameValues.set(key,value);
+  return value;
  }
  invalidate():void{
   this.values.clear();this.frameValues.clear();
