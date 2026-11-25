@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {resolveWallSurfaceMode,planWallFaces,atlasWallStrip,atlasFaceStart,ATLAS_FACE_ROWS} from '../src/worldgen/wall-surface-recipe.ts';
-import {planAtlasPages,buildWallAtlas,updateWallAtlas} from '../src/rendering/wall-surface-atlas.ts';
+import {planAtlasPages,buildWallAtlas,updateWallAtlas,wallTrimSwatchUV} from '../src/rendering/wall-surface-atlas.ts';
 import {wallPatinaDimensions} from '../src/worldgen/condition-wall.ts';
 import {mapAtlasWallUV,boxFaceVertexRanges} from '../src/rendering/pixel-materials.ts';
 const site={seed:23,archetype:'house',condition:'renovation',conditionLevel:100,

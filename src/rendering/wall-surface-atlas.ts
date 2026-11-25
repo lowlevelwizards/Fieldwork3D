@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type {Site} from '../breach-site.ts';
 import {wallPatinaDimensions} from '../worldgen/condition-wall.ts';
 import {planWallFaces,atlasWallStrip,type WallFacePair,type WallEffectFilter} from '../worldgen/wall-surface-recipe.ts';
-export type WallAtlasSlot={index:number;row:number;texture:THREE.DataTexture;pair:WallFacePair;patterned:boolean;whiteSwatch?:boolean};
+export type WallAtlasSlot={index:number;row:number;texture:THREE.DataTexture;pair:WallFacePair;patterned:boolean;trimPalette?:{trim:number;cap:number}};
 export type WallAtlas={pages:THREE.DataTexture[];slots:Map<number,WallAtlasSlot>};
 /** Width buckets and power-of-two strip counts ensure no unused pixel
  * allocation, power-of-two mip boundaries and a bounded 2048-row page. */
@@ -25,8 +25,16 @@ export function planAtlasPages(widths:readonly {index:number;width:number}[]){
 export function writeAtlasSlot(slot:WallAtlasSlot,level:number,filter:WallEffectFilter){
  const image=slot.texture.image as {data:Uint8Array;width:number;height:number};
  image.data.set(atlasWallStrip(slot.pair,level,image.width,filter,slot.patterned),slot.row*image.width*4);
- // Reserved edge texel, outside either broad-face UV range.
- if(slot.whiteSwatch)image.data.fill(255,slot.row*image.width*4,slot.row*image.width*4+4);
+ // Two palette texels in the edge row, leaving the body edge midpoint
+ // and both broad-face UV regions untouched. Constant UVs sample LOD0.
+ if(slot.trimPalette)for(const kind of ['trim','cap'] as const){
+  const color=slot.trimPalette[kind],x=kind==='trim'?0:image.width-1;
+  image.data.set([(color>>>16)&255,(color>>>8)&255,color&255,255],(slot.row*image.width+x)*4);
+ }
+}
+export function wallTrimSwatchUV(slot:WallAtlasSlot,kind:'trim'|'cap'):[number,number]{
+ const {width,height}=slot.texture.image;
+ return [(kind==='trim'?.5:width-.5)/width,(slot.row+.5)/height];
 }
 export function updateWallAtlas(slots:Iterable<WallAtlasSlot>,level:number,filter:WallEffectFilter){
  const pages=new Set<THREE.DataTexture>();
@@ -34,7 +42,7 @@ export function updateWallAtlas(slots:Iterable<WallAtlasSlot>,level:number,filte
  for(const page of pages)page.needsUpdate=true;
  return pages.size;
 }
-export function buildWallAtlas(site:Site,height:number,level:number,filter:WallEffectFilter,patterned:boolean,whiteSwatch=false):WallAtlas{
+export function buildWallAtlas(site:Site,height:number,level:number,filter:WallEffectFilter,patterned:boolean,trimPalette?:{trim:number;cap:number}):WallAtlas{
  const widths=site.walls.flatMap((w,index)=>{
   const length=Math.hypot(w.b.x-w.a.x,w.b.y-w.a.y);
   return length<5?[]:[{index,width:wallPatinaDimensions(length).width}];
@@ -47,7 +55,7 @@ export function buildWallAtlas(site:Site,height:number,level:number,filter:WallE
   texture.minFilter=THREE.NearestMipmapNearestFilter;texture.generateMipmaps=true;
   texture.name='w3-wall-atlas:'+page.width+'x'+rows;
   pages.push(texture);
-  page.indices.forEach((index,i)=>slots.set(index,{index,row:i*64,texture,pair:planWallFaces(site,index,height),patterned,whiteSwatch}));
+  page.indices.forEach((index,i)=>slots.set(index,{index,row:i*64,texture,pair:planWallFaces(site,index,height),patterned,trimPalette}));
  }
  updateWallAtlas(slots.values(),level,filter);
  return {pages,slots};

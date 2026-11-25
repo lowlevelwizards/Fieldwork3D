@@ -2,10 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {planWallTrimPackets,compileWallTrimGeometry,compileUnifiedWallGeometry,restrictWallShadowToBody,installWallShadowBounds} from '../src/rendering/wall-structural-packet.ts';
+import {wallTrimSwatchUV} from '../src/rendering/wall-surface-atlas.ts';
 import {planWallCapJoins} from '../src/rendering/wall-cap-joins.ts';
 import {groupWallPresentation,resolveWallPresentation,applyWallMaterialState} from '../src/rendering/breach-wall-presentation.ts';
 const wall=(x,y,u,v)=>({a:{x,y},b:{x:u,y:v}});
 const walls=[wall(0,0,80,0),wall(80,0,80,60),wall(40,0,40,-50),wall(80,60,120,90),wall(120,90,123,90)];
+const slot={row:0,texture:{image:{width:128,height:256}}};
 const close=(a,b)=>assert.ok(Math.abs(a-b)<1e-4,a+' != '+b);
 test('packet plan preserves original trim and connector ownership, including short segments',()=>{
  const joins=planWallCapJoins(walls),packets=planWallTrimPackets(walls,56,0xd1c9b4,0x4c5250,joins);
@@ -61,17 +63,32 @@ test('trim packet shares owner presentation but not materials across independent
 
 test('unified packet retains body vertices and uses only its original indices for shadow submission',()=>{
  const body=new THREE.BoxGeometry(80,56,9),packet=planWallTrimPackets(walls,56,0xffffff,0x333333)[0];
- const result=compileUnifiedWallGeometry(body,packet,0,56,.5/128,.5/256),g=result.geometry;
+ const result=compileUnifiedWallGeometry(body,packet,0,56,slot),g=result.geometry;
  assert.equal(result.shadowIndexCount,body.index.count);
  assert.equal(g.index.count,body.index.count+packet.parts.length*36);
  assert.equal(g.groups.length,0);
  assert.deepEqual(g.getAttribute('position').array.slice(0,72),body.getAttribute('position').array);
  assert.deepEqual(g.getAttribute('uv').array.slice(0,48),body.getAttribute('uv').array);
- for(let i=24;i<g.getAttribute('uv').count;i++){assert.equal(g.getAttribute('uv').getX(i),.5/128);assert.equal(g.getAttribute('uv').getY(i),.5/256);}
- const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({vertexColors:true}));
+ assert.equal(g.getAttribute('color'),undefined);
+ for(const [partIndex,part] of packet.parts.entries()){
+  const [u,v]=wallTrimSwatchUV(slot,part.kind==='skirting'?'trim':'cap');
+  for(let i=24+partIndex*24;i<48+partIndex*24;i++){assert.equal(g.getAttribute('uv').getX(i),u);assert.equal(g.getAttribute('uv').getY(i),v);}
+ }
+ const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial());
  restrictWallShadowToBody(m,result.shadowIndexCount);
  m.onBeforeShadow();assert.equal(g.drawRange.count,36);
  m.onAfterShadow();assert.equal(g.drawRange.count,g.index.count);
  m.onBeforeShadow();m.onBeforeRender();assert.equal(g.drawRange.count,g.index.count);
  body.dispose();g.dispose();m.material.dispose();
+});
+
+test('shadow culling temporarily restores body sphere and restores full bounds on throw',()=>{
+ const body=new THREE.BoxGeometry(80,56,9),packet=planWallTrimPackets(walls,56,0xffffff,0x333333)[0];
+ const result=compileUnifiedWallGeometry(body,packet,0,56,slot),m=new THREE.Mesh(result.geometry,new THREE.MeshStandardMaterial());m.castShadow=true;
+ restrictWallShadowToBody(m,result.shadowIndexCount,result.bodySphere);
+ const full=m.geometry.boundingSphere;let fail=false,expected=result.bodySphere;
+ const map={enabled:true,autoUpdate:false,needsUpdate:true,render(){assert.equal(m.geometry.boundingSphere,expected);if(fail){m.onBeforeShadow();throw Error('probe');}}};
+ installWallShadowBounds(map,()=>[{mesh:m}]);map.render();assert.equal(m.geometry.boundingSphere,full);
+ fail=true;assert.throws(()=>map.render(),/probe/);assert.equal(m.geometry.boundingSphere,full);assert.equal(m.geometry.drawRange.count,m.geometry.index.count);
+ fail=false;map.needsUpdate=false;expected=full;map.render();body.dispose();m.geometry.dispose();m.material.dispose();
 });

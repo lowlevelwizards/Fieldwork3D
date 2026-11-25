@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import type {Segment,Pt} from '../breach-core.ts';
+import {wallTrimSwatchUV,type WallAtlasSlot} from './wall-surface-atlas.ts';
 import {planWallCapJoins,type WallCapJoinPlan} from './wall-cap-joins.ts';
 export type TrimPart={kind:'skirting'|'cap'|'joint';x:number;y:number;z:number;width:number;height:number;depth:number;yaw:number;color:number};
 export type WallTrimPacket={index:number;mid:Pt;parts:TrimPart[]};
@@ -43,20 +44,25 @@ export function compileWallTrimGeometry(packet:WallTrimPacket):THREE.BufferGeome
 }
 
 /** W4.2: preserve the body-local transform and atlas UVs. Trim uses a
- * constant white texel and linear vertex colors, so no additional map,
- * material, geometry group or visible draw is required. */
-export function compileUnifiedWallGeometry(body:THREE.BufferGeometry,packet:WallTrimPacket,bodyYaw:number,bodyHeight:number,whiteU:number,whiteV:number){
- const trim=compileWallTrimGeometry(packet);
- if(!trim||!body.index)throw Error('Unified wall requires indexed body and trim');
+ * reserved palette texels in the same strip, so no additional map,
+ * material, vertex color shader variant or visible draw is required. */
+export function compileUnifiedWallGeometry(body:THREE.BufferGeometry,packet:WallTrimPacket,bodyYaw:number,bodyHeight:number,slot:WallAtlasSlot){
+ if(!packet.parts.length||!body.index)throw Error('Unified wall requires indexed body and trim');
  body.computeBoundingSphere();
  const bodySphere=body.boundingSphere!.clone();
- const core=body.clone(),colors=new Float32Array(core.getAttribute('position').count*3).fill(1);
- core.setAttribute('color',new THREE.BufferAttribute(colors,3));
- trim.rotateY(-bodyYaw);trim.translate(0,-bodyHeight/2,0);
- const uv=trim.getAttribute('uv') as THREE.BufferAttribute;
- for(let i=0;i<uv.count;i++)uv.setXY(i,whiteU,whiteV);
- const geometry=mergeGeometries([core,trim],false),shadowIndexCount=core.index!.count;
- core.dispose();trim.dispose();
+ // Construct each trim directly in body-local coordinates. No temporary
+ // merged trim, body clone, or color attribute.
+ const parts=packet.parts.map(part=>{
+  const g=new THREE.BoxGeometry(part.width,part.height,part.depth);
+  g.rotateY(part.yaw);g.translate(part.x-packet.mid.x,part.y,part.z-packet.mid.y);
+  g.rotateY(-bodyYaw);g.translate(0,-bodyHeight/2,0);
+  const uv=g.getAttribute('uv') as THREE.BufferAttribute;
+  const [u,v]=wallTrimSwatchUV(slot,part.kind==='skirting'?'trim':'cap');
+  for(let i=0;i<uv.count;i++)uv.setXY(i,u,v);
+  return g;
+ });
+ const geometry=mergeGeometries([body,...parts],false),shadowIndexCount=body.index.count;
+ for(const part of parts)part.dispose();
  if(!geometry)throw Error('Unified wall geometry incompatible');
  geometry.computeBoundingBox();geometry.computeBoundingSphere();
  return {geometry,shadowIndexCount,bodySphere};
@@ -80,15 +86,16 @@ export function restrictWallShadowToBody(mesh:THREE.Mesh,bodyIndices:number,body
 type WallShadowMap={render:(...args:unknown[])=>unknown;enabled:boolean;autoUpdate:boolean;needsUpdate:boolean};
 export function installWallShadowBounds(shadowMap:WallShadowMap,walls:()=>readonly {mesh:THREE.Mesh}[]){
  const original=shadowMap.render;
+ // Reusable scratch arrays; no per-caster object allocation on refresh.
+ const geometries:THREE.BufferGeometry[]=[],bounds:(THREE.Sphere|null)[]=[];
  shadowMap.render=function(this:unknown,...args:unknown[]){
   if(!shadowMap.enabled||(!shadowMap.autoUpdate&&!shadowMap.needsUpdate))return Reflect.apply(original,this,args);
-  const changed:{geometry:THREE.BufferGeometry;bounds:THREE.Sphere|null}[]=[];
   for(const {mesh} of walls()){
    const body=mesh.userData.fieldworkBodyShadowSphere as THREE.Sphere|undefined;
    if(!body||!mesh.castShadow)continue;
-   const geometry=mesh.geometry;changed.push({geometry,bounds:geometry.boundingSphere});geometry.boundingSphere=body;
+   const geometry=mesh.geometry;geometries.push(geometry);bounds.push(geometry.boundingSphere);geometry.boundingSphere=body;
   }
   try{return Reflect.apply(original,this,args);}
-  finally{for(const {geometry,bounds} of changed){geometry.boundingSphere=bounds;geometry.setDrawRange(0,geometry.index!.count);}}
+  finally{for(let i=0;i<geometries.length;i++){const geometry=geometries[i];geometry.boundingSphere=bounds[i];geometry.setDrawRange(0,geometry.index!.count);}geometries.length=0;bounds.length=0;}
  };
 }

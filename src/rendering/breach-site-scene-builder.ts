@@ -402,7 +402,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         node.renderOrder=1002;
       });
     };
-    const atlas=host.wallAudition?.atlas?buildWallAtlas(site,WALL_VISUAL_HEIGHT,finishCondition,host.wallAudition.effect,!!host.solid(theme.wall,.94,wallPixelSurface(site.archetype)).map,!!host.wallStructureUnified):undefined;
+    const atlas=host.wallAudition?.atlas?buildWallAtlas(site,WALL_VISUAL_HEIGHT,finishCondition,host.wallAudition.effect,!!host.solid(theme.wall,.94,wallPixelSurface(site.archetype)).map,host.wallStructureUnified?{trim:theme.trim,cap:theme.cap}:undefined):undefined;
     if(atlas)host.sitePatinaTextures.push(...atlas.pages);
     const capJoins=planWallCapJoins(site.walls);
     const unified=!!host.wallStructureUnified&&!!atlas;
@@ -434,11 +434,9 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         host.patinaWallSurfaces.push({index,texture:atlasSlot.texture,atlasSlot});
         body.userData.fieldworkWallSurface='w3-atlas';
         if(unified){
-          const image=atlasSlot.texture.image;
-          const packet=compileUnifiedWallGeometry(body.geometry,trimPackets[index],angle,WALL_VISUAL_HEIGHT,.5/image.width,(atlasSlot.row+.5)/image.height);
+          const packet=compileUnifiedWallGeometry(body.geometry,trimPackets[index],angle,WALL_VISUAL_HEIGHT,atlasSlot);
           // Atlas body geometry is site-owned, not a shared cached box.
           body.geometry.dispose();body.geometry=packet.geometry;
-          individualWall.vertexColors=true;individualWall.needsUpdate=true;
           restrictWallShadowToBody(body,packet.shadowIndexCount,packet.bodySphere);
           body.userData.fieldworkUnifiedWall=true;
           body.userData.fieldworkShadowIndexCount=packet.shadowIndexCount;
