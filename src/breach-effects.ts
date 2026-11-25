@@ -9,7 +9,7 @@ export type EjectedCasing={
 const hash=(n:number)=>((Math.imul(n^0x9e3779b9,1664525)+1013904223)>>>0)/4294967296;
 export const CASING_LIMIT=96;
 export const IMPACT_MARK_LIMIT=64;
-export const BLOOD_MARK_LIMIT=24;
+export const BLOOD_MARK_LIMIT=32;
 export function casingAt(c:EjectedCasing,time:number){
  const t=Math.max(0,time-c.at);
  const a=c.heading+Math.PI/2+(hash(c.id)*.5-.25);
@@ -32,5 +32,5 @@ export const impactProfile=(surface:'blood'|'wood'|'metal'|'stone'|'glass'|'dust
  surface==='metal'?{count:5,spread:13,lifetime:.24,color:0xffd298}:
  surface==='wood'?{count:4,spread:11,lifetime:.42,color:0xbf9d77}:
  surface==='stone'?{count:6,spread:12,lifetime:.36,color:0xaaa8a1}:
- surface==='blood'?{count:3,spread:8,lifetime:.28,color:0xab5b52}:
+ surface==='blood'?{count:4,spread:15,lifetime:.40,color:0xb43d3b}:
  {count:3,spread:7,lifetime:.31,color:0xb0a797};

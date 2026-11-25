@@ -284,7 +284,8 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     healthBefore:before,healthAfter:after,down:hit&&after<=0,
     surface});
   retainImpactMark(s,{id:s.nextEffectId++,p:clone(end),
-    surface,height,age:0,shotId,surfaceRef:hit?undefined:impact.stoppedHit?.surfaceRef});
+    surface,height,age:0,shotId,surfaceRef:hit?undefined:impact.stoppedHit?.surfaceRef,
+    ...(surface==='blood'?{bloodKind:'splat' as const,bloodAmount:1}:{})},sessionWorldGeometry(s).walls);
   if(victim){
     const harm=applyCivilianBulletHit(victim.actor,s.seconds);
     recordCivilianHarm(s.civilianHarmEvents,{

@@ -7,6 +7,7 @@ test('V4 shares mixed mark draw, nonblood bypass and bounded styles',()=>{
  b.setStyle(0,'wood',10,20);b.setStyle(1,'blood',10,20);
  assert.equal(b.style.getX(0),-1);assert.ok(b.style.getX(1)>=0&&b.style.getX(1)<4);
  assert.equal(b.mesh.geometry.attributes.stainStyle,b.style);
+ assert.ok(b.styleFor('blood',10,20,'pool')>=4&&b.styleFor('blood',10,20,'pool')<8);
  const shader={uniforms:{},vertexShader:'#include <begin_vertex>',fragmentShader:'#include <color_fragment>'};
  b.mesh.material.onBeforeCompile(shader,null);
  assert.equal(shader.uniforms.fieldworkStainAtlas.value,b.texture);

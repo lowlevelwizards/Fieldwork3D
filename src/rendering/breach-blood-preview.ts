@@ -4,17 +4,17 @@
  */
 import * as THREE from 'three';
 import {EffectSlotCache} from './breach-effect-slot-cache.ts';
-import {STAIN_CELL,STAIN_VARIANTS,stainAlphaPixels,stainVariant} from './breach-stain-atlas.ts';
+import {STAIN_CELL,STAIN_VARIANTS,STAIN_STYLE_COUNT,stainAlphaPixels,stainVariant} from './breach-stain-atlas.ts';
 
 export function makeStainMarkBatch(capacity:number){
- const texture=new THREE.DataTexture(stainAlphaPixels(),STAIN_CELL*STAIN_VARIANTS,STAIN_CELL,THREE.RGBAFormat);
+ const texture=new THREE.DataTexture(stainAlphaPixels(),STAIN_CELL*STAIN_STYLE_COUNT,STAIN_CELL,THREE.RGBAFormat);
  texture.minFilter=texture.magFilter=THREE.LinearFilter;
  texture.generateMipmaps=false;texture.needsUpdate=true;
  const geometry=new THREE.CircleGeometry(1,9);
  const style=new THREE.InstancedBufferAttribute(new Float32Array(capacity),1);
  style.setUsage(THREE.DynamicDrawUsage);geometry.setAttribute('stainStyle',style);
  const material=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,
-  opacity:.82,depthTest:true,depthWrite:false,side:THREE.DoubleSide});
+  opacity:.93,depthTest:true,depthWrite:false,side:THREE.DoubleSide});
  material.onBeforeCompile=shader=>{
   shader.uniforms.fieldworkStainAtlas={value:texture};
   shader.vertexShader='attribute float stainStyle;\nvarying float vStainStyle;\nvarying vec2 vStainUV;\n'+shader.vertexShader;
@@ -22,13 +22,13 @@ export function makeStainMarkBatch(capacity:number){
    '#include <begin_vertex>\nvStainStyle=stainStyle;vStainUV=uv;');
   shader.fragmentShader='uniform sampler2D fieldworkStainAtlas;\nvarying float vStainStyle;\nvarying vec2 vStainUV;\n'+shader.fragmentShader;
   shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',
-   '#include <color_fragment>\nif(vStainStyle>=0.0){vec2 at=vec2((vStainStyle+vStainUV.x)*.25,vStainUV.y);diffuseColor.a*=texture2D(fieldworkStainAtlas,at).a;}');
+   '#include <color_fragment>\nif(vStainStyle>=0.0){vec2 at=vec2((vStainStyle+vStainUV.x)*.125,vStainUV.y);diffuseColor.a*=texture2D(fieldworkStainAtlas,at).a;}');
  };
- material.customProgramCacheKey=()=> 'fieldwork-v4-stain-atlas';
+ material.customProgramCacheKey=()=> 'fieldwork-v13-stain-atlas';
  const mesh=new THREE.InstancedMesh(geometry,material,capacity);
  mesh.count=0;mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);mesh.frustumCulled=false;
  mesh.userData.fieldworkDrawFamily='mixed-impact-stain';
- const styleFor=(surface:string|undefined,x:number,y:number)=>surface==='blood'?stainVariant(x,y):-1;
+ const styleFor=(surface:string|undefined,x:number,y:number,kind?:'splat'|'pool')=>surface==='blood'?stainVariant(x,y)+(kind==='pool'?STAIN_VARIANTS:0):-1;
  return {mesh,texture,style,styleFor,
   setStyle(index:number,surface:string|undefined,x:number,y:number){
    style.setX(index,styleFor(surface,x,y));

@@ -1,0 +1,40 @@
+name: V13 blood and pooling
+on:
+  pull_request:
+    paths:
+      - 'src/breach-blood-evidence.ts'
+      - 'src/breach-impact-evidence-buffer.ts'
+      - 'src/breach-simulation-medical-door-phase.ts'
+      - 'src/breach-3d.ts'
+      - 'src/rendering/breach-blood-burst.ts'
+      - 'src/rendering/breach-stain-atlas.ts'
+      - 'tests/vfx-v13-blood-evidence.test.mjs'
+      - 'scripts/verification/vfx-v13-blood-browser.mjs'
+      - '.github/workflows/vfx-v13-blood.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  blood:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/vfx-v*.test.mjs tests/breach-roadmap2-impact-evidence.test.mjs tests/breach-window-blood-reactivity.test.mjs tests/equipment-22-00-02-wounds.test.mjs tests/equipment-22-03-field-medical.test.mjs tests/replay-r2-ballistics.test.mjs
+      - run: npm run build
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - run: node scripts/verification/vfx-v13-blood-browser.mjs
+        env:
+          FIELDWORK_CI_CHROME: '1'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v13-blood-witnesses
+          path: artifacts/vfx-v13-blood/
+          if-no-files-found: ignore
