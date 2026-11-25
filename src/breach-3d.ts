@@ -103,6 +103,7 @@ import {conditionWallPixels} from './worldgen/condition-wall.ts';
 import {packedWallSurfacePixels,resolveWallSurfaceMode,type WallAudition,type WallSurfaceRecipe} from './worldgen/wall-surface-recipe.ts';
 import {installWallShadowBounds,resolveWallStructureMode} from './rendering/wall-structural-packet.ts';
 import {writeAtlasSlot,type WallAtlasSlot} from './rendering/wall-surface-atlas.ts';
+import {uploadSurfacePages} from './rendering/surface-atlas-pages.ts';
 import {type ObjectWear} from './worldgen/object-wear.ts';
 
 import {wearPixels} from './rendering/pixel-decals.ts';
@@ -895,7 +896,7 @@ export class TacticalScene3D{
       image.data.set(conditionFloorPixels(site,item.room,level));
       item.texture.needsUpdate=true;
     }
-    for(const page of floorPages)page.needsUpdate=true;
+    uploadSurfacePages(floorPages);
     const dirtyAtlasPages=new Set<THREE.DataTexture>();
     for(const item of this.patinaWallSurfaces){
       if(item.atlasSlot){writeAtlasSlot(item.atlasSlot,level,this.wallAudition?.effect??'all');dirtyAtlasPages.add(item.texture);continue;}
@@ -906,7 +907,7 @@ export class TacticalScene3D{
         image.width,image.height));
       item.texture.needsUpdate=true;
     }
-    for(const page of dirtyAtlasPages)page.needsUpdate=true;
+    uploadSurfacePages(dirtyAtlasPages);
   }
   private currentWear:WearMark[]=[];
   private objectWear:ObjectWear[]=[];

@@ -27,7 +27,8 @@ export function planActivityWear(site:Site):WearMark[]{
    condition==='neglected'||condition==='disturbed'?14:9;
  const result:WearMark[]=[];
  for(const [i,item] of site.cover.entries()){
-  if(!item.fixture||result.length>=budget)break;
+  if(result.length>=budget)break;
+  if(!item.fixture||item.destroyed||item.toppled)continue;
   const rule=rules[item.fixture];if(!rule)continue;
   const room=site.rooms.find(r=>item.x>=r.x&&item.x<=r.x+r.w&&
     item.y>=r.y&&item.y<=r.y+r.h);
