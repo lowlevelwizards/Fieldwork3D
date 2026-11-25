@@ -66,10 +66,10 @@ export function mostRecentActiveMuzzleShot<T extends {
 
 import {MATERIAL_IMPACT_PROFILES} from './rendering/breach-material-impact-atom.ts';
 export type ImpactSurface='blood'|'wood'|'stone'|'metal'|'glass'|'dust';
-export function impactPulseColor(surface:ImpactSurface):number{return surface==='blood'?0xb43d3b:MATERIAL_IMPACT_PROFILES[surface].pulseColor;}
+export function impactPulseColor(surface:ImpactSurface):number{return surface==='blood'?0xa65a4e:MATERIAL_IMPACT_PROFILES[surface].pulseColor;}
 export function impactPulse(surface:ImpactSurface,age:number,
  lifespan:number){
  const t=Math.max(0,Math.min(1,age/Math.max(.001,lifespan)));
  return {scale:(surface==='blood'?7.5:MATERIAL_IMPACT_PROFILES[surface].pulse)*(1+.32*t),
-  opacity:Math.max(0,1-t),active:age>=0&&age<lifespan};
+  opacity:(surface==='blood'?.72:1)*Math.max(0,1-t),active:age>=0&&age<lifespan};
 }

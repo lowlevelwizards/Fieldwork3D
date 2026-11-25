@@ -29,7 +29,7 @@ export function casingAt(c:EjectedCasing,time:number){
    settled,rotation:c.id*1.37+Math.min(t,landing+.5)*10};
 }
 export const impactProfile=(surface:'blood'|'wood'|'metal'|'stone'|'glass'|'dust')=>{
- if(surface==='blood')return {count:4,spread:15,lifetime:.40,color:0xb43d3b};
+ if(surface==='blood')return {count:4,spread:15,lifetime:.40,color:0xa65a4e};
  const p=MATERIAL_IMPACT_PROFILES[surface];
  return {count:p.count,spread:p.spread,lifetime:p.life,color:p.color};
 };

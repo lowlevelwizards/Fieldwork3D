@@ -19,7 +19,7 @@ test('V6 settled shards exist only after recorded burst and remain deterministic
   assert.ok(settledWindowShardPose(pane,4,i,p));
   assert.ok(Math.abs(p.z-pane.y)<pane.width/2);
   assert.ok(Math.abs(p.x-pane.x)<15);
-  assert.equal(p.heightScale,.25);
+  assert.equal(p.heightScale,.60);
  }
 });
 test('V6 exact slot cache avoids unchanged matrix uploads and supports reset',()=>{

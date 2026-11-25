@@ -5,6 +5,7 @@ import {buildTrainingSite} from './training/training-site-builder.ts';
 import {DEFAULT_TRAINING_CONFIG} from './training/training-courses.ts';
 import {generateSite,type Site} from './breach-site.ts';
 import {segmentAttachment,coverAttachment} from './breach-impact-surface.ts';
+import {damageWindow,windowPaneSegment} from './breach-windows.ts';
 import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
 import {registerWound,stabilizeWound} from './breach-medical-wounds.ts';
 import {sampleBleedingEvidence} from './breach-blood-evidence.ts';
@@ -65,15 +66,23 @@ function choose(kind:Sample){
  }
  if(kind==='vegetation'){
   const zone=site.exteriorZones?.find(z=>z.kind==='garden'||z.kind==='yard');
-  if(zone)focus({x:zone.x+zone.w/2,y:zone.y+zone.h/2});
-  label('Vegetation · current production grass and bushes');draw();return;
+  if(zone)focus({x:zone.x,y:zone.y});
+  label('Exterior · grass and shrubs temporarily retired');draw();return;
  }
  if(kind==='glass'){
   const pane=session.windows.find(w=>!w.shattered);
   if(!pane){build('exterior');label('All panes reset · choose GLASS again');draw();return;}
-  pane.shattered=true;pane.open=true;pane.integrity=0;pane.shatteredAt=session.seconds;session.objectRevision++;
-  emit('glass',{x:pane.x,y:pane.y},(pane.sillHeight??14)+12);
-  focus({x:pane.x,y:pane.y});label('Glass · shatter burst and settled fragments');draw();return;
+  const base=pane.sillHeight??14,head=pane.headHeight??32;
+  const offset=(pane.integrity===3?-1:1)*pane.width*.16;
+  const point={x:pane.x+(pane.vertical?0:offset),y:pane.y+(pane.vertical?offset:0)};
+  const height=base+(head-base)*.30;
+  const from={x:point.x+(pane.vertical?20:0),y:point.y+(pane.vertical?0:20)},to={x:2*point.x-from.x,y:2*point.y-from.y};
+  const ref=segmentAttachment('window',session.windows.indexOf(pane),pane.id,windowPaneSegment(pane),from,to,.5,height);
+  damageWindow(pane,1);session.objectRevision++;
+  if(pane.shattered)pane.shatteredAt=session.seconds;
+  const shot=emit('glass',point,height);
+  retainImpactMark(session,{id:session.nextEffectId++,shotId:shot.id,p:point,age:0,surface:'glass',height,surfaceRef:ref});
+  focus({x:pane.x,y:pane.y});label(pane.shattered?'Glass · shattered, settled fragments':`Glass · damaged ${3-pane.integrity}/3 · repeat to fracture`);draw();return;
  }
  if(kind==='hit'||kind==='down'||kind==='pool'){
   if(target.health<=0){target.health=4;target.downedAt=null;target.medical={wounds:[],bloodLoss:0};}

@@ -409,6 +409,7 @@ export type Session=Omit<TacticalState,'operators'> & {
   /** Authoritative surrendered firearms, distinct from transient presentation. */
   droppedFirearms:import('./breach-suspect-weapons.ts').DroppedFirearm[];
   grenades:FlashGrenade[];flashBursts:FlashBurst[];flashRemaining:number;
+  atmosphere?:import('./breach-atmosphere-evidence.ts').AtmosphereCue[];
   nextEffectId:number;impactMarks:ImpactMark[];
   battleEvents:BattleEvent[];nextBattleId:number;
   executionEvents:ExecutionEvent[];nextExecutionId:number;

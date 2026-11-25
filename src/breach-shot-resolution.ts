@@ -31,6 +31,7 @@ import {matchingShotSight,nearShotLane,type ShotSightPreflight}
 import {urgentFireMode} from './breach-fire-urgency.ts';
 import {resolveArmorImpact} from './equipment-armor.ts';
 import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
+import {glassImpactDamage} from './breach-glass-damage.ts';
 import {CASING_LIMIT} from './breach-effects.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
@@ -246,8 +247,9 @@ export function createShotResolver(ports:ShotResolverPorts){
     const t=segmentImpact(muzzlePoint,far,windowPaneSegment(w));
     return t!==null&&t<=stopFraction+.0001;
   });
-  shatterStruckWindows(s,actualRay,Math.max(1,weapon.damage));
-  shatterStruckDoorGlass(s,strike.glassDoorHits,stopFraction);
+  const glassDamage=glassImpactDamage(a.weapon,!!secondaryWeapon);
+  shatterStruckWindows(s,actualRay,glassDamage);
+  shatterStruckDoorGlass(s,strike.glassDoorHits,stopFraction,glassDamage);
   damageStruckCover(s,strike.coverHits,weapon.damage*.45,stopFraction,a.id);
   const materialImpacts=emitMaterialEvents(s,muzzlePoint,far,strike.materialHits,stopFraction);
   const end=civilianHit?clone(civilianHit.actor.p):

@@ -138,6 +138,7 @@ export type ReplayFrame={
   /** D15 optional world-firearm history; absent in old films. */
   droppedFirearms?:DroppedFirearm[];
   flashBursts:FlashBurst[];flashRemaining:number;
+  atmosphere?:Session['atmosphere'];
   missionType:Session['missionType'];holdTime:number;
   rescue:{p:Pt;following:string|null}|null;objective:Pt;
   seenGround:string[];intel:ReturnType<typeof intelSnapshot>;
@@ -336,6 +337,8 @@ export function snapshot(s:Session,seenGround?:string[],
         from:position(g.from),to:position(g.to)}))),
     flashBursts:reuseFrozenReplayValue(s.flashBursts,priorEffects?.flashBursts,
       ()=>s.flashBursts.map(b=>({...b,p:position(b.p)}))),
+    ...(s.atmosphere?.length?{atmosphere:reuseFrozenReplayValue(s.atmosphere,priorEffects?.atmosphere,
+      ()=>s.atmosphere!.map(c=>({...c,p:position(c.p)})))}:{}),
     flashRemaining:s.flashRemaining,
     missionType:s.missionType,holdTime:s.holdTime,
     rescue:s.rescue?{p:position(s.rescue.p),following:s.rescue.following}:null,
@@ -697,6 +700,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   s.grenades=f.grenades.map(g=>({...g,p:position(g.p),
     from:position(g.from),to:position(g.to)}));
   s.flashBursts=f.flashBursts.map(b=>({...b,p:position(b.p)}));
+  s.atmosphere=f.atmosphere?.map(c=>({...c,p:position(c.p)}));
   s.flashRemaining=f.flashRemaining;
   s.missionType=f.missionType;s.holdTime=f.holdTime;
   s.rescue=f.rescue?{p:position(f.rescue.p),

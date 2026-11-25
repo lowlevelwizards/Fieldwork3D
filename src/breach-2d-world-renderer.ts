@@ -494,9 +494,9 @@ function renderGroundMarks(){
     const radius=mark.surface==='blood'?
       confinedGroundRadius(mark.p,bloodMarkRadius(mark),sessionWorldGeometry(state).walls):2.5;
     if(radius<.5)continue;
-    draw.globalAlpha=mark.surface==='blood'?.90:Math.max(.18,.78-mark.age*.023);
+    draw.globalAlpha=mark.surface==='blood'?.70:Math.max(.18,.78-mark.age*.023);
     circle(mark.p.x,mark.p.y,radius,
-      mark.surface==='blood'?(mark.bloodKind==='pool'?'#92312f':'#ab403b'):'#4e4b40');
+      mark.surface==='blood'?(mark.bloodKind==='pool'?'#703b37':'#763c38'):'#4e4b40');
     draw.globalAlpha=1;
   }
  }

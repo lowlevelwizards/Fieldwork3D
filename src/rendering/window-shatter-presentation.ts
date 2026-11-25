@@ -19,17 +19,17 @@ export function windowShardPose(
  if(t<0||t>=WINDOW_SHARD_DURATION)return null;
  const spread=(index-(WINDOW_SHARDS_PER_PANE-1)/2)/
    (WINDOW_SHARDS_PER_PANE-1);
- const outward=(index%2?1:-1)*t*(5+index*.9);
+ const outward=(index%2?1:-1)*t*(8+index*1.6);
  const lateral=spread*(w.width-8)*.72+spread*t*19;
  const sill=w.sillHeight??14,head=w.headHeight??32;
  const drop=t*t*36;
- const elevation=Math.max(.65,sill+(head-sill)*(.35+(index%3)*.17)-drop);
+ const elevation=Math.max(1,sill+(head-sill)*(.35+(index%3)*.17)-drop);
  return {
   x:w.x+(w.vertical?outward:lateral),
   y:elevation,
   z:w.y+(w.vertical?lateral:outward),
   rx:t*(1.4+index*.44),ry:t*(2.2+index*.38),
-  rz:spread*1.8+t*2.4,scale:.85+(index%3)*.24
+  rz:spread*1.8+t*2.4,scale:1.5+(index%3)*.38
  };
 }
 
@@ -52,8 +52,8 @@ export function settledWindowShardPose(
  const outward=(index%2?1:-1)*(6+index*2.2);
  out.x=w.x+(w.vertical?outward:lateral);
  out.z=w.y+(w.vertical?lateral:outward);
- out.y=.65;out.rx=0;out.ry=index*2.399;out.rz=0;
- out.scale=.85+(index%3)*.24;out.heightScale=.25;
+ out.y=.75;out.rx=0;out.ry=index*2.399;out.rz=0;
+ out.scale=1.45+(index%3)*.35;out.heightScale=.60;
  return true;
 }
 /** Cache exact last submitted slot values. A stationary debris field can

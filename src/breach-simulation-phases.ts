@@ -8,6 +8,7 @@ import {captureMotionFrameOrigins} from './breach-motion-frame-input.ts';
 import {executionStatus} from './breach-execution-state.ts';
 import {executionTransition} from './breach-execution-events.ts';
 import {ageImpactEvidence} from './breach-blood-evidence.ts';
+import {retainAtmosphereTails} from './breach-atmosphere-evidence.ts';
 export function simulationPhaseMark(probe?:StepPhaseProbe):(phase:string)=>void{
   let perfStart=probe?performance.now():0;
   return (phase:string)=>{
@@ -22,6 +23,7 @@ export function advanceTransientSimulationEffects(s:Session,h:number):void{
   // Effects are usually empty between firefights; the old filters
   // allocated five fresh empty arrays on every authoritative 60Hz tick.
   // Nonempty collections retain the same age increments and expiry gates.
+  if(s.shots.length||s.flashBursts.length||s.atmosphere?.length)retainAtmosphereTails(s,h);
   if(s.sparks.length)s.sparks=s.sparks.filter(a=>(a.age+=h)<.20);
   if(s.shots.length)s.shots=s.shots.filter(a=>(a.age+=h)<.40);
   if(s.noise.length)s.noise=s.noise.filter(n=>s.seconds-n.time<4);

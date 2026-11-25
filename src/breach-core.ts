@@ -34,6 +34,7 @@ export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
   pushTarget?:number;
   /** A glass leaf keeps its frame after the glazing has shattered. */
   glassShattered?:boolean;
+  glassIntegrity?:number;glassShatteredAt?:number;
   wedged?:boolean;wedgeOwnerId?:string;}
 export type Obstacle={x:number;y:number;w:number;h:number;low?:boolean;
   /** Stable seed-authored identity; old replay/site records may omit it. */

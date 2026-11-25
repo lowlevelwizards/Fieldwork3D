@@ -22,9 +22,9 @@ export function makeStainMarkBatch(capacity:number){
    '#include <begin_vertex>\nvStainStyle=stainStyle;vStainUV=uv;');
   shader.fragmentShader='uniform sampler2D fieldworkStainAtlas;\nvarying float vStainStyle;\nvarying vec2 vStainUV;\n'+shader.fragmentShader;
   shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',
-   '#include <color_fragment>\nif(vStainStyle>=0.0){vec2 at=vec2((vStainStyle+vStainUV.x)/'+STAIN_STYLE_COUNT.toFixed(1)+',vStainUV.y);vec4 mask=texture2D(fieldworkStainAtlas,at);diffuseColor.a*=mask.a;diffuseColor.rgb*=mask.rgb;}');
+   '#include <color_fragment>\nif(vStainStyle>=0.0){vec2 at=vec2((vStainStyle+vStainUV.x)/'+STAIN_STYLE_COUNT.toFixed(1)+',vStainUV.y);vec4 mask=texture2D(fieldworkStainAtlas,at);diffuseColor.a*=mask.a*(vStainStyle<8.0?(vStainStyle<4.0?.76:.83):1.0);diffuseColor.rgb*=mask.rgb;}');
  };
- material.customProgramCacheKey=()=> 'fieldwork-v14-impact-atlas';
+ material.customProgramCacheKey=()=> 'fieldwork-v15-muted-blood-atlas';
  const mesh=new THREE.InstancedMesh(geometry,material,capacity);
  mesh.count=0;mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);mesh.frustumCulled=false;
  mesh.userData.fieldworkDrawFamily='mixed-impact-stain';

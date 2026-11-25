@@ -10,6 +10,8 @@ test('window runtime state is mutable but never changes original building plan',
  assert.equal(damageWindow(state,1),true);
  assert.equal(state.shattered,false);
  assert.equal(damageWindow(state,1),true);
+ assert.equal(state.shattered,false);
+ assert.equal(damageWindow(state,1),true);
  assert.equal(state.shattered,true);
  assert.equal(manipulateWindow(state,'close'),false);
 });
