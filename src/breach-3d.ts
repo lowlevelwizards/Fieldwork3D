@@ -1,6 +1,7 @@
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {bloodMarkRadius,bloodMarkTint} from './breach-blood-evidence.ts';
+import {damageRadius,damageTint} from './rendering/breach-stain-atlas.ts';
 import {sampleBloodBurst,BLOOD_BURST_COUNT} from './rendering/breach-blood-burst.ts';
 import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose,isGroundImpactMark,type SurfaceMarkPose} from './breach-impact-surface.ts';
 import {hostileNpcTransitionKey,hostileCustodyWalkBlend}
@@ -3101,16 +3102,17 @@ export class TacticalScene3D{
       if(replayDisclosurePolicy?.mode==='operator')continue;
       let attached:SurfaceMarkPose|null=null;
       const ref=mark.surfaceRef;
+      const artRadius=damageRadius(mark.surface);
       if(mark.surface!=='blood'&&ref){
         if(ref.kind==='wall'){
           const owner=this.wallOwners.find(w=>w.index===ref.index);
           if(!owner||owner.opacity<.995||!owner.pieces.some(m=>m.visible&&(!m.parent||m.parent.visible)))continue;
-          attached=wallMarkPose(ref,owner.segment);
+          attached=wallMarkPose(ref,owner.segment,artRadius);
         }else if(ref.kind==='door'){
           const door=ref.ownerId?this.frameDoorsById.get(ref.ownerId):undefined;
           const visual=ref.ownerId?this.doors.get(ref.ownerId):undefined;
           if(!door||!visual?.root.visible||!visual.leaf.visible||visual.leaf.userData.impactCut)continue;
-          const local=doorMarkLocalPose(ref,door);
+          const local=doorMarkLocalPose(ref,door,artRadius);
           if(local){
             visual.leaf.updateWorldMatrix(true,false);
             this.impactDecalPoint.set(local.x,local.y,local.z).applyMatrix4(visual.leaf.matrixWorld);
@@ -3121,7 +3123,7 @@ export class TacticalScene3D{
           const authored=s.site?.cover[ref.index],current=s.coverState[ref.index];
           const group=this.coverGroups.get(ref.index),visual=this.coverVisualStates.get(ref.index);
           if(!authored||!current||!group?.visible||!visual?.intact.visible)continue;
-          const local=coverMarkLocalPose(ref,authored,current);
+          const local=coverMarkLocalPose(ref,authored,current,artRadius);
           if(local){
             group.updateWorldMatrix(true,false);
             this.impactDecalPoint.set(local.x,local.y,local.z).applyMatrix4(group.matrixWorld);
@@ -3133,7 +3135,7 @@ export class TacticalScene3D{
         }else if(ref.kind==='window'){
           const pane=s.windows[ref.index],glass=ref.ownerId?this.windowGlass.get(ref.ownerId):undefined;
           if(!pane||!glass?.visible||!glass.parent?.visible)continue;
-          attached=windowMarkPose(ref,pane);
+          attached=windowMarkPose(ref,pane,artRadius);
         }
         // Unsupported collider/art correspondence fails closed.
         if(!attached)continue;
@@ -3164,10 +3166,7 @@ export class TacticalScene3D{
           groundMarkHiddenByWallFromCamera(markPoint,bloodCamera,s.site?.walls??WALLS,WALL_VISUAL_HEIGHT,y))continue;
       }
       if(markCount>=IMPACT_MARK_LIMIT)break;
-      const dark=mark.surface==='blood'?bloodMarkTint(mark):
-        mark.surface==='wood'?0x3a2920:
-        mark.surface==='stone'?0x38332c:
-        mark.surface==='metal'?0x202b2e:0x514e42;
+      const dark=mark.surface==='blood'?bloodMarkTint(mark):damageTint(mark.surface);
       const groundRadius=radius,markY=attached?.y??(mark.surface==='blood'?.85:1);
       const nx=attached?.nx??0,ny=attached?.ny??1,nz=attached?.nz??0;
       const fade=mark.surface==='blood'?1:Math.max(.28,1-mark.age*.027);
