@@ -35,3 +35,18 @@ export function forEachRememberedMicroCell(
  }
  return count;
 }
+
+/** Enumerate the exact remembered 20u cells without a world-wide grid scan.
+ * The row/column order matches the prior raster loop for deterministic paths. */
+export function rememberedFineCells(seen:ReadonlySet<string>,bounds:{minX:number;minY:number;maxX:number;maxY:number}):{col:number;row:number}[]{
+ const cells:{col:number;row:number}[]=[];
+ const x0=Math.floor(bounds.minX/20),x1=Math.ceil(bounds.maxX/20),y0=Math.floor(bounds.minY/20),y1=Math.ceil(bounds.maxY/20);
+ for(const id of seen){
+  if(!id.startsWith('fine:'))continue;
+  const comma=id.indexOf(',',5);if(comma<0)continue;
+  const col=Number(id.slice(5,comma)),row=Number(id.slice(comma+1));
+  if(!Number.isInteger(col)||!Number.isInteger(row)||col<x0||col>=x1||row<y0||row>=y1||id!=='fine:'+col+','+row)continue;
+  cells.push({col,row});
+ }
+ cells.sort((a,b)=>a.row-b.row||a.col-b.col);return cells;
+}
