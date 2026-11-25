@@ -25,6 +25,7 @@ import {conditionWallPixels,wallPatinaDimensions} from '../worldgen/condition-wa
 import {planWallCapJoins} from './wall-cap-joins.ts';
 import {ageMaterialColor} from './condition-materials.ts';
 import {doubleSidedWallWear} from './wear-wall-geometry.ts';
+import {planWallSurface,packedWallSurfacePixels,type WallAudition,type WallSurfaceRecipe} from '../worldgen/wall-surface-recipe.ts';
 import {wearPixels} from './pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './wear-opacity.ts';
 import {type PixelOverlay} from './pixel-overlays.ts';
@@ -53,7 +54,7 @@ import {sitePowerControls} from '../equipment-site-power-controls.ts';
 export type SiteSceneBuildPort={
  root:THREE.Group;
  box:(parent:THREE.Object3D,x:number,y:number,z:number,w:number,h:number,
-   d:number,material:THREE.Material,cast?:boolean)=>THREE.Mesh;
+   d:number,material:THREE.Material,cast?:boolean,packedWall?:boolean)=>THREE.Mesh;
  plane:(parent:THREE.Object3D,x:number,z:number,w:number,d:number,
    y:number,material:THREE.Material)=>THREE.Mesh;
  solid:(hex:number,roughness?:number,surface?:PixelSurface)=>THREE.MeshStandardMaterial;
@@ -86,7 +87,8 @@ export type SiteSceneBuildPort={
  roofMaterial:THREE.MeshStandardMaterial|null;
  windowPaneMaterial:THREE.MeshStandardMaterial|null;
  patinaRoomSurfaces:Array<{room:Room;texture:THREE.DataTexture}>;
- patinaWallSurfaces:Array<{index:number;texture:THREE.DataTexture}>;
+ patinaWallSurfaces:Array<{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;patterned?:boolean}>;
+ wallAudition?:WallAudition;
  sitePatinaTextures:THREE.DataTexture[];
  sitePatinaMaterials:THREE.MeshBasicMaterial[];
  wallMaterials:Set<THREE.Material>;
@@ -407,17 +409,34 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       const exterior=accessibleExteriorWall(site,wall);
       const x=(a.x+b.x)/2,z=(a.y+b.y)/2;
       const angle=-Math.atan2(b.y-a.y,b.x-a.x);
-      const individualWall=wallMat.clone();
+      const individualWall=(host.wallAudition?host.solid(theme.wall,.94,wallPixelSurface(site.archetype)):wallMat).clone();
       host.wallMaterials.add(individualWall);
       const body=host.box(group,x,WALL_VISUAL_HEIGHT/2,z,
-        len,WALL_VISUAL_HEIGHT,9,individualWall);
+        len,WALL_VISUAL_HEIGHT,9,individualWall,true,!!host.wallAudition);
       body.rotation.y=angle;
       body.userData.fieldworkDrawFamily='structural-wall-body';
       // Dynamic reason is assigned by the existing cutaway loop.
       // Whole-wall weathering follows the actual structural wall mesh.
       // Both faces share one deterministic texture, while a single instance
       // controls opacity during close-camera cutaways.
-      if(effectiveCondition(site)>0){
+      if(host.wallAudition){
+        // Map Lab allocates one bounded mask even on clean walls so the
+        // condition slider can scrub without allocating or recompiling.
+        const recipe=planWallSurface(site,index,WALL_VISUAL_HEIGHT);
+        const {width,height}=wallPatinaDimensions(len);
+        const patterned=!!individualWall.map;
+        const texture=new THREE.DataTexture(
+          packedWallSurfacePixels(recipe,effectiveCondition(site),width,host.wallAudition.effect,patterned),
+          width,height,THREE.RGBAFormat);
+        texture.colorSpace=THREE.SRGBColorSpace;
+        texture.magFilter=THREE.NearestFilter;
+        texture.minFilter=THREE.NearestMipmapNearestFilter;
+        texture.generateMipmaps=true;texture.needsUpdate=true;
+        host.sitePatinaTextures.push(texture);
+        host.patinaWallSurfaces.push({index,texture,recipe,patterned});
+        individualWall.map=texture;individualWall.color.setHex(0xffffff);individualWall.needsUpdate=true;
+        body.userData.fieldworkWallSurface='w2-audition';
+      }else if(effectiveCondition(site)>0){
         // Keep approximately one weathering texel per world unit along
         // long walls, rather than stretching the same 64 pixels over
         // entire retail facades. Height stays a bounded 64 pixels.
@@ -449,7 +468,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       if(exterior)body.traverse(child=>{
         if(child!==body&&child instanceof THREE.Mesh)child.renderOrder=1002;
       });
-      for(const mark of marksOn('wall',index))
+      if(!host.wallAudition)for(const mark of marksOn('wall',index))
         host.addSurfaceWear(body,mark,(mark.u-.5)*len,(mark.v-.5)*(WALL_VISUAL_HEIGHT-8),
           mark.face==='back'?-4.6:4.6,wallPixelSurface(site.archetype));
       const individualFoot=skirting.clone();

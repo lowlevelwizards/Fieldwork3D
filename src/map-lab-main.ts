@@ -1,5 +1,6 @@
 /** Standalone omniscient generation inspector, not a tactical encounter. */
 import {TacticalScene3D} from './breach-3d.ts';
+import type {WallEffectFilter} from './worldgen/wall-surface-recipe.ts';
 import {newSession,type Session} from './breach-game.ts';
 import {type Site,type BuildingArchetype} from './breach-site.ts';
 import {labScaleChoice,type LabScale,type GeneratorRequest,type GeneratorResponse,type GeneratorTiming} from './map-lab-generation.ts';
@@ -43,6 +44,10 @@ let session:Session=newSession(0);
 let siteReady=false;
 typeInput.value=BUILDING_ARCHETYPES[(initial>>>0)%BUILDING_ARCHETYPES.length];
 const stage=new TacticalScene3D();
+const wallMode=el<HTMLSelectElement>('wallAuditionMode');
+const wallEffect=el<HTMLSelectElement>('wallAuditionEffect');
+wallMode.value=stage.wallAudition?'packed':'legacy';
+wallEffect.disabled=!stage.wallAudition;
 stage.setMode('iso');stage.view.zoom=1.25;
 let markers:{node:HTMLElement;p:Pt;orientation?:number}[]=[];
 let reportBaseline='';
@@ -144,6 +149,16 @@ function previewCondition(){
  conditionValue.textContent=selectedCondition+' / 100 · '+conditionLabel(selectedCondition);
  paintConditionDiagnostics();
 }
+wallMode.addEventListener('change',()=>{
+ stage.wallAudition=wallMode.value==='legacy'?undefined:{effect:wallEffect.value as WallEffectFilter};
+ wallEffect.disabled=!stage.wallAudition;
+ if(siteReady)previewCondition();
+});
+wallEffect.addEventListener('change',()=>{
+ if(!stage.wallAudition)return;
+ stage.wallAudition.effect=wallEffect.value as WallEffectFilter;
+ if(siteReady&&session.site)stage.previewConditionMasks(session.site,selectedCondition);
+});
 let conditionTimer:ReturnType<typeof setTimeout>|null=null;
 let maskPreviewFrame:number|null=null;
 function selectCondition(level:number){
@@ -390,7 +405,7 @@ async function useGeneratedSite(id:number,site:Site,audit:SiteAudit,choice:LabSc
   playSite.href='./breach.html?seed='+site.seed+
     '&scale='+(site.scale??'medium')+'&condition='+selectedCondition;
   history.replaceState(null,'','?seed='+site.seed+'&scale='+choice+
-    '&condition='+selectedCondition);
+    '&condition='+selectedCondition+(stage.wallAudition?'&wallWear='+wallMode.value:''));
   siteReady=true;currentAudit=audit;
   updateLabels();showFunctionalQuality(site,audit);paintConditionDiagnostics();
   showProgress(100,'SITE READY',(site.archetype??'BUILDING').toUpperCase()+
