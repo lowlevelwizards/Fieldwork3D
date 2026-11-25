@@ -151,13 +151,13 @@ jobs:
           OUT="$PWD/artifacts/w4-live"
           mkdir -p "$OUT"
           for desktop in 0 1; do
-            (cd "$RUNNER_TEMP/w4-base" && FIELDWORK_WALL_WEAR=default FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/base-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs)
+            (cd "$RUNNER_TEMP/w4-base" && FIELDWORK_WALL_WEAR=separate FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/base-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs)
             for mode in compiled unified; do
               FIELDWORK_WALL_WEAR="$mode" FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/$mode-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs
             done
             # Counterbalance run order for the selected unified architecture.
             FIELDWORK_WALL_WEAR=unified FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/unified-repeat-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs
-            (cd "$RUNNER_TEMP/w4-base" && FIELDWORK_WALL_WEAR=default FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/base-repeat-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs)
+            (cd "$RUNNER_TEMP/w4-base" && FIELDWORK_WALL_WEAR=separate FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/base-repeat-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs)
           done
           node --input-type=module <<'JS'
           import {readFileSync} from 'node:fs';

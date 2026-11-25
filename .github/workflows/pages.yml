@@ -39,6 +39,7 @@ jobs:
             tests/performance-p8-replay-memory.test.mjs \
             tests/vfx-v10-preview-config.test.mjs \
             tests/w3-wall-surface-atlas.test.mjs \
+            tests/w4-wall-structural-packet.test.mjs \
             tests/vfx-v12-surface-ownership.test.mjs \
             tests/vfx-v13-blood-evidence.test.mjs \
             tests/vfx-effects-lab.test.mjs

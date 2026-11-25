@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {planWallTrimPackets,compileWallTrimGeometry,compileUnifiedWallGeometry,restrictWallShadowToBody,installWallShadowBounds} from '../src/rendering/wall-structural-packet.ts';
+import {planWallTrimPackets,compileWallTrimGeometry,compileUnifiedWallGeometry,restrictWallShadowToBody,installWallShadowBounds,resolveWallStructureMode} from '../src/rendering/wall-structural-packet.ts';
 import {wallTrimSwatchUV} from '../src/rendering/wall-surface-atlas.ts';
 import {planWallCapJoins} from '../src/rendering/wall-cap-joins.ts';
 import {groupWallPresentation,resolveWallPresentation,applyWallMaterialState} from '../src/rendering/breach-wall-presentation.ts';
@@ -91,4 +91,10 @@ test('shadow culling temporarily restores body sphere and restores full bounds o
  installWallShadowBounds(map,()=>[{mesh:m}]);map.render();assert.equal(m.geometry.boundingSphere,full);
  fail=true;assert.throws(()=>map.render(),/probe/);assert.equal(m.geometry.boundingSphere,full);assert.equal(m.geometry.drawRange.count,m.geometry.index.count);
  fail=false;map.needsUpdate=false;expected=full;map.render();body.dispose();m.geometry.dispose();m.material.dispose();
+});
+
+test('production uses unified structural walls unless an explicit comparison is selected',()=>{
+ for(const mode of [null,'','unified','unknown','0'])assert.equal(resolveWallStructureMode(mode),'unified');
+ assert.equal(resolveWallStructureMode('separate'),'separate');
+ assert.equal(resolveWallStructureMode('compiled'),'compiled');
 });

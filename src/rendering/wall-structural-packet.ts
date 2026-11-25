@@ -99,3 +99,8 @@ export function installWallShadowBounds(shadowMap:WallShadowMap,walls:()=>readon
   finally{for(let i=0;i<geometries.length;i++){const geometry=geometries[i];geometry.boundingSphere=bounds[i];geometry.setDrawRange(0,geometry.index!.count);}geometries.length=0;bounds.length=0;}
  };
 }
+
+/** Production W4; explicit separate/compiled modes are diagnostic comparisons. */
+export function resolveWallStructureMode(mode:string|null):'unified'|'compiled'|'separate'{
+ return mode==='separate'||mode==='compiled'?mode:'unified';
+}

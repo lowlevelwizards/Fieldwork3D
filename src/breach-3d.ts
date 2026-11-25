@@ -98,7 +98,7 @@ import {conditionFloorPixels} from './worldgen/condition-visual.ts';
 
 import {conditionWallPixels} from './worldgen/condition-wall.ts';
 import {packedWallSurfacePixels,resolveWallSurfaceMode,type WallAudition,type WallSurfaceRecipe} from './worldgen/wall-surface-recipe.ts';
-import {installWallShadowBounds} from './rendering/wall-structural-packet.ts';
+import {installWallShadowBounds,resolveWallStructureMode} from './rendering/wall-structural-packet.ts';
 import {writeAtlasSlot,type WallAtlasSlot} from './rendering/wall-surface-atlas.ts';
 import {type ObjectWear} from './worldgen/object-wear.ts';
 
@@ -870,8 +870,8 @@ export class TacticalScene3D{
   private patinaRoomSurfaces:{room:Room;texture:THREE.DataTexture}[]=[];
   private patinaWallSurfaces:{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;patterned?:boolean;atlasSlot?:WallAtlasSlot}[]=[];
   /** W3 is the production default; legacy and packed are comparison modes. */
-  wallStructureUnified=typeof location!=='undefined'&&new URLSearchParams(location.search).get('wallStructure')==='unified';
-  wallStructureCompiled=typeof location!=='undefined'&&new URLSearchParams(location.search).get('wallStructure')==='compiled';
+  wallStructureUnified=resolveWallStructureMode(typeof location==='undefined'?null:new URLSearchParams(location.search).get('wallStructure'))==='unified';
+  wallStructureCompiled=resolveWallStructureMode(typeof location==='undefined'?null:new URLSearchParams(location.search).get('wallStructure'))==='compiled';
   wallAudition:WallAudition|undefined=(()=>{
     const mode=typeof location==='undefined'?null:new URLSearchParams(location.search).get('wallWear');
     return resolveWallSurfaceMode(mode);
