@@ -27,6 +27,7 @@ import {bloodMarkRadius} from './breach-blood-evidence.ts';
 import {impactFinishScale} from './rendering/breach-impact-finish-scale.ts';
 import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose,isGroundImpactMark} from './breach-impact-surface.ts';
 import {markDoorOwner,markWindowOwner,markWallOwnerKnown,markCoverOwnerKnown} from './rendering/breach-evidence-owner.ts';
+import {recordedEffectAllows,groundEffectRow} from './breach-replay-effect-evidence.ts';
 import {presentActor,presentDecor} from './rendering/breach-3d-disclosure-presenter.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 import type {ReplayPlaybackController} from './breach-replay-playback-controller.ts';
@@ -487,12 +488,12 @@ function renderWeaponLights2D(){
 function renderGroundMarks(){
   const state=getState();
   const replaying=isReplaying();
-  // Match 3D's conservative personal replay evidence policy until V19.
-  if(replaying&&replayKnowledge.observerId)return;
+  const observer=replaying?replayKnowledge.observerId:null;
   for(const mark of state.impactMarks){
     // Surface-attached marks cannot be represented as unrelated floor circles.
     if(!isGroundImpactMark(mark))continue;
-    if(!(replaying&&replayKnowledge.omniscient)&&!liveVisibility(state,mark.p))continue;
+    if(observer?!recordedEffectAllows(state,observer,groundEffectRow(mark)):
+      !(replaying&&replayKnowledge.omniscient)&&!liveVisibility(state,mark.p))continue;
     const radius=mark.surface==='blood'?
       confinedGroundRadius(mark.p,bloodMarkRadius(mark),sessionWorldGeometry(state).walls):2.5;
     if(radius<.5)continue;

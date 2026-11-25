@@ -10,6 +10,7 @@ import {presentActor,presentCivilian,presentUnrecordedRescueMarker,presentTransi
  from './rendering/breach-3d-disclosure-presenter.ts';
 import {contactFade} from './breach-presentation.ts';
 import {presentShotEvidence} from './rendering/breach-shot-disclosure.ts';
+import {recordedEffectAllows,shotEffectRow} from './breach-replay-effect-evidence.ts';
 import {objectiveLocationKnown,approximateObjectiveBounds} from './breach-objective-intel.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 export type Actor2DFrame={
@@ -386,8 +387,8 @@ function contacts(){
   for(const shot of state.shots){
     // Shot geometry can expose an unconfirmed enemy position in a personal
     // contact review; team-wide ballistic evidence is disabled in this mode.
-    if(replaying&&replayKnowledge.observerId)continue;
-    const visibility=presentShotEvidence(state,shot,omni,personal);
+    const visibility=personal?{trace:false,flash:false,impact:recordedEffectAllows(state,replayKnowledge.observerId!,shotEffectRow(shot,'impact'))}:
+      presentShotEvidence(state,shot,omni,false);
     const fade=contactFade(shot.age,.40);
     draw.globalAlpha=fade;
     if(visibility.trace&&shot.age<.23)

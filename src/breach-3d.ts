@@ -130,6 +130,7 @@ import {SurrenderedFirearmsPresenter} from './rendering/breach-surrendered-firea
 import {spatialSurfaceKnown,shotVisibility,windowPresentationKnown} from './breach-presentation.ts';
 import {markWindowOwner,markWallOwnerKnown,markCoverOwnerKnown} from './rendering/breach-evidence-owner.ts';
 import {ShotFrameDisclosure} from './rendering/breach-shot-disclosure.ts';
+import {recordedEffectAllows,groundEffectRow,shotEffectRow} from './breach-replay-effect-evidence.ts';
 import {doorKnown} from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
 import {entryToolVerdict} from './breach-entry-tools.ts';
@@ -3034,7 +3035,26 @@ export class TacticalScene3D{
     for(let index=s.shots.length-1;index>=0;index--){
       if(visibleShots>=20)break;
       const shot=s.shots[index];
-      if(replayDisclosurePolicy?.mode==='operator')continue;
+      if(replayDisclosurePolicy?.mode==='operator'){
+        // Only the recorded impact point, not a reconstructed trajectory,
+        // rig-mounted muzzle, moving particle or light reaching another room.
+        if(!this.shotPulsePreviewEnabled||!recordedEffectAllows(s,replayDisclosurePolicy.observerId,shotEffectRow(shot,'impact')))continue;
+        const pulse=impactPulse(shot.surface??'dust',shot.age,impactProfile(shot.surface??'dust').lifetime);
+        if(!pulse.active||pulse.opacity<=0)continue;
+        const camera=this.projectionCamera,y=shot.impactHeight??12;
+        camera.getWorldDirection(this.bloodCameraDirection).negate();
+        const walls=s.site?.walls??WALLS;
+        if(camera instanceof THREE.OrthographicCamera?
+          groundMarkOccludedFromCamera(shot.end,this.bloodCameraDirection,walls,WALL_VISUAL_HEIGHT,y):
+          groundMarkHiddenByWallFromCamera(shot.end,camera.position,walls,WALL_VISUAL_HEIGHT,y))continue;
+        if(!this.impactPulseBatch){
+          this.impactPulseBatch=makeBloodDropletBatch(this.impactGeometry,20,'shot-pulse-batch');
+          this.effects.add(this.impactPulseBatch.mesh);
+        }
+        this.impactPulseBatch.addPose(shot.end.x,y,shot.end.y,0,0,0,pulse.scale,pulse.scale,pulse.opacity,
+          shot.surface==='blood'?0xa65a4e:MATERIAL_IMPACT_PROFILES[shot.surface??'dust'].pulseColor);
+        visibleShots++;continue;
+      }
       const visibility=this.frameShotDisclosure.forShot(s,shot,omniscient,personalDisclosure,
         p=>this.presentationSight.query(s,'effect',shot.id,p));
       if(!visibility.flash&&!visibility.trace&&!visibility.impact)continue;
@@ -3279,7 +3299,8 @@ export class TacticalScene3D{
     let markCount=0,markDirty=0;
     for(let markIndex=0;markIndex<s.impactMarks.length;markIndex++){
       const mark=s.impactMarks[markIndex];
-      if(replayDisclosurePolicy?.mode==='operator')continue;
+      if(replayDisclosurePolicy?.mode==='operator'&&(!isGroundImpactMark(mark)||
+        !recordedEffectAllows(s,replayDisclosurePolicy.observerId,groundEffectRow(mark))))continue;
       let attached:SurfaceMarkPose|null=null;
       const ref=mark.surfaceRef;
       const artRadius=damageRadius(mark.surface,mark.damageCount);
@@ -3326,7 +3347,7 @@ export class TacticalScene3D{
         if(!attached)continue;
       }else if(!isGroundImpactMark(mark))continue;
       const markPoint=attached?{x:attached.x,y:attached.z}:mark.p;
-      if(!omniscient&&!this.presentationSight.query(
+      if(!personalDisclosure&&!omniscient&&!this.presentationSight.query(
         s,'impact',mark.id,markPoint))continue;
       // Blood remains floor-aligned; environmental marks follow their surface.
       // Transparent architecture may not write depth, so a blood stain

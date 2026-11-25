@@ -4,6 +4,7 @@
  */
 import {isDetected,personDetected,inSight,liveVisibility,observerPointVisible,type Session,type TeamActor} from './breach-game.ts';
 import {escortedCivilianVisible} from './breach-civilian-visibility.ts';
+import type {ReplayEffectEvidence} from './breach-replay-effect-evidence.ts';
 
 export type ReplayKnowledge={
   /** Exactly which actors had player-visible models at capture time. */
@@ -34,6 +35,8 @@ export type ReplayKnowledge={
    * this must not reveal a corpse's later position or state off-screen.
    */
   operatorDiscoveredBodyIds?:Record<string,string[]>;
+  /** Optional V19 exact historical effect samples; legacy films omit it. */
+  effectEvidence?:ReplayEffectEvidence;
 };
 
 const playbackKnowledge=new WeakMap<Session,ReplayKnowledge|null>();

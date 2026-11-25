@@ -99,3 +99,45 @@ test('V19 real Floor Plan contacts never draw unrecorded personal point effects'
  r.contacts();assert.equal(calls.length,0);
  knowledge.observerId=null;r.contacts();assert.equal(calls.length,3);
 });
+
+import {captureEffectEvidence,effectSampleAllows,recordedEffectAllows,shotEffectRow,groundEffectRow,EFFECT_SAMPLE_POINT_LIMIT,EFFECT_SAMPLE_OBSERVER_LIMIT} from '../src/breach-replay-effect-evidence.ts';
+import {applyReplayKnowledge} from '../src/breach-replay-visibility.ts';
+import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
+test('V19 historical optical evidence is bounded, exact, independent by observer and fail closed',()=>{
+ const s=newSession(0,23,'full-view');
+ s.seconds=1;s.shots=Array.from({length:20},(_,id)=>({id,side:'red',shooterId:'red',start:{x:20+id,y:10},end:{x:40+id,y:10},age:.05}));
+ s.impactMarks=Array.from({length:20},(_,id)=>({id,p:{x:id,y:5},surface:'blood',bloodAmount:1,age:1}));
+ const blue=s.operators.filter(a=>a.side==='blue');
+ let calls=0;
+ const capture=captureEffectEvidence(s,undefined,(_s,a,p)=>{calls++;return a.id===blue[0].id&&p.x<60;});
+ assert.equal(capture.rows.length,EFFECT_SAMPLE_POINT_LIMIT);
+ assert.ok(capture.observers.length<=EFFECT_SAMPLE_OBSERVER_LIMIT);
+ assert.ok(calls<=EFFECT_SAMPLE_POINT_LIMIT*EFFECT_SAMPLE_OBSERVER_LIMIT);
+ const row=shotEffectRow(s.shots.at(-1),'impact');
+ assert.equal(effectSampleAllows(capture,1,blue[0].id,row),true);
+ assert.equal(effectSampleAllows(capture,1,blue[1].id,row),false);
+ assert.equal(effectSampleAllows(capture,.9,blue[0].id,row),false);
+ assert.equal(effectSampleAllows(capture,1.1,blue[0].id,row),false);
+ assert.equal(effectSampleAllows(capture,1,blue[0].id,[...row.slice(0,2),999,...row.slice(3)]),false);
+ assert.equal(effectSampleAllows(undefined,1,blue[0].id,row),false);
+ const mark=s.impactMarks.at(-1),markRow=groundEffectRow(mark);
+ assert.ok(effectSampleAllows(capture,1,blue[0].id,markRow));
+ mark.bloodAmount=2;
+ assert.equal(effectSampleAllows(capture,1,blue[0].id,groundEffectRow(mark)),false);
+ const knowledge={visibleActorIds:[],visibleCivilianIds:[],discoveredBodyIds:[],effectEvidence:capture};
+ applyReplayKnowledge(s,knowledge);assert.ok(recordedEffectAllows(s,blue[0].id,row));
+ applyReplayKnowledge(s,null);assert.equal(recordedEffectAllows(s,blue[0].id,row),false);
+ applyReplayKnowledge(s,knowledge);assert.ok(recordedEffectAllows(s,blue[0].id,row));
+});
+test('V19 actual recorder snapshots own effect evidence and legacy playback clears it',()=>{
+ const s=newSession(0,23,'full-view');
+ const a=s.operators.find(a=>a.side==='blue');
+ s.impactMarks=[{id:99,p:{x:a.p.x+Math.cos(a.heading)*20,y:a.p.y+Math.sin(a.heading)*20},surface:'blood',bloodAmount:1,age:0}];
+ const frame=snapshot(s);assert.ok(frame.knowledge.effectEvidence);
+ const original=JSON.stringify(frame.knowledge.effectEvidence);
+ s.impactMarks[0].p.x+=100;
+ assert.equal(JSON.stringify(frame.knowledge.effectEvidence),original);
+ applyReplayFrame(s,frame);assert.equal(JSON.stringify(frame.knowledge.effectEvidence),original);
+ applyReplayFrame(s,{...frame,knowledge:undefined});
+ assert.equal(recordedEffectAllows(s,a.id,groundEffectRow(s.impactMarks[0])),false);
+});

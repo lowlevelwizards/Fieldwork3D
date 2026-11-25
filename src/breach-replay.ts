@@ -23,6 +23,7 @@ import {readSecondaryEquipment,type SecondaryEquipment} from './secondary-equipm
 import type {SecondaryTimedReload} from './secondary-timed-reload.ts';
 import {captureReplayKnowledge,applyReplayKnowledge,type ReplayKnowledge}
   from './breach-replay-visibility.ts';
+import {captureEffectEvidence} from './breach-replay-effect-evidence.ts';
 import {enablePersonalGroundCapture,drainPersonalGround,
   type PersonalGroundBatch} from './breach-replay-personal-ground.ts';
 import {ReplayDoorObservationRecorder}
@@ -178,6 +179,8 @@ export function snapshot(s:Session,seenGround?:string[],
   // The immutable observer journal already computes exact current civilian
   // visibility. Reuse it for the 20 Hz frame instead of tracing LOS twice.
   const knowledge=captureReplayKnowledge(s,previouslyDiscovered,observerBodies);
+  const effectEvidence=captureEffectEvidence(s,priorEffects?.knowledge?.effectEvidence);
+  if(effectEvidence)knowledge.effectEvidence=effectEvidence;
   // A frame can contain many civilians. Index the captured *historical*
   // visibility once; never recalculate LOS or consult future observations.
   const visibleCivilians=new Set(knowledge.visibleCivilianIds);
