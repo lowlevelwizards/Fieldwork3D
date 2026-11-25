@@ -187,6 +187,13 @@ export function buildSiteExterior(site:Site,host:SiteExteriorBuildHost):void{
           mark.y,mark.width,thickness,mark.depth,curbMaterial,false);
         continue;
       }
+      if(mark.kind==='amenity-apron'||mark.kind==='work-wear'||mark.kind==='pavement-joint'){
+        const surface=mark.kind==='amenity-apron'?'concrete':mark.kind==='work-wear'?'packed-earth':'concrete';
+        const detail=host.plane(host.root,mark.x,mark.y,mark.width,mark.depth,
+          propertySurfaceCenterHeight(mark.kind)+PROPERTY_SURFACE_THICKNESS/2,
+          host.solid(age(surfaceColor[mark.kind],surface),.91,surface));
+        detail.castShadow=false;continue;
+      }
       host.box(host.root,mark.x,propertySurfaceCenterHeight(mark.kind),
         mark.y,mark.width,PROPERTY_SURFACE_THICKNESS,
         mark.depth,host.solid(age(surfaceColor[mark.kind],
