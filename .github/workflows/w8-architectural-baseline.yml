@@ -17,6 +17,8 @@ on:
       - 'tests/w8-material-condition.test.mjs'
       - 'src/rendering/surface-atlas-pages.ts'
       - 'src/rendering/surface-color-space.ts'
+      - 'src/breach-3d.ts'
+      - 'scripts/verification/w8-live-acceptance.mjs'
       - 'tests/w8-surface-consolidation.test.mjs'
   workflow_dispatch:
 permissions:
@@ -51,6 +53,14 @@ jobs:
           ln -s "$PWD/node_modules" "$RUNNER_TEMP/w8-w7/node_modules"
           echo "W8_REFERENCE_ROOT=$RUNNER_TEMP/w8-pre" >> "$GITHUB_ENV"
           echo "W8_W7_ROOT=$RUNNER_TEMP/w8-w7" >> "$GITHUB_ENV"
+      - name: Pin exact current release base
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '516c50378249e79e70b54fe3f51c7746ef67ddae' }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git worktree add --detach "$RUNNER_TEMP/w8-base" "$BASE_SHA"
+          ln -s "$PWD/node_modules" "$RUNNER_TEMP/w8-base/node_modules"
+          echo "W8_BASE_ROOT=$RUNNER_TEMP/w8-base" >> "$GITHUB_ENV"
       - name: Actual same-site cross-version draw census and visual captures
         run: node scripts/verification/w8-architectural-baseline.mjs
       - uses: actions/upload-artifact@v4
@@ -58,4 +68,40 @@ jobs:
         with:
           name: w8-architectural-baseline
           path: artifacts/w8-baseline/
+          retention-days: 14
+  live:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/w8-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        desktop: ['0','1']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Pin live comparison base
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '516c50378249e79e70b54fe3f51c7746ef67ddae' }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git worktree add --detach "$RUNNER_TEMP/w8-live-base" "$BASE_SHA"
+          ln -s "$PWD/node_modules" "$RUNNER_TEMP/w8-live-base/node_modules"
+          echo "W8_BASE_ROOT=$RUNNER_TEMP/w8-live-base" >> "$GITHUB_ENV"
+      - name: Counterbalanced live 90-callback pairs
+        env:
+          FIELDWORK_WALL_DESKTOP: ${{ matrix.desktop }}
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/w8-live-acceptance.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: w8-live-${{ matrix.desktop }}
+          path: artifacts/w8-live/
           retention-days: 14
