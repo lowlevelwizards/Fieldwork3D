@@ -66,13 +66,13 @@ jobs:
           (cd c3-baseline && node --experimental-strip-types scripts/audit-release-c0.mjs ../c3-before-map.json)
           (cd c3-baseline && node --experimental-strip-types scripts/audit-release-c11-missions.mjs ../c3-before-missions.json)
       - name: Presentation exact PR base mission parity diagnostic (historic gate retained)
-        if: ${{ (startsWith(github.head_ref, 'refactor/vfx-') || startsWith(github.head_ref, 'refactor/w6-')) }}
+        if: ${{ (startsWith(github.head_ref, 'refactor/vfx-') || startsWith(github.head_ref, 'refactor/w6-') || startsWith(github.head_ref, 'refactor/w7-')) }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           path: c3-vfx-exact-base
       - name: Compare presentation mission semantics against exact PR base
-        if: ${{ (startsWith(github.head_ref, 'refactor/vfx-') || startsWith(github.head_ref, 'refactor/w6-')) }}
+        if: ${{ (startsWith(github.head_ref, 'refactor/vfx-') || startsWith(github.head_ref, 'refactor/w6-') || startsWith(github.head_ref, 'refactor/w7-')) }}
         run: |
           ln -s "$PWD/node_modules" c3-vfx-exact-base/node_modules
           cp scripts/audit-release-c11-missions.mjs c3-vfx-exact-base/scripts/audit-release-c11-missions.mjs

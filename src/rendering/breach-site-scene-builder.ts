@@ -21,6 +21,7 @@ import {roomPixelSurface,wallPixelSurface,fixturePixelSurface} from '../worldgen
 import {buildingTheme,roomFloor,roomFixtureFinishes,roomAccessoryColor} from '../worldgen/building-palettes.ts';
 import {effectiveCondition} from '../worldgen/condition-visual.ts';
 import {conditionFloorPixels} from '../worldgen/condition-visual.ts';
+import {buildFloorMaskAtlas,floorMaskGeometry,floorMaskMaterial,type FloorMaskSlot} from './floor-surface-atlas.ts';
 import {conditionWallPixels,wallPatinaDimensions} from '../worldgen/condition-wall.ts';
 import {planWallTrimPackets,compileWallTrimGeometry,compileUnifiedWallGeometry,restrictWallShadowToBody} from './wall-structural-packet.ts';
 import {planWallCapJoins} from './wall-cap-joins.ts';
@@ -29,15 +30,14 @@ import {doubleSidedWallWear} from './wear-wall-geometry.ts';
 import {planWallSurface,packedWallSurfacePixels,type WallAudition,type WallSurfaceRecipe} from '../worldgen/wall-surface-recipe.ts';
 import {buildWallAtlas,type WallAtlasSlot} from './wall-surface-atlas.ts';
 import {wearPixels} from './pixel-decals.ts';
+import {projectFixtureWear} from './fixture-wear-projection.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './wear-opacity.ts';
 import {type PixelOverlay} from './pixel-overlays.ts';
 import {type PixelSignKind} from './pixel-signage.ts';
 import {planObjectWear,type ObjectWear} from '../worldgen/object-wear.ts';
 import {planExposureWear} from '../worldgen/wear-exposure.ts';
-import {planEnvironmentalWear,type WearKind,type WearMark} from '../worldgen/environment-wear.ts';
-import {planActivityWear} from '../worldgen/wear-sources.ts';
-import {planHistoryWear} from '../worldgen/surface-history.ts';
-import {planThresholdTrafficWear} from '../worldgen/threshold-traffic-wear.ts';
+import {type WearKind,type WearMark} from '../worldgen/environment-wear.ts';
+import {planStaticFloorWear,planCompiledFloorWear,FLOOR_WEAR_COLOR} from '../worldgen/floor-wear-plan.ts';
 import {planInteriorFragments,type InteriorFragment} from '../worldgen/interior-fragments.ts';
 import {visibleSurfaceHeight} from '../worldgen/decoration-anchors.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from '../worldgen/fixture-visuals.ts';
@@ -88,7 +88,11 @@ export type SiteSceneBuildPort={
  roofGroups:Map<string,THREE.Group>;
  roofMaterial:THREE.MeshStandardMaterial|null;
  windowPaneMaterial:THREE.MeshStandardMaterial|null;
- patinaRoomSurfaces:Array<{room:Room;texture:THREE.DataTexture}>;
+ patinaRoomSurfaces:Array<{room:Room;texture:THREE.DataTexture;floorSlot?:FloorMaskSlot}>;
+ floorWearCompiled?:boolean;
+ fixtureWearStrength?:{value:number};
+ pendingFixtureWear?:Array<()=>void>;
+ retiredFixtureWearGeometry?:Set<THREE.BufferGeometry>;
  patinaWallSurfaces:Array<{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;patterned?:boolean;atlasSlot?:WallAtlasSlot}>;
  wallAudition?:WallAudition;
  wallStructureCompiled?:boolean;
@@ -216,6 +220,15 @@ export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
     host.repeatedFixtures?.flush(host.root,new Set([
       ...host.sharedBoxGeometries,
       ...(host.fixtureTemplates?.sharedGeometries()??[])]));
+    // Preserve exact existing cross-owner instance membership before adding
+    // unique fixture UVs. An owner with detached parts is not a safe ray target.
+    for(const apply of host.pendingFixtureWear??[])apply();
+    if(host.pendingFixtureWear)host.pendingFixtureWear.length=0;
+    if(host.retiredFixtureWearGeometry?.size){
+      host.root.traverse(node=>{if(node instanceof THREE.Mesh)host.retiredFixtureWearGeometry!.delete(node.geometry);});
+      for(const geometry of host.retiredFixtureWearGeometry)geometry.dispose();
+      host.retiredFixtureWearGeometry.clear();
+    }
 }
 
 /** Own no resources; renderer's material/scene lifetime remains authoritative. */
@@ -255,6 +268,10 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       wearByOwner.get(owner+':'+index)??[];
     buildSiteMicroDebris(site,host);
     const decorativeRoomGroups=new Map<string,THREE.Group>();
+    host.currentWear=host.floorWearCompiled?planCompiledFloorWear(site):planStaticFloorWear(site);
+    const floorAtlas=host.floorWearCompiled?buildFloorMaskAtlas(site,effectiveCondition(site),host.currentWear,host.wearBoost):undefined;
+    if(floorAtlas)host.sitePatinaTextures.push(...floorAtlas.pages);
+    const floorMaterials=new Map<string,THREE.MeshStandardMaterial>();
     for(const room of site.rooms){
       const group=new THREE.Group();
       decorativeRoomGroups.set(room.id,group);host.root.add(group);
@@ -266,11 +283,26 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       // Connected blueprint cells make one continuous physical floor surface.
       // Legacy floor inset stays unchanged for historical visual parity.
       const floorInset=site.programLocked?0:2;
-      host.box(group,room.x+room.w/2,-.8,room.y+room.h/2,
+      const slot=floorAtlas?.slots.get(room.id);
+      if(slot){
+        const key=base.uuid+':'+slot.texture.uuid;
+        let material=floorMaterials.get(key);
+        if(!material){
+          material=floorMaskMaterial(base,slot.texture);
+          host.siteMaterials.track(material);
+          floorMaterials.set(key,material);
+        }
+        const floor=new THREE.Mesh(floorMaskGeometry(room.w-floorInset,1.6,room.h-floorInset,slot),material);
+        floor.position.set(room.x+room.w/2,-.8,room.y+room.h/2);
+        floor.castShadow=false;floor.receiveShadow=true;
+        floor.userData.fieldworkDrawFamily='room-floor-compiled';
+        group.add(floor);
+        host.patinaRoomSurfaces.push({room,texture:slot.texture,floorSlot:slot});
+      }else host.box(group,room.x+room.w/2,-.8,room.y+room.h/2,
         room.w-floorInset,1.6,room.h-floorInset,base,false);
       // One whole-surface spatial aging field: rooms transform before decals.
       // Each room uses a small seeded map, with edge/fixture influences.
-      if(effectiveCondition(site)>0){
+      if(!slot&&effectiveCondition(site)>0){
         const texture=new THREE.DataTexture(conditionFloorPixels(site,room),64,64,THREE.RGBAFormat);
         texture.colorSpace=THREE.SRGBColorSpace;
         texture.magFilter=THREE.NearestFilter;
@@ -330,17 +362,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
     if(!fragments.length)fragmentGeometry.dispose();
     // Condition-dependent floor patina stays inside its room's fog group.
     // Decals are decorative only; they create no collision or cover.
-    const wearColor:Record<WearKind,number>={
-      dust:0x92816c,stain:0x655e4b,scrape:0xb2ae9e,scuff:0x444d47,
-      oil:0x373834,grease:0x4e4538,rust:0xa2693f,chip:0xbab0a0,
-      crack:0x4c4a43,scratch:0xd1cab7,drip:0x6e7771,mud:0x6b5641,
-      footprint:0x655647,mineral:0xd3cec1,fade:0xc6bfaa,
-      soot:0x343c39,moss:0x59714e,'paint-peel':0xbdb19f,
-      fray:0xc4b9aa,abrade:0x918878,
-    };
-    host.currentWear=[...planEnvironmentalWear(site),...planActivityWear(site),
-      ...planHistoryWear(site),...planThresholdTrafficWear(site)];
-    for(const detail of host.currentWear){
+    for(const detail of floorAtlas?[]:host.currentWear){
       const roomGroup=decorativeRoomGroups.get(detail.roomId);
       if(!roomGroup)continue;
       const bucket=wearOpacityBucket(detail.opacity);
@@ -358,7 +380,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
           host.wearTextures.set(detail.kind,texture);
         }
         material=new THREE.MeshBasicMaterial({
-          color:wearColor[detail.kind],map:texture,transparent:true,
+          color:FLOOR_WEAR_COLOR[detail.kind],map:texture,transparent:true,
           opacity:Math.min(1,WEAR_ALPHA_BANDS[bucket]*host.wearBoost),
           depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1,
           side:THREE.DoubleSide});
@@ -587,6 +609,8 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         host.box(parent,x,y,z,w,h,d,material,cast),
       solid:(hex,roughness,surface)=>host.solid(age(hex,surface),roughness,surface),
     };
+    const fixtureWearCache=new Map<string,THREE.MeshStandardMaterial>();
+    host.pendingFixtureWear=[];host.retiredFixtureWearGeometry=new Set();
     site.cover.forEach((c,i)=>{
       const group=new THREE.Group();host.root.add(group);
       host.coverGroups.set(i,group);
@@ -635,7 +659,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
           adoptRigidFixtureVisual(intact,templateLease));
       }else renderFixtureVisual(intact,visual,i,localCtx,
         palette.wood,palette.steel,palette.olive,palette.metal);
-      for(const mark of marksOn('fixture',i)){
+      if(!host.floorWearCompiled)for(const mark of marksOn('fixture',i)){
         const height=visibleSurfaceHeight(c.fixture??'crate');
         if(height<8)continue;
         host.addSurfaceWear(intact,mark,(mark.u-.5)*visual.w,
@@ -651,6 +675,19 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         .85,'industrial-steel');
       // Batch only opaque, rigid, site-lifetime fixture pieces.
       if(!templateLease)consolidateStaticFixtureParts(intact);
+      if(host.floorWearCompiled&&!previewBush&&host.fixtureWearStrength)for(const mark of marksOn('fixture',i)){
+        const height=visibleSurfaceHeight(c.fixture??'crate');if(height<8)continue;
+        const originalChildren=[...intact.children];
+        host.pendingFixtureWear!.push(()=>{
+          if(originalChildren.some(child=>child.parent!==intact))return;
+          projectFixtureWear(intact,mark,(mark.u-.5)*visual.w,
+          Math.min(height-2,Math.max(3,mark.v*height)),visual.h/2+.8,fixturePixelSurface(c.fixture),{
+            textures:host.wearTextures,cache:fixtureWearCache,boost:host.fixtureWearStrength!,
+            track:m=>host.siteMaterials.track(m),shared:host.sharedBoxGeometries,template:!!templateLease,
+            retireGeometry:g=>host.retiredFixtureWearGeometry!.add(g)
+          });
+        });
+      }
       for(let j=0;j<3;j++){
         const sx=(j%3-1)*visual.w*.105,sz=(Math.floor(j/3)-.5)*visual.h*.15;
         const width=Math.max(3.2,visual.w*(j%2?.16:.20));

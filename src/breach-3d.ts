@@ -95,7 +95,9 @@ import {PausedShadowSceneController,shadowEligibleBox}
 
 import {type WearKind,type WearMark} from './worldgen/environment-wear.ts';
 import {summarizeWear} from './worldgen/wear-diagnostics.ts';
-import {conditionFloorPixels} from './worldgen/condition-visual.ts';
+import {conditionFloorPixels,effectiveCondition} from './worldgen/condition-visual.ts';
+import {planCompiledFloorWear,indexFloorWear} from './worldgen/floor-wear-plan.ts';
+import {resolveFloorWear,writeFloorMaskSlot,type FloorMaskSlot} from './rendering/floor-surface-atlas.ts';
 
 import {conditionWallPixels} from './worldgen/condition-wall.ts';
 import {packedWallSurfacePixels,resolveWallSurfaceMode,type WallAudition,type WallSurfaceRecipe} from './worldgen/wall-surface-recipe.ts';
@@ -872,7 +874,8 @@ export class TacticalScene3D{
   private readonly surfaceWearMaterials=new Map<string,THREE.MeshStandardMaterial>();
   private sitePatinaTextures:THREE.DataTexture[]=[];
   private sitePatinaMaterials:THREE.MeshBasicMaterial[]=[];
-  private patinaRoomSurfaces:{room:Room;texture:THREE.DataTexture}[]=[];
+  private patinaRoomSurfaces:{room:Room;texture:THREE.DataTexture;floorSlot?:FloorMaskSlot}[]=[];
+  floorWearCompiled=resolveFloorWear(typeof location==='undefined'?null:new URLSearchParams(location.search).get('floorWear'));
   private patinaWallSurfaces:{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;patterned?:boolean;atlasSlot?:WallAtlasSlot}[]=[];
   /** W3 is the production default; legacy and packed are comparison modes. */
   wallStructureUnified=resolveWallStructureMode(typeof location==='undefined'?null:new URLSearchParams(location.search).get('wallStructure'))==='unified';
@@ -883,11 +886,15 @@ export class TacticalScene3D{
   })();
   /** Live slider scrubbing changes pixel masks, not the physical scene. */
   previewConditionMasks(site:Site,level:number){
+    const floorPages=new Set<THREE.DataTexture>();
+    const floorMarks=this.floorWearCompiled?indexFloorWear(planCompiledFloorWear(site,level)):undefined;
     for(const item of this.patinaRoomSurfaces){
+      if(item.floorSlot){writeFloorMaskSlot(site,item.floorSlot,level,floorMarks?.get(item.room.id),this.wearBoost);floorPages.add(item.texture);continue;}
       const image=item.texture.image as {data:Uint8Array};
       image.data.set(conditionFloorPixels(site,item.room,level));
       item.texture.needsUpdate=true;
     }
+    for(const page of floorPages)page.needsUpdate=true;
     const dirtyAtlasPages=new Set<THREE.DataTexture>();
     for(const item of this.patinaWallSurfaces){
       if(item.atlasSlot){writeAtlasSlot(item.atlasSlot,level,this.wallAudition?.effect??'all');dirtyAtlasPages.add(item.texture);continue;}
@@ -903,9 +910,16 @@ export class TacticalScene3D{
   private currentWear:WearMark[]=[];
   private objectWear:ObjectWear[]=[];
   private wearBoost=1;
+  private fixtureWearStrength={value:1};
   wearStats(){return summarizeWear(this.currentWear);}
   setWearExaggeration(multiplier:number){
     this.wearBoost=Math.max(1,Math.min(4,multiplier));
+    this.fixtureWearStrength.value=this.wearBoost;
+    if(this.floorWearCompiled&&this.displayedSite){
+      const site=this.displayedSite;
+      const level=effectiveCondition(site);
+      this.previewConditionMasks(site,level);
+    }
     for(const [key,material] of [...this.wearMaterials,...this.surfaceWearMaterials]){
       const bucket=Number(key.slice(key.lastIndexOf(':')+1));
       material.opacity=Math.min(1,WEAR_ALPHA_BANDS[bucket]*this.wearBoost);
@@ -1409,6 +1423,8 @@ export class TacticalScene3D{
       get windowPaneMaterial(){return scene.windowPaneMaterial;},
       set windowPaneMaterial(value){scene.windowPaneMaterial=value;},
       patinaRoomSurfaces:scene.patinaRoomSurfaces,
+      floorWearCompiled:scene.floorWearCompiled,
+      fixtureWearStrength:scene.fixtureWearStrength,
       patinaWallSurfaces:scene.patinaWallSurfaces,
       wallAudition:scene.wallAudition,
       wallStructureCompiled:scene.wallStructureCompiled,

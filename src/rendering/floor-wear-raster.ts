@@ -1,0 +1,34 @@
+/** Straight-alpha sRGB mask storage; composite in linear light, like the lit shader. */
+import type {Room} from '../breach-site.ts';
+import {FLOOR_WEAR_COLOR} from '../worldgen/floor-wear-plan.ts';
+import type {WearKind,WearMark} from '../worldgen/environment-wear.ts';
+import {wearPixels} from './pixel-decals.ts';
+import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './wear-opacity.ts';
+const linear=Array.from({length:256},(_,i)=>{const x=i/255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4;});
+const encode=(x:number)=>Math.round(255*Math.max(0,Math.min(1,x<=.0031308?x*12.92:1.055*x**(1/2.4)-.055)));
+const masks=new Map<WearKind,Uint8Array>();
+export function rasterFloorWear(out:Uint8Array,room:Room,inset:number,marks:readonly WearMark[],size:number,boost=1){
+ const w=room.w-inset,d=room.h-inset,left=room.x+inset/2,top=room.y+inset/2;
+ if(w<=0||d<=0)return out;
+ for(const m of marks){
+  if(m.roomId!==room.id||m.width<=0||m.depth<=0)continue;
+  let mask=masks.get(m.kind);if(!mask){mask=wearPixels(m.kind);masks.set(m.kind,mask);}
+  const color=FLOOR_WEAR_COLOR[m.kind],rgb=[linear[(color>>>16)&255],linear[(color>>>8)&255],linear[color&255]];
+  const c=Math.cos(m.rotation),s=Math.sin(m.rotation),hw=m.width/2,hd=m.depth/2;
+  const rx=Math.abs(c)*hw+Math.abs(s)*hd,rz=Math.abs(s)*hw+Math.abs(c)*hd;
+  const x0=Math.max(0,Math.floor((m.x-rx-left)/w*size)),x1=Math.min(size-1,Math.ceil((m.x+rx-left)/w*size));
+  const y0=Math.max(0,Math.floor((m.y-rz-top)/d*size)),y1=Math.min(size-1,Math.ceil((m.y+rz-top)/d*size));
+  const opacity=Math.min(1,WEAR_ALPHA_BANDS[wearOpacityBucket(m.opacity)]*boost);
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+   const dx=left+(x+.5)*w/size-m.x,dz=top+(y+.5)*d/size-m.y;
+   const u=(dx*c+dz*s)/m.width+.5,v=(-dx*s+dz*c)/m.depth+.5;
+   if(u<0||u>=1||v<0||v>=1)continue;
+   const alpha=mask[(Math.floor(v*32)*32+Math.floor(u*32))*4+3]/255*opacity;
+   if(alpha<=0)continue;
+   const i=(y*size+x)*4,old=out[i+3]/255,combined=alpha+old*(1-alpha);
+   for(let k=0;k<3;k++)out[i+k]=encode((rgb[k]*alpha+linear[out[i+k]]*old*(1-alpha))/combined);
+   out[i+3]=Math.round(combined*255);
+  }
+ }
+ return out;
+}
