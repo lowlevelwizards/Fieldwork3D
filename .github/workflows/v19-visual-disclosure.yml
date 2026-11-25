@@ -1,0 +1,60 @@
+name: V19 visual disclosure
+on:
+  pull_request:
+    paths:
+      - 'src/breach-2d-actor-renderer.ts'
+      - 'src/breach-2d-world-renderer.ts'
+      - 'src/rendering/breach-evidence-owner.ts'
+      - 'src/rendering/breach-shot-disclosure.ts'
+      - 'src/breach-replay-effect-evidence.ts'
+      - 'src/breach-replay.ts'
+      - 'src/breach-replay-visibility.ts'
+      - 'src/breach-3d.ts'
+      - 'src/rendering/breach-presentation-sight-memo.ts'
+      - 'src/rendering/breach-3d-disclosure-presenter.ts'
+      - 'tests/v19-visual-disclosure.test.mjs'
+      - 'scripts/verification/v19-disclosure-browser.mjs'
+      - 'docs/vfx-v19-unified-disclosure-scope.md'
+      - '.github/workflows/v19-visual-disclosure.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  focused:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/v19-visual-disclosure.test.mjs tests/performance-p1-baseline.test.mjs tests/performance-p1-presentation-integration.test.mjs tests/replay-r43-personal-visibility.test.mjs tests/package-c3-cross-view-disclosure.test.mjs tests/breach-2d-renderer-extraction.test.mjs tests/vfx-v*.test.mjs tests/visibility-04-surface.test.mjs tests/performance-p8-replay-memory.test.mjs tests/replay-r2-recording.test.mjs tests/replay-r42-operator-sight.test.mjs
+      - run: npm run check
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || 'main' }}
+          path: v19-before
+      - run: npm install --prefix v19-before --no-audit --no-fund
+      - run: node scripts/verification/v19-disclosure-browser.mjs
+        env:
+          V19_BASE_DIR: v19-before
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v19-disclosure-browser
+          path: artifacts/v19-disclosure/
+          if-no-files-found: ignore

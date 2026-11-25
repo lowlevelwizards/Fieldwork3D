@@ -2,13 +2,15 @@
  * Uses the supplied observation/selection state; never updates game truth.
  */
 import {W,H,type Pt} from './breach-core.ts';
-import {type Session,type TeamActor,enemies,lastKnown,isSeen} from './breach-game.ts';
+import {type Session,type TeamActor,enemies,lastKnown,isSeen,liveVisibility} from './breach-game.ts';
 import type {ViewMode} from './breach-3d.ts';
 import {civilianPhysicalityAt} from './breach-encounter-physicality.ts';
 import {downedTransportPresentation} from './breach-capture-transport-presentation.ts';
-import {presentActor,presentCivilian,presentUnrecordedRescueMarker}
+import {presentActor,presentCivilian,presentUnrecordedRescueMarker,presentTransientEvidence,presentDroppedFirearm}
  from './rendering/breach-3d-disclosure-presenter.ts';
-import {shotVisibility,contactFade} from './breach-presentation.ts';
+import {contactFade} from './breach-presentation.ts';
+import {presentShotEvidence} from './rendering/breach-shot-disclosure.ts';
+import {recordedEffectAllows,shotEffectRow} from './breach-replay-effect-evidence.ts';
 import {objectiveLocationKnown,approximateObjectiveBounds} from './breach-objective-intel.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 export type Actor2DFrame={
@@ -180,7 +182,7 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
 }
 function sprite(a:TeamActor){
   const {state,replaying,selected,replayPlanScope,replayNameTags,replayContactMarkers}=getFrame();
-  if(a.side==='red'&&!(replaying&&replayKnowledge.omniscient)){
+  if(a.side==='red'&&!(replaying&&replayKnowledge.omniscient&&!replayKnowledge.observerId)){
     const visible=presentActor(state,a,replaying&&replayKnowledge.omniscient,
       replaying?replayKnowledge.disclosure():null);
     if(!visible){
@@ -239,8 +241,8 @@ function sprite(a:TeamActor){
   }
   const impactAge=state.seconds-a.lastHitAt;
   const flinch=impactAge>=0&&impactAge<.28?1-impactAge/.28:0;
-  const firing=state.shots.some(shot=>shot.shooterId===a.id&&
-    shot.age<.11&&shotVisibility(state,shot).flash);
+  const firing=!(replaying&&replayKnowledge.observerId)&&state.shots.some(shot=>shot.shooterId===a.id&&
+    shot.age<.11&&presentShotEvidence(state,shot,replaying&&replayKnowledge.omniscient,false).flash);
   draw.save();
   draw.translate(a.p.x-flinch*2.3,a.p.y+flinch*1.7);
   draw.rotate(a.heading+flinch*.14+
@@ -320,18 +322,9 @@ function sprite(a:TeamActor){
     // Enemy names are intentionally never shown.
   }
 }
-function liveWeaponKnown(item:{ownerId:string;p:Pt},state:Session):boolean{
-  const owner=state.operators.find(a=>a.id===item.ownerId);
-  const knowledge=replayKnowledge;
-  // Reuse the existing observable owner check; unseen weapon positions do
-  // not become a new source of full-map intelligence.
-  return !!owner&&(getFrame().replaying?
-    (knowledge?.omniscient===true||isSeen(state,owner)):
-    isSeen(state,owner));
-}
 function contacts(){
   const {state,replaying,replayAnalysis,replayContactMarkers,viewMode}=getFrame();
-  if(replaying&&replayAnalysis&&replayContactMarkers)
+  if(replaying&&replayAnalysis&&replayContactMarkers&&replayKnowledge.disclosure().mode==='full')
     for(const a of enemies(state)){
     if(a.health<=0)continue;
     const start=viewMode==='plan2d'?a.p:worldToScreen(a.p,22);
@@ -349,13 +342,19 @@ function contacts(){
       draw.strokeRect(p.x-8,p.y-8,16,16);
     }
   }
+  const personal=replaying&&!!replayKnowledge.observerId;
+  const omni=replaying&&replayKnowledge.omniscient;
+  const effectVisible=(p:Pt)=>presentTransientEvidence(p,omni,personal,
+    point=>liveVisibility(state,point));
   for(const m of state.dropped){
+    if(!effectVisible(m.p))continue;
     rect(m.p.x-3,m.p.y-1,6,2,'#202e2d');
   }
   // Physical firearm identity comes from the same replayed Session data as
   // the 3D evidence marker. Never expose an unseen hostile's former location.
   for(const item of state.droppedFirearms??[]){
-    if(item.status==='retrieved'||!liveWeaponKnown(item,state))continue;
+    if(item.status==='retrieved'||!presentDroppedFirearm(state,item,omni,
+      replaying?replayKnowledge.disclosure():null,p=>liveVisibility(state,p)))continue;
     const x=item.p.x,y=item.p.y;
     if(item.status==='secured'){
       rect(x-8,y-5,16,10,'#bca97b');
@@ -368,9 +367,11 @@ function contacts(){
     }
   }
   for(const g of state.grenades){
+    if(!effectVisible(g.p))continue;
     circle(g.p.x,g.p.y,3,'#a7b4a0');
   }
   for(const b of state.flashBursts){
+    if(!effectVisible(b.p))continue;
     draw.globalAlpha=Math.max(0,1-b.age/.7)*.85;
     circle(b.p.x,b.p.y,13+48*b.age,'#f6edcc');
     draw.globalAlpha=1;
@@ -378,9 +379,8 @@ function contacts(){
   for(const shot of state.shots){
     // Shot geometry can expose an unconfirmed enemy position in a personal
     // contact review; team-wide ballistic evidence is disabled in this mode.
-    if(replaying&&replayKnowledge.observerId)continue;
-    const visibility=replaying&&replayKnowledge.omniscient?
-      {trace:true,flash:true,impact:true}:shotVisibility(state,shot);
+    const visibility=personal?{trace:false,flash:false,impact:recordedEffectAllows(state,replayKnowledge.observerId!,shotEffectRow(shot,'impact'))}:
+      presentShotEvidence(state,shot,omni,false);
     const fade=contactFade(shot.age,.40);
     draw.globalAlpha=fade;
     if(visibility.trace&&shot.age<.23)

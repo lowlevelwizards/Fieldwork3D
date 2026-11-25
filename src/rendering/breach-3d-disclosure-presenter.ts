@@ -122,3 +122,17 @@ export function presentTransientEvidence(p:Pt,omniscient:boolean,
  personal:boolean,visibleAt:(point:Pt)=>boolean):boolean{
  return !personal&&(omniscient||visibleAt(p));
 }
+
+/** An observed actor is not proof of their dropped weapon's location.
+ * Both boards use current point sight in live/squad view; old personal
+ * films have no weapon-position evidence and remain conservative. */
+export function presentDroppedFirearm(s:Session,item:{ownerId:string;p:Pt},
+ omniscient:boolean,policy:ReplayDisclosure|null,visibleAt:(p:Pt)=>boolean):boolean{
+ if(policy?.mode==='operator')return false;
+ if(policy?.mode==='full'||omniscient)return true;
+ if(policy?.mode==='squad'){
+  const owner=s.operators.find(a=>a.id===item.ownerId);
+  if(!owner||!presentActor(s,owner,false,policy))return false;
+ }
+ return visibleAt(item.p);
+}

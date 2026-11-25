@@ -12,6 +12,7 @@ export type PresentationSightCategory='decor'|'door'|'opening'|'impact'|'effect'
 export type PresentationSightStats=Readonly<{
  queries:number;hits:number;misses:number;bypasses:number;
  invalidations:number;evictions:number;entries:number;
+ frameHits:number;frameEntries:number;
  decorMisses:number;doorMisses:number;openingMisses:number;
  impactMisses:number;effectMisses:number;
 }>;
@@ -21,6 +22,11 @@ export class PresentationSightMemo{
  private site:Session['site']|null=null;
  private fingerprint='';
  private reuse=false;
+ // V19: exact-point reuse within a synchronous LIVE render only. Never
+ // survives begin(), never quantizes or invents observer knowledge.
+ private frameReuse=false;
+ private readonly frameValues=new Map<string,boolean>();
+ private frameHits=0;
  private readonly values=new Map<string,boolean>();
  private queries=0;private hits=0;private misses=0;private bypasses=0;
  private invalidations=0;private evictions=0;
@@ -56,7 +62,8 @@ export class PresentationSightMemo{
  /** Replay is deliberately never memoized; recorded observer samples are
   * governed by replay disclosure, not reconstructed current visibility.
   */
- begin(s:Session,enabled=true):void{
+ begin(s:Session,enabled=true,frameReuse=false):void{
+  this.frameValues.clear();this.frameReuse=frameReuse;
   this.reuse=enabled;
   if(!enabled){
    if(this.values.size||this.session!==s)this.invalidate();
@@ -76,13 +83,17 @@ export class PresentationSightMemo{
  query(s:Session,category:PresentationSightCategory,
   id:string|number,p:Pt):boolean{
   this.queries++;
-  if(!this.reuse||s!==this.session){
-   this.bypasses++;return this.source(s,p);
+  if(s!==this.session){this.bypasses++;return this.source(s,p);}
+  const pointKey=this.frameReuse?p.x+','+p.y:null;
+  if(pointKey!==null){
+   const prior=this.frameValues.get(pointKey);
+   if(prior!==undefined){this.hits++;this.frameHits++;return prior;}
   }
+  if(!this.reuse){this.bypasses++;return this.rememberFrame(pointKey,this.source(s,p));}
   const key=category+':'+id+':'+p.x+','+p.y;
   const prior=this.values.get(key);
   if(prior!==undefined){
-   this.hits++;return prior;
+   this.hits++;return this.rememberFrame(pointKey,prior);
   }
   this.misses++;this.missByKind[category]++;
   const result=this.source(s,p);
@@ -90,15 +101,19 @@ export class PresentationSightMemo{
    this.values.clear();this.evictions++;
   }
   this.values.set(key,result);
-  return result;
+  return this.rememberFrame(pointKey,result);
+ }
+ private rememberFrame(key:string|null,value:boolean):boolean{
+  if(key!==null&&this.frameValues.size<MAX_ENTRIES)this.frameValues.set(key,value);
+  return value;
  }
  invalidate():void{
-  this.values.clear();
+  this.values.clear();this.frameValues.clear();
   this.fingerprint='';this.session=null;this.site=null;
   this.invalidations++;
  }
  reset():void{
-  this.invalidate();this.reuse=false;
+  this.invalidate();this.reuse=false;this.frameReuse=false;this.frameHits=0;
   this.queries=0;this.hits=0;this.misses=0;this.bypasses=0;
   this.invalidations=0;this.evictions=0;
   for(const category of Object.keys(this.missByKind) as
@@ -108,6 +123,7 @@ export class PresentationSightMemo{
   return {queries:this.queries,hits:this.hits,misses:this.misses,
    bypasses:this.bypasses,invalidations:this.invalidations,
    evictions:this.evictions,entries:this.values.size,
+   frameHits:this.frameHits,frameEntries:this.frameValues.size,
    decorMisses:this.missByKind.decor,doorMisses:this.missByKind.door,
    openingMisses:this.missByKind.opening,impactMisses:this.missByKind.impact,
    effectMisses:this.missByKind.effect};

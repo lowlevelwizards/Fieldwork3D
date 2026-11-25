@@ -52,7 +52,7 @@ test('B6 presentation consumes shot IDs and visibility, never chooses hit result
  assert.match(cues,/muzzleFlashCue\(weapon,shot\.age,attachment\)\.active/,
   'shared event resolver must still use exact shot age and muzzle attachment');
  assert.match(three,/impactPulse\(shot\.surface\?\?'dust',shot\.age/);
- assert.match(three,/shotVisibility\(s,shot\)\.flash/);
+ assert.match(three,/frameShotDisclosure\.forShot\(s,shot,omniscient,personalDisclosure,\s*p=>this\.presentationSight\.query\(s,'effect',shot\.id,p\)\)\.flash/);
  assert.match(audio,/audibleImpact\(shotVisibility\(state,shot\)\.impact/);
  assert.match(audio,/weaponAudioCue\(weapon,/);
  assert.match(audio,/if\(freshShots\.length===3\)freshShots\.shift\(\)/,'audio voices remain bounded');

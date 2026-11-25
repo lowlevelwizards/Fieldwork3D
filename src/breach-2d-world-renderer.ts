@@ -12,7 +12,7 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {team,type Session,type TeamActor,liveVisibility,isSeen} from './breach-game.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 import {previewKnownDoorSwing} from './breach-door-swing-preview.ts';
-import {spatialSurfaceState,windowPresentationKnown} from './breach-presentation.ts';
+import {spatialSurfaceKnown,spatialSurfaceState,windowPresentationKnown} from './breach-presentation.ts';
 import {windowApertureSegment} from './worldgen/window-geometry-contract.ts';
 import {doorKnown} from './breach-intel.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
@@ -25,7 +25,9 @@ import {weaponLightEmitting} from './equipment-weapon-light-operations.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
 import {bloodMarkRadius} from './breach-blood-evidence.ts';
 import {impactFinishScale} from './rendering/breach-impact-finish-scale.ts';
-import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose} from './breach-impact-surface.ts';
+import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose,isGroundImpactMark} from './breach-impact-surface.ts';
+import {markDoorOwner,markWindowOwner,markWallOwnerKnown,markCoverOwnerKnown} from './rendering/breach-evidence-owner.ts';
+import {recordedEffectAllows,groundEffectRow} from './breach-replay-effect-evidence.ts';
 import {presentActor,presentDecor} from './rendering/breach-3d-disclosure-presenter.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 import type {ReplayPlaybackController} from './breach-replay-playback-controller.ts';
@@ -486,12 +488,12 @@ function renderWeaponLights2D(){
 function renderGroundMarks(){
   const state=getState();
   const replaying=isReplaying();
-  // Match 3D's conservative personal replay evidence policy until V19.
-  if(replaying&&replayKnowledge.observerId)return;
+  const observer=replaying?replayKnowledge.observerId:null;
   for(const mark of state.impactMarks){
     // Surface-attached marks cannot be represented as unrelated floor circles.
-    if(mark.surface!=='blood'&&(mark.surfaceRef||mark.shotId!==undefined||mark.surface!=='dust'||mark.height===undefined||mark.height>1))continue;
-    if(!(replaying&&replayKnowledge.omniscient)&&!liveVisibility(state,mark.p))continue;
+    if(!isGroundImpactMark(mark))continue;
+    if(observer?!recordedEffectAllows(state,observer,groundEffectRow(mark)):
+      !(replaying&&replayKnowledge.omniscient)&&!liveVisibility(state,mark.p))continue;
     const radius=mark.surface==='blood'?
       confinedGroundRadius(mark.p,bloodMarkRadius(mark),sessionWorldGeometry(state).walls):2.5;
     if(radius<.5)continue;
@@ -513,18 +515,18 @@ function renderGroundMarks(){
    let point:Pt|undefined;
    if(ref.kind==='wall'){
     const wall=walls[ref.index];
-    if(!wall||spatialSurfaceState(s,'wall',ref.index,omni)==='unknown')continue;
+    if(!wall||!markWallOwnerKnown(s,ref,omni))continue;
     const pose=wallMarkPose(ref,wall);
     if(pose)point={x:pose.x,y:pose.z};
    }else if(ref.kind==='door'){
-    const door=s.doors[ref.index];
-    if(!door||!omni&&!liveVisibility(s,doorCenter(door))||spatialSurfaceState(s,'door',door.id,omni)==='unknown')continue;
+    const door=markDoorOwner(s,ref);
+    if(!door||!spatialSurfaceKnown(s,'door',door.id,omni)||!omni&&!liveVisibility(s,doorCenter(door)))continue;
     if(!doorMarkLocalPose(ref,door))continue;
     const leaf=doorLeafSegment(door),dx=leaf.b.x-leaf.a.x,dy=leaf.b.y-leaf.a.y,len=Math.hypot(dx,dy);
     if(len>ref.along)point={x:leaf.a.x+dx/len*ref.along,y:leaf.a.y+dy/len*ref.along};
    }else if(ref.kind==='cover'){
     const authored=s.site?.cover[ref.index],current=s.coverState[ref.index];
-    if(!authored||!current||current.toppled||spatialSurfaceState(s,'cover',ref.index,omni)==='unknown')continue;
+    if(!authored||!current||current.toppled||!markCoverOwnerKnown(s,ref,omni))continue;
     const pose=coverMarkLocalPose(ref,authored,current);
     if(pose){
      const t=(authored.orientation??0)*Math.PI/2,co=Math.cos(t),si=Math.sin(t);
@@ -532,7 +534,7 @@ function renderGroundMarks(){
        y:current.y+(-si*pose.x+co*pose.z)*current.h/authored.h};
     }
    }else if(ref.kind==='window'){
-    const pane=s.windows[ref.index];if(!pane||!windowPresentationKnown(s,pane,omni))continue;
+    const pane=markWindowOwner(s,ref);if(!pane||!windowPresentationKnown(s,pane,omni))continue;
     const pose=windowMarkPose(ref,pane);
     if(pose)point={x:pose.x,y:pose.z};
    }

@@ -155,7 +155,8 @@ test('a secured gun becomes an evidence marker rather than an unchanged loose gu
  assert.match(present,/root\.children\[1\]\.visible=item\.status==='secured'/);
  const flat=source('src/breach-2d-actor-renderer.ts');
  assert.match(flat,/item\.status==='secured'/);
- assert.match(flat,/liveWeaponKnown\(item,state\)/);
+ assert.match(flat,/presentDroppedFirearm\(state,item,omni,/);
+ assert.match(source('src/breach-3d.ts'),/presentDroppedFirearm\(s,item,omniscient,replayDisclosurePolicy,/);
  const order=source('src/breach-order-interactions.ts');
  assert.match(order,/weapon\.status='secured';weapon\.securedById=a\.id/);
  assert.match(order,/action:'weapon-secured'/);

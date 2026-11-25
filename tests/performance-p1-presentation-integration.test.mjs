@@ -56,6 +56,7 @@ test('P1.2 scene keeps personal replay bypass and full source fallback',()=>{
  // under the stable evidence id, not the mutable array offset.
  assert.match(s,/const markPoint=attached\?\{x:attached\.x,y:attached\.z\}:mark\.p/);
  assert.match(s,/s,'impact',mark\.id,markPoint/);
- assert.match(s,/if\(replayDisclosurePolicy\?\.mode==='operator'\)continue/);
+ assert.match(s,/if\(replayDisclosurePolicy\?\.mode==='operator'\)\{[\s\S]*?recordedEffectAllows\(s,replayDisclosurePolicy\.observerId,shotEffectRow\(shot,'impact'\)\)/);
+ assert.match(s,/if\(!personalDisclosure&&!omniscient&&!this\.presentationSight\.query\(\s*s,'impact',mark\.id,markPoint\)\)continue/);
  assert.match(s,/presentationSightPolicy=presentationSightPolicy\(/);
 });

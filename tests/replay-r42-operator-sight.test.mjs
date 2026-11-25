@@ -18,7 +18,9 @@ test('per-operator evidence is not confused with full-view team intel',()=>{
   const hostile=live.operators.find(a=>a.side==='red');
   assert.ok(near&&far&&hostile);
   near.p={x:-1480,y:-1500};near.heading=0;
-  far.p={x:-2300,y:-1500};far.heading=0;
+  // Use an opposite-facing, widely separated observer; the old 820-unit
+  // offset fell inside the expanded site sight range on current main.
+  far.p={x:-100000,y:-1500};far.heading=Math.PI;
   hostile.p={x:-1460,y:-1500};hostile.health=3;
   near.awareness.visualProgress[hostile.id]=1;
   far.awareness.visualProgress[hostile.id]=1;

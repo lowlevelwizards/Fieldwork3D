@@ -45,7 +45,7 @@ import {BreachCombatEffectsPresenter} from './rendering/breach-combat-effects-pr
 import {PresentationSightMemo} from './rendering/breach-presentation-sight-memo.ts';
 import {presentationSightPolicy,allowPresentationSightReuse}
  from './rendering/breach-presentation-sight-policy.ts';
-import {presentActor,presentDecor,presentArchitecturalOpening,
+import {presentActor,presentDecor,presentArchitecturalOpening,presentDroppedFirearm,
   presentUnrecordedRescueMarker,resolveDoorPresentation}
  from './rendering/breach-3d-disclosure-presenter.ts';
 
@@ -125,10 +125,13 @@ import {bakedOperatorCarry,prewarmSavedOperatorCarry}
  from './rendering/breach-saved-operator-carry-bake.ts';
 import {updateOperatorAppearance} from './breach-operator-appearance.ts';
 import {readEquipmentInteraction} from './breach-equipment-interaction-pose.ts';
-import {type Session,type TeamActor,team,knownAt,liveVisibility} from './breach-game.ts';
+import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
 import {downedTransportPresentation} from './breach-capture-transport-presentation.ts';
 import {SurrenderedFirearmsPresenter} from './rendering/breach-surrendered-firearms-presenter.ts';
-import {spatialSurfaceKnown,shotVisibility} from './breach-presentation.ts';
+import {spatialSurfaceKnown,shotVisibility,windowPresentationKnown} from './breach-presentation.ts';
+import {markWindowOwner,markWallOwnerKnown,markCoverOwnerKnown} from './rendering/breach-evidence-owner.ts';
+import {ShotFrameDisclosure} from './rendering/breach-shot-disclosure.ts';
+import {recordedEffectAllows,groundEffectRow,shotEffectRow} from './breach-replay-effect-evidence.ts';
 import {doorKnown} from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
 import {entryToolVerdict} from './breach-entry-tools.ts';
@@ -196,6 +199,9 @@ export class TacticalScene3D{
    studioShadowPalette('plum-plus').fill,.60);
   /** Renderer-only; ?presentationSight=legacy bypasses memo for A/B. */
   private readonly presentationSight=new PresentationSightMemo();
+  // Active live frames benefit from exact-coordinate sharing; planning
+  // already has the P1 epoch cache. Explicit 0 retains the diagnostic A/B.
+  private readonly v19FrameSight=new URLSearchParams(location.search).get('v19FrameSight')!=='0';
   /** Reused every 3D frame; occupancy only affects roof presentation. */
   private readonly occupiedRoofRoomIds=new Set<string>();
   /** Render-only: a single history scan for all actors' overlapping muzzle
@@ -935,6 +941,7 @@ export class TacticalScene3D{
   private readonly frameActorIds=new Set<string>();
   private readonly frameCivilianIds=new Set<string>();
   private readonly frameShotIds=new Set<number>();
+  private readonly frameShotDisclosure=new ShotFrameDisclosure();
   private windowGlass=new Map<string,THREE.Mesh>();
   /** Scratch index rebuilt from current session data; never hold prior
    * replay snapshots or a site's mutable window array across frames. */
@@ -1283,7 +1290,7 @@ export class TacticalScene3D{
     // Scene persists across missions; retire read-only indices of the old
     // encounter immediately instead of keeping previous shot/actor objects
     // alive until a later scene update.
-    this.recentMuzzleShots.clear();
+    this.recentMuzzleShots.clear();this.frameShotDisclosure.clear();
     this.frameActorsById.clear();
     this.frameDoorsById.clear();
     this.frameActorNeighborhood.clear();
@@ -1976,7 +1983,9 @@ export class TacticalScene3D{
       this.presentationSightPolicy,s.phase,
       !!replay||!!replayDisclosurePolicy||!!replayDoorHistory||
       !!replayWindowHistory||this.physicalDirectorActive||
-      !!this.replayBodycam));
+      !!this.replayBodycam),this.v19FrameSight&&s.phase==='running'&&this.presentationSightPolicy!=='legacy'&&
+      !replay&&!replayDisclosurePolicy&&!replayDoorHistory&&!replayWindowHistory&&
+      !this.physicalDirectorActive&&!this.replayBodycam);
     if(this.miniFocusMode!=='off'){
       this.miniFocusSession=s;
       this.miniFocusDoorId=focusedDoorId;
@@ -2473,16 +2482,14 @@ export class TacticalScene3D{
         replayDisclosurePolicy);
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
-    this.surrenderedFirearms.update(s.droppedFirearms??[],item=>{
-      const owner=s.operators.find(a=>a.id===item.ownerId);
-      return omniscient||(replayDisclosurePolicy?
-        !!owner&&presentActor(s,owner,false,replayDisclosurePolicy):
-        liveVisibility(s,item.p));
-    });
+    this.surrenderedFirearms.update(s.droppedFirearms??[],item=>
+      presentDroppedFirearm(s,item,omniscient,replayDisclosurePolicy,
+        p=>this.presentationSight.query(s,'effect','firearm:'+item.id,p)));
     this.markScenePhase('disclosure');
     // One history pass per drawn frame, rather than rewalking all retained
     // shots for every friendly, hostile and recently undisclosed rig.
     this.recentMuzzleShots.rebuild(s.shots);
+    this.frameShotDisclosure.clear();
     rebuildFrameIdIndex(this.frameActorsById,s.operators);
     rebuildFrameIdIndex(this.frameDoorsById,s.doors);
     // Four-man missions use the original straight scan, avoiding index
@@ -2574,8 +2581,9 @@ export class TacticalScene3D{
       const firing=mostRecentActiveMuzzleShot(
         this.recentMuzzleShots.forShooter(actor.id),actor.id,
         flashWeapon,flashAttachment,
-        shot=>!!shot.secondaryWeapon===drawnPistol&&
-          (omniscient||shotVisibility(s,shot).flash));
+        shot=>!personalDisclosure&&!!shot.secondaryWeapon===drawnPistol&&
+          this.frameShotDisclosure.forShot(s,shot,omniscient,personalDisclosure,
+            p=>this.presentationSight.query(s,'effect',shot.id,p)).flash);
       const flashCue=muzzleFlashCue(flashWeapon,
         firing?.age??Infinity,flashAttachment);
       object.flash.visible=flashCue.active&&actor.health>0;
@@ -3027,10 +3035,28 @@ export class TacticalScene3D{
     for(let index=s.shots.length-1;index>=0;index--){
       if(visibleShots>=20)break;
       const shot=s.shots[index];
-      if(replayDisclosurePolicy?.mode==='operator')continue;
-      const visibility=omniscient?
-        {flash:true,trace:true,impact:true}:shotVisibility(s,shot,
-          p=>this.presentationSight.query(s,'effect',shot.id,p));
+      if(replayDisclosurePolicy?.mode==='operator'){
+        // Only the recorded impact point, not a reconstructed trajectory,
+        // rig-mounted muzzle, moving particle or light reaching another room.
+        if(!this.shotPulsePreviewEnabled||!recordedEffectAllows(s,replayDisclosurePolicy.observerId,shotEffectRow(shot,'impact')))continue;
+        const pulse=impactPulse(shot.surface??'dust',shot.age,impactProfile(shot.surface??'dust').lifetime);
+        if(!pulse.active||pulse.opacity<=0)continue;
+        const camera=this.projectionCamera,y=shot.impactHeight??12;
+        camera.getWorldDirection(this.bloodCameraDirection).negate();
+        const walls=s.site?.walls??WALLS;
+        if(camera instanceof THREE.OrthographicCamera?
+          groundMarkOccludedFromCamera(shot.end,this.bloodCameraDirection,walls,WALL_VISUAL_HEIGHT,y):
+          groundMarkHiddenByWallFromCamera(shot.end,camera.position,walls,WALL_VISUAL_HEIGHT,y))continue;
+        if(!this.impactPulseBatch){
+          this.impactPulseBatch=makeBloodDropletBatch(this.impactGeometry,20,'shot-pulse-batch');
+          this.effects.add(this.impactPulseBatch.mesh);
+        }
+        this.impactPulseBatch.addPose(shot.end.x,y,shot.end.y,0,0,0,pulse.scale,pulse.scale,pulse.opacity,
+          shot.surface==='blood'?0xa65a4e:MATERIAL_IMPACT_PROFILES[shot.surface??'dust'].pulseColor);
+        visibleShots++;continue;
+      }
+      const visibility=this.frameShotDisclosure.forShot(s,shot,omniscient,personalDisclosure,
+        p=>this.presentationSight.query(s,'effect',shot.id,p));
       if(!visibility.flash&&!visibility.trace&&!visibility.impact)continue;
       active.add(shot.id);visibleShots++;
       let effect=this.effectCache.get(shot.id);
@@ -3273,19 +3299,23 @@ export class TacticalScene3D{
     let markCount=0,markDirty=0;
     for(let markIndex=0;markIndex<s.impactMarks.length;markIndex++){
       const mark=s.impactMarks[markIndex];
-      if(replayDisclosurePolicy?.mode==='operator')continue;
+      if(replayDisclosurePolicy?.mode==='operator'&&(!isGroundImpactMark(mark)||
+        !recordedEffectAllows(s,replayDisclosurePolicy.observerId,groundEffectRow(mark))))continue;
       let attached:SurfaceMarkPose|null=null;
       const ref=mark.surfaceRef;
       const artRadius=damageRadius(mark.surface,mark.damageCount);
       if(mark.surface!=='blood'&&ref){
         if(ref.kind==='wall'){
+          if(!markWallOwnerKnown(s,ref,omniscient))continue;
           const owner=this.wallOwners.find(w=>w.index===ref.index);
           if(!owner||owner.opacity<.995||!owner.pieces.some(m=>m.visible&&(!m.parent||m.parent.visible)))continue;
           attached=wallMarkPose(ref,owner.segment,artRadius*impactFinishScale(s.site,ref));
         }else if(ref.kind==='door'){
           const door=ref.ownerId?this.frameDoorsById.get(ref.ownerId):undefined;
           const visual=ref.ownerId?this.doors.get(ref.ownerId):undefined;
-          if(!door||!visual?.root.visible||!visual.leaf.visible||visual.leaf.userData.impactCut)continue;
+          if(!door||!visual?.root.visible||!visual.leaf.visible||visual.leaf.userData.impactCut||
+            !spatialSurfaceKnown(s,'door',door.id,omniscient)||
+            !omniscient&&!this.presentationSight.query(s,'door',door.id,doorCenter(door)))continue;
           if((door.style==='glazed'||door.style==='french')&&!visual.glassPane?.visible)continue;
           const local=doorMarkLocalPose(ref,door,artRadius);
           if(local){
@@ -3297,7 +3327,8 @@ export class TacticalScene3D{
         }else if(ref.kind==='cover'){
           const authored=s.site?.cover[ref.index],current=s.coverState[ref.index];
           const group=this.coverGroups.get(ref.index),visual=this.coverVisualStates.get(ref.index);
-          if(!authored||!current||!group?.visible||!visual?.intact.visible)continue;
+          if(!authored||!current||!group?.visible||!visual?.intact.visible||
+            !markCoverOwnerKnown(s,ref,omniscient))continue;
           const local=coverMarkLocalPose(ref,authored,current,artRadius);
           if(local){
             group.updateWorldMatrix(true,false);
@@ -3308,15 +3339,15 @@ export class TacticalScene3D{
               radius:local.radius*Math.min(Math.abs(group.scale.x),Math.abs(group.scale.y),Math.abs(group.scale.z))};
           }
         }else if(ref.kind==='window'){
-          const pane=s.windows[ref.index],glass=ref.ownerId?this.windowGlass.get(ref.ownerId):undefined;
-          if(!pane||!glass?.visible||!glass.parent?.visible)continue;
+          const pane=markWindowOwner(s,ref),glass=ref.ownerId?this.windowGlass.get(ref.ownerId):undefined;
+          if(!pane||!glass?.visible||!glass.parent?.visible||!windowPresentationKnown(s,pane,omniscient))continue;
           attached=windowMarkPose(ref,pane,artRadius);
         }
         // Unsupported collider/art correspondence fails closed.
         if(!attached)continue;
       }else if(!isGroundImpactMark(mark))continue;
       const markPoint=attached?{x:attached.x,y:attached.z}:mark.p;
-      if(!omniscient&&!this.presentationSight.query(
+      if(!personalDisclosure&&!omniscient&&!this.presentationSight.query(
         s,'impact',mark.id,markPoint))continue;
       // Blood remains floor-aligned; environmental marks follow their surface.
       // Transparent architecture may not write depth, so a blood stain

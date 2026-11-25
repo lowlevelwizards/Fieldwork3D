@@ -26,7 +26,7 @@ test('C3 live enemy models/weapon lights use live visibility, never missing repl
   assert.equal(presentActor(s,red,false,{mode:'operator',observerId:'unknown'}),false);
   assert.equal(presentActor(s,red,false,{mode:'full'}),true);
   const world=read('breach-2d-world-renderer.ts');
-  assert.match(world,/import \{presentActor\} from '.\/rendering\/breach-3d-disclosure-presenter\.ts'/);
+  assert.match(world,/import \{[^}]*\bpresentActor\b[^}]*\} from '.\/rendering\/breach-3d-disclosure-presenter\.ts'/);
   assert.match(world,/if\(actor\.side==='red'&&!presentActor\(state,actor,/);
   assert.match(world,/replaying\?replayKnowledge\.disclosure\(\):null\)\)continue/);
   assert.doesNotMatch(world,/replaying\?replayKnowledge\.disclosure\(\):\{mode:'squad'\}/);
@@ -36,7 +36,7 @@ test('C3 live enemy models/weapon lights use live visibility, never missing repl
 test('C3 2D and 3D share the identical living, dead and civilian disclosure policy',()=>{
  const actor2d=read('breach-2d-actor-renderer.ts');
  const scene3d=read('breach-3d.ts');
- assert.match(actor2d,/import \{presentActor,presentCivilian,presentUnrecordedRescueMarker\}/);
+ assert.match(actor2d,/import \{presentActor,presentCivilian,presentUnrecordedRescueMarker(?:,[^}]*)?\}/);
  assert.match(actor2d,/const visible=presentActor\(state,a,/);
  assert.match(actor2d,/if\(!presentCivilian\(state,c,/);
  assert.match(scene3d,/const visible=presentActor\(s,actor,omniscient,replayDisclosurePolicy\)/);

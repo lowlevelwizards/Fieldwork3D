@@ -84,5 +84,5 @@ test('P6.A–B: tactical renderer amortizes only presentation searches',()=>{
  assert.match(text,/rebuildFrameIdIndex\(this\.frameDoorsById,s\.doors\)/);
  assert.match(text,/this\.frameDoorsById\.get\(actor\.lastDoorId\)/);
  assert.match(text,/this\.frameActorsById\.get\(actor\.targetId\)/);
- assert.match(text,/shotVisibility\(s,shot\)\.flash/);
+ assert.match(text,/frameShotDisclosure\.forShot\(s,shot,omniscient,personalDisclosure,\s*p=>this\.presentationSight\.query\(s,'effect',shot\.id,p\)\)\.flash/);
 });
