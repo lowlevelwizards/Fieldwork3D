@@ -1,0 +1,35 @@
+name: Effects Lab critical
+on:
+  pull_request:
+    paths:
+      - 'breach-visual-lab.html'
+      - 'src/breach-visual-lab.ts'
+      - 'tests/vfx-effects-lab.test.mjs'
+      - 'scripts/verification/effects-lab-browser.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/vfx-effects-lab.test.mjs tests/breach-078-080.test.mjs
+      - run: npm run build
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - run: node scripts/verification/effects-lab-browser.mjs
+        env:
+          FIELDWORK_CI_CHROME: '1'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: effects-lab-captures
+          path: artifacts/effects-lab/
+          if-no-files-found: ignore

@@ -72,7 +72,8 @@ test('079: hit flashes decay within a bounded lifetime',()=>{
 });
 test('078-080: 3D uses readable fog and per-shot effects, 2D shares cues',()=>{
   const stage=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
-  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+  const actors=readFileSync(new URL('../src/breach-2d-actor-renderer.ts',import.meta.url),'utf8');
+  const overlays=readFileSync(new URL('../src/breach-2d-projected-overlays.ts',import.meta.url),'utf8');
   assert.match(stage,/scene\.fog=null/);
   // Unseen space must be covered at the actual ground plane, not a tall
   // translucent ceiling displaced from its blood/terrain at ISO pitch.
@@ -81,15 +82,15 @@ test('078-080: 3D uses readable fog and per-shot effects, 2D shares cues',()=>{
     'unknown geometry mask cannot be a completely opaque roof');
   assert.match(stage,/this\.smoothFog\.position\.set\(W\/2,1\.05,H\/2\)/);
   assert.match(stage,/effectCache/);
-  assert.match(stage,/shot\.shooterId===actor\.id/);
+  assert.match(stage,/recentMuzzleShots\.forShooter\(actor\.id\)/);
   assert.match(stage,/lastDownAt/);
   assert.match(stage,/observedDoorOpen/);
-  assert.match(main,/doorVisibility\(state,door\)/);
-  assert.match(main,/shotVisibility\(state,shot\)/);
+  assert.match(overlays,/doorVisibility\(state,door\)/);
+  assert.match(actors,/shotVisibility\(state,shot\)/);
   // Build 117 deliberately replaces floating DOWN/HIT text with grounded
   // impact and casualty visuals; preserve actual shot visibility coverage.
-  assert.match(main,/shotVisibility\(state,shot\)/);
-  assert.doesNotMatch(main,/draw\.fillText\(shot\.down\?'DOWN':'HIT'/);
+  assert.match(actors,/shotVisibility\(state,shot\)/);
+  assert.doesNotMatch(actors,/draw\.fillText\(shot\.down\?'DOWN':'HIT'/);
 });
 
 test('079: the presentation lab ships independently of tactical battle',()=>{

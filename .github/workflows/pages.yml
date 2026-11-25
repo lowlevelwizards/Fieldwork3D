@@ -40,13 +40,15 @@ jobs:
             tests/vfx-v10-preview-config.test.mjs \
             tests/w3-wall-surface-atlas.test.mjs \
             tests/vfx-v12-surface-ownership.test.mjs \
-            tests/vfx-v13-blood-evidence.test.mjs
+            tests/vfx-v13-blood-evidence.test.mjs \
+            tests/vfx-effects-lab.test.mjs
       # Release gate: typecheck, compile, stamp the build, and verify deployable output.
       # Behavioral regressions belong in focused PR checks; full suite is manual.
       - name: Build and verify Pages output
         run: |
           npm run build
           test -s dist/index.html
+          test -s dist/breach-visual-lab.html
           test -s dist/fieldwork-build.json
       - uses: actions/configure-pages@v5
       # Rerunning a failed Pages job must not leave multiple identically
