@@ -1,0 +1,24 @@
+name: V16 fracture debris
+on:
+  pull_request:
+    paths:
+      - 'src/breach-fracture-record.ts'
+      - 'src/breach-reactive-cover.ts'
+      - 'src/rendering/breach-fracture-debris.ts'
+      - 'src/breach-3d.ts'
+      - 'tests/vfx-v16-fracture-debris.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fracture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/vfx-v*.test.mjs tests/lw-reactive-cover.test.mjs tests/lw-glass-impact.test.mjs tests/physicality-glass-door-damage.test.mjs tests/breach-p7-replay-sharing.test.mjs
+      - run: npm run build

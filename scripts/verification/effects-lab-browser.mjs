@@ -42,6 +42,11 @@ try{
    assert.match(status,i<3?new RegExp('damaged '+i+'/3'):/shattered/);
    await page.screenshot({path:dir+'/'+viewport.width+'-glass-stage-'+i+'.png'});
   }
+  for(const id of ['glass-door','collapse']){
+   await page.locator('#'+id).click();
+   assert.match(await page.locator('#status').innerText(),/fractured leaf|collapsed/);
+   await page.screenshot({path:dir+'/'+viewport.width+'-'+id+'-burst.png'});
+  }
   await page.locator('#pause').click();await page.locator('#step').click();await page.locator('#gameZoom').click();
   assert.deepEqual(errors,[]);assert.equal(await page.locator('#breach3dCanvas').count(),1);
   await page.close();

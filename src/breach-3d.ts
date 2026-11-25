@@ -49,11 +49,12 @@ import {presentActor,presentDecor,presentArchitecturalOpening,
   presentUnrecordedRescueMarker,resolveDoorPresentation}
  from './rendering/breach-3d-disclosure-presenter.ts';
 
-import {windowShardPose,WINDOW_SHARDS_PER_PANE,WINDOW_SHARD_CAPACITY,
+import {windowShardPoseInto,WINDOW_SHARDS_PER_PANE,WINDOW_SHARD_CAPACITY,
  WINDOW_SETTLED_SHARDS_PER_PANE,settledWindowShardPose,WindowShardSlotCache,
  type SettledWindowShardPose}
  from './rendering/window-shatter-presentation.ts';
 import {type CivilianRig} from './breach-civilian-visuals.ts';
+import {doorDebrisSource,coverDebrisSource,fractureDebrisPose,debrisPoseContained,FractureSourceScratch} from './rendering/breach-fracture-debris.ts';
 import {reconcileSceneActorLifetimes} from './rendering/breach-actor-frame-presenter.ts';
 import {shouldPrewarmContactRig,withinContactPrewarmBudget,
   withPreparedVisibleRoot}
@@ -931,6 +932,9 @@ export class TacticalScene3D{
   private readonly shardSlots=new WindowShardSlotCache();
   private readonly settledShardScratch:SettledWindowShardPose={x:0,y:0,z:0,rx:0,ry:0,rz:0,scale:1,heightScale:1};
   private readonly settledPanes:Session['windows'][number][]=[];
+  private readonly fractureSources=new FractureSourceScratch();
+  private readonly shardColors=new Int32Array(WINDOW_SHARD_CAPACITY).fill(-1);
+  private readonly shardTint=new THREE.Color();
   private coverGroups=new Map<number,THREE.Group>();
   private coverVisualStates=new Map<number,{intact:THREE.Group;debris:THREE.Group}>();
   private readonly coverFrameValues=new Map<number,{
@@ -1315,7 +1319,7 @@ export class TacticalScene3D{
     this.doors.clear();this.windowGlass.clear();
     this.frameWindowsById.clear();
     if(this.windowShards)this.windowShards.count=0;
-    this.shardSlots.reset();this.settledPanes.length=0;
+    this.shardSlots.reset();this.shardColors.fill(-1);this.settledPanes.length=0;this.fractureSources.reset();
     this.transientLights?.reset();
     this.dustPuffs?.reset();
     this.observedDoorGlass.clear();this.observedDoorBroken.clear();
@@ -2019,7 +2023,7 @@ export class TacticalScene3D{
     const personalWindows=replayDisclosurePolicy?.mode==='operator';
     if(!this.windowShards){
       const shardMaterial=new THREE.MeshStandardMaterial({
-        color:0xd9f4ef,emissive:0x426b70,emissiveIntensity:.45,
+        color:0xffffff,emissive:0x343b39,emissiveIntensity:.35,
         roughness:.48,metalness:.04,flatShading:true,depthWrite:true,side:THREE.DoubleSide});
       // Broad, thin asymmetric polygon: unmistakable fragments, not tiny pebbles.
       const shardShape=new THREE.Shape();
@@ -2037,8 +2041,23 @@ export class TacticalScene3D{
       this.windowShards.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       this.effects.add(this.windowShards);
     }
-    let shardCount=0,shardWrites=0;
-    this.settledPanes.length=0;
+    let shardCount=0,shardWrites=0,colorWrites=0;
+    const shardMesh=this.windowShards;
+    const debrisWorld=sessionWorldGeometry(s);
+    const submit=(part:SettledWindowShardPose|import('./rendering/window-shatter-presentation.ts').WindowShardPose,color:number,heightScale=1)=>{
+      if(shardCount>=WINDOW_SHARD_CAPACITY)return;
+      if(this.shardSlots.changed(shardCount,part,heightScale)){
+        this.shardMatrix.position.set(part.x,part.y,part.z);
+        this.shardMatrix.rotation.set(part.rx,part.ry,part.rz);
+        this.shardMatrix.scale.set(part.scale,part.scale*heightScale,part.scale);
+        this.shardMatrix.updateMatrix();shardMesh.setMatrixAt(shardCount,this.shardMatrix.matrix);shardWrites++;
+      }
+      if(this.shardColors[shardCount]!==color){
+        this.shardColors[shardCount]=color;shardMesh.setColorAt(shardCount,this.shardTint.setHex(color));colorWrites++;
+      }
+      shardCount++;
+    };
+    this.settledPanes.length=0;this.fractureSources.beginFrame();
     // Larger generated sites have many panes. An ephemeral index avoids
     // scanning the entire window list once per rendered pane.
     const indexWindows=this.windowGlass.size>8&&s.windows.length>8;
@@ -2061,18 +2080,36 @@ export class TacticalScene3D{
         (omniscient||this.presentationSight.query(s,'effect','glass:'+id,{x:current.x,y:current.y})))
         this.settledPanes.push(current);
       for(let i=0;i<WINDOW_SHARDS_PER_PANE&&shardCount<WINDOW_SHARD_CAPACITY;i++){
-        const part=windowShardPose(current,s.seconds,i);
-        if(!part)continue;
+        const part=this.settledShardScratch;
+        if(!windowShardPoseInto(current,s.seconds,i,part)||
+          !debrisPoseContained(debrisWorld,current,part))continue;
         if(this.glassDebrisPreview&&(!personalWindows&&!omniscient&&
           !this.presentationSight.query(s,'effect','glass:'+id+':burst:'+i,{x:part.x,y:part.z})))continue;
-        if(!this.glassDebrisPreview||this.shardSlots.changed(shardCount,part)){
-          this.shardMatrix.position.set(part.x,part.y,part.z);
-          this.shardMatrix.rotation.set(part.rx,part.ry,part.rz);
-          this.shardMatrix.scale.setScalar(part.scale);
-          this.shardMatrix.updateMatrix();
-          this.windowShards.setMatrixAt(shardCount,this.shardMatrix.matrix);shardWrites++;
+        submit(part,0xd9f4ef);
+      }
+    }
+    // Door/fixture debris uses captured world origins, not the current leaf
+    // or furniture position. No personal replay inference from future state.
+    if(this.glassDebrisPreview&&!personalWindows){
+      for(const door of s.doors){
+        if(!door.glassShattered||door.glassBreakX===undefined)continue;
+        const source=doorDebrisSource(door,this.fractureSources.next());
+        if(source&&(omniscient||this.presentationSight.query(s,'effect','fracture:'+source.id,{x:source.x,y:source.y})))this.fractureSources.accept(source);
+      }
+      for(let i=0;i<s.coverState.length;i++){
+        const cover=s.coverState[i];if(!cover.destroyed||cover.destroyedAt===undefined)continue;
+        const source=coverDebrisSource(cover,i,this.fractureSources.next());
+        if(source&&(omniscient||this.presentationSight.query(s,'effect','fracture:'+source.id,{x:source.x,y:source.y})))this.fractureSources.accept(source);
+      }
+      const part=this.settledShardScratch;
+      for(const source of this.fractureSources.active){
+        for(let i=0;i<WINDOW_SHARDS_PER_PANE&&shardCount<WINDOW_SHARD_CAPACITY;i++){
+          if(!fractureDebrisPose(source,s.seconds,i,false,part)||
+            !debrisPoseContained(debrisWorld,source,part,part.heightScale))continue;
+          if(!omniscient&&!this.presentationSight.query(s,'effect','fracture:'+source.id+':burst:'+i,{x:part.x,y:part.z}))continue;
+          submit(part,source.color,part.heightScale);
         }
-        shardCount++;
+        if(shardCount>=WINDOW_SHARD_CAPACITY)break;
       }
     }
     // Prioritize all current bursts; resting shards consume only spare slots.
@@ -2080,20 +2117,27 @@ export class TacticalScene3D{
       const part=this.settledShardScratch;
       for(const pane of this.settledPanes){
         for(let i=0;i<WINDOW_SETTLED_SHARDS_PER_PANE&&shardCount<WINDOW_SHARD_CAPACITY;i++){
-          if(!settledWindowShardPose(pane,s.seconds,i,part))continue;
+          if(!settledWindowShardPose(pane,s.seconds,i,part)||
+            !debrisPoseContained(debrisWorld,pane,part,part.heightScale))continue;
           if(!omniscient&&!this.presentationSight.query(s,'effect','glass:'+pane.id+':settled:'+i,{x:part.x,y:part.z}))continue;
-          if(this.shardSlots.changed(shardCount,part,part.heightScale)){
-            this.shardMatrix.position.set(part.x,part.y,part.z);
-            this.shardMatrix.rotation.set(part.rx,part.ry,part.rz);
-            this.shardMatrix.scale.set(part.scale,part.scale*part.heightScale,part.scale);
-            this.shardMatrix.updateMatrix();
-            this.windowShards.setMatrixAt(shardCount,this.shardMatrix.matrix);shardWrites++;
-          }
-          shardCount++;
+          submit(part,0xd9f4ef,part.heightScale);
         }
         if(shardCount>=WINDOW_SHARD_CAPACITY)break;
       }
     }
+    if(this.glassDebrisPreview&&!personalWindows&&shardCount<WINDOW_SHARD_CAPACITY){
+      const part=this.settledShardScratch;
+      for(const source of this.fractureSources.active){
+        for(let i=0;i<WINDOW_SETTLED_SHARDS_PER_PANE&&shardCount<WINDOW_SHARD_CAPACITY;i++){
+          if(!fractureDebrisPose(source,s.seconds,i,true,part)||
+            !debrisPoseContained(debrisWorld,source,part,part.heightScale))continue;
+          if(!omniscient&&!this.presentationSight.query(s,'effect','fracture:'+source.id+':settled:'+i,{x:part.x,y:part.z}))continue;
+          submit(part,source.color,part.heightScale);
+        }
+        if(shardCount>=WINDOW_SHARD_CAPACITY)break;
+      }
+    }
+    if(colorWrites&&this.windowShards.instanceColor)this.windowShards.instanceColor.needsUpdate=true;
     if(this.windowShards.count!==shardCount){
       this.windowShards.count=shardCount;
     }

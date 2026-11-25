@@ -5,3 +5,5 @@ Base 8d55818 (W5 follow-up merged, exact active checks passed). Public latest bu
 - W6.2 audit actual generated fixture coverage (restaurant/house/garage/utility); refine art from phone/desktop captures at tactical distance. Soot only with a real compatible heat source, oil on appropriate floor in W7, no unsupported invented stains.
 - W6.3 optimize/review atlas planning, cap priority, isolated effects, condition slider roundtrip; zero additional geometry, texture bytes, shader variants, or per-frame work. Evaluate static build cost on representative sites.
 - W6.4 acceptance: focused deterministic anchor/condition/face/budget tests, production build, targeted real browser A/B; no blanket benchmark rerun. Activate default only after visual and disclosure parity; merge/deploy when safe and confirm stamp. W7 owns floors and static fixture surface consolidation. W8 combined acceptance.
+
+Reconciled with V16 main dc61b99 (glass fracture and environmental debris). No overlapping files; all V16 sources and deployment gates retained. Exact reconciled head verification pending.

@@ -36,6 +36,9 @@ try{
     const {generateSite}=await import('/src/breach-site.ts');
     const {newSession,team}=await import('/src/breach-game.ts');
     const {activateSite}=await import('/src/breach-core.ts');
+    const {sessionWorldGeometry}=await import('/src/breach-world-context.ts');
+    const {windowShardPose,settledWindowShardPose,WINDOW_SHARDS_PER_PANE,WINDOW_SETTLED_SHARDS_PER_PANE,WINDOW_SHARD_CAPACITY}=await import('/src/rendering/window-shatter-presentation.ts');
+    const {debrisPoseContained}=await import('/src/rendering/breach-fracture-debris.ts');
     const site=generateSite(3,'standard',undefined,{mission:'intel'},{archetype:'house'});activateSite(site);
     const s=newSession(0,site.seed,'exterior-known','standard',undefined,site);
     const scene=new TacticalScene3D();scene.resize(viewport.width,viewport.height);scene.applySite(site);
@@ -64,6 +67,26 @@ try{
     s.dropped=Array.from({length:64},(_,i)=>({id:1000+i,p:{x:p.x+(i%8)*5-20,y:p.y+12+Math.floor(i/8)*5},side:'blue',age:3}));
     s.flashBursts=[{id:1300,p:{x:p.x,y:p.y+24},age:.1}];
     const pane=s.windows[0];if(!pane)throw Error('Seed lacks window');
+    const world=sessionWorldGeometry(s);
+    const expectedShards=settled=>{
+     const result=[];
+     for(let i=0;i<(settled?WINDOW_SETTLED_SHARDS_PER_PANE:WINDOW_SHARDS_PER_PANE);i++){
+      const scratch={x:0,y:0,z:0,rx:0,ry:0,rz:0,scale:1,heightScale:1};
+      const part=settled?(settledWindowShardPose(pane,s.seconds,i,scratch)?scratch:null):windowShardPose(pane,s.seconds,i);
+      if(part&&debrisPoseContained(world,pane,part,part.heightScale??1))result.push(part);
+     }
+     return result;
+    };
+    const checkShardMatrices=(expected,label)=>{
+     const mesh=scene.windowShards;
+     if(!expected.length||mesh.count!==expected.length||mesh.count>WINDOW_SHARD_CAPACITY)
+      throw Error(label+' count '+mesh.count+' expected '+expected.length);
+     for(let i=0;i<mesh.count;i++){
+      const a=mesh.instanceMatrix.array,j=i*16,p=expected[i];
+      if(Math.abs(a[j+12]-p.x)>1e-3||Math.abs(a[j+13]-p.y)>1e-3||Math.abs(a[j+14]-p.z)>1e-3)
+       throw Error(label+' GPU position mismatch at '+i);
+     }
+    };
     pane.shattered=true;pane.open=true;pane.integrity=0;pane.shatteredAt=0;
     const original=JSON.stringify({shots:s.shots,marks:s.impactMarks,dropped:s.dropped,bursts:s.flashBursts,windows:s.windows});
     const stress=await sample();
@@ -79,7 +102,8 @@ try{
     const grass=root.getObjectByName('vfx-grass-preview');
     const counts={traces:traces?.count??0,pulses:pulses?.count??0,particles:batch?.count??0,puffs:puffs?.count??0,stains:stain?.count??0,shards:scene.windowShards?.count??0,bushes,grass:grass?.children.length??0,pointLights,activeLights};
     if(enabled){
-     if(counts.traces!==20||counts.pulses!==20||counts.particles!==(smoke?86:95)||(smoke?counts.puffs<=0:counts.puffs!==0)||counts.shards!==4||(vegetation?(!counts.grass||!counts.bushes):(counts.grass||counts.bushes))||!stain)throw Error('Combined effect counts '+JSON.stringify(counts));
+     if(counts.traces!==20||counts.pulses!==20||counts.particles!==(smoke?86:95)||(smoke?counts.puffs<=0:counts.puffs!==0)||counts.shards!==expectedShards(true).length||(vegetation?(!counts.grass||!counts.bushes):(counts.grass||counts.bushes))||!stain)throw Error('Combined effect counts '+JSON.stringify(counts));
+     checkShardMatrices(expectedShards(true),'V16 settled stress');
      const versions=[stain.instanceMatrix.version,stain.instanceColor?.version,stain.geometry.attributes.stainStyle.version,scene.windowShards.instanceMatrix.version,batch.instanceMatrix.version,puffs?.instanceMatrix.version,traces?.instanceMatrix.version,pulses?.instanceMatrix.version];
      draw();
      const after=[stain.instanceMatrix.version,stain.instanceColor?.version,stain.geometry.attributes.stainStyle.version,scene.windowShards.instanceMatrix.version,batch.instanceMatrix.version,puffs?.instanceMatrix.version,traces?.instanceMatrix.version,pulses?.instanceMatrix.version];
@@ -130,11 +154,14 @@ try{
     const burst=scene.windowShards.count;
     scene.windowShards.geometry.computeBoundingBox();
     const bb=scene.windowShards.geometry.boundingBox;
-    if(burst!==6||bb.max.x-bb.min.x<2.5||bb.max.z-bb.min.z<3.5||bb.max.y-bb.min.y>.5)
-      throw Error('V15 glass silhouette or burst budget mismatch');
+    if(bb.max.x-bb.min.x<2.5||bb.max.z-bb.min.z<3.5||bb.max.y-bb.min.y>.5)
+      throw Error('V15 glass silhouette mismatch');
+    checkShardMatrices(expectedShards(false),'V16 contained burst');
+    if(burst>WINDOW_SHARDS_PER_PANE)throw Error('V15 burst budget exceeded');
     captures.glassBurst=scene.renderer.domElement.toDataURL('image/png');
     s.seconds=5.5;draw();
-    if(scene.windowShards.count!==4)throw Error('V15 settled shard budget mismatch');
+    checkShardMatrices(expectedShards(true),'V16 contained settled');
+    if(scene.windowShards.count>WINDOW_SETTLED_SHARDS_PER_PANE)throw Error('V15 settled shard budget exceeded');
     captures.glassSettled=scene.renderer.domElement.toDataURL('image/png');
     const atmosphereWitness={cloudCount,cloudScale,burst,settled:scene.windowShards.count};
     scene.applySite(null);if(batch?.count||stain?.count||puffs?.count||traces?.count||pulses?.count||scene.windowShards?.count||root.getObjectByName('vfx-grass-preview'))throw Error('Reset left stale instances');
