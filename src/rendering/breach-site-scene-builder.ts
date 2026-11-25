@@ -607,7 +607,10 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
     buildSiteDoors(site,openingHost,{theme,doorTrim,metal});
     let vehicleMaterial:THREE.MeshStandardMaterial|undefined;
     const fixtureCtx:FixtureVisualContext={
-      vehicleMaterial:()=>vehicleMaterial??=(host.siteMaterials.track(createVehicleMaterial())),
+      vehicleMaterial:()=>{
+        if(!vehicleMaterial){vehicleMaterial=createVehicleMaterial();host.siteMaterials.track(vehicleMaterial);}
+        return vehicleMaterial;
+      },
       box:(parent,x,y,z,w,h,d,material,cast)=>
         host.box(parent,x,y,z,w,h,d,material,cast),
       solid:(hex,roughness,surface)=>host.solid(age(hex,surface),roughness,surface),

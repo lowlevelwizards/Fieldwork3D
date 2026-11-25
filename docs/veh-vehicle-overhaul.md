@@ -11,3 +11,6 @@ All six family dimensions enter the canonical asset catalogue and Asset Lab inve
 
 ## Checkpoint 3 — shadow placement
 Added deterministic parking-only candidate planner with diagnostics, canonical rotated dimensions, vacant capacity, reserved bay, sidewalk/curb, road, entry and door reserves, protected encounter points and existing cover rejection. No map mutation or production enablement yet. Real lot eligibility needs measurement; garage/driveway/loading topology and vehicle-height integration are still pending. Existing generated wheel stops may reduce shadow acceptance because the final planner needs to run before wheel-stop allocation.
+
+## Checkpoint 4 — dedicated lab and diagnostics
+Vehicle Lab is a Vite entry linked from both developer menus. Uses the same leased vehicle mesh, supports family/configuration/paint/condition, 5 camera views, family lineup, 1/5/10/20/50 repeat stress preview, cached vs instanced comparison and canonical footprint. It has isolated lighting, not a substitute for tactical scene captures. Added 44-site shadow parking manifest via the targeted workflow. Corrected scene material tracking to preserve the concrete material type. Visual browser acceptance and real-site placement remain pending.
