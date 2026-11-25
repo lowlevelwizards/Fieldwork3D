@@ -1,6 +1,6 @@
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
-import {wallMarkPose,doorMarkLocalPose,isGroundImpactMark,type SurfaceMarkPose} from './breach-impact-surface.ts';
+import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose,isGroundImpactMark,type SurfaceMarkPose} from './breach-impact-surface.ts';
 import {hostileNpcTransitionKey,hostileCustodyWalkBlend}
  from './breach-hostile-pose-transition.ts';
 import {rebuildFrameIdIndex} from './breach-frame-lookup.ts';
@@ -787,6 +787,7 @@ export class TacticalScene3D{
   private readonly impactDecalNormal=new THREE.Vector3();
   private readonly impactDecalAxis=new THREE.Vector3(0,0,1);
   private readonly impactDecalPoint=new THREE.Vector3();
+  private readonly impactDecalNormalMatrix=new THREE.Matrix3();
   private bloodCameraDirection=new THREE.Vector3();
   private impactDecalColor=new THREE.Color();
 
@@ -2281,6 +2282,7 @@ export class TacticalScene3D{
         subjects.some(p=>wallOccludesFriendly(
           doorLeafSegment({...door,openFraction:drawFraction}),
           p,{x:fromCamera.x,y:fromCamera.z},maxCutDistance));
+      object.leaf.userData.impactCut=leafCut;
       if(leafCut||object.leaf.userData.directorCutMaterials){
         object.leaf.userData.directorCutMaterials=true;
         object.leaf.traverse(child=>{
@@ -3101,7 +3103,7 @@ export class TacticalScene3D{
         }else if(ref.kind==='door'){
           const door=ref.ownerId?this.frameDoorsById.get(ref.ownerId):undefined;
           const visual=ref.ownerId?this.doors.get(ref.ownerId):undefined;
-          if(!door||!visual?.root.visible||!visual.leaf.visible)continue;
+          if(!door||!visual?.root.visible||!visual.leaf.visible||visual.leaf.userData.impactCut)continue;
           const local=doorMarkLocalPose(ref,door);
           if(local){
             visual.leaf.updateWorldMatrix(true,false);
@@ -3109,8 +3111,25 @@ export class TacticalScene3D{
             this.impactDecalNormal.set(local.nx,local.ny,local.nz).transformDirection(visual.leaf.matrixWorld);
             attached={...local,x:this.impactDecalPoint.x,y:this.impactDecalPoint.y,z:this.impactDecalPoint.z,nx:this.impactDecalNormal.x,ny:this.impactDecalNormal.y,nz:this.impactDecalNormal.z};
           }
+        }else if(ref.kind==='cover'){
+          const authored=s.site?.cover[ref.index],current=s.coverState[ref.index];
+          const group=this.coverGroups.get(ref.index),visual=this.coverVisualStates.get(ref.index);
+          if(!authored||!current||!group?.visible||!visual?.intact.visible)continue;
+          const local=coverMarkLocalPose(ref,authored,current);
+          if(local){
+            group.updateWorldMatrix(true,false);
+            this.impactDecalPoint.set(local.x,local.y,local.z).applyMatrix4(group.matrixWorld);
+            this.impactDecalNormalMatrix.getNormalMatrix(group.matrixWorld);
+            this.impactDecalNormal.set(local.nx,local.ny,local.nz).applyNormalMatrix(this.impactDecalNormalMatrix);
+            attached={...local,x:this.impactDecalPoint.x,y:this.impactDecalPoint.y,z:this.impactDecalPoint.z,nx:this.impactDecalNormal.x,ny:this.impactDecalNormal.y,nz:this.impactDecalNormal.z,
+              radius:local.radius*Math.min(Math.abs(group.scale.x),Math.abs(group.scale.y),Math.abs(group.scale.z))};
+          }
+        }else if(ref.kind==='window'){
+          const pane=s.windows[ref.index],glass=ref.ownerId?this.windowGlass.get(ref.ownerId):undefined;
+          if(!pane||!glass?.visible||!glass.parent?.visible)continue;
+          attached=windowMarkPose(ref,pane);
         }
-        // Unsupported collider/art correspondence (cover/glazing) fails closed.
+        // Unsupported collider/art correspondence fails closed.
         if(!attached)continue;
       }else if(!isGroundImpactMark(mark))continue;
       const markPoint=attached?{x:attached.x,y:attached.z}:mark.p;

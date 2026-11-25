@@ -23,6 +23,7 @@ import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter} from './equipme
 import {sameWeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {weaponLightEmitting} from './equipment-weapon-light-operations.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
+import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose} from './breach-impact-surface.ts';
 import {presentActor,presentDecor} from './rendering/breach-3d-disclosure-presenter.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 import type {ReplayPlaybackController} from './breach-replay-playback-controller.ts';
@@ -492,14 +493,51 @@ function renderGroundMarks(){
     if(radius<.5)continue;
     draw.globalAlpha=Math.max(.18,.78-mark.age*.023);
     circle(mark.p.x,mark.p.y,radius,
-      mark.surface==='blood'?'#914a44':
-      mark.surface==='wood'?'#42332a':
-      mark.surface==='stone'?'#363936':
-      mark.surface==='metal'?'#262e30':'#4e4b40');
+      mark.surface==='blood'?'#914a44':'#4e4b40');
     draw.globalAlpha=1;
   }
  }
 
+ /** Draw owned marks over their corresponding plan-view surface, not on floor. */
+ function renderSurfaceMarks(){
+  const s=getState(),replaying=isReplaying(),omni=replaying&&replayKnowledge.omniscient;
+  if(replaying&&replayKnowledge.observerId)return;
+  const walls=sessionWorldGeometry(s).walls;
+  for(const mark of s.impactMarks){
+   const ref=mark.surfaceRef;
+   if(!ref||mark.surface==='blood')continue;
+   let point:Pt|undefined;
+   if(ref.kind==='wall'){
+    const wall=walls[ref.index];
+    if(!wall||spatialSurfaceState(s,'wall',ref.index,omni)==='unknown')continue;
+    const pose=wallMarkPose(ref,wall);
+    if(pose)point={x:pose.x,y:pose.z};
+   }else if(ref.kind==='door'){
+    const door=s.doors[ref.index];
+    if(!door||!omni&&!liveVisibility(s,doorCenter(door))||spatialSurfaceState(s,'door',door.id,omni)==='unknown')continue;
+    if(!doorMarkLocalPose(ref,door))continue;
+    const leaf=doorLeafSegment(door),dx=leaf.b.x-leaf.a.x,dy=leaf.b.y-leaf.a.y,len=Math.hypot(dx,dy);
+    if(len>ref.along)point={x:leaf.a.x+dx/len*ref.along,y:leaf.a.y+dy/len*ref.along};
+   }else if(ref.kind==='cover'){
+    const authored=s.site?.cover[ref.index],current=s.coverState[ref.index];
+    if(!authored||!current||current.toppled||spatialSurfaceState(s,'cover',ref.index,omni)==='unknown')continue;
+    const pose=coverMarkLocalPose(ref,authored,current);
+    if(pose){
+     const t=(authored.orientation??0)*Math.PI/2,co=Math.cos(t),si=Math.sin(t);
+     point={x:current.x+(co*pose.x+si*pose.z)*current.w/authored.w,
+       y:current.y+(-si*pose.x+co*pose.z)*current.h/authored.h};
+    }
+   }else if(ref.kind==='window'){
+    const pane=s.windows[ref.index];if(!pane)continue;
+    const pose=windowMarkPose(ref,pane);
+    if(pose)point={x:pose.x,y:pose.z};
+   }
+   if(!point||!omni&&!liveVisibility(s,point))continue;
+   draw.globalAlpha=Math.max(.28,.9-mark.age*.027);
+   circle(point.x,point.y,2.5,mark.surface==='metal'?'#242b2b':'#3a3028');
+   draw.globalAlpha=1;
+  }
+ }
  /** Read-only diagnostic of bounded, session-owned visual cache. */
  function inspectLightCache(session:Session){
   const cache=beam2DBySession.get(session);
@@ -508,7 +546,7 @@ function renderGroundMarks(){
    blockers:cache.blockers.length}:null;
  }
  return {terrain,furniture,architecture,renderLightingMood2D,
-   renderFixtureLighting2D,renderWeaponLights2D,renderGroundMarks,inspectLightCache};
+   renderFixtureLighting2D,renderWeaponLights2D,renderGroundMarks,renderSurfaceMarks,inspectLightCache};
 }
 
 export type BreachTacticalWorldFrame={
@@ -551,7 +589,7 @@ export function renderBreachTacticalWorldFrame(p:BreachTacticalWorldFrame):void{
   draw.fillRect(bounds.minX-9,bounds.minY-9,
     bounds.maxX-bounds.minX+18,bounds.maxY-bounds.minY+18);
   world2D.terrain();world2D.furniture();world2D.renderGroundMarks();world2D.renderLightingMood2D();world2D.renderFixtureLighting2D();world2D.renderWeaponLights2D();
-  world2D.architecture();fog2D.renderFog();fog2D.renderPersonalGround();
+  world2D.architecture();world2D.renderSurfaceMarks();fog2D.renderFog();fog2D.renderPersonalGround();
   if(!p.photoClean)actor2D.missionMarkers();
   if(!p.photoClean){route2D.paths();replay2D.renderReplayMovementHistory(false);}
   for(const a of state.civilians)actor2D.civilianSprite(a);

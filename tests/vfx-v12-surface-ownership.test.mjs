@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {segmentAttachment,coverAttachment,wallMarkPose,doorMarkLocalPose,isGroundImpactMark} from '../src/breach-impact-surface.ts';
+import {segmentAttachment,coverAttachment,wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose,isGroundImpactMark} from '../src/breach-impact-surface.ts';
 import {strikeSurface} from '../src/breach-ballistic-resolution.ts';
 import {newSession} from '../src/breach-game.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
@@ -57,4 +57,33 @@ test('same committed hit is not duplicated; orientation invalidates cached trans
  retainImpactMark(s,{...m,id:3,shotId:4});assert.equal(s.impactMarks.length,2);
  const c=new ImpactMarkSlotCache(1);c.update(0,1,2,3,4,1,1,-1,0,0,1);
  assert.equal(c.update(0,1,2,3,4,1,1,-1,0,0,-1),MARK_MATRIX_DIRTY);
+});
+
+test('target attachment projects a confirmed hit to the authored panel and follows owner identity',()=>{
+ const box={id:'target',fixture:'target-plate',x:0,y:0,w:20,h:30,topHeight:45};
+ const ref=coverAttachment(1,box,{x:0,y:30},{x:0,y:-30},.25,30);
+ const pose=coverMarkLocalPose(ref,box,box);
+ assert.equal(pose.ny,0);assert.equal(pose.nz,1);assert.ok(pose.z>2.4&&pose.z<3);
+ assert.deepEqual(coverMarkLocalPose(ref,box,{...box,x:50,y:40}),pose);
+ assert.equal(coverMarkLocalPose(ref,box,{...box,destroyed:true}),null);
+ assert.equal(coverMarkLocalPose(ref,box,{...box,id:'other'}),null);
+ assert.equal(coverMarkLocalPose({...ref,localX:9,localY:44},box,box),null,'empty space beside head');
+ const rotated={...box,w:30,h:20,orientation:1};
+ const rot=coverAttachment(1,rotated,{x:30,y:0},{x:-30,y:0},.25,30);
+ assert.equal(coverMarkLocalPose(rot,rotated,rotated).nz,1);
+});
+test('solid prop sides are bounded by authored artwork and intact owner',()=>{
+ const box={id:'post',fixture:'support-column',x:0,y:0,w:20,h:20,topHeight:40};
+ const ref=coverAttachment(0,box,{x:-20,y:0},{x:20,y:0},.25,20);
+ const p=coverMarkLocalPose(ref,box,box);
+ assert.equal(p.nx,-1);assert.equal(p.x,-10.18);assert.equal(p.y,20);
+ assert.equal(coverMarkLocalPose({...ref,localY:1},box,box),null);
+ assert.equal(coverMarkLocalPose(ref,{...box,fixture:'chair'},{...box,fixture:'chair'}),null);
+});
+test('intact picture glass can own a mark, broken or open glass cannot',()=>{
+ const pane={id:'w',x:0,y:0,width:40,vertical:false,style:'picture',sillHeight:10,headHeight:40,open:false,shattered:false};
+ const ref=segmentAttachment('window',0,'w',{a:{x:-20,y:0},b:{x:20,y:0}},{x:0,y:10},{x:0,y:-10},.5,25);
+ assert.equal(windowMarkPose(ref,pane).z,.66);
+ assert.equal(windowMarkPose(ref,{...pane,shattered:true}),null);
+ assert.equal(windowMarkPose(ref,{...pane,open:true}),null);
 });
