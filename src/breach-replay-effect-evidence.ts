@@ -16,13 +16,14 @@ export type ReplayEffectEvidence={version:1;at:number;rows:readonly EffectEviden
  observers:readonly (readonly [id:string,mask:number])[]};
 export function shotEffectRow(shot:ShotEvent,kind:'muzzle'|'impact'):EffectEvidenceRow{
  const p=kind==='muzzle'?shot.start:shot.end;
- return [kind,shot.id,p.x,p.y,shot.shooterId+':'+(shot.firedAt??'legacy')+':'+(kind==='muzzle'?shot.muzzleHeight??15:shot.impactHeight??12)];
+ return [kind,shot.id,p.x,p.y,JSON.stringify([shot.shooterId,shot.firedAt??null,kind==='muzzle'?shot.muzzleHeight??15:shot.impactHeight??12,shot.surface,shot.hit])];
 }
 export function groundEffectRow(mark:ImpactMark):EffectEvidenceRow{
  return ['ground',mark.id,mark.p.x,mark.p.y,
   JSON.stringify([mark.surface,mark.bloodKind,mark.bloodAmount,mark.damageCount,mark.shotId])];
 }
-const sameRow=(a:readonly unknown[],b:EffectEvidenceRow)=>a.length===5&&a.every((v,i)=>v===b[i]);
+const sameRow=(a:readonly unknown[],b:EffectEvidenceRow)=>a.length===5&&
+ a[0]===b[0]&&a[1]===b[1]&&a[2]===b[2]&&a[3]===b[3]&&a[4]===b[4];
 export function captureEffectEvidence(s:Session,prior?:ReplayEffectEvidence,
  visible:(s:Session,a:TeamActor,p:Pt)=>boolean=observerPointVisible):ReplayEffectEvidence|undefined{
  const rows:EffectEvidenceRow[]=[];
@@ -36,21 +37,20 @@ export function captureEffectEvidence(s:Session,prior?:ReplayEffectEvidence,
   rows.push(groundEffectRow(mark));n++;
  }
  if(!rows.length)return undefined;
+ // All observers share the same exact point partition, but not visibility.
+ const points:{p:Pt;bits:number}[]=[];
+ for(let i=0;i<rows.length;i++){
+  const [,,x,y]=rows[i];if(!Number.isFinite(x)||!Number.isFinite(y))continue;
+  const existing=points.find(q=>q.p.x===x&&q.p.y===y);
+  if(existing)existing.bits|=1<<i;
+  else points.push({p:{x,y},bits:1<<i});
+ }
  const observers:(readonly [string,number])[]=[];
  for(const actor of s.operators){
   if(actor.side!=='blue'||actor.health<=0)continue;
   if(observers.length>=EFFECT_SAMPLE_OBSERVER_LIMIT)break;
   let mask=0;
-  // Deduplicate coincident optical points for this observer, not across
-  // observers. A false bit is just as important as a true bit.
-  const points=new Map<string,boolean>();
-  for(let i=0;i<rows.length;i++){
-   const [, ,x,y]=rows[i];if(!Number.isFinite(x)||!Number.isFinite(y))continue;
-   const key=x+','+y;
-   let seen=points.get(key);
-   if(seen===undefined){seen=visible(s,actor,{x,y});points.set(key,seen);}
-   if(seen)mask|=1<<i;
-  }
+  for(const point of points)if(visible(s,actor,point.p))mask|=point.bits;
   observers.push([actor.id,mask]);
  }
  return {version:1,at:s.seconds,

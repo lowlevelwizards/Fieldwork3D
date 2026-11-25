@@ -6,7 +6,7 @@ import {type Session,type TeamActor,enemies,lastKnown,isSeen,liveVisibility} fro
 import type {ViewMode} from './breach-3d.ts';
 import {civilianPhysicalityAt} from './breach-encounter-physicality.ts';
 import {downedTransportPresentation} from './breach-capture-transport-presentation.ts';
-import {presentActor,presentCivilian,presentUnrecordedRescueMarker,presentTransientEvidence}
+import {presentActor,presentCivilian,presentUnrecordedRescueMarker,presentTransientEvidence,presentDroppedFirearm}
  from './rendering/breach-3d-disclosure-presenter.ts';
 import {contactFade} from './breach-presentation.ts';
 import {presentShotEvidence} from './rendering/breach-shot-disclosure.ts';
@@ -322,15 +322,6 @@ function sprite(a:TeamActor){
     // Enemy names are intentionally never shown.
   }
 }
-function liveWeaponKnown(item:{ownerId:string;p:Pt},state:Session):boolean{
-  const owner=state.operators.find(a=>a.id===item.ownerId);
-  const knowledge=replayKnowledge;
-  // Reuse the existing observable owner check; unseen weapon positions do
-  // not become a new source of full-map intelligence.
-  return !!owner&&(getFrame().replaying?
-    (knowledge?.omniscient===true||isSeen(state,owner)):
-    isSeen(state,owner));
-}
 function contacts(){
   const {state,replaying,replayAnalysis,replayContactMarkers,viewMode}=getFrame();
   if(replaying&&replayAnalysis&&replayContactMarkers&&replayKnowledge.disclosure().mode==='full')
@@ -362,7 +353,8 @@ function contacts(){
   // Physical firearm identity comes from the same replayed Session data as
   // the 3D evidence marker. Never expose an unseen hostile's former location.
   for(const item of state.droppedFirearms??[]){
-    if(item.status==='retrieved'||personal||!effectVisible(item.p)||!liveWeaponKnown(item,state))continue;
+    if(item.status==='retrieved'||!presentDroppedFirearm(state,item,omni,
+      replaying?replayKnowledge.disclosure():null,p=>liveVisibility(state,p)))continue;
     const x=item.p.x,y=item.p.y;
     if(item.status==='secured'){
       rect(x-8,y-5,16,10,'#bca97b');

@@ -45,7 +45,7 @@ import {BreachCombatEffectsPresenter} from './rendering/breach-combat-effects-pr
 import {PresentationSightMemo} from './rendering/breach-presentation-sight-memo.ts';
 import {presentationSightPolicy,allowPresentationSightReuse}
  from './rendering/breach-presentation-sight-policy.ts';
-import {presentActor,presentDecor,presentArchitecturalOpening,
+import {presentActor,presentDecor,presentArchitecturalOpening,presentDroppedFirearm,
   presentUnrecordedRescueMarker,resolveDoorPresentation}
  from './rendering/breach-3d-disclosure-presenter.ts';
 
@@ -2480,12 +2480,9 @@ export class TacticalScene3D{
         replayDisclosurePolicy);
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
-    this.surrenderedFirearms.update(s.droppedFirearms??[],item=>{
-      const owner=s.operators.find(a=>a.id===item.ownerId);
-      return omniscient||(replayDisclosurePolicy?
-        !!owner&&presentActor(s,owner,false,replayDisclosurePolicy):
-        liveVisibility(s,item.p));
-    });
+    this.surrenderedFirearms.update(s.droppedFirearms??[],item=>
+      presentDroppedFirearm(s,item,omniscient,replayDisclosurePolicy,
+        p=>this.presentationSight.query(s,'effect','firearm:'+item.id,p)));
     this.markScenePhase('disclosure');
     // One history pass per drawn frame, rather than rewalking all retained
     // shots for every friendly, hostile and recently undisclosed rig.

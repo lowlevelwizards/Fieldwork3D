@@ -141,3 +141,31 @@ test('V19 actual recorder snapshots own effect evidence and legacy playback clea
  applyReplayFrame(s,{...frame,knowledge:undefined});
  assert.equal(recordedEffectAllows(s,a.id,groundEffectRow(s.impactMarks[0])),false);
 });
+
+import {presentDroppedFirearm} from '../src/rendering/breach-3d-disclosure-presenter.ts';
+test('V19 firearm evidence requires the location itself, not just a visible owner',()=>{
+ const owner={id:'rook',side:'blue',health:100},s={operators:[owner]};
+ const item={ownerId:'rook',p:{x:50,y:60}};
+ let calls=0;const sight=()=>{calls++;return false;};
+ assert.equal(presentDroppedFirearm(s,item,true,{mode:'operator',observerId:'rook'},sight),false);
+ assert.equal(calls,0);
+ assert.equal(presentDroppedFirearm(s,item,false,{mode:'squad'},sight),false);
+ assert.equal(calls,1);
+ assert.equal(presentDroppedFirearm(s,item,false,null,()=>true),true);
+ assert.equal(presentDroppedFirearm(s,item,false,{mode:'full'},sight),true);
+});
+test('V19 sampled duplicate points share one exact optical probe per observer',()=>{
+ const s=newSession(0,23,'full-view');s.seconds=1;
+ const p={x:40,y:40};
+ s.shots=Array.from({length:4},(_,id)=>({id,side:'red',shooterId:'guard',start:p,end:p,age:.05}));
+ s.impactMarks=Array.from({length:4},(_,id)=>({id,p,surface:'blood',age:0}));
+ let calls=0;const sample=captureEffectEvidence(s,undefined,()=>{calls++;return true;});
+ assert.equal(calls,sample.observers.length);
+ assert.equal(sample.rows.length,8);
+ assert.ok(sample.observers.every(o=>o[1]===255));
+ const row=shotEffectRow(s.shots[0],'impact'),id=sample.observers[0][0];
+ assert.equal(effectSampleAllows(sample,1,id,row),true);
+ const changed=shotEffectRow({...s.shots[0],surface:'glass'},'impact');
+ assert.equal(effectSampleAllows(sample,1,id,changed),false);
+ assert.equal(effectSampleAllows({...sample,rows:[Array(5)],observers:[[id,1]]},1,id,row),false);
+});
