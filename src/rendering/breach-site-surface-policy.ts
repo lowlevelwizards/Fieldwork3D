@@ -19,4 +19,5 @@ export const SITE_PROPERTY_SURFACE_COLORS:Readonly<Record<SurfaceKind,number>>={
       'planting-bed':0x504b3e,'planting-edge':0x827961,
       'waste-bay-line':0xcdb677,'utility-bay-line':0xa6b8a8,
       'loading-bay-line':0xbeb59b,
+      'amenity-apron':0x918d7e,'work-wear':0x64675e,'pavement-joint':0x64685e,
 };

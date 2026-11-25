@@ -8,7 +8,7 @@ import {planRearServiceMarks} from './rear-service-program.ts';
 export const SERVICE_EDGE_FIXTURES=new Set([
  'utility-cabinet','dumpster','shipping-container','crate','pallet','rack',
  'recycling-bin','supply-cart','storage-tote','trash-bag','step-ladder',
- 'screened-dumpster'
+ 'screened-dumpster','trash-bin','tire-stack','tool-chest','compressor','cable-reel'
 ]);
 export function serviceYardEdgeCandidates(
  zone:ExteriorZone,w:number,h:number,fixture?:string):Pt[]{
