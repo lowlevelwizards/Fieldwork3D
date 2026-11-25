@@ -2971,6 +2971,7 @@ export class TacticalScene3D{
         if(!omniscient&&!this.presentationSight.query(s,'effect','flash-light:'+burst.id,burst.p))continue;
         this.transientLights.offer('flash',burst.id,burst.p.x,13,burst.p.y,burst.age);
       }
+    this.transientLights?.confine(sessionWorldGeometry(s),s.doors);
     this.combatEffects.update(s,omniscient,
       personalDisclosure,p=>this.presentationSight.query(
         s,'effect',p.x+','+p.y,p));
