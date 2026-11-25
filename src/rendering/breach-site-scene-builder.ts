@@ -35,10 +35,8 @@ import {type PixelOverlay} from './pixel-overlays.ts';
 import {type PixelSignKind} from './pixel-signage.ts';
 import {planObjectWear,type ObjectWear} from '../worldgen/object-wear.ts';
 import {planExposureWear} from '../worldgen/wear-exposure.ts';
-import {planEnvironmentalWear,type WearKind,type WearMark} from '../worldgen/environment-wear.ts';
-import {planActivityWear} from '../worldgen/wear-sources.ts';
-import {planHistoryWear} from '../worldgen/surface-history.ts';
-import {planThresholdTrafficWear} from '../worldgen/threshold-traffic-wear.ts';
+import {type WearKind,type WearMark} from '../worldgen/environment-wear.ts';
+import {planStaticFloorWear,planCompiledFloorWear,FLOOR_WEAR_COLOR} from '../worldgen/floor-wear-plan.ts';
 import {planInteriorFragments,type InteriorFragment} from '../worldgen/interior-fragments.ts';
 import {visibleSurfaceHeight} from '../worldgen/decoration-anchors.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from '../worldgen/fixture-visuals.ts';
@@ -257,7 +255,8 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       wearByOwner.get(owner+':'+index)??[];
     buildSiteMicroDebris(site,host);
     const decorativeRoomGroups=new Map<string,THREE.Group>();
-    const floorAtlas=host.floorWearCompiled?buildFloorMaskAtlas(site,effectiveCondition(site)):undefined;
+    host.currentWear=host.floorWearCompiled?planCompiledFloorWear(site):planStaticFloorWear(site);
+    const floorAtlas=host.floorWearCompiled?buildFloorMaskAtlas(site,effectiveCondition(site),host.currentWear,host.wearBoost):undefined;
     if(floorAtlas)host.sitePatinaTextures.push(...floorAtlas.pages);
     const floorMaterials=new Map<string,THREE.MeshStandardMaterial>();
     for(const room of site.rooms){
@@ -349,17 +348,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
     if(!fragments.length)fragmentGeometry.dispose();
     // Condition-dependent floor patina stays inside its room's fog group.
     // Decals are decorative only; they create no collision or cover.
-    const wearColor:Record<WearKind,number>={
-      dust:0x92816c,stain:0x655e4b,scrape:0xb2ae9e,scuff:0x444d47,
-      oil:0x373834,grease:0x4e4538,rust:0xa2693f,chip:0xbab0a0,
-      crack:0x4c4a43,scratch:0xd1cab7,drip:0x6e7771,mud:0x6b5641,
-      footprint:0x655647,mineral:0xd3cec1,fade:0xc6bfaa,
-      soot:0x343c39,moss:0x59714e,'paint-peel':0xbdb19f,
-      fray:0xc4b9aa,abrade:0x918878,
-    };
-    host.currentWear=[...planEnvironmentalWear(site),...planActivityWear(site),
-      ...planHistoryWear(site),...planThresholdTrafficWear(site)];
-    for(const detail of host.currentWear){
+    for(const detail of floorAtlas?[]:host.currentWear){
       const roomGroup=decorativeRoomGroups.get(detail.roomId);
       if(!roomGroup)continue;
       const bucket=wearOpacityBucket(detail.opacity);
@@ -377,7 +366,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
           host.wearTextures.set(detail.kind,texture);
         }
         material=new THREE.MeshBasicMaterial({
-          color:wearColor[detail.kind],map:texture,transparent:true,
+          color:FLOOR_WEAR_COLOR[detail.kind],map:texture,transparent:true,
           opacity:Math.min(1,WEAR_ALPHA_BANDS[bucket]*host.wearBoost),
           depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1,
           side:THREE.DoubleSide});

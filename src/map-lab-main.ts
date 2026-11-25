@@ -44,6 +44,8 @@ let session:Session=newSession(0);
 let siteReady=false;
 typeInput.value=BUILDING_ARCHETYPES[(initial>>>0)%BUILDING_ARCHETYPES.length];
 const stage=new TacticalScene3D();
+const floorMode=el<HTMLSelectElement>('floorWearMode');
+floorMode.value=stage.floorWearCompiled?'compiled':'legacy';
 const wallMode=el<HTMLSelectElement>('wallAuditionMode');
 const wallEffect=el<HTMLSelectElement>('wallAuditionEffect');
 wallMode.value=stage.wallAudition?(stage.wallAudition.story?'story':stage.wallAudition.atlas?'atlas':'packed'):'legacy';
@@ -151,13 +153,17 @@ function paintConditionDiagnostics(){
 function previewCondition(){
  const site=session.site;if(!site)return;
  playSite.href='./breach.html?seed='+site.seed+
-   '&scale='+(site.scale??'medium')+'&condition='+selectedCondition+'&wallWear='+wallMode.value;
+   '&scale='+(site.scale??'medium')+'&condition='+selectedCondition+'&wallWear='+wallMode.value+'&floorWear='+floorMode.value;
  const view={...stage.view,focus:{...stage.view.focus}};
  stage.applySite({...site,conditionLevel:selectedCondition});
  Object.assign(stage.view,view);
  conditionValue.textContent=selectedCondition+' / 100 · '+conditionLabel(selectedCondition);
  paintConditionDiagnostics();
 }
+floorMode.addEventListener('change',()=>{
+ stage.floorWearCompiled=floorMode.value==='compiled';
+ if(siteReady)previewCondition();
+});
 wallMode.addEventListener('change',()=>{
  stage.wallAudition=wallMode.value==='legacy'?undefined:{effect:wallEffect.value as WallEffectFilter,atlas:wallMode.value==='atlas'||wallMode.value==='story',story:wallMode.value==='story'};
  wallEffect.disabled=!stage.wallAudition;
@@ -184,7 +190,7 @@ conditionInput.addEventListener('input',()=>{
  const site=session.site;
  if(site){
   playSite.href='./breach.html?seed='+site.seed+
-   '&scale='+(site.scale??'medium')+'&condition='+selectedCondition+'&wallWear='+wallMode.value;
+   '&scale='+(site.scale??'medium')+'&condition='+selectedCondition+'&wallWear='+wallMode.value+'&floorWear='+floorMode.value;
   // A single queued frame updates existing patina maps. Full scene/fixture
   // regeneration is deferred until the slider settles.
   if(maskPreviewFrame===null)maskPreviewFrame=requestAnimationFrame(()=>{
@@ -413,9 +419,9 @@ async function useGeneratedSite(id:number,site:Site,audit:SiteAudit,choice:LabSc
     'ms · worker total '+timing.workerMs+'ms · preview '+previewMs+'ms';
   seedInput.value=String(site.seed);
   playSite.href='./breach.html?seed='+site.seed+
-    '&scale='+(site.scale??'medium')+'&condition='+selectedCondition+'&wallWear='+wallMode.value;
+    '&scale='+(site.scale??'medium')+'&condition='+selectedCondition+'&wallWear='+wallMode.value+'&floorWear='+floorMode.value;
   history.replaceState(null,'','?seed='+site.seed+'&scale='+choice+
-    '&condition='+selectedCondition+'&wallWear='+wallMode.value);
+    '&condition='+selectedCondition+'&wallWear='+wallMode.value+'&floorWear='+floorMode.value);
   siteReady=true;currentAudit=audit;
   updateLabels();showFunctionalQuality(site,audit);paintConditionDiagnostics();
   showProgress(100,'SITE READY',(site.archetype??'BUILDING').toUpperCase()+

@@ -54,3 +54,23 @@ test('W7 shared shader hook composes with F1 lighting without mutating palette',
  assert.equal(base.userData.fieldworkR718WorldGraphic,true);
  m.dispose();base.map.dispose();base.dispose();texture.dispose();
 });
+
+import {planCompiledFloorWear,indexFloorWear} from '../src/worldgen/floor-wear-plan.ts';
+import {rasterFloorWear} from '../src/rendering/floor-wear-raster.ts';
+test('W7 compiled floor story is deterministic, source-local, clean-isolated and clipped',()=>{
+ const room={id:'r',x:0,y:0,w:100,h:80,kind:'room',purpose:'kitchen'};
+ const site={seed:23,archetype:'restaurant',condition:'occupied',conditionLevel:100,rooms:[room],doors:[],cover:[{fixture:'commercial-range',x:40,y:15,w:24,h:20,orientation:0}]};
+ const marks=planCompiledFloorWear(site);
+ assert.deepEqual(marks,planCompiledFloorWear(site));assert.deepEqual(planCompiledFloorWear(site,0),[]);
+ const grease=marks.find(m=>m.kind==='grease');assert.ok(grease);assert.ok(grease.y>25);
+ assert.ok(!planCompiledFloorWear({...site,cover:[]}).some(m=>m.kind==='grease'||m.kind==='oil'));
+ const empty=new Uint8Array(64*64*4),single={id:'m',roomId:'r',kind:'oil',x:10,y:10,width:18,depth:14,rotation:0,opacity:.4};
+ const out=rasterFloorWear(empty.slice(),room,0,[single],64);
+ assert.ok(out.some((v,i)=>i%4===3&&v>0));
+ assert.equal(out[(63*64+63)*4+3],0);
+ assert.deepEqual(rasterFloorWear(empty.slice(),room,0,[{...single,roomId:'elsewhere'}],64),empty);
+ const atlas=buildFloorMaskAtlas(site,100,marks),slot=atlas.slots.get('r'),original=slot.texture.image.data.slice();
+ writeFloorMaskSlot(site,slot,0,[]);assert.ok(slot.texture.image.data.every((v,i)=>i%4!==3||v===0));
+ writeFloorMaskSlot(site,slot,100,indexFloorWear(marks).get('r'));assert.deepEqual(slot.texture.image.data,original);
+ atlas.pages.forEach(t=>t.dispose());
+});

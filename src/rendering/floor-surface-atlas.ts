@@ -3,6 +3,9 @@
 import * as THREE from 'three';
 import type {Site,Room} from '../breach-site.ts';
 import {conditionFloorPixels} from '../worldgen/condition-visual.ts';
+import {indexFloorWear} from '../worldgen/floor-wear-plan.ts';
+import type {WearMark} from '../worldgen/environment-wear.ts';
+import {rasterFloorWear} from './floor-wear-raster.ts';
 import {mapBoxPixelUV} from './pixel-materials.ts';
 export const FLOOR_MASK_SIZE=64;
 export type FloorMaskSlot={room:Room;texture:THREE.DataTexture;row:number};
@@ -13,11 +16,14 @@ export function planFloorMaskPages(count:number):number[]{
  while(count>0){const n=2**Math.floor(Math.log2(Math.min(count,32)));pages.push(n);count-=n;}
  return pages;
 }
-export function writeFloorMaskSlot(site:Site,slot:FloorMaskSlot,level:number){
+export function writeFloorMaskSlot(site:Site,slot:FloorMaskSlot,level:number,marks:readonly WearMark[]=[],boost=1){
  const image=slot.texture.image as {data:Uint8Array};
- image.data.set(conditionFloorPixels(site,slot.room,level,FLOOR_MASK_SIZE),slot.row*FLOOR_MASK_SIZE*4);
+ const bytes=conditionFloorPixels(site,slot.room,level,FLOOR_MASK_SIZE);
+ if(level>0)rasterFloorWear(bytes,slot.room,site.programLocked?0:2,marks,FLOOR_MASK_SIZE,boost);
+ image.data.set(bytes,slot.row*FLOOR_MASK_SIZE*4);
 }
-export function buildFloorMaskAtlas(site:Site,level:number):FloorMaskAtlas{
+export function buildFloorMaskAtlas(site:Site,level:number,marks:readonly WearMark[]=[],boost=1):FloorMaskAtlas{
+ const byRoom=indexFloorWear(marks);
  const pages:THREE.DataTexture[]=[],slots=new Map<string,FloorMaskSlot>();
  let offset=0;
  for(const count of planFloorMaskPages(site.rooms.length)){
@@ -29,7 +35,7 @@ export function buildFloorMaskAtlas(site:Site,level:number):FloorMaskAtlas{
   texture.name='w7-floor-mask:'+height;
   for(let i=0;i<count;i++){
    const room=site.rooms[offset+i],slot={room,texture,row:i*FLOOR_MASK_SIZE};
-   slots.set(room.id,slot);writeFloorMaskSlot(site,slot,level);
+   slots.set(room.id,slot);writeFloorMaskSlot(site,slot,level,byRoom.get(room.id),boost);
   }
   texture.needsUpdate=true;pages.push(texture);offset+=count;
  }

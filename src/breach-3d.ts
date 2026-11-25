@@ -95,7 +95,8 @@ import {PausedShadowSceneController,shadowEligibleBox}
 
 import {type WearKind,type WearMark} from './worldgen/environment-wear.ts';
 import {summarizeWear} from './worldgen/wear-diagnostics.ts';
-import {conditionFloorPixels} from './worldgen/condition-visual.ts';
+import {conditionFloorPixels,effectiveCondition} from './worldgen/condition-visual.ts';
+import {planCompiledFloorWear,indexFloorWear} from './worldgen/floor-wear-plan.ts';
 import {resolveFloorWear,writeFloorMaskSlot,type FloorMaskSlot} from './rendering/floor-surface-atlas.ts';
 
 import {conditionWallPixels} from './worldgen/condition-wall.ts';
@@ -885,8 +886,9 @@ export class TacticalScene3D{
   /** Live slider scrubbing changes pixel masks, not the physical scene. */
   previewConditionMasks(site:Site,level:number){
     const floorPages=new Set<THREE.DataTexture>();
+    const floorMarks=this.floorWearCompiled?indexFloorWear(planCompiledFloorWear(site,level)):undefined;
     for(const item of this.patinaRoomSurfaces){
-      if(item.floorSlot){writeFloorMaskSlot(site,item.floorSlot,level);floorPages.add(item.texture);continue;}
+      if(item.floorSlot){writeFloorMaskSlot(site,item.floorSlot,level,floorMarks?.get(item.room.id),this.wearBoost);floorPages.add(item.texture);continue;}
       const image=item.texture.image as {data:Uint8Array};
       image.data.set(conditionFloorPixels(site,item.room,level));
       item.texture.needsUpdate=true;
@@ -910,6 +912,11 @@ export class TacticalScene3D{
   wearStats(){return summarizeWear(this.currentWear);}
   setWearExaggeration(multiplier:number){
     this.wearBoost=Math.max(1,Math.min(4,multiplier));
+    if(this.floorWearCompiled&&this.displayedSite){
+      const site=this.displayedSite;
+      const level=effectiveCondition(site);
+      this.previewConditionMasks(site,level);
+    }
     for(const [key,material] of [...this.wearMaterials,...this.surfaceWearMaterials]){
       const bucket=Number(key.slice(key.lastIndexOf(':')+1));
       material.opacity=Math.min(1,WEAR_ALPHA_BANDS[bucket]*this.wearBoost);
