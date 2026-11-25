@@ -48,6 +48,11 @@ const wallMode=el<HTMLSelectElement>('wallAuditionMode');
 const wallEffect=el<HTMLSelectElement>('wallAuditionEffect');
 wallMode.value=stage.wallAudition?(stage.wallAudition.atlas?'atlas':'packed'):'legacy';
 wallEffect.disabled=!stage.wallAudition;
+function updateWallEffectOptions(){
+ for(const option of wallEffect.options)if(option.value==='moss'||option.value==='rust')option.disabled=!stage.wallAudition?.atlas;
+ if(!stage.wallAudition?.atlas&&['moss','rust'].includes(wallEffect.value)){wallEffect.value='all';if(stage.wallAudition)stage.wallAudition.effect='all';}
+}
+updateWallEffectOptions();
 stage.setMode('iso');stage.view.zoom=1.25;
 let markers:{node:HTMLElement;p:Pt;orientation?:number}[]=[];
 let reportBaseline='';
@@ -152,6 +157,7 @@ function previewCondition(){
 wallMode.addEventListener('change',()=>{
  stage.wallAudition=wallMode.value==='legacy'?undefined:{effect:wallEffect.value as WallEffectFilter,atlas:wallMode.value==='atlas'};
  wallEffect.disabled=!stage.wallAudition;
+ updateWallEffectOptions();
  if(siteReady)previewCondition();
 });
 wallEffect.addEventListener('change',()=>{

@@ -123,7 +123,14 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
    repair:tint(base,[231,222,199],.4),moss:tint(base,[65,89,52],.79),rust:tint(base,[139,71,37],.77)
   };
   const c=palette[event.kind];
-  for(let py=0;py<height;py++)for(let px=0;px<width;px++){
+  // Visit only the physical stamp rectangle, rather than every texel
+  // in every strip for each sparse event.
+  const rx=Math.max(1,event.width/2),ry=Math.max(1,event.height/2);
+  const x0=Math.max(0,Math.floor((event.x-rx)/recipe.length*width));
+  const x1=Math.min(width,Math.ceil((event.x+rx)/recipe.length*width));
+  const y0=Math.max(0,Math.floor((event.y-ry)/recipe.height*height));
+  const y1=Math.min(height,Math.ceil((event.y+ry)/recipe.height*height));
+  for(let py=y0;py<y1;py++)for(let px=x0;px<x1;px++){
    const wx=(px+.5)/width*recipe.length,wy=(py+.5)/height*recipe.height;
    const u=(wx-event.x)/Math.max(1,event.width/2),v=(wy-event.y)/Math.max(1,event.height/2);
    if(Math.abs(u)>1||Math.abs(v)>1)continue;
@@ -158,7 +165,7 @@ const srgbLinear=Float64Array.from({length:256},(_,i)=>{
 const linearByte=(v:number)=>Math.round(255*(v<=.0031308?12.92*v:1.055*Math.pow(v,1/2.4)-.055));
 export function bakedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:number,height:number,filter:WallEffectFilter='all',patterned=true){
  const out=wallSurfacePixels(recipe,level,width,height,filter),base=rgb(recipe.color);
- const accent=recipe.band?rgb(recipe.band.color):base;
+ const accent=recipe.band?tint(base,rgb(recipe.band.color),.62):base;
  // Use large physical modules instead of downsampling fine repeated tiles.
  // Mortar and joints are at least one output texel wide at packed resolution.
  const texelX=recipe.length/width,texelY=recipe.height/height;
@@ -184,7 +191,7 @@ export function bakedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,wid
     if(mod(wx,48)<Math.max(1,texelX))shade=.83;
    }
   }
-  const color=patterned&&recipe.band&&wy>=recipe.band.top?tint(base,accent,.62):base;
+  const color=patterned&&recipe.band&&wy>=recipe.band.top?accent:base;
   for(let i=0;i<3;i++)out[p+i]=linearByte((srgbLinear[color[i]]*(1-a)+srgbLinear[out[p+i]]*a)*shade);
   out[p+3]=255;
  }

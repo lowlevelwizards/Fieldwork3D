@@ -103,6 +103,28 @@ try{
     check(results.slice(1).every(r=>r.bodies===results[0].bodies&&r.textureBytes===results[0].textureBytes),'Conditioned wall geometry or texture budget changed');
     evidence.push({name,seed,archetype,results});
    }
+   if(w3&&name==='desktop'){
+    // Additional semantic matrix: same building, camera and geometry across
+    // five condition values; two opposing close views at 100.
+    for(const [seed,archetype] of [[23,'house'],[31,'motel'],[42,'clinic'],[51,'retail'],[97,'garage'],[63,'warehouse']]){
+     await page.evaluate(({seed,archetype})=>{
+      const p=window.w2Probe;
+      p.site={...p.generateSite(seed,'standard',undefined,{mission:'intel'},{archetype}),conditionLevel:0};
+      p.activateSite(p.site);p.session=p.newSession(0,seed,'floor-plan','standard',undefined,p.site);
+      p.scene.wallAudition={effect:'all',atlas:true};p.scene.applySite(p.site);p.scene.resetCamera();p.scene.setMode('iso');p.scene.view.zoom=1.25;
+     },{seed,archetype});
+     const familyCounts=await page.evaluate(()=>{const counts={};for(const item of window.w2Probe.scene.patinaWallSurfaces)for(const face of [item.atlasSlot.pair.front,item.atlasSlot.pair.back])counts[face.surface]=(counts[face.surface]||0)+1;return counts;});
+     for(const level of [0,25,50,75,100]){
+      await page.evaluate(level=>{const {scene,site,session,team}=window.w2Probe;scene.previewConditionMasks(site,level);scene.update(session,team(session)[0].id,1,null,true);},level);
+      await page.screenshot({path:dir+'/matrix-'+archetype+'-'+level+'.png'});
+     }
+     for(const sign of [1,-1]){
+      await page.evaluate(sign=>{const {scene,session,team}=window.w2Probe;const wall=scene.walls.find(w=>w.exterior&&w.mesh.userData.fieldworkDrawFamily==='structural-wall-body');if(!wall)throw Error('No exterior face for close audition');const {a,b}=wall.segment;scene.view.focus={x:(a.x+b.x)/2,y:(a.y+b.y)/2};scene.view.yaw=Math.atan2(b.y-a.y,b.x-a.x)+sign*Math.PI/2;scene.view.pitch=35*Math.PI/180;scene.view.zoom=2.7;scene.update(session,team(session)[0].id,1,null,true);},sign);
+      await page.screenshot({path:dir+'/matrix-'+archetype+'-close-'+sign+'.png'});
+     }
+     console.log('W3_FACE_MATRIX '+JSON.stringify({seed,archetype,familyCounts}));
+    }
+   }
    await page.evaluate(()=>{
     const {scene,site}=window.w2Probe;
     const masks=[...new Set(scene.patinaWallSurfaces.map(m=>m.texture))];
@@ -134,6 +156,7 @@ try{
   check(await lab.locator('#wallAuditionEffect').isDisabled(),'Legacy mode effect isolation still enabled');
   await lab.locator('#wallAuditionMode').selectOption(w3?'atlas':'packed');
   await lab.locator('#wallAuditionEffect').selectOption('damp');
+  if(w3){await lab.locator('#wallAuditionEffect').selectOption('moss');await lab.locator('#wallAuditionEffect').selectOption('rust');}
   await lab.locator('#wallAuditionEffect').selectOption('all');
   await lab.screenshot({path:dir+'/map-lab-controls.png'});
   check(!errors.length,'Map Lab errors: '+errors.join(' | '));

@@ -59,3 +59,25 @@ test('atlas UV maps existing wall geometry to its own strip, never neighboring s
  }
  g.dispose();
 });
+
+test('moss requires wet exposed mineral beside planting, rust requires exterior panel seam',()=>{
+ const garden={id:'garden',kind:'garden',x:0,y:-60,w:180,h:60};
+ const sample=Array.from({length:100},(_,seed)=>({...site,seed,archetype:'townhouse',exteriorZones:[garden]}));
+ const damp=sample.find(s=>planWallFaces(s,0,56).back.events.some(e=>e.kind==='moss'));
+ assert.ok(damp,'Moss never authored for eligible planted foundation');
+ const p=planWallFaces(damp,0,56);
+ assert.ok(p.back.events.some(e=>e.kind==='damp'));
+ assert.ok(!p.front.events.some(e=>e.kind==='moss'));
+ assert.ok(!planWallFaces({...damp,exteriorZones:[]},0,56).back.events.some(e=>e.kind==='moss'));
+ assert.ok(!planWallFaces({...damp,archetype:'house'},0,56).back.events.some(e=>e.kind==='moss'));
+ const industrial=sample.map(s=>({...s,archetype:'warehouse'})).find(s=>planWallFaces(s,0,56).back.events.some(e=>e.kind==='rust'));
+ assert.ok(industrial,'No eligible panel corrosion');
+ const pair=planWallFaces(industrial,0,56),rust=pair.back.events.find(e=>e.kind==='rust');
+ assert.equal(rust.x%24,0);assert.ok(rust.cause.startsWith('panel-seam:'));
+ assert.ok(!pair.front.events.some(e=>e.kind==='rust'));
+ for(const [s,kind] of [[damp,'moss'],[industrial,'rust']]){
+  const pair=planWallFaces(s,0,56);
+  assert.notDeepEqual(atlasWallStrip(pair,100,128,kind),atlasWallStrip(pair,100,128,'none'));
+  assert.deepEqual(atlasWallStrip(pair,0,128,kind),atlasWallStrip(pair,0,128,'none'));
+ }
+});
