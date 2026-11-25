@@ -39,3 +39,17 @@ test('A5: expired shots, foreign shooters and empty history produce no flash',()
  assert.equal(mostRecentActiveMuzzleShot([shot(1,'blue',1)],'blue',
    'carbine',null,()=>true),undefined);
 });
+
+test('V17 muzzle light signature is independent of mesh decay and preserves attachment separation',()=>{
+ const age=.04;
+ for(const attachment of [null,'muzzle-hider','muzzle-suppressor']){
+  const early=muzzleFlashCue('rifle',0,attachment),later=muzzleFlashCue('rifle',age,attachment);
+  assert.equal(early.lightStrength,later.lightStrength);
+  assert.ok(early.scale>later.scale);
+ }
+ assert.equal(muzzleFlashCue('rifle',0).lightStrength,1);
+ assert.equal(muzzleFlashCue('rifle',0,'muzzle-hider').lightStrength,.65);
+ assert.equal(muzzleFlashCue('rifle',0,'muzzle-suppressor').lightStrength,.25);
+ assert.equal(muzzleFlashCue('rifle',NaN).lightStrength,0);
+ assert.equal(muzzleFlashCue('rifle',1).lightStrength,0);
+});
