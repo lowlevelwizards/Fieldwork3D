@@ -49,7 +49,7 @@ import {presentActor,presentDecor,presentArchitecturalOpening,
   presentUnrecordedRescueMarker,resolveDoorPresentation}
  from './rendering/breach-3d-disclosure-presenter.ts';
 
-import {windowShardPose,WINDOW_SHARDS_PER_PANE,WINDOW_SHARD_CAPACITY,
+import {windowShardPoseInto,WINDOW_SHARDS_PER_PANE,WINDOW_SHARD_CAPACITY,
  WINDOW_SETTLED_SHARDS_PER_PANE,settledWindowShardPose,WindowShardSlotCache,
  type SettledWindowShardPose}
  from './rendering/window-shatter-presentation.ts';
@@ -2076,8 +2076,8 @@ export class TacticalScene3D{
         (omniscient||this.presentationSight.query(s,'effect','glass:'+id,{x:current.x,y:current.y})))
         this.settledPanes.push(current);
       for(let i=0;i<WINDOW_SHARDS_PER_PANE&&shardCount<WINDOW_SHARD_CAPACITY;i++){
-        const part=windowShardPose(current,s.seconds,i);
-        if(!part)continue;
+        const part=this.settledShardScratch;
+        if(!windowShardPoseInto(current,s.seconds,i,part))continue;
         if(this.glassDebrisPreview&&(!personalWindows&&!omniscient&&
           !this.presentationSight.query(s,'effect','glass:'+id+':burst:'+i,{x:part.x,y:part.z})))continue;
         submit(part,0xd9f4ef);

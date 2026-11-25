@@ -3,7 +3,7 @@
  * Older recordings without complete origin data deliberately omit debris. */
 import type {Door,Obstacle} from '../breach-core.ts';
 import {MATERIALS,materialForFixture} from '../breach-materials.ts';
-import {windowShardPose,settledWindowShardPose,type SettledWindowShardPose} from './window-shatter-presentation.ts';
+import {windowShardPoseInto,settledWindowShardPose,type SettledWindowShardPose} from './window-shatter-presentation.ts';
 export type DebrisSource={id:string;x:number;y:number;width:number;vertical:boolean;sillHeight:number;headHeight:number;shattered:true;shatteredAt:number;yaw:number;kind:'glass'|'wood'|'stone'|'metal'|'dust';color:number};
 const tint={glass:0xd9f4ef,wood:0xb99a74,stone:0xbcb3a1,metal:0x9da9a8,dust:0xb8ab92} as const;
 export function doorDebrisSource(d:Door):DebrisSource|null{
@@ -29,8 +29,8 @@ function orient(source:DebrisSource,out:SettledWindowShardPose){
 }
 export function fractureDebrisPose(source:DebrisSource,time:number,index:number,settled:boolean,out:SettledWindowShardPose):boolean{
  if(settled){if(!settledWindowShardPose(source,time,index,out))return false;}
- else{const part=windowShardPose(source,time,index);if(!part)return false;
-  Object.assign(out,part);out.heightScale=1;}
+ else{if(!windowShardPoseInto(source,time,index,out))return false;
+  out.heightScale=1;}
  orient(source,out);
  if(source.kind!=='glass'){
   // Larger angular pieces around the collapsed authored footprint.

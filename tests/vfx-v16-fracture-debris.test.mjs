@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {recordDoorFracture} from '../src/breach-fracture-record.ts';
 import {damageCover} from '../src/breach-reactive-cover.ts';
 import {doorDebrisSource,coverDebrisSource,fractureDebrisPose} from '../src/rendering/breach-fracture-debris.ts';
+import {windowShardPose,windowShardPoseInto,WINDOW_SHARD_DURATION,WINDOW_SHARDS_PER_PANE} from '../src/rendering/window-shatter-presentation.ts';
 import {newSession} from '../src/breach-game.ts';
 import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
 const scratch=()=>({x:0,y:0,z:0,rx:0,ry:0,rz:0,scale:1,heightScale:1});
@@ -34,4 +35,26 @@ test('fracture timestamps and origin survive rewind without leaking future break
  const early=snapshot(s);d.glassShattered=true;recordDoorFracture(d,2);s.objectRevision++;const late=snapshot(s);
  applyReplayFrame(s,early);assert.equal(doorDebrisSource(s.doors[0]),null);
  applyReplayFrame(s,late);assert.ok(doorDebrisSource(s.doors[0]));
+});
+
+test('burst scratch path preserves poses, rejects invalid samples and is safe across rewind',()=>{
+ const p=scratch();
+ for(const vertical of [false,true]){
+  const pane={x:100,y:200,width:42,vertical,sillHeight:12,headHeight:35,shatteredAt:2};
+  for(const time of [2,2.4,2.9,2.1])for(let i=0;i<WINDOW_SHARDS_PER_PANE;i++){
+   assert.ok(windowShardPoseInto(pane,time,i,p));
+   const {heightScale,...pose}=p;
+   assert.deepEqual(pose,windowShardPose(pane,time,i));
+   const spread=(i-2.5)/5,t=time-2;
+   const lateral=spread*34*.72+spread*t*19;
+   const outward=(i%2?1:-1)*t*(8+i*1.6);
+   assert.equal(p.x,100+(vertical?outward:lateral));
+   assert.equal(p.z,200+(vertical?lateral:outward));
+  }
+  const before={...p};
+  for(const [time,i] of [[1,0],[2+WINDOW_SHARD_DURATION+0.01,0],[NaN,0],[2,0.5],[2,NaN],[2,WINDOW_SHARDS_PER_PANE]]){
+   assert.equal(windowShardPoseInto(pane,time,i,p),false);
+   assert.deepEqual(p,before);
+  }
+ }
 });
