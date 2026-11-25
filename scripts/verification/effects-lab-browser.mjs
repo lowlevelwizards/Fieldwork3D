@@ -1,0 +1,28 @@
+import {spawn} from 'node:child_process';
+import {mkdirSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+const origin='http://127.0.0.1:4476',dir='artifacts/effects-lab';
+mkdirSync(dir,{recursive:true});
+const server=spawn(process.execPath,[resolve('node_modules/vite/bin/vite.js'),'--host','127.0.0.1','--port','4476','--strictPort'],{stdio:'ignore'});
+let browser;
+try{
+ let ready=false;for(let i=0;i<120;i++){try{if((await fetch(origin+'/index.html')).ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,150));}
+ assert.ok(ready);
+ browser=await chromium.launch({headless:true,...(process.env.FIELDWORK_CI_CHROME==='1'?{channel:'chrome'}:{}),args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ for(const viewport of [{width:390,height:844},{width:1440,height:900}]){
+  const page=await browser.newPage({viewport,deviceScaleFactor:1}),errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(origin+'/breach-visual-lab.html');await page.waitForSelector('body[data-ready=true]');
+  await page.locator('#speed').selectOption('.25');
+  for(const id of ['hit','pool','stabilize','stone','wood','metal','dust','flash','muzzle','glass','vegetation','reset']){
+   await page.locator('#'+id).click();await page.waitForTimeout(id==='pool'?2500:180);
+   assert.ok((await page.locator('#status').innerText()).length>10);
+   if(['hit','pool','stone','glass','vegetation'].includes(id))await page.screenshot({path:dir+'/'+viewport.width+'-'+id+'.png'});
+  }
+  await page.locator('#pause').click();await page.locator('#step').click();await page.locator('#gameZoom').click();
+  assert.deepEqual(errors,[]);assert.equal(await page.locator('#breach3dCanvas').count(),1);
+  await page.close();
+ }
+}finally{await browser?.close();server.kill();}
