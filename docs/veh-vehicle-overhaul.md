@@ -8,3 +8,6 @@ First checkpoint intentionally does not enable vehicles or change legacy fixture
 
 ## Checkpoint 2 — shared rendering
 All six family dimensions enter the canonical asset catalogue and Asset Lab inventory. The common renderer now uses one vertex-coloured opaque mesh; the site scene acquires geometry via the existing leased template library, with one lazily allocated site-owned material. This keeps owner visibility/collapse transforms and the existing repeated fixture batch collector. No procedural placement enabled. Dedicated Vehicle Lab, visual validation and measured performance remain pending. Historical legacy geometry branches are temporarily retained until source-contract tests are deliberately replaced.
+
+## Checkpoint 3 — shadow placement
+Added deterministic parking-only candidate planner with diagnostics, canonical rotated dimensions, vacant capacity, reserved bay, sidewalk/curb, road, entry and door reserves, protected encounter points and existing cover rejection. No map mutation or production enablement yet. Real lot eligibility needs measurement; garage/driveway/loading topology and vehicle-height integration are still pending. Existing generated wheel stops may reduce shadow acceptance because the final planner needs to run before wheel-stop allocation.

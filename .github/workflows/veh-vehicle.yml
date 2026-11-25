@@ -23,5 +23,5 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - run: node --experimental-strip-types --test tests/veh-vehicle-model.test.mjs tests/map-17-vehicles.test.mjs tests/map-24-vehicle-identity.test.mjs
+      - run: node --experimental-strip-types --test tests/veh-vehicle-model.test.mjs tests/veh-placement.test.mjs tests/map-17-vehicles.test.mjs tests/map-24-vehicle-identity.test.mjs
       - run: npm run check
