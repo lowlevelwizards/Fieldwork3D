@@ -1,6 +1,8 @@
 import {TacticalScene3D} from './breach-3d.ts';
 import {newSession,team,enemies,type ShotEvent,type Session} from './breach-game.ts';
 import {activateSite,type Pt} from './breach-core.ts';
+import {damageCover} from './breach-reactive-cover.ts';
+import {recordDoorFracture} from './breach-fracture-record.ts';
 import {buildTrainingSite} from './training/training-site-builder.ts';
 import {DEFAULT_TRAINING_CONFIG} from './training/training-courses.ts';
 import {generateSite,type Site} from './breach-site.ts';
@@ -13,7 +15,7 @@ import {advanceTransientSimulationEffects} from './breach-simulation-phases.ts';
 
 /** Lab-only authored event fixtures, rendered by the production pipeline.
  * No campaign persistence, tactical shot authority or alternate VFX engine. */
-type Sample='miss'|'hit'|'down'|'pool'|'stone'|'wood'|'metal'|'dust'|'glass'|'flash'|'muzzle'|'vegetation';
+type Sample='miss'|'hit'|'down'|'pool'|'stone'|'wood'|'metal'|'dust'|'glass'|'glass-door'|'collapse'|'flash'|'muzzle'|'vegetation';
 const stage=new TacticalScene3D(),legacy=newSession();
 const targetTemplate=enemies(legacy)[0];
 if(!targetTemplate)throw Error('Missing lab actor template');
@@ -21,6 +23,8 @@ const arena=buildTrainingSite({...DEFAULT_TRAINING_CONFIG,squadSize:1});
 arena.cover.push(
  {id:'lab-wood',fixture:'crate',x:310,y:665,w:28,h:26,low:true,topHeight:20},
  {id:'lab-metal',fixture:'support-column',x:390,y:665,w:16,h:16,low:false,topHeight:40});
+// An explicit glazed leaf in the authored lab fixture set.
+if(arena.doors.length)arena.doors[0].style='glazed';
 let exterior:Site|undefined;
 let session:Session,site:Site,rook:Session['operators'][number],target:Session['operators'][number];
 let mode:'arena'|'exterior'='arena',paused=false,speed=1,active:Sample='hit';
@@ -68,6 +72,21 @@ function choose(kind:Sample){
   const zone=site.exteriorZones?.find(z=>z.kind==='garden'||z.kind==='yard');
   if(zone)focus({x:zone.x,y:zone.y});
   label('Exterior · grass and shrubs temporarily retired');draw();return;
+ }
+ if(kind==='glass-door'){
+  let door=session.doors.find(d=>d.style==='glazed'&&!d.glassShattered);
+  if(!door){build('arena');door=session.doors.find(d=>d.style==='glazed'&&!d.glassShattered);}
+  if(!door){label('No glass door sample available');draw();return;}
+  door.glassIntegrity=0;door.glassShattered=true;recordDoorFracture(door,session.seconds);session.objectRevision++;
+  const p={x:door.glassBreakX??door.a.x,y:door.glassBreakY??door.a.y};
+  focus(p);label('Glass door · fractured leaf, grounded debris');draw();return;
+ }
+ if(kind==='collapse'){
+  let box=session.coverState.find(c=>c.id==='lab-wood');
+  if(box?.destroyed){build('arena');box=session.coverState.find(c=>c.id==='lab-wood');}
+  if(!box)return;
+  damageCover(box,10,session.seconds);session.objectRevision++;
+  focus(box);label('Wood fixture · collapsed, splinter debris');draw();return;
  }
  if(kind==='glass'){
   const pane=session.windows.find(w=>!w.shattered);
@@ -119,7 +138,7 @@ function tick(dt:number){
  sampleBleedingEvidence(session,dt);
 }
 const action=(id:string,fn:()=>void)=>document.getElementById(id)?.addEventListener('click',fn);
-for(const kind of ['miss','hit','down','pool','stone','wood','metal','dust','glass','flash','muzzle','vegetation'] as const)action(kind,()=>choose(kind));
+for(const kind of ['miss','hit','down','pool','stone','wood','metal','dust','glass','glass-door','collapse','flash','muzzle','vegetation'] as const)action(kind,()=>choose(kind));
 action('reset',()=>{paused=false;document.getElementById('pause')!.textContent='PAUSE';reset();});action('repeat',()=>choose(active));action('stabilize',()=>{
  for(const wound of target.medical.wounds)stabilizeWound(target.medical,wound.id);
  label('Stabilized · existing pools remain');draw();
