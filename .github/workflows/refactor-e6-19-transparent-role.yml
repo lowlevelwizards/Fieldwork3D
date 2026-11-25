@@ -17,6 +17,8 @@ on:
       - 'src/worldgen/wall-story-residue.ts'
       - 'tests/w6-wall-story-residue.test.mjs'
       - 'scripts/verification/w6-wall-story-browser.mjs'
+      - 'src/rendering/floor-surface-atlas.ts'
+      - 'tests/w7-floor-surface-atlas.test.mjs'
       - 'src/rendering/wall-surface-atlas.ts'
       - 'src/rendering/wall-structural-packet.ts'
       - 'tests/w4-wall-structural-packet.test.mjs'
@@ -79,6 +81,9 @@ jobs:
       - name: W6 fixture-anchor and atlas budget contracts
         if: ${{ startsWith(github.head_ref, 'refactor/w6-') }}
         run: node --experimental-strip-types --test tests/w6-wall-story-residue.test.mjs tests/w2-wall-surface-recipe.test.mjs tests/w3-wall-surface-atlas.test.mjs tests/w4-wall-structural-packet.test.mjs
+      - name: W7 floor atlas, condition and lighting contracts
+        if: ${{ startsWith(github.head_ref, 'refactor/w7-') }}
+        run: node --experimental-strip-types --test tests/w7-floor-surface-atlas.test.mjs tests/condition5-01.test.mjs tests/texture5-07-hot-update.test.mjs tests/package-c2-render-composition.test.mjs tests/w6-wall-story-residue.test.mjs
       - name: Production typecheck and build
         run: npm run build
       - name: W5 critical real canvas and WebGL disclosure

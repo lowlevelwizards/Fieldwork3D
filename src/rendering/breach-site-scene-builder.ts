@@ -21,6 +21,7 @@ import {roomPixelSurface,wallPixelSurface,fixturePixelSurface} from '../worldgen
 import {buildingTheme,roomFloor,roomFixtureFinishes,roomAccessoryColor} from '../worldgen/building-palettes.ts';
 import {effectiveCondition} from '../worldgen/condition-visual.ts';
 import {conditionFloorPixels} from '../worldgen/condition-visual.ts';
+import {buildFloorMaskAtlas,floorMaskGeometry,floorMaskMaterial,type FloorMaskSlot} from './floor-surface-atlas.ts';
 import {conditionWallPixels,wallPatinaDimensions} from '../worldgen/condition-wall.ts';
 import {planWallTrimPackets,compileWallTrimGeometry,compileUnifiedWallGeometry,restrictWallShadowToBody} from './wall-structural-packet.ts';
 import {planWallCapJoins} from './wall-cap-joins.ts';
@@ -88,7 +89,8 @@ export type SiteSceneBuildPort={
  roofGroups:Map<string,THREE.Group>;
  roofMaterial:THREE.MeshStandardMaterial|null;
  windowPaneMaterial:THREE.MeshStandardMaterial|null;
- patinaRoomSurfaces:Array<{room:Room;texture:THREE.DataTexture}>;
+ patinaRoomSurfaces:Array<{room:Room;texture:THREE.DataTexture;floorSlot?:FloorMaskSlot}>;
+ floorWearCompiled?:boolean;
  patinaWallSurfaces:Array<{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;patterned?:boolean;atlasSlot?:WallAtlasSlot}>;
  wallAudition?:WallAudition;
  wallStructureCompiled?:boolean;
@@ -255,6 +257,9 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       wearByOwner.get(owner+':'+index)??[];
     buildSiteMicroDebris(site,host);
     const decorativeRoomGroups=new Map<string,THREE.Group>();
+    const floorAtlas=host.floorWearCompiled?buildFloorMaskAtlas(site,effectiveCondition(site)):undefined;
+    if(floorAtlas)host.sitePatinaTextures.push(...floorAtlas.pages);
+    const floorMaterials=new Map<string,THREE.MeshStandardMaterial>();
     for(const room of site.rooms){
       const group=new THREE.Group();
       decorativeRoomGroups.set(room.id,group);host.root.add(group);
@@ -266,11 +271,25 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       // Connected blueprint cells make one continuous physical floor surface.
       // Legacy floor inset stays unchanged for historical visual parity.
       const floorInset=site.programLocked?0:2;
-      host.box(group,room.x+room.w/2,-.8,room.y+room.h/2,
+      const slot=floorAtlas?.slots.get(room.id);
+      if(slot){
+        const key=base.uuid+':'+slot.texture.uuid;
+        let material=floorMaterials.get(key);
+        if(!material){
+          material=host.siteMaterials.track(floorMaskMaterial(base,slot.texture));
+          floorMaterials.set(key,material);
+        }
+        const floor=new THREE.Mesh(floorMaskGeometry(room.w-floorInset,1.6,room.h-floorInset,slot),material);
+        floor.position.set(room.x+room.w/2,-.8,room.y+room.h/2);
+        floor.castShadow=false;floor.receiveShadow=true;
+        floor.userData.fieldworkDrawFamily='room-floor-compiled';
+        group.add(floor);
+        host.patinaRoomSurfaces.push({room,texture:slot.texture,floorSlot:slot});
+      }else host.box(group,room.x+room.w/2,-.8,room.y+room.h/2,
         room.w-floorInset,1.6,room.h-floorInset,base,false);
       // One whole-surface spatial aging field: rooms transform before decals.
       // Each room uses a small seeded map, with edge/fixture influences.
-      if(effectiveCondition(site)>0){
+      if(!slot&&effectiveCondition(site)>0){
         const texture=new THREE.DataTexture(conditionFloorPixels(site,room),64,64,THREE.RGBAFormat);
         texture.colorSpace=THREE.SRGBColorSpace;
         texture.magFilter=THREE.NearestFilter;
