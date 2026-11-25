@@ -42,6 +42,7 @@ export type PointerCommandPort={
  followReplayOperator:(id:string)=>void;
  historicalShotVisible:(shot:import('./breach-replay-ballistics.ts').RecordedShot)=>boolean;
  selectUnit:(id:string)=>void;
+ selectPerson?:(id:string)=>void;
   useSelectedGround:(point:Pt,transportRoute?:readonly Pt[])=>void;
  showUiHelp:(text:string,duration?:number)=>void;
  adoptPointerOwner:(pointer:{pick?:TacticalPick|null})=>void;
@@ -87,6 +88,7 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
      p.pick?.kind==='operator'&&p.pick.owner){
     port.selectUnit(p.pick.owner);
   }
+  if(!cancelled&&!port.replaying&&port.state.phase!=='planning'&&pointerCount===1&&!p.moved&&p.mode==='undecided'&&p.pick?.kind==='person'&&p.pick.personId)port.selectPerson?.(p.pick.personId);
   // A surviving finger from a pinch/camera gesture is never a tactical tap.
   // Gesture cancellation is owned by the gesture controller; this boundary
   // independently refuses camera-mode releases even if moved is false.
@@ -221,6 +223,8 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
       if(pick?.kind==='operator'&&pick.owner){
         port.selectUnit(pick.owner);
         port.tacticalFeedback.emit('select',port.uid(pick.owner)?.p??pt);
+      }else if(pick?.kind==='person'&&pick.personId){
+        port.selectPerson?.(pick.personId);
       }else if(pick?.kind==='door'&&pick.doorId){
         const door=port.state.doors.find(d=>d.id===pick.doorId&&
           doorKnown(port.state.intel,d.id));
