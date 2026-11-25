@@ -80,11 +80,11 @@ jobs:
           cp scripts/verification/e6-19-transparent-role-browser.mjs "$RUNNER_TEMP/wall-base/scripts/verification/"
           mkdir -p artifacts/w0-wall
           cp -r artifacts/refactor-e6-19/live-scene artifacts/w0-wall/candidate-phone
-          (cd "$RUNNER_TEMP/wall-base" && node scripts/verification/e6-19-transparent-role-browser.mjs)
+          (cd "$RUNNER_TEMP/wall-base" && FIELDWORK_WALL_WEAR=legacy node scripts/verification/e6-19-transparent-role-browser.mjs)
           cp -r "$RUNNER_TEMP/wall-base/artifacts/refactor-e6-19/live-scene" artifacts/w0-wall/base-phone
           FIELDWORK_WALL_DESKTOP=1 node scripts/verification/e6-19-transparent-role-browser.mjs
           cp -r artifacts/refactor-e6-19/live-scene artifacts/w0-wall/candidate-desktop
-          (cd "$RUNNER_TEMP/wall-base" && FIELDWORK_WALL_DESKTOP=1 node scripts/verification/e6-19-transparent-role-browser.mjs)
+          (cd "$RUNNER_TEMP/wall-base" && FIELDWORK_WALL_WEAR=legacy FIELDWORK_WALL_DESKTOP=1 node scripts/verification/e6-19-transparent-role-browser.mjs)
           cp -r "$RUNNER_TEMP/wall-base/artifacts/refactor-e6-19/live-scene" artifacts/w0-wall/base-desktop
       - name: W2 same-site visual audition and resource verification
         if: ${{ (startsWith(github.head_ref, 'refactor/w2-') || startsWith(github.head_ref, 'refactor/w3-')) }}
@@ -106,8 +106,8 @@ jobs:
           mkdir -p artifacts/w2-live
           OUT="$PWD/artifacts/w2-live"
           for desktop in 0 1; do
-            (cd "$RUNNER_TEMP/w2-base" && FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/base-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs)
-            for mode in packed atlas; do
+            (cd "$RUNNER_TEMP/w2-base" && FIELDWORK_WALL_WEAR=legacy FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/base-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs)
+            for mode in packed default; do
               FIELDWORK_WALL_WEAR="$mode" FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/$mode-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs
             done
           done
@@ -116,7 +116,7 @@ jobs:
           const read=(mode,desktop)=>JSON.parse(readFileSync('artifacts/w2-live/'+mode+'-'+desktop+'/summary.json','utf8'));
           for(const desktop of [0,1]){
             const base=read('base',desktop);
-            for(const mode of ['packed','atlas']){
+            for(const mode of ['packed','default']){
               const test=read(mode,desktop);
               for(const key of ['initialKnowledge','initialVisible','secondVisible']){
                 if(base.wallProbe[key]!==test.wallProbe[key])throw Error('W2 disclosure changed: '+mode+' '+key);

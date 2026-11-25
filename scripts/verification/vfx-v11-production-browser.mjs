@@ -40,6 +40,7 @@ try{
     const s=newSession(0,site.seed,'exterior-known','standard',undefined,site);
     const scene=new TacticalScene3D();scene.resize(viewport.width,viewport.height);scene.applySite(site);
     const selected=team(s)[0].id,p=team(s)[0].p,root=scene.scene;
+    if(scene.wallAudition?.atlas!==true||scene.wallAudition.effect!=='all'||!scene.patinaWallSurfaces.length||scene.patinaWallSurfaces.some(w=>!w.atlasSlot))throw Error('Production walls did not activate W3 atlas');
     scene.view.focus={x:p.x,y:p.y};scene.view.zoom=2.5;
     const draw=()=>scene.update(s,selected,1/60,null,true);
     const sample=async(beforeFrame=()=>{})=>{

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {planWallFaces,atlasWallStrip,atlasFaceStart,ATLAS_FACE_ROWS} from '../src/worldgen/wall-surface-recipe.ts';
+import {resolveWallSurfaceMode,planWallFaces,atlasWallStrip,atlasFaceStart,ATLAS_FACE_ROWS} from '../src/worldgen/wall-surface-recipe.ts';
 import {planAtlasPages,buildWallAtlas,updateWallAtlas} from '../src/rendering/wall-surface-atlas.ts';
 import {wallPatinaDimensions} from '../src/worldgen/condition-wall.ts';
 import {mapAtlasWallUV,boxFaceVertexRanges} from '../src/rendering/pixel-materials.ts';
@@ -90,4 +90,11 @@ test('W3 doorway wear is visibly wider than W2 without changing clean finish or 
  const count=strip.reduce((n,v,i)=>n+(i%4===0&&(v!==clean[i]||strip[i+1]!==clean[i+1]||strip[i+2]!==clean[i+2])?1:0),0);
  assert.ok(count>=20&&count<128*64*.20,'Contact wear should read as a localized mark');
  assert.deepEqual(atlasWallStrip(planWallFaces(site,0,56),0,128,'all'),clean);
+});
+
+test('production defaults to all W3 effects; historical comparison modes are explicit',()=>{
+ for(const mode of [null,'','atlas','unknown','0'])assert.deepEqual(resolveWallSurfaceMode(mode),{effect:'all',atlas:true});
+ assert.equal(resolveWallSurfaceMode('legacy'),undefined);
+ assert.deepEqual(resolveWallSurfaceMode('packed'),{effect:'all'});
+ const a=resolveWallSurfaceMode(null);a.effect='none';assert.equal(resolveWallSurfaceMode(null).effect,'all');
 });

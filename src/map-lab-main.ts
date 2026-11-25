@@ -411,7 +411,7 @@ async function useGeneratedSite(id:number,site:Site,audit:SiteAudit,choice:LabSc
   playSite.href='./breach.html?seed='+site.seed+
     '&scale='+(site.scale??'medium')+'&condition='+selectedCondition;
   history.replaceState(null,'','?seed='+site.seed+'&scale='+choice+
-    '&condition='+selectedCondition+(stage.wallAudition?'&wallWear='+wallMode.value:''));
+    '&condition='+selectedCondition+'&wallWear='+wallMode.value);
   siteReady=true;currentAudit=audit;
   updateLabels();showFunctionalQuality(site,audit);paintConditionDiagnostics();
   showProgress(100,'SITE READY',(site.archetype??'BUILDING').toUpperCase()+

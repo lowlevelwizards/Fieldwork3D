@@ -92,7 +92,7 @@ import {summarizeWear} from './worldgen/wear-diagnostics.ts';
 import {conditionFloorPixels} from './worldgen/condition-visual.ts';
 
 import {conditionWallPixels} from './worldgen/condition-wall.ts';
-import {packedWallSurfacePixels,type WallAudition,type WallSurfaceRecipe} from './worldgen/wall-surface-recipe.ts';
+import {packedWallSurfacePixels,resolveWallSurfaceMode,type WallAudition,type WallSurfaceRecipe} from './worldgen/wall-surface-recipe.ts';
 import {writeAtlasSlot,type WallAtlasSlot} from './rendering/wall-surface-atlas.ts';
 import {type ObjectWear} from './worldgen/object-wear.ts';
 
@@ -860,10 +860,10 @@ export class TacticalScene3D{
   private sitePatinaMaterials:THREE.MeshBasicMaterial[]=[];
   private patinaRoomSurfaces:{room:Room;texture:THREE.DataTexture}[]=[];
   private patinaWallSurfaces:{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;patterned?:boolean;atlasSlot?:WallAtlasSlot}[]=[];
-  /** Explicit diagnostic only; normal gameplay retains W1 until promotion. */
+  /** W3 is the production default; legacy and packed are comparison modes. */
   wallAudition:WallAudition|undefined=(()=>{
     const mode=typeof location==='undefined'?null:new URLSearchParams(location.search).get('wallWear');
-    return mode==='atlas'?{effect:'all',atlas:true}:mode==='integrated'||mode==='packed'?{effect:'all'}:undefined;
+    return resolveWallSurfaceMode(mode);
   })();
   /** Live slider scrubbing changes pixel masks, not the physical scene. */
   previewConditionMasks(site:Site,level:number){

@@ -9,6 +9,13 @@ export const WALL_EFFECTS=['fade','contact','chip','damp','runoff','crack','repa
 export type WallEffect=typeof WALL_EFFECTS[number];
 export type WallEffectFilter='all'|'none'|WallEffect;
 export type WallAudition={effect:WallEffectFilter;atlas?:boolean};
+/** Production default: all eligible W3 effects. Explicit historical
+ * comparison modes remain available for Map Lab and controlled A/B. */
+export function resolveWallSurfaceMode(mode:string|null):WallAudition|undefined{
+ if(mode==='legacy')return undefined;
+ if(mode==='packed'||mode==='integrated')return {effect:'all'};
+ return {effect:'all',atlas:true};
+}
 export type SurfaceEvent={kind:WallEffect;cause:string;x:number;y:number;width:number;height:number;threshold:number;priority:number};
 export type WallSurfaceRecipe={length:number;height:number;face:-1|1;color:number;surface:PixelSurface;band?:{color:number;top:number};directional?:boolean;events:SurfaceEvent[]};
 const clamp=(n:number,a=0,b=1)=>Math.max(a,Math.min(b,n));
