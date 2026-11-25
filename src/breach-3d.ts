@@ -926,6 +926,8 @@ export class TacticalScene3D{
   private windowShards:THREE.InstancedMesh|null=null;
   private readonly shardMatrix=new THREE.Object3D();
   private transientLights:TransientLightPreview|null=null;
+  private readonly muzzleFlashGeometry=createMuzzleFlashGeometry();
+  private readonly muzzleFlashMaterial=new THREE.MeshBasicMaterial({color:0xffffff,vertexColors:true,transparent:true,opacity:.94,depthWrite:false});
   private readonly smokePreviewEnabled=this.vfxPreview.smoke;
   private dustPuffs:DustPuffBatch|null=null;
   private readonly puffScratch:PuffSample={x:0,y:0,z:0,size:0,alpha:0,color:0,phase:0};
@@ -1243,6 +1245,8 @@ export class TacticalScene3D{
     if(!actor||actor.side==='blue')return;
     this.scene.remove(actor.root,actor.status,actor.beam);
     this.contactShadowBatch.unregister(id);
+    // The flash is scene-owned, not part of the retired rig's resource tree.
+    actor.flash.removeFromParent();
     actor.physical.dispose();
     // Contact shadow proxies share geometry and material with the persistent
     // instanced batch. Only these per-actor meshes own disposable resources.
@@ -1868,9 +1872,7 @@ export class TacticalScene3D{
     const {root,weapon,pack}=physical;
     if(this.graphicLookEnabled)
      weapon.userData.fieldworkWeaponPresentation=true;
-    const flash=new THREE.Mesh(createMuzzleFlashGeometry(),
-      new THREE.MeshBasicMaterial({color:0xffffff,vertexColors:true,transparent:true,
-        opacity:.94,depthWrite:false}));
+    const flash=new THREE.Mesh(this.muzzleFlashGeometry,this.muzzleFlashMaterial);
     // Flash belongs to the firearm, not an independent actor-root guess.
     flash.position.set(19.5,0,0);flash.visible=false;weapon.add(flash);
     // One fixed-size buffer per soldier. Only filled when muzzle/door state moves.

@@ -23,6 +23,7 @@ export class TransientLightPreview{
  private muzzleId=-Infinity;private flashId=-Infinity;
  private readonly root:THREE.Object3D;
  private readonly receiver:TransientReceiverLight|null;
+ private readonly source={x:0,y:0};
  constructor(root:THREE.Object3D,renderer?:THREE.WebGLRenderer){
   this.root=root;
   this.receiver=renderer?new TransientReceiverLight():null;
@@ -50,7 +51,8 @@ export class TransientLightPreview{
  confine(world:TransientLightWorld,doors:readonly Door[]){
   for(const channel of ['muzzle','flash'] as const){
    const light=this[channel];if(light.intensity<=0)continue;
-   const source={x:light.position.x,y:light.position.z},profile=settings[channel];
+   const source=this.source,profile=settings[channel];
+   source.x=light.position.x;source.y=light.position.z;
    const distance=safeTransientLightRange(world,doors,source,profile.range);
    this.receiver?.offer(channel==='muzzle'?0:1,world,doors,source,
     light.position.y,profile.range,distance,light.intensity/profile.peak);
