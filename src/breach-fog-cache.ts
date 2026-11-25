@@ -59,3 +59,33 @@ export function fogSessionFingerprint(s:Session):string{
      Math.round((d.openFraction??(d.open?1:0))*100);
  return key;
 }
+
+/** W5: per-presentation refresh gate. A bounded poll for moving sight,
+ * immediate invalidation for authoritative lifecycle/memory changes.
+ * Never retain a Session's mutable intel or seenGround collection. */
+export class FogRefreshGate {
+ private session:Session|null=null;
+ private site:Session['site']|null=null;
+ private mode='';
+ private seenRevision=-1;private seenCount=-1;private objectRevision=-1;
+ private seconds=-Infinity;private signature='';
+ private elapsed=Infinity;
+ invalidate(){this.session=null;this.elapsed=Infinity;this.signature='';}
+ poll(s:Session,dt:number,period:number,replaying=false):{paint:boolean;memoryInvalid:boolean}{
+  this.elapsed+=Math.max(0,dt);
+  const ownerChanged=this.session!==s||this.site!==s.site;
+  const memoryInvalid=ownerChanged||this.mode!==s.intel.mode||
+   this.seenRevision!==s.seenGroundRevision||this.seenCount!==s.seenGround.size||
+   s.seconds<this.seconds;
+  const urgent=memoryInvalid||this.objectRevision!==s.objectRevision||
+   (replaying&&s.seconds!==this.seconds);
+  if(!urgent&&this.elapsed<period)return {paint:false,memoryInvalid:false};
+  const signature=fogSessionFingerprint(s);
+  const paint=urgent||signature!==this.signature;
+  // Reset the probe cadence even if unchanged: don't hash every idle RAF.
+  this.elapsed=0;this.session=s;this.site=s.site;this.mode=s.intel.mode;
+  this.seenRevision=s.seenGroundRevision;this.seenCount=s.seenGround.size;
+  this.objectRevision=s.objectRevision;this.seconds=s.seconds;this.signature=signature;
+  return {paint,memoryInvalid};
+ }
+}

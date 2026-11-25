@@ -204,23 +204,20 @@ export function paintFogVisibility(ctx:CanvasRenderingContext2D,s:Session){
     for(let i=1;i<poly.length;i++)ctx.lineTo(poly[i].x,poly[i].y);
     ctx.closePath();
     ctx.fill();
-    // Standing ground is not a directional sightline. At a wall jamb or
-    // narrow turn the 2.3-radian cone can collapse behind a nearby edge,
-    // leaving the operator visibly standing in a black floor hole. Clear
-    // ONLY a 10-unit square centered on their physical feet. Its farthest
-    // corner (7.1u) remains inside the ordinary 8u operator collision
-    // radius, so it cannot newly disclose an adjacent room through a wall.
-    // This is a presentation mask, never new intel, a visible enemy, or a
-    // change to ground journals / tactical visibility.
-    const footRadius=5;
-    ctx.fillStyle='#fff';
+    // Physical occupancy provides only a tiny, feathered near-foot
+    // context inside the existing operator collision radius. No square
+    // patch or room-wide disclosure, even when the forward cone collapses.
+    const footRadius=7;
+    const footRamp=canGrade?ctx.createRadialGradient(a.p.x,a.p.y,2,a.p.x,a.p.y,footRadius):null;
+    if(footRamp){footRamp.addColorStop(0,'rgba(255,255,255,1)');footRamp.addColorStop(1,'rgba(255,255,255,0)');}
+    ctx.fillStyle=footRamp??'#fff';
     ctx.beginPath();
-    ctx.moveTo(a.p.x-footRadius,a.p.y-footRadius);
-    ctx.lineTo(a.p.x+footRadius,a.p.y-footRadius);
-    ctx.lineTo(a.p.x+footRadius,a.p.y+footRadius);
-    ctx.lineTo(a.p.x-footRadius,a.p.y+footRadius);
-    ctx.closePath();
-    ctx.fill();
+    // Polygon fallback keeps deterministic fake Canvas test support.
+    for(let i=0;i<16;i++){
+      const angle=i*Math.PI/8,x=a.p.x+Math.cos(angle)*footRadius,y=a.p.y+Math.sin(angle)*footRadius;
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.closePath();ctx.fill();
   }
   ctx.filter='none';
   ctx.restore();

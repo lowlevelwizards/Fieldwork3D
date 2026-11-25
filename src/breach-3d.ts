@@ -152,7 +152,7 @@ import {paintFogMemory,paintFogVisibility,occupiedFogRooms,
   FOG_WIDTH,FOG_HEIGHT,maskSize,type FogDiagnostic}
   from './breach-fog-mask.ts';
 
-import {fogSessionFingerprint,fogMemoryFingerprint} from './breach-fog-cache.ts';
+import {FogRefreshGate,fogMemoryFingerprint} from './breach-fog-cache.ts';
 import {wallOccludesFriendly} from './breach-camera-occlusion.ts';
 import {groupWallPresentation,resolveWallPresentation,applyWallMaterialState,type WallPresentationOwner} from './rendering/breach-wall-presentation.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
@@ -286,7 +286,7 @@ export class TacticalScene3D{
   }>=[];
   private readonly miniFocusAttentionPolygons:AttentionPolygon[]=[];
   private readonly miniFocusAttentionDiscs:AttentionDisc[]=[];
-  private lastFogSignature='';
+  private readonly fogRefresh=new FogRefreshGate();
   private lastMemoryFogSignature='';
   private lastMemoryFogSession:Session|null=null;
   private readonly fogDiagnostic:FogDiagnostic=
@@ -303,7 +303,7 @@ export class TacticalScene3D{
   private fogTextureSubmittedBytesEstimate=0;
   private fogComposeMs=0;
   private fogComposeCpuTotalMs=0;
-  private lastFogSession:Session|null=null;
+
   /** Counts submitted WebGL work; GPU timings require a separate timer. */
   performanceStats(){
     const info=this.renderer.info.render;
@@ -1350,7 +1350,7 @@ export class TacticalScene3D{
     this.fogTextureUpdateRequests++;
     this.composeSiteWorld(site);
     this.root.add(this.fogUnknown,this.fogExplored);
-    this.fogAt=-1;this.lastFogSignature='';this.lastFogSession=null;
+    this.fogAt=-1;this.fogRefresh.invalidate();
     this.lastMemoryFogSignature='';this.lastMemoryFogSession=null;
     this.resetCamera();
   }
@@ -3270,18 +3270,13 @@ export class TacticalScene3D{
     // only when the fog repaint cadence permits a change, never on the
     // intervening 60Hz scene frames. Session swaps bypass the cadence.
     this.markScenePhase('effects');
-    const sessionChanged=this.lastFogSession!==s;
-    const fogDue=!omniscient&&(sessionChanged||
-      this.fogAt>=(this.quality.mode==='quality'?.055:.10)||this.fogAt<0);
-    if(fogDue){
-      const fogSignature=fogSessionFingerprint(s);
-      // Two sessions may have identical knowledge counts but different sites.
-      if(sessionChanged||fogSignature!==this.lastFogSignature){
-        // Attribute Canvas2D composition separately from the later WebGL
-        // upload; needsUpdate only *requests* the latter on renderer render.
+    if(omniscient){this.fogRefresh.invalidate();this.fogAt=-1;}
+    else{
+      if(this.fogAt<0)this.fogRefresh.invalidate();
+      const decision=this.fogRefresh.poll(s,dt,this.quality.mode==='quality'?.055:.10,!!replay);
+      if(decision.paint){
         const fogComposeStart=this.profileSceneUpdate?performance.now():0;
-        this.fogAt=0;this.lastFogSignature=fogSignature;
-        this.lastFogSession=s;
+        this.fogAt=0;
         // Static exploration memory changes less often than live sight.
         const memorySignature=fogMemoryFingerprint({
           mode:s.intel.mode,seed:s.site?.seed??null,
@@ -3289,7 +3284,7 @@ export class TacticalScene3D{
           rooms:s.intel.rooms.size,walls:s.intel.walls.size,
           doors:s.intel.doors.size,cover:s.intel.cover.size
         });
-        if(this.lastMemoryFogSession!==s||
+        if(decision.memoryInvalid||this.lastMemoryFogSession!==s||
            this.lastMemoryFogSignature!==memorySignature){
           paintFogMemory(this.fogMemoryContext,s,this.fogDiagnostic);
           this.lastMemoryFogSignature=memorySignature;
@@ -3310,7 +3305,7 @@ export class TacticalScene3D{
           this.fogComposeCpuTotalMs+=this.fogComposeMs;
         }
       }
-    }else if(omniscient)this.fogAt=-1;
+    }
     this.markScenePhase('fog');
     const dynamicShadows=s.phase==='running'||
       ((s.phase==='won'||s.phase==='lost')&&
