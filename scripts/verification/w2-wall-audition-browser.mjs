@@ -10,7 +10,8 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const check=(ok,msg)=>{if(!ok)throw Error(msg)};
 let browser;
 const evidence=[];
-const w3=process.env.FIELDWORK_W3_ATLAS==='1';
+const w4=process.env.FIELDWORK_W4_STRUCTURE==='1';
+const w3=w4||process.env.FIELDWORK_W3_ATLAS==='1';
 try{
  let ready=false;
  for(let i=0;i<150;i++){try{if((await fetch(base+'/map-lab.html')).ok){ready=true;break;}}catch{}await sleep(150);}
@@ -40,15 +41,21 @@ try{
      p.activateSite(p.site);p.session=p.newSession(0,seed,'floor-plan','standard',undefined,p.site);
     },{seed,archetype});
     const results=[];
-    for(const mode of w3?['legacy','packed','atlas']:['legacy','packed']){
+    for(const mode of w4?['legacy','packed','atlas','compiled']:w3?['legacy','packed','atlas']:['legacy','packed']){
      const result=await page.evaluate(mode=>{
       const integrated=mode!=='legacy';
       const {scene,site,session,team}=window.w2Probe;
-      scene.wallAudition=integrated?{effect:'all',atlas:mode==='atlas'}:undefined;
+      const atlasMode=mode==='atlas'||mode==='compiled';
+      scene.wallAudition=integrated?{effect:'all',atlas:atlasMode}:undefined;
+      scene.wallStructureCompiled=mode==='compiled';
       const buildStart=performance.now();scene.applySite(site);const buildMs=performance.now()-buildStart;scene.resetCamera();scene.setMode('iso');
       scene.view.zoom=1.25;
       const inventory=scene.walls.filter(w=>w.mesh.userData.fieldworkDrawFamily==='structural-wall-body');
       const masks=scene.patinaWallSurfaces;
+      const trim=scene.walls.filter(w=>w.mesh.userData.fieldworkDrawFamily!=='structural-wall-body');
+      const structuralTriangles=scene.walls.reduce((n,w)=>n+(w.mesh.geometry.index?.count??w.mesh.geometry.getAttribute('position').count)/3,0);
+      const shadowBodies=scene.walls.filter(w=>w.mesh.castShadow).length;
+      if(mode==='compiled'&&trim.some(w=>w.mesh.userData.fieldworkDrawFamily!=='structural-wall-trim-packet'||w.mesh.castShadow))throw Error('Compiled trim retained source meshes or changed shadow policy');
       let overlays=0,decals=0;
       for(const w of inventory)w.mesh.traverse(o=>{
        if(o.userData.fieldworkDrawFamily==='wall-weathering')overlays++;
@@ -60,23 +67,24 @@ try{
       let frames=[];
       try{
        for(let i=0;i<18;i++){
-        let total=0,weather=0,body=0;
+        let total=0,weather=0,body=0,trimDraws=0;
         renderer.renderBufferDirect=function(...args){
          total++;
          const family=args[4]?.userData?.fieldworkDrawFamily;
          if(family==='wall-weathering')weather++;
          if(family==='structural-wall-body')body++;
+         if(['structural-wall-skirting','structural-wall-cap','structural-wall-cap-joint','structural-wall-trim-packet'].includes(family))trimDraws++;
          return original.apply(this,args);
         };
         const start=performance.now();draw();
-        frames.push({total,weather,body,ms:performance.now()-start});
+        frames.push({total,weather,body,trimDraws,ms:performance.now()-start});
        }
       }finally{renderer.renderBufferDirect=original;}
       const textures=[...new Set(masks.map(item=>item.texture))];
       const textureBytes=textures.reduce((sum,t)=>sum+t.image.data.byteLength,0);
       const textureCount=textures.length;
       if(integrated){
-       if(masks.length!==inventory.length||masks.some(m=>mode==='atlas'?!m.atlasSlot:!m.recipe))throw Error('W2 mask/segment ownership mismatch');
+       if(masks.length!==inventory.length||masks.some(m=>atlasMode?!m.atlasSlot:!m.recipe))throw Error('W2 mask/segment ownership mismatch');
        const ids=masks.map(m=>m.texture.uuid);
        const initial=textures.map(t=>t.image.data.slice());
        const versions=textures.map(t=>t.version);
@@ -90,8 +98,8 @@ try{
        draw();
       }
       if(integrated&&inventory.some(w=>w.mesh.material.map!==masks.find(m=>m.index===w.index)?.texture))throw Error('Packed wall is not using standard map');
-      const actual={mode,integrated,bodies:inventory.length,overlays,decals,textureBytes,textureCount,gpuTextures:renderer.info.memory.textures,geometries:renderer.info.memory.geometries,programs:renderer.info.programs?.length,buildMs,firstDrawMs,frames};
-      if(mode==='atlas'&&textureCount>=inventory.length)throw Error('Atlas did not reduce texture objects');
+      const actual={mode,integrated,bodies:inventory.length,trimMeshes:trim.length,structuralTriangles,shadowBodies,overlays,decals,textureBytes,textureCount,gpuTextures:renderer.info.memory.textures,geometries:renderer.info.memory.geometries,programs:renderer.info.programs?.length,buildMs,firstDrawMs,frames};
+      if(atlasMode&&textureCount>=inventory.length)throw Error('Atlas did not reduce texture objects');
       if(integrated&&(overlays||decals||frames.some(f=>f.weather)))throw Error('W2 retained independent wall weathering');
       return actual;
      },mode);
@@ -105,9 +113,14 @@ try{
      check(atlas.frames.every(f=>f.total<=Math.max(...packed.frames.map(p=>p.total))),'W3 increased structural render submissions');
      check(atlas.textureCount<=packed.textureCount*.25,'W3 missed 75% wall texture object reduction');
     }
+    if(w4){const a=results.find(r=>r.mode==='atlas'),b=results.find(r=>r.mode==='compiled');
+     check(b.structuralTriangles===a.structuralTriangles&&b.shadowBodies===a.shadowBodies,'W4 changed structural triangles or shadow bodies');
+     check(a.trimMeshes-b.trimMeshes>=a.bodies,'W4 missed at least one trim mesh per ordinary wall');
+     check(Math.max(...b.frames.map(f=>f.trimDraws))<Math.max(...a.frames.map(f=>f.trimDraws)),'W4 did not reduce real trim submissions');
+    }
     evidence.push({name,seed,archetype,results});
    }
-   if(w3&&name==='desktop'){
+   if(w3&&!w4&&name==='desktop'){
     // A real WebGL mip witness: two high-contrast strips, four independent
     // face colors. Sample with explicit LOD through the safe face range.
     const mip=await page.evaluate(async()=>{
@@ -166,10 +179,14 @@ try{
    await page.evaluate(()=>{
     const {scene,site}=window.w2Probe;
     const masks=[...new Set(scene.patinaWallSurfaces.map(m=>m.texture))];
+    const packets=scene.walls.filter(w=>w.mesh.userData.fieldworkDrawFamily==='structural-wall-trim-packet').map(w=>w.mesh.geometry);
+    const geometryDisposals=new Map(packets.map(g=>[g.uuid,0]));
+    for(const g of packets)g.addEventListener('dispose',()=>geometryDisposals.set(g.uuid,geometryDisposals.get(g.uuid)+1));
     const disposals=new Map(masks.map(t=>[t.uuid,0]));
     for(const t of masks)t.addEventListener('dispose',()=>disposals.set(t.uuid,disposals.get(t.uuid)+1));
     scene.applySite(site);
     if([...disposals.values()].some(n=>n!==1))throw Error('Retired mask not disposed exactly once');
+    if([...geometryDisposals.values()].some(n=>n!==1))throw Error('Retired trim packet not disposed exactly once');
     if(scene.patinaWallSurfaces.some(m=>masks.includes(m.texture)))throw Error('Old mask retained');
     scene.renderer.dispose();scene.renderer.forceContextLoss();
    });
