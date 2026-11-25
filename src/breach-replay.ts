@@ -329,7 +329,7 @@ export function snapshot(s:Session,seenGround?:string[],
         secondaryEquipment:w.secondaryEquipment?
           structuredClone(w.secondaryEquipment):undefined}))),
     impactMarks:reuseFrozenReplayValue(s.impactMarks,priorEffects?.impactMarks,
-      ()=>s.impactMarks.map(m=>({...m,p:position(m.p)}))),
+      ()=>s.impactMarks.map(m=>({...m,p:position(m.p),...(m.surfaceRef?{surfaceRef:{...m.surfaceRef}}:{})}))),
     grenades:reuseFrozenReplayValue(s.grenades,priorEffects?.grenades,
       ()=>s.grenades.map(g=>({...g,p:position(g.p),
         from:position(g.from),to:position(g.to)}))),
@@ -692,7 +692,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   s.shots=f.shots.map(shotCopy);
   s.casings=(f.casings??[]).map(x=>({...x}));
   s.dropped=f.dropped.map(m=>({...m,p:position(m.p)}));
-  s.impactMarks=f.impactMarks.map(m=>({...m,p:position(m.p)}));
+  s.impactMarks=f.impactMarks.map(m=>({...m,p:position(m.p),...(m.surfaceRef?{surfaceRef:{...m.surfaceRef}}:{})}));
   s.grenades=f.grenades.map(g=>({...g,p:position(g.p),
     from:position(g.from),to:position(g.to)}));
   s.flashBursts=f.flashBursts.map(b=>({...b,p:position(b.p)}));

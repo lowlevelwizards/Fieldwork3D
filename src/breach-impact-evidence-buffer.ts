@@ -5,6 +5,11 @@
 import type {ImpactMark,Session} from './breach-game.ts';
 import {IMPACT_MARK_LIMIT,BLOOD_MARK_LIMIT} from './breach-effects.ts';
 export function retainImpactMark(s:Pick<Session,'impactMarks'>,mark:ImpactMark):void{
+ // The final stop may already be represented by its committed material event.
+ if(mark.surfaceRef&&mark.shotId!==undefined&&s.impactMarks.some(other=>
+   other.shotId===mark.shotId&&other.surfaceRef?.kind===mark.surfaceRef?.kind&&
+   other.surfaceRef?.index===mark.surfaceRef?.index&&other.surfaceRef?.ownerId===mark.surfaceRef?.ownerId&&
+   Math.hypot(other.p.x-mark.p.x,other.p.y-mark.p.y)<.01))return;
  if(mark.surface==='blood'){
   const existing=s.impactMarks.find(other=>other.surface==='blood'&&
    Math.hypot(other.p.x-mark.p.x,other.p.y-mark.p.y)<6);

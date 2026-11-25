@@ -250,7 +250,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   }
   if(assessFriendlyLane(from,muzzle.y,far,14,friends).blocker==='friendly')return;
   const impact=strikeSurface(from,far,s,muzzle.y,14,
-    WEAPONS[a.weapon].penetration);
+    WEAPONS[a.weapon].penetration,true);
   const victim=firstCivilianAlongRay(from,yaw,
     d(from,impact.end),s.civilians,{
       muzzleHeight:muzzle.y,farHeight:14,farDistance:d(from,far)
@@ -274,7 +274,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   const hit=!!victim;
   const end=victim?clone(victim.actor.p):impact.end;
   const surface=hit?'blood' as const:impact.surface;
-  const height=hit?20:impact.surface==='dust'?1:14;
+  const height=hit?20:impact.stoppedHit?.height??(impact.surface==='dust'?1:14);
   const before=victim?.actor.health??0;
   const after=hit?Math.max(0,before-1):0;
   s.shots.push({id:shotId,shooterId:a.id,
@@ -284,7 +284,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     healthBefore:before,healthAfter:after,down:hit&&after<=0,
     surface});
   retainImpactMark(s,{id:s.nextEffectId++,p:clone(end),
-    surface,height,age:0});
+    surface,height,age:0,shotId,surfaceRef:hit?undefined:impact.stoppedHit?.surfaceRef});
   if(victim){
     const harm=applyCivilianBulletHit(victim.actor,s.seconds);
     recordCivilianHarm(s.civilianHarmEvents,{

@@ -348,7 +348,8 @@ export type ShotEvent={
   surface?:'blood'|'wood'|'stone'|'metal'|'glass'|'dust';
 };
 export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number;
-  height?:number;normal?:Pt};
+  height?:number;normal?:Pt;shotId?:number;
+  surfaceRef?:import('./breach-impact-surface.ts').SurfaceAttachment};
 export type DroppedMagazine={id:number;p:Pt;side:Side;age:number;
   weapon?:WeaponId;rounds?:number;magazineId?:string;
   /** Actually ejected secondary identity; the legacy SMG visual carrier

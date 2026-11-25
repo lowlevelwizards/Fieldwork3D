@@ -218,7 +218,7 @@ export function createShotResolver(ports:ShotResolverPorts){
   // Full bullet travel was already height-checked against friendlies
   // before ignition. Reuse the same far endpoint and height for ballistics.
   const strike=strikeSurface(muzzlePoint,far,s,muzzle.y,strikeHeight,
-    weapon.penetration);
+    weapon.penetration,true);
   const targetTrace=strikeSurface(muzzlePoint,target.p,s,muzzle.y,
     effectiveAimHeight(target),weapon.penetration);
   // Obstruction before the target defeats a perfectly aligned barrel.
@@ -280,9 +280,10 @@ export function createShotResolver(ports:ShotResolverPorts){
   // the correct actors without guessing from proximity or team color.
   const impactHeight=civilianHit?20:
     hit?effectiveAimHeight(target):
-    impact.surface==='dust'?1:14;
+    strike.stoppedHit?.height??(impact.surface==='dust'?1:14);
   retainImpactMark(s,{id:s.nextEffectId++,p:clone(end),
-    surface:impact.surface,height:impactHeight,age:0});
+    surface:impact.surface,height:impactHeight,age:0,shotId,
+    surfaceRef:hit||civilianHit?undefined:strike.stoppedHit?.surfaceRef});
 
   const nearSolid=COVER.some(c=>!c.low&&
     Math.abs(target.p.x-c.x)<=c.w/2+12&&

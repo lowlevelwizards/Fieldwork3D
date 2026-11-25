@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import {type Obstacle} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
+import {targetVisualPanels} from './target-visual-panels.ts';
 import {fixturePixelSurface} from './pixel-surface-selection.ts';
 import type {PixelSurface} from '../rendering/pixel-recipes.ts';
 import {renderDetailedFixture} from './detailed-fixture-visuals.ts';
@@ -48,17 +49,8 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         ctx.box(group,c.x,20,c.y,2.5,37,2.5,frame);
         // Stylized head, shoulders, torso, arms and legs: no round capsule,
         // bevel-heavy geometry or realistic facial detail.
-        ctx.box(group,c.x,44,c.y,9,9,3,board,false);
-        ctx.box(group,c.x,29,c.y,Math.min(w,18),20,3,board,false);
-        for(const side of [-1,1]){
-          ctx.box(group,c.x+side*10.5,27,c.y,4,16,3,board,false);
-          ctx.box(group,c.x+side*4.5,12,c.y,6,14,3,board,false);
-        }
-        ctx.box(group,c.x,30,c.y+2,8,8,.8,ink,false);
-        if(noShoot){
-          ctx.box(group,c.x,36,c.y+2.8,15,2,1,ink,false);
-          ctx.box(group,c.x,25,c.y+2.8,15,2,1,ink,false);
-        }
+        for(const part of targetVisualPanels(w,noShoot))
+          ctx.box(group,c.x+part.x,part.y,c.y+part.z,part.w,part.h,part.d,part.ink?ink:board,false);
         return;
       }
       if(fixture==='bar-counter'){

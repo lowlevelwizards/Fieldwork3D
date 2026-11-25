@@ -9,6 +9,8 @@ import {coverImpactFraction} from './breach-cover-height.ts';
 import {resolvePenetration,type BarrierHit} from './breach-penetration.ts';
 import {MATERIALS,materialForFixture,type MaterialId} from './breach-materials.ts';
 import {windowPaneSegment} from './breach-windows.ts';
+import {segmentAttachment,coverAttachment,type SurfaceAttachment} from './breach-impact-surface.ts';
+export type MaterialHitEvidence={fraction:number;material:MaterialId;height?:number;surfaceRef?:SurfaceAttachment};
 export function segmentImpact(from:Pt,to:Pt,segment:{a:Pt;b:Pt}):number|null{
   const dx=to.x-from.x,dy=to.y-from.y;
   const ex=segment.b.x-segment.a.x,ey=segment.b.y-segment.a.y;
@@ -23,17 +25,18 @@ export function segmentImpact(from:Pt,to:Pt,segment:{a:Pt;b:Pt}):number|null{
  * energy=0 preserves original rigid muzzle/cover obstruction checks.
  */
 export function strikeSurface(from:Pt,aimed:Pt,s:Session,
-  fromZ=22,toZ=22,energy=0):{
+  fromZ=22,toZ=22,energy=0,captureSurface=false):{
   end:Pt;surface:ShotEvent['surface'];penetrated:number[];remaining:number;
   paneHits:number[];glassDoorHits:{index:number;fraction:number}[];
   coverHits:{index:number;fraction:number}[];
-  materialHits:{fraction:number;material:MaterialId}[]}{
+  materialHits:MaterialHitEvidence[];stoppedHit?:MaterialHitEvidence}{
   const {walls:WALLS,cover:COVER}=sessionWorldGeometry(s);
-  const hits:BarrierHit[]=[];
+  const hits:(BarrierHit & {height?:number;surfaceRef?:SurfaceAttachment})[]=[];
+  const heightAt=(t:number)=>fromZ+(toZ-fromZ)*t;
   const glassDoorHits:{index:number;fraction:number}[]=[];
-  for(const wall of WALLS){
+  for(const [index,wall] of WALLS.entries()){
     const t=segmentImpact(from,aimed,wall);
-    if(t!==null)hits.push({fraction:t,material:'brick',thickness:10});
+    if(t!==null)hits.push({fraction:t,material:'brick',thickness:10,...(captureSurface?{height:heightAt(t),surfaceRef:segmentAttachment('wall',index,undefined,wall,from,aimed,t,heightAt(t))}:{})});
   }
   for(const [index,door] of s.doors.entries()){
     if(door.style==='mesh-gate'||door.style==='screen')continue; // fine mesh transmits most bullets
@@ -46,7 +49,8 @@ export function strikeSurface(from:Pt,aimed:Pt,s:Session,
       material:door.kind==='shutter'?'steel':
         ['glazed','french'].includes(door.style??'')?'glass':'hardwood',
       thickness:door.kind==='shutter'?10:
-        ['glazed','french'].includes(door.style??'')?1:3});
+        ['glazed','french'].includes(door.style??'')?1:3,
+      ...(captureSurface?{height:heightAt(t),surfaceRef:segmentAttachment('door',index,door.id,leaf,from,aimed,t,heightAt(t),door)}:{})});
   }
   for(const [index,box] of COVER.entries()){
     if(['chain-link-fence','iron-fence'].includes(box.fixture??''))continue;
@@ -59,7 +63,7 @@ export function strikeSurface(from:Pt,aimed:Pt,s:Session,
     hits.push({fraction:t,
       material:box.material??materialForFixture(box.fixture),
       thickness:Math.min(4,Math.max(1,Math.min(box.w,box.h)*.08)),
-      coverIndex:index});
+      coverIndex:index,...(captureSurface?{height:heightAt(t),surfaceRef:coverAttachment(index,box,from,aimed,t,heightAt(t))}:{})});
   }
   const paneHits:{index:number;fraction:number}[]=[];
   for(const [index,window] of s.windows.entries()){
@@ -68,11 +72,12 @@ export function strikeSurface(from:Pt,aimed:Pt,s:Session,
     if(t===null)continue;
     const height=fromZ+(toZ-fromZ)*t;
     if(height<(window.sillHeight??14)||height>(window.headHeight??32))continue;
-    hits.push({fraction:t,material:'glass',thickness:1});
+    hits.push({fraction:t,material:'glass',thickness:1,...(captureSurface?{height,surfaceRef:segmentAttachment('window',index,window.id,windowPaneSegment(window),from,aimed,t,height)}:{})});
     paneHits.push({index,fraction:t});
   }
-  const outcome=resolvePenetration(hits,energy);
+  const outcome=resolvePenetration(hits,energy,captureSurface);
   const t=outcome.stoppedAt??1;
+  const stoppedHit=outcome.stoppedHit;
   const surface=outcome.stoppedMaterial?
     MATERIALS[outcome.stoppedMaterial].impact:'dust';
   return {end:{x:from.x+(aimed.x-from.x)*t,
@@ -84,6 +89,7 @@ export function strikeSurface(from:Pt,aimed:Pt,s:Session,
       h.fraction<=t+.00001).map(h=>({index:h.coverIndex!,fraction:h.fraction})),
     materialHits:hits.filter(h=>h.fraction<=t+.00001)
       .sort((a,b)=>a.fraction-b.fraction).map(h=>({fraction:h.fraction,
-      material:h.material}))};
+      material:h.material,...(captureSurface?{height:h.height,surfaceRef:h.surfaceRef}:{})})),
+    ...(stoppedHit?{stoppedHit:{fraction:stoppedHit.fraction,material:stoppedHit.material,height:stoppedHit.height,surfaceRef:stoppedHit.surfaceRef}}:{})};
 }
 
