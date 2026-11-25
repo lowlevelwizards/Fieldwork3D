@@ -48,6 +48,7 @@ export type PaletteContext={
   state:Session;actor:TeamActor;selected:string;
   node:TeamActor['plan'][number]|undefined;
   selectedWatch:Pt|null;door:Door|undefined;
+  personFocusId?:string|null;
   actions:readonly ContextAction[];
   medicalChoices?:readonly MedicalPatientChoice[];
   width:number;height:number;lastAuthoringAt:number;
