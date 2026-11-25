@@ -119,10 +119,10 @@ export function generateSite(seed:number,scale:SiteScale='standard',
    // Unintentional loose furniture must not block the approach to a real
    // door. Keep this deterministic, conservative and pre-spawn: essential
    // fixtures are never deleted to manufacture a route.
-   const furnished=applyArchetype(orientArchitecturalSite(geometry,seed),seed,generationOptions.vehiclePlacement===true);
+   const furnished=applyArchetype(orientArchitecturalSite(geometry,seed),seed,generationOptions.vehiclePlacement!==false);
    const accessible=repairDoorwayClutter(furnished).site;
    const encounterSite=attachEncounterPlan(accessible,contextWithIntent);
-   const candidate=generationOptions.vehiclePlacement===true?attachPlannedVehicles(encounterSite):encounterSite;
+   const candidate=generationOptions.vehiclePlacement!==false?attachPlannedVehicles(encounterSite):encounterSite;
    onProgress?.('scoring',attempt);
    const grade=measureSiteCompleteness(candidate);
    if(!bestGrade||preferCompleteCandidate(grade,bestGrade)||

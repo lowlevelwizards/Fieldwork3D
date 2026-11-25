@@ -5,7 +5,7 @@ import {generateSite} from '../src/breach-site.ts';
 import {VEHICLE_DIMENSIONS} from '../src/worldgen/vehicle-catalog.ts';
 test('shadow planning does not mutate sites and uses deterministic rotated dimensions',()=>{
  for(const seed of [3,8,10,14,19,21]){
-  const site=generateSite(seed,'large');
+  const site=generateSite(seed,'large',undefined,{}, {vehiclePlacement:false});
   const before=JSON.stringify(site);
   const a=planVehiclePlacement(site),b=planVehiclePlacement(site);
   assert.deepEqual(a,b);assert.equal(JSON.stringify(site),before);
@@ -51,11 +51,11 @@ test('insufficient private depth fails closed',()=>{
 import {intersectsVehicleParkingReserve} from '../src/worldgen/vehicle-parking-layout.ts';
 import {auditTacticalMobility} from '../src/worldgen/tactical-mobility-audit.ts';
 import {passable,route,withTemporarySiteGeometry} from '../src/breach-core.ts';
-test('opt-in generation retains deterministic navigation and keeps original default retired',()=>{
+test('default generation retains deterministic navigation with explicit historical layout option',()=>{
  for(const seed of [3,5,6,8,10,14,19,21]){
-  const legacy=generateSite(seed,'large');
+  const legacy=generateSite(seed,'large',undefined,{}, {vehiclePlacement:false});
   assert.ok(!legacy.cover.some(o=>o.fixture in VEHICLE_DIMENSIONS));
-  const site=generateSite(seed,'large',undefined,{}, {vehiclePlacement:true});
+  const site=generateSite(seed,'large');
   assert.deepEqual(site,generateSite(seed,'large',undefined,{}, {vehiclePlacement:true}));
   const vehicles=site.cover.filter(o=>o.fixture in VEHICLE_DIMENSIONS);
   if(vehicles.length){

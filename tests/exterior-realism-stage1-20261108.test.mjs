@@ -51,11 +51,11 @@ test('trees use real narrow physical trunks while keeping full pixel-card crowns
  assert.deepEqual(landscapePhysicalFootprint('shrub-round',30,28),{w:30,h:28});
 });
 
-test('retired car assets never spawn in new missions of all archetypes',()=>{
+test('historical layout mode still excludes retired cars while preserving greenery',()=>{
  const retired=new Set(['vehicle','sedan','pickup','van','suv']);
  let vegetation=0,greenSites=0;
  for(let seed=1;seed<=44;seed++){
-   const site=generateSite(seed);
+   const site=generateSite(seed,'standard',undefined,{}, {vehiclePlacement:false});
    assert.ok(site.cover.every(c=>!retired.has(c.fixture??'')),
      'retired car in seed '+seed);
    const green=site.cover.filter(c=>

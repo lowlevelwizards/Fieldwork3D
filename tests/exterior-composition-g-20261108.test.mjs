@@ -119,11 +119,11 @@ test('parking and wayfinding signs have distinct icons, not a yellow bar',()=>{
  assert.doesNotMatch(src,/ctx.box\(group,c.x,height\*\.79,c.y\+\.9,w\*\.55,1\.8,\.7,safety,false\)/);
 });
 
-test('seeded mission geometry remains stable without reintroducing vehicles',()=>{
+test('seeded mission geometry remains stable in explicit historical layout mode',()=>{
  const forbidden=new Set(['vehicle','sedan','pickup','van','suv']);
  for(let seed=1;seed<=16;seed++){
-  const site=generateSite(seed);
-  const previous=generateSite(seed);
+  const site=generateSite(seed,'standard',undefined,{}, {vehiclePlacement:false});
+  const previous=generateSite(seed,'standard',undefined,{}, {vehiclePlacement:false});
   assert.deepEqual(site.cover,previous.cover,'seed '+seed);
   assert.ok(site.cover.every(c=>!forbidden.has(c.fixture??'')));
   const a=planPropertySurfaces(site),b=planPropertySurfaces(previous);
