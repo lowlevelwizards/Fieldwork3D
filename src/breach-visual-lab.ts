@@ -65,8 +65,8 @@ function choose(kind:Sample){
  }
  if(kind==='vegetation'){
   const zone=site.exteriorZones?.find(z=>z.kind==='garden'||z.kind==='yard');
-  if(zone)focus({x:zone.x+zone.w/2,y:zone.y+zone.h/2});
-  label('Vegetation · current production grass and bushes');draw();return;
+  if(zone)focus({x:zone.x,y:zone.y});
+  label('Exterior · grass and shrubs temporarily retired');draw();return;
  }
  if(kind==='glass'){
   const pane=session.windows.find(w=>!w.shattered);

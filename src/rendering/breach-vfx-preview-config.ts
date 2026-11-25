@@ -1,8 +1,6 @@
-/** V11: the complete VFX suite is unconditional in production.
- * No query-string or persisted setting may disable these rendering paths.
- * Keep the coarse grass layout used by the integrated V10 suite.
- */
+/** Fixed production policy. V15 temporarily retires grass and the
+ * experimental bush renderer; all combat effects remain enabled. */
 export const PRODUCTION_VFX=Object.freeze({
- suite:true,grass:true,grassCell:192,bush:true,blood:true,impacts:true,
+ suite:true,grass:false,grassCell:192,bush:false,blood:true,impacts:true,
  pulses:true,glass:true,smoke:true,evidence:true,lights:true,
 } as const);

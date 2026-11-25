@@ -24,13 +24,13 @@ try{
  for(const viewport of [{width:390,height:844},{width:1440,height:900}])for(const variant of ['production','stale-disable-url']){
   const origin=servers[0].origin;
   const enabled=true,lights=true;
-  const vegetation=true,smoke=true;
+  const vegetation=false,smoke=true;
   const page=await browser.newPage({viewport,deviceScaleFactor:1}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   page.on('console',m=>{if(m.type()==='error'&&/WebGLProgram|Shader Error|INVALID_OPERATION|compile|linker/i.test(m.text()))errors.push(m.text());});
   try{
    await page.route('**/vfx-suite-probe?**',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'}));
-   await page.goto(origin+'/vfx-suite-probe?coldBench=1'+(variant==='stale-disable-url'?'&vfxSuite=0&vfxGrass=0&vfxGrassCell=96&vfxBush=0&vfxBlood=0&vfxImpacts=0&vfxPulses=0&vfxGlass=0&vfxSmoke=0&vfxEvidence=0&vfxLights=0':''));
+   await page.goto(origin+'/vfx-suite-probe?coldBench=1'+(variant==='stale-disable-url'?'&vfxSuite=0&vfxGrass=1&vfxGrassCell=96&vfxBush=1&vfxBlood=0&vfxImpacts=0&vfxPulses=0&vfxGlass=0&vfxSmoke=0&vfxEvidence=0&vfxLights=0':''));
    const result=await page.evaluate(async({variant,enabled,lights,vegetation,smoke,viewport})=>{
     const {TacticalScene3D}=await import('/src/breach-3d.ts');
     const {generateSite}=await import('/src/breach-site.ts');

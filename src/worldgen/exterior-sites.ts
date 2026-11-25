@@ -12,6 +12,8 @@ import {SERVICED_FACING_FIXTURES,serviceEnvelope,
  serviceFacingOrientation,intersectsServiceAccess}
  from './service-clear-route.ts';
 import {landscapeEdgeCandidates} from './landscape-edge-program.ts';
+/** Temporarily retire exterior shrub cover before placement, not after rendering. */
+const retiredShrub=(id:string)=>['shrub-round','shrub-tall','bush','hedge'].includes(id);
 import {serviceFixtureInRoad} from './road-service-fixtures.ts';
 import {planPublicStreet,overlapsPublicStreetRoad} from './public-street-layout.ts';
 import {landscapePhysicalFootprint,TREE_FIXTURES} from './landscape-footprint.ts';
@@ -143,7 +145,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    // Props must belong to the authored land-use zone, not to a generic
    // "outside" bucket. No legacy car family is eligible for new maps.
    const choices=(byZone[zone.kind]??available).filter(item=>
-     outdoorFixtureAllowed(site,zone,item));
+     !retiredShrub(item)&&outdoorFixtureAllowed(site,zone,item));
    if(!choices.length)continue;
    // First object establishes what this exterior space is *for*. Subsequent
    // objects add character; no vehicle in a garden or dumpsters at the
@@ -161,7 +163,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
        residential?'shrub-round':'planter'
    };
    const preferred=anchor[zone.kind];
-   const item=i===0&&preferred&&outdoorFixtureAllowed(site,zone,preferred)?
+   const item=i===0&&preferred&&!retiredShrub(preferred)&&outdoorFixtureAllowed(site,zone,preferred)?
      preferred:choices[Math.floor(rng()*choices.length)];
    const asset=propDefinition(item);if(!asset)continue;
    const footprint=landscapePhysicalFootprint(item,asset.width,asset.depth);
@@ -265,6 +267,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
  for(const zone of zones){
    const points=landscapeEdgeCandidates(zone,seed);
    for(const point of points){
+     if(retiredShrub(point.fixture))continue;
      const asset=propDefinition(point.fixture);if(!asset)continue;
      const footprint=landscapePhysicalFootprint(point.fixture,
        asset.width,asset.depth);

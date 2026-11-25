@@ -8,7 +8,7 @@ export const MATERIAL_IMPACT_PROFILES:Readonly<Record<MaterialImpactSurface,Read
  wood:Object.freeze({count:4,life:.40,speed:32,lift:25,gravity:96,width:1.65,length:7.2,color:0xd5a267,pulse:6.5,pulseColor:0xdfb27a,spread:15}),
  stone:Object.freeze({count:6,life:.40,speed:29,lift:23,gravity:108,width:2.5,length:3.4,color:0xd1c5ae,pulse:7.0,pulseColor:0xe0d4bd,spread:15}),
  metal:Object.freeze({count:5,life:.36,speed:58,lift:30,gravity:90,width:1.1,length:8.4,color:0xffde8c,pulse:5.8,pulseColor:0xffe3a4,spread:19}),
- glass:Object.freeze({count:7,life:.40,speed:33,lift:20,gravity:100,width:1.25,length:4.3,color:0xd0f0ee,pulse:5.8,pulseColor:0xd3f2ee,spread:14}),
+ glass:Object.freeze({count:7,life:.40,speed:33,lift:20,gravity:100,width:2.0,length:6.2,color:0xe1faf5,pulse:5.8,pulseColor:0xd3f2ee,spread:14}),
  dust:Object.freeze({count:3,life:.40,speed:18,lift:15,gravity:25,width:3.0,length:3.2,color:0xc8b59b,pulse:5.6,pulseColor:0xe2d3b1,spread:11})
 });
 export type ImpactParticleSample={x:number;y:number;z:number;yaw:number;roll:number;pitch:number;width:number;length:number;opacity:number;color:number};

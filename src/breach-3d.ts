@@ -139,6 +139,7 @@ import {WEAPONS} from './breach-combat.ts';
 import {IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
 import {TransientLightPreview} from './rendering/breach-transient-light-preview.ts';
 import {DustPuffBatch,puffCount,samplePuff,type PuffSample} from './rendering/breach-dust-puffs.ts';
+import type {PuffKind} from './breach-atmosphere-evidence.ts';
 import {makeStainMarkBatch,makeBloodDropletBatch,BLOOD_DROPLET_CAPACITY} from './rendering/breach-blood-preview.ts';
 import {ImpactMarkSlotCache,MARK_MATRIX_DIRTY,MARK_COLOR_DIRTY,MARK_STYLE_DIRTY} from './rendering/breach-impact-mark-cache.ts';
 import {MATERIAL_IMPACT_PROFILES,MATERIAL_IMPACT_PARTICLE_LIMIT,sampleMaterialImpact,type ImpactParticleSample} from './rendering/breach-material-impact-atom.ts';
@@ -2015,11 +2016,17 @@ export class TacticalScene3D{
     const personalWindows=replayDisclosurePolicy?.mode==='operator';
     if(!this.windowShards){
       const shardMaterial=new THREE.MeshStandardMaterial({
-        color:0xaacac3,roughness:.27,metalness:.08,flatShading:true,
-        transparent:true,opacity:.76,depthWrite:false,side:THREE.DoubleSide});
+        color:0xd9f4ef,emissive:0x426b70,emissiveIntensity:.45,
+        roughness:.48,metalness:.04,flatShading:true,depthWrite:true,side:THREE.DoubleSide});
+      // Broad, thin asymmetric polygon: unmistakable fragments, not tiny pebbles.
+      const shardShape=new THREE.Shape();
+      shardShape.moveTo(-1.45,-1.2);shardShape.lineTo(.15,-2.05);
+      shardShape.lineTo(1.35,.25);shardShape.lineTo(.75,1.8);shardShape.lineTo(-1.25,.6);shardShape.closePath();
+      const shardGeometry=new THREE.ExtrudeGeometry(shardShape,{depth:.34,bevelEnabled:false});
+      shardGeometry.rotateX(Math.PI/2);shardGeometry.center();
       this.mats.push(shardMaterial);
       this.windowShards=new THREE.InstancedMesh(
-        new THREE.TetrahedronGeometry(.85,0),shardMaterial,WINDOW_SHARD_CAPACITY);
+        shardGeometry,shardMaterial,WINDOW_SHARD_CAPACITY);
       this.windowShards.count=0;
       this.windowShards.frustumCulled=false;
       this.windowShards.castShadow=false;
@@ -3026,6 +3033,14 @@ export class TacticalScene3D{
           this.dropletPreview.addMaterial(sample);
         }
       }
+      if(this.smokePreviewEnabled&&visibility.flash){
+        const puff=this.puffScratch;
+        if(samplePuff('muzzle',shot.id,0,shot.age,start.x,start.y,start.z,puff)&&
+          (omniscient||this.presentationSight.query(s,'effect','muzzle-puff:'+shot.id,{x:puff.x,y:puff.z}))){
+          if(!this.dustPuffs){this.dustPuffs=new DustPuffBatch();this.effects.add(this.dustPuffs.mesh);}
+          this.dustPuffs.add(puff);
+        }
+      }
       const puffSurface=shot.surface??'dust';
       if(this.smokePreviewEnabled&&visibility.impact&&
         (puffSurface==='dust'||puffSurface==='wood'||puffSurface==='stone')){
@@ -3120,6 +3135,21 @@ export class TacticalScene3D{
           if(!omniscient&&!this.presentationSight.query(s,'effect','puff-burst:'+burst.id+':'+i,{x:puff.x,y:puff.z}))continue;
           if(!this.dustPuffs){this.dustPuffs=new DustPuffBatch();this.effects.add(this.dustPuffs.mesh);}
           this.dustPuffs.add(puff);
+        }
+      }
+    }
+    // Expired shot/flash records retain only their small cosmetic cloud
+    // cues. Final shots take priority over tails in the same fixed batch.
+    if(this.smokePreviewEnabled&&!personalDisclosure&&s.atmosphere?.length){
+      const puff=this.puffScratch;
+      for(let n=s.atmosphere.length-1;n>=0;n--){
+        const cue=s.atmosphere[n],kind:PuffKind=cue.kind,age=s.seconds-cue.at;
+        if(!omniscient&&!this.presentationSight.query(s,'effect','cloud:'+cue.key,cue.p))continue;
+        for(let i=0;i<puffCount(kind);i++){
+          if(!samplePuff(kind,cue.id,i,age,cue.p.x,cue.height,cue.p.y,puff))continue;
+          if(!omniscient&&!this.presentationSight.query(s,'effect','cloud:'+cue.key+':'+i,{x:puff.x,y:puff.z}))continue;
+          if(!this.dustPuffs){this.dustPuffs=new DustPuffBatch();this.effects.add(this.dustPuffs.mesh);}
+          if(!this.dustPuffs.add(puff))break;
         }
       }
     }

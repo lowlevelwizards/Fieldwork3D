@@ -1,0 +1,24 @@
+name: V15 atmosphere and glass
+on:
+  pull_request:
+    paths:
+      - 'src/breach-atmosphere-evidence.ts'
+      - 'src/rendering/breach-dust-puffs.ts'
+      - 'src/rendering/window-shatter-presentation.ts'
+      - 'src/rendering/breach-vfx-preview-config.ts'
+      - 'tests/vfx-v15-atmosphere.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  atmosphere:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/vfx-v*.test.mjs tests/perf-window-effects.test.mjs tests/map-18-vegetation.test.mjs
+      - run: npm run build
