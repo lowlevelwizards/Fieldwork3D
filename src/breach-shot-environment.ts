@@ -7,7 +7,6 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import {type Pt,doorCenter} from './breach-core.ts';
 import {length} from './breach-plan.ts';
-import {type MaterialId} from './breach-materials.ts';
 import {damageCover} from './breach-reactive-cover.ts';
 import {materialResponse} from './breach-impact-responses.ts';
 import {damageWindow} from './breach-windows.ts';

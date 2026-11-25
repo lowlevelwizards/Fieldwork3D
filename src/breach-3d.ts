@@ -3116,7 +3116,7 @@ export class TacticalScene3D{
       const markPoint=attached?{x:attached.x,y:attached.z}:mark.p;
       if(!omniscient&&!this.presentationSight.query(
         s,'impact',mark.id,markPoint))continue;
-      // Unlike a screen-space overlay, the decal is always ON the floor.
+      // Blood remains floor-aligned; environmental marks follow their surface.
       // Transparent architecture may not write depth, so a blood stain
       // must also be culled when any part lies behind a cutaway wall or
       // a visible miniature. Camera rays differ for ORTHO and WIDE.

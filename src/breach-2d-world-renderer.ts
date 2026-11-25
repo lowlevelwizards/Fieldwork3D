@@ -485,7 +485,7 @@ function renderGroundMarks(){
   const replaying=isReplaying();
   for(const mark of state.impactMarks){
     // Surface-attached marks cannot be represented as unrelated floor circles.
-    if(mark.surface!=='blood'&&(mark.surfaceRef||mark.surface!=='dust'||mark.height===undefined||mark.height>1))continue;
+    if(mark.surface!=='blood'&&(mark.surfaceRef||mark.shotId!==undefined||mark.surface!=='dust'||mark.height===undefined||mark.height>1))continue;
     if(!(replaying&&replayKnowledge.omniscient)&&!liveVisibility(state,mark.p))continue;
     const radius=mark.surface==='blood'?
       confinedGroundRadius(mark.p,4,sessionWorldGeometry(state).walls):2.5;

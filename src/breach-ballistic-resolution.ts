@@ -75,9 +75,9 @@ export function strikeSurface(from:Pt,aimed:Pt,s:Session,
     hits.push({fraction:t,material:'glass',thickness:1,...(captureSurface?{height,surfaceRef:segmentAttachment('window',index,window.id,windowPaneSegment(window),from,aimed,t,height)}:{})});
     paneHits.push({index,fraction:t});
   }
-  const outcome=resolvePenetration(hits,energy);
+  const outcome=resolvePenetration(hits,energy,captureSurface);
   const t=outcome.stoppedAt??1;
-  const stoppedHit=captureSurface&&outcome.stoppedAt!==null?hits.find(h=>h.fraction===t&&h.material===outcome.stoppedMaterial):undefined;
+  const stoppedHit=outcome.stoppedHit;
   const surface=outcome.stoppedMaterial?
     MATERIALS[outcome.stoppedMaterial].impact:'dust';
   return {end:{x:from.x+(aimed.x-from.x)*t,

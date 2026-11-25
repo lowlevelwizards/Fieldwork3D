@@ -8,11 +8,12 @@ export type BarrierHit={fraction:number;material:MaterialId;thickness:number;
 export type PenetrationOutcome={stoppedAt:number|null;remaining:number;
  penetrated:number[];stoppedMaterial:MaterialId|null;
  stoppedCoverIndex:number|null};
-export function resolvePenetration(hits:readonly BarrierHit[],energy:number):
- PenetrationOutcome{
+export function resolvePenetration<T extends BarrierHit>(hits:readonly T[],energy:number,captureStoppedHit=false):
+ PenetrationOutcome & {stoppedHit?:T}{
  let remaining=Math.max(0,energy),stoppedAt:number|null=null;
  let stoppedMaterial:MaterialId|null=null;
  let stoppedCoverIndex:number|null=null;
+ let stoppedHit:T|undefined;
  const penetrated:number[]=[];
  for(const hit of [...hits].sort((a,b)=>a.fraction-b.fraction)){
   if(hit.fraction<0||hit.fraction>1)continue;
@@ -20,10 +21,10 @@ export function resolvePenetration(hits:readonly BarrierHit[],energy:number):
   const cost=surfaceResistance(hit.material,hit.thickness);
   if(!profile.penetrable||remaining<=cost+1e-6){
    stoppedAt=hit.fraction;stoppedMaterial=hit.material;
-   stoppedCoverIndex=hit.coverIndex??null;break;
+   stoppedCoverIndex=hit.coverIndex??null;if(captureStoppedHit)stoppedHit=hit;break;
   }
   remaining=Math.max(0,remaining-cost);
   if(hit.coverIndex!==undefined)penetrated.push(hit.coverIndex);
  }
- return {stoppedAt,remaining,penetrated,stoppedMaterial,stoppedCoverIndex};
+ return {stoppedAt,remaining,penetrated,stoppedMaterial,stoppedCoverIndex,...(stoppedHit?{stoppedHit}:{})};
 }

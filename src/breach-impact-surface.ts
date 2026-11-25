@@ -66,6 +66,6 @@ export function doorMarkLocalPose(ref:SurfaceAttachment,door:Door,radius=3.2):Su
 }
 /** Legacy nonblood marks without provenance cannot be safely attached.
  * Explicit low dust marks are the only compatible environmental fallback. */
-export function isGroundImpactMark(mark:{surface?:string;height?:number;surfaceRef?:SurfaceAttachment}):boolean{
- return mark.surface==='blood'||(!mark.surfaceRef&&mark.surface==='dust'&&mark.height!==undefined&&mark.height<=1);
+export function isGroundImpactMark(mark:{surface?:string;height?:number;shotId?:number;surfaceRef?:SurfaceAttachment}):boolean{
+ return mark.surface==='blood'||(!mark.surfaceRef&&mark.shotId===undefined&&mark.surface==='dust'&&mark.height!==undefined&&mark.height<=1);
 }

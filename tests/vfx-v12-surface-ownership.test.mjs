@@ -47,6 +47,7 @@ test('unowned raised marks fail closed; ground blood remains ground-aligned',()=
  assert.equal(isGroundImpactMark({surface:'metal',height:14}),false);
  assert.equal(isGroundImpactMark({surface:'stone',height:20}),false);
  assert.equal(isGroundImpactMark({surface:'dust',height:1}),true);
+ assert.equal(isGroundImpactMark({surface:'dust',height:1,shotId:3}),false);
  assert.equal(isGroundImpactMark({surface:'blood',height:25}),true);
 });
 test('same committed hit is not duplicated; orientation invalidates cached transform',()=>{
