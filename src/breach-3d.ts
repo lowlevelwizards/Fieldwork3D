@@ -1,10 +1,11 @@
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {wallMarkPose,doorMarkLocalPose,isGroundImpactMark,type SurfaceMarkPose} from './breach-impact-surface.ts';
 import {hostileNpcTransitionKey,hostileCustodyWalkBlend}
  from './breach-hostile-pose-transition.ts';
 import {rebuildFrameIdIndex} from './breach-frame-lookup.ts';
 import {FrameActorNeighborhoodIndex} from './breach-actor-neighborhood.ts';
-import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera}
+import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera,groundMarkOccludedFromCamera}
   from './breach-ground-geometry.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import {SiteFixtureLightingPresenter} from './rendering/breach-site-light-presenter.ts';
@@ -783,6 +784,9 @@ export class TacticalScene3D{
   private readonly persistentEvidencePreview=this.vfxPreview.evidence;
   private readonly impactMarkSlots=new ImpactMarkSlotCache(IMPACT_MARK_LIMIT);
   private impactDecalMatrix=new THREE.Object3D();
+  private readonly impactDecalNormal=new THREE.Vector3();
+  private readonly impactDecalAxis=new THREE.Vector3(0,0,1);
+  private readonly impactDecalPoint=new THREE.Vector3();
   private bloodCameraDirection=new THREE.Vector3();
   private impactDecalColor=new THREE.Color();
 
@@ -3087,36 +3091,69 @@ export class TacticalScene3D{
     for(let markIndex=0;markIndex<s.impactMarks.length;markIndex++){
       const mark=s.impactMarks[markIndex];
       if(replayDisclosurePolicy?.mode==='operator')continue;
+      let attached:SurfaceMarkPose|null=null;
+      const ref=mark.surfaceRef;
+      if(mark.surface!=='blood'&&ref){
+        if(ref.kind==='wall'){
+          const owner=this.wallOwners.find(w=>w.index===ref.index);
+          if(!owner||owner.opacity<.995||!owner.pieces.some(m=>m.visible&&(!m.parent||m.parent.visible)))continue;
+          attached=wallMarkPose(ref,owner.segment);
+        }else if(ref.kind==='door'){
+          const door=ref.ownerId?this.frameDoorsById.get(ref.ownerId):undefined;
+          const visual=ref.ownerId?this.doors.get(ref.ownerId):undefined;
+          if(!door||!visual?.root.visible||!visual.leaf.visible)continue;
+          const local=doorMarkLocalPose(ref,door);
+          if(local){
+            visual.leaf.updateWorldMatrix(true,false);
+            this.impactDecalPoint.set(local.x,local.y,local.z).applyMatrix4(visual.leaf.matrixWorld);
+            this.impactDecalNormal.set(local.nx,local.ny,local.nz).transformDirection(visual.leaf.matrixWorld);
+            attached={...local,x:this.impactDecalPoint.x,y:this.impactDecalPoint.y,z:this.impactDecalPoint.z,nx:this.impactDecalNormal.x,ny:this.impactDecalNormal.y,nz:this.impactDecalNormal.z};
+          }
+        }
+        // Unsupported collider/art correspondence (cover/glazing) fails closed.
+        if(!attached)continue;
+      }else if(!isGroundImpactMark(mark))continue;
+      const markPoint=attached?{x:attached.x,y:attached.z}:mark.p;
       if(!omniscient&&!this.presentationSight.query(
-        s,'impact',markIndex,mark.p))continue;
+        s,'impact',mark.id,markPoint))continue;
       // Unlike a screen-space overlay, the decal is always ON the floor.
       // Transparent architecture may not write depth, so a blood stain
       // must also be culled when any part lies behind a cutaway wall or
       // a visible miniature. Camera rays differ for ORTHO and WIDE.
       const radius=mark.surface==='blood'?
-        confinedGroundRadius(mark.p,4,s.site?.walls??WALLS):2.3;
+        confinedGroundRadius(mark.p,4,s.site?.walls??WALLS):attached?.radius??2.3;
       if(radius<.5)continue;
       if(mark.surface==='blood'&&groundBloodFootprintOccluded(
           mark.p,radius,bloodCamera,this.bloodCameraDirection,
           orthoBlood,s.site?.walls??WALLS,visibleBloodBlockers,
           WALL_VISUAL_HEIGHT))continue;
-      if(mark.surface!=='blood'&&groundMarkHiddenByWallFromCamera(
-          mark.p,bloodCamera,s.site?.walls??WALLS,WALL_VISUAL_HEIGHT,
-          mark.height??1))continue;
+      if(mark.surface!=='blood'){
+        const y=attached?.y??1;
+        if(attached){
+          const vx=orthoBlood?this.bloodCameraDirection.x:bloodCamera.x-attached.x;
+          const vy=orthoBlood?this.bloodCameraDirection.y:bloodCamera.y-attached.y;
+          const vz=orthoBlood?this.bloodCameraDirection.z:bloodCamera.z-attached.z;
+          if(vx*attached.nx+vy*attached.ny+vz*attached.nz<=0)continue;
+        }
+        if(orthoBlood?groundMarkOccludedFromCamera(markPoint,this.bloodCameraDirection,s.site?.walls??WALLS,WALL_VISUAL_HEIGHT,y):
+          groundMarkHiddenByWallFromCamera(markPoint,bloodCamera,s.site?.walls??WALLS,WALL_VISUAL_HEIGHT,y))continue;
+      }
       if(markCount>=IMPACT_MARK_LIMIT)break;
       const dark=mark.surface==='blood'?0x763c38:
         mark.surface==='wood'?0x3a2920:
         mark.surface==='stone'?0x38332c:
         mark.surface==='metal'?0x202b2e:0x514e42;
-      const groundRadius=radius,markY=mark.surface==='blood'?.85:(mark.height??1);
+      const groundRadius=radius,markY=attached?.y??(mark.surface==='blood'?.85:1);
+      const nx=attached?.nx??0,ny=attached?.ny??1,nz=attached?.nz??0;
       const fade=Math.max(.28,1-mark.age*.027);
       const style=this.stainPreview?.styleFor(mark.surface,mark.p.x,mark.p.y)??-1;
       const dirty=this.persistentEvidencePreview?this.impactMarkSlots.update(markCount,
-        mark.p.x,markY,mark.p.y,groundRadius,dark,fade,style):
+        markPoint.x,markY,markPoint.y,groundRadius,dark,fade,style,nx,ny,nz):
         MARK_MATRIX_DIRTY|MARK_COLOR_DIRTY|MARK_STYLE_DIRTY;
       if(dirty&MARK_MATRIX_DIRTY){
-        this.impactDecalMatrix.position.set(mark.p.x,markY,mark.p.y);
-        this.impactDecalMatrix.rotation.set(-Math.PI/2,0,0);
+        this.impactDecalMatrix.position.set(markPoint.x,markY,markPoint.y);
+        this.impactDecalNormal.set(nx,ny,nz);
+        this.impactDecalMatrix.quaternion.setFromUnitVectors(this.impactDecalAxis,this.impactDecalNormal);
         this.impactDecalMatrix.scale.setScalar(groundRadius);
         this.impactDecalMatrix.updateMatrix();
         markDraw.setMatrixAt(markCount,this.impactDecalMatrix.matrix);
