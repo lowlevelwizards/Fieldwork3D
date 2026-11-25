@@ -10,7 +10,7 @@ import {type Obstacle} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {arrivalAccessLane,overlapsArrivalLane} from './property-access-lane.ts';
 import {parkingStallCandidates} from './parking-stalls.ts';
-import {proposeVehicleParkingLayout,intersectsVehicleParkingReserve} from './vehicle-parking-layout.ts';
+import {proposeVehicleParkingLayout,proposeResidentialDriveway,intersectsVehicleParkingReserve} from './vehicle-parking-layout.ts';
 import {SERVICE_EDGE_FIXTURES,serviceYardEdgeCandidates} from './service-yard-layout.ts';
 import {SERVICED_FACING_FIXTURES,serviceEnvelope,
  serviceFacingOrientation,intersectsServiceAccess}
@@ -84,6 +84,10 @@ export function addExteriorProperty(site:Site,seed:number,vehiclePlacement=false
    if(layout)zones[0]={...candidate,vehicleParking:layout};
    else{zones.length=0;zones.push(original);}
   }
+ }
+ if(vehiclePlacement&&['house','townhouse'].includes(kind)&&zones[0]){
+  const domestic=proposeResidentialDriveway({...site,exteriorZones:zones},zones[0]);
+  if(domestic){zones[0]=domestic.yard;zones.push(domestic.driveway);}
  }
  edgeZone(opposite[entry],'rear-property',backKind,80);
  const sideOptions:Cardinal[]=entry==='north'||entry==='south'?

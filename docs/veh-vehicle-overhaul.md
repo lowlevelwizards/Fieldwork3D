@@ -26,3 +26,6 @@ Added explicit generateSite generationOptions.vehiclePlacement pilot, default fa
 
 ## Checkpoint 8 — art and physical integrity pass
 Open pickup bed floor/tailgate now visible, contractor toolbox, canvas truck profile and distinct economy/unmarked/military/taxi paint treatments, restrained lower-body wear. All six static families preserve their solid footprint under generic furniture collapse; projectile material classification stays sheet metal. Detailed vehicle damage and profile-shaped cover projection remain separate. Added browser verification for six families, phone/desktop cameras, lineup and 50-instance draw comparison. No browser result claimed before execution.
+
+## Checkpoint 9 — domestic and industrial roles
+Verified previous pilot: 49 vehicles across 19/44 sites; 12 targeted tests, TypeScript, asset smoke and Ground Zero passed. Reconciled main's furniture integrity change while retaining vehicle noncollapse. Added narrow residential driveway strip with a dedicated curb cut and preserved yard, no commercial markings; industrial deep lots get wide loading bays and truck/van/pickup selection. These remain opt-in, awaiting fresh audit and browser results. No rear-yard truck is invented without frontage access.

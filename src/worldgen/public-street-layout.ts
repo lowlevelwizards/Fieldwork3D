@@ -81,30 +81,32 @@ export function planPublicStreet(site:StreetSite):PublicStreet|null{
    const vehicular=['parking','driveway'].includes(
      site.exteriorZones?.find(z=>z.id==='arrival-forecourt')?.kind??'');
    const modernParking=site.exteriorZones?.find(z=>z.id==='arrival-forecourt')?.vehicleParking;
-   const cut=vehicular?(modernParking?56:28):0;
+   const domestic=site.exteriorZones?.find(z=>z.vehicleParking?.role==='residential')?.vehicleParking;
+   const cut=domestic?56:vehicular?(modernParking?56:28):0;
+   const cutAt=domestic?.alongCenter??alongAt;
    const half=span/2;
-   if(cut&&alongAt>along-half+cut&&alongAt<along+half-cut){
-     const left=(alongAt-cut/2)-(along-half);
-     const right=(along+half)-(alongAt+cut/2);
+   if(cut&&cutAt>along-half+cut&&cutAt<along+half-cut){
+     const left=(cutAt-cut/2)-(along-half);
+     const right=(along+half)-(cutAt+cut/2);
      if(left>4)curb.push(rect(along-half+left/2,left,boundary,2.6));
-     if(right>4)curb.push(rect(alongAt+cut/2+right/2,right,boundary,2.6));
+     if(right>4)curb.push(rect(cutAt+cut/2+right/2,right,boundary,2.6));
      // Remove the same portion from the flat sidewalk. Otherwise a
      // supposed ramp is buried under a full-height slab during replay.
      if(sidewalk){
        const sidewalkL=vertical?sidewalk.width:sidewalk.depth;
        const stripHalf=sidewalkL/2;
-       const leftLength=(alongAt-cut/2)-(along-stripHalf);
-       const rightLength=(along+stripHalf)-(alongAt+cut/2);
+       const leftLength=(cutAt-cut/2)-(along-stripHalf);
+       const rightLength=(along+stripHalf)-(cutAt+cut/2);
        if(leftLength>2)sidewalkPieces.push(
          rect(along-stripHalf+leftLength/2,leftLength,
            sidewalkCenter,sidewalkWidth));
        if(rightLength>2)sidewalkPieces.push(
-         rect(alongAt+cut/2+rightLength/2,rightLength,
+         rect(cutAt+cut/2+rightLength/2,rightLength,
            sidewalkCenter,sidewalkWidth));
      }
      // Full-width ramp reaches from the building-side footway down to the
      // carriageway; only render presentation changes, never motor geometry.
-     curbRamp=rect(alongAt,cut,sidewalkCenter+sign*1,
+     curbRamp=rect(cutAt,cut,sidewalkCenter+sign*1,
        sidewalkWidth+2);
    }else{
      curb.push(rect(along,span,boundary,2.6));

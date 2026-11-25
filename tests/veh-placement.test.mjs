@@ -66,3 +66,26 @@ test('opt-in generation retains deterministic navigation and keeps original defa
   }
  }
 });
+
+import {proposeResidentialDriveway} from '../src/worldgen/vehicle-parking-layout.ts';
+import {planPublicStreet} from '../src/worldgen/public-street-layout.ts';
+test('residential driveway preserves a separate yard and moves the curb cut away from the front door',()=>{
+ const front={id:'arrival-forecourt',kind:'yard',x:400,y:395,w:300,h:176};
+ const site={seed:11,archetype:'house',condition:'occupied',entrySide:'south',bounds:{minX:0,minY:0,maxX:800,maxY:800},rooms:[{x:250,y:130,w:300,h:170}],doors:[],entrance:{x:400,y:300},spawn:[],enemies:[],objective:{x:400,y:170},extract:{x:400,y:750},cover:[],exteriorZones:[front]};
+ const plan=proposeResidentialDriveway(site,front);
+ assert.ok(plan);assert.equal(plan.driveway.vehicleParking.role,'residential');
+ assert.equal(plan.yard.w+plan.driveway.w,front.w);
+ const next={...site,exteriorZones:[plan.yard,plan.driveway]};
+ const street=planPublicStreet(next);assert.equal(street.curbRamp.x,plan.driveway.x);
+ assert.ok(Math.abs(street.curbRamp.x-site.entrance.x)>80);
+ assert.equal(planVehiclePlacement(next,11,true).vehicles.length,1);
+});
+test('wide industrial forecourt has actual loading bays that fit commercial trucks',()=>{
+ const zone={id:'arrival-forecourt',kind:'driveway',x:400,y:410,w:470,h:204};
+ const site={seed:9,archetype:'warehouse',entrySide:'south',bounds:{minX:0,minY:0,maxX:850,maxY:850},rooms:[{x:165,y:130,w:470,h:170}],doors:[],entrance:{x:400,y:300},spawn:[],enemies:[],objective:{x:400,y:170},extract:{x:400,y:800},cover:[],exteriorZones:[zone]};
+ const plan=proposeVehicleParkingLayout(site,zone);assert.equal(plan.role,'loading');
+ const next={...site,exteriorZones:[{...zone,vehicleParking:plan}]};
+ assert.ok(parkingStallCandidates(next.exteriorZones[0],128,48).length>0);
+ assert.ok(planPropertySurfaces(next).some(m=>m.kind==='loading-zone'));
+ assert.ok(planVehiclePlacement(next,9,true).vehicles.length>0);
+});

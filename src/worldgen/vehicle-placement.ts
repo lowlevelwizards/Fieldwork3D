@@ -16,7 +16,9 @@ const intersects=(a:Pick<Obstacle,'x'|'y'|'w'|'h'>,b:Pick<Obstacle,'x'|'y'|'w'|'
  Math.abs(a.x-b.x)<(a.w+b.w)/2+pad&&Math.abs(a.y-b.y)<(a.h+b.h)/2+pad;
 const intersectsStreet=(a:Obstacle,b:StreetRect|null)=>!!b&&intersects(a,{x:b.x,y:b.y,w:b.width,h:b.depth},2);
 const civilian:readonly VehicleFamily[]=['sedan','hatchback','suv','pickup','van'];
-function fleet(site:Site):readonly VehicleFamily[]{
+function fleet(site:Site,zone:ExteriorZone):readonly VehicleFamily[]{
+ if(zone.vehicleParking?.role==='loading')return ['light-truck','van','pickup','light-truck','van'];
+ if(zone.vehicleParking?.role==='residential')return ['sedan','hatchback','suv','pickup'];
  switch(site.archetype){
   case 'garage':case 'warehouse':case 'utility':return ['pickup','van','light-truck','sedan','hatchback'];
   case 'clinic':return ['sedan','hatchback','suv','van','pickup'];
@@ -28,6 +30,7 @@ function artVariant(family:VehicleFamily,site:Site,rng:()=>number):number{
  const config=site.archetype==='clinic'&&family==='van'&&rng()<.4?'medical':
   ['warehouse','garage','utility'].includes(site.archetype??'')&&family==='van'?'delivery':
   ['warehouse','garage','utility'].includes(site.archetype??'')&&family==='pickup'?'contractor':
+  family==='light-truck'?['box','flatbed','canvas'][Math.floor(rng()*3)]:
   variants[0];
  const palette=site.condition==='vacant'?[2,4,5,8]:[0,0,1,1,2,3,4,5,6,7,8,10,11];
  const paint=palette[Math.floor(rng()*palette.length)]%VEHICLE_PAINTS.length;
@@ -35,6 +38,8 @@ function artVariant(family:VehicleFamily,site:Site,rng:()=>number):number{
 }
 function targetFor(site:Site,zone:ExteriorZone):number{
  const slots=parkingStallCount(zone);
+ if(zone.vehicleParking?.role==='residential')return site.condition==='vacant'||(site.seed>>>0)%5===0?0:1;
+ if(zone.vehicleParking?.role==='loading')return site.condition==='vacant'?0:Math.min(3,Math.max(1,slots-1));
  const ratio=site.condition==='busy'?.8:site.condition==='vacant'?.15:
   site.condition==='neglected'?.35:.6;
  return Math.max(0,Math.min(4,slots-1,Math.round(slots*ratio)));
@@ -52,7 +57,7 @@ export function planVehiclePlacement(site:Site,seed=site.seed,modernOnly=false):
   const reject=(reason:Reject)=>{diag.rejections[reason]=(diag.rejections[reason]??0)+1;};
   let key=seed^0x4c971a3;
   for(const ch of zone.id)key=Math.imul(key^ch.charCodeAt(0),16777619);
-  const rng=seeded(key),roster=fleet(site);
+  const rng=seeded(key),roster=fleet(site,zone);
   const reserved=reservedParkingBay(site,zone);
   const broad=zone.vehicleParking?zone.vehicleParking.axis==='x':zone.w>=zone.h;
   const stride=(zone.vehicleParking?.alongLength??(broad?zone.w:zone.h))/parkingStallCount(zone);
