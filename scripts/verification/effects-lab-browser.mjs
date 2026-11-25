@@ -33,6 +33,15 @@ try{
    assert.ok((await page.locator('#status').innerText()).length>10);
    if(['hit','pool','stone','glass','vegetation'].includes(id))await page.screenshot({path:dir+'/'+viewport.width+'-'+id+'.png'});
   }
+  // Inspect all three stages on a freshly reset exterior pane.
+  await page.locator('#vegetation').click();
+  await page.locator('#reset').click();
+  for(let i=1;i<=3;i++){
+   await page.locator('#glass').click();
+   const status=await page.locator('#status').innerText();
+   assert.match(status,i<3?new RegExp('damaged '+i+'/3'):/shattered/);
+   await page.screenshot({path:dir+'/'+viewport.width+'-glass-stage-'+i+'.png'});
+  }
   await page.locator('#pause').click();await page.locator('#step').click();await page.locator('#gameZoom').click();
   assert.deepEqual(errors,[]);assert.equal(await page.locator('#breach3dCanvas').count(),1);
   await page.close();

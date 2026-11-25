@@ -12,7 +12,7 @@ export function bloodMarkRadius(mark:Pick<ImpactMark,'bloodKind'|'bloodAmount'>)
  return mark.bloodKind==='pool'?Math.min(18,6+3*Math.sqrt(amount)):Math.min(15,8+2*Math.sqrt(amount));
 }
 export function bloodMarkTint(mark:Pick<ImpactMark,'bloodKind'>):number{
- return mark.bloodKind==='pool'?0x92312f:0xab403b;
+ return mark.bloodKind==='pool'?0x703b37:0x763c38;
 }
 /** No independent timer or RNG. Sample only on a crossed fixed-tick
  * half-second boundary. Stable negative IDs cannot collide with positive

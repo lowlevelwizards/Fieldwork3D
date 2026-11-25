@@ -51,6 +51,7 @@ import {fireUrgency,passiveAimReadiness,contactAimOnAcquisition,
  from './breach-fire-urgency.ts';
 
 import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
+import {glassImpactDamage} from './breach-glass-damage.ts';
 import {CASING_LIMIT} from './breach-effects.ts';
 
 
@@ -262,8 +263,9 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     const at=segmentImpact(from,far,windowPaneSegment(pane));
     return at!==null&&at<=fraction+.0001;
   });
-  shatterStruckWindows(s,reachedPanes,Math.max(1,WEAPONS[a.weapon].damage));
-  shatterStruckDoorGlass(s,impact.glassDoorHits,fraction);
+  const glassDamage=glassImpactDamage(a.weapon);
+  shatterStruckWindows(s,reachedPanes,glassDamage);
+  shatterStruckDoorGlass(s,impact.glassDoorHits,fraction,glassDamage);
   damageStruckCover(s,impact.coverHits,WEAPONS[a.weapon].damage*.36,fraction,a.id);
   const materialImpacts=emitMaterialEvents(s,from,far,impact.materialHits,fraction);
   a.fireCd=WEAPONS[a.weapon].interval*1.6;

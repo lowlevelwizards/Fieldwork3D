@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {PRODUCTION_VFX} from '../src/rendering/breach-vfx-preview-config.ts';
-test('V11 production always enables the full VFX suite including lights',()=>{
- assert.deepEqual(PRODUCTION_VFX,{suite:true,grass:true,grassCell:192,bush:true,blood:true,impacts:true,pulses:true,glass:true,smoke:true,evidence:true,lights:true});
+test('V15 production enables combat effects and temporarily retires experimental foliage',()=>{
+ assert.deepEqual(PRODUCTION_VFX,{suite:true,grass:false,grassCell:192,bush:false,blood:true,impacts:true,pulses:true,glass:true,smoke:true,evidence:true,lights:true});
  assert.ok(Object.isFrozen(PRODUCTION_VFX));
 });
 test('renderer uses fixed production VFX, not query-string overrides',()=>{

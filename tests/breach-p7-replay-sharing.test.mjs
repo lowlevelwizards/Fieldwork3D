@@ -124,3 +124,12 @@ test('capture-side sharing avoids new plan and kit clones between independent ke
  assert.equal(moving.p.x,start+.05);
  assert.equal(keyframe.p.x,start+REPLAY_FULL_KEYFRAME_INTERVAL*.05);
 });
+
+ test('optional atmosphere shares only present histories and never creates missing fields',()=>{
+ const s=newSession(0),quiet=snapshot(s),next=snapshot(s);
+ shareUnchangedReplayFrame(quiet,next,1);assert.equal(Object.hasOwn(next,'atmosphere'),false);assert.deepEqual(next,quiet);
+ s.atmosphere=[{key:'shot:1',id:1,kind:'dust',p:{x:20,y:30},height:1,at:0}];
+ const a=snapshot(s),b=snapshot(s);shareUnchangedReplayFrame(a,b,2);assert.strictEqual(a.atmosphere,b.atmosphere);
+ s.atmosphere=[];const c=snapshot(s);shareUnchangedReplayFrame(b,c,3);assert.equal(Object.hasOwn(c,'atmosphere'),false);
+ applyReplayFrame(s,a);assert.equal(s.atmosphere.length,1);applyReplayFrame(s,c);assert.equal(s.atmosphere,undefined);
+ });

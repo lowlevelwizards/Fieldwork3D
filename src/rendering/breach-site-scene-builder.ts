@@ -970,20 +970,7 @@ export function buildSiteWorld(site:Site|null,host:SiteSceneBuildPort):void {
       const top=new THREE.Mesh(new THREE.CylinderGeometry(10.1,10.1,2,9),barrelTop);
       top.position.set(x,21,z);host.root.add(top);
     }
-    // Small intentional vegetation grouped around the outside boundaries.
-    const foliage=[host.solid(0x526749),host.solid(0x64724d),
-      host.solid(0x4b5f4b)],stem=host.solid(0x565546);
-    for(let i=0;i<105;i++){
-      const x=15+((i*73)%607),z=21+((i*129)%697);
-      if(x>107&&x<595&&z>98&&z<545)continue;
-      if(Math.abs(x-303)<73&&z>525)continue;
-      const m=host.box(host.root,x,3.5,z,2,7,2,stem,false);
-      const bush=new THREE.Mesh(new THREE.IcosahedronGeometry(1,0),
-        foliage[i%3]);bush.position.set(x,9,z);
-      bush.scale.set(6+(i%5)*2,6+(i%4)*2,7+(i%3)*2);
-      bush.castShadow=i%4===0;host.root.add(bush);
-      void m;
-    }
+    // Decorative exterior shrubs are temporarily retired in V15.
     // Exterior hardware makes the station identifiable as a real place.
     const pole=host.solid(0x655e4d);
     for(const [x,z] of [[84,150],[603,510]]){
