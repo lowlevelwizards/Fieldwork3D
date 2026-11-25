@@ -23,6 +23,7 @@ import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter} from './equipme
 import {sameWeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {weaponLightEmitting} from './equipment-weapon-light-operations.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
+import {bloodMarkRadius} from './breach-blood-evidence.ts';
 import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose} from './breach-impact-surface.ts';
 import {presentActor,presentDecor} from './rendering/breach-3d-disclosure-presenter.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
@@ -484,16 +485,18 @@ function renderWeaponLights2D(){
 function renderGroundMarks(){
   const state=getState();
   const replaying=isReplaying();
+  // Match 3D's conservative personal replay evidence policy until V19.
+  if(replaying&&replayKnowledge.observerId)return;
   for(const mark of state.impactMarks){
     // Surface-attached marks cannot be represented as unrelated floor circles.
     if(mark.surface!=='blood'&&(mark.surfaceRef||mark.shotId!==undefined||mark.surface!=='dust'||mark.height===undefined||mark.height>1))continue;
     if(!(replaying&&replayKnowledge.omniscient)&&!liveVisibility(state,mark.p))continue;
     const radius=mark.surface==='blood'?
-      confinedGroundRadius(mark.p,4,sessionWorldGeometry(state).walls):2.5;
+      confinedGroundRadius(mark.p,bloodMarkRadius(mark),sessionWorldGeometry(state).walls):2.5;
     if(radius<.5)continue;
-    draw.globalAlpha=Math.max(.18,.78-mark.age*.023);
+    draw.globalAlpha=mark.surface==='blood'?.90:Math.max(.18,.78-mark.age*.023);
     circle(mark.p.x,mark.p.y,radius,
-      mark.surface==='blood'?'#914a44':'#4e4b40');
+      mark.surface==='blood'?(mark.bloodKind==='pool'?'#92312f':'#ab403b'):'#4e4b40');
     draw.globalAlpha=1;
   }
  }

@@ -283,7 +283,8 @@ export function createShotResolver(ports:ShotResolverPorts){
     strike.stoppedHit?.height??(impact.surface==='dust'?1:14);
   retainImpactMark(s,{id:s.nextEffectId++,p:clone(end),
     surface:impact.surface,height:impactHeight,age:0,shotId,
-    surfaceRef:hit||civilianHit?undefined:strike.stoppedHit?.surfaceRef});
+    surfaceRef:hit||civilianHit?undefined:strike.stoppedHit?.surfaceRef,
+    ...(impact.surface==='blood'?{bloodKind:'splat' as const,bloodAmount:civilianHit?1:Math.max(1,severity)}:{})},WALLS);
 
   const nearSolid=COVER.some(c=>!c.low&&
     Math.abs(target.p.x-c.x)<=c.w/2+12&&

@@ -1,5 +1,7 @@
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {bloodMarkRadius,bloodMarkTint} from './breach-blood-evidence.ts';
+import {sampleBloodBurst,BLOOD_BURST_COUNT} from './rendering/breach-blood-burst.ts';
 import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose,isGroundImpactMark,type SurfaceMarkPose} from './breach-impact-surface.ts';
 import {hostileNpcTransitionKey,hostileCustodyWalkBlend}
  from './breach-hostile-pose-transition.ts';
@@ -288,7 +290,6 @@ export class TacticalScene3D{
     new URLSearchParams(location.search).get('fogDebug')==='palette'?
       'palette':'normal';
   /** Scratch list for occluding operators; avoids two arrays per RAF. */
-  private readonly bloodBlockerScratch:Pt[]=[];
   private readonly nearbyAllyScratch:Pt[]=[];
   private fogMemoryPaints=0;
   private fogSightPaints=0;
@@ -2991,7 +2992,7 @@ export class TacticalScene3D{
             this.impactPulseBatch=makeBloodDropletBatch(this.impactGeometry,20,'shot-pulse-batch');
             this.effects.add(this.impactPulseBatch.mesh);
           }
-          const color=shot.surface==='blood'?0xa65a4e:
+          const color=shot.surface==='blood'?0xb43d3b:
             shot.surface==='metal'?0xffd697:shot.surface==='glass'?0xc8e4df:
             shot.surface==='wood'?0xdfb27a:shot.surface==='stone'?0xbeb9a2:0xe2d3b1;
           this.impactPulseBatch.addPose(end.x,end.y,end.z,0,0,0,
@@ -3009,18 +3010,17 @@ export class TacticalScene3D{
         effect.impact.visible=visibility.impact&&impact.active;
       }
       if(this.bloodPreviewEnabled&&shot.surface==='blood'&&visibility.impact&&shot.age<profile.lifetime&&impact.opacity>0){
-        for(let i=0;i<4;i++){
-          const theta=shot.id*2.41+i*2.094,progress=shot.age/.40;
-          const radius=(2+15*progress)*.7;
-          const x=end.x+Math.cos(theta)*radius,z=end.z+Math.sin(theta)*radius;
-          const y=Math.max(2,end.y+6*Math.sin(Math.PI*progress)+i*1.5-4*progress);
-          if(!omniscient&&!this.presentationSight.query(s,'effect',shot.id+':chip:'+i,{x,y:z}))continue;
+        const sample=this.materialImpactScratch;
+        const yaw=shot.shotYaw??Math.atan2(end.z-start.z,end.x-start.x);
+        for(let i=0;i<BLOOD_BURST_COUNT;i++){
+          if(!sampleBloodBurst(shot.id,i,shot.age,yaw,end.x,end.y,end.z,sample))continue;
+          if(!omniscient&&!this.presentationSight.query(s,'effect',shot.id+':chip:'+i,{x:sample.x,y:sample.z}))continue;
           if(!this.dropletPreview){
             this.dropletPreview=makeBloodDropletBatch(this.tracerGeometry,
               this.materialImpactPreviewEnabled?MATERIAL_IMPACT_PARTICLE_LIMIT:BLOOD_DROPLET_CAPACITY);
             this.effects.add(this.dropletPreview.mesh);
           }
-          this.dropletPreview.add(x,y,z,theta,i,progress,impact.opacity);
+          this.dropletPreview.addMaterial(sample);
         }
       }
       const puffSurface=shot.surface??'dust';
@@ -3099,12 +3099,8 @@ export class TacticalScene3D{
     const bloodCamera=opticalCamera.position;
     const orthoBlood=opticalCamera instanceof THREE.OrthographicCamera;
     opticalCamera.getWorldDirection(this.bloodCameraDirection).negate();
-    const visibleBloodBlockers=this.bloodBlockerScratch;
-    visibleBloodBlockers.length=0;
-    if(s.impactMarks.length&&replayDisclosurePolicy?.mode!=='operator')
-     for(const actor of s.operators)
-      if(this.actors.get(actor.id)?.root.visible)
-       visibleBloodBlockers.push(actor.p);
+    // Opaque bodies already write depth. Do not hide an entire blood
+    // footprint just because its owner stands or lies over its center.
     let markCount=0,markDirty=0;
     for(let markIndex=0;markIndex<s.impactMarks.length;markIndex++){
       const mark=s.impactMarks[markIndex];
@@ -3153,14 +3149,14 @@ export class TacticalScene3D{
         s,'impact',mark.id,markPoint))continue;
       // Blood remains floor-aligned; environmental marks follow their surface.
       // Transparent architecture may not write depth, so a blood stain
-      // must also be culled when any part lies behind a cutaway wall or
-      // a visible miniature. Camera rays differ for ORTHO and WIDE.
+      // must also be culled when any part lies behind a cutaway wall.
+      // Opaque actors are handled by depth. Camera rays differ for ORTHO and WIDE.
       const radius=mark.surface==='blood'?
-        confinedGroundRadius(mark.p,4,s.site?.walls??WALLS):attached?.radius??2.3;
+        confinedGroundRadius(mark.p,bloodMarkRadius(mark),s.site?.walls??WALLS):attached?.radius??2.3;
       if(radius<.5)continue;
       if(mark.surface==='blood'&&groundBloodFootprintOccluded(
           mark.p,radius,bloodCamera,this.bloodCameraDirection,
-          orthoBlood,s.site?.walls??WALLS,visibleBloodBlockers,
+          orthoBlood,s.site?.walls??WALLS,[],
           WALL_VISUAL_HEIGHT))continue;
       if(mark.surface!=='blood'){
         const y=attached?.y??1;
@@ -3174,14 +3170,14 @@ export class TacticalScene3D{
           groundMarkHiddenByWallFromCamera(markPoint,bloodCamera,s.site?.walls??WALLS,WALL_VISUAL_HEIGHT,y))continue;
       }
       if(markCount>=IMPACT_MARK_LIMIT)break;
-      const dark=mark.surface==='blood'?0x763c38:
+      const dark=mark.surface==='blood'?bloodMarkTint(mark):
         mark.surface==='wood'?0x3a2920:
         mark.surface==='stone'?0x38332c:
         mark.surface==='metal'?0x202b2e:0x514e42;
       const groundRadius=radius,markY=attached?.y??(mark.surface==='blood'?.85:1);
       const nx=attached?.nx??0,ny=attached?.ny??1,nz=attached?.nz??0;
-      const fade=Math.max(.28,1-mark.age*.027);
-      const style=this.stainPreview?.styleFor(mark.surface,mark.p.x,mark.p.y)??-1;
+      const fade=mark.surface==='blood'?1:Math.max(.28,1-mark.age*.027);
+      const style=this.stainPreview?.styleFor(mark.surface,mark.p.x,mark.p.y,mark.bloodKind)??-1;
       const dirty=this.persistentEvidencePreview?this.impactMarkSlots.update(markCount,
         markPoint.x,markY,markPoint.y,groundRadius,dark,fade,style,nx,ny,nz):
         MARK_MATRIX_DIRTY|MARK_COLOR_DIRTY|MARK_STYLE_DIRTY;

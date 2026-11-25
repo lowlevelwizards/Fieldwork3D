@@ -66,7 +66,7 @@ export function mostRecentActiveMuzzleShot<T extends {
 
 export type ImpactSurface='blood'|'wood'|'stone'|'metal'|'glass'|'dust';
 const pulse:Record<ImpactSurface,number>={
- blood:4.5,wood:3.5,stone:2.65,metal:2.9,glass:2.55,dust:2.1
+ blood:7.5,wood:3.5,stone:2.65,metal:2.9,glass:2.55,dust:2.1
 };
 export function impactPulse(surface:ImpactSurface,age:number,
  lifespan:number){

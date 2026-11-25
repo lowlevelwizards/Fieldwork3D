@@ -4,6 +4,7 @@
  */
 import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
 import {advanceMedicalCondition} from './breach-medical-wounds.ts';
+import {sampleBleedingEvidence} from './breach-blood-evidence.ts';
 import {advanceDownedVitals,recordActualDown} from './breach-capture-vitals.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
@@ -80,6 +81,7 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
     }else battleEvent(s,'wound',casualty,casualty.p,
       casualty.name+' WOUND DETERIORATING');
   }
+  sampleBleedingEvidence(s,h);
   // Only attached/releasing hands need D4 reach checks. A valid
   // grip can request a wider opening, but the exact hinge/body sweep
   // below remains the sole authority to move the panel.
