@@ -23,8 +23,13 @@ const weathering:Readonly<Record<VisualMaterialRole,number>>={
 export function ageMaterialColor(hex:number,surface:PixelSurface|undefined,
  level:number,variation=0):number{
  const role=surfaceVisualRole(surface??'metal');
+ // Bright paint, ceramic and polymer keep more of their authored hue.
+ // Raw steel retains its existing cool material response; timber and cloth
+ // remain warm rather than converging on the same dark neutral.
+ const retention=role==='paint'?.72:role==='ceramic'?.65:role==='polymer'?.8:
+  role==='wood'||role==='fabric'?.88:1;
  const t=clamp(Math.pow(clamp(level/100),1.3)*
-  (.52+Math.max(-1,Math.min(1,variation))*.05)*weathering[role]);
+  (.52+Math.max(-1,Math.min(1,variation))*.05)*weathering[role]*retention);
  if(t<=0)return hex;
  const rgb=targets[role];
  const a=(hex>>>16)&255,b=(hex>>>8)&255,c=hex&255;

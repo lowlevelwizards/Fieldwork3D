@@ -49,7 +49,8 @@ try{
     window.w8={scene,newSession,team,activateSite};
    },{width,height});
    for(const [seed,archetype,condition] of selected){
-    if(label==='pre-w0'&&seed!==23&&seed!==97)continue;
+    // Historical anchors plus aged warehouse for a larger structural witness.
+    if(label==='pre-w0'&&![23,97,127].includes(seed))continue;
     const result=await page.evaluate(({seed,serialized})=>{
      const {scene,newSession,team,activateSite}=window.w8;
      const site=JSON.parse(serialized);activateSite(site);
@@ -79,7 +80,7 @@ try{
      for(const all of [false,true]){
       draw(all);draw(all);
       for(let i=0;i<6;i++){
-       const counts={view:all?'full':'known',main:0,shadow:0,structural:0,wallWithWear:0,mainTriangles:0,shadowTriangles:0,mainFamilies:{},shadowFamilies:{},transparent:0,materials:0,ms:0};
+       const counts={view:all?'full':'known',main:0,shadow:0,structural:0,wallWithWear:0,mainTriangles:0,shadowTriangles:0,mainLineIndices:0,mainPointVertices:0,mainFamilies:{},shadowFamilies:{},transparent:0,materials:0,ms:0};
        const mats=new Set();
        renderer.renderBufferDirect=function(...args){
         const [,,geometry,material,obj,group]=args,shadow=!!material?.isMeshDepthMaterial||!!material?.isMeshDistanceMaterial;
@@ -88,7 +89,10 @@ try{
         const available=geometry.index?.count??geometry.attributes.position?.count??0;
         const start=Math.max(geometry.drawRange.start,group?.start??0);
         const end=Math.min(available,geometry.drawRange.start+geometry.drawRange.count,group?group.start+group.count:Infinity);
-        const triangles=Math.max(0,end-start)/3*(obj.isInstancedMesh?obj.count:1);
+        const submitted=Math.max(0,end-start)*(obj.isInstancedMesh?obj.count:1);
+        const triangles=obj.isMesh?submitted/3:0;
+        if(!shadow&&obj.isLine)counts.mainLineIndices+=submitted;
+        if(!shadow&&obj.isPoints)counts.mainPointVertices+=submitted;
         if(shadow){counts.shadow++;counts.shadowTriangles+=triangles;}
         else{counts.main++;counts.mainTriangles+=triangles;mats.add(material);if(material.transparent)counts.transparent++;
          if(structural.has(family))counts.structural++;
@@ -144,6 +148,8 @@ try{
   for(const mode of ['known','full']){
    const value=r=>({structural:max(r,mode,'structural'),wallWithWear:max(r,mode,'wallWithWear'),main:max(r,mode,'main'),shadow:r.samples.find(s=>s.view===mode).shadow});
    const now=value(c),prior=value(w),historical=h?value(h):null;
+   for(const k of ['structural','wallWithWear','main','shadow'])check(now[k]<=prior[k],'W8 draw regression '+c.seed+' '+mode+' '+k+' '+JSON.stringify({prior,now}));
+   for(const k of ['wallMipBytes','floorMipBytes','patinaMipBytes'])check(c.atlas[k]<=w.atlas[k],'W8 atlas budget regression '+c.seed+' '+k);
    const historicalComparable=h?['knownBefore','knownAfter','initialVisible','initialCover','fullVisible','siteCounts'].every(k=>JSON.stringify(h[k])===JSON.stringify(c[k])):false;
    pairs.push({seed:c.seed,view:c.view,mode,prior,now,historical,historicalComparable,geometryOnlyReduction:historicalComparable?1-now.structural/historical.structural:null,wallReduction:historicalComparable?1-now.wallWithWear/historical.wallWithWear:null});
   }
