@@ -18,7 +18,7 @@ const retiredShrub=(id:string)=>['shrub-round','shrub-tall','bush','hedge'].incl
 import {serviceFixtureInRoad} from './road-service-fixtures.ts';
 import {planPublicStreet,overlapsPublicStreetRoad} from './public-street-layout.ts';
 import {landscapePhysicalFootprint,TREE_FIXTURES} from './landscape-footprint.ts';
-import {outdoorFixtureAllowed,frontageEdgeCandidates}
+import {outdoorFixtureAllowed,frontageEdgeCandidates,expandFrontageCandidates}
  from './outdoor-fixture-policy.ts';
 const overlaps=(a:Obstacle,b:Obstacle)=>Math.abs(a.x-b.x)<(a.w+b.w)/2+17&&Math.abs(a.y-b.y)<(a.h+b.h)/2+17;
 export function addExteriorProperty(site:Site,seed:number):Site{
@@ -36,7 +36,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
  const middleX=(minX+maxX)/2,middleY=(minY+maxY)/2;
  const frontKind:ExteriorZone['kind']=industrial?'driveway':
    kind==='clinic'||kind==='retail'||kind==='motel'?'parking':'yard';
- const backKind:ExteriorZone['kind']=industrial?'service':
+ const backKind:ExteriorZone['kind']=industrial||['retail','office','clinic'].includes(kind)?'service':
    residential?'garden':'patio';
  type Cardinal='north'|'south'|'east'|'west';
  const opposite:Record<Cardinal,Cardinal>={
@@ -75,7 +75,8 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    side==='west'?minX-bounds.minX:side==='north'?
    minY-bounds.minY:bounds.maxY-maxY;
  sideOptions.sort((a,b)=>freeGap(b)-freeGap(a));
- edgeZone(sideOptions[0],'side-passage',industrial?'service':'yard',42);
+ const sideService=industrial||(['restaurant','motel'].includes(kind)&&freeGap(sideOptions[0])>=88);
+ edgeZone(sideOptions[0],'side-passage',sideService?'service':'yard',sideService?64:42);
  // Open courts and step-backs are exterior, not missing room floors. Dress
  // their surfaces without placing a random crate in the circulation gap.
  const xEdges=[...new Set(site.rooms.flatMap(r=>[r.x,r.x+r.w]))].sort((a,b)=>a-b);
@@ -109,7 +110,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
  const protectedPoints=[...site.spawn,...site.enemies,site.objective,site.extract,site.entrance];
  const worldBounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
  for(const zone of zones){
-  const requests=exteriorRoleRequests(kind,zone);
+  const requests=exteriorRoleRequests(kind,zone,seed);
   const budget=exteriorRoleBudget(zone);
   let acceptedRoles=0;
   for(const request of requests){
@@ -123,7 +124,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    // No relaxation of the existing door, spawn, road or overlap rules.
    for(const item of request.alternatives){
     if(retiredShrub(item)||!outdoorFixtureAllowed(site,zone,item))continue;
-    if(cover.slice(site.cover.length).some(o=>o.fixture===item&&
+    if(cover.some((o,index)=>index>=site.cover.length&&o.fixture===item&&
       Math.abs(o.x-zone.x)<=zone.w/2&&Math.abs(o.y-zone.y)<=zone.h/2))continue;
    const asset=propDefinition(item);if(!asset)continue;
    const footprint=landscapePhysicalFootprint(item,asset.width,asset.depth);
@@ -143,14 +144,14 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    const edgeSpots=serviceEdge?serviceYardEdgeCandidates(zone,w,h,item):[];
    if(zone.w<w+22||zone.h<h+22)continue;
    let accepted=false;
-   const fixed=streetSpots??(serviceEdge?edgeSpots:null);
+   const fixed=expandFrontageCandidates(zone,item,streetSpots)??(serviceEdge?edgeSpots:null);
    for(let attempt=0;attempt<(fixed?fixed.length:12);attempt++){
     const edge=fixed?.[attempt];
     const x=edge?.x??zone.x+(rng()-.5)*Math.max(0,zone.w-w-20);
     const y=edge?.y??zone.y+(rng()-.5)*Math.max(0,zone.h-h-18);
     // A commercial machine and its customer-facing side must actually sit
     // within the site's accessible front forecourt; never behind a wall.
-    if(item==='vending-machine'&&(
+    if((
        x-w/2<zone.x-zone.w/2||x+w/2>zone.x+zone.w/2||
        y-h/2<zone.y-zone.h/2||y+h/2>zone.y+zone.h/2))continue;
     const facesService=zone.kind==='service'&&

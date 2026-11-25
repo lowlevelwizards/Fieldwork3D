@@ -15,7 +15,7 @@ const sign=role('wayfinding','wayfinding-sign','parking-sign');
 const lights=role('street-infrastructure','street-lamp','hydrant');
 const hydrant=role('municipal-water','hydrant');
 const vending=role('customer-service','vending-machine');
-export function exteriorRoleRequests(kind:BuildingArchetype,zone:ExteriorZone):readonly ExteriorRoleRequest[]{
+export function exteriorRoleRequests(kind:BuildingArchetype,zone:ExteriorZone,seed=0):readonly ExteriorRoleRequest[]{
  const residential=['house','townhouse','apartment','motel'].includes(kind);
  const industrial=['garage','warehouse','utility'].includes(kind);
  const front=zone.id==='arrival-forecourt';
@@ -24,14 +24,20 @@ export function exteriorRoleRequests(kind:BuildingArchetype,zone:ExteriorZone):r
  if(zone.kind==='service'){
   if(court)return industrial?[utilities,freight]:[bin];
   if(kind==='garage')return [utilities,role('repair','tire-stack','tool-chest','compressor'),waste,freight,role('edge-protection','bollard')];
-  if(kind==='warehouse')return [freight,waste,utilities,role('storage','shipping-container','storage-tote','crate'),role('edge-protection','bollard')];
+  if(kind==='warehouse')return [...(seed%4===0?[waste,freight]:[freight,waste]),utilities,role('storage','shipping-container','storage-tote','crate'),role('edge-protection','bollard')];
   if(kind==='utility')return [utilities,role('maintenance','cable-reel','storage-tote'),waste,role('edge-protection','bollard')];
   return [waste,freight,utilities,bin];
  }
  if(front&&zone.kind==='parking'){
   const parking=role('parking-identification','parking-sign');
-  return kind==='clinic'?[seat,sign,parking,role('edge-protection','bollard'),bin,lights]:
-    [parking,sign,vending,seat,lights,hydrant,role('bike-parking','bike-rack'),role('edge-protection','bollard'),bin];
+  // Rotate optional frontage priorities across seeds so scarce legal
+  // space doesn't eliminate a whole fixture family from the population.
+  const street=seed%2===0?[lights,hydrant]:[hydrant,lights];
+  const amenities=[vending,seat,...street];
+  const shift=((seed%4)+4)%4;
+  const rotated=[...amenities.slice(shift),...amenities.slice(0,shift)];
+  return kind==='clinic'?[seat,sign,parking,...street,role('edge-protection','bollard'),bin]:
+    [parking,...rotated,sign,role('bike-parking','bike-rack'),role('edge-protection','bollard'),bin];
  }
  if(front&&zone.kind==='driveway')return [role('edge-protection','bollard'),sign,lights,bin];
  if(front&&['house','townhouse'].includes(kind))return [role('postal','mailbox'),tree,bin,role('porch-seating','patio-chair','picnic-table'),lights];

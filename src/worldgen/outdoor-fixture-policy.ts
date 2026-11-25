@@ -127,3 +127,22 @@ export function frontageEdgeCandidates(
  return sides.map(edge=>along==='x'?
    {x:edge,y:outer}:{x:outer,y:edge});
 }
+
+/** V18: expand only the general frontage hardware row, not the reserved
+ * parking sign or facade-oriented vending positions. Reuse the exact
+ * original setback and endpoint calculation; no extra road/sidewalk plans. */
+export function expandFrontageCandidates(
+ zone:ExteriorZone,fixture:string,points:Pt[]|null
+):Pt[]|null{
+ if(!points||points.length!==2||zone.id!=='arrival-forecourt'||
+    fixture==='vending-machine'||fixture==='parking-sign')return points;
+ const [a,b]=points;
+ const length=Math.hypot(b.x-a.x,b.y-a.y);
+ if(length<80)return points;
+ const result=points.slice();
+ // Prefer existing endpoints, then quarter positions, then intermediate
+ // positions. The original clearance validator still owns acceptance.
+ for(const t of [.25,.75,.125,.875,.375,.625])
+   result.push({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t});
+ return result;
+}

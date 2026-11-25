@@ -22,3 +22,17 @@ test('V18 programs distinguish actual property functions and scale budgets',()=>
  assert.ok(exteriorRoleBudget(zone('yard'))>exteriorRoleBudget({...zone('yard'),w:100,h:60}));
  assert.equal(exteriorRoleBudget({...zone('yard','court-0'),w:70,h:70}),0);
 });
+
+import {expandFrontageCandidates} from '../src/worldgen/outdoor-fixture-policy.ts';
+test('V18 frontage row offers bounded additional slots without moving special anchors',()=>{
+ const z=zone('parking'),points=[{x:0,y:80},{x:200,y:80}];
+ const expanded=expandFrontageCandidates(z,'street-lamp',points);
+ assert.equal(expanded.length,8);
+ assert.deepEqual(expanded.slice(0,2),points);
+ assert.ok(expanded.every(p=>p.y===80&&p.x>=0&&p.x<=200));
+ assert.equal(expandFrontageCandidates(z,'vending-machine',points),points);
+ assert.equal(expandFrontageCandidates(z,'parking-sign',points),points);
+ assert.equal(expandFrontageCandidates(z,'street-lamp',null),null);
+ assert.notDeepEqual(exteriorRoleRequests('retail',z,0),exteriorRoleRequests('retail',z,1));
+ assert.deepEqual(exteriorRoleRequests('retail',z,1),exteriorRoleRequests('retail',z,1));
+});
