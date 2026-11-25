@@ -78,6 +78,13 @@ test('C4 palette chooses disclosed civilians at selected waypoint, not final rou
  const tied=[{id:'stable-1',p:{x:10,y:10}},{id:'stable-2',p:{x:10,y:10}}];
  assert.equal(nearestPaletteCandidate(tied,{x:11,y:11},()=>true).id,'stable-1');
  assert.equal(state.length,3,'no sort or mutation');
+ // An explicit person selection narrows candidates without changing range,
+ // disclosure or nearest ordering; absent focus retains the original set.
+ const focused=(id)=>state.filter(c=>!id||c.id===id);
+ assert.equal(nearestPaletteCandidate(focused(null),{x:100,y:100},c=>c.health>0),first);
+ assert.equal(nearestPaletteCandidate(focused(last.id),{x:100,y:100},c=>c.health>0),null);
+ assert.equal(nearestPaletteCandidate(focused(down.id),{x:100,y:100},c=>c.health<=0),down);
+ assert.equal(nearestPaletteCandidate(focused(down.id),{x:100,y:100},c=>c.health>0),null);
 });
 test('C4 palette only offers endpoint-authorized civilian actions',()=>{
  assert.equal(canOfferRouteEndCivilianAction(undefined,[]),true);
@@ -97,7 +104,8 @@ test('C4 palette only offers endpoint-authorized civilian actions',()=>{
  assert.match(palette,/const followingAtPlan=civilianContact\('stop-following'\)/);
  assert.match(palette,/sweptBodyClear\(from,to,state\.doors,\s*1\.5,/);
  assert.match(palette,/const casualtyAtPlan=routeEndCivilianActions\?/);
- assert.match(palette,/nearestPaletteCandidate\(state\.civilians,at/);
+ assert.match(palette,/const focusedCivilians=state\.civilians\.filter\(c=>!input\.personFocusId\|\|c\.id===input\.personFocusId\)/);
+ assert.match(palette,/nearestPaletteCandidate\(focusedCivilians,at/);
  assert.match(palette,/liveVisibility\(state,c\.p\)/);
 });
 test('C4 actual palette preserves location-specific nearest-target ordering',()=>{
@@ -110,7 +118,8 @@ test('C4 actual palette preserves location-specific nearest-target ordering',()=
  assert.match(palette,/const followingAtPlan=civilianContact\('stop-following'\)/);
  assert.match(palette,/sweptBodyClear\(from,to,state\.doors,\s*1\.5,/);
  assert.match(palette,/const casualtyAtPlan=routeEndCivilianActions\?/);
- assert.match(palette,/nearestPaletteCandidate\(state\.civilians,at/);
+ assert.match(palette,/const focusedCivilians=state\.civilians\.filter\(c=>!input\.personFocusId\|\|c\.id===input\.personFocusId\)/);
+ assert.match(palette,/nearestPaletteCandidate\(focusedCivilians,at/);
  assert.match(palette,/liveVisibility\(state,c\.p\)/);
  assert.doesNotMatch(palette,/paletteDistance\(finalPoint\(a\),c\.p\)<34/);
 });

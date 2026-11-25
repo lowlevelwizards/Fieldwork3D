@@ -2,7 +2,7 @@
  * Keep this module pure: it chooses intent, never changes a plan or selection.
  * A precisely touched object beats a nearby selection halo. */
 export type TacticalPickKind=
-  'operator'|'node'|'watch'|'activeWatch'|'flash'|'problem'|'door'|'route';
+  'operator'|'node'|'watch'|'activeWatch'|'flash'|'problem'|'door'|'route'|'person';
 export type TacticalPick={
   kind:TacticalPickKind;
   distancePx:number;
@@ -15,11 +15,12 @@ export type TacticalPick={
   routeIndex?:number;
   routePoint?:{x:number;y:number};
   doorId?:string;
+  personId?:string;
 };
 const TIE_PX=5;
 const kindRank:Record<TacticalPickKind,number>={
   problem:0,activeWatch:1,watch:2,flash:3,
-  operator:4,node:5,door:6,route:7
+  operator:4,person:5,node:6,door:7,route:8
 };
 /** Selection priority only breaks genuinely close geometric ties.
  * Selection history, hidden actors and world-unit proximity play no role. */
@@ -56,8 +57,8 @@ export function resolveTacticalPick(
     }
     if(delta!==0)return delta;
     // Stable regardless of actor array iteration order.
-    const first=(a.owner??'')+':'+(a.nodeId??'')+':'+(a.doorId??'');
-    const second=(b.owner??'')+':'+(b.nodeId??'')+':'+(b.doorId??'');
+    const first=(a.owner??'')+':'+(a.nodeId??'')+':'+(a.doorId??'')+':'+(a.personId??'');
+    const second=(b.owner??'')+':'+(b.nodeId??'')+':'+(b.doorId??'')+':'+(b.personId??'');
     return first.localeCompare(second);
   })[0];
 }

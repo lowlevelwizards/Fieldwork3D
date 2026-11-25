@@ -24,6 +24,7 @@ import {sameWeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {weaponLightEmitting} from './equipment-weapon-light-operations.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
 import {bloodMarkRadius} from './breach-blood-evidence.ts';
+import {impactFinishScale} from './rendering/breach-impact-finish-scale.ts';
 import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose} from './breach-impact-surface.ts';
 import {presentActor,presentDecor} from './rendering/breach-3d-disclosure-presenter.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
@@ -537,7 +538,7 @@ function renderGroundMarks(){
    }
    if(!point||!omni&&!liveVisibility(s,point))continue;
    draw.globalAlpha=.9;
-   circle(point.x,point.y,2.5+.4*((mark.damageCount??1)-1),mark.surface==='metal'?'#242b2b':'#3a3028');
+   circle(point.x,point.y,(2.5+.4*((mark.damageCount??1)-1))*impactFinishScale(s.site,ref),mark.surface==='metal'?'#242b2b':'#3a3028');
    draw.globalAlpha=1;
   }
  }

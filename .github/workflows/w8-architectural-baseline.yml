@@ -55,7 +55,7 @@ jobs:
           echo "W8_W7_ROOT=$RUNNER_TEMP/w8-w7" >> "$GITHUB_ENV"
       - name: Pin exact current release base
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || '516c50378249e79e70b54fe3f51c7746ef67ddae' }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '1420e25c00d50be56db9a9ed76de5b6ea30a62ca' }}
         run: |
           git fetch --no-tags --depth=1 origin "$BASE_SHA"
           git worktree add --detach "$RUNNER_TEMP/w8-base" "$BASE_SHA"
@@ -88,7 +88,7 @@ jobs:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
       - name: Pin live comparison base
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || '516c50378249e79e70b54fe3f51c7746ef67ddae' }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '1420e25c00d50be56db9a9ed76de5b6ea30a62ca' }}
         run: |
           git fetch --no-tags --depth=1 origin "$BASE_SHA"
           git worktree add --detach "$RUNNER_TEMP/w8-live-base" "$BASE_SHA"

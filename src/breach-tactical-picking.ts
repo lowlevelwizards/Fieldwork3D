@@ -3,6 +3,7 @@
 import {doorCenter,doorLeafSegment,type Pt} from './breach-core.ts';
 import {team,liveVisibility,insertPlanNode,type Session,type TeamActor}
  from './breach-game.ts';
+import {presentActor,presentCivilian} from './rendering/breach-3d-disclosure-presenter.ts';
 import {doorKnown} from './breach-intel.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {resolveTacticalPick,screenSegmentDistance,
@@ -31,16 +32,25 @@ export function pickTacticalTarget(input:TacticalPickInput):TacticalPick|null{
 
   if(replaying)return null;
   const touch=pointerKind==='touch',pen=pointerKind==='pen';
+  const people:TacticalPick[]=[];
+  for(const a of state.operators){
+    if(a.side!=='red'||!presentActor(state,a,false,null))continue;
+    people.push({kind:'person',personId:a.id,distancePx:distance(worldToScreen(a.p,viewMode==='plan2d'?0:a.health>0?24:4),screen),corePx:touch?20:pen?17:14});
+  }
+  for(const c of state.civilians){
+    if(!presentCivilian(state,c,false,null))continue;
+    people.push({kind:'person',personId:c.id,distancePx:distance(worldToScreen(c.p,viewMode==='plan2d'?0:c.health>0?18:4),screen),corePx:touch?20:pen?17:14});
+  }
   // GO/PAUSE still permit direct operator selection. The rest of the
   // planning surface is deliberately non-interactive while executing.
   if(state.phase!=='planning'){
-    return resolveTacticalPick(team(state).filter(a=>a.health>0).map(a=>({
+    return resolveTacticalPick([...people,...team(state).filter(a=>a.health>0).map(a=>({
       kind:'operator' as const,owner:a.id,
       distancePx:distance(worldToScreen(a.p,viewMode==='plan2d'?0:24),screen),
       corePx:touch?24:pen?18:14,haloPx:touch?34:pen?26:21
-    })),selected);
+    }))],selected);
   }
-  const hits:TacticalPick[]=[];
+  const hits:TacticalPick[]=[...people];
   const actor=uid(selected);
   for(const unit of team(state)){
     if(unit.health<=0)continue;
