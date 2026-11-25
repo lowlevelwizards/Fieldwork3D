@@ -16,7 +16,8 @@ import {SITE_EXTERIOR_ZONE_COLORS,SITE_PROPERTY_SURFACE_COLORS}
  from './breach-site-surface-policy.ts';
 import {planServiceDockBumpers} from '../worldgen/service-facade-program.ts';
 import {planFacadeAwnings} from '../worldgen/facade-awnings.ts';
-import {planPropertySurfaces} from '../worldgen/property-surfaces.ts';
+import {planPropertySurfaces,type SurfaceKind} from '../worldgen/property-surfaces.ts';
+import {ExteriorFinishPackets,isFlatExteriorFinish} from './exterior-finish-packets.ts';
 import {planPublicStreet} from '../worldgen/public-street-layout.ts';
 import {curbRampWedge,CURB_GROUND_LEVELS} from './curb-ramp-wedge.ts';
 import {WALL_VISUAL_HEIGHT,DOOR_CLEAR_VISUAL_HEIGHT}
@@ -167,6 +168,8 @@ export function buildSiteExterior(site:Site,host:SiteExteriorBuildHost):void{
     const curbMaterial=host.track(new THREE.MeshStandardMaterial({
       color:age(0xa6a399,'concrete'),roughness:.96,
       metalness:0,flatShading:true,side:THREE.DoubleSide}));
+    const finishPackets=new ExteriorFinishPackets();
+    const finishMaterials=new Map<SurfaceKind,THREE.Material>();
     for(const mark of planPropertySurfaces(site)){
       if(mark.kind==='curb-ramp'){
         const wedge=curbRampWedge(mark,site.entrySide??'south');
@@ -187,12 +190,22 @@ export function buildSiteExterior(site:Site,host:SiteExteriorBuildHost):void{
           mark.y,mark.width,thickness,mark.depth,curbMaterial,false);
         continue;
       }
+      if(isFlatExteriorFinish(mark.kind)){
+        let material=finishMaterials.get(mark.kind);
+        if(!material){
+          const surface=mark.kind==='work-wear'?'packed-earth':'concrete';
+          material=host.solid(age(surfaceColor[mark.kind],surface),.91,surface);
+          finishMaterials.set(mark.kind,material);
+        }
+        finishPackets.add(mark,material);continue;
+      }
       host.box(host.root,mark.x,propertySurfaceCenterHeight(mark.kind),
         mark.y,mark.width,PROPERTY_SURFACE_THICKNESS,
         mark.depth,host.solid(age(surfaceColor[mark.kind],
           mark.kind==='planting-bed'?'packed-earth':
           mark.kind==='planting-edge'?'gravel':'concrete')),false);
     }
+    finishPackets.flush(host.root);
     // The public carriageway runs along the LOT boundary, not up the
     // pedestrian approach to the front door. One street layout also owns
     // sidewalks, curb cuts and worldgen street-exclusion checks.

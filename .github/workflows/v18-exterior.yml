@@ -1,0 +1,70 @@
+name: V18 exterior baseline and furnishing
+on:
+  pull_request:
+    paths:
+      - 'docs/vfx-v18-exterior-composition-scope.md'
+      - 'scripts/audit-v18-exteriors.mjs'
+      - 'src/worldgen/exterior-sites.ts'
+      - 'src/worldgen/exterior-role-program.ts'
+      - 'src/worldgen/exterior-finish-details.ts'
+      - 'src/worldgen/property-surfaces.ts'
+      - 'src/rendering/breach-site-exterior-builder.ts'
+      - 'src/rendering/exterior-finish-packets.ts'
+      - 'src/worldgen/exterior-furnishing-diagnostics.ts'
+      - 'src/map-lab-main.ts'
+      - 'scripts/verification/v18-exterior-browser.mjs'
+      - 'scripts/verification/v18-replay-compat.mjs'
+      - 'tests/breach-roadmap2-stage1-contracts.test.mjs'
+      - 'tests/v18-exterior-finishes.test.mjs'
+      - 'tests/v18-exterior-role-program.test.mjs'
+      - '.github/workflows/v18-exterior.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/v18-exterior-role-program.test.mjs tests/worldgen-28a-entrance-lane.test.mjs tests/worldgen-28b-parking-layout.test.mjs tests/worldgen-28c-service-yards.test.mjs tests/exterior-realism-stage1-20261108.test.mjs tests/exterior-amenities-service-20261108.test.mjs tests/exterior-landscape-service-f-20261108.test.mjs tests/outdoor-service-seating-20261108.test.mjs tests/v18-exterior-finishes.test.mjs tests/map-16-property-surfaces.test.mjs tests/exterior-surface-depth-20261112.test.mjs tests/breach-roadmap3-site-exterior.test.mjs tests/architecture-18a-property-access.test.mjs tests/exterior-composition-g-20261108.test.mjs
+      - run: node --experimental-strip-types scripts/audit-v18-exteriors.mjs 4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v18-exterior-manifest
+          path: v18-exterior-baseline.json
+      - run: npm run check
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || 'main' }}
+          path: v18-before
+      - run: npm install --prefix v18-before --no-audit --no-fund
+      - run: node --experimental-strip-types scripts/verification/v18-replay-compat.mjs
+        env:
+          V18_BASE_DIR: v18-before
+      - run: node scripts/verification/v18-exterior-browser.mjs
+        env:
+          V18_BASE_DIR: v18-before
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v18-exterior-browser
+          path: artifacts/v18-exterior-browser/
+          if-no-files-found: ignore

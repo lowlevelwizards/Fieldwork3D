@@ -8,13 +8,15 @@ import {planRearServiceMarks} from './rear-service-program.ts';
 import {planPublicStreet,type StreetRect} from './public-street-layout.ts';
 import {planLandscapeBedMarks} from './landscape-bed-surfaces.ts';
 import {planServiceBoundaryMarks} from './service-boundary-marks.ts';
+import {planExteriorFinishDetails} from './exterior-finish-details.ts';
 export type SurfaceKind='path'|'driveway-stripe'|'parking-divider'|
  'garden-border'|'service-pad'|'patio-paver'|'drainage-grate'|
  'sidewalk'|'curb-edge'|'curb-ramp'|'crosswalk-stripe'|
  'reserved-parking'|'access-hatch'|'stall-end-line'|
  'loading-zone'|'maintenance-bay'|'waste-collection'|'clear-route'|
  'planting-bed'|'planting-edge'|
- 'waste-bay-line'|'utility-bay-line'|'loading-bay-line';
+ 'waste-bay-line'|'utility-bay-line'|'loading-bay-line'|
+ 'amenity-apron'|'work-wear'|'pavement-joint';
 export type PropertySurface={
  id:string;zoneId:string;kind:SurfaceKind;
  x:number;y:number;width:number;depth:number;
@@ -175,5 +177,5 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
   clipped.push({...mark,x:(minX+maxX)/2,y:(minY+maxY)/2,
     width:maxX-minX,depth:maxY-minY});
  }
- return clipped;
+ return [...clipped,...planExteriorFinishDetails(site,clipped)];
 }
