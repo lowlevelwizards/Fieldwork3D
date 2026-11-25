@@ -8,7 +8,7 @@ import type {PixelSurface} from '../rendering/pixel-recipes.ts';
 export const WALL_EFFECTS=['fade','contact','chip','damp','runoff','crack','repair'] as const;
 export type WallEffect=typeof WALL_EFFECTS[number];
 export type WallEffectFilter='all'|'none'|WallEffect;
-export type WallAudition={effect:WallEffectFilter};
+export type WallAudition={effect:WallEffectFilter;atlas?:boolean};
 export type SurfaceEvent={kind:WallEffect;cause:string;x:number;y:number;width:number;height:number;threshold:number;priority:number};
 export type WallSurfaceRecipe={length:number;height:number;face:-1|1;color:number;surface:PixelSurface;band?:{color:number;top:number};events:SurfaceEvent[]};
 const clamp=(n:number,a=0,b=1)=>Math.max(a,Math.min(b,n));
@@ -16,17 +16,31 @@ const hash=(n:number)=>((Math.imul(n^(n>>>16),0x45d9f3b)>>>0)/4294967295);
 const random=(seed:number,salt:number)=>hash(Math.imul(seed+salt,0x9e3779b1));
 /** Physical local x follows segment a->b, y increases down from crown.
  * This pilot paints one eligible broad face; W3 packs independent faces. */
-export function planWallSurface(site:Site,index:number,height:number):WallSurfaceRecipe{
+export function planWallSurface(site:Site,index:number,height:number,requestedFace?:-1|1):WallSurfaceRecipe{
  const w=site.walls[index],dx=w.b.x-w.a.x,dy=w.b.y-w.a.y;
  const length=Math.hypot(dx,dy)||1,seed=site.seed^Math.imul(index+1,65161);
  const exposure=wallExposure(site,index);
- const surface=wallPixelSurface(site.archetype),theme=buildingTheme(site.archetype,site.seed),color=theme.wall;
+ let surface=wallPixelSurface(site.archetype);const theme=buildingTheme(site.archetype,site.seed);let color=theme.wall;
  // A coherent building-wide accent, not a random color for each wall.
- const band=['garage','utility','warehouse','clinic','retail'].includes(site.archetype??'')||site.archetype==='house'&&site.seed%3===0?{color:theme.door,top:height*.67}:undefined;
+ let band=['garage','utility','warehouse','clinic','retail'].includes(site.archetype??'')||site.archetype==='house'&&site.seed%3===0?{color:theme.door,top:height*.67}:undefined;
  const mx=(w.a.x+w.b.x)/2,my=(w.a.y+w.b.y)/2,nx=-dy/length,ny=dx/length;
  const roomAt=(side:number)=>site.rooms.find(r=>mx+nx*9*side>r.x+1&&mx+nx*9*side<r.x+r.w-1&&my+ny*9*side>r.y+1&&my+ny*9*side<r.y+r.h-1);
  const wet=(side:number)=>['bathroom','restroom','laundry','utility'].includes(roomAt(side)?.purpose??'');
- const face:-1|1=exposure.exterior?exposure.side:wet(1)?1:wet(-1)?-1:random(seed,1)<.5?-1:1;
+ const face:-1|1=requestedFace??(exposure.exterior?exposure.side:wet(1)?1:wet(-1)?-1:random(seed,1)<.5?-1:1);
+ const exposed=exposure.exterior&&(requestedFace===undefined||face===exposure.side);
+ if(requestedFace!==undefined){
+  const room=roomAt(face),kind=site.archetype??'house',purpose=room?.purpose??'';
+  if(exposed){
+   surface=['house','motel'].includes(kind)?'siding':['townhouse','apartment'].includes(kind)?'brick':kind==='warehouse'?'panel':['garage','utility'].includes(kind)?'cinderblock':'plaster';
+   color=surface==='brick'?mixWallColor(theme.wall,0x9c6d55,.58):mixWallColor(theme.wall,theme.trim,.18);
+   band=undefined;
+  }else if(wet(face)||['kitchen','exam','treatment'].includes(purpose)){
+   surface='tile';color=theme.tile;band=undefined;
+  }else{
+   surface=['garage','utility'].includes(kind)&&['bay','workshop','service','maintenance','storage','equipment'].includes(purpose)?'cinderblock':kind==='warehouse'&&['loading','storage','packing','aisle'].includes(purpose)?'panel':'plaster';
+   band=room&&(['clinic','garage','warehouse','retail','utility'].includes(kind)||room.kind==='hall')?{color:theme.door,top:height*.67}:undefined;
+  }
+ }
  const events:SurfaceEvent[]=[];
  const add=(kind:WallEffect,cause:string,x:number,y:number,width:number,h:number,threshold:number,priority:number)=>{
   if(width<=0||h<=0)return;
@@ -36,7 +50,7 @@ export function planWallSurface(site:Site,index:number,height:number):WallSurfac
  const ends=[0,length];
  const nearest=(x:number)=>ends.reduce((a,b)=>Math.abs(a-x)<Math.abs(b-x)?a:b);
  const edge=random(seed,2)<.5?0:length;
- if(exposure.exterior&&random(seed,3)<.65)add('fade','exposed-coating',length*.5,height*.21,length*.85,height*.4,20,20);
+ if(exposed&&random(seed,3)<.65)add('fade','exposed-coating',length*.5,height*.21,length*.85,height*.4,20,20);
  for(const door of site.doors){
   // Door gaps are real. A mark must lie on the adjacent solid segment, not across it.
   for(const p of [door.a,door.b]){
@@ -48,10 +62,10 @@ export function planWallSurface(site:Site,index:number,height:number):WallSurfac
    break;
   }
  }
- if(exposure.exterior||wet(face)){
+ if(exposed||wet(face)){
   if(random(seed,4)<(wet(face)?.85:.55))add('damp','moisture-base',length*(.2+.6*random(seed,5)),height-7,Math.min(length,30+random(seed,6)*24),18,30,80);
  }
- if(exposure.exterior)for(const window of site.windows??[]){
+ if(exposed)for(const window of site.windows??[]){
   if(window.interior||window.vertical!==(Math.abs(dy)>Math.abs(dx)))continue;
   const pos=project(window.x,window.y);
   if(pos.distance>5)continue;
@@ -76,6 +90,7 @@ export function selectWallEvents(recipe:WallSurfaceRecipe,level:number,filter:Wa
 }
 type RGB=[number,number,number];
 const rgb=(hex:number):RGB=>[(hex>>>16)&255,(hex>>>8)&255,hex&255];
+function mixWallColor(a:number,b:number,t:number){const c=tint(rgb(a),rgb(b),t);return (c[0]<<16)|(c[1]<<8)|c[2];}
 const tint=(base:RGB,target:RGB,amount:number):RGB=>base.map((c,i)=>Math.round(c+(target[i]-c)*amount)) as RGB;
 /** Sparse pixel stamps precomposed at build/slider time. Alpha is COLOR
  * coverage, never structural transparency. Row zero is the wall top. */
@@ -139,6 +154,8 @@ export function bakedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,wid
     const course=surface==='brick'?7:12,block=course*2,row=Math.floor(physicalY/course);
     if(mod(physicalY,course)<Math.max(texelY,1)||mod(wx+(row%2)*block/2,block)<Math.max(texelX,1))shade=.74;
     else if((Math.floor((wx+(row%2)*block/2)/block)+row*3)%5===0)shade=.92;
+   }else if(surface==='tile'){
+    if(mod(wx,10)<Math.max(1,texelX)||mod(physicalY,10)<Math.max(1,texelY))shade=.78;
    }else if(surface==='panel'){
     if(mod(wx,24)<Math.max(1,texelX))shade=.70;
    }else if(surface==='siding'){
@@ -169,6 +186,30 @@ export function packedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,wi
   out.set(pixels,start*rowBytes);
   out.set(pixels.subarray(0,rowBytes),(start-1)*rowBytes);
   out.set(pixels.subarray(pixels.length-rowBytes),(start+WALL_PACKED_FACE_ROWS)*rowBytes);
+ }
+ return out;
+}
+
+/** Independent W3 front/back face authorship. Both use a common local
+ * physical x direction, and effects never cross the segment boundary. */
+export function planWallFaces(site:Site,index:number,height:number){
+ return {front:planWallSurface(site,index,height,1),back:planWallSurface(site,index,height,-1)};
+}
+export type WallFacePair=ReturnType<typeof planWallFaces>;
+/** 64 rows per strip, guards aligned to four-pixel mip blocks.
+ * Edge swatch rows 0..1; +Z rows 4..27; -Z rows 36..59.
+ * No neighboring-strip sampling through mip level 5. At very coarse
+ * levels ordinary mip filtering necessarily averages whole strips. */
+export const ATLAS_FACE_ROWS=24;
+export const atlasFaceStart=(face:-1|1)=>face===1?4:36;
+export function atlasWallStrip(pair:WallFacePair,level:number,width:number,filter:WallEffectFilter='all',patterned=true){
+ const out=new Uint8Array(width*64*4),base=rgb(pair.front.color),stride=width*4;
+ for(let p=0;p<out.length;p+=4){out.set(base,p);out[p+3]=255;}
+ for(const recipe of [pair.front,pair.back]){
+  const pixels=bakedWallSurfacePixels(recipe,level,width,ATLAS_FACE_ROWS,filter,patterned),start=atlasFaceStart(recipe.face);
+  out.set(pixels,start*stride);
+  for(let y=recipe.face===1?2:start-4;y<start;y++)out.set(pixels.subarray(0,stride),y*stride);
+  for(let y=start+ATLAS_FACE_ROWS;y<start+ATLAS_FACE_ROWS+4;y++)out.set(pixels.subarray(pixels.length-stride),y*stride);
  }
  return out;
 }
