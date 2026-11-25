@@ -4,12 +4,11 @@ import {W,H,WALLS,COVER,type Pt} from './breach-core.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import type {Site,Room,WorldBounds} from './breach-site.ts';
 import {team,type Session} from './breach-game.ts';
-import {intelFogLevel} from './breach-intel.ts';
 import {exteriorKnownFogRects} from './breach-fog-domain.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
 import {effectiveEyeHeight} from './breach-cover-height.ts';
 import {NEAR_FINE_SIGHT_RANGE,sightRangeForSite} from './breach-visibility-range-policy.ts';
-import {forEachRememberedMicroCell} from './breach-fog-memory.ts';
+import {forEachRememberedMicroCell,rememberedFineCells} from './breach-fog-memory.ts';
 import {traceFogCellContours,appendSmoothFogContours,type FogCell}
   from './breach-fog-contours.ts';
 export const FOG_WIDTH=320,FOG_HEIGHT=370;
@@ -82,19 +81,13 @@ export function paintFogMemory(ctx:CanvasRenderingContext2D,s:Session,
   // as a separate 55%-erase pass multiplies their alpha and leaves nearly
   // all previously visited interiors transparent.
   const EXPLORED_ERASE=.55,BLUEPRINT_ERASE=.40;
-  const exploredFine:Pt[]=[];
+  const exploredFine:Pt[]=rememberedFineCells(s.seenGround,bounds).map(c=>({x:c.col*20,y:c.row*20}));
   const blueprint:Pt[]=[];
-  for(let row=Math.floor(bounds.minY/20);row<Math.ceil(bounds.maxY/20);row++)
-    for(let col=Math.floor(bounds.minX/20);col<Math.ceil(bounds.maxX/20);col++){
-      const p={x:col*20+10,y:row*20+10};
-      const fineSeen=s.seenGround.has('fine:'+col+','+row);
-      const level=intelFogLevel(s.intel,s.site,p,false,fineSeen);
-      if(level===2)continue;
-      // Floor-plan briefing is a separate *lower* information level; the
-      // exploration pass compensates for its retained tint below.
-      if(s.intel.mode==='floor-plan')blueprint.push({x:col*20,y:row*20});
-      if(fineSeen)exploredFine.push({x:col*20,y:row*20});
-  }
+  // Only the floor-plan briefing intentionally covers every coarse cell.
+  // True Blind and Exterior Known visit just actual remembered keys.
+  if(s.intel.mode==='floor-plan')for(let row=Math.floor(bounds.minY/20);row<Math.ceil(bounds.maxY/20);row++)
+    for(let col=Math.floor(bounds.minX/20);col<Math.ceil(bounds.maxX/20);col++)
+      blueprint.push({x:col*20,y:row*20});
   // Briefed plan geometry is readable but never equivalent to sight.
   if(blueprint.length){
     ctx.filter='blur(2.8px)';

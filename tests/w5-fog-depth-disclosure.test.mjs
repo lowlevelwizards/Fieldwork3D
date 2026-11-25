@@ -54,3 +54,10 @@ test('standing cover dip changes fog fingerprint and blocks sight behind low cov
  assert.notEqual(fogSessionFingerprint(s),key);assert.equal(g.poll(s,.1,.1).paint,true);assert.ok(cone()<=120.01);
  actor.coverStanceDrop=0;assert.equal(fogSessionFingerprint(s),key);assert.ok(cone()>140);
 });
+
+test('sparse fine memory matches old bounded grid enumeration, including malformed and negative keys',async()=>{
+ const {rememberedFineCells}=await import('../src/breach-fog-memory.ts');
+ const bounds={minX:-43,minY:-25,maxX:127,maxY:81},seen=new Set(['fine:0,0','fine:-3,-2','fine:6,4','fine:99,4','fine:1.5,2','fine:01,2','fine:1,2,3','micro:1,2','1,2','fine:2,2']);
+ const expected=[];for(let row=Math.floor(bounds.minY/20);row<Math.ceil(bounds.maxY/20);row++)for(let col=Math.floor(bounds.minX/20);col<Math.ceil(bounds.maxX/20);col++)if(seen.has('fine:'+col+','+row))expected.push({col,row});
+ assert.deepEqual(rememberedFineCells(seen,bounds),expected);
+});

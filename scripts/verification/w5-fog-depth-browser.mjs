@@ -23,6 +23,7 @@ try{
    const {newSession,team}=await import('/src/breach-game.ts');
    const {activateSite}=await import('/src/breach-core.ts');
    const {spatialSurfaceKnown}=await import('/src/breach-presentation.ts');
+   const {inspectFogPoint}=await import('/src/breach-visibility-diagnostics.ts');
    const check=(v,m)=>{if(!v)throw Error(m);};
    const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
    const synthetic={seed:1,bounds:{minX:0,minY:0,maxX:300,maxY:300},rooms:[],walls:[{a:{x:150,y:0},b:{x:150,y:300}}],cover:[]};
@@ -83,8 +84,30 @@ try{
    check(scene.fogRefresh.owner===next&&scene.smoothFog.visible&&!scene.exteriorKnownFog.visible,'Second mission inherited mask');
    check(inventory().every(w=>w.mesh.parent.visible===spatialSurfaceKnown(next,'wall',w.index)),'Second mission disclosed unknown walls');
    const b2=maskBounds(other);check(scene.fogCanvas.width>0&&scene.smoothFog.position.x===(b2.minX+b2.maxX)/2,'Second site projection wrong');
+   // Sample the actual scene's composed mask, not merely a synthetic canvas.
+   // Distinguish a genuinely unknown dark region from a remembered floor
+   // that failed to paint. This is a bounded diagnostic, never a game rule.
+   const floorWitness=[];
+   for(const [archetype,seed] of [['townhouse',23],['restaurant',31]]){
+    const site=make(seed,archetype);activateSite(site);
+    const session=newSession(0,seed,'exterior-known','standard',undefined,site);
+    scene.applySite(site);draw(session,team(session)[0].id,false,1);
+    const bounds=maskBounds(site),canvas=scene.fogCanvas,context=canvas.getContext('2d');
+    const counts={visible:0,explored:0,unknown:0,briefed:0,visibleDark:0,exploredDark:0,unknownClear:0};
+    const samples=[];
+    for(const room of site.rooms)for(let y=Math.ceil((room.y+8)/10)*10+5;y<room.y+room.h-8;y+=10)for(let x=Math.ceil((room.x+8)/10)*10+5;x<room.x+room.w-8;x+=10){
+     const info=inspectFogPoint(session,{x,y}),px=Math.floor((x-bounds.minX)*canvas.width/(bounds.maxX-bounds.minX)),py=Math.floor((y-bounds.minY)*canvas.height/(bounds.maxY-bounds.minY));
+     if(px<0||py<0||px>=canvas.width||py>=canvas.height)continue;
+     const a=context.getImageData(px,py,1,1).data[3],key=info.reason==='currently-visible'?'visible':info.reason;
+     counts[key]++;
+     const mismatch=key==='visible'&&a===255?'visibleDark':key==='explored'&&a>=245?'exploredDark':key==='unknown'&&a<20?'unknownClear':null;
+     if(mismatch){counts[mismatch]++;if(samples.length<12)samples.push({x,y,alpha:a,reason:info.reason,occupied:info.occupied});}
+    }
+    check(counts.exploredDark===0,'Remembered ground failed to compose '+JSON.stringify({archetype,counts,samples}));
+    floorWitness.push({archetype,seed,counts,samples});
+   }
    window.w5Scene=scene;
-   return {pixels,faded,restored,secondMission:true,disclosureParity:true,opaqueDetails,glass,uploads:scene.fogTextureUpdateRequests};
+   return {pixels,faded,restored,secondMission:true,disclosureParity:true,opaqueDetails,glass,uploads:scene.fogTextureUpdateRequests,floorWitness};
   },{width,height});
   await page.screenshot({path:out+'/'+name+'.png'});
   if(errors.length)throw Error(errors.join(' | '));results.push({name,...result});await page.close();
