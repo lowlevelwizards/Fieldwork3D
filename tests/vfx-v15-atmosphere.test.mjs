@@ -14,7 +14,7 @@ test('V15 dust lasts after original shot expiry without extending combat record 
  advanceTransientSimulationEffects(s,.02);
  assert.equal(s.shots.length,0);assert.equal(s.atmosphere.length,2);
  const dust=s.atmosphere.find(c=>c.kind==='stone'),a={};
- assert.ok(samplePuff(dust.kind,dust.id,.8,p.x,dust.height,p.y,a));
+ assert.ok(samplePuff(dust.kind,dust.id,0,.8,p.x,dust.height,p.y,a));
  assert.ok(a.size>12&&a.alpha>.2);
  const frame=snapshot(s);s.atmosphere[0].p.x=999;
  applyReplayFrame(s,frame);assert.equal(s.atmosphere[0].p.x,200);
