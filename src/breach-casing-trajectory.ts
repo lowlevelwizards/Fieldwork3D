@@ -20,9 +20,10 @@ export function casingLanding(f:CasingFlight):CasingPoint{
 }
 export function planCasingFlight(id:number,origin:CasingPoint,heading:number,
  trace:CasingTrace=clearTrace,occupied:readonly CasingPoint[]=[],floor=.56,
- friction=.65):CasingFlight{
+ friction=.65,support:(p:CasingPoint)=>number=()=>floor):CasingFlight{
  const random=(channel:number)=>casingSeed(id,channel);
  const legs:CasingLeg[]=[];
+ let ground=floor;
  let at=point(origin.x,Math.max(floor,origin.y),origin.z);
  const add=(to:CasingPoint,duration:number,rise:number)=>{
   legs.push(Object.freeze({from:at,to,duration:Math.max(.015,duration),rise}));
@@ -46,19 +47,26 @@ export function planCasingFlight(id:number,origin:CasingPoint,heading:number,
   // A cheap, damped reverse deflection stays on the near side of the
   // barrier. No second collision engine or material damage.
   vx*=-.28;vz*=-.28;
-  const fall=Math.sqrt(2*Math.max(0,at.y-floor)/gravity);
-  const target=point(at.x+vx*fall,floor,at.z+vz*fall);
+  ground=Math.min(at.y,support(at));
+  const fall=Math.sqrt(2*Math.max(0,at.y-ground)/gravity);
+  const target=point(at.x+vx*fall,ground,at.z+vz*fall);
   const fraction=Math.max(0,Math.min(1,trace(at,target)));
   const safe=Math.max(0,fraction<1?fraction-.025:1);
-  add(point(at.x+(target.x-at.x)*safe,floor,at.z+(target.z-at.z)*safe),fall,gravity*fall*fall/8);
+  const landing=point(at.x+(target.x-at.x)*safe,ground,at.z+(target.z-at.z)*safe);
+  // On an elevated furniture top, do not slide off a discontinuity
+  // without a second fall. Retain the contact point instead.
+  if(ground>floor+.05&&support(landing)<ground-.05)
+   add(point(at.x,ground,at.z),fall,gravity*fall*fall/8);
+  else add(landing,fall,gravity*fall*fall/8);
  }else add(end,duration,rise);
  // One visible, ballistic bounce, then a bounded friction slide.
  const bounce=.12+random(3)*.13;
  const advance=(dx:number,dz:number,duration:number,rise:number)=>{
-  const to=point(at.x+dx,floor,at.z+dz);
+  const to=point(at.x+dx,ground,at.z+dz);
   const f=Math.max(0,Math.min(1,trace(at,to)));
   const safe=f<1?Math.max(0,f-.035):1;
-  add(point(at.x+dx*safe,floor,at.z+dz*safe),duration,rise);
+  const candidate=point(at.x+dx*safe,ground,at.z+dz*safe);
+  add(ground>floor+.05&&support(candidate)<ground-.05?at:candidate,duration,rise);
  };
  advance(vx*bounce*.32,vz*bounce*.32,bounce,gravity*bounce*bounce/8);
  const cell=2.2,grid=new Map<string,CasingPoint[]>();
@@ -72,16 +80,17 @@ export function planCasingFlight(id:number,origin:CasingPoint,heading:number,
   return min;
  };
  const slide=(3+random(4)*5)*Math.max(.2,Math.min(1,friction));
- let best=point(at.x,floor,at.z),bestClear=clearance(best);
+ let best=point(at.x,ground,at.z),bestClear=clearance(best);
  // First candidate follows momentum; bounded alternatives scatter only
  // when a nearby retained casing would otherwise occupy the same spot.
  angle=Math.atan2(vz,vx);
  for(let i=0;i<9;i++){
   const a=angle+(i===0?0:(i%2?1:-1)*Math.ceil(i/2)*.57);
   const len=slide*(i===0?1:1+Math.floor(i/3)*.23);
-  const target=point(at.x+Math.cos(a)*len,floor,at.z+Math.sin(a)*len);
+  const target=point(at.x+Math.cos(a)*len,ground,at.z+Math.sin(a)*len);
   const f=Math.max(0,Math.min(1,trace(at,target)));
   const candidate=mix(at,target,f<1?Math.max(0,f-.04):1);
+  if(ground>floor+.05&&support(candidate)<ground-.05)continue;
   const score=clearance(candidate);
   if(i===0||score>bestClear){best=candidate;bestClear=score;}
   if(score>=cell)break;

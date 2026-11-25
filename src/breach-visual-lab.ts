@@ -12,10 +12,18 @@ import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
 import {registerWound,stabilizeWound} from './breach-medical-wounds.ts';
 import {sampleBleedingEvidence} from './breach-blood-evidence.ts';
 import {advanceTransientSimulationEffects} from './breach-simulation-phases.ts';
+import {emitSpentCasing} from './breach-casing-emission.ts';
+import {casingAt} from './breach-effects.ts';
+import {casingLanding} from './breach-casing-trajectory.ts';
+import {muzzleAtShot} from './breach-muzzle.ts';
+import {FAMILY_PRESETS} from './equipment-weapon-families.ts';
+import {initialWeaponConfiguration} from './equipment-weapon-assemblies.ts';
+import {initialEquipmentLoadout} from './equipment-loadouts.ts';
+import {initialSecondaryEquipment} from './secondary-equipment.ts';
 
 /** Lab-only authored event fixtures, rendered by the production pipeline.
  * No campaign persistence, tactical shot authority or alternate VFX engine. */
-type Sample='miss'|'hit'|'down'|'pool'|'stone'|'wood'|'metal'|'dust'|'glass'|'glass-door'|'collapse'|'flash'|'muzzle'|'vegetation';
+type Sample='miss'|'hit'|'down'|'pool'|'stone'|'wood'|'metal'|'dust'|'glass'|'glass-door'|'collapse'|'flash'|'muzzle'|'vegetation'|'casings';
 const stage=new TacticalScene3D(),legacy=newSession();
 const targetTemplate=enemies(legacy)[0];
 if(!targetTemplate)throw Error('Missing lab actor template');
@@ -48,7 +56,7 @@ function build(next:'arena'|'exterior'){
  stage.updateCamera(0);label(next==='arena'?'Training courtyard · choose an effect':'Residential exterior · production foliage');
 }
 function focus(p:Pt){stage.view.focus={...p};stage.updateCamera(0);}
-function draw(dt=0){stage.update(session,rook.id,dt,null,true);}
+function draw(dt=0){stage.update(session,rook.id,dt,null,true);drawCasingDebug();}
 function reset(){build(mode);draw();}
 function emit(surface:NonNullable<ShotEvent['surface']>,end:Pt,height:number,hit=false,down=false){
  const before=target.health;
@@ -60,8 +68,79 @@ function emit(surface:NonNullable<ShotEvent['surface']>,end:Pt,height:number,hit
   muzzleHeight:30,impactHeight:height,surface,firedAt:session.seconds};
  session.shots.push(shot);return shot;
 }
+const casingSelect=(id:string)=>document.getElementById(id) as HTMLInputElement|HTMLSelectElement;
+const casingDebug=document.getElementById('casingDebugOverlay') as unknown as SVGSVGElement;
+const casingWeapon=casingSelect('casingWeapon') as HTMLSelectElement;
+for(const preset of FAMILY_PRESETS){
+ const option=document.createElement('option');option.value=preset.id;option.textContent=preset.name;
+ casingWeapon.append(option);
+}
+const pistolOption=document.createElement('option');
+pistolOption.value='glock';pistolOption.textContent='Glock · held pistol';casingWeapon.append(pistolOption);
+function drawCasingDebug(){
+ const enabled=active==='casings'&&(casingSelect('casingDebug') as HTMLInputElement).checked;
+ casingDebug.style.display=enabled?'block':'none';
+ if(!enabled){if(casingDebug.childElementCount)casingDebug.replaceChildren();return;}
+ casingDebug.setAttribute('viewBox','0 0 '+innerWidth+' '+innerHeight);
+ const project=(p:{x:number;y:number;z:number})=>stage.project({x:p.x,y:p.z},p.y);
+ const ns='http://www.w3.org/2000/svg';
+ const nodes:SVGElement[]=[];
+ for(const c of session.casings){
+  if(!c.flight)continue;
+  const path=document.createElementNS(ns,'path');
+  const duration=c.flight.legs.reduce((sum,l)=>sum+l.duration,0);
+  const pts=Array.from({length:25},(_,i)=>project(casingAt(c,c.at+duration*i/24)));
+  path.setAttribute('d',pts.map((p,i)=>(i?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' '));
+  path.setAttribute('stroke','#d8b369');path.setAttribute('stroke-opacity','.48');path.setAttribute('fill','none');
+  nodes.push(path);
+  for(const [p,color] of [[project(c),'#fff3bf'],[project(casingLanding(c.flight)),'#e4b467']] as const){
+   const dot=document.createElementNS(ns,'circle');dot.setAttribute('cx',String(p.x));dot.setAttribute('cy',String(p.y));
+   dot.setAttribute('r','2.5');dot.setAttribute('fill',color);nodes.push(dot);
+  }
+ }
+ casingDebug.replaceChildren(...nodes);
+}
+function casingSample(){
+ build('arena');
+ active='casings';
+ const value=casingWeapon.value;
+ const preset=FAMILY_PRESETS.find(p=>p.id===value);
+ const pistol=value==='glock'?'glock-g19x' as const:undefined;
+ if(preset){rook.weapon=preset.weapon;rook.weaponConfiguration={
+  ...initialWeaponConfiguration(preset.weapon),build:{family:preset.family,parts:{...preset.parts}}};}
+ if(pistol){
+  rook.equipment={...initialEquipmentLoadout(),secondary:initialSecondaryEquipment(rook.id,pistol)};
+  rook.secondarySwitch={active:'secondary',desired:'secondary',fraction:1};
+ }
+ rook.aim=.98;rook.velocity=0;rook.recoil=0;
+ // Isolate the shooter and use the existing physical scene fixtures.
+ session.operators=[rook];
+ const obstacle=casingSelect('casingObstacle').value;
+ if(obstacle!=='none'){
+  const fixture=obstacle==='wall'?'support-column':'crate';
+  const box={id:'lab-casing-obstacle',fixture,x:rook.p.x+10,y:rook.p.y+20,w:obstacle==='wall'?50:20,h:6,
+   low:obstacle!=='wall',topHeight:obstacle==='wall'?40:13};
+  // Build a detached site: don't mutate the shared training fixture or live mission.
+  site={...site,cover:[...site.cover,box]};
+  activateSite(site);session=newSession(0,site.seed,'full-view','small','hold',site);
+  session.operators=[rook];session.civilians=[];stage.applySite(site);
+ }
+ const count=Math.max(1,Math.min(64,Math.round(Number(casingSelect('casingCount').value)||12)));
+ const interval=Math.max(.04,Math.min(1,Number(casingSelect('casingInterval').value)||.12));
+ const scale=Math.max(.5,Math.min(1.5,Number(casingSelect('casingScale').value)||1));
+ const seed=Math.max(1,Math.min(1000000,Math.round(Number(casingSelect('casingSeed').value)||1)));
+ const friction=casingSelect('casingFloor').value==='soft'?.3:casingSelect('casingFloor').value==='slick'?.95:.65;
+ const muzzle=muzzleAtShot({x:rook.p.x,z:rook.p.y,heading:rook.heading,weaponYaw:rook.weaponYaw,
+  weapon:rook.weapon,weaponConfiguration:rook.weaponConfiguration,equipment:rook.equipment,
+  aim:rook.aim,velocity:0,recoil:0,posture:rook.posture,secondaryWeapon:pistol,sampleEjection:true});
+ for(let i=0;i<count;i++)emitSpentCasing(session,rook,seed*100+i,muzzle,pistol,{at:i*interval,visualScale:scale,friction});
+ focus({x:rook.p.x+4,y:rook.p.y+16});stage.view.zoom=3;stage.updateCamera(0);
+ label('Spent casings · '+count+' planned · '+(preset?.name??(pistol?'Glock':'Carbine'))+' · seed '+seed);
+ draw();
+}
 function choose(kind:Sample){
  active=kind;paused=false;document.getElementById('pause')!.textContent='PAUSE';
+ if(kind==='casings'){casingSample();return;}
  const next=kind==='glass'||kind==='vegetation'?'exterior':'arena';
  if(next!==mode)build(next);
  // Keep each effect sample repeatable without preserving stale injury state.
@@ -139,7 +218,8 @@ function tick(dt:number){
 }
 const action=(id:string,fn:()=>void)=>document.getElementById(id)?.addEventListener('click',fn);
 for(const kind of ['miss','hit','down','pool','stone','wood','metal','dust','glass','glass-door','collapse','flash','muzzle','vegetation'] as const)action(kind,()=>choose(kind));
-action('reset',()=>{paused=false;document.getElementById('pause')!.textContent='PAUSE';reset();});action('repeat',()=>choose(active));action('stabilize',()=>{
+action('casings',()=>choose('casings'));
+ action('reset',()=>{paused=false;document.getElementById('pause')!.textContent='PAUSE';reset();});action('repeat',()=>choose(active));action('stabilize',()=>{
  for(const wound of target.medical.wounds)stabilizeWound(target.medical,wound.id);
  label('Stabilized · existing pools remain');draw();
 });
@@ -174,7 +254,7 @@ function frame(now:number){
  if(!paused){accumulator+=dt*speed;while(accumulator>=1/60){tick(1/60);accumulator-=1/60;}}
  draw(paused?0:dt*speed);
  if(now-lastMetrics>250){const stats=stage.performanceStats();metrics.textContent=
-  'ZOOM '+stage.view.zoom.toFixed(2)+' · '+stats.calls+' DRAWS · '+session.impactMarks.length+' MARKS · '+session.seconds.toFixed(1)+'s';lastMetrics=now;}
+  'ZOOM '+stage.view.zoom.toFixed(2)+' · '+stats.calls+' DRAWS · '+session.impactMarks.length+' MARKS · '+session.seconds.toFixed(1)+'s'+(active==='casings'?' · '+session.casings.filter(c=>c.at<=session.seconds).length+' CASES':'');lastMetrics=now;}
  requestAnimationFrame(frame);
 }
 build('arena');draw();document.body.dataset.ready='true';requestAnimationFrame(frame);

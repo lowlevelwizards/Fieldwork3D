@@ -33,6 +33,7 @@ export class BreachCombatEffectsPresenter{
   private matrixWrites=0;
   private casingMesh:THREE.InstancedMesh|null=null;
   private casingIds:number[]=[];
+  private casingSettled:boolean[]=[];
   private casingMatrix=new THREE.Object3D();
   private casingColor=new THREE.Color();
   private thrown=new Map<number,THREE.Mesh>();
@@ -66,7 +67,7 @@ export class BreachCombatEffectsPresenter{
   /** Mission reset retains bounded, scene-owned resources, never visible evidence. */
   reset():void{
     if(this.casingMesh)this.casingMesh.count=0;
-    this.casingIds.length=0;this.lastCasingTime=-Infinity;
+    this.casingIds.length=0;this.casingSettled.length=0;this.lastCasingTime=-Infinity;
     if(this.magazineMesh){
       this.magazineMesh.count=0;this.effects.remove(this.magazineMesh);
     }
@@ -162,17 +163,17 @@ export class BreachCombatEffectsPresenter{
       if(replayDisclosurePolicy?.mode==='operator'||s.seconds<brass.at)continue;
       if(!omniscient&&!liveVisibility(s,{x:brass.x,y:brass.z}))continue;
       if(casingCount>=CASING_LIMIT)break;
-      // Full ballistic + bounce motion ends comfortably before two seconds.
-      // Settled cartridges retain their previous instance matrices.
-      if(this.casingIds[casingCount]!==brass.id||
-         s.seconds<this.lastCasingTime||
-         (s.seconds!==this.lastCasingTime&&this.lastCasingTime-brass.at<3)){
+      // Stop writing immediately on the actual settled sample. A backward
+      // seek, changed visible slot or mission reset invalidates this cache.
+      const changed=this.casingIds[casingCount]!==brass.id||s.seconds<this.lastCasingTime;
+      if(changed||(s.seconds!==this.lastCasingTime&&!this.casingSettled[casingCount])){
         const p=casingAt(brass,s.seconds);
+        this.casingSettled[casingCount]=p.settled;
         this.casingMatrix.position.set(p.x,p.y,p.z);
         this.casingMatrix.rotation.set(p.tiltX??.9,p.rotation,p.tiltZ??1.2,'YXZ');
         const profile=casingVisualProfile(brass),scale=brass.visualScale??1;
         this.casingMatrix.scale.set(profile.width*scale,profile.length*scale,profile.width*scale);
-        casingDraw.setColorAt(casingCount,this.casingColor.setHex(profile.color));
+        if(changed)casingDraw.setColorAt(casingCount,this.casingColor.setHex(profile.color));
         this.casingMatrix.updateMatrix();
         casingDraw.setMatrixAt(casingCount,this.casingMatrix.matrix);
         casingDirty=true;this.matrixWrites++;
@@ -181,7 +182,7 @@ export class BreachCombatEffectsPresenter{
     }
     if(casingDraw.count!==casingCount)casingDirty=true;
     casingDraw.count=casingCount;
-    this.casingIds.length=casingCount;
+    this.casingIds.length=casingCount;this.casingSettled.length=casingCount;
     if(casingDirty){casingDraw.instanceMatrix.needsUpdate=true;
       if(casingDraw.instanceColor)casingDraw.instanceColor.needsUpdate=true;}
     this.lastCasingTime=s.seconds;

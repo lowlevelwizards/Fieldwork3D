@@ -1,0 +1,35 @@
+name: V20 spent casings
+on:
+  pull_request:
+    paths:
+      - 'src/breach-casing-**'
+      - 'src/breach-effects.ts'
+      - 'src/breach-muzzle.ts'
+      - 'src/secondary-shot-geometry.ts'
+      - 'src/rendering/breach-casing-art.ts'
+      - 'src/rendering/breach-combat-effects-presenter.ts'
+      - 'src/breach-visual-lab.ts'
+      - 'breach-visual-lab.html'
+      - 'tests/vfx-v20-spent-casings.test.mjs'
+      - '.github/workflows/v20-spent-casings.yml'
+  workflow_dispatch:
+jobs:
+  casings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Casing trajectory, replay, live shots and renderer contracts
+        run: node --experimental-strip-types --test tests/vfx-v20-spent-casings.test.mjs tests/breach-133.test.mjs tests/breach-141c.test.mjs tests/perf-window-effects.test.mjs tests/secondary-s7-live-shot.test.mjs tests/vfx-effects-lab.test.mjs
+      - run: npm run build
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/verification/effects-lab-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v20-casing-lab
+          path: artifacts/effects-lab

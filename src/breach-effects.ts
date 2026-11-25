@@ -16,7 +16,7 @@ export const CASING_LIMIT=96;
 export const IMPACT_MARK_LIMIT=64;
 export const BLOOD_MARK_LIMIT=32;
 export function casingAt(c:EjectedCasing,time:number):CasingSample{
- if(c.flight?.legs.length)return sampleCasingFlight(c.flight,time-c.at);
+ if(c.flight?.legs?.length)return sampleCasingFlight(c.flight,time-c.at);
  const t=Math.max(0,time-c.at);
  const a=c.heading+Math.PI/2+(hash(c.id)*.5-.25);
  const speed=10+hash(c.id+12)*9;
