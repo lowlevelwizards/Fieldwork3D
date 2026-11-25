@@ -287,8 +287,8 @@ export class TacticalScene3D{
   private readonly miniFocusAttentionPolygons:AttentionPolygon[]=[];
   private readonly miniFocusAttentionDiscs:AttentionDisc[]=[];
   private readonly fogRefresh=new FogRefreshGate();
-  /** W5 depth audition. Stable opaque walls should not need a late transparent pass. */
-  wallDepthOpaque=typeof location!=='undefined'&&new URLSearchParams(location.search).get('wallDepth')==='opaque';
+  /** W5 production depth; explicit legacy mode for diagnostic comparison. */
+  wallDepthOpaque=typeof location==='undefined'||new URLSearchParams(location.search).get('wallDepth')!=='legacy';
   private lastMemoryFogSignature='';
   private lastMemoryFogSession:Session|null=null;
   private readonly fogDiagnostic:FogDiagnostic=

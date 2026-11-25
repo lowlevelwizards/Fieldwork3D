@@ -15,7 +15,7 @@ try{
   const page=await browser.newPage({viewport:{width,height},deviceScaleFactor:1});const errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/w5-probe*',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'}));
-  await page.goto(base+'/w5-probe?wallDepth=opaque');
+  await page.goto(base+'/w5-probe?production=1');
   const result=await page.evaluate(async ({width,height})=>{
    const {paintFogMask,maskBounds}=await import('/src/breach-fog-mask.ts');
    const {TacticalScene3D}=await import('/src/breach-3d.ts');
@@ -39,7 +39,7 @@ try{
    s.doors=[{id:'test',a:{x:150,y:130},b:{x:150,y:170},open:false,openFraction:0}];
    paintFogMask(ctx,s);check(alpha(180,150)===255,'Closed door leaked ground');
    s.doors[0].open=true;s.doors[0].openFraction=1;paintFogMask(ctx,s);check(alpha(180,150)<20,'Open door failed to reveal visible ground');
-   const scene=new TacticalScene3D();scene.resize(width,height);document.body.appendChild(scene.canvas);
+   const scene=new TacticalScene3D();check(scene.wallDepthOpaque===true,'W5 production depth not enabled');scene.resize(width,height);document.body.appendChild(scene.canvas);
    const make=(seed,archetype)=>generateSite(seed,'standard',undefined,{mission:'intel'},{archetype});
    const site=make(23,'townhouse');activateSite(site);
    const state=newSession(0,site.seed,'exterior-known','standard',undefined,site);
