@@ -67,7 +67,7 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
        add(zone,'path',zone.x,y,zone.w*.92,Math.min(24,zone.h*.26));
      }
    }
-   if(zone.kind==='driveway'){
+   if(zone.kind==='driveway'&&!zone.vehicleParking){
      const lane=arrivalAccessLane(site,zone);
      if(lane&&!street)add(zone,'path',lane.x,lane.y,
        Math.min(lane.w,24),Math.min(lane.h,zone.h*.9));
@@ -84,7 +84,17 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
      else add(zone,'drainage-grate',
        zone.x-zone.w*.37,zone.y,3.5,zone.h*.62);
    }
-   if(zone.kind==='parking'){
+   if(zone.vehicleParking){
+     const p=zone.vehicleParking,broad=p.axis==='x',stride=p.alongLength/p.count;
+     for(let i=0;i<=p.count;i++){
+       const along=p.alongCenter+(i-p.count/2)*stride;
+       if(broad)add(zone,'parking-divider',along,p.rowCenter,1.6,p.rowDepth);
+       else add(zone,'parking-divider',p.rowCenter,along,p.rowDepth,1.6);
+     }
+     const edge=p.rowCenter+Math.sign(p.aisleCenter-p.rowCenter)*p.rowDepth/2;
+     if(broad)add(zone,'stall-end-line',p.alongCenter,edge,p.alongLength,1.5);
+     else add(zone,'stall-end-line',edge,p.alongCenter,1.5,p.alongLength);
+   }else if(zone.kind==='parking'){
      if(zone.id==='arrival-forecourt'&&frontCenter&&!street){
        const vertical=entry==='south'||entry==='north';
        if(vertical){

@@ -20,7 +20,9 @@ import type {EncounterContext,EncounterPlan} from './worldgen/encounter-types.ts
 export type Room={id:string;zoneId?:string;unitId?:string;x:number;y:number;w:number;h:number;
   kind:'room'|'hall';tone:number;purpose?:string};
 export type BuildingArchetype='house'|'townhouse'|'apartment'|'retail'|'office'|'garage'|'warehouse'|'restaurant'|'motel'|'utility'|'clinic';
-export type ExteriorZone={id:string;kind:'yard'|'patio'|'driveway'|'service'|'garden'|'parking';x:number;y:number;w:number;h:number};
+export type ExteriorZone={id:string;kind:'yard'|'patio'|'driveway'|'service'|'garden'|'parking';x:number;y:number;w:number;h:number;
+  /** Optional new-site vehicle row, serialized with the site. Older sites retain their original markings. */
+  vehicleParking?:import('./worldgen/vehicle-parking-layout.ts').VehicleParkingLayout;};
 export type WideOpening={id:string;a:Pt;b:Pt;kind:'arch'|'wide'|'serving'};
 export type EnvironmentCondition='occupied'|'busy'|'neglected'|'vacant'|'renovation'|'disturbed';
 export type WindowStyle='standard'|'tall'|'picture'|'bay'|'industrial'|

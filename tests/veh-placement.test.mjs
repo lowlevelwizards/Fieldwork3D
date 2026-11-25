@@ -23,3 +23,27 @@ test('viable synthetic parking produces contextual cars, leaves capacity and res
  assert.ok(a.vehicles.length<5);
  for(const v of a.vehicles)assert.ok(Math.abs(v.x-400)>v.w/2+20);
 });
+
+import {proposeVehicleParkingLayout,proposedVehicleParkingSite} from '../src/worldgen/vehicle-parking-layout.ts';
+import {parkingStallCandidates} from '../src/worldgen/parking-stalls.ts';
+import {planPropertySurfaces} from '../src/worldgen/property-surfaces.ts';
+test('shallow private parking uses parallel vehicles and one real clear aisle, with matching markings',()=>{
+ const site={seed:11,archetype:'motel',condition:'busy',entrySide:'south',bounds:{minX:0,minY:0,maxX:800,maxY:800},rooms:[{x:160,y:130,w:480,h:170}],doors:[],entrance:{x:400,y:300},spawn:[],enemies:[],objective:{x:400,y:170},extract:{x:400,y:750},cover:[],exteriorZones:[{id:'arrival-forecourt',kind:'parking',x:400,y:370,w:440,h:124}]};
+ const zone=site.exteriorZones[0],p=proposeVehicleParkingLayout(site,zone);
+ assert.equal(p.mode,'parallel');assert.equal(p.aisleDepth,48);
+ const next=proposedVehicleParkingSite(site),z=next.exteriorZones[0];
+ const slots=parkingStallCandidates(z,96,39);
+ assert.ok(slots.length>=2);assert.ok(slots.every(v=>v.orientation===0&&v.w===96&&v.h===39));
+ const marks=planPropertySurfaces(next).filter(m=>m.kind==='parking-divider');
+ assert.equal(marks.length,p.count+1);
+ for(const v of slots){
+  assert.ok(Math.abs(v.y-p.aisleCenter)>=(v.h+p.aisleDepth)/2);
+  assert.ok(marks.every(m=>Math.abs(m.x-v.x)>v.w/2));
+ }
+ assert.equal(site.exteriorZones[0].vehicleParking,undefined);
+ assert.ok(planVehiclePlacement(next).vehicles.length>0);
+});
+test('insufficient private depth fails closed',()=>{
+ const site={seed:1,entrySide:'south',bounds:{minX:0,minY:0,maxX:400,maxY:450},rooms:[{x:50,y:80,w:300,h:270}],doors:[],entrance:{x:200,y:350},exteriorZones:[{id:'arrival-forecourt',kind:'parking',x:200,y:390,w:280,h:70}]};
+ assert.equal(proposeVehicleParkingLayout(site,site.exteriorZones[0]),null);
+});

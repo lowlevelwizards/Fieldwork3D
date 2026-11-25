@@ -17,3 +17,6 @@ Vehicle Lab is a Vite entry linked from both developer menus. Uses the same leas
 
 ## Checkpoint 5 — surface identity and lifecycle
 All families now use existing sheet-metal physical material and metal visual substrate rather than the legacy softwood fallback. Added prominent van identity panels, medical symbol, municipal cargo stripe, SUV rack and additional fleet/taxi/aid stripes in the same compiled mesh. Lab resize cleanup is explicit. Fine texture atlas, exact tactical cover profile and human art review still pending; do not enable placement before measured eligibility and critical movement tests.
+
+## Checkpoint 6 — shared parking row topology (shadow)
+Added optional serialized vehicleParking plan on exterior zones, with parallel/perpendicular bay orientation, private street/sidewalk clipping and a 48-unit reserved circulation aisle. Both markings and candidate dimensions use the same row geometry; existing snapshots have no new metadata and keep their old layout. A marked modern driveway or parking zone can use a wider curb cut. New layouts remain shadow-only pending actual generation coverage, accessibility sign/transfer planning, and mobility validation. Audit now compares legacy and proposed layout on the same seeds. No forced map expansion or car downsizing.

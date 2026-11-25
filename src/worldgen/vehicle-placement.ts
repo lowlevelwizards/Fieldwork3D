@@ -45,7 +45,7 @@ export function planVehiclePlacement(site:Site,seed=site.seed):VehiclePlacementR
  const street=planPublicStreet(site),reserves=exteriorDoorReserves(site.doors);
  const protectedPoints=[...site.spawn,...site.enemies,site.objective,site.extract,site.entrance];
  for(const zone of site.exteriorZones??[]){
-  if(zone.kind!=='parking')continue;
+  if(zone.kind!=='parking'&&!zone.vehicleParking)continue;
   const target=targetFor(site,zone);
   const diag:VehiclePlacementResult['diagnostics'][number]={zoneId:zone.id,target,accepted:0,rejections:{}};
   diagnostics.push(diag);
@@ -54,7 +54,8 @@ export function planVehiclePlacement(site:Site,seed=site.seed):VehiclePlacementR
   for(const ch of zone.id)key=Math.imul(key^ch.charCodeAt(0),16777619);
   const rng=seeded(key),roster=fleet(site);
   const reserved=reservedParkingBay(site,zone);
-  const broad=zone.w>=zone.h,stride=(broad?zone.w:zone.h)/parkingStallCount(zone);
+  const broad=zone.vehicleParking?zone.vehicleParking.axis==='x':zone.w>=zone.h;
+  const stride=(zone.vehicleParking?.alongLength??(broad?zone.w:zone.h))/parkingStallCount(zone);
   const lane=arrivalAccessLane(site,zone);
   const usedSlots=new Set<string>();
   for(let n=0;n<target;n++){
@@ -63,7 +64,8 @@ export function planVehiclePlacement(site:Site,seed=site.seed):VehiclePlacementR
    let found=false;
    for(const family of families){
     const [width,depth]=VEHICLE_DIMENSIONS[family];
-    if(depth+8>stride){reject('stall-width');continue;}
+    const alongSize=zone.vehicleParking?.mode==='parallel'?width:depth;
+    if(alongSize+8>stride){reject('stall-width');continue;}
     const candidates=parkingStallCandidates(zone,width,depth);
     if(!candidates.length){reject('no-fit');continue;}
     for(const slot of candidates){

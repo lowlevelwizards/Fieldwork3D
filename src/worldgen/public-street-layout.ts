@@ -80,7 +80,8 @@ export function planPublicStreet(site:StreetSite):PublicStreet|null{
    // leading into traffic for no reason.
    const vehicular=['parking','driveway'].includes(
      site.exteriorZones?.find(z=>z.id==='arrival-forecourt')?.kind??'');
-   const cut=vehicular?28:0;
+   const modernParking=site.exteriorZones?.find(z=>z.id==='arrival-forecourt')?.vehicleParking;
+   const cut=vehicular?(modernParking?56:28):0;
    const half=span/2;
    if(cut&&alongAt>along-half+cut&&alongAt<along+half-cut){
      const left=(alongAt-cut/2)-(along-half);

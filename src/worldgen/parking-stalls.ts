@@ -6,12 +6,25 @@ import type {ExteriorZone} from '../breach-site.ts';
 import type {Obstacle} from '../breach-core.ts';
 import type {Site} from '../breach-site.ts';
 import {arrivalAccessLane} from './property-access-lane.ts';
-export const PARKING_VEHICLES=new Set(['sedan','pickup','van','suv']);
+export const PARKING_VEHICLES=new Set(['sedan','pickup','van','suv','hatchback','light-truck']);
 export function parkingStallCount(zone:ExteriorZone):number{
- return Math.min(5,Math.max(2,Math.floor(Math.max(zone.w,zone.h)/58)));
+ return zone.vehicleParking?.count??Math.min(5,Math.max(2,Math.floor(Math.max(zone.w,zone.h)/58)));
 }
 export function parkingStallCandidates(zone:ExteriorZone,width:number,depth:number):
  Pick<Obstacle,'x'|'y'|'w'|'h'|'orientation'>[]{
+ const plan=zone.vehicleParking;
+ if(plan){
+  const broad=plan.axis==='x',parallel=plan.mode==='parallel';
+  const turned=broad!==parallel;
+  const w=turned?depth:width,h=turned?width:depth;
+  const alongSize=broad?w:h,acrossSize=broad?h:w;
+  const stride=plan.alongLength/plan.count;
+  if(alongSize+8>stride||acrossSize+6>plan.rowDepth)return [];
+  return Array.from({length:plan.count},(_,i)=>{
+   const along=plan.alongCenter+(i+.5-plan.count/2)*stride;
+   return {x:broad?along:plan.rowCenter,y:broad?plan.rowCenter:along,w,h,orientation:(turned?1:0) as 0|1};
+  }).sort((a,b)=>Math.abs((broad?b.x:b.y)-plan.alongCenter)-Math.abs((broad?a.x:a.y)-plan.alongCenter)||(broad?a.x-b.x:a.y-b.y));
+ }
  const broad=zone.w>=zone.h,slots=parkingStallCount(zone);
  const w=broad?depth:width,h=broad?width:depth;
  const orientation:0|1=broad?1:0;
@@ -38,7 +51,7 @@ export function reservedParkingBay(
  zone:ExteriorZone
 ):{x:number;y:number;bayWidth:number;short:number;broad:boolean;
    side:1|-1}|null{
- if(zone.kind!=='parking')return null;
+ if(zone.kind!=='parking'||zone.vehicleParking)return null;
  const broad=zone.w>=zone.h,slots=parkingStallCount(zone);
  const long=broad?zone.w:zone.h,short=broad?zone.h:zone.w;
  if(slots<2||long<132||short<55)return null;
