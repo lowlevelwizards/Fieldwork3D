@@ -41,3 +41,31 @@ export function compileWallTrimGeometry(packet:WallTrimPacket):THREE.BufferGeome
  result.computeBoundingBox();result.computeBoundingSphere();
  return result;
 }
+
+/** W4.2: preserve the body-local transform and atlas UVs. Trim uses a
+ * constant white texel and linear vertex colors, so no additional map,
+ * material, geometry group or visible draw is required. */
+export function compileUnifiedWallGeometry(body:THREE.BufferGeometry,packet:WallTrimPacket,bodyYaw:number,bodyHeight:number,whiteU:number,whiteV:number){
+ const trim=compileWallTrimGeometry(packet);
+ if(!trim||!body.index)throw Error('Unified wall requires indexed body and trim');
+ const core=body.clone(),colors=new Float32Array(core.getAttribute('position').count*3).fill(1);
+ core.setAttribute('color',new THREE.BufferAttribute(colors,3));
+ trim.rotateY(-bodyYaw);trim.translate(0,-bodyHeight/2,0);
+ const uv=trim.getAttribute('uv') as THREE.BufferAttribute;
+ for(let i=0;i<uv.count;i++)uv.setXY(i,whiteU,whiteV);
+ const geometry=mergeGeometries([core,trim],false),shadowIndexCount=core.index!.count;
+ core.dispose();trim.dispose();
+ if(!geometry)throw Error('Unified wall geometry incompatible');
+ geometry.computeBoundingBox();geometry.computeBoundingSphere();
+ return {geometry,shadowIndexCount};
+}
+/** Three invokes these around each actual shadow submission. The same
+ * indexed geometry draws only its original body in the depth pass, then
+ * restores the full range for the main pass. No extra shadow-only object. */
+export function restrictWallShadowToBody(mesh:THREE.Mesh,bodyIndices:number){
+ const total=mesh.geometry.index!.count;
+ mesh.onBeforeShadow=()=>mesh.geometry.setDrawRange(0,bodyIndices);
+ mesh.onAfterShadow=()=>mesh.geometry.setDrawRange(0,total);
+ mesh.onBeforeRender=()=>{if(mesh.geometry.drawRange.count!==total)mesh.geometry.setDrawRange(0,total);};
+ mesh.geometry.setDrawRange(0,total);
+}

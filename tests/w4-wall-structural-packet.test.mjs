@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {planWallTrimPackets,compileWallTrimGeometry} from '../src/rendering/wall-structural-packet.ts';
+import {planWallTrimPackets,compileWallTrimGeometry,compileUnifiedWallGeometry,restrictWallShadowToBody} from '../src/rendering/wall-structural-packet.ts';
 import {planWallCapJoins} from '../src/rendering/wall-cap-joins.ts';
 import {groupWallPresentation,resolveWallPresentation,applyWallMaterialState} from '../src/rendering/breach-wall-presentation.ts';
 const wall=(x,y,u,v)=>({a:{x,y},b:{x:u,y:v}});
@@ -57,4 +57,21 @@ test('trim packet shares owner presentation but not materials across independent
  assert.ok(owners[1].pieces.every(m=>m.material.opacity===1&&m.material.depthWrite));
  assert.ok(owners.every(o=>o.pieces[0].castShadow&&!o.pieces[1].castShadow));
  for(const p of pieces){p.mesh.geometry.dispose();p.mesh.material.dispose();}
+});
+
+test('unified packet retains body vertices and uses only its original indices for shadow submission',()=>{
+ const body=new THREE.BoxGeometry(80,56,9),packet=planWallTrimPackets(walls,56,0xffffff,0x333333)[0];
+ const result=compileUnifiedWallGeometry(body,packet,0,56,.5/128,.5/256),g=result.geometry;
+ assert.equal(result.shadowIndexCount,body.index.count);
+ assert.equal(g.index.count,body.index.count+packet.parts.length*36);
+ assert.equal(g.groups.length,0);
+ assert.deepEqual(g.getAttribute('position').array.slice(0,72),body.getAttribute('position').array);
+ assert.deepEqual(g.getAttribute('uv').array.slice(0,48),body.getAttribute('uv').array);
+ for(let i=24;i<g.getAttribute('uv').count;i++){assert.equal(g.getAttribute('uv').getX(i),.5/128);assert.equal(g.getAttribute('uv').getY(i),.5/256);}
+ const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({vertexColors:true}));
+ restrictWallShadowToBody(m,result.shadowIndexCount);
+ m.onBeforeShadow();assert.equal(g.drawRange.count,36);
+ m.onAfterShadow();assert.equal(g.drawRange.count,g.index.count);
+ m.onBeforeShadow();m.onBeforeRender();assert.equal(g.drawRange.count,g.index.count);
+ body.dispose();g.dispose();m.material.dispose();
 });

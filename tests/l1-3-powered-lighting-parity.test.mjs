@@ -117,7 +117,8 @@ test('L1.3 both view renderers consume the shared visual module and preserve fog
  assert.match(iso,/fixtureLightingVisuals\(s\)/);
  assert.match(iso,/presentDecor\(/);
  assert.match(flat,/world2D\.renderFixtureLighting2D\(\)/);
- assert.match(flat,/world2D\.architecture\(\);fog2D\.renderFog\(\)/);
+ // V12 surface marks are drawn after architecture, before the same fog pass.
+ assert.match(flat,/world2D\.architecture\(\);world2D\.renderSurfaceMarks\(\);fog2D\.renderFog\(\)/);
  assert.match(stage,/this\.fixtureLights\.reset\(\)/);
  assert.match(stage,/this\.fixtureLights\.update\(s,omniscient,personalDisclosure/);
  assert.doesNotMatch(iso,/SpotLight|castShadow\s*=\s*true/);

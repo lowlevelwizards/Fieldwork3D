@@ -22,12 +22,12 @@ import {buildingTheme,roomFloor,roomFixtureFinishes,roomAccessoryColor} from '..
 import {effectiveCondition} from '../worldgen/condition-visual.ts';
 import {conditionFloorPixels} from '../worldgen/condition-visual.ts';
 import {conditionWallPixels,wallPatinaDimensions} from '../worldgen/condition-wall.ts';
-import {planWallTrimPackets,compileWallTrimGeometry} from './wall-structural-packet.ts';
+import {planWallTrimPackets,compileWallTrimGeometry,compileUnifiedWallGeometry,restrictWallShadowToBody} from './wall-structural-packet.ts';
 import {planWallCapJoins} from './wall-cap-joins.ts';
 import {ageMaterialColor} from './condition-materials.ts';
 import {doubleSidedWallWear} from './wear-wall-geometry.ts';
 import {planWallSurface,packedWallSurfacePixels,type WallAudition,type WallSurfaceRecipe} from '../worldgen/wall-surface-recipe.ts';
-import {buildWallAtlas,type WallAtlasSlot} from './wall-surface-atlas.ts';
+import {buildWallAtlas,writeAtlasSlot,type WallAtlasSlot} from './wall-surface-atlas.ts';
 import {wearPixels} from './pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './wear-opacity.ts';
 import {type PixelOverlay} from './pixel-overlays.ts';
@@ -92,6 +92,7 @@ export type SiteSceneBuildPort={
  patinaWallSurfaces:Array<{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;patterned?:boolean;atlasSlot?:WallAtlasSlot}>;
  wallAudition?:WallAudition;
  wallStructureCompiled?:boolean;
+ wallStructureUnified?:boolean;
  sitePatinaTextures:THREE.DataTexture[];
  sitePatinaMaterials:THREE.MeshBasicMaterial[];
  wallMaterials:Set<THREE.Material>;
@@ -404,7 +405,8 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
     const atlas=host.wallAudition?.atlas?buildWallAtlas(site,WALL_VISUAL_HEIGHT,finishCondition,host.wallAudition.effect,!!host.solid(theme.wall,.94,wallPixelSurface(site.archetype)).map):undefined;
     if(atlas)host.sitePatinaTextures.push(...atlas.pages);
     const capJoins=planWallCapJoins(site.walls);
-    const compiledTrim=!!host.wallStructureCompiled&&!!atlas;
+    const unified=!!host.wallStructureUnified&&!!atlas;
+    const compiledTrim=(!!host.wallStructureCompiled||unified)&&!!atlas;
     const trimPackets=compiledTrim?planWallTrimPackets(site.walls,WALL_VISUAL_HEIGHT,theme.trim,theme.cap,capJoins):[];
     const wallGroups:THREE.Group[]=[];
     for(const [index,wall] of site.walls.entries()){
@@ -431,6 +433,18 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         individualWall.map=atlasSlot.texture;individualWall.color.setHex(0xffffff);individualWall.needsUpdate=true;
         host.patinaWallSurfaces.push({index,texture:atlasSlot.texture,atlasSlot});
         body.userData.fieldworkWallSurface='w3-atlas';
+        if(unified){
+          atlasSlot.whiteSwatch=true;writeAtlasSlot(atlasSlot,finishCondition,host.wallAudition!.effect);
+          const image=atlasSlot.texture.image;
+          const packet=compileUnifiedWallGeometry(body.geometry,trimPackets[index],angle,WALL_VISUAL_HEIGHT,.5/image.width,(atlasSlot.row+.5)/image.height);
+          // Atlas body geometry is site-owned, not a shared cached box.
+          body.geometry.dispose();body.geometry=packet.geometry;
+          individualWall.vertexColors=true;individualWall.needsUpdate=true;
+          restrictWallShadowToBody(body,packet.shadowIndexCount);
+          body.userData.fieldworkUnifiedWall=true;
+          body.userData.fieldworkShadowIndexCount=packet.shadowIndexCount;
+          body.userData.fieldworkTrimSourceCount=trimPackets[index].parts.length;
+        }
       }else if(host.wallAudition){
         // Map Lab allocates one bounded mask even on clean walls so the
         // condition slider can scrub without allocating or recompiling.
@@ -508,6 +522,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
     }
     if(compiledTrim){
       for(const packet of trimPackets){
+        if(unified&&atlas?.slots.has(packet.index))continue;
         const geometry=compileWallTrimGeometry(packet);if(!geometry)continue;
         const material=capMat.clone();material.map=null;material.color.setHex(0xffffff);material.vertexColors=true;
         host.wallMaterials.add(material);

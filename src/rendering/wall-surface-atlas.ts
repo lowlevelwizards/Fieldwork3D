@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type {Site} from '../breach-site.ts';
 import {wallPatinaDimensions} from '../worldgen/condition-wall.ts';
 import {planWallFaces,atlasWallStrip,type WallFacePair,type WallEffectFilter} from '../worldgen/wall-surface-recipe.ts';
-export type WallAtlasSlot={index:number;row:number;texture:THREE.DataTexture;pair:WallFacePair;patterned:boolean};
+export type WallAtlasSlot={index:number;row:number;texture:THREE.DataTexture;pair:WallFacePair;patterned:boolean;whiteSwatch?:boolean};
 export type WallAtlas={pages:THREE.DataTexture[];slots:Map<number,WallAtlasSlot>};
 /** Width buckets and power-of-two strip counts ensure no unused pixel
  * allocation, power-of-two mip boundaries and a bounded 2048-row page. */
@@ -25,6 +25,8 @@ export function planAtlasPages(widths:readonly {index:number;width:number}[]){
 export function writeAtlasSlot(slot:WallAtlasSlot,level:number,filter:WallEffectFilter){
  const image=slot.texture.image as {data:Uint8Array;width:number;height:number};
  image.data.set(atlasWallStrip(slot.pair,level,image.width,filter,slot.patterned),slot.row*image.width*4);
+ // Reserved edge texel, outside either broad-face UV range.
+ if(slot.whiteSwatch)image.data.fill(255,slot.row*image.width*4,slot.row*image.width*4+4);
 }
 export function updateWallAtlas(slots:Iterable<WallAtlasSlot>,level:number,filter:WallEffectFilter){
  const pages=new Set<THREE.DataTexture>();
