@@ -127,7 +127,8 @@ import {readEquipmentInteraction} from './breach-equipment-interaction-pose.ts';
 import {type Session,type TeamActor,team,knownAt,liveVisibility} from './breach-game.ts';
 import {downedTransportPresentation} from './breach-capture-transport-presentation.ts';
 import {SurrenderedFirearmsPresenter} from './rendering/breach-surrendered-firearms-presenter.ts';
-import {spatialSurfaceKnown,shotVisibility} from './breach-presentation.ts';
+import {spatialSurfaceKnown,shotVisibility,windowPresentationKnown} from './breach-presentation.ts';
+import {markWindowOwner,markWallOwnerKnown,markCoverOwnerKnown} from './rendering/breach-evidence-owner.ts';
 import {doorKnown} from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
 import {entryToolVerdict} from './breach-entry-tools.ts';
@@ -3281,13 +3282,16 @@ export class TacticalScene3D{
       const artRadius=damageRadius(mark.surface,mark.damageCount);
       if(mark.surface!=='blood'&&ref){
         if(ref.kind==='wall'){
+          if(!markWallOwnerKnown(s,ref,omniscient))continue;
           const owner=this.wallOwners.find(w=>w.index===ref.index);
           if(!owner||owner.opacity<.995||!owner.pieces.some(m=>m.visible&&(!m.parent||m.parent.visible)))continue;
           attached=wallMarkPose(ref,owner.segment,artRadius*impactFinishScale(s.site,ref));
         }else if(ref.kind==='door'){
           const door=ref.ownerId?this.frameDoorsById.get(ref.ownerId):undefined;
           const visual=ref.ownerId?this.doors.get(ref.ownerId):undefined;
-          if(!door||!visual?.root.visible||!visual.leaf.visible||visual.leaf.userData.impactCut)continue;
+          if(!door||!visual?.root.visible||!visual.leaf.visible||visual.leaf.userData.impactCut||
+            !spatialSurfaceKnown(s,'door',door.id,omniscient)||
+            !omniscient&&!this.presentationSight.query(s,'door',door.id,doorCenter(door)))continue;
           if((door.style==='glazed'||door.style==='french')&&!visual.glassPane?.visible)continue;
           const local=doorMarkLocalPose(ref,door,artRadius);
           if(local){
@@ -3299,7 +3303,8 @@ export class TacticalScene3D{
         }else if(ref.kind==='cover'){
           const authored=s.site?.cover[ref.index],current=s.coverState[ref.index];
           const group=this.coverGroups.get(ref.index),visual=this.coverVisualStates.get(ref.index);
-          if(!authored||!current||!group?.visible||!visual?.intact.visible)continue;
+          if(!authored||!current||!group?.visible||!visual?.intact.visible||
+            !markCoverOwnerKnown(s,ref,omniscient))continue;
           const local=coverMarkLocalPose(ref,authored,current,artRadius);
           if(local){
             group.updateWorldMatrix(true,false);
@@ -3310,8 +3315,8 @@ export class TacticalScene3D{
               radius:local.radius*Math.min(Math.abs(group.scale.x),Math.abs(group.scale.y),Math.abs(group.scale.z))};
           }
         }else if(ref.kind==='window'){
-          const pane=s.windows[ref.index],glass=ref.ownerId?this.windowGlass.get(ref.ownerId):undefined;
-          if(!pane||!glass?.visible||!glass.parent?.visible)continue;
+          const pane=markWindowOwner(s,ref),glass=ref.ownerId?this.windowGlass.get(ref.ownerId):undefined;
+          if(!pane||!glass?.visible||!glass.parent?.visible||!windowPresentationKnown(s,pane,omniscient))continue;
           attached=windowMarkPose(ref,pane,artRadius);
         }
         // Unsupported collider/art correspondence fails closed.

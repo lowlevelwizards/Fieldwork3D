@@ -39,3 +39,24 @@ test('V19 both board renderers gate point effects and suppress unrecorded person
  assert.ok(two.includes('const firing=!(replaying&&replayKnowledge.observerId)'));
  assert.ok(three.includes('shot=>!personalDisclosure&&'));
 });
+
+import {markDoorOwner,markWindowOwner,markCoverOwnerKnown} from '../src/rendering/breach-evidence-owner.ts';
+test('V19 persistent evidence resolves stable door and pane IDs, not stale array positions',()=>{
+ const a={id:'a'},b={id:'b'},s={doors:[a,b],windows:[b,a]};
+ assert.equal(markDoorOwner(s,{kind:'door',ownerId:'b',index:0}),b);
+ assert.equal(markWindowOwner(s,{kind:'window',ownerId:'a',index:0}),a);
+ assert.equal(markDoorOwner(s,{kind:'door',index:0}),undefined);
+ assert.equal(markWindowOwner(s,{kind:'window',ownerId:'gone',index:0}),undefined);
+});
+test('V19 an unknown or replaced cover does not inherit prior damage',()=>{
+ const c={id:'crate-a',fixture:'crate',x:20,y:30,w:20,h:20};
+ const s={site:{cover:[c]},coverState:[{...c}],intel:{mode:'true-blind',cover:new Set()}};
+ const ref={kind:'cover',ownerId:c.id,index:0};
+ assert.equal(markCoverOwnerKnown(s,ref,false),false);
+ s.intel.cover.add(0);
+ assert.equal(markCoverOwnerKnown(s,ref,false),true);
+ s.coverState[0].id='crate-b';
+ assert.equal(markCoverOwnerKnown(s,ref,true),false);
+ s.coverState[0]={...c,destroyed:true};
+ assert.equal(markCoverOwnerKnown(s,ref,true),false);
+});
