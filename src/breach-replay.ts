@@ -150,7 +150,8 @@ const traversalCopy=(op:TraverseOpportunity|null):TraverseOpportunity|null=>
  op?{...op,from:position(op.from),approach:position(op.approach),
     landing:position(op.landing),destination:position(op.destination)}:null;
 const shotCopy=(shot:ShotEvent):ShotEvent=>({...shot,
-  start:position(shot.start),end:position(shot.end)});
+  start:position(shot.start),end:position(shot.end),
+  ...(shot.materialImpacts?{materialImpacts:shot.materialImpacts.map(c=>({...c,p:position(c.p)}))}:{})});
 /** Live event rings are capped; replay keeps every unique event. Their IDs
  * are monotonically appended, so jump directly to the unrecorded suffix
  * instead of walking 240/500 old entries sixty times a second. */

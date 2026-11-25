@@ -55,7 +55,8 @@ test('same committed hit is not duplicated; orientation invalidates cached trans
  const ref=segmentAttachment('wall',0,undefined,wall,{x:20,y:-10},{x:20,y:10},.5,25);
  const s={impactMarks:[]},m={id:1,shotId:3,p:{x:20,y:0},surface:'stone',height:25,age:0,surfaceRef:ref};
  retainImpactMark(s,m);retainImpactMark(s,{...m,id:2});assert.equal(s.impactMarks.length,1);
- retainImpactMark(s,{...m,id:3,shotId:4});assert.equal(s.impactMarks.length,2);
+ retainImpactMark(s,{...m,id:3,shotId:4});assert.equal(s.impactMarks.length,1);
+ assert.equal(s.impactMarks[0].damageCount,2);
  const c=new ImpactMarkSlotCache(1);c.update(0,1,2,3,4,1,1,-1,0,0,1);
  assert.equal(c.update(0,1,2,3,4,1,1,-1,0,0,-1),MARK_MATRIX_DIRTY);
 });

@@ -3,7 +3,8 @@ import {recordTrainingCoverStrike} from './training/training-targets.ts';
 /** Stage 10: physical environmental damage & evidence after real fired rays.
  * Not a sight/aim evaluator. All mutations are authoritative Session state.
  */
-import type {Session,TeamActor} from './breach-game.ts';
+import type {Session,TeamActor,MaterialImpactCue} from './breach-game.ts';
+import {MAX_MATERIAL_CUES} from './breach-material-cues.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import {type Pt,doorCenter} from './breach-core.ts';
 import {length} from './breach-plan.ts';
@@ -26,8 +27,9 @@ export function createShotEnvironmentCommitter(
 /** Distinct pre-target penetration events leave physical evidence. */
 function emitMaterialEvents(s:Session,from:Pt,to:Pt,
  hits:readonly import('./breach-ballistic-resolution.ts').MaterialHitEvidence[],
- maximum=1){
+ maximum=1):MaterialImpactCue[]{
  const unique=new Set<string>();
+ const cues:MaterialImpactCue[]=[];
  for(const hit of hits){
   if(hit.fraction>maximum+.00001||hit.fraction>=.9999)continue;
   const p={x:from.x+(to.x-from.x)*hit.fraction,
@@ -35,13 +37,14 @@ function emitMaterialEvents(s:Session,from:Pt,to:Pt,
   const key=Math.round(p.x/3)+','+Math.round(p.y/3);
   if(unique.has(key))continue;unique.add(key);
   const response=materialResponse(hit.material);
-  retainImpactMark(s,{id:s.nextEffectId++,p,
-    surface:response.visual,age:0,height:hit.height??20,
+  const id=s.nextEffectId++,height=hit.height??20;
+  retainImpactMark(s,{id,p,surface:response.visual,age:0,height,
     shotId:s.nextShotId,surfaceRef:hit.surfaceRef});
+  if(cues.length<MAX_MATERIAL_CUES)cues.push({id,p:{...p},height,surface:response.visual});
   if(response.sound!=='glass')
     hear(s,p,response.radius,'impact-'+response.sound);
  }
-
+ return cues;
 }
 /** Mutate only struck cover, never the planning ray or visual renderer. */
 function damageStruckCover(s:Session,hits:readonly {index:number;fraction:number}[],

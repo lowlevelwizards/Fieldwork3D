@@ -265,7 +265,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   shatterStruckWindows(s,reachedPanes,Math.max(1,WEAPONS[a.weapon].damage));
   shatterStruckDoorGlass(s,impact.glassDoorHits,fraction);
   damageStruckCover(s,impact.coverHits,WEAPONS[a.weapon].damage*.36,fraction,a.id);
-  emitMaterialEvents(s,from,far,impact.materialHits,fraction);
+  const materialImpacts=emitMaterialEvents(s,from,far,impact.materialHits,fraction);
   a.fireCd=WEAPONS[a.weapon].interval*1.6;
   a.magazine--;a.shots++;a.lastShotAt=s.seconds;
   a.recoil=Math.min(.9,a.recoil+BALLISTICS[a.weapon].recoilKick*mods.recoilKick);
@@ -282,7 +282,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     side:a.side,shotYaw:yaw,mode:'ads',spread,muzzleHeight:muzzle.y,
     impactHeight:height,firedAt:s.seconds,
     healthBefore:before,healthAfter:after,down:hit&&after<=0,
-    surface});
+    surface,...(materialImpacts?.length?{materialImpacts}:{})});
   retainImpactMark(s,{id:s.nextEffectId++,p:clone(end),
     surface,height,age:0,shotId,surfaceRef:hit?undefined:impact.stoppedHit?.surfaceRef,
     ...(surface==='blood'?{bloodKind:'splat' as const,bloodAmount:1}:{})},sessionWorldGeometry(s).walls);

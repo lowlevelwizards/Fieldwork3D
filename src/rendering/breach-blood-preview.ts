@@ -4,7 +4,7 @@
  */
 import * as THREE from 'three';
 import {EffectSlotCache} from './breach-effect-slot-cache.ts';
-import {STAIN_CELL,STAIN_VARIANTS,STAIN_STYLE_COUNT,stainAlphaPixels,stainVariant} from './breach-stain-atlas.ts';
+import {STAIN_CELL,STAIN_VARIANTS,STAIN_STYLE_COUNT,stainAlphaPixels,stainVariant,damageVariant} from './breach-stain-atlas.ts';
 
 export function makeStainMarkBatch(capacity:number){
  const texture=new THREE.DataTexture(stainAlphaPixels(),STAIN_CELL*STAIN_STYLE_COUNT,STAIN_CELL,THREE.RGBAFormat);
@@ -22,13 +22,13 @@ export function makeStainMarkBatch(capacity:number){
    '#include <begin_vertex>\nvStainStyle=stainStyle;vStainUV=uv;');
   shader.fragmentShader='uniform sampler2D fieldworkStainAtlas;\nvarying float vStainStyle;\nvarying vec2 vStainUV;\n'+shader.fragmentShader;
   shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',
-   '#include <color_fragment>\nif(vStainStyle>=0.0){vec2 at=vec2((vStainStyle+vStainUV.x)*.125,vStainUV.y);diffuseColor.a*=texture2D(fieldworkStainAtlas,at).a;}');
+   '#include <color_fragment>\nif(vStainStyle>=0.0){vec2 at=vec2((vStainStyle+vStainUV.x)/'+STAIN_STYLE_COUNT.toFixed(1)+',vStainUV.y);vec4 mask=texture2D(fieldworkStainAtlas,at);diffuseColor.a*=mask.a;diffuseColor.rgb*=mask.rgb;}');
  };
- material.customProgramCacheKey=()=> 'fieldwork-v13-stain-atlas';
+ material.customProgramCacheKey=()=> 'fieldwork-v14-impact-atlas';
  const mesh=new THREE.InstancedMesh(geometry,material,capacity);
  mesh.count=0;mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);mesh.frustumCulled=false;
  mesh.userData.fieldworkDrawFamily='mixed-impact-stain';
- const styleFor=(surface:string|undefined,x:number,y:number,kind?:'splat'|'pool')=>surface==='blood'?stainVariant(x,y)+(kind==='pool'?STAIN_VARIANTS:0):-1;
+ const styleFor=(surface:string|undefined,x:number,y:number,kind?:'splat'|'pool')=>surface==='blood'?stainVariant(x,y)+(kind==='pool'?STAIN_VARIANTS:0):damageVariant(surface,x,y);
  return {mesh,texture,style,styleFor,
   setStyle(index:number,surface:string|undefined,x:number,y:number){
    style.setX(index,styleFor(surface,x,y));

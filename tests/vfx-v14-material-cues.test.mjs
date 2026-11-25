@@ -1,0 +1,22 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {newSession} from '../src/breach-game.ts';
+import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
+import {createShotEnvironmentCommitter} from '../src/breach-shot-environment.ts';
+import {MAX_MATERIAL_CUES,isIntermediateMaterialCue} from '../src/breach-material-cues.ts';
+test('committed environment events expose bounded cues at their real height without changing evidence or audio',()=>{
+ const s=newSession();s.impactMarks=[];
+ const sounds=[];
+ const port=createShotEnvironmentCommitter({enemies:()=>[],hear:(_s,p,r,k)=>sounds.push({p,r,k}),battleEvent(){}});
+ const hits=Array.from({length:8},(_,i)=>({fraction:(i+1)/10,material:'softwood',height:20+i}));
+ const cues=port.emitMaterialEvents(s,{x:0,y:0},{x:100,y:0},hits,.7);
+ assert.equal(cues.length,MAX_MATERIAL_CUES);assert.equal(s.impactMarks.length,7);assert.equal(sounds.length,7);
+ assert.equal(cues[0].p.x,10);assert.equal(cues[0].height,20);assert.equal(cues[0].surface,'wood');
+ const shot={id:1,shooterId:'a',targetId:null,start:{x:0,y:0},end:{x:40,y:0},impactHeight:23,surface:'wood',age:0,hit:false,side:'blue',healthBefore:0,healthAfter:0,down:false,materialImpacts:cues};
+ assert.equal(isIntermediateMaterialCue(shot,cues[0]),true);
+ assert.equal(isIntermediateMaterialCue(shot,cues[3]),false);
+ s.shots=[shot];const frame=snapshot(s);s.shots[0].materialImpacts[0].p.x=99;
+ assert.equal(frame.shots[0].materialImpacts[0].p.x,10);
+ applyReplayFrame(s,frame);assert.equal(s.shots[0].materialImpacts[0].p.x,10);
+ s.shots[0].materialImpacts[0].p.x=8;assert.equal(frame.shots[0].materialImpacts[0].p.x,10);
+});

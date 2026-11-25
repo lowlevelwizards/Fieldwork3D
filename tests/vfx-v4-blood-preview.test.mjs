@@ -2,16 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {makeStainMarkBatch,makeBloodDropletBatch,BLOOD_DROPLET_CAPACITY} from '../src/rendering/breach-blood-preview.ts';
-test('V4 shares mixed mark draw, nonblood bypass and bounded styles',()=>{
+test('V14 shares mixed mark draw, material masks and bounded blood styles',()=>{
  const b=makeStainMarkBatch(64);assert.equal(b.mesh.count,0);
  b.setStyle(0,'wood',10,20);b.setStyle(1,'blood',10,20);
- assert.equal(b.style.getX(0),-1);assert.ok(b.style.getX(1)>=0&&b.style.getX(1)<4);
+ assert.ok(b.style.getX(0)>=8&&b.style.getX(0)<10);assert.ok(b.style.getX(1)>=0&&b.style.getX(1)<4);
  assert.equal(b.mesh.geometry.attributes.stainStyle,b.style);
  assert.ok(b.styleFor('blood',10,20,'pool')>=4&&b.styleFor('blood',10,20,'pool')<8);
  const shader={uniforms:{},vertexShader:'#include <begin_vertex>',fragmentShader:'#include <color_fragment>'};
  b.mesh.material.onBeforeCompile(shader,null);
  assert.equal(shader.uniforms.fieldworkStainAtlas.value,b.texture);
- assert.match(shader.fragmentShader,/vStainStyle>=0.0/);b.dispose();
+ assert.match(shader.fragmentShader,/vStainStyle>=0.0/);
+ assert.match(shader.fragmentShader,/diffuseColor.rgb\*=mask.rgb/);b.dispose();
 });
 test('V4 one bounded droplet batch preserves independent opacity, reset and rewind',()=>{
  const g=new THREE.CylinderGeometry(.65,.65,1,6),b=makeBloodDropletBatch(g);

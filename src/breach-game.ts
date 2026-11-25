@@ -331,6 +331,7 @@ export type TeamActor=Operator & {
   lastEnemyDoorCloseAt:number;
 };
 export type NoiseEvent={id?:number;p:Pt;radius:number;time:number;kind:string};
+export type MaterialImpactCue={id:number;p:Pt;height:number;surface:'wood'|'stone'|'metal'|'glass'|'dust'};
 export type ShotEvent={
   id:number;shooterId:string;targetId:string|null;
   /** Snapshot identity of fired primary or Glock (not current selection). */
@@ -341,6 +342,8 @@ export type ShotEvent={
   shotYaw?:number;mode?:FiringMode;spread?:number;
   muzzleHeight?:number;firedAt?:number;
   impactHeight?:number;
+  /** Bounded committed intermediate contacts, not additional shots. */
+  materialImpacts?:MaterialImpactCue[];
   hitRegion?:WoundRegion;
   /** Optional, non-authoritative V4 forensic shadow; never drives damage. */
   hitAnatomy?:import('./breach-hit-anatomy.ts').HitAnatomyV1;
@@ -351,7 +354,9 @@ export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number;
   height?:number;normal?:Pt;shotId?:number;
   /** V13 cosmetic accumulation, independent of authoritative medical quantities. */
   bloodKind?:'splat'|'pool';bloodAmount?:number;bloodOwnerId?:string;
-  surfaceRef?:import('./breach-impact-surface.ts').SurfaceAttachment};
+  surfaceRef?:import('./breach-impact-surface.ts').SurfaceAttachment;
+  /** Bounded cosmetic accumulation on an unchanged owner face. */
+  damageCount?:number;lastDamageShotId?:number};
 export type DroppedMagazine={id:number;p:Pt;side:Side;age:number;
   weapon?:WeaponId;rounds?:number;magazineId?:string;
   /** Actually ejected secondary identity; the legacy SMG visual carrier

@@ -33,12 +33,13 @@ export function sampleBleedingEvidence(s:Session,h:number):void{
  }
 }
 /** Keep blood evidence mission-local and stop touching its age when settled.
- * Other impact marks retain the original 24-second lifetime. */
+ * Owned material damage persists under the same bounded evidence budget.
+ * Legacy unowned marks retain the original 24-second lifetime. */
 export function ageImpactEvidence(marks:ImpactMark[],h:number):void{
  let write=0;
  for(let read=0;read<marks.length;read++){
   const m=marks[read];
-  if(m.surface==='blood'){if(m.age<3)m.age=Math.min(3,m.age+h);marks[write++]=m;}
+  if(m.surface==='blood'||m.surfaceRef){if(m.age<3)m.age=Math.min(3,m.age+h);marks[write++]=m;}
   else if((m.age+=h)<24)marks[write++]=m;
  }
  marks.length=write;
