@@ -2,6 +2,7 @@ import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {bloodMarkRadius,bloodMarkTint} from './breach-blood-evidence.ts';
 import {damageRadius,damageTint} from './rendering/breach-stain-atlas.ts';
+import {isIntermediateMaterialCue,MAX_MATERIAL_CUES} from './breach-material-cues.ts';
 import {sampleBloodBurst,BLOOD_BURST_COUNT} from './rendering/breach-blood-burst.ts';
 import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose,isGroundImpactMark,type SurfaceMarkPose} from './breach-impact-surface.ts';
 import {hostileNpcTransitionKey,hostileCustodyWalkBlend}
@@ -3054,6 +3055,50 @@ export class TacticalScene3D{
         chip.visible=visibility.impact&&shot.age<profile.lifetime&&
           (omniscient||this.presentationSight.query(s,'effect',
             shot.id+':chip:'+i,{x:chip.position.x,y:chip.position.z}));
+      }
+    }
+    // Final-shot effects have priority. Use spare slots in the same
+    // batches for independently disclosed intermediate material contacts.
+    // No extra tracer, muzzle event, or visibility inferred from the shooter.
+    if(!personalDisclosure&&this.materialImpactPreviewEnabled){
+      let count=0;
+      for(let n=s.shots.length-1;n>=Math.max(0,s.shots.length-20)&&count<20;n--){
+        const shot=s.shots[n];
+        for(let j=0;j<Math.min(MAX_MATERIAL_CUES,shot.materialImpacts?.length??0)&&count<20;j++){
+          const cue=shot.materialImpacts![j],surface=cue.surface;
+          if(!isIntermediateMaterialCue(shot,cue))continue;
+          if(!omniscient&&!this.presentationSight.query(s,'effect','material:'+cue.id,cue.p))continue;
+          const p=MATERIAL_IMPACT_PROFILES[surface],pulse=impactPulse(surface,shot.age,p.life);
+          if(!pulse.active)continue;
+          count++;
+          if(this.shotPulsePreviewEnabled){
+            if(!this.impactPulseBatch){
+              this.impactPulseBatch=makeBloodDropletBatch(this.impactGeometry,20,'shot-pulse-batch');
+              this.effects.add(this.impactPulseBatch.mesh);
+            }
+            this.impactPulseBatch.addPose(cue.p.x,cue.height,cue.p.y,0,0,0,pulse.scale,pulse.scale,pulse.opacity,p.pulseColor);
+          }
+          const sample=this.materialImpactScratch;
+          if(!(this.smokePreviewEnabled&&surface==='dust'))
+           for(let i=0;i<p.count;i++){
+            if(!sampleMaterialImpact(surface,cue.id,i,shot.age,cue.p.x,cue.height,cue.p.y,sample))continue;
+            if(!omniscient&&!this.presentationSight.query(s,'effect','material:'+cue.id+':chip:'+i,{x:sample.x,y:sample.z}))continue;
+            if(!this.dropletPreview){
+              this.dropletPreview=makeBloodDropletBatch(this.tracerGeometry,MATERIAL_IMPACT_PARTICLE_LIMIT);
+              this.effects.add(this.dropletPreview.mesh);
+            }
+            this.dropletPreview.addMaterial(sample);
+           }
+          if(this.smokePreviewEnabled&&(surface==='dust'||surface==='wood'||surface==='stone')){
+            const puff=this.puffScratch;
+            for(let i=0;i<puffCount(surface);i++){
+              if(!samplePuff(surface,cue.id,i,shot.age,cue.p.x,cue.height,cue.p.y,puff))continue;
+              if(!omniscient&&!this.presentationSight.query(s,'effect','material:'+cue.id+':puff:'+i,{x:puff.x,y:puff.z}))continue;
+              if(!this.dustPuffs){this.dustPuffs=new DustPuffBatch();this.effects.add(this.dustPuffs.mesh);}
+              this.dustPuffs.add(puff);
+            }
+          }
+        }
       }
     }
     this.dropletPreview?.finish();

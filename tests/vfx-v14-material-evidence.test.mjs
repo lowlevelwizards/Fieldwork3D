@@ -37,3 +37,4 @@ test('persistent marks survive transient churn and replay restores accumulation'
  applyReplayFrame(s,early);assert.equal(s.impactMarks[0].damageCount,undefined);
  applyReplayFrame(s,later);assert.equal(s.impactMarks[0].damageCount,2);
 });
+
