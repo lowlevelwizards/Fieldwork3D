@@ -45,7 +45,7 @@ try{
       const integrated=mode!=='legacy';
       const {scene,site,session,team}=window.w2Probe;
       scene.wallAudition=integrated?{effect:'all',atlas:mode==='atlas'}:undefined;
-      scene.applySite(site);scene.resetCamera();scene.setMode('iso');
+      const buildStart=performance.now();scene.applySite(site);const buildMs=performance.now()-buildStart;scene.resetCamera();scene.setMode('iso');
       scene.view.zoom=1.25;
       const inventory=scene.walls.filter(w=>w.mesh.userData.fieldworkDrawFamily==='structural-wall-body');
       const masks=scene.patinaWallSurfaces;
@@ -56,7 +56,7 @@ try{
       });
       const renderer=scene.renderer,original=renderer.renderBufferDirect;
       const draw=()=>scene.update(session,team(session)[0].id,1,null,true);
-      draw();draw();
+      const firstDrawStart=performance.now();draw();const firstDrawMs=performance.now()-firstDrawStart;draw();
       let frames=[];
       try{
        for(let i=0;i<18;i++){
@@ -90,7 +90,7 @@ try{
        draw();
       }
       if(integrated&&inventory.some(w=>w.mesh.material.map!==masks.find(m=>m.index===w.index)?.texture))throw Error('Packed wall is not using standard map');
-      const actual={mode,integrated,bodies:inventory.length,overlays,decals,textureBytes,textureCount,gpuTextures:renderer.info.memory.textures,geometries:renderer.info.memory.geometries,frames};
+      const actual={mode,integrated,bodies:inventory.length,overlays,decals,textureBytes,textureCount,gpuTextures:renderer.info.memory.textures,geometries:renderer.info.memory.geometries,programs:renderer.info.programs?.length,buildMs,firstDrawMs,frames};
       if(mode==='atlas'&&textureCount>=inventory.length)throw Error('Atlas did not reduce texture objects');
       if(integrated&&(overlays||decals||frames.some(f=>f.weather)))throw Error('W2 retained independent wall weathering');
       return actual;
@@ -101,6 +101,10 @@ try{
     check(results[0].bodies===results[1].bodies,'Wall geometry inventory changed');
     check(results[0].overlays>0&&results[0].frames.some(f=>f.weather>0),'Legacy reference had no real weather submissions');
     check(results.slice(1).every(r=>r.bodies===results[0].bodies&&r.textureBytes===results[0].textureBytes),'Conditioned wall geometry or texture budget changed');
+    if(w3){const packed=results.find(r=>r.mode==='packed'),atlas=results.find(r=>r.mode==='atlas');
+     check(atlas.frames.every(f=>f.total<=Math.max(...packed.frames.map(p=>p.total))),'W3 increased structural render submissions');
+     check(atlas.textureCount<=packed.textureCount*.25,'W3 missed 75% wall texture object reduction');
+    }
     evidence.push({name,seed,archetype,results});
    }
    if(w3&&name==='desktop'){
