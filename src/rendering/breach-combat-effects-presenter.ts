@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import type {Session} from '../breach-game.ts';
 import type {Pt} from '../breach-core.ts';
 import {casingAt,CASING_LIMIT} from '../breach-effects.ts';
+import {createCasingGeometry,casingVisualProfile} from './breach-casing-art.ts';
 import {sampleThrow} from '../breach-flash.ts';
 import {enableWorldGraphicMaterial} from '../breach-graphic-world-lighting.ts';
 import {ShotVisualPool} from './breach-shot-visual-pool.ts';
@@ -33,6 +34,7 @@ export class BreachCombatEffectsPresenter{
   private casingMesh:THREE.InstancedMesh|null=null;
   private casingIds:number[]=[];
   private casingMatrix=new THREE.Object3D();
+  private casingColor=new THREE.Color();
   private thrown=new Map<number,THREE.Mesh>();
   private detonations=new Map<number,THREE.Mesh>();
   private readonly frameGrenadeIds=new Set<number>();
@@ -141,11 +143,11 @@ export class BreachCombatEffectsPresenter{
       // casing shadows. Deeper copper/gold, rather than flat yellow paint.
       // The graphic world's three-band lighting can shade it at no extra draw.
       const brass=new THREE.MeshStandardMaterial({
-        color:0xb38d59,roughness:.48,metalness:.52,flatShading:true});
+        color:0xffffff,roughness:.48,metalness:.52,flatShading:true});
       if(this.graphicLookEnabled)enableWorldGraphicMaterial(brass);
       this.mats.push(brass);
       this.casingMesh=new THREE.InstancedMesh(
-        new THREE.CylinderGeometry(.75,.75,3.1,6),brass,CASING_LIMIT);
+        createCasingGeometry(),brass,CASING_LIMIT);
       this.casingMesh.castShadow=false;
       this.casingMesh.receiveShadow=false;
       this.casingMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -157,20 +159,20 @@ export class BreachCombatEffectsPresenter{
     for(const brass of s.casings){
       // Casing positions could reveal a shooter who was never confirmed
       // by the selected observer. Contact review has no shot forensics.
-      if(replayDisclosurePolicy?.mode==='operator')continue;
+      if(replayDisclosurePolicy?.mode==='operator'||s.seconds<brass.at)continue;
       if(!omniscient&&!liveVisibility(s,{x:brass.x,y:brass.z}))continue;
       if(casingCount>=CASING_LIMIT)break;
       // Full ballistic + bounce motion ends comfortably before two seconds.
       // Settled cartridges retain their previous instance matrices.
       if(this.casingIds[casingCount]!==brass.id||
          s.seconds<this.lastCasingTime||
-         (s.seconds!==this.lastCasingTime&&this.lastCasingTime-brass.at<2)){
+         (s.seconds!==this.lastCasingTime&&this.lastCasingTime-brass.at<3)){
         const p=casingAt(brass,s.seconds);
         this.casingMatrix.position.set(p.x,p.y,p.z);
-        this.casingMatrix.rotation.set(.9,p.rotation,1.2);
-        const factor=brass.weapon==='shotgun'?1.45:
-          brass.weapon==='smg'?.73:brass.weapon==='rifle'?1.2:1;
-        this.casingMatrix.scale.set(factor,factor,factor);
+        this.casingMatrix.rotation.set(p.tiltX??.9,p.rotation,p.tiltZ??1.2,'YXZ');
+        const profile=casingVisualProfile(brass),scale=brass.visualScale??1;
+        this.casingMatrix.scale.set(profile.width*scale,profile.length*scale,profile.width*scale);
+        casingDraw.setColorAt(casingCount,this.casingColor.setHex(profile.color));
         this.casingMatrix.updateMatrix();
         casingDraw.setMatrixAt(casingCount,this.casingMatrix.matrix);
         casingDirty=true;this.matrixWrites++;
@@ -180,7 +182,8 @@ export class BreachCombatEffectsPresenter{
     if(casingDraw.count!==casingCount)casingDirty=true;
     casingDraw.count=casingCount;
     this.casingIds.length=casingCount;
-    if(casingDirty)casingDraw.instanceMatrix.needsUpdate=true;
+    if(casingDirty){casingDraw.instanceMatrix.needsUpdate=true;
+      if(casingDraw.instanceColor)casingDraw.instanceColor.needsUpdate=true;}
     this.lastCasingTime=s.seconds;
     this.updateMagazines(s,omniscient,personal,visibleAt);
     const liveGrenades=this.frameGrenadeIds;liveGrenades.clear();
