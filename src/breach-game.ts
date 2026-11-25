@@ -349,6 +349,8 @@ export type ShotEvent={
 };
 export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number;
   height?:number;normal?:Pt;shotId?:number;
+  /** V13 cosmetic accumulation, independent of authoritative medical quantities. */
+  bloodKind?:'splat'|'pool';bloodAmount?:number;bloodOwnerId?:string;
   surfaceRef?:import('./breach-impact-surface.ts').SurfaceAttachment};
 export type DroppedMagazine={id:number;p:Pt;side:Side;age:number;
   weapon?:WeaponId;rounds?:number;magazineId?:string;

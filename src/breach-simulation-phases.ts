@@ -7,6 +7,7 @@ import type {Pt} from './breach-core.ts';
 import {captureMotionFrameOrigins} from './breach-motion-frame-input.ts';
 import {executionStatus} from './breach-execution-state.ts';
 import {executionTransition} from './breach-execution-events.ts';
+import {ageImpactEvidence} from './breach-blood-evidence.ts';
 export function simulationPhaseMark(probe?:StepPhaseProbe):(phase:string)=>void{
   let perfStart=probe?performance.now():0;
   return (phase:string)=>{
@@ -25,8 +26,7 @@ export function advanceTransientSimulationEffects(s:Session,h:number):void{
   if(s.shots.length)s.shots=s.shots.filter(a=>(a.age+=h)<.40);
   if(s.noise.length)s.noise=s.noise.filter(n=>s.seconds-n.time<4);
   for(const magazine of s.dropped)magazine.age+=h;
-  if(s.impactMarks.length)
-    s.impactMarks=s.impactMarks.filter(mark=>(mark.age+=h)<24);
+  if(s.impactMarks.length)ageImpactEvidence(s.impactMarks,h);
   if(s.flashBursts.length)
     s.flashBursts=s.flashBursts.filter(b=>(b.age+=h)<.70);
 }
