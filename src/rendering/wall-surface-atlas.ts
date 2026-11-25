@@ -34,7 +34,7 @@ export function updateWallAtlas(slots:Iterable<WallAtlasSlot>,level:number,filte
  for(const page of pages)page.needsUpdate=true;
  return pages.size;
 }
-export function buildWallAtlas(site:Site,height:number,level:number,filter:WallEffectFilter,patterned:boolean):WallAtlas{
+export function buildWallAtlas(site:Site,height:number,level:number,filter:WallEffectFilter,patterned:boolean,whiteSwatch=false):WallAtlas{
  const widths=site.walls.flatMap((w,index)=>{
   const length=Math.hypot(w.b.x-w.a.x,w.b.y-w.a.y);
   return length<5?[]:[{index,width:wallPatinaDimensions(length).width}];
@@ -47,7 +47,7 @@ export function buildWallAtlas(site:Site,height:number,level:number,filter:WallE
   texture.minFilter=THREE.NearestMipmapNearestFilter;texture.generateMipmaps=true;
   texture.name='w3-wall-atlas:'+page.width+'x'+rows;
   pages.push(texture);
-  page.indices.forEach((index,i)=>slots.set(index,{index,row:i*64,texture,pair:planWallFaces(site,index,height),patterned}));
+  page.indices.forEach((index,i)=>slots.set(index,{index,row:i*64,texture,pair:planWallFaces(site,index,height),patterned,whiteSwatch}));
  }
  updateWallAtlas(slots.values(),level,filter);
  return {pages,slots};

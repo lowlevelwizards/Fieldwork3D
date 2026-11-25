@@ -27,7 +27,7 @@ import {planWallCapJoins} from './wall-cap-joins.ts';
 import {ageMaterialColor} from './condition-materials.ts';
 import {doubleSidedWallWear} from './wear-wall-geometry.ts';
 import {planWallSurface,packedWallSurfacePixels,type WallAudition,type WallSurfaceRecipe} from '../worldgen/wall-surface-recipe.ts';
-import {buildWallAtlas,writeAtlasSlot,type WallAtlasSlot} from './wall-surface-atlas.ts';
+import {buildWallAtlas,type WallAtlasSlot} from './wall-surface-atlas.ts';
 import {wearPixels} from './pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './wear-opacity.ts';
 import {type PixelOverlay} from './pixel-overlays.ts';
@@ -402,7 +402,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         node.renderOrder=1002;
       });
     };
-    const atlas=host.wallAudition?.atlas?buildWallAtlas(site,WALL_VISUAL_HEIGHT,finishCondition,host.wallAudition.effect,!!host.solid(theme.wall,.94,wallPixelSurface(site.archetype)).map):undefined;
+    const atlas=host.wallAudition?.atlas?buildWallAtlas(site,WALL_VISUAL_HEIGHT,finishCondition,host.wallAudition.effect,!!host.solid(theme.wall,.94,wallPixelSurface(site.archetype)).map,!!host.wallStructureUnified):undefined;
     if(atlas)host.sitePatinaTextures.push(...atlas.pages);
     const capJoins=planWallCapJoins(site.walls);
     const unified=!!host.wallStructureUnified&&!!atlas;
@@ -434,13 +434,12 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         host.patinaWallSurfaces.push({index,texture:atlasSlot.texture,atlasSlot});
         body.userData.fieldworkWallSurface='w3-atlas';
         if(unified){
-          atlasSlot.whiteSwatch=true;writeAtlasSlot(atlasSlot,finishCondition,host.wallAudition!.effect);
           const image=atlasSlot.texture.image;
           const packet=compileUnifiedWallGeometry(body.geometry,trimPackets[index],angle,WALL_VISUAL_HEIGHT,.5/image.width,(atlasSlot.row+.5)/image.height);
           // Atlas body geometry is site-owned, not a shared cached box.
           body.geometry.dispose();body.geometry=packet.geometry;
           individualWall.vertexColors=true;individualWall.needsUpdate=true;
-          restrictWallShadowToBody(body,packet.shadowIndexCount);
+          restrictWallShadowToBody(body,packet.shadowIndexCount,packet.bodySphere);
           body.userData.fieldworkUnifiedWall=true;
           body.userData.fieldworkShadowIndexCount=packet.shadowIndexCount;
           body.userData.fieldworkTrimSourceCount=trimPackets[index].parts.length;

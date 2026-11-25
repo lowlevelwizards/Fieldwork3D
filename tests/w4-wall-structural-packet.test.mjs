@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {planWallTrimPackets,compileWallTrimGeometry,compileUnifiedWallGeometry,restrictWallShadowToBody} from '../src/rendering/wall-structural-packet.ts';
+import {planWallTrimPackets,compileWallTrimGeometry,compileUnifiedWallGeometry,restrictWallShadowToBody,installWallShadowBounds} from '../src/rendering/wall-structural-packet.ts';
 import {planWallCapJoins} from '../src/rendering/wall-cap-joins.ts';
 import {groupWallPresentation,resolveWallPresentation,applyWallMaterialState} from '../src/rendering/breach-wall-presentation.ts';
 const wall=(x,y,u,v)=>({a:{x,y},b:{x:u,y:v}});

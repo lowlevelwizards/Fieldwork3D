@@ -66,9 +66,9 @@ try{
       const renderer=scene.renderer,original=renderer.renderBufferDirect;
       const draw=()=>scene.update(session,team(session)[0].id,1,null,true);
       const firstDrawStart=performance.now();draw();const firstDrawMs=performance.now()-firstDrawStart;draw();
-      let frames=[];
+      let frames=[],shadowWitness=null;
       try{
-       for(let i=0;i<18;i++){
+       for(let i=-1;i<18;i++){
         let total=0,weather=0,body=0,trimDraws=0,shadowIndices=0,mainIndices=0;
         renderer.renderBufferDirect=function(...args){
          total++;
@@ -76,8 +76,9 @@ try{
          if(family==='wall-weathering')weather++;
          if(family==='structural-wall-body'){
           body++;
+          const geometry=args[2],shadow=!!args[3].isMeshDepthMaterial||!!args[3].isMeshDistanceMaterial;
+          if(!args[4].userData.fieldworkUnifiedWall&&shadow)shadowIndices+=Math.min(geometry.drawRange.count,geometry.index.count);
           if(args[4].userData.fieldworkUnifiedWall){
-           const geometry=args[2],shadow=!!args[3].isMeshDepthMaterial||!!args[3].isMeshDistanceMaterial;
            const expected=shadow?args[4].userData.fieldworkShadowIndexCount:geometry.index.count;
            if(geometry.drawRange.count!==expected)throw Error('Unified shadow/main draw range mismatch');
            if(shadow)shadowIndices+=geometry.drawRange.count;else mainIndices+=geometry.drawRange.count;
@@ -86,8 +87,10 @@ try{
          if(['structural-wall-skirting','structural-wall-cap','structural-wall-cap-joint','structural-wall-trim-packet'].includes(family))trimDraws++;
          return original.apply(this,args);
         };
+        if(i===-1)renderer.shadowMap.needsUpdate=true;
         const start=performance.now();draw();
-        frames.push({total,weather,body,trimDraws,shadowIndices,mainIndices,ms:performance.now()-start});
+        const record={total,weather,body,trimDraws,shadowIndices,mainIndices,ms:performance.now()-start};
+        if(i===-1)shadowWitness=record;else frames.push(record);
        }
       }finally{renderer.renderBufferDirect=original;}
       const textures=[...new Set(masks.map(item=>item.texture))];
@@ -108,7 +111,7 @@ try{
        draw();
       }
       if(integrated&&inventory.some(w=>w.mesh.material.map!==masks.find(m=>m.index===w.index)?.texture))throw Error('Packed wall is not using standard map');
-      const actual={mode,integrated,bodies:inventory.length,trimMeshes:trim.length,structuralTriangles,shadowBodies,overlays,decals,textureBytes,textureCount,gpuTextures:renderer.info.memory.textures,geometries:renderer.info.memory.geometries,programs:renderer.info.programs?.length,buildMs,firstDrawMs,frames};
+      const actual={mode,integrated,bodies:inventory.length,trimMeshes:trim.length,structuralTriangles,shadowBodies,overlays,decals,textureBytes,textureCount,gpuTextures:renderer.info.memory.textures,geometries:renderer.info.memory.geometries,programs:renderer.info.programs?.length,buildMs,firstDrawMs,shadowWitness,frames};
       if(atlasMode&&textureCount>=inventory.length)throw Error('Atlas did not reduce texture objects');
       if(integrated&&(overlays||decals||frames.some(f=>f.weather)))throw Error('W2 retained independent wall weathering');
       return actual;
@@ -131,6 +134,7 @@ try{
      check(u.structuralTriangles===a.structuralTriangles&&u.shadowBodies===a.shadowBodies,'Unified geometry or shadow owner mismatch');
      check(u.trimMeshes<b.trimMeshes&&Math.max(...u.frames.map(f=>f.total))<Math.max(...b.frames.map(f=>f.total)),'Unified wall did not remove the second main draw');
      check(u.frames.some(f=>f.mainIndices>0),'No actual unified main submissions');
+     check(a.shadowWitness.shadowIndices>0&&u.shadowWitness.shadowIndices===a.shadowWitness.shadowIndices,'Forced shadow refresh changed submitted body indices');
     }
     evidence.push({name,seed,archetype,results});
    }

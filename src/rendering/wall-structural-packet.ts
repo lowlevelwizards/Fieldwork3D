@@ -48,6 +48,8 @@ export function compileWallTrimGeometry(packet:WallTrimPacket):THREE.BufferGeome
 export function compileUnifiedWallGeometry(body:THREE.BufferGeometry,packet:WallTrimPacket,bodyYaw:number,bodyHeight:number,whiteU:number,whiteV:number){
  const trim=compileWallTrimGeometry(packet);
  if(!trim||!body.index)throw Error('Unified wall requires indexed body and trim');
+ body.computeBoundingSphere();
+ const bodySphere=body.boundingSphere!.clone();
  const core=body.clone(),colors=new Float32Array(core.getAttribute('position').count*3).fill(1);
  core.setAttribute('color',new THREE.BufferAttribute(colors,3));
  trim.rotateY(-bodyYaw);trim.translate(0,-bodyHeight/2,0);
@@ -57,15 +59,36 @@ export function compileUnifiedWallGeometry(body:THREE.BufferGeometry,packet:Wall
  core.dispose();trim.dispose();
  if(!geometry)throw Error('Unified wall geometry incompatible');
  geometry.computeBoundingBox();geometry.computeBoundingSphere();
- return {geometry,shadowIndexCount};
+ return {geometry,shadowIndexCount,bodySphere};
 }
 /** Three invokes these around each actual shadow submission. The same
  * indexed geometry draws only its original body in the depth pass, then
  * restores the full range for the main pass. No extra shadow-only object. */
-export function restrictWallShadowToBody(mesh:THREE.Mesh,bodyIndices:number){
+export function restrictWallShadowToBody(mesh:THREE.Mesh,bodyIndices:number,bodySphere?:THREE.Sphere){
+ if(bodySphere)mesh.userData.fieldworkBodyShadowSphere=bodySphere;
  const total=mesh.geometry.index!.count;
  mesh.onBeforeShadow=()=>mesh.geometry.setDrawRange(0,bodyIndices);
  mesh.onAfterShadow=()=>mesh.geometry.setDrawRange(0,total);
  mesh.onBeforeRender=()=>{if(mesh.geometry.drawRange.count!==total)mesh.geometry.setDrawRange(0,total);};
  mesh.geometry.setDrawRange(0,total);
+}
+
+/** Shadow-map culling happens BEFORE onBeforeShadow. Full visual bounds
+ * include trim, but shadow culling must use the original body sphere.
+ * Only swap bounds during actual shadow refreshes, not main rendering.
+ * The profiler may wrap the same method; preserve receiver and arguments. */
+type WallShadowMap={render:(...args:unknown[])=>unknown;enabled:boolean;autoUpdate:boolean;needsUpdate:boolean};
+export function installWallShadowBounds(shadowMap:WallShadowMap,walls:()=>readonly {mesh:THREE.Mesh}[]){
+ const original=shadowMap.render;
+ shadowMap.render=function(this:unknown,...args:unknown[]){
+  if(!shadowMap.enabled||(!shadowMap.autoUpdate&&!shadowMap.needsUpdate))return Reflect.apply(original,this,args);
+  const changed:{geometry:THREE.BufferGeometry;bounds:THREE.Sphere|null}[]=[];
+  for(const {mesh} of walls()){
+   const body=mesh.userData.fieldworkBodyShadowSphere as THREE.Sphere|undefined;
+   if(!body||!mesh.castShadow)continue;
+   const geometry=mesh.geometry;changed.push({geometry,bounds:geometry.boundingSphere});geometry.boundingSphere=body;
+  }
+  try{return Reflect.apply(original,this,args);}
+  finally{for(const {geometry,bounds} of changed){geometry.boundingSphere=bounds;geometry.setDrawRange(0,geometry.index!.count);}}
+ };
 }

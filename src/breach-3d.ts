@@ -96,6 +96,7 @@ import {conditionFloorPixels} from './worldgen/condition-visual.ts';
 
 import {conditionWallPixels} from './worldgen/condition-wall.ts';
 import {packedWallSurfacePixels,resolveWallSurfaceMode,type WallAudition,type WallSurfaceRecipe} from './worldgen/wall-surface-recipe.ts';
+import {installWallShadowBounds} from './rendering/wall-structural-packet.ts';
 import {writeAtlasSlot,type WallAtlasSlot} from './rendering/wall-surface-atlas.ts';
 import {type ObjectWear} from './worldgen/object-wear.ts';
 
@@ -967,6 +968,8 @@ export class TacticalScene3D{
     this.renderer.shadowMap.enabled=true;
     this.renderer.shadowMap.autoUpdate=false;
     this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    // W4 uses original body bounds during shadow culling, not the larger trim packet.
+    installWallShadowBounds(this.renderer.shadowMap as unknown as Parameters<typeof installWallShadowBounds>[0],()=>this.wallStructureUnified?this.walls:[]);
     // E6.16 does not install hooks in normal gameplay.
     this.liveShadowSubmitProfiler=
       new URLSearchParams(location.search).get('coldBench')==='1'?
