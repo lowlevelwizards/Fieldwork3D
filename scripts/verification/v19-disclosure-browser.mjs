@@ -29,7 +29,8 @@ try{
     page.on('console',m=>{if(m.type()==='error'&&/WebGLProgram|Shader Error|INVALID_OPERATION|GL_INVALID/i.test(m.text()))errors.push(m.text());});
     try{
      await page.route('**/v19-probe?**',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html><body style="margin:0;overflow:hidden"></body></html>'}));
-     await page.goto(origin+'/v19-probe?coldBench=1&v19FrameSight='+(variant.memo?'1':'0'));
+     // Head-memo exercises the production default, not an enabling URL.
+     await page.goto(origin+'/v19-probe?coldBench=1'+(variant.memo?'':'&v19FrameSight=0'));
      const record=await page.evaluate(async({viewport,variant})=>{
       const {TacticalScene3D}=await import('/src/breach-3d.ts');
       const {generateSite}=await import('/src/breach-site.ts');

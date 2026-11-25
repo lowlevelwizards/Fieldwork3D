@@ -199,7 +199,9 @@ export class TacticalScene3D{
    studioShadowPalette('plum-plus').fill,.60);
   /** Renderer-only; ?presentationSight=legacy bypasses memo for A/B. */
   private readonly presentationSight=new PresentationSightMemo();
-  private readonly v19FrameSight=new URLSearchParams(location.search).get('v19FrameSight')==='1';
+  // Active live frames benefit from exact-coordinate sharing; planning
+  // already has the P1 epoch cache. Explicit 0 retains the diagnostic A/B.
+  private readonly v19FrameSight=new URLSearchParams(location.search).get('v19FrameSight')!=='0';
   /** Reused every 3D frame; occupancy only affects roof presentation. */
   private readonly occupiedRoofRoomIds=new Set<string>();
   /** Render-only: a single history scan for all actors' overlapping muzzle
@@ -1981,7 +1983,7 @@ export class TacticalScene3D{
       this.presentationSightPolicy,s.phase,
       !!replay||!!replayDisclosurePolicy||!!replayDoorHistory||
       !!replayWindowHistory||this.physicalDirectorActive||
-      !!this.replayBodycam),this.v19FrameSight&&this.presentationSightPolicy!=='legacy'&&
+      !!this.replayBodycam),this.v19FrameSight&&s.phase==='running'&&this.presentationSightPolicy!=='legacy'&&
       !replay&&!replayDisclosurePolicy&&!replayDoorHistory&&!replayWindowHistory&&
       !this.physicalDirectorActive&&!this.replayBodycam);
     if(this.miniFocusMode!=='off'){
