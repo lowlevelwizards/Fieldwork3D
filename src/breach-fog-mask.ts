@@ -7,6 +7,7 @@ import {team,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
 import {exteriorKnownFogRects} from './breach-fog-domain.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
+import {effectiveEyeHeight} from './breach-cover-height.ts';
 import {NEAR_FINE_SIGHT_RANGE,sightRangeForSite} from './breach-visibility-range-policy.ts';
 import {forEachRememberedMicroCell} from './breach-fog-memory.ts';
 import {traceFogCellContours,appendSmoothFogContours,type FogCell}
@@ -183,7 +184,7 @@ export function paintFogVisibility(ctx:CanvasRenderingContext2D,s:Session){
   for(const a of team(s)){
     if(a.health<=0)continue;
     const poly=visionPolygon(a.p,a.heading,range,walls,s.doors,
-      a.posture==='crouch',cover);
+      a.posture==='crouch'||effectiveEyeHeight(a)<25,cover);
     if(poly.length<3)continue;
     if(canGrade&&range>NEAR_FINE_SIGHT_RANGE){
       // Fixed *presentation* distance, rather than stretching the gradient

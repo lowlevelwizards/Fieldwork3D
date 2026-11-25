@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {FogRefreshGate} from '../src/breach-fog-cache.ts';
+import {FogRefreshGate,fogSessionFingerprint} from '../src/breach-fog-cache.ts';
 import {paintFogVisibility} from '../src/breach-fog-mask.ts';
 import {resolveWallPresentation} from '../src/rendering/breach-wall-presentation.ts';
 const make=()=>({site:{seed:23},intel:{mode:'true-blind'},seenGround:new Set(),seenGroundRevision:0,objectRevision:0,seconds:0,operators:[{id:'blue',side:'blue',health:2,p:{x:100,y:100},heading:0,posture:'stand'}],doors:[]});
@@ -43,4 +43,14 @@ test('W5 opaque wall audition changes only pass selection, not cutaway opacity o
   assert.equal(a.opacity,b.opacity);assert.equal(a.depthWrite,b.depthWrite);
   assert.equal(a.transparent,b.transparent);
  }
+});
+
+test('standing cover dip changes fog fingerprint and blocks sight behind low cover',()=>{
+ const s=make();s.site={seed:23,bounds:{minX:0,minY:0,maxX:300,maxY:300},walls:[],cover:[{x:125,y:100,w:10,h:60,low:true}],rooms:[]};
+ const actor=s.operators[0],g=new FogRefreshGate();g.poll(s,0,.1);
+ const key=fogSessionFingerprint(s);
+ const cone=()=>{let points=[],paths=[];const ctx={canvas:{width:300,height:300},save(){},restore(){},setTransform(){},beginPath(){points=[]},moveTo(x,y){points.push({x,y})},lineTo(x,y){points.push({x,y})},closePath(){},fill(){paths.push(points)}};paintFogVisibility(ctx,s);return paths[0].filter(p=>Math.abs(p.y-100)<1e-6).at(-1).x;};
+ assert.ok(cone()>140);actor.coverStanceDrop=8;
+ assert.notEqual(fogSessionFingerprint(s),key);assert.equal(g.poll(s,.1,.1).paint,true);assert.ok(cone()<=120.01);
+ actor.coverStanceDrop=0;assert.equal(fogSessionFingerprint(s),key);assert.ok(cone()>140);
 });

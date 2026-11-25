@@ -43,6 +43,7 @@ export function fogMemoryFingerprint(state:{
  * themselves so two sites with identical seed/actor data never share fog.
  */
 import type {Session} from './breach-game.ts';
+import {effectiveEyeHeight} from './breach-cover-height.ts';
 export function fogSessionFingerprint(s:Session):string{
  let key=fogHeader(s.intel.mode,s.site?.seed??null,
    s.seenGround.size,s.seenGroundRevision,s.objectRevision);
@@ -53,6 +54,9 @@ export function fogSessionFingerprint(s:Session):string{
    key+='|'+a.id+':'+Math.round(a.p.x*10)+':'+
      Math.round(a.p.y*10)+':'+Math.round(a.heading*100)+':'+
      a.posture+':'+a.health;
+   // Match liveVisibility's low-eye blocker rule. Standing cover dips
+   // can change the sight polygon without changing nominal posture.
+   if(a.posture!=='crouch'&&effectiveEyeHeight(a)<25)key+=':low-eye';
  }
  for(const d of s.doors)
    key+='|'+d.id+':'+

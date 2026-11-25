@@ -39,6 +39,10 @@ try{
    s.doors=[{id:'test',a:{x:150,y:130},b:{x:150,y:170},open:false,openFraction:0}];
    paintFogMask(ctx,s);check(alpha(180,150)===255,'Closed door leaked ground');
    s.doors[0].open=true;s.doors[0].openFraction=1;paintFogMask(ctx,s);check(alpha(180,150)<20,'Open door failed to reveal visible ground');
+   synthetic.walls=[];s.doors=[];synthetic.cover=[{x:125,y:150,w:10,h:60,low:true}];
+   paintFogMask(ctx,s);check(alpha(145,150)<20,'Standing sight incorrectly blocked by low cover');
+   s.operators[0].coverStanceDrop=8;paintFogMask(ctx,s);check(alpha(145,150)===255,'Low eye sight leaked through cover');
+   s.operators[0].coverStanceDrop=0;paintFogMask(ctx,s);check(alpha(145,150)<20,'Standing sight did not restore');
    const scene=new TacticalScene3D();check(scene.wallDepthOpaque===true,'W5 production depth not enabled');scene.resize(width,height);document.body.appendChild(scene.canvas);
    const make=(seed,archetype)=>generateSite(seed,'standard',undefined,{mission:'intel'},{archetype});
    const site=make(23,'townhouse');activateSite(site);
