@@ -108,6 +108,36 @@ try{
     evidence.push({name,seed,archetype,results});
    }
    if(w3&&name==='desktop'){
+    // A real WebGL mip witness: two high-contrast strips, four independent
+    // face colors. Sample with explicit LOD through the safe face range.
+    const mip=await page.evaluate(async()=>{
+     const {atlasWallStrip}=await import('/src/worldgen/wall-surface-recipe.ts');
+     const face=(color,face)=>({length:64,height:56,face,color,surface:'plaster',events:[]});
+     const bytes=new Uint8Array(64*128*4);
+     bytes.set(atlasWallStrip({front:face(0xff0000,1),back:face(0x00ff00,-1)},0,64,'none',false));
+     bytes.set(atlasWallStrip({front:face(0x0000ff,1),back:face(0xffff00,-1)},0,64,'none',false),64*64*4);
+     const canvas=document.createElement('canvas');canvas.width=canvas.height=1;
+     const gl=canvas.getContext('webgl2',{antialias:false,preserveDrawingBuffer:true});
+     if(!gl)throw Error('W3 mip probe requires WebGL2');
+     const shader=(type,source)=>{const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s;};
+     const vs=shader(gl.VERTEX_SHADER,'#version 300 es\nvoid main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));gl_Position=vec4(p*2.0-1.0,0,1);}');
+     const fs=shader(gl.FRAGMENT_SHADER,'#version 300 es\nprecision highp float;uniform sampler2D tex;uniform vec2 uv;uniform float lod;out vec4 color;void main(){color=textureLod(tex,uv,lod);}');
+     const prog=gl.createProgram();gl.attachShader(prog,vs);gl.attachShader(prog,fs);gl.linkProgram(prog);if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(prog));
+     gl.useProgram(prog);const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);
+     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,64,128,0,gl.RGBA,gl.UNSIGNED_BYTE,bytes);
+     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST_MIPMAP_NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.generateMipmap(gl.TEXTURE_2D);
+     const uv=gl.getUniformLocation(prog,'uv'),lod=gl.getUniformLocation(prog,'lod'),pixel=new Uint8Array(4);
+     let samples=0;
+     for(const [row,expected] of [[4,[255,0,0]],[36,[0,255,0]],[68,[0,0,255]],[100,[255,255,0]]])for(const offset of [.5,12,23.5])for(let level=0;level<=5;level++){
+      gl.uniform2f(uv,.5,(row+offset)/128);gl.uniform1f(lod,level);gl.drawArrays(gl.TRIANGLES,0,3);gl.readPixels(0,0,1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixel);
+      if(expected.some((v,i)=>Math.abs(pixel[i]-v)>1))throw Error('W3 face mip bleed at row '+row+' LOD '+level+': '+pixel);
+      samples++;
+     }
+     gl.deleteTexture(tex);gl.deleteProgram(prog);gl.deleteShader(vs);gl.deleteShader(fs);gl.getExtension('WEBGL_lose_context')?.loseContext();
+     return {samples,maxIsolatedFaceLod:5,coarseLevelsCanBlend:true};
+    });
+    console.log('W3_MIP_WITNESS '+JSON.stringify(mip));
     // Additional semantic matrix: same building, camera and geometry across
     // five condition values; two opposing close views at 100.
     for(const [seed,archetype] of [[23,'house'],[31,'motel'],[42,'clinic'],[51,'retail'],[97,'garage'],[63,'warehouse']]){
@@ -123,9 +153,13 @@ try{
       await page.screenshot({path:dir+'/matrix-'+archetype+'-'+level+'.png'});
      }
      for(const sign of [1,-1]){
-      await page.evaluate(sign=>{const {scene,session,team}=window.w2Probe;const wall=scene.walls.find(w=>w.exterior&&w.mesh.userData.fieldworkDrawFamily==='structural-wall-body');if(!wall)throw Error('No exterior face for close audition');const {a,b}=wall.segment;scene.view.focus={x:(a.x+b.x)/2,y:(a.y+b.y)/2};scene.view.yaw=Math.atan2(b.y-a.y,b.x-a.x)+sign*Math.PI/2;scene.view.pitch=35*Math.PI/180;scene.view.zoom=2.7;scene.update(session,team(session)[0].id,1,null,true);},sign);
+      await page.evaluate(sign=>{const {scene,session,team}=window.w2Probe;const wall=scene.walls.find(w=>w.exterior&&w.mesh.userData.fieldworkDrawFamily==='structural-wall-body');if(!wall)throw Error('No exterior face for close audition');const {a,b}=wall.segment;scene.view.focus={x:(a.x+b.x)/2,y:(a.y+b.y)/2};scene.view.yaw=-Math.atan2(b.y-a.y,b.x-a.x)+(sign===1?0:Math.PI);scene.view.pitch=35*Math.PI/180;scene.view.zoom=2.7;scene.updateCamera(1);scene.update(session,team(session)[0].id,1,null,true);},sign);
       await page.screenshot({path:dir+'/matrix-'+archetype+'-close-'+sign+'.png'});
      }
+     await page.evaluate(()=>{const {scene,session,team}=window.w2Probe;scene.resetCamera();scene.view.zoom=.75;scene.updateCamera(1);scene.update(session,team(session)[0].id,1,null,true);});
+     await page.screenshot({path:dir+'/matrix-'+archetype+'-far.png'});
+     await page.evaluate(()=>{const {scene,session,team}=window.w2Probe;session.lightingMode='night';scene.view.zoom=1.25;scene.updateCamera(1);scene.update(session,team(session)[0].id,1,null,true);});
+     await page.screenshot({path:dir+'/matrix-'+archetype+'-night.png'});
      console.log('W3_FACE_MATRIX '+JSON.stringify({seed,archetype,familyCounts}));
     }
    }
