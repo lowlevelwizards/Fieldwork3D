@@ -195,6 +195,7 @@ export class TacticalScene3D{
    studioShadowPalette('plum-plus').fill,.60);
   /** Renderer-only; ?presentationSight=legacy bypasses memo for A/B. */
   private readonly presentationSight=new PresentationSightMemo();
+  private readonly v19FrameSight=new URLSearchParams(location.search).get('v19FrameSight')==='1';
   /** Reused every 3D frame; occupancy only affects roof presentation. */
   private readonly occupiedRoofRoomIds=new Set<string>();
   /** Render-only: a single history scan for all actors' overlapping muzzle
@@ -1975,7 +1976,9 @@ export class TacticalScene3D{
       this.presentationSightPolicy,s.phase,
       !!replay||!!replayDisclosurePolicy||!!replayDoorHistory||
       !!replayWindowHistory||this.physicalDirectorActive||
-      !!this.replayBodycam));
+      !!this.replayBodycam),this.v19FrameSight&&this.presentationSightPolicy!=='legacy'&&
+      !replay&&!replayDisclosurePolicy&&!replayDoorHistory&&!replayWindowHistory&&
+      !this.physicalDirectorActive&&!this.replayBodycam);
     if(this.miniFocusMode!=='off'){
       this.miniFocusSession=s;
       this.miniFocusDoorId=focusedDoorId;
@@ -2573,7 +2576,7 @@ export class TacticalScene3D{
       const firing=mostRecentActiveMuzzleShot(
         this.recentMuzzleShots.forShooter(actor.id),actor.id,
         flashWeapon,flashAttachment,
-        shot=>!!shot.secondaryWeapon===drawnPistol&&
+        shot=>!personalDisclosure&&!!shot.secondaryWeapon===drawnPistol&&
           (omniscient||shotVisibility(s,shot).flash));
       const flashCue=muzzleFlashCue(flashWeapon,
         firing?.age??Infinity,flashAttachment);

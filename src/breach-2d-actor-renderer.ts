@@ -2,11 +2,11 @@
  * Uses the supplied observation/selection state; never updates game truth.
  */
 import {W,H,type Pt} from './breach-core.ts';
-import {type Session,type TeamActor,enemies,lastKnown,isSeen} from './breach-game.ts';
+import {type Session,type TeamActor,enemies,lastKnown,isSeen,liveVisibility} from './breach-game.ts';
 import type {ViewMode} from './breach-3d.ts';
 import {civilianPhysicalityAt} from './breach-encounter-physicality.ts';
 import {downedTransportPresentation} from './breach-capture-transport-presentation.ts';
-import {presentActor,presentCivilian,presentUnrecordedRescueMarker}
+import {presentActor,presentCivilian,presentUnrecordedRescueMarker,presentTransientEvidence}
  from './rendering/breach-3d-disclosure-presenter.ts';
 import {shotVisibility,contactFade} from './breach-presentation.ts';
 import {objectiveLocationKnown,approximateObjectiveBounds} from './breach-objective-intel.ts';
@@ -239,7 +239,7 @@ function sprite(a:TeamActor){
   }
   const impactAge=state.seconds-a.lastHitAt;
   const flinch=impactAge>=0&&impactAge<.28?1-impactAge/.28:0;
-  const firing=state.shots.some(shot=>shot.shooterId===a.id&&
+  const firing=!(replaying&&replayKnowledge.observerId)&&state.shots.some(shot=>shot.shooterId===a.id&&
     shot.age<.11&&shotVisibility(state,shot).flash);
   draw.save();
   draw.translate(a.p.x-flinch*2.3,a.p.y+flinch*1.7);
@@ -349,7 +349,12 @@ function contacts(){
       draw.strokeRect(p.x-8,p.y-8,16,16);
     }
   }
+  const personal=replaying&&!!replayKnowledge.observerId;
+  const omni=replaying&&replayKnowledge.omniscient;
+  const effectVisible=(p:Pt)=>presentTransientEvidence(p,omni,personal,
+    point=>liveVisibility(state,point));
   for(const m of state.dropped){
+    if(!effectVisible(m.p))continue;
     rect(m.p.x-3,m.p.y-1,6,2,'#202e2d');
   }
   // Physical firearm identity comes from the same replayed Session data as
@@ -368,9 +373,11 @@ function contacts(){
     }
   }
   for(const g of state.grenades){
+    if(!effectVisible(g.p))continue;
     circle(g.p.x,g.p.y,3,'#a7b4a0');
   }
   for(const b of state.flashBursts){
+    if(!effectVisible(b.p))continue;
     draw.globalAlpha=Math.max(0,1-b.age/.7)*.85;
     circle(b.p.x,b.p.y,13+48*b.age,'#f6edcc');
     draw.globalAlpha=1;
