@@ -71,7 +71,7 @@ export function stainAlphaPixels():Uint8Array{
     .69+.13*Math.sin(3*a+phase)+.065*Math.sin(5*a-phase)+.04*Math.cos(7*a+phase*2);
    let alpha=Math.max(0,Math.min(1,(edge-r)*n/3+.5));
    // Sparse secondary lobes stay within the same confined footprint.
-   for(let k=0;k<(pool?0:3);k++){
+   for(let k=0;k<(pool?0:1);k++){
     const angle=phase+k*2.399;
     const center=.76+.025*Math.sin(k+v);
     const d=Math.hypot(x-Math.cos(angle)*center,y-Math.sin(angle)*center);

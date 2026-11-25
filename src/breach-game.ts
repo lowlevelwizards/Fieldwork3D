@@ -353,7 +353,7 @@ export type ShotEvent={
 export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number;
   height?:number;normal?:Pt;shotId?:number;
   /** V13 cosmetic accumulation, independent of authoritative medical quantities. */
-  bloodKind?:'splat'|'pool';bloodAmount?:number;bloodOwnerId?:string;
+  bloodKind?:'splat'|'drop'|'pool';bloodAmount?:number;bloodOwnerId?:string;bloodDrops?:number;
   surfaceRef?:import('./breach-impact-surface.ts').SurfaceAttachment;
   /** Bounded cosmetic accumulation on an unchanged owner face. */
   damageCount?:number;lastDamageShotId?:number};

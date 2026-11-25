@@ -28,7 +28,7 @@ export function makeStainMarkBatch(capacity:number){
  const mesh=new THREE.InstancedMesh(geometry,material,capacity);
  mesh.count=0;mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);mesh.frustumCulled=false;
  mesh.userData.fieldworkDrawFamily='mixed-impact-stain';
- const styleFor=(surface:string|undefined,x:number,y:number,kind?:'splat'|'pool')=>surface==='blood'?stainVariant(x,y)+(kind==='pool'?STAIN_VARIANTS:0):damageVariant(surface,x,y);
+ const styleFor=(surface:string|undefined,x:number,y:number,kind?:'splat'|'drop'|'pool')=>surface==='blood'?stainVariant(x,y)+(kind==='pool'||kind==='drop'?STAIN_VARIANTS:0):damageVariant(surface,x,y);
  return {mesh,texture,style,styleFor,
   setStyle(index:number,surface:string|undefined,x:number,y:number){
    style.setX(index,styleFor(surface,x,y));
