@@ -10,6 +10,9 @@ on:
       - 'src/worldgen/property-surfaces.ts'
       - 'src/rendering/breach-site-exterior-builder.ts'
       - 'src/rendering/exterior-finish-packets.ts'
+      - 'src/worldgen/exterior-furnishing-diagnostics.ts'
+      - 'src/map-lab-main.ts'
+      - 'scripts/verification/v18-exterior-browser.mjs'
       - 'tests/v18-exterior-finishes.test.mjs'
       - 'tests/v18-exterior-role-program.test.mjs'
       - '.github/workflows/v18-exterior.yml'
@@ -33,3 +36,30 @@ jobs:
           name: v18-exterior-manifest
           path: v18-exterior-baseline.json
       - run: npm run check
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || 'main' }}
+          path: v18-before
+      - run: npm install --prefix v18-before --no-audit --no-fund
+      - run: node scripts/verification/v18-exterior-browser.mjs
+        env:
+          V18_BASE_DIR: v18-before
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v18-exterior-browser
+          path: artifacts/v18-exterior-browser/
+          if-no-files-found: ignore

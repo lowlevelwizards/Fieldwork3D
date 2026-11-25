@@ -10,6 +10,7 @@ import type {SiteAudit} from './breach-site-audit.ts';
 import {assessArchitecture} from './worldgen/architecture-quality.ts';
 import {assessRoomContracts} from './worldgen/room-contracts.ts';
 import {inspectCounterAccess} from './worldgen/service-counter-access.ts';
+import {describeExteriorFurnishing} from './worldgen/exterior-furnishing-diagnostics.ts';
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const typeInput=el<HTMLSelectElement>('building');
 const scaleInput=el<HTMLSelectElement>('scale');
@@ -287,13 +288,17 @@ function describe(site:Site){
  const structure=assessArchitecture(site);
  const counterAccess=inspectCounterAccess(site);
  const usable=counterAccess.filter(a=>a.customerClear&&a.staffClear).length;
+ const exterior=describeExteriorFurnishing(site);
  return site.archetype?.toUpperCase()+' · '+site.name+' · seed '+site.seed+
   '\n'+(site.planFamily??site.layout)+' · '+structure.zones+' functional zones / '+
   structure.nonrectangularZones+' irregular rooms\n'+
   count+' floor sections / '+site.doors.length+' doors / '+(site.openings?.length??0)+
   ' open passages / '+site.cover.length+' physical props / '+
   (site.exteriorZones?.length??0)+' exterior zones\n'+
-  usable+'/'+counterAccess.length+' service counters with two-sided access';
+  usable+'/'+counterAccess.length+' service counters with two-sided access\n'+
+  'EXTERIOR: '+exterior.count+' physical fixtures ('+exterior.unassigned+' outside furnishing zones)\n'+
+  exterior.zones.map(z=>z.id+' / '+z.kind+': '+z.count+' props · '+z.areaM2+' m² · '+
+    (z.roles.join(', ')||'no matching roles')+(z.unrepresented.length?' · unrepresented: '+z.unrepresented.join(', '):'')).join('\n');
 }
 function report(site:Site,result:SiteAudit):string{
  return describe(site)+'\n'+

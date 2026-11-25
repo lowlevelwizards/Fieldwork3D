@@ -4,6 +4,7 @@
 import {performance} from 'node:perf_hooks';
 import {writeFileSync} from 'node:fs';
 import {generateSite} from '../src/breach-site.ts';
+import {describeExteriorFurnishing} from '../src/worldgen/exterior-furnishing-diagnostics.ts';
 const archetypes=['house','townhouse','apartment','retail','office','garage','warehouse','restaurant','motel','utility','clinic'];
 const scales=['small','medium','large'];
 const n=Math.max(1,Math.min(12,Number(process.argv[2])||4));
@@ -26,6 +27,7 @@ for(const archetype of archetypes)for(const scale of scales)for(let i=0;i<n;i++)
  const families=objects=>Object.fromEntries([...objects.reduce((m,o)=>m.set(o.fixture??'untyped',(m.get(o.fixture??'untyped')??0)+1),new Map())].sort(([a],[b])=>a.localeCompare(b)));
  rows.push({archetype,scale,seed,entry:site.entrySide,condition:site.condition,planFamily:site.planFamily,
   bounds:site.bounds,generationMs:+elapsed.toFixed(2),exteriorCount:exterior.length,
+  furnishing:describeExteriorFurnishing(site),
   exteriorFamilies:families(exterior),unassignedCount:unassigned.length,
   zones:zones.map(z=>{const objects=assigned.get(z.id);return {id:z.id,kind:z.kind,w:z.w,h:z.h,areaM2:z.w*z.h/400,count:objects.length,families:families(objects),physicalAreaM2:objects.reduce((sum,o)=>sum+o.w*o.h/400,0)};})});
 }
