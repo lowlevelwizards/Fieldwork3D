@@ -88,3 +88,25 @@ test('V17 directional mask honors opaque doors and high cover, not glazing or lo
  assert.ok(fillTransientLightReach(world([],[{...box,low:true}]),[],p,58,reach));
  assert.ok(reach.every(v=>v===58));
 });
+
+import {TransientReceiverLight,registerTransientReceiverLight,injectTransientReceiverLight} from '../src/rendering/breach-transient-receiver-light.ts';
+test('V17 receiver mask is scene-owned, quantized conservatively and avoids unchanged uploads',()=>{
+ const r=new TransientReceiverLight(),p={x:80,y:100},w=world([wall(100,0,200)]);
+ r.begin();r.offer(1,w,[],p,13,58,15,1);r.finish();
+ assert.equal(r.sources[1].w,58);assert.equal(r.strengths[1].x,1);
+ assert.equal(r.strengths[0].x,0);
+ const bytes=r.texture.image.data,offset=TRANSIENT_LIGHT_SECTORS;
+ assert.ok(bytes[offset]*58/255<=15);assert.equal(bytes[offset+32],255);
+ const version=r.texture.version;
+ r.begin();r.offer(1,w,[],p,13,58,15,.5);r.finish();
+ assert.equal(r.texture.version,version);assert.equal(r.strengths[1].x,.5);
+ r.begin();r.finish();assert.equal(r.strengths[1].x,0);
+ const renderer={},other={};registerTransientReceiverLight(renderer,r);
+ const shader=()=>({fragmentShader:'#include <lights_fragment_end>',uniforms:{}});
+ const a=shader(),b=shader();
+ assert.ok(injectTransientReceiverLight(a,renderer));
+ assert.equal(a.uniforms.fwTransientReach.value,r.texture);
+ assert.match(a.fragmentShader,/fwTransientContribution/);
+ assert.equal(injectTransientReceiverLight(b,other),false);
+ r.dispose();
+});

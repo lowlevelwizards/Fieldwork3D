@@ -1,11 +1,12 @@
 /** Fixed, shadowless local illumination budget.
  * Sources come exclusively from already-disclosed recorded visual events.
  * V17.3a bounds the point-light sphere by the nearest opaque surface.
- * Directional receiver-side extension through openings is a later stage.
+ * V17.3c extends the open side on graphic world material receivers.
  */
 import * as THREE from 'three';
 import {safeTransientLightRange,type TransientLightWorld} from './breach-transient-light-geometry.ts';
 import type {Door} from '../breach-core.ts';
+import {TransientReceiverLight,registerTransientReceiverLight} from './breach-transient-receiver-light.ts';
 export const TRANSIENT_LIGHT_LIMIT=2;
 type Channel='muzzle'|'flash';
 const settings={muzzle:{color:0xffd5a0,range:24,peak:180,life:.09},
@@ -21,8 +22,11 @@ export class TransientLightPreview{
  readonly flash=new THREE.PointLight(settings.flash.color,0,settings.flash.range,2);
  private muzzleId=-Infinity;private flashId=-Infinity;
  private readonly root:THREE.Object3D;
- constructor(root:THREE.Object3D){
+ private readonly receiver:TransientReceiverLight|null;
+ constructor(root:THREE.Object3D,renderer?:THREE.WebGLRenderer){
   this.root=root;
+  this.receiver=renderer?new TransientReceiverLight():null;
+  if(renderer&&this.receiver)registerTransientReceiverLight(renderer,this.receiver);
   for(const light of [this.muzzle,this.flash]){
    light.castShadow=false;
    light.userData.fieldworkRenderCategory='effects';
@@ -30,7 +34,8 @@ export class TransientLightPreview{
   }
  }
  begin(){this.muzzle.intensity=0;this.flash.intensity=0;this.muzzleId=this.flashId=-Infinity;
-  this.muzzle.distance=settings.muzzle.range;this.flash.distance=settings.flash.range;}
+  this.muzzle.distance=settings.muzzle.range;this.flash.distance=settings.flash.range;
+  this.receiver?.begin();}
  offer(channel:Channel,id:number,x:number,y:number,z:number,age:number,strength=1){
   if(!Number.isFinite(id)||!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(z))return;
   const light=this[channel],intensity=transientLightIntensity(channel,age,strength);
@@ -45,12 +50,15 @@ export class TransientLightPreview{
  confine(world:TransientLightWorld,doors:readonly Door[]){
   for(const channel of ['muzzle','flash'] as const){
    const light=this[channel];if(light.intensity<=0)continue;
-   const distance=safeTransientLightRange(world,doors,
-    {x:light.position.x,y:light.position.z},settings[channel].range);
+   const source={x:light.position.x,y:light.position.z},profile=settings[channel];
+   const distance=safeTransientLightRange(world,doors,source,profile.range);
+   this.receiver?.offer(channel==='muzzle'?0:1,world,doors,source,
+    light.position.y,profile.range,distance,light.intensity/profile.peak);
    light.distance=Math.max(.001,distance);
    if(distance<=.001)light.intensity=0;
   }
+  this.receiver?.finish();
  }
  reset(){this.begin();}
- dispose(){this.begin();this.root.remove(this.muzzle,this.flash);this.muzzle.dispose();this.flash.dispose();}
+ dispose(){this.begin();this.root.remove(this.muzzle,this.flash);this.muzzle.dispose();this.flash.dispose();this.receiver?.dispose();}
 }

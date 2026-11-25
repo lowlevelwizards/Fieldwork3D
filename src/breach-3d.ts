@@ -1022,7 +1022,8 @@ export class TacticalScene3D{
     this.effects.userData.fieldworkRenderCategory='effects';
     this.scene.add(this.root,this.effects);
     if(this.vfxPreview.lights)
-      this.transientLights=new TransientLightPreview(this.scene);
+      this.transientLights=new TransientLightPreview(this.scene,
+        this.graphicLookEnabled?this.renderer:undefined);
     // First paint and mission reload now use the same build/batch/grade path.
     this.composeSiteWorld(this.displayedSite);
     if(this.displayedSite)this.view.zoom=1.48;

@@ -8,6 +8,7 @@
  */
 import * as THREE from 'three';
 import {GRAPHIC_LIGHT_PROFILE as G} from './rendering/graphic-lighting-profile.ts';
+import {injectTransientReceiverLight} from './rendering/breach-transient-receiver-light.ts';
 
 const FLAG='fieldworkR718WorldGraphic';
 const vertexHeader='varying float vFWGraphicHeight;\n';
@@ -54,8 +55,9 @@ export function enableWorldGraphicMaterial(material:THREE.Material):boolean{
    shader.vertexShader.replace(begin,begin+'\n'+vertexHeight);
   shader.fragmentShader='varying float vFWGraphicHeight;\n'+
    shader.fragmentShader.replace(lights,lights+'\n'+WORLD_GRAPHIC_FRAGMENT);
+  injectTransientReceiverLight(shader,renderer);
  };
- material.customProgramCacheKey=()=>previousKey()+':f1-world-3-band-edge-aa';
+ material.customProgramCacheKey=()=>previousKey()+':f1-world-3-band-edge-aa-v17-receiver';
  material.userData[FLAG]=true;
  material.needsUpdate=true;
  return true;
