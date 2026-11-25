@@ -125,7 +125,7 @@ import {bakedOperatorCarry,prewarmSavedOperatorCarry}
  from './rendering/breach-saved-operator-carry-bake.ts';
 import {updateOperatorAppearance} from './breach-operator-appearance.ts';
 import {readEquipmentInteraction} from './breach-equipment-interaction-pose.ts';
-import {type Session,type TeamActor,team,knownAt,liveVisibility} from './breach-game.ts';
+import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
 import {downedTransportPresentation} from './breach-capture-transport-presentation.ts';
 import {SurrenderedFirearmsPresenter} from './rendering/breach-surrendered-firearms-presenter.ts';
 import {spatialSurfaceKnown,shotVisibility,windowPresentationKnown} from './breach-presentation.ts';

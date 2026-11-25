@@ -46,9 +46,13 @@ try{
       scene.view.focus=p;scene.view.zoom=2;
       const draw=(policy=null,omni=false)=>scene.update(s,selected,1/60,null,omni,null,null,null,policy);
       const stats=()=>scene.performanceStats();
+      // Presenter stats count allocated active-ID meshes, including hidden
+      // ones retained in the pool. Inspect actual visible meshes instead.
+      const visibleCount=map=>[...map.values()].filter(m=>m.visible&&m.parent).length;
       const count=()=>({traces:scene.tracerBatch?.mesh.count??0,pulses:scene.impactPulseBatch?.mesh.count??0,
        marks:scene.impactDecalMesh?.count??0,particles:scene.dropletPreview?.mesh.count??0,
-       puffs:scene.dustPuffs?.mesh.count??0,...scene.combatEffects.stats()});
+       puffs:scene.dustPuffs?.mesh.count??0,...scene.combatEffects.stats(),
+       grenades:visibleCount(scene.combatEffects.thrown),flashes:visibleCount(scene.combatEffects.detonations)});
       const p95=a=>a.slice().sort((x,y)=>x-y)[Math.floor(a.length*.95)];
       const measure=async()=>{
        for(let i=0;i<5;i++)draw();
@@ -100,8 +104,8 @@ try{
       draw(policy);const legacy=count();
       applyReplayFrame(s,frame);draw(policy);const restored=count();
       if(JSON.stringify(personal)!==JSON.stringify(restored))throw Error('Personal seek unstable');
-      if(legacy.pulses||legacy.marks||legacy.traces||legacy.particles||legacy.puffs||legacy.casings||legacy.magazines||legacy.grenades||legacy.flashes)throw Error('Legacy personal effect leak '+JSON.stringify(legacy));
       if(variant.name!=='base'){
+       if(Object.values(legacy).some(Boolean))throw Error('Legacy personal effect leak '+JSON.stringify(legacy));
        const evidence=frame.knowledge?.effectEvidence;
        if(!evidence||evidence.rows.length>8||evidence.observers.length>4||!evidence.observers.some(o=>o[0]===selected&&o[1]))throw Error('No bounded recorded observer witness');
        if(personal.traces||personal.particles||personal.puffs||personal.casings||personal.magazines||personal.grenades||personal.flashes)throw Error('Unrecorded personal effect');

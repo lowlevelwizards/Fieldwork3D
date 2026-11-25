@@ -169,3 +169,18 @@ test('V19 sampled duplicate points share one exact optical probe per observer',(
  assert.equal(effectSampleAllows(sample,1,id,changed),false);
  assert.equal(effectSampleAllows({...sample,rows:[Array(5)],observers:[[id,1]]},1,id,row),false);
 });
+
+import * as THREE from 'three';
+import {BreachCombatEffectsPresenter} from '../src/rendering/breach-combat-effects-presenter.ts';
+test('V19 hidden retained flash is not a visible replay effect',()=>{
+ const root=new THREE.Group(),presenter=new BreachCombatEffectsPresenter(root,[],false);
+ const s={seconds:1,casings:[],dropped:[],grenades:[],flashBursts:[{id:1,p:{x:50,y:60},age:.1}]};
+ presenter.update(s,true,false,()=>true);
+ assert.equal(presenter.stats().flashes,1);
+ assert.equal(presenter.detonations.get(1).visible,true);
+ presenter.update(s,true,true,()=>{throw Error('personal LOS query');});
+ assert.equal(presenter.stats().flashes,1,'retained active-ID allocation is not a visible count');
+ assert.equal(presenter.detonations.get(1).visible,false);
+ presenter.reset();
+ assert.equal(presenter.stats().flashes,0);
+});
