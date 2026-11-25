@@ -54,7 +54,7 @@ import {windowShardPoseInto,WINDOW_SHARDS_PER_PANE,WINDOW_SHARD_CAPACITY,
  type SettledWindowShardPose}
  from './rendering/window-shatter-presentation.ts';
 import {type CivilianRig} from './breach-civilian-visuals.ts';
-import {doorDebrisSource,coverDebrisSource,fractureDebrisPose,type DebrisSource} from './rendering/breach-fracture-debris.ts';
+import {doorDebrisSource,coverDebrisSource,fractureDebrisPose,debrisPoseContained,type DebrisSource} from './rendering/breach-fracture-debris.ts';
 import {reconcileSceneActorLifetimes} from './rendering/breach-actor-frame-presenter.ts';
 import {shouldPrewarmContactRig,withinContactPrewarmBudget,
   withPreparedVisibleRoot}
@@ -2040,6 +2040,7 @@ export class TacticalScene3D{
     }
     let shardCount=0,shardWrites=0,colorWrites=0;
     const shardMesh=this.windowShards;
+    const debrisWorld=sessionWorldGeometry(s);
     const submit=(part:SettledWindowShardPose|import('./rendering/window-shatter-presentation.ts').WindowShardPose,color:number,heightScale=1)=>{
       if(shardCount>=WINDOW_SHARD_CAPACITY)return;
       if(this.shardSlots.changed(shardCount,part,heightScale)){
@@ -2077,7 +2078,8 @@ export class TacticalScene3D{
         this.settledPanes.push(current);
       for(let i=0;i<WINDOW_SHARDS_PER_PANE&&shardCount<WINDOW_SHARD_CAPACITY;i++){
         const part=this.settledShardScratch;
-        if(!windowShardPoseInto(current,s.seconds,i,part))continue;
+        if(!windowShardPoseInto(current,s.seconds,i,part)||
+          !debrisPoseContained(debrisWorld,current,part))continue;
         if(this.glassDebrisPreview&&(!personalWindows&&!omniscient&&
           !this.presentationSight.query(s,'effect','glass:'+id+':burst:'+i,{x:part.x,y:part.z})))continue;
         submit(part,0xd9f4ef);
@@ -2099,7 +2101,8 @@ export class TacticalScene3D{
       const part=this.settledShardScratch;
       for(const source of this.fractureSources){
         for(let i=0;i<WINDOW_SHARDS_PER_PANE&&shardCount<WINDOW_SHARD_CAPACITY;i++){
-          if(!fractureDebrisPose(source,s.seconds,i,false,part))continue;
+          if(!fractureDebrisPose(source,s.seconds,i,false,part)||
+            !debrisPoseContained(debrisWorld,source,part,part.heightScale))continue;
           if(!omniscient&&!this.presentationSight.query(s,'effect','fracture:'+source.id+':burst:'+i,{x:part.x,y:part.z}))continue;
           submit(part,source.color,part.heightScale);
         }
@@ -2111,7 +2114,8 @@ export class TacticalScene3D{
       const part=this.settledShardScratch;
       for(const pane of this.settledPanes){
         for(let i=0;i<WINDOW_SETTLED_SHARDS_PER_PANE&&shardCount<WINDOW_SHARD_CAPACITY;i++){
-          if(!settledWindowShardPose(pane,s.seconds,i,part))continue;
+          if(!settledWindowShardPose(pane,s.seconds,i,part)||
+            !debrisPoseContained(debrisWorld,pane,part,part.heightScale))continue;
           if(!omniscient&&!this.presentationSight.query(s,'effect','glass:'+pane.id+':settled:'+i,{x:part.x,y:part.z}))continue;
           submit(part,0xd9f4ef,part.heightScale);
         }
@@ -2122,7 +2126,8 @@ export class TacticalScene3D{
       const part=this.settledShardScratch;
       for(const source of this.fractureSources){
         for(let i=0;i<WINDOW_SETTLED_SHARDS_PER_PANE&&shardCount<WINDOW_SHARD_CAPACITY;i++){
-          if(!fractureDebrisPose(source,s.seconds,i,true,part))continue;
+          if(!fractureDebrisPose(source,s.seconds,i,true,part)||
+            !debrisPoseContained(debrisWorld,source,part,part.heightScale))continue;
           if(!omniscient&&!this.presentationSight.query(s,'effect','fracture:'+source.id+':settled:'+i,{x:part.x,y:part.z}))continue;
           submit(part,source.color,part.heightScale);
         }

@@ -11,3 +11,6 @@ Records committed glass leaf fracture origin/yaw and collapse footprint/time. Ex
 
 ## Checkpoint 2 — burst allocation refinement
 Both the aperture and door/fixture hot paths now write into the existing reusable pose scratch, preserving the compatibility helper for independent callers. Burst and settled paths still share one 96-slot batch. Invalid sample times/indices fail without modifying scratch. Regression coverage compares both orientations, exact horizontal placement, invalid samples and rewind. Wall clipping, source descriptor allocation, real WebGL and performance evidence remain open.
+
+## Checkpoint 3 — spatial containment
+All four shard paths (aperture burst/settled, door/fixture burst/settled) use the existing session wall broadphase before submission. Reject crossing chords, including wall endpoints, oversized final footprints overlapping the solid wall shell, and off-map footprints. Real gaps retain two-sided debris. No physics, extra batches, global geometry, or changed disclosure policy. The conservative omission can reduce shard counts at tight jambs; inspect at gameplay scale. Tests cover real index queries, world isolation, aperture, edge and rewind-independent samples. Descriptor allocation and camera-specific visual acceptance remain open.

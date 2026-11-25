@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {recordDoorFracture} from '../src/breach-fracture-record.ts';
 import {damageCover} from '../src/breach-reactive-cover.ts';
-import {doorDebrisSource,coverDebrisSource,fractureDebrisPose} from '../src/rendering/breach-fracture-debris.ts';
+import {doorDebrisSource,coverDebrisSource,fractureDebrisPose,debrisPoseContained} from '../src/rendering/breach-fracture-debris.ts';
 import {windowShardPose,windowShardPoseInto,WINDOW_SHARD_DURATION,WINDOW_SHARDS_PER_PANE} from '../src/rendering/window-shatter-presentation.ts';
 import {newSession} from '../src/breach-game.ts';
 import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
@@ -57,4 +57,39 @@ test('burst scratch path preserves poses, rejects invalid samples and is safe ac
    assert.deepEqual(p,before);
   }
  }
+});
+
+// Use the same broadphase implementation as the session world, with an
+// intentionally tiny authored fixture so aperture and jamb cases are exact.
+import {TacticalGeometryIndex,pointBounds} from '../src/breach-spatial-index.ts';
+function debrisWorld(walls){
+ const index=new TacticalGeometryIndex(walls,[]);
+ return {bounds:{minX:0,minY:0,maxX:200,maxY:200},
+  someWallNearPoint:(p,r,matches)=>index.someWall(pointBounds(p,r),matches)};
+}
+const wall=(x1,y1,x2,y2)=>({a:{x:x1,y:y1},b:{x:x2,y:y2}});
+test('debris containment rejects a full wall crossing, jamb overlap and world edge without moving a pose',()=>{
+ const world=debrisWorld([wall(100,20,100,180)]);
+ const source={x:80,y:100};
+ const p={...scratch(),x:120,z:100,scale:1.5};
+ const before={...p};
+ assert.equal(debrisPoseContained(world,source,p),false);
+ assert.deepEqual(p,before);
+ assert.equal(debrisPoseContained(world,source,{...p,x:90}),true);
+ assert.equal(debrisPoseContained(world,source,{...p,x:94}),false);
+ assert.equal(debrisPoseContained(world,source,{...p,x:90},1.8),false);
+ assert.equal(debrisPoseContained(world,source,{...p,x:1}),false);
+ assert.equal(debrisPoseContained(world,source,{...p,x:NaN}),false);
+});
+test('genuine apertures keep both sides of glass debris; exact wall endpoints still block',()=>{
+ const world=debrisWorld([wall(100,20,100,80),wall(100,120,100,180)]);
+ const p={...scratch(),x:116,z:100,scale:1.5};
+ assert.equal(debrisPoseContained(world,{x:84,y:100},p),true);
+ assert.equal(debrisPoseContained(world,{x:100,y:100},p),true);
+ assert.equal(debrisPoseContained(world,{x:100,y:100},{...p,x:84}),true);
+ assert.equal(debrisPoseContained(world,{x:84,y:80},{...p,z:80}),false);
+ assert.equal(debrisPoseContained(world,{x:84,y:85},{...p,x:100,z:85}),false);
+ // No dependence on previous world, frame order or a mutable global wall list.
+ assert.equal(debrisPoseContained(debrisWorld([wall(100,20,100,180)]),{x:84,y:100},p),false);
+ assert.equal(debrisPoseContained(world,{x:84,y:100},p),true);
 });
