@@ -32,7 +32,13 @@ try{
   for(const id of ['hit','pool','stabilize','stone','wood','metal','dust','flash','muzzle','glass','vegetation','reset']){
    await page.locator('#'+id).click();await page.waitForTimeout(id==='pool'?2500:180);
    assert.ok((await page.locator('#status').innerText()).length>10);
-   if(['hit','pool','stone','glass','vegetation'].includes(id))await page.screenshot({path:dir+'/'+viewport.width+'-'+id+'.png'});
+   if(['hit','pool','stone','wood','metal','dust','flash','muzzle','glass','vegetation'].includes(id))await page.screenshot({path:dir+'/'+viewport.width+'-'+id+'.png'});
+   if(id==='pool'){
+    await page.locator('#speed').selectOption('1');
+    await page.waitForTimeout(2500);
+    await page.screenshot({path:dir+'/'+viewport.width+'-pool-grown.png'});
+    await page.locator('#speed').selectOption('.25');
+   }
   }
   // Inspect all three stages on a freshly reset exterior pane.
   await page.locator('#vegetation').click();

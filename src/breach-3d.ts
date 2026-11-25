@@ -54,7 +54,7 @@ import {windowShardPoseInto,WINDOW_SHARDS_PER_PANE,WINDOW_SHARD_CAPACITY,
  type SettledWindowShardPose}
  from './rendering/window-shatter-presentation.ts';
 import {type CivilianRig} from './breach-civilian-visuals.ts';
-import {doorDebrisSource,coverDebrisSource,fractureDebrisPose,debrisPoseContained,FractureSourceScratch} from './rendering/breach-fracture-debris.ts';
+import {doorDebrisSource,coverDebrisSource,fractureDebrisPose,fractureWidthScale,debrisPoseContained,FractureSourceScratch} from './rendering/breach-fracture-debris.ts';
 import {reconcileSceneActorLifetimes} from './rendering/breach-actor-frame-presenter.ts';
 import {shouldPrewarmContactRig,withinContactPrewarmBudget,
   withPreparedVisibleRoot}
@@ -151,7 +151,7 @@ import {DustPuffBatch,puffCount,samplePuff,type PuffSample} from './rendering/br
 import type {PuffKind} from './breach-atmosphere-evidence.ts';
 import {makeStainMarkBatch,makeBloodDropletBatch,BLOOD_DROPLET_CAPACITY} from './rendering/breach-blood-preview.ts';
 import {ImpactMarkSlotCache,MARK_MATRIX_DIRTY,MARK_COLOR_DIRTY,MARK_STYLE_DIRTY} from './rendering/breach-impact-mark-cache.ts';
-import {MATERIAL_IMPACT_PROFILES,MATERIAL_IMPACT_PARTICLE_LIMIT,sampleMaterialImpact,type ImpactParticleSample} from './rendering/breach-material-impact-atom.ts';
+import {MATERIAL_IMPACT_PROFILES,MATERIAL_IMPACT_PARTICLE_LIMIT,sampleMaterialImpact,fixtureImpactAccent,type ImpactParticleSample} from './rendering/breach-material-impact-atom.ts';
 import {presentSecondaryMuzzleFlash} from './secondary-holster-visual.ts';
 import {muzzleFlashCue,mostRecentActiveMuzzleShot,impactPulse,
  RecentMuzzleShotFrameIndex}
@@ -2090,16 +2090,16 @@ export class TacticalScene3D{
     let shardCount=0,shardWrites=0,colorWrites=0,opacityWrites=0;
     const shardMesh=this.windowShards;
     const debrisWorld=sessionWorldGeometry(s);
-    const submit=(part:SettledWindowShardPose|import('./rendering/window-shatter-presentation.ts').WindowShardPose,color:number,heightScale=1,glass=true)=>{
+    const submit=(part:SettledWindowShardPose|import('./rendering/window-shatter-presentation.ts').WindowShardPose,color:number,heightScale=1,glass=true,widthScale=1)=>{
       if(shardCount>=WINDOW_SHARD_CAPACITY)return;
       const alpha=glass?Math.fround(.85):1;
       if(this.shardOpacity.getX(shardCount)!==alpha){
         this.shardOpacity.setX(shardCount,alpha);opacityWrites++;
       }
-      if(this.shardSlots.changed(shardCount,part,heightScale)){
+      if(this.shardSlots.changed(shardCount,part,heightScale,widthScale)){
         this.shardMatrix.position.set(part.x,part.y,part.z);
         this.shardMatrix.rotation.set(part.rx,part.ry,part.rz);
-        this.shardMatrix.scale.set(part.scale,part.scale*heightScale,part.scale);
+        this.shardMatrix.scale.set(part.scale*widthScale,part.scale*heightScale,part.scale);
         this.shardMatrix.updateMatrix();shardMesh.setMatrixAt(shardCount,this.shardMatrix.matrix);shardWrites++;
       }
       if(this.shardColors[shardCount]!==color){
@@ -2157,7 +2157,7 @@ export class TacticalScene3D{
           if(!fractureDebrisPose(source,s.seconds,i,false,part)||
             !debrisPoseContained(debrisWorld,source,part,part.heightScale))continue;
           if(!omniscient&&!this.presentationSight.query(s,'effect','fracture:'+source.id+':burst:'+i,{x:part.x,y:part.z}))continue;
-          submit(part,source.color,part.heightScale,source.kind==='glass');
+          submit(part,source.color,part.heightScale,source.kind==='glass',fractureWidthScale(source.kind));
         }
         if(shardCount>=WINDOW_SHARD_CAPACITY)break;
       }
@@ -2182,7 +2182,7 @@ export class TacticalScene3D{
           if(!fractureDebrisPose(source,s.seconds,i,true,part)||
             !debrisPoseContained(debrisWorld,source,part,part.heightScale))continue;
           if(!omniscient&&!this.presentationSight.query(s,'effect','fracture:'+source.id+':settled:'+i,{x:part.x,y:part.z}))continue;
-          submit(part,source.color,part.heightScale,source.kind==='glass');
+          submit(part,source.color,part.heightScale,source.kind==='glass',fractureWidthScale(source.kind));
         }
         if(shardCount>=WINDOW_SHARD_CAPACITY)break;
       }
@@ -3171,10 +3171,10 @@ export class TacticalScene3D{
         }
       }
       if(this.materialImpactPreviewEnabled&&shot.surface!=='blood'&&visibility.impact&&
-        !(this.smokePreviewEnabled&&puffSurface==='dust')){
+        !(this.smokePreviewEnabled&&puffSurface==='dust'&&!fixtureImpactAccent(shot.impactFixture))){
         const surface=shot.surface??'dust',sample=this.materialImpactScratch;
         for(let i=0;i<MATERIAL_IMPACT_PROFILES[surface].count;i++){
-          if(!sampleMaterialImpact(surface,shot.id,i,shot.age,end.x,end.y,end.z,sample))continue;
+          if(!sampleMaterialImpact(surface,shot.id,i,shot.age,end.x,end.y,end.z,sample,shot.impactFixture))continue;
           if(!omniscient&&!this.presentationSight.query(s,'effect',shot.id+':chip:'+i,{x:sample.x,y:sample.z}))continue;
           if(!this.dropletPreview){
             this.dropletPreview=makeBloodDropletBatch(this.tracerGeometry,MATERIAL_IMPACT_PARTICLE_LIMIT);
@@ -3219,9 +3219,9 @@ export class TacticalScene3D{
             this.impactPulseBatch.addPose(cue.p.x,cue.height,cue.p.y,0,0,0,pulse.scale,pulse.scale,pulse.opacity,p.pulseColor);
           }
           const sample=this.materialImpactScratch;
-          if(!(this.smokePreviewEnabled&&surface==='dust'))
+          if(!(this.smokePreviewEnabled&&surface==='dust'&&!fixtureImpactAccent(cue.fixture)))
            for(let i=0;i<p.count;i++){
-            if(!sampleMaterialImpact(surface,cue.id,i,shot.age,cue.p.x,cue.height,cue.p.y,sample))continue;
+            if(!sampleMaterialImpact(surface,cue.id,i,shot.age,cue.p.x,cue.height,cue.p.y,sample,cue.fixture))continue;
             if(!omniscient&&!this.presentationSight.query(s,'effect','material:'+cue.id+':chip:'+i,{x:sample.x,y:sample.z}))continue;
             if(!this.dropletPreview){
               this.dropletPreview=makeBloodDropletBatch(this.tracerGeometry,MATERIAL_IMPACT_PARTICLE_LIMIT);
@@ -3265,6 +3265,7 @@ export class TacticalScene3D{
         if(!omniscient&&!this.presentationSight.query(s,'effect','cloud:'+cue.key,cue.p))continue;
         for(let i=0;i<puffCount(kind);i++){
           if(!samplePuff(kind,cue.id,i,age,cue.p.x,cue.height,cue.p.y,puff))continue;
+          if(cue.tint!==undefined)puff.color=cue.tint;
           if(!omniscient&&!this.presentationSight.query(s,'effect','cloud:'+cue.key+':'+i,{x:puff.x,y:puff.z}))continue;
           if(!this.dustPuffs){this.dustPuffs=new DustPuffBatch();this.effects.add(this.dustPuffs.mesh);}
           if(!this.dustPuffs.add(puff))break;

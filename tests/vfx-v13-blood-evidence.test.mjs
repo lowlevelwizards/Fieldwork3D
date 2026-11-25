@@ -24,12 +24,16 @@ test('wound-driven pool grows, stays behind when moved, stops on treatment and s
  const s=newSession(),a=s.operators[0];a.p={x:30,y:30};s.operators=[a];
  registerWound(a.medical,7,'torso',2,0);
  const medical=JSON.stringify(a.medical),effectId=s.nextEffectId;
- for(let i=1;i<=8;i++){s.seconds=i*.5;sampleBleedingEvidence(s,1/60);}
+ for(let i=1;i<=8;i++){
+  s.seconds=i*.5;sampleBleedingEvidence(s,1/60);
+  assert.equal(s.impactMarks[0].bloodKind,i<4?'drop':'pool');
+  if(i<4)assert.ok(bloodMarkRadius(s.impactMarks[0])<=3.5);
+ }
  assert.equal(s.impactMarks.length,1);const first=s.impactMarks[0],amount=first.bloodAmount;
  assert.ok(amount>2);assert.ok(bloodMarkRadius(first)>10);assert.equal(first.id<0,true);
  assert.equal(JSON.stringify(a.medical),medical);assert.equal(s.nextEffectId,effectId);
  a.p={x:55,y:30};s.seconds=4.5;sampleBleedingEvidence(s,1/60);
- assert.equal(s.impactMarks.length,2);assert.equal(first.p.x,30);
+ assert.equal(s.impactMarks.length,2);assert.equal(first.p.x,30);assert.equal(s.impactMarks[1].bloodKind,'drop');
  const old=snapshot(s);stabilizeWound(a.medical,7);
  s.seconds=5;sampleBleedingEvidence(s,1/60);assert.deepEqual(s.impactMarks,old.impactMarks);
  applyReplayFrame(s,old);assert.equal(s.impactMarks[0].bloodAmount,amount);

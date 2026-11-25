@@ -50,6 +50,11 @@ function orient(source:DebrisSource,out:SettledWindowShardPose){
  const x=out.x-source.x,z=out.z-source.y,co=Math.cos(source.yaw),si=Math.sin(source.yaw);
  out.x=source.x+x*co-z*si;out.z=source.y+x*si+z*co;out.ry-=source.yaw;
 }
+/** Narrow boards, flatter metal plates, chunky soft/masonry pieces. Width is
+ * never expanded, so the existing conservative containment disc stays valid. */
+export function fractureWidthScale(kind:DebrisSource['kind']):number{
+ return kind==='wood'?.48:kind==='metal'?.72:1;
+}
 export function fractureDebrisPose(source:DebrisSource,time:number,index:number,settled:boolean,out:SettledWindowShardPose):boolean{
  if(settled){if(!settledWindowShardPose(source,time,index,out))return false;}
  else{if(!windowShardPoseInto(source,time,index,out))return false;
@@ -57,8 +62,9 @@ export function fractureDebrisPose(source:DebrisSource,time:number,index:number,
  orient(source,out);
  if(source.kind!=='glass'){
   // Larger angular pieces around the collapsed authored footprint.
-  out.scale*=source.kind==='wood'?1.18:1.10;
-  out.heightScale=source.kind==='stone'?1.8:source.kind==='metal'?.8:1.05;
+  out.scale*=source.kind==='wood'?2.36:2.20;
+  out.heightScale=source.kind==='stone'?1.35:source.kind==='metal'?.28:source.kind==='dust'?1.15:.48;
+  if(settled)out.y=Math.max(out.y,out.scale*out.heightScale*.45);
  }
  return true;
 }

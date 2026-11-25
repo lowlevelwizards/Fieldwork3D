@@ -1,6 +1,7 @@
 import {TacticalScene3D} from './breach-3d.ts';
 import {newSession,team,enemies,type ShotEvent,type Session} from './breach-game.ts';
 import {activateSite,type Pt} from './breach-core.ts';
+import {retainCollapsePuff} from './breach-atmosphere-evidence.ts';
 import {damageCover} from './breach-reactive-cover.ts';
 import {recordDoorFracture} from './breach-fracture-record.ts';
 import {buildTrainingSite} from './training/training-site-builder.ts';
@@ -29,7 +30,7 @@ const targetTemplate=enemies(legacy)[0];
 if(!targetTemplate)throw Error('Missing lab actor template');
 const arena=buildTrainingSite({...DEFAULT_TRAINING_CONFIG,squadSize:1});
 arena.cover.push(
- {id:'lab-wood',fixture:'crate',x:310,y:665,w:28,h:26,low:true,topHeight:20},
+ {id:'lab-wood',fixture:'desk',x:310,y:665,w:28,h:26,low:true,topHeight:20},
  {id:'lab-metal',fixture:'support-column',x:390,y:665,w:16,h:16,low:false,topHeight:40});
 // An explicit glazed leaf in the authored lab fixture set.
 if(arena.doors.length)arena.doors[0].style='glazed';
@@ -172,8 +173,8 @@ function choose(kind:Sample){
   let box=session.coverState.find(c=>c.id==='lab-wood');
   if(box?.destroyed){build('arena');box=session.coverState.find(c=>c.id==='lab-wood');}
   if(!box)return;
-  damageCover(box,10,session.seconds);session.objectRevision++;
-  focus(box);label('Wood fixture · collapsed, splinter debris');draw();return;
+  damageCover(box,10,session.seconds);retainCollapsePuff(session,box);session.objectRevision++;
+  focus(box);label('Wood fixture · collapsed, larger debris and dust');draw();return;
  }
  if(kind==='glass'){
   const pane=session.windows.find(w=>!w.shattered);
@@ -190,12 +191,17 @@ function choose(kind:Sample){
   retainImpactMark(session,{id:session.nextEffectId++,shotId:shot.id,p:point,age:0,surface:'glass',height,surfaceRef:ref});
   focus({x:pane.x,y:pane.y});label(pane.shattered?'Glass · shattered, settled fragments':`Glass · damaged ${3-pane.integrity}/3 · repeat to fracture`);draw();return;
  }
- if(kind==='hit'||kind==='down'||kind==='pool'){
+ if(kind==='pool'){
+  build('arena');
+  registerWound(target.medical,session.nextShotId++,'torso',2,session.seconds);
+  focus(target.p);label('Blood · isolated small drops accumulate into a pool');draw();return;
+ }
+ if(kind==='hit'||kind==='down'){
   if(target.health<=0){target.health=4;target.downedAt=null;target.medical={wounds:[],bloodLoss:0};}
   const shot=emit('blood',target.p,26,true,kind!=='hit');
   retainImpactMark(session,{id:session.nextEffectId++,shotId:shot.id,p:{...target.p},surface:'blood',age:0,height:.85,bloodKind:'splat',bloodAmount:kind==='hit'?1:3},site.walls);
-  if(kind==='pool'||kind==='down')registerWound(target.medical,shot.id,'torso',2,session.seconds);
-  focus(target.p);label(kind==='hit'?'Blood · oversized directional hit': 'Blood · untreated wound grows a persistent pool');
+  if(kind==='down')registerWound(target.medical,shot.id,'torso',2,session.seconds);
+  focus(target.p);label(kind==='hit'?'Blood · rounded directional hit': 'Blood · downed actor, continued bleeding');
  }else if(kind==='stone'){
   const index=3,wall=site.walls[index],p={x:200,y:600};
   const ref=segmentAttachment('wall',index,undefined,wall,{x:p.x,y:p.y+20},{x:p.x,y:p.y-20},.5,28);
@@ -207,9 +213,9 @@ function choose(kind:Sample){
   if(!box)return;
   const p={x:box.x,y:box.y+box.h/2},height=kind==='wood'?10:25;
   const ref=coverAttachment(index,box,{x:p.x,y:p.y+20},{x:p.x,y:p.y-20},.5,height);
-  const shot=emit(kind,p,height);
+  const shot=emit(kind,p,height);shot.impactFixture=box.fixture;
   retainImpactMark(session,{id:session.nextEffectId++,p,age:0,surface:kind,height,shotId:shot.id,surfaceRef:ref});
-  focus({x:box.x,y:box.y});label(kind==='wood'?'Wood · splinters and dust':'Metal · sparks');
+  focus({x:box.x,y:box.y});label(kind==='wood'?'Wood desk · splinters, paper and dust':'Metal · sparks');
  }else if(kind==='flash'){
   const p={x:245,y:655};session.flashBursts.push({id:session.nextEffectId++,p,age:0});
   focus(p);label('Flashbang · illumination and residual dust');

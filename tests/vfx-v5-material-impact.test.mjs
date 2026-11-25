@@ -31,7 +31,7 @@ test('V5 distinct metal/wood/stone/glass/dust visual profiles',()=>{
 
 test('V14 oversized material profiles preserve the existing particle budget and actual shot retention',()=>{
  const p=MATERIAL_IMPACT_PROFILES;
- assert.deepEqual(Object.values(p).map(x=>x.count),[4,6,5,7,3]);
+ assert.deepEqual(Object.values(p).map(x=>x.count),[3,4,5,7,3]);
  assert.ok(p.wood.width>=1.6&&p.wood.length>=7);
  assert.ok(p.stone.width>=2.5&&p.stone.length>=3);
  assert.ok(p.metal.width>=1.1&&p.metal.length>=8);
