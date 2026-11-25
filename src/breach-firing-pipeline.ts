@@ -52,7 +52,7 @@ import {fireUrgency,passiveAimReadiness,contactAimOnAcquisition,
 
 import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
 import {glassImpactDamage} from './breach-glass-damage.ts';
-import {CASING_LIMIT} from './breach-effects.ts';
+import {emitSpentCasing} from './breach-casing-emission.ts';
 
 
 
@@ -237,7 +237,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     sightSpreadScale(mods,'ads',d(a.p,point));
   const proposedYaw=shotYaw(a.weaponYaw,spread,random(s),random(s));
   const clearance=weaponClearance({x:a.p.x,z:a.p.y,
-    heading:a.heading,weaponYaw:proposedYaw,shoulderOffset:a.aimSideOffset??0,
+    heading:a.heading,weaponYaw:proposedYaw,shoulderOffset:a.aimSideOffset??0,sampleEjection:true,
     weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
     velocity:a.velocity,recoil:a.recoil},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
   if(clearance.blocked)return;
@@ -298,10 +298,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     });
   }
 
-  s.casings.push({id:shotId,at:s.seconds,weapon:a.weapon,side:a.side,
-    x:muzzle.x-4*Math.cos(yaw),z:muzzle.z-4*Math.sin(yaw),
-    y:muzzle.y-3,heading:yaw});
-  if(s.casings.length>CASING_LIMIT)s.casings.shift();
+  emitSpentCasing(s,a,shotId,muzzle);
   s.sparks.push({p:clone(a.p),side:a.side,age:0});
   hear(s,a.p,WEAPONS[a.weapon].noise*mods.noise,'gunshot');
   battleEvent(s,'shot',a,a.p,a.name+' SUPPRESSING AREA');

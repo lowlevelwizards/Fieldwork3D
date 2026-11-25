@@ -1,17 +1,22 @@
 /** Build 133: deterministic lightweight spent-cartridge and surface effects. */
 import type {WeaponId} from './breach-combat.ts';
+import {sampleCasingFlight,type CasingFlight,type CasingSample} from './breach-casing-trajectory.ts';
 import {MATERIAL_IMPACT_PROFILES} from './rendering/breach-material-impact-atom.ts';
 export type EjectedCasing={
  id:number;at:number;weapon:WeaponId;side:'blue'|'red';
  /** Optional real Glock chamber identity; legacy casing shape remains valid. */
  secondaryWeapon?:import('./weapons/geometry/glock-family-silhouettes.ts').GlockAppearanceId;
  x:number;z:number;y:number;heading:number;
+ /** Absent in legacy replay records. Immutable, resolved at ignition. */
+ flight?:CasingFlight;
+ visualScale?:number;
 };
 const hash=(n:number)=>((Math.imul(n^0x9e3779b9,1664525)+1013904223)>>>0)/4294967296;
 export const CASING_LIMIT=96;
 export const IMPACT_MARK_LIMIT=64;
 export const BLOOD_MARK_LIMIT=32;
-export function casingAt(c:EjectedCasing,time:number){
+export function casingAt(c:EjectedCasing,time:number):CasingSample{
+ if(c.flight?.legs?.length)return sampleCasingFlight(c.flight,time-c.at);
  const t=Math.max(0,time-c.at);
  const a=c.heading+Math.PI/2+(hash(c.id)*.5-.25);
  const speed=10+hash(c.id+12)*9;

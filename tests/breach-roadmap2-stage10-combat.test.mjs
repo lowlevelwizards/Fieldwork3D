@@ -53,7 +53,13 @@ test('physical bullet effects commit health, cover, doors, glass, suppression an
  assert.match(resolution,/shotPressureAtActor\(/);
  assert.match(resolution,/recordCivilianHarm\(/);
  assert.match(resolution,/s\.shots\.push\(/);
- assert.match(resolution,/s\.casings\.push\(/);
+ assert.match(resolution,/emitSpentCasing\(s,a,shotId,muzzle,secondaryWeapon\)/);
+ assert.match(pipeline,/emitSpentCasing\(s,a,shotId,muzzle\)/);
+ const emitter=src('breach-casing-emission.ts');
+ assert.match(emitter,/s\.casings\.push\(casing\)/);
+ assert.match(emitter,/if\(s\.casings\.length>CASING_LIMIT\)s\.casings\.shift\(\)/);
+ assert.doesNotMatch(resolution,/s\.casings\.push\(/);
+ assert.doesNotMatch(pipeline,/s\.casings\.push\(/);
  assert.match(resolution,/retainImpactMark\(/);
  // D15.7: an actual down is no longer a recorded fatality.
  assert.doesNotMatch(resolution,/s\.deaths\+\+/);

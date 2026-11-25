@@ -3,6 +3,7 @@
  * This function is pure with respect to rendering and only runs on firing.
  */
 import * as THREE from 'three';
+import {casingPort,type CasingPort} from './breach-casing-sockets.ts';
 import type {WeaponId} from './breach-combat.ts';
 import type {GlockAppearanceId} from './weapons/geometry/glock-family-silhouettes.ts';
 import {secondaryMuzzleAtShot} from './secondary-shot-geometry.ts';
@@ -13,13 +14,15 @@ import {fitWeaponPose,handlingPose,weaponGrips,
 import {equipmentStockPush} from './breach-anatomy.ts';
 import {legRestRise} from './breach-leg-geometry.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
-export type MuzzleSample={x:number;y:number;z:number;yaw:number;pitch:number};
+export type MuzzleSample={x:number;y:number;z:number;yaw:number;pitch:number;
+  ejection?:CasingPort};
 export type MuzzleInput={x:number;z:number;heading:number;
   weaponYaw:number;weapon:WeaponId;aim:number;velocity:number;
   /** Present only when an issued Glock is settled in the firing hand. */
   secondaryWeapon?:GlockAppearanceId;
   weaponConfiguration?:WeaponConfiguration;
   recoil:number;obstruction?:boolean;friendlyNear?:boolean;
+  sampleEjection?:boolean;
   threatRange?:number|null;clearanceRetraction?:number;
   shortCompression?:number;shortFrom?:Handling;
   handlingIntent?:HandlingIntent;friendlyAhead?:boolean;
@@ -56,14 +59,21 @@ export function muzzleAtShot(p:MuzzleInput):MuzzleSample{
   const local=new THREE.Vector3(tip*grip.lengthScale,assembly?.muzzleY??0,0)
     .applyEuler(fit.rotation).add(fit.origin);
   const worldUp=new THREE.Vector3(0,1,0);
+  const chest=26+legRestRise(p.velocity,p.posture??'stand')-
+    (p.posture==='crouch'?8:0)-(p.coverStanceDrop??0);
+  const ejection=p.sampleEjection?(()=>{
+    const socket=casingPort(p.weapon,configuration);
+    const v=new THREE.Vector3(socket.x*grip.lengthScale,socket.y,socket.z)
+      .applyEuler(fit.rotation).add(fit.origin).applyAxisAngle(worldUp,-p.heading);
+    return {x:p.x+v.x,y:chest+v.y,z:p.z+v.z};
+  })():undefined;
   const axis=new THREE.Vector3(1,0,0).applyEuler(fit.rotation)
     .applyAxisAngle(worldUp,-p.heading).normalize();
   local.applyAxisAngle(worldUp,-p.heading);
   // Must agree with the visible neutral chest: no render-time history.
-  return {x:p.x+local.x,y:26+legRestRise(p.velocity,
-    p.posture??'stand')+local.y-
-    (p.posture==='crouch'?8:0)-(p.coverStanceDrop??0),
+  return {x:p.x+local.x,y:chest+local.y,
     z:p.z+local.z,
     yaw:Math.atan2(axis.z,axis.x),
-    pitch:Math.atan2(axis.y,Math.hypot(axis.x,axis.z))};
+    pitch:Math.atan2(axis.y,Math.hypot(axis.x,axis.z)),
+    ...(ejection?{ejection}:{})};
 }

@@ -11,6 +11,7 @@ header{display:flex;justify-content:space-between;align-items:center;gap:10px}
 header strong{font-size:13px;letter-spacing:.08em}header small{display:block;color:#aabdac;font-size:10px}
 a{color:#e0e9db;font-size:12px}button,select{font:inherit;font-size:11px;min-height:34px;padding:6px 8px;color:#e6ead8;background:#28433d;border:1px solid #82978a;border-radius:4px;touch-action:manipulation}
 button:active{background:#c5b888;color:#131f1c}.controls{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.casing-controls{background:#172825ed;border:1px solid #768b7e;border-radius:6px;padding:6px;font-size:11px}.casing-controls summary{cursor:pointer;padding:4px}.casing-controls label{display:flex;align-items:center;gap:4px;font-size:10px}.casing-controls input[type=number]{width:57px;background:#28433d;color:inherit;border:1px solid #82978a;border-radius:3px;min-height:30px}.casing-controls .controls{padding:3px;border:0;background:none}#casingDebugOverlay{position:fixed;inset:0;width:100%;height:100%;z-index:4;pointer-events:none;display:none}
 footer{position:fixed;bottom:calc(8px + env(safe-area-inset-bottom));left:8px;right:8px;z-index:5;font-size:11px;pointer-events:none}#metrics{color:#b5c5b7;font-size:10px;margin-top:4px}
 @media(min-width:800px){.lab{max-width:680px}footer{max-width:680px}}
 </style></head><body>
@@ -20,10 +21,21 @@ footer{position:fixed;bottom:calc(8px + env(safe-area-inset-bottom));left:8px;ri
 <button id="hit">BLOOD HIT</button><button id="down">DOWN</button><button id="pool">POOL</button><button id="stabilize">STABILIZE</button>
 <button id="stone">MASONRY</button><button id="wood">WOOD</button><button id="metal">METAL</button><button id="dust">DUST</button>
 <button id="glass">GLASS</button><button id="glass-door">GLASS DOOR</button><button id="collapse">COLLAPSE</button><button id="flash">FLASHBANG</button><button id="muzzle">MUZZLE</button><button id="vegetation">EXTERIOR</button><button id="miss">MISS</button>
-</div><div class="controls" aria-label="Playback and camera">
+</div><details class="casing-controls"><summary>SPENT CASINGS</summary><div class="controls">
+<label>Weapon <select id="casingWeapon"><option value="legacy">Generic carbine</option></select></label>
+<label>Scale <input id="casingScale" type="number" min=".5" max="1.5" step=".1" value="1"></label>
+<label>Count <input id="casingCount" type="number" min="1" max="64" value="24"></label>
+<label>Interval <input id="casingInterval" type="number" min=".04" max="1" step=".02" value=".12"></label>
+<label>Seed <input id="casingSeed" type="number" min="1" max="1000000" value="17"></label>
+<label>Floor <select id="casingFloor"><option value="hard">Hard</option><option value="soft">Soft</option><option value="slick">Slick</option></select></label>
+<label>Obstacle <select id="casingObstacle"><option value="none">None</option><option value="wall">Tall barrier</option><option value="crate">Low crate</option></select></label>
+<label><input id="casingDebug" type="checkbox"> Paths / sockets</label>
+<button id="casings">EJECT BURST</button></div></details>
+<div class="controls" aria-label="Playback and camera">
 <button id="repeat">REPEAT</button><button id="pause">PAUSE</button><button id="step">STEP</button><select id="speed" aria-label="Playback speed"><option value=".25">0.25×</option><option value=".5">0.5×</option><option value="1" selected>1×</option></select><button id="reset">RESET</button>
 <button id="iso">ISO</button><button id="top">TOP</button><button id="gameZoom">GAME ZOOM</button><button id="closeZoom">CLOSE</button>
 </div></div>
+<svg id="casingDebugOverlay" aria-hidden="true"></svg>
 <footer><div id="status">Loading effects…</div><div id="metrics"></div></footer>
 <!-- FIELDWORK / VISUAL LAB: retained historical standalone entry -->
 <script type="module" src="/src/breach-visual-lab.ts"></script>
