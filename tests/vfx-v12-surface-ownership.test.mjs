@@ -26,7 +26,9 @@ test('hinge A and hinge B preserve local door attachment when leaf opens',()=>{
   const local=doorMarkLocalPose(r,d);
   assert.equal(local.x,hinge==='a'?20:-20);assert.equal(local.y,25);assert.equal(local.nz,-1);
   assert.deepEqual(doorMarkLocalPose(r,{...d,open:true,openFraction:1}),local);
-  assert.equal(doorMarkLocalPose(r,{...d,style:'glazed'}),null);
+  const pane=doorMarkLocalPose(r,{...d,style:'glazed'});
+  assert.equal(pane.z,-.66);assert.equal(pane.x,local.x);
+  assert.equal(doorMarkLocalPose(r,{...d,style:'glazed',glassShattered:true}),null);
  }
 });
 test('cover records actual side/top contact but does not invent interior face',()=>{
