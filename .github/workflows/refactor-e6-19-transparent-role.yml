@@ -18,6 +18,10 @@ on:
       - 'tests/w6-wall-story-residue.test.mjs'
       - 'scripts/verification/w6-wall-story-browser.mjs'
       - 'src/rendering/floor-surface-atlas.ts'
+      - 'src/rendering/floor-wear-raster.ts'
+      - 'src/rendering/fixture-wear-projection.ts'
+      - 'src/worldgen/floor-wear-plan.ts'
+      - 'scripts/verification/w7-floor-fixture-browser.mjs'
       - 'tests/w7-floor-surface-atlas.test.mjs'
       - 'src/rendering/wall-surface-atlas.ts'
       - 'src/rendering/wall-structural-packet.ts'
@@ -92,6 +96,9 @@ jobs:
       - name: W6 generated site visual, fog and resource parity
         if: ${{ startsWith(github.head_ref, 'refactor/w6-') }}
         run: node scripts/verification/w6-wall-story-browser.mjs
+      - name: W7 real generated floor and fixture render acceptance
+        if: ${{ startsWith(github.head_ref, 'refactor/w7-') }}
+        run: node scripts/verification/w7-floor-fixture-browser.mjs
       - name: Two seed real browser transparent draw roles and fog/briefing parity
         if: ${{ !startsWith(github.head_ref, 'refactor/w5-') }}
         env:
@@ -220,5 +227,6 @@ jobs:
             artifacts/w4-live/
             artifacts/w5-fog/
             artifacts/w6-story/
+            artifacts/w7-surfaces/
           if-no-files-found: ignore
           retention-days: 14
