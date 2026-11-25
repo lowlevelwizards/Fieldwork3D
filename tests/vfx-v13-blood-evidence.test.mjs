@@ -49,3 +49,11 @@ test('four deterministic chunky burst shapes use recorded elevation and directio
   assert.equal(sampleBloodBurst(3,i,.4,0,20,24,30,a),false);
  }
 });
+
+test('blood evidence cannot merge across a wall and settled marks do not change on idle ticks',()=>{
+ const s={impactMarks:[]},walls=[{a:{x:0,y:-20},b:{x:0,y:20}}];
+ retainImpactMark(s,blood(1,-2),walls);retainImpactMark(s,blood(2,2),walls);
+ assert.equal(s.impactMarks.length,2);
+ ageImpactEvidence(s.impactMarks,4);const prior=JSON.stringify(s.impactMarks);
+ ageImpactEvidence(s.impactMarks,1/60);assert.equal(JSON.stringify(s.impactMarks),prior);
+});

@@ -485,6 +485,8 @@ function renderWeaponLights2D(){
 function renderGroundMarks(){
   const state=getState();
   const replaying=isReplaying();
+  // Match 3D's conservative personal replay evidence policy until V19.
+  if(replaying&&replayKnowledge.observerId)return;
   for(const mark of state.impactMarks){
     // Surface-attached marks cannot be represented as unrelated floor circles.
     if(mark.surface!=='blood'&&(mark.surfaceRef||mark.shotId!==undefined||mark.surface!=='dust'||mark.height===undefined||mark.height>1))continue;

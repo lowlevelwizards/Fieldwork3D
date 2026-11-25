@@ -3145,8 +3145,8 @@ export class TacticalScene3D{
         s,'impact',mark.id,markPoint))continue;
       // Blood remains floor-aligned; environmental marks follow their surface.
       // Transparent architecture may not write depth, so a blood stain
-      // must also be culled when any part lies behind a cutaway wall or
-      // a visible miniature. Camera rays differ for ORTHO and WIDE.
+      // must also be culled when any part lies behind a cutaway wall.
+      // Opaque actors are handled by depth. Camera rays differ for ORTHO and WIDE.
       const radius=mark.surface==='blood'?
         confinedGroundRadius(mark.p,bloodMarkRadius(mark),s.site?.walls??WALLS):attached?.radius??2.3;
       if(radius<.5)continue;
