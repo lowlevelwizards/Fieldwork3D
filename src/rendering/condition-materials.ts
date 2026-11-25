@@ -31,7 +31,8 @@ export function ageMaterialColor(hex:number,surface:PixelSurface|undefined,
  const t=clamp(Math.pow(clamp(level/100),1.3)*
   (.52+Math.max(-1,Math.min(1,variation))*.05)*weathering[role]*retention);
  if(t<=0)return hex;
- const rgb=targets[role];
+ // Coating role controls lighting, but the substrate controls aging hue.
+ const rgb=surface==='painted-wood'?[99,85,67]:surface==='painted-metal'||surface==='enamel-metal'?[84,91,86]:targets[role];
  const a=(hex>>>16)&255,b=(hex>>>8)&255,c=hex&255;
  const mix=(start:number,to:number)=>Math.round(start*(1-t)+to*t);
  return (mix(a,rgb[0])<<16)|(mix(b,rgb[1])<<8)|mix(c,rgb[2]);

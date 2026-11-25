@@ -14,6 +14,7 @@ test('W8 material color retention keeps clean identity and varied bounded aging'
   assert.notEqual(ageMaterialColor(hex,surface,100),hex);
   assert.equal(ageMaterialColor(hex,surface,100),ageMaterialColor(hex,surface,100));
  }
+ assert.notEqual(ageMaterialColor(hex,'painted-wood',100),ageMaterialColor(hex,'painted-metal',100));
  const aged=ageMaterialColor(hex,'painted-metal',100);
  assert.ok(((aged>>>16)&255)- (aged&255)>65,'paint keeps authored color contrast');
  assert.ok((ageMaterialColor(0xf0eee9,'porcelain',100)>>>16)>180,'porcelain remains recognizably light');

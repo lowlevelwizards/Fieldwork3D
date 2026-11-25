@@ -7,15 +7,14 @@ import {indexFloorWear} from '../worldgen/floor-wear-plan.ts';
 import type {WearMark} from '../worldgen/environment-wear.ts';
 import {rasterFloorWear} from './floor-wear-raster.ts';
 import {mapBoxPixelUV} from './pixel-materials.ts';
+import {planSurfacePageCounts,uploadSurfacePages} from './surface-atlas-pages.ts';
 export const FLOOR_MASK_SIZE=64;
 export type FloorMaskSlot={room:Room;texture:THREE.DataTexture;row:number};
 export type FloorMaskAtlas={pages:THREE.DataTexture[];slots:Map<string,FloorMaskSlot>};
 /** W7 production default; explicit legacy remains the A/B and rollback path. */
 export function resolveFloorWear(mode:string|null){return mode!=='legacy';}
 export function planFloorMaskPages(count:number):number[]{
- const pages:number[]=[];
- while(count>0){const n=2**Math.floor(Math.log2(Math.min(count,32)));pages.push(n);count-=n;}
- return pages;
+ return planSurfacePageCounts(count);
 }
 export function writeFloorMaskSlot(site:Site,slot:FloorMaskSlot,level:number,marks:readonly WearMark[]=[],boost=1){
  const image=slot.texture.image as {data:Uint8Array};
@@ -38,8 +37,9 @@ export function buildFloorMaskAtlas(site:Site,level:number,marks:readonly WearMa
    const room=site.rooms[offset+i],slot={room,texture,row:i*FLOOR_MASK_SIZE};
    slots.set(room.id,slot);writeFloorMaskSlot(site,slot,level,byRoom.get(room.id),boost);
   }
-  texture.needsUpdate=true;pages.push(texture);offset+=count;
+  pages.push(texture);offset+=count;
  }
+ uploadSurfacePages(pages);
  return {pages,slots};
 }
 export function floorMaskGeometry(w:number,h:number,d:number,slot:FloorMaskSlot){

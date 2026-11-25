@@ -3,6 +3,7 @@ import type {Site} from '../breach-site.ts';
 import {planFixtureWallResidue} from '../worldgen/wall-story-residue.ts';
 import {wallPatinaDimensions} from '../worldgen/condition-wall.ts';
 import {planWallFaces,atlasWallStrip,type WallFacePair,type WallEffectFilter} from '../worldgen/wall-surface-recipe.ts';
+import {planSurfacePageCounts,uploadSurfacePages} from './surface-atlas-pages.ts';
 export type WallAtlasSlot={index:number;row:number;texture:THREE.DataTexture;pair:WallFacePair;patterned:boolean;trimPalette?:{trim:number;cap:number}};
 export type WallAtlas={pages:THREE.DataTexture[];slots:Map<number,WallAtlasSlot>};
 /** Width buckets and power-of-two strip counts ensure no unused pixel
@@ -16,8 +17,7 @@ export function planAtlasPages(widths:readonly {index:number;width:number}[]){
  const pages:{width:number;indices:number[]}[]=[];
  for(const [width,ids] of [...buckets].sort((a,b)=>a[0]-b[0])){
   let start=0;
-  while(start<ids.length){
-   const count=2**Math.floor(Math.log2(Math.min(32,ids.length-start)));
+  for(const count of planSurfacePageCounts(ids.length)){
    pages.push({width,indices:ids.slice(start,start+count)});start+=count;
   }
  }
@@ -40,8 +40,7 @@ export function wallTrimSwatchUV(slot:WallAtlasSlot,kind:'trim'|'cap'):[number,n
 export function updateWallAtlas(slots:Iterable<WallAtlasSlot>,level:number,filter:WallEffectFilter){
  const pages=new Set<THREE.DataTexture>();
  for(const slot of slots){writeAtlasSlot(slot,level,filter);pages.add(slot.texture);}
- for(const page of pages)page.needsUpdate=true;
- return pages.size;
+ return uploadSurfacePages(pages);
 }
 export function buildWallAtlas(site:Site,height:number,level:number,filter:WallEffectFilter,patterned:boolean,trimPalette?:{trim:number;cap:number},storyEnabled=false):WallAtlas{
  const story=storyEnabled?planFixtureWallResidue(site,height):undefined;

@@ -15,6 +15,9 @@ on:
       - 'src/worldgen/floor-wear-plan.ts'
       - 'src/worldgen/wear-sources.ts'
       - 'tests/w8-material-condition.test.mjs'
+      - 'src/rendering/surface-atlas-pages.ts'
+      - 'src/rendering/surface-color-space.ts'
+      - 'tests/w8-surface-consolidation.test.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -36,7 +39,7 @@ jobs:
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
       - name: W8 focused material and condition contracts
-        run: node --experimental-strip-types --test tests/w8-material-condition.test.mjs tests/condition5-01.test.mjs tests/texture5-04-materials.test.mjs tests/texture5-15-acceptance.test.mjs tests/visual-foundation-f3-wear-identity.test.mjs tests/w6-wall-story-residue.test.mjs tests/w7-floor-surface-atlas.test.mjs
+        run: node --experimental-strip-types --test tests/w8-material-condition.test.mjs tests/condition5-01.test.mjs tests/texture5-04-materials.test.mjs tests/texture5-15-acceptance.test.mjs tests/visual-foundation-f3-wear-identity.test.mjs tests/w6-wall-story-residue.test.mjs tests/w7-floor-surface-atlas.test.mjs tests/w3-wall-surface-atlas.test.mjs tests/w4-wall-structural-packet.test.mjs tests/w8-surface-consolidation.test.mjs
       - name: Pin exact pre-W0 and W7 worktrees
         run: |
           git fetch --no-tags --depth=1 origin 6644f06ba4fc4c74a8ff653b873714c1898d9249 8d3f36830a01d2932ff96c8f063e9072a82b4d37
