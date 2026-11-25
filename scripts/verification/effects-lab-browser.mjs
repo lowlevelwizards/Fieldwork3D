@@ -17,7 +17,16 @@ try{
   // Validate the actual delivered HTML menu entry before opening the lab.
   const markup=await (await page.request.get(origin+'/index.html')).text();
   assert.match(markup,/<a[^>]+href="\.\/breach-visual-lab\.html"[^>]*>EFFECTS LAB<\/a>/);
-  await page.goto(origin+'/breach-visual-lab.html');await page.waitForSelector('body[data-ready=true]');
+  await page.goto(origin+'/index.html',{waitUntil:'domcontentloaded'});
+  await page.locator('.campaign-landing-more').click({timeout:60000});
+  await page.locator('.campaign-landing-labs > summary').click();
+  const link=page.locator('.campaign-landing-labs').getByRole('link',{name:'EFFECTS LAB',exact:true});
+  await link.waitFor({state:'visible'});
+  await page.screenshot({path:dir+'/'+viewport.width+'-dev-menu.png'});
+  await link.click();
+  await page.waitForURL('**/breach-visual-lab.html');
+  await page.locator('body[data-ready=true]').waitFor({state:'attached',timeout:60000});
+  await page.locator('#breach3dCanvas').waitFor({state:'visible'});
   await page.locator('#speed').selectOption('.25');
   for(const id of ['hit','pool','stabilize','stone','wood','metal','dust','flash','muzzle','glass','vegetation','reset']){
    await page.locator('#'+id).click();await page.waitForTimeout(id==='pool'?2500:180);
