@@ -10,6 +10,7 @@ import {type Obstacle} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {arrivalAccessLane,overlapsArrivalLane} from './property-access-lane.ts';
 import {parkingStallCandidates} from './parking-stalls.ts';
+import {proposeVehicleParkingLayout,intersectsVehicleParkingReserve} from './vehicle-parking-layout.ts';
 import {SERVICE_EDGE_FIXTURES,serviceYardEdgeCandidates} from './service-yard-layout.ts';
 import {SERVICED_FACING_FIXTURES,serviceEnvelope,
  serviceFacingOrientation,intersectsServiceAccess}
@@ -23,7 +24,7 @@ import {landscapePhysicalFootprint,TREE_FIXTURES} from './landscape-footprint.ts
 import {outdoorFixtureAllowed,frontageEdgeCandidates,expandFrontageCandidates}
  from './outdoor-fixture-policy.ts';
 const overlaps=(a:Obstacle,b:Obstacle)=>Math.abs(a.x-b.x)<(a.w+b.w)/2+17&&Math.abs(a.y-b.y)<(a.h+b.h)/2+17;
-export function addExteriorProperty(site:Site,seed:number):Site{
+export function addExteriorProperty(site:Site,seed:number,vehiclePlacement=false):Site{
  const minX=Math.min(...site.rooms.map(r=>r.x));
  const maxX=Math.max(...site.rooms.map(r=>r.x+r.w));
  const minY=Math.min(...site.rooms.map(r=>r.y));
@@ -70,6 +71,20 @@ export function addExteriorProperty(site:Site,seed:number):Site{
     w:horizontal?width:thickness,h:horizontal?thickness:depth});
  };
  edgeZone(entry,'arrival-forecourt',frontKind,118);
+ // Try a larger, genuinely paved arrival only in the explicit new-site
+ // pilot. If the actual private depth cannot hold a row plus its aisle,
+ // restore the original forecourt exactly, with no parking placeholders.
+ if(vehiclePlacement&&['clinic','retail','motel','office','restaurant','apartment','garage','warehouse','utility'].includes(kind)){
+  const original=zones[0];
+  if(original?.id==='arrival-forecourt'){
+   zones.shift();
+   edgeZone(entry,'arrival-forecourt',industrial?'driveway':'parking',220);
+   const candidate=zones[0];
+   const layout=candidate&&proposeVehicleParkingLayout({...site,exteriorZones:zones},candidate);
+   if(layout)zones[0]={...candidate,vehicleParking:layout};
+   else{zones.length=0;zones.push(original);}
+  }
+ }
  edgeZone(opposite[entry],'rear-property',backKind,80);
  const sideOptions:Cardinal[]=entry==='north'||entry==='south'?
    ['east','west']:['north','south'];
@@ -128,7 +143,8 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    // Try every legal alternative in this bounded semantic recipe.
    // No relaxation of the existing door, spawn, road or overlap rules.
    for(const item of request.alternatives){
-    if(retiredShrub(item)||!outdoorFixtureAllowed(site,zone,item))continue;
+    if(retiredShrub(item)||!outdoorFixtureAllowed(site,zone,item)||
+      (zone.vehicleParking&&item==='parking-sign'))continue;
     if(cover.some((o,index)=>index>=site.cover.length&&o.fixture===item&&
       Math.abs(o.x-zone.x)<=zone.w/2&&Math.abs(o.y-zone.y)<=zone.h/2))continue;
    const asset=propDefinition(item);if(!asset)continue;
@@ -188,7 +204,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
     if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+32&&Math.abs(p.y-y)<h/2+32))continue;
     if(doorCenters.some(d=>(d.x-x)**2+(d.y-y)**2<68*68)||
       intersectsExteriorDoorReserve(doorReserves,candidate))continue;
-    if(overlapsArrivalLane(site,zone,candidate))continue;
+    if(overlapsArrivalLane(site,zone,candidate)||intersectsVehicleParkingReserve(zone,candidate))continue;
     if(cover.some(o=>overlaps(o,candidate)))continue;
     cover.push(candidate);acceptedByRole.set(request.role,candidate);accepted=true;break;
    }
@@ -199,7 +215,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
  // Wheel stops are actual low physical parking-block fixtures in empty
  // marked stalls, not painted decals and never on the front approach.
  // They are placed after vehicle selection so vacant bays remain usable.
- for(const zone of zones.filter(z=>z.kind==='parking')){
+ for(const zone of zones.filter(z=>z.kind==='parking'&&!z.vehicleParking)){
    const block=propDefinition('parking-block');
    if(!block)continue;
    const broad=zone.w>=zone.h;
@@ -257,7 +273,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
        Math.abs(p.y-y)<h/2+31))continue;
      if(doorCenters.some(d=>(d.x-x)**2+(d.y-y)**2<66*66)||
        intersectsExteriorDoorReserve(doorReserves,candidate))continue;
-     if(overlapsArrivalLane(site,zone,candidate))continue;
+     if(overlapsArrivalLane(site,zone,candidate)||intersectsVehicleParkingReserve(zone,candidate))continue;
      if(TREE_FIXTURES.has(point.fixture)){
        const canopy={...candidate,w:asset.width,h:asset.depth};
        if(site.rooms.some(room=>x+canopy.w/2>room.x-4&&

@@ -3,6 +3,7 @@
  * decorative parking rectangle. No changes to historical site snapshots.
  */
 import type {Site,ExteriorZone} from '../breach-site.ts';
+import type {Obstacle} from '../breach-core.ts';
 import {planPublicStreet} from './public-street-layout.ts';
 import {arrivalAccessLane} from './property-access-lane.ts';
 export type VehicleParkingLayout=Readonly<{
@@ -33,7 +34,7 @@ export function proposeVehicleParkingLayout(site:Site,zone:ExteriorZone):Vehicle
  // is kept vacant by the placement planner. No fake disconnected lot.
  if(!arrivalAccessLane(site,zone))return null;
  const mode=usable>=104+MIN_AISLE?'perpendicular':'parallel';
- const rowDepth=mode==='parallel'?48:104;
+ const rowDepth=mode==='parallel'?48:Math.min(140,usable-MIN_AISLE);
  const count=Math.min(5,Math.floor(alongLength/(mode==='parallel'?104:52)));
  if(count<2)return null;
  return {mode,axis,rowCenter:sign*(inner+rowDepth/2),rowDepth,
@@ -47,4 +48,16 @@ export function proposedVehicleParkingSite(site:Site):Site{
   return layout?{...zone,vehicleParking:layout}:zone;
  });
  return next.some((z,i)=>z!==zones[i])?{...site,exteriorZones:next}:site;
+}
+
+/** Furnishing must not consume a vehicle row or its circulation aisle.
+ * A small margin preserves operator clearance at the painted edges.
+ */
+export function intersectsVehicleParkingReserve(zone:ExteriorZone,c:Pick<Obstacle,'x'|'y'|'w'|'h'>):boolean{
+ const p=zone.vehicleParking;if(!p)return false;
+ const along=p.axis==='x'?c.x:c.y,across=p.axis==='x'?c.y:c.x;
+ const alongHalf=(p.axis==='x'?c.w:c.h)/2,acrossHalf=(p.axis==='x'?c.h:c.w)/2;
+ if(Math.abs(along-p.alongCenter)>=p.alongLength/2+alongHalf+4)return false;
+ return Math.abs(across-p.rowCenter)<p.rowDepth/2+acrossHalf+4||
+  Math.abs(across-p.aisleCenter)<p.aisleDepth/2+acrossHalf+4;
 }

@@ -64,7 +64,7 @@ function reachable(site:Site):boolean{
   routeCheckCache.set(key,valid);
   return valid;
 }
-export function applyArchetype(site:Site,seed:number):Site{
+export function applyArchetype(site:Site,seed:number,vehiclePlacement=false):Site{
   // An explicitly compiled building identity must not be overridden by the
   // seed during furnishing. Legacy callers without an identity still use
   // the original seed-selected default.
@@ -85,7 +85,7 @@ export function applyArchetype(site:Site,seed:number):Site{
     // Physical facade openings, sills and exterior obstructions exist before
     // furnishing, so room equipment cannot occupy their clearance envelope.
     const environment=addArchitecturalInteriors(
-      buildArchetypeEnvironment(architecture,seed),seed);
+      buildArchetypeEnvironment(architecture,seed,vehiclePlacement),seed);
     const result=dressWindowSecurity(decorateWalls(populateFunctionalRooms(dressSite(
       furnishRooms(environment,seed),seed),seed),seed),seed);
     return {...addScenarioFortifications(addScenarioDisarray(planDoorSwings(enforceServiceHatchBarriers(synchronizeWindowBarriers(result))),seed),seed),bounds:site.bounds??

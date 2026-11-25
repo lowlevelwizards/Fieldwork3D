@@ -39,13 +39,13 @@ function targetFor(site:Site,zone:ExteriorZone):number{
   site.condition==='neglected'?.35:.6;
  return Math.max(0,Math.min(4,slots-1,Math.round(slots*ratio)));
 }
-export function planVehiclePlacement(site:Site,seed=site.seed):VehiclePlacementResult{
+export function planVehiclePlacement(site:Site,seed=site.seed,modernOnly=false):VehiclePlacementResult{
  const vehicles:Obstacle[]=[],diagnostics:VehiclePlacementResult['diagnostics']=[];
  const bounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
  const street=planPublicStreet(site),reserves=exteriorDoorReserves(site.doors);
  const protectedPoints=[...site.spawn,...site.enemies,site.objective,site.extract,site.entrance];
  for(const zone of site.exteriorZones??[]){
-  if(zone.kind!=='parking'&&!zone.vehicleParking)continue;
+  if((zone.kind!=='parking'&&!zone.vehicleParking)||(modernOnly&&!zone.vehicleParking))continue;
   const target=targetFor(site,zone);
   const diag:VehiclePlacementResult['diagnostics'][number]={zoneId:zone.id,target,accepted:0,rejections:{}};
   diagnostics.push(diag);

@@ -5,6 +5,7 @@
 import {type Pt,type Segment,type Door,type Obstacle} from './breach-core.ts';
 import {applyArchetype} from './breach-archetypes.ts';
 import {withSitePropIds} from './worldgen/site-object-identity.ts';
+import {attachPlannedVehicles} from './worldgen/vehicle-site-integration.ts';
 import {compileArchitecturalSite} from './worldgen/architectural-compiler.ts';
 import {partitionMotelGuestUnits} from './worldgen/motel-suites.ts';
 import {orientArchitecturalSite,type EntrySide} from './worldgen/site-orientation.ts';
@@ -81,7 +82,7 @@ export {seeded} from './worldgen/seeded-rng.ts';
 export function generateSite(seed:number,scale:SiteScale='standard',
  onProgress?:(phase:'layout'|'furnishing'|'scoring',attempt:number)=>void,
  encounterContext:EncounterContext={},
- generationOptions:{archetype?:BuildingArchetype}={}):Site{
+ generationOptions:{archetype?:BuildingArchetype;vehiclePlacement?:boolean}={}):Site{
  const kind=generationOptions.archetype??
    (['house','townhouse','apartment','retail','office',
   'garage','warehouse','restaurant','motel','utility','clinic'] as const)
@@ -118,9 +119,10 @@ export function generateSite(seed:number,scale:SiteScale='standard',
    // Unintentional loose furniture must not block the approach to a real
    // door. Keep this deterministic, conservative and pre-spawn: essential
    // fixtures are never deleted to manufacture a route.
-   const furnished=applyArchetype(orientArchitecturalSite(geometry,seed),seed);
+   const furnished=applyArchetype(orientArchitecturalSite(geometry,seed),seed,generationOptions.vehiclePlacement===true);
    const accessible=repairDoorwayClutter(furnished).site;
-   const candidate=attachEncounterPlan(accessible,contextWithIntent);
+   const encounterSite=attachEncounterPlan(accessible,contextWithIntent);
+   const candidate=generationOptions.vehiclePlacement===true?attachPlannedVehicles(encounterSite):encounterSite;
    onProgress?.('scoring',attempt);
    const grade=measureSiteCompleteness(candidate);
    if(!bestGrade||preferCompleteCandidate(grade,bestGrade)||

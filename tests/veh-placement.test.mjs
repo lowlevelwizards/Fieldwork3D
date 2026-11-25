@@ -47,3 +47,22 @@ test('insufficient private depth fails closed',()=>{
  const site={seed:1,entrySide:'south',bounds:{minX:0,minY:0,maxX:400,maxY:450},rooms:[{x:50,y:80,w:300,h:270}],doors:[],entrance:{x:200,y:350},exteriorZones:[{id:'arrival-forecourt',kind:'parking',x:200,y:390,w:280,h:70}]};
  assert.equal(proposeVehicleParkingLayout(site,site.exteriorZones[0]),null);
 });
+
+import {intersectsVehicleParkingReserve} from '../src/worldgen/vehicle-parking-layout.ts';
+import {auditTacticalMobility} from '../src/worldgen/tactical-mobility-audit.ts';
+import {passable,route,withTemporarySiteGeometry} from '../src/breach-core.ts';
+test('opt-in generation retains deterministic navigation and keeps original default retired',()=>{
+ for(const seed of [3,5,6,8,10,14,19,21]){
+  const legacy=generateSite(seed,'large');
+  assert.ok(!legacy.cover.some(o=>o.fixture in VEHICLE_DIMENSIONS));
+  const site=generateSite(seed,'large',undefined,{}, {vehiclePlacement:true});
+  assert.deepEqual(site,generateSite(seed,'large',undefined,{}, {vehiclePlacement:true}));
+  const vehicles=site.cover.filter(o=>o.fixture in VEHICLE_DIMENSIONS);
+  if(vehicles.length){
+   const baseline={...site,cover:site.cover.filter(o=>!(o.fixture in VEHICLE_DIMENSIONS))};
+   assert.deepEqual(auditTacticalMobility(site).issues,auditTacticalMobility(baseline).issues);
+   assert.ok(withTemporarySiteGeometry(site,()=>site.spawn.every(p=>passable(p))&&route(site.spawn[0],site.objective).length>0));
+   for(const v of vehicles)assert.ok(site.exteriorZones.some(z=>z.vehicleParking&&intersectsVehicleParkingReserve(z,v)));
+  }
+ }
+});
