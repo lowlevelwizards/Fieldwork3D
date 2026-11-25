@@ -106,6 +106,7 @@ import {writeAtlasSlot,type WallAtlasSlot} from './rendering/wall-surface-atlas.
 import {type ObjectWear} from './worldgen/object-wear.ts';
 
 import {wearPixels} from './rendering/pixel-decals.ts';
+import {impactFinishScale} from './rendering/breach-impact-finish-scale.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
 import {pixelSign,type PixelSignKind} from './rendering/pixel-signage.ts';
 import {pixelOverlay,type PixelOverlay} from './rendering/pixel-overlays.ts';
@@ -952,6 +953,8 @@ export class TacticalScene3D{
   private readonly fractureSources=new FractureSourceScratch();
   private readonly shardColors=new Int32Array(WINDOW_SHARD_CAPACITY).fill(-1);
   private readonly shardTint=new THREE.Color();
+  private readonly shardOpacity=new THREE.InstancedBufferAttribute(
+    new Float32Array(WINDOW_SHARD_CAPACITY).fill(1),1).setUsage(THREE.DynamicDrawUsage);
   private coverGroups=new Map<number,THREE.Group>();
   private coverVisualStates=new Map<number,{intact:THREE.Group;debris:THREE.Group}>();
   private readonly coverFrameValues=new Map<number,{
@@ -2044,13 +2047,26 @@ export class TacticalScene3D{
     if(!this.windowShards){
       const shardMaterial=new THREE.MeshStandardMaterial({
         color:0xffffff,emissive:0x343b39,emissiveIntensity:.35,
-        roughness:.48,metalness:.04,flatShading:true,depthWrite:true,side:THREE.DoubleSide});
+        roughness:.48,metalness:.04,flatShading:true,depthWrite:true,alphaHash:true,side:THREE.DoubleSide});
+      // One pooled draw remains: glass gets a subtle coverage reduction,
+      // opaque wood/stone/metal keep alpha=1. Alpha hash preserves depth
+      // and avoids incorrectly sorting a transparent instanced batch.
+      shardMaterial.onBeforeCompile=shader=>{
+        shader.vertexShader=shader.vertexShader
+          .replace('#include <common>','#include <common>\nattribute float instanceShardOpacity;\nvarying float vShardOpacity;')
+          .replace('#include <begin_vertex>','#include <begin_vertex>\nvShardOpacity = instanceShardOpacity;');
+        shader.fragmentShader=shader.fragmentShader
+          .replace('#include <common>','#include <common>\nvarying float vShardOpacity;')
+          .replace('#include <alphahash_fragment>','diffuseColor.a *= vShardOpacity;\n#include <alphahash_fragment>');
+      };
+      shardMaterial.customProgramCacheKey=()=> 'shard-instance-alpha-v1';
       // Broad, thin asymmetric polygon: unmistakable fragments, not tiny pebbles.
       const shardShape=new THREE.Shape();
       shardShape.moveTo(-1.45,-1.2);shardShape.lineTo(.15,-2.05);
       shardShape.lineTo(1.35,.25);shardShape.lineTo(.75,1.8);shardShape.lineTo(-1.25,.6);shardShape.closePath();
       const shardGeometry=new THREE.ExtrudeGeometry(shardShape,{depth:.34,bevelEnabled:false});
       shardGeometry.rotateX(Math.PI/2);shardGeometry.center();
+      shardGeometry.setAttribute('instanceShardOpacity',this.shardOpacity);
       this.mats.push(shardMaterial);
       this.windowShards=new THREE.InstancedMesh(
         shardGeometry,shardMaterial,WINDOW_SHARD_CAPACITY);
@@ -2061,11 +2077,15 @@ export class TacticalScene3D{
       this.windowShards.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       this.effects.add(this.windowShards);
     }
-    let shardCount=0,shardWrites=0,colorWrites=0;
+    let shardCount=0,shardWrites=0,colorWrites=0,opacityWrites=0;
     const shardMesh=this.windowShards;
     const debrisWorld=sessionWorldGeometry(s);
-    const submit=(part:SettledWindowShardPose|import('./rendering/window-shatter-presentation.ts').WindowShardPose,color:number,heightScale=1)=>{
+    const submit=(part:SettledWindowShardPose|import('./rendering/window-shatter-presentation.ts').WindowShardPose,color:number,heightScale=1,glass=true)=>{
       if(shardCount>=WINDOW_SHARD_CAPACITY)return;
+      const alpha=glass?Math.fround(.85):1;
+      if(this.shardOpacity.getX(shardCount)!==alpha){
+        this.shardOpacity.setX(shardCount,alpha);opacityWrites++;
+      }
       if(this.shardSlots.changed(shardCount,part,heightScale)){
         this.shardMatrix.position.set(part.x,part.y,part.z);
         this.shardMatrix.rotation.set(part.rx,part.ry,part.rz);
@@ -2127,7 +2147,7 @@ export class TacticalScene3D{
           if(!fractureDebrisPose(source,s.seconds,i,false,part)||
             !debrisPoseContained(debrisWorld,source,part,part.heightScale))continue;
           if(!omniscient&&!this.presentationSight.query(s,'effect','fracture:'+source.id+':burst:'+i,{x:part.x,y:part.z}))continue;
-          submit(part,source.color,part.heightScale);
+          submit(part,source.color,part.heightScale,source.kind==='glass');
         }
         if(shardCount>=WINDOW_SHARD_CAPACITY)break;
       }
@@ -2152,11 +2172,12 @@ export class TacticalScene3D{
           if(!fractureDebrisPose(source,s.seconds,i,true,part)||
             !debrisPoseContained(debrisWorld,source,part,part.heightScale))continue;
           if(!omniscient&&!this.presentationSight.query(s,'effect','fracture:'+source.id+':settled:'+i,{x:part.x,y:part.z}))continue;
-          submit(part,source.color,part.heightScale);
+          submit(part,source.color,part.heightScale,source.kind==='glass');
         }
         if(shardCount>=WINDOW_SHARD_CAPACITY)break;
       }
     }
+    if(opacityWrites)this.shardOpacity.needsUpdate=true;
     if(colorWrites&&this.windowShards.instanceColor)this.windowShards.instanceColor.needsUpdate=true;
     if(this.windowShards.count!==shardCount){
       this.windowShards.count=shardCount;
@@ -3259,7 +3280,7 @@ export class TacticalScene3D{
         if(ref.kind==='wall'){
           const owner=this.wallOwners.find(w=>w.index===ref.index);
           if(!owner||owner.opacity<.995||!owner.pieces.some(m=>m.visible&&(!m.parent||m.parent.visible)))continue;
-          attached=wallMarkPose(ref,owner.segment,artRadius);
+          attached=wallMarkPose(ref,owner.segment,artRadius*impactFinishScale(s.site,ref));
         }else if(ref.kind==='door'){
           const door=ref.ownerId?this.frameDoorsById.get(ref.ownerId):undefined;
           const visual=ref.ownerId?this.doors.get(ref.ownerId):undefined;
