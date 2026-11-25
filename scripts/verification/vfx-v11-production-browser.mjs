@@ -170,7 +170,7 @@ try{
     const receiver=scene.transientLights.receiver;
     if(!receiver||receiver.texture.image.width!==64||receiver.texture.image.height!==2)throw Error('V17 receiver missing');
     const {enableWorldGraphicMaterial}=await import('/src/breach-graphic-world-lighting.ts');
-    const THREE=await import('/node_modules/three/build/three.module.js');
+    const {THREE}=await import('/scripts/verification/vfx-v17-three-probe.mjs');
     const testScene=new THREE.Scene(),camera=new THREE.OrthographicCamera(-40,40,40,-40,.1,200);
     camera.position.set(0,90,0);camera.up.set(0,0,-1);camera.lookAt(0,0,0);
     const material=new THREE.MeshStandardMaterial({color:0x999999,roughness:1});
