@@ -287,6 +287,8 @@ export class TacticalScene3D{
   private readonly miniFocusAttentionPolygons:AttentionPolygon[]=[];
   private readonly miniFocusAttentionDiscs:AttentionDisc[]=[];
   private readonly fogRefresh=new FogRefreshGate();
+  /** W5 depth audition. Stable opaque walls should not need a late transparent pass. */
+  wallDepthOpaque=typeof location!=='undefined'&&new URLSearchParams(location.search).get('wallDepth')==='opaque';
   private lastMemoryFogSignature='';
   private lastMemoryFogSession:Session|null=null;
   private readonly fogDiagnostic:FogDiagnostic=
@@ -843,7 +845,7 @@ export class TacticalScene3D{
   private readonly screenNdc=new THREE.Vector2();
   private readonly screenIntersection=new THREE.Vector3();
   private readonly screenProjection=new THREE.Vector3();
-  private width=1;private height=1;private fogAt=-1;
+  private width=1;private height=1;
   private terminalPoseSeconds=0;private terminalSessionStamp=-1;
   /** Presentation clock alone runs on pause; simulation/replay stay frozen. */
   private idleLifeSeconds=0;private idleLifeSession:Session|null=null;
@@ -1350,7 +1352,7 @@ export class TacticalScene3D{
     this.fogTextureUpdateRequests++;
     this.composeSiteWorld(site);
     this.root.add(this.fogUnknown,this.fogExplored);
-    this.fogAt=-1;this.fogRefresh.invalidate();
+    this.fogRefresh.invalidate();
     this.lastMemoryFogSignature='';this.lastMemoryFogSession=null;
     this.resetCamera();
   }
@@ -1514,7 +1516,7 @@ export class TacticalScene3D{
     if(mode==='top')this.view.pitch=Math.PI/2;
     else if(mode==='iso')this.view.pitch=55*Math.PI/180;
     this.canvas.style.display=mode==='plan2d'?'none':'block';
-    this.fogAt=-1;
+    this.fogRefresh.invalidate();
     this.updateCamera(1);
   }
   /** Yaw is always around the current map focus, never the selected unit. */
@@ -2091,7 +2093,6 @@ export class TacticalScene3D{
     this.markScenePhase('environment');
     this.updateCamera(dt);
     this.markScenePhase('camera');
-    this.fogAt+=dt;
     // Gameplay may stop on the exact downing tick. Finish visual collapse
     // independently, without advancing combat or modifying the replay film.
     const terminal=s.phase==='won'||s.phase==='lost';
@@ -2215,7 +2216,7 @@ export class TacticalScene3D{
       const knownFacade=owner.exterior&&!omniscient&&!bodycamAudition&&
         spatialSurfaceKnown(s,'wall',owner.index);
       const state=resolveWallPresentation(owner.opacity,cut,dt,
-        bodycamAudition,physicalDirector,this.replayXrayOn,knownFacade);
+        bodycamAudition,physicalDirector,this.replayXrayOn,knownFacade,this.wallDepthOpaque);
       owner.opacity=state.opacity;
       for(const mesh of owner.pieces){
         const material=mesh.material as THREE.MeshStandardMaterial;
@@ -3270,13 +3271,11 @@ export class TacticalScene3D{
     // only when the fog repaint cadence permits a change, never on the
     // intervening 60Hz scene frames. Session swaps bypass the cadence.
     this.markScenePhase('effects');
-    if(omniscient){this.fogRefresh.invalidate();this.fogAt=-1;}
+    if(omniscient)this.fogRefresh.invalidate();
     else{
-      if(this.fogAt<0)this.fogRefresh.invalidate();
       const decision=this.fogRefresh.poll(s,dt,this.quality.mode==='quality'?.055:.10,!!replay);
       if(decision.paint){
         const fogComposeStart=this.profileSceneUpdate?performance.now():0;
-        this.fogAt=0;
         // Static exploration memory changes less often than live sight.
         const memorySignature=fogMemoryFingerprint({
           mode:s.intel.mode,seed:s.site?.seed??null,

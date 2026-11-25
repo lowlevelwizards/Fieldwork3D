@@ -20,11 +20,11 @@ export function groupWallPresentation<T>(pieces:readonly WallPiece<T>[]):WallPre
 }
 
 export function resolveWallPresentation(previous:number,cut:boolean,dt:number,
- bodycam:boolean,director:boolean,xray:boolean,knownFacade:boolean){
+ bodycam:boolean,director:boolean,xray:boolean,knownFacade:boolean,opaqueFacade=false){
  const opacity=bodycam?1:director?cut?.12:1:
   transitionWallOpacity(previous,cut,dt,xray?.19:.38);
  const translucent=opacity<.995;
- const surfaceTransparent=translucent||knownFacade&&!bodycam;
+ const surfaceTransparent=translucent||knownFacade&&!bodycam&&!opaqueFacade;
  return {opacity,transparent:surfaceTransparent,depthWrite:!translucent,
   renderOrder:surfaceTransparent?1001:0,
   role:surfaceTransparent?(translucent?'camera-wall-cutaway':'known-exterior-wall'):'opaque',

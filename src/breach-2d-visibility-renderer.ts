@@ -59,11 +59,12 @@ function fog(){
     fogRefresh.invalidate();fogTime=-1;
     return;
   }
-  const dt=fogTime<0?0:Math.max(0,state.seconds-fogTime);
-  fogTime=state.seconds;
+  const now=performance.now()/1000;
+  const dt=fogTime<0?0:Math.max(0,now-fogTime);
+  fogTime=now;
   // Paused aim changes at the same simulation timestamp must still be
   // noticed. Only changed signatures actually repaint the texture.
-  const decision=fogRefresh.poll(state,dt||.055,.055,replaying);
+  const decision=fogRefresh.poll(state,dt,.055,replaying);
   if(decision.paint)paintFogMask(fogContext!,state,debugPalette?'palette':'normal');
   // Site-specific mask resolution and envelope must map back to the same
   // site-space coordinates as floors, doors and the 3D texture. Generated

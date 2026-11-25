@@ -68,7 +68,8 @@ export class FogRefreshGate {
  private site:Session['site']|null=null;
  private mode='';
  private seenRevision=-1;private seenCount=-1;private objectRevision=-1;
- private seconds=-Infinity;private signature='';
+ private seconds=-Infinity;private observedSeconds=-Infinity;private signature='';
+ get owner(){return this.session;}
  private elapsed=Infinity;
  invalidate(){this.session=null;this.elapsed=Infinity;this.signature='';}
  poll(s:Session,dt:number,period:number,replaying=false):{paint:boolean;memoryInvalid:boolean}{
@@ -77,8 +78,9 @@ export class FogRefreshGate {
   const memoryInvalid=ownerChanged||this.mode!==s.intel.mode||
    this.seenRevision!==s.seenGroundRevision||this.seenCount!==s.seenGround.size||
    s.seconds<this.seconds;
-  const urgent=memoryInvalid||this.objectRevision!==s.objectRevision||
-   (replaying&&s.seconds!==this.seconds);
+  const seek=replaying&&Math.abs(s.seconds-this.observedSeconds)>.15;
+  this.observedSeconds=s.seconds;
+  const urgent=memoryInvalid||this.objectRevision!==s.objectRevision||seek;
   if(!urgent&&this.elapsed<period)return {paint:false,memoryInvalid:false};
   const signature=fogSessionFingerprint(s);
   const paint=urgent||signature!==this.signature;

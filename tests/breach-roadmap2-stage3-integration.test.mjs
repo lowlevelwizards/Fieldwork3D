@@ -33,8 +33,8 @@ test('Full View is a display override, never a personal observer grant',()=>{
 test('same view fingerprint is used in both 2D and 3D, with no LOS caching',()=>{
  const canvas=readFileSync(new URL('../src/breach-2d-visibility-renderer.ts',import.meta.url),'utf8');
  const three=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
- assert.match(canvas,/fogSessionFingerprint\(state\)/);
- assert.match(three,/fogSessionFingerprint\(s\)/);
+ assert.match(canvas,/fogRefresh\.poll\(state,dt,/);
+ assert.match(three,/fogRefresh\.poll\(s,dt,/);
  assert.match(canvas,/paintFogMask\(fogContext!/);
  assert.match(three,/paintFogVisibility\(this\.fogContext,s\)/);
 });

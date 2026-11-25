@@ -259,7 +259,7 @@ try{
     draw(next,team(next)[0].id);checkTactical(next);
     check(scene.smoothFog.visible&&!scene.exteriorKnownFog.visible,'Second mission inherited exterior fog');
     scene.root.traverse(obj=>check(!oldMeshes.has(obj),'Retired structural mesh survived'));
-    check(scene.lastFogSession===next,'Fog cache retained previous session');
+    check((scene.fogRefresh?.owner??scene.lastFogSession)===next,'Fog cache retained previous session');
     const result={candidate,faded,restored,depthMismatches,firstWalls:oldMeshes.size,secondWalls:inventory().length,secondMissionFog:true,initialKnowledge:original,initialVisible,secondVisible:visible()};
     scene.renderer.dispose();scene.renderer.forceContextLoss();
     return result;

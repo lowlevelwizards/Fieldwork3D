@@ -40,7 +40,7 @@ test('world, fog, actors and overlays have distinct ownership',()=>{
  assert.match(world,/function renderGroundMarks\(\)/);
  assert.match(fog,/paintFogMask\(/);
  assert.match(fog,/renderPersonalGround:renderReplayPersonalGround/);
- assert.match(fog,/invalidate:\(\)=>\{fogStamp=-1;\}/);
+ assert.match(fog,/invalidate:\(\)=>\{fogRefresh\.invalidate\(\);fogTime=-1;\}/);
  assert.match(actors,/function civilianSprite\(/);
  assert.match(actors,/function sprite\(/);
  assert.match(routes,/function paths\(\)/);
