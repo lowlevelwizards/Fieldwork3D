@@ -152,19 +152,24 @@ jobs:
           mkdir -p "$OUT"
           for desktop in 0 1; do
             (cd "$RUNNER_TEMP/w4-base" && FIELDWORK_WALL_WEAR=default FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/base-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs)
-            FIELDWORK_WALL_WEAR=compiled FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/compiled-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs
+            for mode in compiled unified; do
+              FIELDWORK_WALL_WEAR="$mode" FIELDWORK_WALL_DESKTOP="$desktop" FIELDWORK_WALL_OUTPUT="$OUT/$mode-$desktop" node scripts/verification/e6-19-transparent-role-browser.mjs
+            done
           done
           node --input-type=module <<'JS'
           import {readFileSync} from 'node:fs';
           const read=(mode,d)=>JSON.parse(readFileSync('artifacts/w4-live/'+mode+'-'+d+'/summary.json','utf8'));
           for(const d of [0,1]){
-            const base=read('base',d),test=read('compiled',d);
+            const base=read('base',d);
+            for(const mode of ['compiled','unified']){
+            const test=read(mode,d);
             for(const key of ['initialKnowledge','initialVisible','secondVisible'])
               if(base.wallProbe[key]!==test.wallProbe[key])throw Error('W4 disclosure changed: '+key);
             if(test.wallProbe.depthMismatches!==0)throw Error('W4 depth mismatch');
             for(const [i,run] of test.runs.entries()){
               if(run.drawCallsP95>=base.runs[i].drawCallsP95)throw Error('W4 failed to reduce live draws');
               if(run.renderSubmission.shadowDrawCallsP95!==base.runs[i].renderSubmission.shadowDrawCallsP95)throw Error('W4 changed shadow draws');
+            }
             }
           }
           JS

@@ -7,7 +7,7 @@ import {chromium} from 'playwright';
 const port=4407,base='http://127.0.0.1:'+port;
 const dir=process.env.FIELDWORK_WALL_OUTPUT||'artifacts/refactor-e6-19/live-scene';
 const wallMode=process.env.FIELDWORK_WALL_WEAR||'default';
-const wallQuery=wallMode==='compiled'?'&wallStructure=compiled':wallMode==='default'?'':'&wallWear='+wallMode;
+const wallQuery=['compiled','unified'].includes(wallMode)?'&wallStructure='+wallMode:wallMode==='default'?'':'&wallWear='+wallMode;
 mkdirSync(dir,{recursive:true});
 const server=spawn(process.execPath,[
  'node_modules/vite/bin/vite.js','--host','127.0.0.1',
@@ -202,6 +202,7 @@ try{
      check(scene.wallAudition?.atlas===true&&scene.wallAudition.effect==='all','Default wall renderer not W3');
      check(scene.patinaWallSurfaces.length>0&&scene.patinaWallSurfaces.every(w=>w.atlasSlot),'Default walls lack shared atlas');
     }
+    if(new URLSearchParams(location.search).get('wallStructure')==='unified')check(scene.walls.filter(w=>w.mesh.userData.fieldworkDrawFamily==='structural-wall-body').every(w=>w.mesh.userData.fieldworkUnifiedWall),'Missing unified structural bodies');
     const selected=team(s)[0].id;
     const draw=(session=s,id=selected,omniscient=false)=>scene.update(session,id,1,null,omniscient);
     const inventory=()=>scene.walls;

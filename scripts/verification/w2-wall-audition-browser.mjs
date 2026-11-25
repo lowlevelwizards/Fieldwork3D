@@ -41,13 +41,14 @@ try{
      p.activateSite(p.site);p.session=p.newSession(0,seed,'floor-plan','standard',undefined,p.site);
     },{seed,archetype});
     const results=[];
-    for(const mode of w4?['legacy','packed','atlas','compiled']:w3?['legacy','packed','atlas']:['legacy','packed']){
+    for(const mode of w4?['legacy','packed','atlas','compiled','unified']:w3?['legacy','packed','atlas']:['legacy','packed']){
      const result=await page.evaluate(mode=>{
       const integrated=mode!=='legacy';
       const {scene,site,session,team}=window.w2Probe;
-      const atlasMode=mode==='atlas'||mode==='compiled';
+      const atlasMode=['atlas','compiled','unified'].includes(mode);
       scene.wallAudition=integrated?{effect:'all',atlas:atlasMode}:undefined;
       scene.wallStructureCompiled=mode==='compiled';
+      scene.wallStructureUnified=mode==='unified';
       const buildStart=performance.now();scene.applySite(site);const buildMs=performance.now()-buildStart;scene.resetCamera();scene.setMode('iso');
       scene.view.zoom=1.25;
       const inventory=scene.walls.filter(w=>w.mesh.userData.fieldworkDrawFamily==='structural-wall-body');
@@ -55,6 +56,7 @@ try{
       const trim=scene.walls.filter(w=>w.mesh.userData.fieldworkDrawFamily!=='structural-wall-body');
       const structuralTriangles=scene.walls.reduce((n,w)=>n+(w.mesh.geometry.index?.count??w.mesh.geometry.getAttribute('position').count)/3,0);
       const shadowBodies=scene.walls.filter(w=>w.mesh.castShadow).length;
+      if(mode==='unified'&&inventory.some(w=>!w.mesh.userData.fieldworkUnifiedWall))throw Error('Unified packet missing');
       if(mode==='compiled'&&trim.some(w=>w.mesh.userData.fieldworkDrawFamily!=='structural-wall-trim-packet'||w.mesh.castShadow))throw Error('Compiled trim retained source meshes or changed shadow policy');
       let overlays=0,decals=0;
       for(const w of inventory)w.mesh.traverse(o=>{
@@ -67,17 +69,25 @@ try{
       let frames=[];
       try{
        for(let i=0;i<18;i++){
-        let total=0,weather=0,body=0,trimDraws=0;
+        let total=0,weather=0,body=0,trimDraws=0,shadowIndices=0,mainIndices=0;
         renderer.renderBufferDirect=function(...args){
          total++;
          const family=args[4]?.userData?.fieldworkDrawFamily;
          if(family==='wall-weathering')weather++;
-         if(family==='structural-wall-body')body++;
+         if(family==='structural-wall-body'){
+          body++;
+          if(args[4].userData.fieldworkUnifiedWall){
+           const geometry=args[2],shadow=!!args[3].isMeshDepthMaterial||!!args[3].isMeshDistanceMaterial;
+           const expected=shadow?args[4].userData.fieldworkShadowIndexCount:geometry.index.count;
+           if(geometry.drawRange.count!==expected)throw Error('Unified shadow/main draw range mismatch');
+           if(shadow)shadowIndices+=geometry.drawRange.count;else mainIndices+=geometry.drawRange.count;
+          }
+         }
          if(['structural-wall-skirting','structural-wall-cap','structural-wall-cap-joint','structural-wall-trim-packet'].includes(family))trimDraws++;
          return original.apply(this,args);
         };
         const start=performance.now();draw();
-        frames.push({total,weather,body,trimDraws,ms:performance.now()-start});
+        frames.push({total,weather,body,trimDraws,shadowIndices,mainIndices,ms:performance.now()-start});
        }
       }finally{renderer.renderBufferDirect=original;}
       const textures=[...new Set(masks.map(item=>item.texture))];
@@ -117,6 +127,10 @@ try{
      check(b.structuralTriangles===a.structuralTriangles&&b.shadowBodies===a.shadowBodies,'W4 changed structural triangles or shadow bodies');
      check(a.trimMeshes-b.trimMeshes>=a.bodies,'W4 missed at least one trim mesh per ordinary wall');
      check(Math.max(...b.frames.map(f=>f.trimDraws))<Math.max(...a.frames.map(f=>f.trimDraws)),'W4 did not reduce real trim submissions');
+     const u=results.find(r=>r.mode==='unified');
+     check(u.structuralTriangles===a.structuralTriangles&&u.shadowBodies===a.shadowBodies,'Unified geometry or shadow owner mismatch');
+     check(u.trimMeshes<b.trimMeshes&&Math.max(...u.frames.map(f=>f.total))<Math.max(...b.frames.map(f=>f.total)),'Unified wall did not remove the second main draw');
+     check(u.frames.some(f=>f.mainIndices>0),'No actual unified main submissions');
     }
     evidence.push({name,seed,archetype,results});
    }
@@ -179,7 +193,7 @@ try{
    await page.evaluate(()=>{
     const {scene,site}=window.w2Probe;
     const masks=[...new Set(scene.patinaWallSurfaces.map(m=>m.texture))];
-    const packets=scene.walls.filter(w=>w.mesh.userData.fieldworkDrawFamily==='structural-wall-trim-packet').map(w=>w.mesh.geometry);
+    const packets=scene.walls.filter(w=>w.mesh.userData.fieldworkDrawFamily==='structural-wall-trim-packet'||w.mesh.userData.fieldworkUnifiedWall).map(w=>w.mesh.geometry);
     const geometryDisposals=new Map(packets.map(g=>[g.uuid,0]));
     for(const g of packets)g.addEventListener('dispose',()=>geometryDisposals.set(g.uuid,geometryDisposals.get(g.uuid)+1));
     const disposals=new Map(masks.map(t=>[t.uuid,0]));
