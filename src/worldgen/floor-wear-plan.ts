@@ -40,6 +40,8 @@ function approach(room:Room,f:Fixture,w:number,d:number):{x:number;y:number}{
  return {x:clamp(f.x+dx*dist,room.x+w/2,room.x+room.w-w/2),
          y:clamp(f.y+dy*dist,room.y+d/2,room.y+room.h-d/2)};
 }
+// Grease on washable flooring is a removable surface deposit, not substrate corrosion.
+const floorCanWear=(surface:Parameters<typeof canWear>[0],kind:WearKind)=>canWear(surface,kind)||kind==='grease'&&['tile','linoleum','sealed-concrete','concrete'].includes(surface);
 export function planCompiledFloorWear(site:Site,level=effectiveCondition(site)):WearMark[]{
  if(level<=0)return [];
  const input=level===effectiveCondition(site)?site:{...site,conditionLevel:level};
@@ -60,7 +62,7 @@ export function planCompiledFloorWear(site:Site,level=effectiveCondition(site)):
   const candidates=(sources.get(room.id)??[]).filter(s=>s.kind===kind||(s.kind==='mineral'&&kind==='drip'));
   candidates.sort((a,b)=>Math.hypot(a.fixture.x-mark.x,a.fixture.y-mark.y)-Math.hypot(b.fixture.x-mark.x,b.fixture.y-mark.y));
   const anchor=candidates[0];
-  if(!anchor||!canWear(surface,kind))return [{...mark,kind:'scuff' as const}];
+  if(!anchor||!floorCanWear(surface,kind))return [{...mark,kind:'scuff' as const}];
   used.add(anchor.index);
   return [{...mark,...approach(room,anchor.fixture,mark.width,mark.depth)}];
  });
@@ -70,7 +72,7 @@ export function planCompiledFloorWear(site:Site,level=effectiveCondition(site)):
   const room=rooms.get(roomId)!;
   const surface=roomPixelSurface(site.archetype,room.purpose??room.kind);
   for(const {fixture,index,kind} of list){
-   if(added>=8||used.has(index)||!canWear(surface,kind))continue;
+   if(added>=8||used.has(index)||!floorCanWear(surface,kind))continue;
    const width=Math.min(22,Math.max(10,fixture.w*.48),room.w*.4);
    const depth=Math.min(16,width*.7,room.h*.4);
    result.push({id:'w7-source:'+index,roomId,kind,...approach(room,fixture,width,depth),width,depth,

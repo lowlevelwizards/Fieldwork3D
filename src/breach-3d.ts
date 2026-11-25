@@ -909,9 +909,11 @@ export class TacticalScene3D{
   private currentWear:WearMark[]=[];
   private objectWear:ObjectWear[]=[];
   private wearBoost=1;
+  private fixtureWearStrength={value:1};
   wearStats(){return summarizeWear(this.currentWear);}
   setWearExaggeration(multiplier:number){
     this.wearBoost=Math.max(1,Math.min(4,multiplier));
+    this.fixtureWearStrength.value=this.wearBoost;
     if(this.floorWearCompiled&&this.displayedSite){
       const site=this.displayedSite;
       const level=effectiveCondition(site);
@@ -1416,6 +1418,7 @@ export class TacticalScene3D{
       set windowPaneMaterial(value){scene.windowPaneMaterial=value;},
       patinaRoomSurfaces:scene.patinaRoomSurfaces,
       floorWearCompiled:scene.floorWearCompiled,
+      fixtureWearStrength:scene.fixtureWearStrength,
       patinaWallSurfaces:scene.patinaWallSurfaces,
       wallAudition:scene.wallAudition,
       wallStructureCompiled:scene.wallStructureCompiled,

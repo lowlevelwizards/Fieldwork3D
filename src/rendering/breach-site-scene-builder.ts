@@ -30,6 +30,7 @@ import {doubleSidedWallWear} from './wear-wall-geometry.ts';
 import {planWallSurface,packedWallSurfacePixels,type WallAudition,type WallSurfaceRecipe} from '../worldgen/wall-surface-recipe.ts';
 import {buildWallAtlas,type WallAtlasSlot} from './wall-surface-atlas.ts';
 import {wearPixels} from './pixel-decals.ts';
+import {projectFixtureWear} from './fixture-wear-projection.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './wear-opacity.ts';
 import {type PixelOverlay} from './pixel-overlays.ts';
 import {type PixelSignKind} from './pixel-signage.ts';
@@ -89,6 +90,7 @@ export type SiteSceneBuildPort={
  windowPaneMaterial:THREE.MeshStandardMaterial|null;
  patinaRoomSurfaces:Array<{room:Room;texture:THREE.DataTexture;floorSlot?:FloorMaskSlot}>;
  floorWearCompiled?:boolean;
+ fixtureWearStrength?:{value:number};
  patinaWallSurfaces:Array<{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;patterned?:boolean;atlasSlot?:WallAtlasSlot}>;
  wallAudition?:WallAudition;
  wallStructureCompiled?:boolean;
@@ -275,7 +277,8 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         const key=base.uuid+':'+slot.texture.uuid;
         let material=floorMaterials.get(key);
         if(!material){
-          material=host.siteMaterials.track(floorMaskMaterial(base,slot.texture));
+          material=floorMaskMaterial(base,slot.texture);
+          host.siteMaterials.track(material);
           floorMaterials.set(key,material);
         }
         const floor=new THREE.Mesh(floorMaskGeometry(room.w-floorInset,1.6,room.h-floorInset,slot),material);
@@ -595,6 +598,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         host.box(parent,x,y,z,w,h,d,material,cast),
       solid:(hex,roughness,surface)=>host.solid(age(hex,surface),roughness,surface),
     };
+    const fixtureWearCache=new Map<string,THREE.MeshStandardMaterial>();
     site.cover.forEach((c,i)=>{
       const group=new THREE.Group();host.root.add(group);
       host.coverGroups.set(i,group);
@@ -643,7 +647,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
           adoptRigidFixtureVisual(intact,templateLease));
       }else renderFixtureVisual(intact,visual,i,localCtx,
         palette.wood,palette.steel,palette.olive,palette.metal);
-      for(const mark of marksOn('fixture',i)){
+      if(!host.floorWearCompiled)for(const mark of marksOn('fixture',i)){
         const height=visibleSurfaceHeight(c.fixture??'crate');
         if(height<8)continue;
         host.addSurfaceWear(intact,mark,(mark.u-.5)*visual.w,
@@ -659,6 +663,14 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         .85,'industrial-steel');
       // Batch only opaque, rigid, site-lifetime fixture pieces.
       if(!templateLease)consolidateStaticFixtureParts(intact);
+      if(host.floorWearCompiled&&!previewBush&&host.fixtureWearStrength)for(const mark of marksOn('fixture',i)){
+        const height=visibleSurfaceHeight(c.fixture??'crate');if(height<8)continue;
+        projectFixtureWear(intact,mark,(mark.u-.5)*visual.w,
+          Math.min(height-2,Math.max(3,mark.v*height)),visual.h/2+.8,fixturePixelSurface(c.fixture),{
+            textures:host.wearTextures,cache:fixtureWearCache,boost:host.fixtureWearStrength,
+            track:m=>host.siteMaterials.track(m),shared:host.sharedBoxGeometries,template:!!templateLease
+          });
+      }
       for(let j=0;j<3;j++){
         const sx=(j%3-1)*visual.w*.105,sz=(Math.floor(j/3)-.5)*visual.h*.15;
         const width=Math.max(3.2,visual.w*(j%2?.16:.20));

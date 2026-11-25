@@ -74,3 +74,23 @@ test('W7 compiled floor story is deterministic, source-local, clean-isolated and
  writeFloorMaskSlot(site,slot,100,indexFloorWear(marks).get('r'));assert.deepEqual(slot.texture.image.data,original);
  atlas.pages.forEach(t=>t.dispose());
 });
+
+import {projectFixtureWear} from '../src/rendering/fixture-wear-projection.ts';
+test('W7 fixture wear modifies a real opaque face without extra meshes or shared geometry mutation',()=>{
+ const root=new THREE.Group(),geo=new THREE.BoxGeometry(20,24,12);
+ const material=new THREE.MeshStandardMaterial({color:0x888888,map:new THREE.Texture()});
+ material.map.name='Fieldwork pixel 5:painted-metal:0';
+ const mesh=new THREE.Mesh(geo,material);mesh.position.y=12;root.add(mesh);
+ const mark={id:'fixture:0',owner:'fixture',index:0,kind:'rust',u:.5,v:.5,size:10,opacity:.4};
+ const textures=new Map(),cache=new Map(),owned=[],boost={value:1};
+ assert.ok(projectFixtureWear(root,mark,0,12,6.8,'painted-metal',{textures,cache,boost,track:m=>owned.push(m),shared:new Set([geo]),template:false}));
+ assert.equal(root.children.length,1);assert.notEqual(mesh.geometry,geo);assert.equal(geo.getAttribute('fwFixtureWearUV'),undefined);
+ assert.deepEqual(mesh.geometry.getAttribute('position').array,geo.getAttribute('position').array);
+ const uv=mesh.geometry.getAttribute('fwFixtureWearUV'),normal=mesh.geometry.getAttribute('normal');
+ for(let i=0;i<uv.count;i++)assert.equal(uv.getZ(i),normal.getZ(i)>.9?1:0);
+ assert.equal(mesh.material.transparent,false);assert.equal(mesh.material.map,material.map);assert.equal(owned.length,1);
+ const shader={uniforms:{},vertexShader:'#include <begin_vertex>',fragmentShader:'#include <map_fragment>'};
+ mesh.material.onBeforeCompile(shader,null);assert.equal(shader.uniforms.fwFixtureBoost,boost);
+ assert.match(shader.fragmentShader,/fwWearA/);
+ mesh.geometry.dispose();geo.dispose();material.map.dispose();material.dispose();owned.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());
+});
