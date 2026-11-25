@@ -10,7 +10,7 @@ export type WallEffect=typeof WALL_EFFECTS[number];
 export type WallEffectFilter='all'|'none'|WallEffect;
 export type WallAudition={effect:WallEffectFilter;atlas?:boolean};
 export type SurfaceEvent={kind:WallEffect;cause:string;x:number;y:number;width:number;height:number;threshold:number;priority:number};
-export type WallSurfaceRecipe={length:number;height:number;face:-1|1;color:number;surface:PixelSurface;band?:{color:number;top:number};events:SurfaceEvent[]};
+export type WallSurfaceRecipe={length:number;height:number;face:-1|1;color:number;surface:PixelSurface;band?:{color:number;top:number};directional?:boolean;events:SurfaceEvent[]};
 const clamp=(n:number,a=0,b=1)=>Math.max(a,Math.min(b,n));
 const hash=(n:number)=>((Math.imul(n^(n>>>16),0x45d9f3b)>>>0)/4294967295);
 const random=(seed:number,salt:number)=>hash(Math.imul(seed+salt,0x9e3779b1));
@@ -57,13 +57,13 @@ export function planWallSurface(site:Site,index:number,height:number,requestedFa
    const pos=project(p.x,p.y);
    if(pos.distance>6||Math.abs(nearest(pos.along)-pos.along)>8)continue;
    const at=nearest(pos.along),inset=at===0?1:-1;
-   add('contact','door:'+door.id,at+inset*5,height*.78,14,9,12,100);
+   add('contact','door:'+door.id,at+inset*(requestedFace===undefined?5:8),height*.78,requestedFace===undefined?14:24,requestedFace===undefined?9:13,12,100);
    if(random(seed,7)<.65)add('chip','jamb:'+door.id,at+inset*2,height*.88,7,12,47,92);
    break;
   }
  }
  if(exposed||wet(face)){
-  if(random(seed,4)<(wet(face)?.85:.55))add('damp','moisture-base',length*(.2+.6*random(seed,5)),height-7,Math.min(length,30+random(seed,6)*24),18,30,80);
+  if(random(seed,4)<(wet(face)?.85:.55))add('damp','moisture-base',length*(.2+.6*random(seed,5)),height-(requestedFace===undefined?7:9),Math.min(length,requestedFace===undefined?30+random(seed,6)*24:44+random(seed,6)*24),requestedFace===undefined?18:24,30,80);
  }
  // W3 only: require an exposed mineral foundation beside a planted zone
  // and a pre-existing moisture event. No vegetation on dry internal paint.
@@ -81,7 +81,7 @@ export function planWallSurface(site:Site,index:number,height:number,requestedFa
  // Begin corrosion on that seam, not arbitrarily in a plaster field.
  if(requestedFace!==undefined&&exposed&&surface==='panel'&&length>=30&&random(seed,13)<.65){
   const seam=Math.max(24,Math.min(Math.floor((length-2)/24)*24,Math.round(length*.45/24)*24));
-  add('rust','panel-seam:'+seam,seam,height*.79,8,18,50,85);
+  add('rust','panel-seam:'+seam,seam,height*.79,12,22,50,85);
  }
  if(exposed)for(const window of site.windows??[]){
   if(window.interior||window.vertical!==(Math.abs(dy)>Math.abs(dx)))continue;
@@ -93,13 +93,13 @@ export function planWallSurface(site:Site,index:number,height:number,requestedFa
   if(sill<=3||pos.along+window.width/2<-8||pos.along-window.width/2>length+8)continue;
   const x=clamp(pos.along,2,Math.max(2,length-2));
   const y=height-sill;
-  add('runoff','sill:'+window.id,x,y+Math.min(sill/2,8),6,Math.min(sill,16),30,90);
+  add('runoff','sill:'+window.id,x,y+Math.min(sill/2,8),requestedFace===undefined?6:11,Math.min(sill,16),30,90);
  }
  if(['plaster','brick','cinderblock','concrete'].includes(surface)&&random(seed,8)<.32)
   add('crack','edge-stress',edge+(edge===0?1:-1)*5,height*.22,15,24,65,50);
  if(site.condition==='renovation'&&random(seed,9)<.45)
   add('repair','renovation',length*(.22+.56*random(seed,10)),height*.45,17,18,22,95);
- return {length,height,face,color,surface,band,events:events.sort((a,b)=>b.priority-a.priority||a.cause.localeCompare(b.cause))};
+ return {length,height,face,color,surface,band,directional:requestedFace!==undefined,events:events.sort((a,b)=>b.priority-a.priority||a.cause.localeCompare(b.cause))};
 }
 export function selectWallEvents(recipe:WallSurfaceRecipe,level:number,filter:WallEffectFilter='all'){
  const cap=level<=0?0:level<=25?1:level<=50?2:level<=75?3:4;
@@ -116,8 +116,9 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
  const out=new Uint8Array(width*height*4),base=rgb(recipe.color);
  for(const event of selectWallEvents(recipe,level,filter).reverse()){
   const strength=clamp((level-event.threshold+10)/35,.18,1);
+  const bold=recipe.directional===true;
   const palette:Record<WallEffect,RGB>={
-   fade:tint(base,[235,232,217],.26),contact:tint(base,[72,76,70],.5),
+   fade:tint(base,[235,232,217],bold?.39:.26),contact:tint(base,[72,76,70],bold?.71:.5),
    chip:tint(base,[178,171,155],.75),damp:tint(base,[60,78,60],.74),
    runoff:tint(base,[63,82,68],.68),crack:tint(base,[65,67,61],.74),
    repair:tint(base,[231,222,199],.4),moss:tint(base,[65,89,52],.79),rust:tint(base,[139,71,37],.77)
@@ -137,13 +138,13 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
    const step=Math.floor(u*5),edge=.12*(Math.abs(step)%3);
    let a=0;
    switch(event.kind){
-    case 'fade':a=v<.68-edge?.23:0;break;
-    case 'contact':a=(Math.abs(v+.35)<.18&&Math.abs(u)<.84||Math.abs(v-.35)<.13&&u>-.45)?.58:0;break;
+    case 'fade':a=v<.68-edge?(bold?.39:.23):0;break;
+    case 'contact':a=(Math.abs(v+.35)<(bold?.27:.18)&&Math.abs(u)<.84||Math.abs(v-.35)<(bold?.22:.13)&&u>-.45)?(bold?.82:.58):0;break;
     case 'chip':a=Math.abs(u)<.74-edge&&Math.abs(v)<.76&&(v>.05||Math.abs(u)<.32)?.85:0;break;
     case 'damp':a=v>-.48+edge&&Math.abs(u)<.95?(v>.48?.84:.60):0;break;
-    case 'runoff':a=v>-.93&&((Math.abs(u+.42)<.24*(1.25-v*.45)&&v<.85)||(Math.abs(u-.38)<.20&&v<.32))?.67:0;break;
+    case 'runoff':a=v>-.93&&((Math.abs(u+.42)<.24*(1.25-v*.45)&&v<.85)||(Math.abs(u-.38)<.20&&v<.32))?(bold?.87:.67):0;break;
     case 'crack':a=Math.abs(u-(Math.floor((v+1)*5)%3-1)*.23)<.14&&Math.abs(v)<.91?.86:0;break;
-    case 'repair':a=Math.abs(u)<.82&&Math.abs(v)<.79?.62:0;break;
+    case 'repair':a=Math.abs(u)<.82&&Math.abs(v)<.79?(bold?.80:.62):0;break;
     case 'moss':a=v>-.48+edge*2&&Math.abs(u)<.9&&(Math.abs(step)%3!==1||v>.45)?.85:0;break;
     case 'rust':a=v>-.85&&Math.abs(u)<(v<-.2?.64:.25+.15*(1-v))?.84:0;break;
    }
