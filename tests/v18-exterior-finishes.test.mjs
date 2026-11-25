@@ -32,3 +32,23 @@ test('V18 work wear is condition-dependent and kept below existing clearance pai
  assert.ok(top('work-wear')>top('service-pad'));
  assert.ok(top('work-wear')<top('clear-route'));
 });
+
+import * as THREE from 'three';
+import {ExteriorFinishPackets,isFlatExteriorFinish} from '../src/rendering/exterior-finish-packets.ts';
+test('V18 accepts legacy partial site inspector inputs',()=>{
+ assert.doesNotThrow(()=>planPropertySurfaces({seed:3,doors:[],exteriorZones:[garden]}));
+});
+test('V18 compiles flat paint without extra thickness, shadows or material ownership',()=>{
+ const compiler=new ExteriorFinishPackets(),root=new THREE.Group(),material=new THREE.MeshStandardMaterial();
+ const mark={id:'a',zoneId:'rear-property',kind:'pavement-joint',x:20,y:30,width:2,depth:12};
+ compiler.add(mark,material);compiler.add({...mark,x:40},material);compiler.add({...mark,x:300},material);
+ assert.deepEqual(compiler.flush(root),{marks:3,packets:2});
+ assert.equal(root.children.reduce((n,m)=>n+m.geometry.index.count/3,0),6);
+ for(const mesh of root.children){
+  assert.equal(mesh.material,material);assert.equal(mesh.castShadow,false);assert.equal(mesh.receiveShadow,true);
+  mesh.geometry.computeBoundingBox();
+  assert.ok(Math.abs(mesh.geometry.boundingBox.max.y-mesh.geometry.boundingBox.min.y)<1e-5);
+ }
+ assert.equal(isFlatExteriorFinish('sidewalk'),false);assert.equal(isFlatExteriorFinish('curb-ramp'),false);
+ assert.deepEqual(compiler.flush(root),{marks:0,packets:0});
+});

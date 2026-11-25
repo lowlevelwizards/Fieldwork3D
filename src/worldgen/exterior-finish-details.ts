@@ -11,12 +11,13 @@ const seat=new Set(['picnic-table','patio-chair','public-bench','grill']);
 const equipment=new Set(['tool-chest','compressor','tire-stack','cable-reel','utility-cabinet','pallet','crate','storage-tote']);
 export const EXTERIOR_FINISH_LIMIT=24;
 export function planExteriorFinishDetails(site:Site,existing:readonly PropertySurface[]):PropertySurface[]{
- const out:PropertySurface[]=[],zones=site.exteriorZones??[],street=planPublicStreet(site);
- const rooms=site.rooms.map(r=>({x:r.x+r.w/2,y:r.y+r.h/2,width:r.w,depth:r.h}));
+ const out:PropertySurface[]=[],zones=site.exteriorZones??[];
+ const street=site.entrance||site.doors?.some(d=>d.id==='FRONT')?planPublicStreet(site):null;
+ const rooms=(site.rooms??[]).map(r=>({x:r.x+r.w/2,y:r.y+r.h/2,width:r.w,depth:r.h}));
  const condition=effectiveCondition(site);
  for(const zone of zones){
   if(Math.min(zone.w,zone.h)<36)continue;
-  const owned=zoneRect(zone),broad=zone.w>=zone.h;
+  const broad=zone.w>=zone.h;
   const add=(kind:PropertySurface['kind'],r:Rect,allowPad=false)=>{
    if(out.length>=EXTERIOR_FINISH_LIMIT||r.width<1||r.depth<1||
     Math.abs(r.x-zone.x)+r.width/2>zone.w/2-2||
@@ -29,7 +30,7 @@ export function planExteriorFinishDetails(site:Site,existing:readonly PropertySu
   };
   // Actual occupied seating receives a paved apron in otherwise soft ground.
   // No invented patio without an accepted physical seat.
-  const fixtures=site.cover.filter(o=>!o.destroyed&&Math.abs(o.x-zone.x)+o.w/2<=zone.w/2&&Math.abs(o.y-zone.y)+o.h/2<=zone.h/2&&!rooms.some(b=>intersects({x:o.x,y:o.y,width:o.w,depth:o.h},b)));
+  const fixtures=(site.cover??[]).filter(o=>!o.destroyed&&Math.abs(o.x-zone.x)+o.w/2<=zone.w/2&&Math.abs(o.y-zone.y)+o.h/2<=zone.h/2&&!rooms.some(b=>intersects({x:o.x,y:o.y,width:o.w,depth:o.h},b)));
   if(zone.kind==='garden'||zone.kind==='yard'){
    for(const o of fixtures.filter(o=>seat.has(o.fixture??'')).slice(0,2))
     add('amenity-apron',{x:o.x,y:o.y,width:o.w+12,depth:o.h+12});
