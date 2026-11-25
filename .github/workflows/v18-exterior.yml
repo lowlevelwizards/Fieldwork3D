@@ -1,0 +1,30 @@
+name: V18 exterior baseline and furnishing
+on:
+  pull_request:
+    paths:
+      - 'docs/vfx-v18-exterior-composition-scope.md'
+      - 'scripts/audit-v18-exteriors.mjs'
+      - 'src/worldgen/exterior-sites.ts'
+      - 'src/worldgen/exterior-role-program.ts'
+      - 'tests/v18-exterior-role-program.test.mjs'
+      - '.github/workflows/v18-exterior.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/v18-exterior-role-program.test.mjs
+      - run: node --experimental-strip-types scripts/audit-v18-exteriors.mjs 4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v18-exterior-manifest
+          path: v18-exterior-baseline.json
+      - run: npm run check
