@@ -54,7 +54,7 @@ import {windowShardPoseInto,WINDOW_SHARDS_PER_PANE,WINDOW_SHARD_CAPACITY,
  type SettledWindowShardPose}
  from './rendering/window-shatter-presentation.ts';
 import {type CivilianRig} from './breach-civilian-visuals.ts';
-import {doorDebrisSource,coverDebrisSource,fractureDebrisPose,debrisPoseContained,type DebrisSource} from './rendering/breach-fracture-debris.ts';
+import {doorDebrisSource,coverDebrisSource,fractureDebrisPose,debrisPoseContained,FractureSourceScratch} from './rendering/breach-fracture-debris.ts';
 import {reconcileSceneActorLifetimes} from './rendering/breach-actor-frame-presenter.ts';
 import {shouldPrewarmContactRig,withinContactPrewarmBudget,
   withPreparedVisibleRoot}
@@ -930,7 +930,7 @@ export class TacticalScene3D{
   private readonly shardSlots=new WindowShardSlotCache();
   private readonly settledShardScratch:SettledWindowShardPose={x:0,y:0,z:0,rx:0,ry:0,rz:0,scale:1,heightScale:1};
   private readonly settledPanes:Session['windows'][number][]=[];
-  private readonly fractureSources:DebrisSource[]=[];
+  private readonly fractureSources=new FractureSourceScratch();
   private readonly shardColors=new Int32Array(WINDOW_SHARD_CAPACITY).fill(-1);
   private readonly shardTint=new THREE.Color();
   private coverGroups=new Map<number,THREE.Group>();
@@ -1317,7 +1317,7 @@ export class TacticalScene3D{
     this.doors.clear();this.windowGlass.clear();
     this.frameWindowsById.clear();
     if(this.windowShards)this.windowShards.count=0;
-    this.shardSlots.reset();this.shardColors.fill(-1);this.settledPanes.length=0;this.fractureSources.length=0;
+    this.shardSlots.reset();this.shardColors.fill(-1);this.settledPanes.length=0;this.fractureSources.reset();
     this.transientLights?.reset();
     this.dustPuffs?.reset();
     this.observedDoorGlass.clear();this.observedDoorBroken.clear();
@@ -2054,7 +2054,7 @@ export class TacticalScene3D{
       }
       shardCount++;
     };
-    this.settledPanes.length=0;this.fractureSources.length=0;
+    this.settledPanes.length=0;this.fractureSources.beginFrame();
     // Larger generated sites have many panes. An ephemeral index avoids
     // scanning the entire window list once per rendered pane.
     const indexWindows=this.windowGlass.size>8&&s.windows.length>8;
@@ -2090,16 +2090,16 @@ export class TacticalScene3D{
     if(this.glassDebrisPreview&&!personalWindows){
       for(const door of s.doors){
         if(!door.glassShattered||door.glassBreakX===undefined)continue;
-        const source=doorDebrisSource(door);
-        if(source&&(omniscient||this.presentationSight.query(s,'effect','fracture:'+source.id,{x:source.x,y:source.y})))this.fractureSources.push(source);
+        const source=doorDebrisSource(door,this.fractureSources.next());
+        if(source&&(omniscient||this.presentationSight.query(s,'effect','fracture:'+source.id,{x:source.x,y:source.y})))this.fractureSources.accept(source);
       }
       for(let i=0;i<s.coverState.length;i++){
         const cover=s.coverState[i];if(!cover.destroyed||cover.destroyedAt===undefined)continue;
-        const source=coverDebrisSource(cover,i);
-        if(source&&(omniscient||this.presentationSight.query(s,'effect','fracture:'+source.id,{x:source.x,y:source.y})))this.fractureSources.push(source);
+        const source=coverDebrisSource(cover,i,this.fractureSources.next());
+        if(source&&(omniscient||this.presentationSight.query(s,'effect','fracture:'+source.id,{x:source.x,y:source.y})))this.fractureSources.accept(source);
       }
       const part=this.settledShardScratch;
-      for(const source of this.fractureSources){
+      for(const source of this.fractureSources.active){
         for(let i=0;i<WINDOW_SHARDS_PER_PANE&&shardCount<WINDOW_SHARD_CAPACITY;i++){
           if(!fractureDebrisPose(source,s.seconds,i,false,part)||
             !debrisPoseContained(debrisWorld,source,part,part.heightScale))continue;
@@ -2124,7 +2124,7 @@ export class TacticalScene3D{
     }
     if(this.glassDebrisPreview&&!personalWindows&&shardCount<WINDOW_SHARD_CAPACITY){
       const part=this.settledShardScratch;
-      for(const source of this.fractureSources){
+      for(const source of this.fractureSources.active){
         for(let i=0;i<WINDOW_SETTLED_SHARDS_PER_PANE&&shardCount<WINDOW_SHARD_CAPACITY;i++){
           if(!fractureDebrisPose(source,s.seconds,i,true,part)||
             !debrisPoseContained(debrisWorld,source,part,part.heightScale))continue;

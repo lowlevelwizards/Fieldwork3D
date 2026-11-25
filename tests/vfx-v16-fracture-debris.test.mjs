@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {recordDoorFracture} from '../src/breach-fracture-record.ts';
 import {damageCover} from '../src/breach-reactive-cover.ts';
-import {doorDebrisSource,coverDebrisSource,fractureDebrisPose,debrisPoseContained} from '../src/rendering/breach-fracture-debris.ts';
+import {doorDebrisSource,coverDebrisSource,fractureDebrisPose,debrisPoseContained,FractureSourceScratch} from '../src/rendering/breach-fracture-debris.ts';
 import {windowShardPose,windowShardPoseInto,WINDOW_SHARD_DURATION,WINDOW_SHARDS_PER_PANE} from '../src/rendering/window-shatter-presentation.ts';
 import {newSession} from '../src/breach-game.ts';
 import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
@@ -92,4 +92,23 @@ test('genuine apertures keep both sides of glass debris; exact wall endpoints st
  // No dependence on previous world, frame order or a mutable global wall list.
  assert.equal(debrisPoseContained(debrisWorld([wall(100,20,100,180)]),{x:84,y:100},p),false);
  assert.equal(debrisPoseContained(world,{x:84,y:100},p),true);
+});
+
+test('source scratch reuses rejected slots, retains independent accepted descriptors, and resets by site',()=>{
+ const pool=new FractureSourceScratch();
+ const d={id:'door',a:{x:100,y:100},b:{x:145,y:100},style:'glazed',open:false,glassShattered:true};
+ recordDoorFracture(d,2);
+ const box={id:'crate',fixture:'crate',x:200,y:220,w:30,h:24,topHeight:20};
+ damageCover(box,10,3);
+ const first=pool.next();
+ assert.equal(doorDebrisSource({...d,glassShattered:false},first),null);
+ assert.equal(pool.next(),first);
+ const door=doorDebrisSource(d,first);assert.equal(door,first);pool.accept(door);
+ const second=pool.next();assert.notEqual(second,first);
+ const cover=coverDebrisSource(box,0,second);assert.equal(cover,second);pool.accept(cover);
+ assert.deepEqual(pool.active,[doorDebrisSource(d),coverDebrisSource(box,0)]);
+ pool.beginFrame();assert.equal(pool.active.length,0);assert.equal(pool.next(),first);
+ assert.equal(coverDebrisSource(box,0,first),first);pool.accept(first);
+ assert.deepEqual(pool.active,[coverDebrisSource(box,0)]);
+ pool.reset();assert.equal(pool.active.length,0);assert.notEqual(pool.next(),first);
 });

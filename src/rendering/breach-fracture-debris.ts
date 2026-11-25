@@ -8,22 +8,43 @@ import {MATERIALS,materialForFixture} from '../breach-materials.ts';
 import {windowShardPoseInto,settledWindowShardPose,type SettledWindowShardPose} from './window-shatter-presentation.ts';
 export type DebrisSource={id:string;x:number;y:number;width:number;vertical:boolean;sillHeight:number;headHeight:number;shattered:true;shatteredAt:number;yaw:number;kind:'glass'|'wood'|'stone'|'metal'|'dust';color:number};
 const tint={glass:0xd9f4ef,wood:0xb99a74,stone:0xbcb3a1,metal:0x9da9a8,dust:0xb8ab92} as const;
-export function doorDebrisSource(d:Door):DebrisSource|null{
- const x=d.glassBreakX,y=d.glassBreakY,width=d.glassBreakWidth,yaw=d.glassBreakYaw,at=d.glassShatteredAt;
- if(!d.glassShattered||!['glazed','french'].includes(d.style??'')||
-  x===undefined||y===undefined||width===undefined||yaw===undefined||at===undefined||
-  ![x,y,width,yaw,at].every(Number.isFinite)||width<1)return null;
- return {id:'door:'+d.id,x,y,width,vertical:false,sillHeight:4,headHeight:44,shattered:true,shatteredAt:at,yaw,kind:'glass',color:tint.glass};
+function blankSource():DebrisSource{
+ return {id:'',x:0,y:0,width:0,vertical:false,sillHeight:0,headHeight:0,shattered:true,shatteredAt:0,yaw:0,kind:'glass',color:tint.glass};
 }
-export function coverDebrisSource(c:Obstacle,index:number):DebrisSource|null{
+/** Site-owned high-water scratch. Only accepted descriptors enter the active
+ * list. Rejected candidates reuse the next slot; reset releases site data. */
+export class FractureSourceScratch{
+ private readonly slots:DebrisSource[]=[];
+ readonly active:DebrisSource[]=[];
+ beginFrame(){this.active.length=0;}
+ next():DebrisSource{
+  const index=this.active.length;
+  return this.slots[index]??(this.slots[index]=blankSource());
+ }
+ accept(source:DebrisSource){this.active.push(source);}
+ reset(){this.active.length=0;this.slots.length=0;}
+}
+export function doorDebrisSource(d:Door,out?:DebrisSource):DebrisSource|null{
+ const x=d.glassBreakX,y=d.glassBreakY,width=d.glassBreakWidth,yaw=d.glassBreakYaw,at=d.glassShatteredAt;
+ if(!d.glassShattered||(d.style!=='glazed'&&d.style!=='french')||
+  x===undefined||y===undefined||width===undefined||yaw===undefined||at===undefined||
+  !Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(width)||!Number.isFinite(yaw)||!Number.isFinite(at)||width<1)return null;
+ const s=out??blankSource();
+ s.id='door:'+d.id;s.x=x;s.y=y;s.width=width;s.vertical=false;
+ s.sillHeight=4;s.headHeight=44;s.shattered=true;s.shatteredAt=at;s.yaw=yaw;s.kind='glass';s.color=tint.glass;
+ return s;
+}
+export function coverDebrisSource(c:Obstacle,index:number,out?:DebrisSource):DebrisSource|null{
  const x=c.collapseX,y=c.collapseY,w=c.collapseW,d=c.collapseD,h=c.collapseHeight,at=c.destroyedAt;
  if(!c.destroyed||x===undefined||y===undefined||w===undefined||d===undefined||h===undefined||at===undefined||
-  ![x,y,w,d,h,at].every(Number.isFinite)||w<=0||d<=0||h<=0)return null;
+  !Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(w)||!Number.isFinite(d)||!Number.isFinite(h)||!Number.isFinite(at)||w<=0||d<=0||h<=0)return null;
  // Aperture-owned glass barriers are already represented by their pane.
  if(c.fixture==='glass-barrier'||c.fixture==='window-pane')return null;
  const kind=MATERIALS[c.material??materialForFixture(c.fixture)].impact;
- return {id:'cover:'+(c.id??index),x,y,width:Math.max(w,d),vertical:false,sillHeight:0,headHeight:h,
-  shattered:true,shatteredAt:at,yaw:d>w?Math.PI/2:0,kind,color:tint[kind]};
+ const s=out??blankSource();
+ s.id='cover:'+(c.id??index);s.x=x;s.y=y;s.width=Math.max(w,d);s.vertical=false;
+ s.sillHeight=0;s.headHeight=h;s.shattered=true;s.shatteredAt=at;s.yaw=d>w?Math.PI/2:0;s.kind=kind;s.color=tint[kind];
+ return s;
 }
 function orient(source:DebrisSource,out:SettledWindowShardPose){
  const x=out.x-source.x,z=out.z-source.y,co=Math.cos(source.yaw),si=Math.sin(source.yaw);

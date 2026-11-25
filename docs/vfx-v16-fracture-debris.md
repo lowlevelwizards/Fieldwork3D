@@ -14,3 +14,9 @@ Both the aperture and door/fixture hot paths now write into the existing reusabl
 
 ## Checkpoint 3 — spatial containment
 All four shard paths (aperture burst/settled, door/fixture burst/settled) use the existing session wall broadphase before submission. Reject crossing chords, including wall endpoints, oversized final footprints overlapping the solid wall shell, and off-map footprints. Real gaps retain two-sided debris. No physics, extra batches, global geometry, or changed disclosure policy. The conservative omission can reduce shard counts at tight jambs; inspect at gameplay scale. Tests cover real index queries, world isolation, aperture, edge and rewind-independent samples. Descriptor allocation and camera-specific visual acceptance remain open.
+
+## Checkpoint 4a — descriptor reuse and W5 reconciliation
+Reuses site-owned high-water descriptor slots across frames. Rejected candidates reuse the next slot, accepted descriptors remain independent, reset releases all slots on site change. Direct field validation avoids temporary validation arrays. Unit test exercises invalid, accepted, reused and reset descriptors. GitHub's generated merge tree was confirmed clean against W5 main 57bf7653649c285047b9807d067d119218dd58bf; branch ref update for the two-parent commit timed out, so the same refinement is carried on the existing PR head. Final browser/performance evidence remains open; no measured speedup claimed.
+
+## Release witness adjustment
+V11 production WebGL witness failed because a fixed six-fragment assertion predates wall containment. Preserve geometry-size limits, nonzero fragments, per-pane and global caps, settled upload checks and reset. Validate exact submitted matrix positions against deterministic admitted samples rather than requiring obstructed fragments to render. The focused V16 containment tests independently exercise rejecting solid walls and retaining real gaps. New-head CI required before merge.
