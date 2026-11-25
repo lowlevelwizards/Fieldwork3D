@@ -8,7 +8,8 @@ import {civilianPhysicalityAt} from './breach-encounter-physicality.ts';
 import {downedTransportPresentation} from './breach-capture-transport-presentation.ts';
 import {presentActor,presentCivilian,presentUnrecordedRescueMarker,presentTransientEvidence}
  from './rendering/breach-3d-disclosure-presenter.ts';
-import {shotVisibility,contactFade} from './breach-presentation.ts';
+import {contactFade} from './breach-presentation.ts';
+import {presentShotEvidence} from './rendering/breach-shot-disclosure.ts';
 import {objectiveLocationKnown,approximateObjectiveBounds} from './breach-objective-intel.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 export type Actor2DFrame={
@@ -240,7 +241,7 @@ function sprite(a:TeamActor){
   const impactAge=state.seconds-a.lastHitAt;
   const flinch=impactAge>=0&&impactAge<.28?1-impactAge/.28:0;
   const firing=!(replaying&&replayKnowledge.observerId)&&state.shots.some(shot=>shot.shooterId===a.id&&
-    shot.age<.11&&shotVisibility(state,shot).flash);
+    shot.age<.11&&presentShotEvidence(state,shot,replaying&&replayKnowledge.omniscient,false).flash);
   draw.save();
   draw.translate(a.p.x-flinch*2.3,a.p.y+flinch*1.7);
   draw.rotate(a.heading+flinch*.14+
@@ -386,8 +387,7 @@ function contacts(){
     // Shot geometry can expose an unconfirmed enemy position in a personal
     // contact review; team-wide ballistic evidence is disabled in this mode.
     if(replaying&&replayKnowledge.observerId)continue;
-    const visibility=replaying&&replayKnowledge.omniscient?
-      {trace:true,flash:true,impact:true}:shotVisibility(state,shot);
+    const visibility=presentShotEvidence(state,shot,omni,personal);
     const fade=contactFade(shot.age,.40);
     draw.globalAlpha=fade;
     if(visibility.trace&&shot.age<.23)

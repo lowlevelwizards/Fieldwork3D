@@ -129,6 +129,7 @@ import {downedTransportPresentation} from './breach-capture-transport-presentati
 import {SurrenderedFirearmsPresenter} from './rendering/breach-surrendered-firearms-presenter.ts';
 import {spatialSurfaceKnown,shotVisibility,windowPresentationKnown} from './breach-presentation.ts';
 import {markWindowOwner,markWallOwnerKnown,markCoverOwnerKnown} from './rendering/breach-evidence-owner.ts';
+import {ShotFrameDisclosure} from './rendering/breach-shot-disclosure.ts';
 import {doorKnown} from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
 import {entryToolVerdict} from './breach-entry-tools.ts';
@@ -936,6 +937,7 @@ export class TacticalScene3D{
   private readonly frameActorIds=new Set<string>();
   private readonly frameCivilianIds=new Set<string>();
   private readonly frameShotIds=new Set<number>();
+  private readonly frameShotDisclosure=new ShotFrameDisclosure();
   private windowGlass=new Map<string,THREE.Mesh>();
   /** Scratch index rebuilt from current session data; never hold prior
    * replay snapshots or a site's mutable window array across frames. */
@@ -1284,7 +1286,7 @@ export class TacticalScene3D{
     // Scene persists across missions; retire read-only indices of the old
     // encounter immediately instead of keeping previous shot/actor objects
     // alive until a later scene update.
-    this.recentMuzzleShots.clear();
+    this.recentMuzzleShots.clear();this.frameShotDisclosure.clear();
     this.frameActorsById.clear();
     this.frameDoorsById.clear();
     this.frameActorNeighborhood.clear();
@@ -2486,6 +2488,7 @@ export class TacticalScene3D{
     // One history pass per drawn frame, rather than rewalking all retained
     // shots for every friendly, hostile and recently undisclosed rig.
     this.recentMuzzleShots.rebuild(s.shots);
+    this.frameShotDisclosure.clear();
     rebuildFrameIdIndex(this.frameActorsById,s.operators);
     rebuildFrameIdIndex(this.frameDoorsById,s.doors);
     // Four-man missions use the original straight scan, avoiding index
@@ -2578,7 +2581,8 @@ export class TacticalScene3D{
         this.recentMuzzleShots.forShooter(actor.id),actor.id,
         flashWeapon,flashAttachment,
         shot=>!personalDisclosure&&!!shot.secondaryWeapon===drawnPistol&&
-          (omniscient||shotVisibility(s,shot).flash));
+          this.frameShotDisclosure.forShot(s,shot,omniscient,personalDisclosure,
+            p=>this.presentationSight.query(s,'effect',shot.id,p)).flash);
       const flashCue=muzzleFlashCue(flashWeapon,
         firing?.age??Infinity,flashAttachment);
       object.flash.visible=flashCue.active&&actor.health>0;
@@ -3031,9 +3035,8 @@ export class TacticalScene3D{
       if(visibleShots>=20)break;
       const shot=s.shots[index];
       if(replayDisclosurePolicy?.mode==='operator')continue;
-      const visibility=omniscient?
-        {flash:true,trace:true,impact:true}:shotVisibility(s,shot,
-          p=>this.presentationSight.query(s,'effect',shot.id,p));
+      const visibility=this.frameShotDisclosure.forShot(s,shot,omniscient,personalDisclosure,
+        p=>this.presentationSight.query(s,'effect',shot.id,p));
       if(!visibility.flash&&!visibility.trace&&!visibility.impact)continue;
       active.add(shot.id);visibleShots++;
       let effect=this.effectCache.get(shot.id);

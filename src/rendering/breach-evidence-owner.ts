@@ -3,7 +3,7 @@
  * separate presentation gates. A known owner is NOT proof of a known hit. */
 import type {Session} from '../breach-game.ts';
 import type {SurfaceAttachment} from '../breach-impact-surface.ts';
-import {spatialSurfaceKnown,windowPresentationKnown} from '../breach-presentation.ts';
+import {spatialSurfaceKnown} from '../breach-presentation.ts';
 import {sessionWorldGeometry} from '../breach-world-context.ts';
 export function markDoorOwner(s:Session,ref:SurfaceAttachment){
  if(ref.kind!=='door'||!ref.ownerId)return undefined;

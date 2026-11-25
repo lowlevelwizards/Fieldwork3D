@@ -60,3 +60,42 @@ test('V19 an unknown or replaced cover does not inherit prior damage',()=>{
  s.coverState[0]={...c,destroyed:true};
  assert.equal(markCoverOwnerKnown(s,ref,true),false);
 });
+
+import {ShotFrameDisclosure,presentShotEvidence} from '../src/rendering/breach-shot-disclosure.ts';
+import {shotVisibility} from '../src/breach-presentation.ts';
+import {createBreach2DActorRenderer} from '../src/breach-2d-actor-renderer.ts';
+test('V19 shared flash/trace/impact decisions reuse exact live event once per frame',()=>{
+ const s=newSession(0,23,'true-blind');
+ const shot={id:3,side:'red',start:{x:100,y:100},end:{x:200,y:100}};
+ let calls=0,seenEnd=false;
+ const visible=p=>{calls++;return p.x===100||seenEnd;};
+ const frame=new ShotFrameDisclosure();
+ assert.deepEqual(frame.forShot(s,shot,false,false,visible),{flash:true,trace:false,impact:false});
+ assert.equal(frame.forShot(s,shot,false,false,visible).flash,true);
+ assert.equal(calls,2);
+ assert.deepEqual(frame.forShot(s,shot,true,true,visible),{flash:false,trace:false,impact:false});
+ assert.equal(calls,2);
+ seenEnd=true;frame.clear();
+ assert.deepEqual(frame.forShot(s,shot,false,false,visible),{flash:true,trace:true,impact:true});
+ assert.equal(calls,4);
+ const blue={...shot,side:'blue'};
+ assert.deepEqual(presentShotEvidence(s,blue,false,false,()=>false),
+  shotVisibility(s,blue,()=>false));
+ assert.deepEqual(presentShotEvidence(s,shot,true,false,()=>{throw Error('unexpected ray');}),
+  {flash:true,trace:true,impact:true});
+});
+test('V19 real Floor Plan contacts never draw unrecorded personal point effects',()=>{
+ const state=newSession(0,23,'full-view');
+ state.shots=[];state.droppedFirearms=[];
+ state.dropped=[{id:1,p:{x:123,y:234}}];
+ state.grenades=[{id:2,p:{x:124,y:235}}];
+ state.flashBursts=[{id:3,p:{x:125,y:236},age:0}];
+ const knowledge={omniscient:true,observerId:'rook'};
+ const calls=[],draw={globalAlpha:1};
+ const r=createBreach2DActorRenderer({draw,rect:(...a)=>calls.push(a),circle:(...a)=>calls.push(a),
+ line:()=>{},colorFor:()=>'',worldToScreen:p=>p,replayKnowledge:knowledge,
+ getFrame:()=>({state,replaying:true,replayAnalysis:false,replayContactMarkers:false,viewMode:'plan2d'}),
+ executionProblemStatus:()=>null,executionMarkerPoint:a=>a.p});
+ r.contacts();assert.equal(calls.length,0);
+ knowledge.observerId=null;r.contacts();assert.equal(calls.length,3);
+});
