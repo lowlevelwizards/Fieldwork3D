@@ -9,6 +9,7 @@ export const BLOOD_SAMPLE_SECONDS=.5;
 export const BLOOD_AMOUNT_MAX=16;
 export function bloodMarkRadius(mark:Pick<ImpactMark,'bloodKind'|'bloodAmount'>):number{
  const amount=Math.max(0,Math.min(BLOOD_AMOUNT_MAX,mark.bloodAmount??1));
+ if(mark.bloodKind==='drop')return Math.min(3.5,2.0+.5*Math.sqrt(amount));
  return mark.bloodKind==='pool'?Math.min(18,6+3*Math.sqrt(amount)):Math.min(15,8+2*Math.sqrt(amount));
 }
 export function bloodMarkTint(mark:Pick<ImpactMark,'bloodKind'>):number{
@@ -26,10 +27,10 @@ export function sampleBleedingEvidence(s:Session,h:number):void{
   if(a.deathAt!=null||a.health<=0&&a.downedAt==null||!a.medical.wounds.length)continue;
   const rate=bleedingRate(a.medical);if(rate<=0)continue;
   walls??=sessionWorldGeometry(s).walls;
-  if(confinedGroundRadius(a.p,6,walls)<.5)continue;
+  if(confinedGroundRadius(a.p,3,walls)<.5)continue;
   const amount=Math.min(2,rate/.004*.5);
   retainImpactMark(s,{id:-(1+slot*65536+i),p:{...a.p},surface:'blood',age:0,
-   height:.85,bloodKind:'pool',bloodAmount:amount,bloodOwnerId:a.id},walls);
+   height:.85,bloodKind:'drop',bloodDrops:1,bloodAmount:amount,bloodOwnerId:a.id},walls);
  }
 }
 /** Keep blood evidence mission-local and stop touching its age when settled.

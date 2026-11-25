@@ -317,6 +317,7 @@ export function createShotResolver(ports:ShotResolverPorts){
     healthBefore,healthAfter,
     down:(hit||!!civilianHit)&&healthAfter<=0,
     surface:impact.surface,
+    ...(!hit&&!civilianHit&&strike.stoppedHit?.surfaceRef?.kind==='cover'?{impactFixture:s.coverState[strike.stoppedHit.surfaceRef.index]?.fixture}:{}),
     ...(materialImpacts?.length?{materialImpacts}:{}),
   });
   emitSpentCasing(s,a,shotId,muzzle,secondaryWeapon);

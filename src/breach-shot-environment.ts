@@ -9,6 +9,7 @@ import type {BattleEvent} from './breach-combat.ts';
 import {type Pt,doorCenter} from './breach-core.ts';
 import {length} from './breach-plan.ts';
 import {damageCover} from './breach-reactive-cover.ts';
+import {retainCollapsePuff} from './breach-atmosphere-evidence.ts';
 import {materialResponse} from './breach-impact-responses.ts';
 import {damageWindow} from './breach-windows.ts';
 import {GLASS_INTEGRITY} from './breach-glass-damage.ts';
@@ -42,7 +43,8 @@ function emitMaterialEvents(s:Session,from:Pt,to:Pt,
   const id=s.nextEffectId++,height=hit.height??20;
   retainImpactMark(s,{id,p,surface:response.visual,age:0,height,
     shotId:s.nextShotId,surfaceRef:hit.surfaceRef});
-  if(cues.length<MAX_MATERIAL_CUES)cues.push({id,p:{...p},height,surface:response.visual});
+  const fixture=hit.surfaceRef?.kind==='cover'?s.coverState[hit.surfaceRef.index]?.fixture:undefined;
+  if(cues.length<MAX_MATERIAL_CUES)cues.push({id,p:{...p},height,surface:response.visual,...(fixture?{fixture}:{})});
   if(response.sound!=='glass')
     hear(s,p,response.radius,'impact-'+response.sound);
  }
@@ -66,6 +68,7 @@ function damageStruckCover(s:Session,hits:readonly {index:number;fraction:number
   if(result==='immune')continue;
   s.objectRevision++;
   if(result==='collapsed'){
+    retainCollapsePuff(s,piece);
     battleEvent(s,'impact',null,{x:piece.x,y:piece.y},
       (piece.fixture??'FURNITURE').toUpperCase()+' COLLAPSED');
     // Nearby defenders perceive their own cover crumbling. Uninformed

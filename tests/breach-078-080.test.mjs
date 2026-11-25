@@ -86,10 +86,13 @@ test('078-080: 3D uses readable fog and per-shot effects, 2D shares cues',()=>{
   assert.match(stage,/lastDownAt/);
   assert.match(stage,/observedDoorOpen/);
   assert.match(overlays,/doorVisibility\(state,door\)/);
-  assert.match(actors,/shotVisibility\(state,shot\)/);
-  // Build 117 deliberately replaces floating DOWN/HIT text with grounded
-  // impact and casualty visuals; preserve actual shot visibility coverage.
-  assert.match(actors,/shotVisibility\(state,shot\)/);
+  // V19 routes live/team and personal replay through distinct disclosure authorities.
+  assert.match(actors,/presentShotEvidence\(state,shot,omni,false\)/);
+  assert.match(actors,/recordedEffectAllows\(state,replayKnowledge\.observerId!,shotEffectRow\(shot,'impact'\)\)/);
+  assert.match(actors,/if\(visibility\.impact\)/);
+  assert.match(actors,/if\(visibility\.trace&&shot\.age/);
+  assert.match(actors,/if\(visibility\.flash&&shot\.age/);
+  // Build 117 replaces floating DOWN/HIT text with grounded impact visuals.
   assert.doesNotMatch(actors,/draw\.fillText\(shot\.down\?'DOWN':'HIT'/);
 });
 

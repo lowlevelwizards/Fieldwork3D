@@ -102,7 +102,7 @@ try{
     const grass=root.getObjectByName('vfx-grass-preview');
     const counts={traces:traces?.count??0,pulses:pulses?.count??0,particles:batch?.count??0,puffs:puffs?.count??0,stains:stain?.count??0,shards:scene.windowShards?.count??0,bushes,grass:grass?.children.length??0,pointLights,activeLights};
     if(enabled){
-     if(counts.traces!==20||counts.pulses!==20||counts.particles!==(smoke?86:95)||(smoke?counts.puffs<=0:counts.puffs!==0)||counts.shards!==expectedShards(true).length||(vegetation?(!counts.grass||!counts.bushes):(counts.grass||counts.bushes))||!stain)throw Error('Combined effect counts '+JSON.stringify(counts));
+     if(counts.traces!==20||counts.pulses!==20||counts.particles!==(smoke?76:85)||(smoke?counts.puffs<=0:counts.puffs!==0)||counts.shards!==expectedShards(true).length||(vegetation?(!counts.grass||!counts.bushes):(counts.grass||counts.bushes))||!stain)throw Error('Combined effect counts '+JSON.stringify(counts));
      checkShardMatrices(expectedShards(true),'V16 settled stress');
      const versions=[stain.instanceMatrix.version,stain.instanceColor?.version,stain.geometry.attributes.stainStyle.version,scene.windowShards.instanceMatrix.version,batch.instanceMatrix.version,puffs?.instanceMatrix.version,traces?.instanceMatrix.version,pulses?.instanceMatrix.version];
      draw();

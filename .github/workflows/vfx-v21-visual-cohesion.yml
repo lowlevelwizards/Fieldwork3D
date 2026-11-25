@@ -1,0 +1,23 @@
+name: V21 visual cohesion
+on:
+  pull_request:
+    paths:
+      - 'src/breach-**'
+      - 'src/rendering/breach-**'
+      - 'tests/vfx-v21-visual-cohesion.test.mjs'
+      - '.github/workflows/vfx-v21-visual-cohesion.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  v21:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/vfx-v*.test.mjs tests/lw-reactive-cover.test.mjs tests/lw-glass-impact.test.mjs tests/replay-prop-stability-20261108.test.mjs tests/vfx-effects-lab.test.mjs
+      - run: npm run build

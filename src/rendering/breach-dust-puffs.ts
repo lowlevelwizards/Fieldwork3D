@@ -7,11 +7,12 @@ import {EffectSlotCache} from './breach-effect-slot-cache.ts';
 import {PUFF_LIFE,type PuffKind} from '../breach-atmosphere-evidence.ts';
 export type {PuffKind} from '../breach-atmosphere-evidence.ts';
 const profiles={
- dust:{count:3,size:10,spread:15,lift:9,alpha:.72,color:0xb8a286},
- wood:{count:2,size:8.5,spread:12,lift:9,alpha:.63,color:0xbda184},
- stone:{count:3,size:10,spread:13,lift:10,alpha:.74,color:0xc5c0b0},
- flash:{count:4,size:15,spread:25,lift:18,alpha:.66,color:0xd0d0c8},
- muzzle:{count:1,size:6.5,spread:5,lift:13,alpha:.47,color:0xaab0aa}
+ dust:{count:2,size:13,spread:17,lift:5,alpha:.70,color:0xd2bb99},
+ wood:{count:2,size:11,spread:13,lift:5,alpha:.63,color:0xc9ae87},
+ stone:{count:2,size:13,spread:15,lift:6,alpha:.72,color:0xd5c3aa},
+ flash:{count:3,size:19,spread:23,lift:21,alpha:.64,color:0x77828e},
+ muzzle:{count:1,size:8.5,spread:5,lift:16,alpha:.47,color:0x707d89},
+ collapse:{count:3,size:18,spread:25,lift:7,alpha:.76,color:0xcab394}
 } as const;
 export const PUFF_LIMIT=64;
 export const puffCount=(kind:PuffKind)=>profiles[kind].count;
@@ -23,7 +24,7 @@ export function samplePuff(kind:PuffKind,id:number,i:number,age:number,x:number,
  const expansion=1-Math.exp(-t*3.5);
  const d=(2+expansion*p.spread)*(.75+(i%3)*.13);
  out.x=x+Math.cos(theta)*d;out.z=z+Math.sin(theta)*d;
- out.y=Math.max(2,y+p.lift*t+(i%3)*1.5);
+ out.y=Math.max(2,y+p.lift*t+(i%3)*1.5-(kind==='dust'||kind==='wood'||kind==='stone'||kind==='collapse'?8*t*t:0));
  out.size=p.size*(.72+expansion*1.12)*(1+(i%3)*.12);
  out.alpha=p.alpha*(1-t*t)*(1-t*.40);out.color=p.color;out.phase=theta;
  return true;
@@ -63,19 +64,16 @@ export class DustPuffBatch{
     void main(){
      vec2 p=vPuff;
      vec2 offset=vAlphaOffset.yz;
-     // Broad uneven cloud lobes, opaque-looking body and soft edge.
-     // Small analytic breakup avoids a costly procedural noise loop.
+     // Two broad round lobes and soft edge, no procedural grain.
      vec2 axis=normalize(offset+vec2(.0001));
      vec2 across=vec2(-axis.y,axis.x);
      vec2 q=vec2(dot(p,axis),dot(p,across));
-     float body=1.0-smoothstep(.33,.80,length(q*vec2(.96,1.15)));
-     float lobe=1.0-smoothstep(.21,.56,length(q-vec2(.29,.15)));
-     float lobe2=1.0-smoothstep(.18,.52,length(q+vec2(.29,-.14)));
-     float grain=sin(q.x*21.0+sin(q.y*13.0)*1.7)*sin(q.y*17.0+q.x*5.0);
-     float density=max(body,max(lobe*.88,lobe2*.86));
-     float alpha=clamp(density+grain*.12*density,0.0,1.0)*vAlphaOffset.x;
+     float body=1.0-smoothstep(.48,.86,length(q));
+     float lobe=1.0-smoothstep(.30,.60,length(q-vec2(.30,.12)));
+     float density=max(body,lobe*.88);
+     float alpha=density*vAlphaOffset.x;
      if(alpha<.012)discard;
-     float shade=.77+.23*smoothstep(-.55,.5,q.y)+grain*.055;
+     float shade=.85+.15*smoothstep(-.55,.5,q.y);
      gl_FragColor=vec4(vTint*shade,alpha);
      #include <tonemapping_fragment>
      #include <colorspace_fragment>

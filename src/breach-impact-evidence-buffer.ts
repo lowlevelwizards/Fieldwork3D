@@ -36,14 +36,20 @@ export function retainImpactMark(s:Pick<Session,'impactMarks'>,mark:ImpactMark,w
  if(mark.surface==='blood'){
   const kind=mark.bloodKind??'splat';
   const existing=s.impactMarks.find(other=>{
-   if(other.surface!=='blood'||(other.bloodKind??'splat')!==kind||
-     kind==='pool'&&other.bloodOwnerId!==mark.bloodOwnerId)return false;
+   if(other.surface!=='blood')return false;
+   const otherKind=other.bloodKind??'splat';
+   if(kind==='drop'?(otherKind!=='drop'&&otherKind!=='pool'):otherKind!==kind)return false;
+   if(kind!=='splat'&&other.bloodOwnerId!==mark.bloodOwnerId)return false;
    const distance=Math.hypot(other.p.x-mark.p.x,other.p.y-mark.p.y);
-   return distance<6&&confinedGroundRadius(other.p,distance,walls)>=distance-.001;
+   return distance<(kind==='drop'&&otherKind==='drop'?3:6)&&confinedGroundRadius(other.p,distance,walls)>=distance-.001;
   });
   if(existing){
    const amount=Math.min(16,(existing.bloodAmount??1)+(mark.bloodAmount??1));
    if(amount!==(existing.bloodAmount??1)){existing.bloodAmount=amount;existing.age=0;}
+   if(kind==='drop'&&existing.bloodKind==='drop'){
+    existing.bloodDrops=Math.min(4,(existing.bloodDrops??1)+(mark.bloodDrops??1));
+    if(existing.bloodDrops>=4){existing.bloodKind='pool';existing.age=0;}
+   }
    return;
   }
   const blood=s.impactMarks.filter(other=>other.surface==='blood');

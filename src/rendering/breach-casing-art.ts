@@ -2,8 +2,8 @@
 import * as THREE from 'three';
 import type {EjectedCasing} from '../breach-effects.ts';
 export function createCasingGeometry():THREE.BufferGeometry{
- // Four facets rather than six; closed cap, no hollow interior or rim mesh.
- const g=new THREE.CylinderGeometry(.53,.65,2.18,4,1,false);
+ // Rectangular silhouette, closed box with no hollow interior or rim mesh.
+ const g=new THREE.BoxGeometry(1.10,2.18,1.10);
  return g;
 }
 /** One flat painted base band, no extra vertices, materials or draw calls.
@@ -23,9 +23,9 @@ export function applyCasingBaseFinish(material:THREE.MeshStandardMaterial):void{
  material.customProgramCacheKey=()=>key()+':v20-casing-base';
 }
 export function casingVisualProfile(c:Pick<EjectedCasing,'weapon'|'secondaryWeapon'>){
- // Overall length ~30% smaller than the former scaled cylinder.
- if(c.weapon==='shotgun')return {width:1.12,length:1.40,color:0xa57858};
- if(c.secondaryWeapon||c.weapon==='smg')return {width:.72,length:.65,color:0xb38d59};
- if(c.weapon==='rifle')return {width:.77,length:1.21,color:0xb38d59};
- return {width:.72,length:1.05,color:0xb38d59};
+ // V21: restore ~18% of V20 visual dimensions; retain category proportions.
+ if(c.weapon==='shotgun')return {width:1.32,length:1.65,color:0xa57858};
+ if(c.secondaryWeapon||c.weapon==='smg')return {width:.85,length:.77,color:0xb38d59};
+ if(c.weapon==='rifle')return {width:.91,length:1.43,color:0xb38d59};
+ return {width:.85,length:1.24,color:0xb38d59};
 }

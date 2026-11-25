@@ -20,7 +20,8 @@ import {enemyKitForEncounter} from './breach-enemy-loadouts.ts';
 import {doctrineForPurpose,doctrinePersonality,doctrineInitialMorale} from './breach-ai-doctrine.ts';
 import {createCivilian} from './breach-civilian-types.ts';
 import {civilianRefugePoints} from './breach-civilian-refuge.ts';
-import {materialForFixture,MATERIALS} from './breach-materials.ts';
+import {materialForFixture} from './breach-materials.ts';
+import {coverInitialIntegrity} from './breach-reactive-cover.ts';
 import {initializeWindows} from './breach-windows.ts';
 import {withCoverPropIds,withSitePropIds} from './worldgen/site-object-identity.ts';
 import {initDoor,doorSwingBlocked} from './breach-door.ts';
@@ -162,7 +163,7 @@ export function assembleSession(index=0,siteSeed?:number,
     person.refugePoints=civilianRefugePoints(site,person);
   const initialCover=withCoverPropIds(initialWorldCover(site??null).map(o=>({...o,
     material:materialForFixture(o.fixture),
-    integrity:MATERIALS[materialForFixture(o.fixture)].integrity})));
+    integrity:coverInitialIntegrity({...o,material:materialForFixture(o.fixture)})})));
   // Security first, seeded starting openness second, then actual swept
   // geometry certification. Never consumes the encounter/worldgen RNG.
   const baseDoorRecords=initialDoors(site??null).map((d,i)=>({
