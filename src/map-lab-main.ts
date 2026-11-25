@@ -46,7 +46,7 @@ typeInput.value=BUILDING_ARCHETYPES[(initial>>>0)%BUILDING_ARCHETYPES.length];
 const stage=new TacticalScene3D();
 const wallMode=el<HTMLSelectElement>('wallAuditionMode');
 const wallEffect=el<HTMLSelectElement>('wallAuditionEffect');
-wallMode.value=stage.wallAudition?'packed':'legacy';
+wallMode.value=stage.wallAudition?(stage.wallAudition.atlas?'atlas':'packed'):'legacy';
 wallEffect.disabled=!stage.wallAudition;
 stage.setMode('iso');stage.view.zoom=1.25;
 let markers:{node:HTMLElement;p:Pt;orientation?:number}[]=[];
@@ -150,7 +150,7 @@ function previewCondition(){
  paintConditionDiagnostics();
 }
 wallMode.addEventListener('change',()=>{
- stage.wallAudition=wallMode.value==='legacy'?undefined:{effect:wallEffect.value as WallEffectFilter};
+ stage.wallAudition=wallMode.value==='legacy'?undefined:{effect:wallEffect.value as WallEffectFilter,atlas:wallMode.value==='atlas'};
  wallEffect.disabled=!stage.wallAudition;
  if(siteReady)previewCondition();
 });

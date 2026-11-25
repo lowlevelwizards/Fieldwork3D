@@ -26,6 +26,7 @@ import {planWallCapJoins} from './wall-cap-joins.ts';
 import {ageMaterialColor} from './condition-materials.ts';
 import {doubleSidedWallWear} from './wear-wall-geometry.ts';
 import {planWallSurface,packedWallSurfacePixels,type WallAudition,type WallSurfaceRecipe} from '../worldgen/wall-surface-recipe.ts';
+import {buildWallAtlas,type WallAtlasSlot} from './wall-surface-atlas.ts';
 import {wearPixels} from './pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './wear-opacity.ts';
 import {type PixelOverlay} from './pixel-overlays.ts';
@@ -54,7 +55,7 @@ import {sitePowerControls} from '../equipment-site-power-controls.ts';
 export type SiteSceneBuildPort={
  root:THREE.Group;
  box:(parent:THREE.Object3D,x:number,y:number,z:number,w:number,h:number,
-   d:number,material:THREE.Material,cast?:boolean,packedWall?:boolean)=>THREE.Mesh;
+   d:number,material:THREE.Material,cast?:boolean,packedWall?:boolean,atlasSlot?:WallAtlasSlot)=>THREE.Mesh;
  plane:(parent:THREE.Object3D,x:number,z:number,w:number,d:number,
    y:number,material:THREE.Material)=>THREE.Mesh;
  solid:(hex:number,roughness?:number,surface?:PixelSurface)=>THREE.MeshStandardMaterial;
@@ -87,7 +88,7 @@ export type SiteSceneBuildPort={
  roofMaterial:THREE.MeshStandardMaterial|null;
  windowPaneMaterial:THREE.MeshStandardMaterial|null;
  patinaRoomSurfaces:Array<{room:Room;texture:THREE.DataTexture}>;
- patinaWallSurfaces:Array<{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;patterned?:boolean}>;
+ patinaWallSurfaces:Array<{index:number;texture:THREE.DataTexture;recipe?:WallSurfaceRecipe;patterned?:boolean;atlasSlot?:WallAtlasSlot}>;
  wallAudition?:WallAudition;
  sitePatinaTextures:THREE.DataTexture[];
  sitePatinaMaterials:THREE.MeshBasicMaterial[];
@@ -398,6 +399,8 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         node.renderOrder=1002;
       });
     };
+    const atlas=host.wallAudition?.atlas?buildWallAtlas(site,WALL_VISUAL_HEIGHT,finishCondition,host.wallAudition.effect,!!host.solid(theme.wall,.94,wallPixelSurface(site.archetype)).map):undefined;
+    if(atlas)host.sitePatinaTextures.push(...atlas.pages);
     const capJoins=planWallCapJoins(site.walls);
     const wallGroups:THREE.Group[]=[];
     for(const [index,wall] of site.walls.entries()){
@@ -411,15 +414,20 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       const angle=-Math.atan2(b.y-a.y,b.x-a.x);
       const individualWall=(host.wallAudition?host.solid(theme.wall,.94,wallPixelSurface(site.archetype)):wallMat).clone();
       host.wallMaterials.add(individualWall);
+      const atlasSlot=atlas?.slots.get(index);
       const body=host.box(group,x,WALL_VISUAL_HEIGHT/2,z,
-        len,WALL_VISUAL_HEIGHT,9,individualWall,true,!!host.wallAudition);
+        len,WALL_VISUAL_HEIGHT,9,individualWall,true,!!host.wallAudition,atlasSlot);
       body.rotation.y=angle;
       body.userData.fieldworkDrawFamily='structural-wall-body';
       // Dynamic reason is assigned by the existing cutaway loop.
       // Whole-wall weathering follows the actual structural wall mesh.
       // Both faces share one deterministic texture, while a single instance
       // controls opacity during close-camera cutaways.
-      if(host.wallAudition){
+      if(atlasSlot){
+        individualWall.map=atlasSlot.texture;individualWall.color.setHex(0xffffff);individualWall.needsUpdate=true;
+        host.patinaWallSurfaces.push({index,texture:atlasSlot.texture,atlasSlot});
+        body.userData.fieldworkWallSurface='w3-atlas';
+      }else if(host.wallAudition){
         // Map Lab allocates one bounded mask even on clean walls so the
         // condition slider can scrub without allocating or recompiling.
         const recipe=planWallSurface(site,index,WALL_VISUAL_HEIGHT);
