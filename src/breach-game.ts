@@ -331,7 +331,7 @@ export type TeamActor=Operator & {
   lastEnemyDoorCloseAt:number;
 };
 export type NoiseEvent={id?:number;p:Pt;radius:number;time:number;kind:string};
-export type MaterialImpactCue={id:number;p:Pt;height:number;surface:'wood'|'stone'|'metal'|'glass'|'dust'};
+export type MaterialImpactCue={id:number;p:Pt;height:number;surface:'wood'|'stone'|'metal'|'glass'|'dust';fixture?:string};
 export type ShotEvent={
   id:number;shooterId:string;targetId:string|null;
   /** Snapshot identity of fired primary or Glock (not current selection). */
@@ -344,6 +344,7 @@ export type ShotEvent={
   impactHeight?:number;
   /** Bounded committed intermediate contacts, not additional shots. */
   materialImpacts?:MaterialImpactCue[];
+  impactFixture?:string;
   hitRegion?:WoundRegion;
   /** Optional, non-authoritative V4 forensic shadow; never drives damage. */
   hitAnatomy?:import('./breach-hit-anatomy.ts').HitAnatomyV1;

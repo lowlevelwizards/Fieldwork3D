@@ -11,7 +11,8 @@ const profiles={
  wood:{count:2,size:11,spread:13,lift:5,alpha:.63,color:0xc9ae87},
  stone:{count:2,size:13,spread:15,lift:6,alpha:.72,color:0xd5c3aa},
  flash:{count:3,size:19,spread:23,lift:21,alpha:.64,color:0x77828e},
- muzzle:{count:1,size:8.5,spread:5,lift:16,alpha:.47,color:0x707d89}
+ muzzle:{count:1,size:8.5,spread:5,lift:16,alpha:.47,color:0x707d89},
+ collapse:{count:3,size:18,spread:25,lift:7,alpha:.76,color:0xcab394}
 } as const;
 export const PUFF_LIMIT=64;
 export const puffCount=(kind:PuffKind)=>profiles[kind].count;
@@ -23,7 +24,7 @@ export function samplePuff(kind:PuffKind,id:number,i:number,age:number,x:number,
  const expansion=1-Math.exp(-t*3.5);
  const d=(2+expansion*p.spread)*(.75+(i%3)*.13);
  out.x=x+Math.cos(theta)*d;out.z=z+Math.sin(theta)*d;
- out.y=Math.max(2,y+p.lift*t+(i%3)*1.5-(kind==='dust'||kind==='wood'||kind==='stone'?8*t*t:0));
+ out.y=Math.max(2,y+p.lift*t+(i%3)*1.5-(kind==='dust'||kind==='wood'||kind==='stone'||kind==='collapse'?8*t*t:0));
  out.size=p.size*(.72+expansion*1.12)*(1+(i%3)*.12);
  out.alpha=p.alpha*(1-t*t)*(1-t*.40);out.color=p.color;out.phase=theta;
  return true;

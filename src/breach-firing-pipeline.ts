@@ -284,7 +284,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     side:a.side,shotYaw:yaw,mode:'ads',spread,muzzleHeight:muzzle.y,
     impactHeight:height,firedAt:s.seconds,
     healthBefore:before,healthAfter:after,down:hit&&after<=0,
-    surface,...(materialImpacts?.length?{materialImpacts}:{})});
+    surface,...(!hit&&impact.stoppedHit?.surfaceRef?.kind==='cover'?{impactFixture:s.coverState[impact.stoppedHit.surfaceRef.index]?.fixture}:{}),...(materialImpacts?.length?{materialImpacts}:{})});
   retainImpactMark(s,{id:s.nextEffectId++,p:clone(end),
     surface,height,age:0,shotId,surfaceRef:hit?undefined:impact.stoppedHit?.surfaceRef,
     ...(surface==='blood'?{bloodKind:'splat' as const,bloodAmount:1}:{})},sessionWorldGeometry(s).walls);

@@ -12,6 +12,6 @@ export function sampleBloodBurst(id:number,index:number,age:number,yaw:number,
  out.y=Math.max(1,y+Math.sin(Math.PI*t)*6-12*t*t);
  out.pitch=.9+seed*.45;out.yaw=theta;out.roll=Math.PI*.5+seed*.35+t;
  out.width=(3.3+index*.28)*(1-.22*t);out.length=(4.45+index*.40)*(1-.16*t);
- out.opacity=.74*Math.max(0,1-t*t);out.color=index===0?0xa65a4e:0x914a44;
+ out.depth=out.width;out.opacity=.74*Math.max(0,1-t*t);out.color=index===0?0xa65a4e:0x914a44;
  return true;
 }

@@ -151,7 +151,7 @@ import {DustPuffBatch,puffCount,samplePuff,type PuffSample} from './rendering/br
 import type {PuffKind} from './breach-atmosphere-evidence.ts';
 import {makeStainMarkBatch,makeBloodDropletBatch,BLOOD_DROPLET_CAPACITY} from './rendering/breach-blood-preview.ts';
 import {ImpactMarkSlotCache,MARK_MATRIX_DIRTY,MARK_COLOR_DIRTY,MARK_STYLE_DIRTY} from './rendering/breach-impact-mark-cache.ts';
-import {MATERIAL_IMPACT_PROFILES,MATERIAL_IMPACT_PARTICLE_LIMIT,sampleMaterialImpact,type ImpactParticleSample} from './rendering/breach-material-impact-atom.ts';
+import {MATERIAL_IMPACT_PROFILES,MATERIAL_IMPACT_PARTICLE_LIMIT,sampleMaterialImpact,fixtureImpactAccent,type ImpactParticleSample} from './rendering/breach-material-impact-atom.ts';
 import {presentSecondaryMuzzleFlash} from './secondary-holster-visual.ts';
 import {muzzleFlashCue,mostRecentActiveMuzzleShot,impactPulse,
  RecentMuzzleShotFrameIndex}
@@ -3171,10 +3171,10 @@ export class TacticalScene3D{
         }
       }
       if(this.materialImpactPreviewEnabled&&shot.surface!=='blood'&&visibility.impact&&
-        !(this.smokePreviewEnabled&&puffSurface==='dust')){
+        !(this.smokePreviewEnabled&&puffSurface==='dust'&&!fixtureImpactAccent(shot.impactFixture))){
         const surface=shot.surface??'dust',sample=this.materialImpactScratch;
         for(let i=0;i<MATERIAL_IMPACT_PROFILES[surface].count;i++){
-          if(!sampleMaterialImpact(surface,shot.id,i,shot.age,end.x,end.y,end.z,sample))continue;
+          if(!sampleMaterialImpact(surface,shot.id,i,shot.age,end.x,end.y,end.z,sample,shot.impactFixture))continue;
           if(!omniscient&&!this.presentationSight.query(s,'effect',shot.id+':chip:'+i,{x:sample.x,y:sample.z}))continue;
           if(!this.dropletPreview){
             this.dropletPreview=makeBloodDropletBatch(this.tracerGeometry,MATERIAL_IMPACT_PARTICLE_LIMIT);
@@ -3219,9 +3219,9 @@ export class TacticalScene3D{
             this.impactPulseBatch.addPose(cue.p.x,cue.height,cue.p.y,0,0,0,pulse.scale,pulse.scale,pulse.opacity,p.pulseColor);
           }
           const sample=this.materialImpactScratch;
-          if(!(this.smokePreviewEnabled&&surface==='dust'))
+          if(!(this.smokePreviewEnabled&&surface==='dust'&&!fixtureImpactAccent(cue.fixture)))
            for(let i=0;i<p.count;i++){
-            if(!sampleMaterialImpact(surface,cue.id,i,shot.age,cue.p.x,cue.height,cue.p.y,sample))continue;
+            if(!sampleMaterialImpact(surface,cue.id,i,shot.age,cue.p.x,cue.height,cue.p.y,sample,cue.fixture))continue;
             if(!omniscient&&!this.presentationSight.query(s,'effect','material:'+cue.id+':chip:'+i,{x:sample.x,y:sample.z}))continue;
             if(!this.dropletPreview){
               this.dropletPreview=makeBloodDropletBatch(this.tracerGeometry,MATERIAL_IMPACT_PARTICLE_LIMIT);

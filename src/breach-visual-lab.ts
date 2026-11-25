@@ -1,6 +1,7 @@
 import {TacticalScene3D} from './breach-3d.ts';
 import {newSession,team,enemies,type ShotEvent,type Session} from './breach-game.ts';
 import {activateSite,type Pt} from './breach-core.ts';
+import {retainCollapsePuff} from './breach-atmosphere-evidence.ts';
 import {damageCover} from './breach-reactive-cover.ts';
 import {recordDoorFracture} from './breach-fracture-record.ts';
 import {buildTrainingSite} from './training/training-site-builder.ts';
@@ -172,7 +173,7 @@ function choose(kind:Sample){
   let box=session.coverState.find(c=>c.id==='lab-wood');
   if(box?.destroyed){build('arena');box=session.coverState.find(c=>c.id==='lab-wood');}
   if(!box)return;
-  damageCover(box,10,session.seconds);session.objectRevision++;
+  damageCover(box,10,session.seconds);retainCollapsePuff(session,box);session.objectRevision++;
   focus(box);label('Wood fixture · collapsed, splinter debris');draw();return;
  }
  if(kind==='glass'){
@@ -195,7 +196,7 @@ function choose(kind:Sample){
   const shot=emit('blood',target.p,26,true,kind!=='hit');
   retainImpactMark(session,{id:session.nextEffectId++,shotId:shot.id,p:{...target.p},surface:'blood',age:0,height:.85,bloodKind:'splat',bloodAmount:kind==='hit'?1:3},site.walls);
   if(kind==='pool'||kind==='down')registerWound(target.medical,shot.id,'torso',2,session.seconds);
-  focus(target.p);label(kind==='hit'?'Blood · oversized directional hit': 'Blood · untreated wound grows a persistent pool');
+  focus(target.p);label(kind==='hit'?'Blood · oversized directional hit': 'Blood · small drops accumulate into a persistent pool');
  }else if(kind==='stone'){
   const index=3,wall=site.walls[index],p={x:200,y:600};
   const ref=segmentAttachment('wall',index,undefined,wall,{x:p.x,y:p.y+20},{x:p.x,y:p.y-20},.5,28);
@@ -207,7 +208,7 @@ function choose(kind:Sample){
   if(!box)return;
   const p={x:box.x,y:box.y+box.h/2},height=kind==='wood'?10:25;
   const ref=coverAttachment(index,box,{x:p.x,y:p.y+20},{x:p.x,y:p.y-20},.5,height);
-  const shot=emit(kind,p,height);
+  const shot=emit(kind,p,height);shot.impactFixture=box.fixture;
   retainImpactMark(session,{id:session.nextEffectId++,p,age:0,surface:kind,height,shotId:shot.id,surfaceRef:ref});
   focus({x:box.x,y:box.y});label(kind==='wood'?'Wood · splinters and dust':'Metal · sparks');
  }else if(kind==='flash'){
