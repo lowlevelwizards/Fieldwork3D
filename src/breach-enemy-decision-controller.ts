@@ -44,7 +44,7 @@ import {sweptBodyClear} from './breach-navigation.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
 import {aiSiteIndex,connectedAreaCenters,groupObservationProposals} from './breach-ai-site-index.ts';
 import {clearNpcSearch,clearNpcCoordination,commitNpcWithdrawal,attemptNpcWithdrawal,canAcceptNpcAssignment} from './breach-ai-task-state.ts';
-import {recentlyChecked,rememberChecked} from './breach-ai-search-memory.ts';
+import {recentlyChecked,rememberChecked,canRecordInspection} from './breach-ai-search-memory.ts';
 
 /** The authoritative simulation owns the motor, shot/geometry, visibility and
  * event ports. The AI owns observation response, tactical commitments and
@@ -574,6 +574,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
     return;
   }
+  let recoveringSearch=false;
   if(a.contact&&a.alert==='investigating'&&!visible.length){
     // A failed approach is not proof that the disturbance vanished. Move
     // through remaining uncertain probes or eventually settle back down.
@@ -585,6 +586,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
     const recovery=stalledInvestigationAction(a.blockedTime,a.searchQueue.length);
     if(recovery==='inspect-next'){
+      recoveringSearch=true;
       a.nav=[];a.contact=clone(a.p);
       a.searchPauseUntil=s.seconds-.01;
     }else if(recovery==='stand-down'){
@@ -605,7 +607,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         if(result.kind==='pending'){a.velocity=0;return;}
         if(result.kind==='found'){
           a.nav=result.route;
-          if(d(result.point,a.contact)>0&&!a.searchOrigin){
+          if(!a.searchOrigin){
             a.searchOrigin=clone(a.contact);
             a.searchQueue=searchCandidates(a.searchOrigin,
               bestBelief(a.awareness)?.uncertainty??65,
@@ -639,7 +641,8 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         a.velocity=0;rotate(a,angle(a.p,a.contact),dt,s);return;
       }
       const checked=a.checkedSearchAreas??(a.checkedSearchAreas=[]);
-      if(rememberChecked(checked,a.p,s.seconds,a.suspicion.lastEvidenceAt,'personal')&&
+      if(canRecordInspection(recoveringSearch,d(a.p,a.contact),s.seconds,a.searchPauseUntil)&&
+         rememberChecked(checked,a.p,s.seconds,a.suspicion.lastEvidenceAt,'personal')&&
          a.encounterGroupId&&s.seconds-(a.lastSearchReportAt??-100)>2&&
          enemies(s).some(peer=>peer!==a&&activeCombatant(peer)&&peer.encounterGroupId===a.encounterGroupId)){
         s.reports.push({id:s.nextReportId++,senderId:a.id,at:s.seconds,

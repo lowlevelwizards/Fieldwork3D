@@ -126,3 +126,12 @@ test('EB8 ambient pauses reflect actual activity; stationary duties do not inven
  assert.ok(contextualRoutineDwell('a','inspecting',1,2)>routineDwellSeconds('a','inspecting',1,2));
  assert.equal(contextualRoutineDwell('a','patrolling',1,2),contextualRoutineDwell('a','patrolling',1,2));
 });
+
+import {canRecordInspection} from '../src/breach-ai-search-memory.ts';
+test('EB9 failed routes never count as inspected; dwell and physical arrival are required',()=>{
+ assert.equal(canRecordInspection(true,0,12,11),false);
+ assert.equal(canRecordInspection(false,40,12,11),false);
+ assert.equal(canRecordInspection(false,0,12,13),false);
+ assert.equal(canRecordInspection(false,0,12,0),false);
+ assert.equal(canRecordInspection(false,15,12,11),true);
+});
