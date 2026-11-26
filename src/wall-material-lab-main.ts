@@ -1,6 +1,7 @@
 import {WALL_EFFECTS,WALL_FINISHES,WALL_WITNESSES,wallSample,samplePixels,selectWallEvents} from './wall-material-lab-samples.ts';
 import {PIXEL_SURFACES,pixelPattern} from './rendering/pixel-recipes.ts';
 import {FLOOR_WITNESSES,FIXTURE_WITNESSES,floorWitness,fixtureWitness} from './wall-material-lab-context.ts';
+import {wallDensity} from './rendering/material-art-scale.ts';
 import {createMaterialSpecimen} from './wall-material-lab-specimen.ts';
 import {referenceWallPixels} from './wall-material-lab-reference.ts';
 import {SRGB_BYTE_TO_LINEAR,linearToSRGBByte} from './rendering/surface-color-space.ts';
@@ -80,6 +81,8 @@ function drawSpecimen(){
 function redraw(){
  const level=Number(condition.value),single=comparison.value==='single';
  el('condition-value').textContent=String(level);
+ const p0=audition(wallSample(0),level),d=wallDensity(96,56,p0.width,p0.height);
+ el('art-scale-info').textContent='Wall: '+p0.width+' × '+p0.height+' texels · '+d.x.toFixed(2)+' × '+d.y.toFixed(2)+' world units per texel · operator height 40 units.';
  for(const {recipe,after,before,pair,status} of cards){
   const p=audition(recipe,level);paint(after.canvas,p.bytes,p.width,p.height);
   const previous=comparison.value==='reference';

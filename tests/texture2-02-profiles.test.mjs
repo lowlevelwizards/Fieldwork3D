@@ -13,7 +13,7 @@ test('each material has a declared structure and contrast budget',()=>{
  }
 });
 test('clean materials are visually flat and structural joints legible',()=>{
- for(const kind of ['plaster','paper','fabric','carpet'])
+ for(const kind of ['plaster','paper','plastic','porcelain'])
   assert.ok(pixelPattern(kind).every((x,i)=>i%4===3?x===255:x>=250));
  assert.notDeepEqual(pixelPattern('wood',0),pixelPattern('tile',0));
  assert.notDeepEqual(pixelPattern('brick',0),pixelPattern('tile',0));

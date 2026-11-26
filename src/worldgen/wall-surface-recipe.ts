@@ -1,5 +1,7 @@
 /** W2 audition: static architecture is a material plus a sparse set of
  * anchored finish events. No tactical state, time or mutable RNG. */
+import {ART_MODULES} from '../rendering/material-art-scale.ts';
+import {relativeArtColor,artLuma} from '../rendering/material-art-contrast.ts';
 import {prepareWallArt,eventArtSeed} from './wall-weathering-art.ts';
 import type {Site} from '../breach-site.ts';
 import type {FixtureWallResidue} from './wall-story-residue.ts';
@@ -132,14 +134,7 @@ type RGB=[number,number,number];
 const rgb=(hex:number):RGB=>[(hex>>>16)&255,(hex>>>8)&255,hex&255];
 function mixWallColor(a:number,b:number,t:number){const c=tint(rgb(a),rgb(b),t);return (c[0]<<16)|(c[1]<<8)|c[2];}
 const tint=(base:RGB,target:RGB,amount:number):RGB=>base.map((c,i)=>Math.round(c+(target[i]-c)*amount)) as RGB;
-/** Sparse pixel stamps precomposed at build/slider time. Alpha is COLOR
- * coverage, never structural transparency. Row zero is the wall top. */
-export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:number,height:number,filter:WallEffectFilter='all'){
- const out=new Uint8Array(width*height*4),base=rgb(recipe.color);
- for(const event of selectWallEvents(recipe,level,filter).reverse()){
-  const progress=clamp((level-event.threshold+10)/(110-event.threshold),.18,1);
-  const strength=.38+.62*progress;
-  const palette:Record<WallEffect,readonly [RGB,RGB,RGB]>={
+const WALL_INK_PALETTE:Record<WallEffect,readonly [RGB,RGB,RGB]>={
    fade:[[225,222,202],[238,232,210],[247,241,220]],
    contact:[[158,151,132],[105,102,87],[67,69,61]],
    chip:[[224,213,188],[173,158,134],[113,104,88]],
@@ -153,7 +148,21 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
    splash:[[225,229,209],[125,155,148],[91,115,110]],
    workgrime:[[177,164,140],[100,96,79],[62,61,55]]
   };
-  const colors=palette[event.kind].map((p,i)=>tint(base,p,i===2?.84:i===0?.69:.77));
+const WALL_CONTRAST:Record<WallEffect,readonly [number,number]>={fade:[8,23],contact:[14,42],chip:[20,65],damp:[18,48],runoff:[18,45],crack:[25,64],repair:[7,20],moss:[20,62],rust:[21,65],grease:[15,46],splash:[18,45],workgrime:[15,43]};
+/** Sparse pixel stamps precomposed at build/slider time. Alpha is COLOR
+ * coverage, never structural transparency. Row zero is the wall top. */
+export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:number,height:number,filter:WallEffectFilter='all'){
+ const out=new Uint8Array(width*height*4),base=rgb(recipe.color);
+ for(const event of selectWallEvents(recipe,level,filter).reverse()){
+  const progress=clamp((level-event.threshold+10)/(110-event.threshold),.18,1);
+  const strength=.38+.62*progress;
+  const strengthProfile=WALL_CONTRAST[event.kind];
+  const colorsFor=(substrate:RGB)=>WALL_INK_PALETTE[event.kind].map((p,i)=>{
+   const light=artLuma(substrate)>185;
+   const direction=event.kind==='fade'?'light':event.kind==='repair'?'auto':event.kind==='splash'?(light?'dark':'light'):event.kind==='contact'?(light?'dark':'light'):'auto';
+   return relativeArtColor(substrate,p,.67,i===1?strengthProfile[0]:strengthProfile[0]*.65,strengthProfile[1]*(i===2?1:.8),direction);
+  });
+  const colors=colorsFor(base),bandColors=recipe.band?colorsFor(tint(base,rgb(recipe.band.color),.62)):colors;
   const shape=prepareWallArt(event.kind,eventArtSeed(event,recipe.artSeed),progress,recipe.length/width/Math.max(1,event.width/2),recipe.height/height/Math.max(1,event.height/2));
   // Visit only the physical stamp rectangle, rather than every texel
   // in every strip for each sparse event.
@@ -164,10 +173,10 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
   const y1=Math.min(height,Math.ceil((event.y+ry)/recipe.height*height));
   for(let py=y0;py<y1;py++)for(let px=x0;px<x1;px++){
    const wx=(px+.5)/width*recipe.length,wy=(py+.5)/height*recipe.height;
-   const u=(wx-event.x)/Math.max(1,event.width/2),v=(wy-event.y)/Math.max(1,event.height/2);
+   const u=(wx-event.x)/rx,v=(wy-event.y)/ry;
    if(Math.abs(u)>1||Math.abs(v)>1)continue;
    const {coverage,tone}=shape(u,v);
-   let a=coverage;const color=colors[tone];
+   let a=coverage;const color=(recipe.band&&wy>=recipe.band.top?bandColors:colors)[tone];
    if(!a)continue;
    a*=strength;const p=(py*width+px)*4,old=out[p+3]/255,next=a+old*(1-a);
    for(let i=0;i<3;i++)out[p+i]=Math.round((color[i]*a+out[p+i]*old*(1-a))/next);
@@ -203,41 +212,41 @@ export function bakedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,wid
   // Quiet, coherent material modules instead of noise or identical flat grids.
   // Keep the old strip footprint; sample a physical seam at fractional coverage.
   let shade=1,color=paint;
-  const broad=cell(Math.floor(wx/32),Math.floor(physicalY/20));
+  const broad=cell(Math.floor((wx+Math.floor(physicalY/8)%3*3)/32),Math.floor((physicalY+Math.floor(wx/12)%3*2)/20));
   if(patterned){
    if(surface==='brick'||surface==='cinderblock'){
-    const brick=surface==='brick',course=brick?7:12,block=course*2,row=Math.floor(physicalY/course),shift=(row%2)*block/2;
+    const brick=surface==='brick',course=brick?ART_MODULES.brick[1]:ART_MODULES.cinderblock[1],block=course*2,row=Math.floor(physicalY/course),shift=(row%2)*block/2;
     const index=Math.floor((wx+shift)/block),v=cell(index,row);
-    const body=brick?tint(paint,[163,84,53],.38):tint(paint,[137,148,146],.38);
+    const body=brick?tint(paint,[163,84,53],.38):tint(paint,[126,144,143],.46);
     color=tint(body,v<.32?(brick?[125,64,44]:[108,121,120]):(brick?[195,120,81]:[189,195,188]),v<.32?.19:v>.76?.24:.07);
     const joint=Math.max(seam(physicalY,course,.9,texelY),seam(wx+shift,block,.8,texelX));
-    color=tint(color,brick?[171,157,135]:[119,126,123],joint*.75);
+    color=tint(color,brick?[171,157,135]:[119,126,123],joint*.60);
     // Lower edge gives the block one readable course shadow, not a double outline.
-    shade=1-.09*seam(physicalY-1.35,course,.7,texelY);
+    shade=1-.035*seam(physicalY-1.35,course,.7,texelY);
    }else if(surface==='tile'){
-    const v=cell(Math.floor(wx/10),Math.floor(physicalY/10));
+    const v=cell(Math.floor(wx/ART_MODULES.tile[0]),Math.floor(physicalY/ART_MODULES.tile[1]));
     color=tint(paint,[227,235,228],.12+v*.12);
-    const joint=Math.max(seam(wx,10,.55,texelX),seam(physicalY,10,.55,texelY));
-    color=tint(color,[134,146,143],joint*.47);
+    const joint=Math.max(seam(wx,ART_MODULES.tile[0],.55,texelX),seam(physicalY,ART_MODULES.tile[1],.55,texelY));
+    color=tint(color,[134,146,143],joint*.39);
    }else if(surface==='panel'){
     color=tint(paint,[97,128,137],.23);
     const n=cell(Math.floor(wx/24),0);
     shade=1+(n-.5)*.09;
     shade-=.25*seam(wx,24,1.15,texelX);
-    shade+=.11*seam(wx-1.6,24,.8,texelX);
+    shade+=.08*seam(wx-1.6,24,.8,texelX);
     // Sparse fasteners only at panel edges; no pervasive speckle.
     if(mod(wx+2,24)<1.2&&Math.min(Math.abs(physicalY-5),Math.abs(physicalY-(recipe.height-5)))<texelY*.55)shade*=.78;
    }else if(surface==='siding'){
-    const row=Math.floor(physicalY/9),v=cell(0,row);
-    shade=1+(v-.5)*.10-.23*seam(physicalY,9,1.1,texelY)+.07*seam(physicalY-2,9,.65,texelY);
-    if(seam(wx+(row%3)*19,57,.65,texelX)>.6)shade*=.91;
+    const row=Math.floor(physicalY/ART_MODULES.siding[1]),v=cell(0,row);
+    shade=1+(v-.5)*.10-.23*seam(physicalY,ART_MODULES.siding[1],1.1,texelY)+.07*seam(physicalY-2,ART_MODULES.siding[1],.65,texelY);
+    if(row%3===0&&seam(wx+(row%3)*19,57,.65,texelX)>.6)shade*=.94;
    }else if(surface==='concrete'){
     color=tint(paint,[142,149,148],.30);
     shade=1+(broad-.5)*.09-.19*seam(wx,48,.85,texelX);
     if(Math.abs(mod(wx+12,48)-24)<1.1&&Math.abs(mod(physicalY+9,28)-14)<texelY*.55)shade*=.84;
    }else if(surface==='plaster'){
     // Restrained large paint fields. Keep clinically clean finishes calm.
-    shade=1+(broad-.5)*.035;
+    shade=1+(broad-.5)*.025;
     if(recipe.band&&Math.abs(wy-recipe.band.top)<texelY*.35)shade*=.98;
    }
   }
