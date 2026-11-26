@@ -26,5 +26,5 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: Critical interaction and geometry regressions
         run: |
-          node --experimental-strip-types --test tests/hold-objective-area.test.mjs tests/oc-optional-intel.test.mjs tests/ei3-contextual-door-pairs.test.mjs tests/ei4-window-bash.test.mjs tests/contextual-actions-medical-window-20261108.test.mjs tests/r6-0-tactical-action-audit.test.mjs tests/a3-10-preopen-shoulder-cap.test.mjs tests/exterior-curb-service-20261108.test.mjs tests/physicality-12-door-proportions.test.mjs
+          node --experimental-strip-types --test tests/hold-objective-area.test.mjs tests/oc-optional-intel.test.mjs tests/ei3-contextual-door-pairs.test.mjs tests/ei4-window-bash.test.mjs tests/contextual-actions-medical-window-20261108.test.mjs tests/r6-0-tactical-action-audit.test.mjs tests/a3-10-preopen-shoulder-cap.test.mjs tests/exterior-curb-service-20261108.test.mjs tests/physicality-12-door-proportions.test.mjs tests/ux2-21-look-watch.test.mjs tests/breach-here-watch-continuity.test.mjs tests/breach-active-watch-marker.test.mjs
       - run: npm run build

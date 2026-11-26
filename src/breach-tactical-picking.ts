@@ -5,6 +5,7 @@ import {team,liveVisibility,insertPlanNode,type Session,type TeamActor}
  from './breach-game.ts';
 import {presentActor,presentCivilian} from './rendering/breach-3d-disclosure-presenter.ts';
 import {doorKnown} from './breach-intel.ts';
+import {plannedAimHandle} from './breach-plan.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {resolveTacticalPick,screenSegmentDistance,
  type TacticalPick} from './ui/tactical-target-resolver.ts';
@@ -83,9 +84,10 @@ export function pickTacticalTarget(input:TacticalPickInput):TacticalPick|null{
           distancePx:distance(here,screen),
           corePx:touch?(unit.id===selected?19:17):pen?16:13,
           haloPx:selectedHandle&&touch?24:undefined});
-      if(node.aimPoint&&node.aimMode==='track')
+      const aimHandle=plannedAimHandle(node);
+      if(aimHandle)
         hits.push({kind:'watch',owner:unit.id,nodeId:node.id,
-          distancePx:distance(worldToScreen(node.aimPoint,12),screen),
+          distancePx:distance(worldToScreen(aimHandle,12),screen),
           corePx:touch?17:pen?15:12,
           haloPx:selectedHandle&&touch?23:undefined});
       if(node.aimPoint&&node.kind==='flash')
