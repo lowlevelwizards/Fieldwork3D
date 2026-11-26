@@ -389,7 +389,7 @@ test('C7 disclosure labels identify their individual case, weapon and operation'
  const ui=source('campaign-ui.ts');
  assert.match(ui,/caseSummary\.setAttribute\('aria-label','Case information: '\+view\.title/);
  assert.match(ui,/eligibilitySummary\.setAttribute\('aria-label'/);
- assert.match(ui,/for '\+weapon\.toUpperCase\(\)\+' platform'/);
+ assert.match(ui,/for '\+quote\.name/);
  assert.match(ui,/recordSummary\.setAttribute\('aria-label'/);
  assert.match(ui,/\+' · DAY '\+report\.day/);
 });
@@ -410,7 +410,7 @@ test('C8 UI-only disclosure continuity survives in-place campaign refresh',()=>{
  ])assert.ok(home.includes("dataset.campaignDetail='"+key+"'"),
   'Disclosure missing persistence identity: '+key);
  assert.match(home,/recordDetail\.dataset\.campaignDetail='operation:'\+report\.id/);
- assert.match(home,/eligibility\.dataset\.campaignDetail='weapon:'\+weapon/);
+ assert.match(home,/eligibility\.dataset\.campaignDetail='weapon:'\+quote\.presetId/);
  assert.match(ui,/intelligence\.dataset\.campaignDetail='case:'\+c\.id/);
 });
 test('C8 browser smoke tests continuity after a real campaign purchase',()=>{

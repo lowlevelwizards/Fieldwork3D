@@ -9,6 +9,7 @@ import {issueWeaponPreset} from './breach-weapon-issue.ts';
 import {freshMagazineIssue} from './arsenal/live-magazine-capacity.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {kitMedicalSupplies} from './equipment-medical-supplies.ts';
+import {readEquipmentLoadout} from './equipment-loadouts.ts';
 import {readWardrobe} from './operator-wardrobe-data.ts';
 
 export function issueDispatchPilotOperator(person:CampaignOperator,
@@ -20,7 +21,7 @@ export function issueDispatchPilotOperator(person:CampaignOperator,
  const {weapon,weaponConfiguration}=issueWeaponPreset(appearance.weapon.presetId);
  if(appearance.kit.slots.primary!=='primary-'+weapon)
   throw Error('Dispatch starter weapon and equipment class mismatch');
- const loadout={version:1 as const,slots:{...appearance.kit.slots}};
+ const loadout=readEquipmentLoadout({version:1,slots:{...appearance.kit.slots}},weapon,person.id);
  const wardrobe=readWardrobe({...appearance.wardrobe,
   skinTone:person.wardrobe?.skinTone,
   hairStyle:person.wardrobe?.hairStyle,hairTone:person.wardrobe?.hairTone});

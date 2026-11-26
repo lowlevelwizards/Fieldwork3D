@@ -27,3 +27,6 @@ Logistics selects actual catalog models with one compact picker, checks both exi
 
 ## R4.3b — exact owned-serial Squad issue candidate
 Squad Equipment & Care displays the actual equipped body plus individual unassigned named/conditioned serials. Uses lazy read-side options and the same physical/policy/attachment preflight as the existing mutation. The old Outfit/gallery class picker and cross-class factory preset exchange remain pending. Curated Dispatch specialist shotgun authorization now maps to the previously used R870 Police Wood migration default in the two references that already offered shotguns; this is a game-policy compatibility mapping, not a historical issue claim. Exact tests pending.
+
+## R4.3 verification repairs
+Exact R4.3b retirement run 45841067301 passed typecheck and the named procurement/issue cases, but failed on two stale UI identity assertions and a Dispatch starter save round trip (missing field inventory and secondary defaults). Canonicalize starter loadout at issue, and update disclosure assertions to model identity. Further art and physical gates remain red; no merge authorization from this checkpoint alone.
