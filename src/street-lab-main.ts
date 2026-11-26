@@ -21,17 +21,17 @@ function draw(){
  const p=active.streetInfrastructure,r=planPublicStreet(active);
  const width=r?(r.entry==='north'||r.entry==='south'?r.road.depth:r.road.width):0;
  const stats=scene.performanceStats();
- output.textContent=(base.archetype??'site')+' · seed '+base.seed+' · '+(p?p.kind+' · '+(p.cropped?'cropped':'full')+' · '+p.completeLanes+'/'+p.nominalLanes+' complete lanes':'legacy')+' · road '+(width/20).toFixed(2)+'m · '+(p?streetConflicts(active,p).length+' fixture conflicts · ':layout.value==='pilot'?'pilot fallback · ':'')+stats.calls+' draws · '+stats.triangles+' triangles';
+ output.textContent=(base.archetype??'site')+' · seed '+base.seed+' · '+(p?p.kind+' · '+(p.cropped?'cropped':'full')+' · '+p.completeLanes+'/'+p.nominalLanes+' complete lanes':'legacy')+' · road '+(width/20).toFixed(2)+'m · '+(p?streetConflicts(active,p).length+' fixture conflicts · ':layout.value==='pilot'?'safe legacy fallback · ':'')+(active.exteriorZones??[]).reduce((n,z)=>n+(z.vehicleParking?z.vehicleParking.count*(z.vehicleParking.secondRowCenter===undefined?1:2):0),0)+' marked bays · '+active.cover.filter(c=>['street-lamp','hydrant','bollard','public-bench','wayfinding-sign','parking-sign'].includes(c.fixture??'')).length+' street fixtures · '+stats.calls+' draws · '+stats.triangles+' triangles';
 }
 function rebuild(){
  const p=layout.value==='proposal'?proposeStreetInfrastructure(base,kind.value==='auto'?undefined:kind.value as StreetKind):null;
- active=layout.value==='pilot'?generateSite(base.seed,scale.value as SiteScale,undefined,{}, {streetInfrastructure:true}):p?{...base,streetInfrastructure:p}:base;
+ active=layout.value==='pilot'?generateSite(base.seed,scale.value as SiteScale):p?{...base,streetInfrastructure:p}:base;
  activateSite(active);session=newSession(0,active.seed,'exterior-known',scale.value as SiteScale,undefined,active);
  scene.applySite(active);draw();
 }
 function generate(){
  const n=Math.max(1,Math.min(999999,Math.floor(Number(seed.value)||4)));seed.value=String(n);
- base=generateSite(n,scale.value as SiteScale);rebuild();
+ base=generateSite(n,scale.value as SiteScale,undefined,{}, {streetInfrastructure:false});rebuild();
 }
 document.getElementById('generate')!.addEventListener('click',generate);
 scale.addEventListener('change',generate);layout.addEventListener('change',rebuild);kind.addEventListener('change',rebuild);view.addEventListener('change',draw);

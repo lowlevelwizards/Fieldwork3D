@@ -4,9 +4,9 @@ import {planStreetFinishes} from '../src/worldgen/street-finish.ts';
 import {planStreetMarkings} from '../src/worldgen/street-markings.ts';
 import {writeFileSync} from 'node:fs';
 const rows=[];
-for(const scale of ['standard','large'])for(let seed=1;seed<=22;seed++){
- const s=generateSite(seed,scale),p=proposeStreetInfrastructure(s),modern=p?{...s,streetInfrastructure:p}:s;
- const pilot=generateSite(seed,scale,undefined,{}, {streetInfrastructure:true});
+for(const scale of ['small','standard','large'])for(let seed=1;seed<=22;seed++){
+ const s=generateSite(seed,scale,undefined,{}, {streetInfrastructure:false}),p=proposeStreetInfrastructure(s),modern=p?{...s,streetInfrastructure:p}:s;
+ const pilot=generateSite(seed,scale);
  const semantic=s=>JSON.stringify([s.rooms,s.doors,s.walls,s.windows,s.spawn,s.enemies,s.objective,s.extract,s.encounter]);
  if(semantic(pilot)!==semantic(s))throw Error('ST pilot changed mission semantics '+seed+':'+scale);
  if(pilot.streetInfrastructure&&streetConflicts(pilot,pilot.streetInfrastructure).length)throw Error('ST pilot public conflict');

@@ -7,7 +7,7 @@ test('ST pilot preserves canonical mission semantics, existing fleet density and
  let accepted=0;
  for(const seed of [1,4,5,6,7,9,10,11]){
   const context={mission:'rescue',enableCivilians:true};
-  const legacy=generateSite(seed,'large',undefined,context),pilot=generateSite(seed,'large',undefined,context,{streetInfrastructure:true});
+  const legacy=generateSite(seed,'large',undefined,context,{streetInfrastructure:false}),pilot=generateSite(seed,'large',undefined,context);
   assert.equal(legacy.streetInfrastructure,undefined);
   for(const key of ['rooms','walls','doors','windows','spawn','enemies','objective','extract','encounter','identity','planFamily'])assert.deepEqual(pilot[key],legacy[key],seed+':'+key);
   const cars=s=>s.cover.filter(c=>vehicleFamily(c.fixture??'')).length;

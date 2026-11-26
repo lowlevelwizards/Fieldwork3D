@@ -40,3 +40,6 @@ Contextual private-side lamp, hydrant, bollard, wayfinding and bench placement u
 
 ## ST5 extension — double-row parking
 For sufficiently deep non-industrial lots, two full perpendicular rows share one full-width circulation aisle and a separate connection. Each row retains fixed pitch and each physical stall/paint/clearance consumer uses the same row coordinates. Accessible transfer reservation stays on the primary pedestrian-side row. Deep lot proposal has a bounded fallback to single-row and legacy plans. Pending exact-head tests.
+
+## ST12 candidate default integration (not released)
+Ordinary new-site generation now selects ST without an opt-in; a failed physical retrofit retains the safe historical layout. Explicit historical witnesses and no-vehicle fixtures can still request legacy. Street Lab defaults to the real generation path, retaining legacy and shadow comparison, and reports marked capacity and street furniture counts. Expanded the default-vs-legacy audit to all three scales (66 sites). Exact-head validation pending; default is not live until the full release gate clears.

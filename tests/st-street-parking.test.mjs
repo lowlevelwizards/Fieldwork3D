@@ -40,7 +40,7 @@ test('accessible bay owns a complete adjacent transfer slot within the row',()=>
 
 test('two complete parking rows share the same aisle without consuming the transfer bay',()=>{
  for(const side of ['north','south','east','west']){
-  const [s,z]=site(side,420),p=proposeStreetParkingLayout(s,z);
+  const [s,z]=site(side,390),p=proposeStreetParkingLayout(s,z);
   assert.ok(p&&p.secondRowCenter!==undefined,side);
   assert.equal(Math.abs(p.rowCenter-p.aisleCenter),p.rowDepth/2+p.aisleDepth/2);
   assert.equal(Math.abs(p.secondRowCenter-p.aisleCenter),p.rowDepth/2+p.aisleDepth/2);

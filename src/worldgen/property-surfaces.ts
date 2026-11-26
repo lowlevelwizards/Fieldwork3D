@@ -90,6 +90,14 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
    }
    if(zone.vehicleParking){
      const p=zone.vehicleParking,broad=p.axis==='x',stride=p.alongLength/p.count;
+     // Paint the actual vehicular entrance's private-side waiting line;
+     // never paint a stop across the public carriageway or footway.
+     if(p.version===1&&p.access){
+      const a=p.access,sign=entry==='south'||entry==='east'?1:-1;
+      const across=a.acrossCenter+sign*(a.depth/2-10);
+      if(broad)add(zone,'stall-end-line',a.alongCenter,across,a.width-8,2);
+      else add(zone,'stall-end-line',across,a.alongCenter,2,a.width-8);
+     }
      if(p.role==='loading'){
       for(let i=0;i<p.count;i++){
        const along=p.alongCenter+(i+.5-p.count/2)*stride;

@@ -110,7 +110,10 @@ export function generateSite(seed:number,scale:SiteScale='standard',
  // Select the same canonical architecture and encounter as the existing
  // generator, then retrofit its finished frontage. Parking may not change
  // mission selection, room programs, enemy/civilian positions or retries.
- const finish=(site:Site)=>withSitePropIds(generationOptions.streetInfrastructure===true?
+ // ST is the normal new-site generation path. Explicit historical/no-vehicle
+ // witnesses keep the old path unless streetInfrastructure is requested.
+ const useStreet=generationOptions.streetInfrastructure??generationOptions.vehiclePlacement!==false;
+ const finish=(site:Site)=>withSitePropIds(useStreet?
   attachStreetInfrastructure(site,generationOptions.vehiclePlacement!==false):generationOptions.vehiclePlacement!==false?attachPlannedVehicles(site):site);
  for(let attempt=0;attempt<6;attempt++){
   // One optional alternate after the first navigable map; do not multiply
