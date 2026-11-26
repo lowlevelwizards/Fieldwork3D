@@ -494,8 +494,8 @@ export function createTacticalPaletteController(config:{
       e.health<=0&&captureVitalStatus(e)!=='deceased'&&!e.carriedById&&
       (e.side===a.side||liveVisibility(state,e.p))&&
       sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)),34):null;
-  const casualtyAtPlan=routeEndCivilianActions&&!a.carryingId&&!a.plan.some(n=>n.kind==='evacuate')?
-    nearestPaletteCandidate(focusedCivilians,at,c=>
+  const casualtyAtPlan=routeEndCivilianActions?
+    nearestPaletteCandidate(focusedCivilians,at,c=>!a.carryingId&&!a.plan.some(n=>n.kind==='evacuate')&&
       c.health<=0&&!c.carriedById&&liveVisibility(state,c.p)):null;
   const secondaryHand=plannedSecondaryHand(a.secondarySwitch,a.plan,node?.id);
   const secondaryKit=a.equipment?.secondary;
