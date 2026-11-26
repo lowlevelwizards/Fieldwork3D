@@ -1,0 +1,50 @@
+name: WA3 shared artwork vocabulary
+on:
+  push:
+    branches: [feature/wa0-wa2-weapon-art-foundation]
+    paths:
+      - 'src/weapons/geometry/weapon-integrated-surface-atlas.ts'
+      - 'src/weapons/geometry/weapon-art-material-vocabulary.ts'
+      - 'src/weapons/geometry/profile-primitives.ts'
+      - 'src/weapons/geometry/fnc-pixel-details.ts'
+      - 'src/weapons/geometry/g36-pixel-details.ts'
+      - 'src/arsenal/wa3-*'
+      - 'weapon-art-material-study.html'
+      - 'scripts/*wa3*'
+      - 'tests/wa3-*'
+      - '.github/workflows/wa3-art-vocabulary.yml'
+  workflow_dispatch:
+concurrency:
+  group: wa3-vocabulary-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  parity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run check
+      - run: node --experimental-strip-types --test tests/wa3-shared-art-vocabulary.test.mjs tests/wa0-weapon-art-geometry.test.mjs tests/arsenal-a2-material-unification.test.mjs tests/arsenal-a4-surface-detail.test.mjs tests/weapon-fnc-p21-pixel-surfaces.test.mjs tests/weapon-g36-p8-hk-identity.test.mjs
+      - name: Compare all artwork to pinned WA2
+        run: |
+          mkdir -p reports/wa3
+          node --experimental-strip-types scripts/audit-wa3-art-parity.mjs reports/wa3/candidate.json
+          git worktree add --detach /tmp/wa2-art ea2d4dde28258cb3c86ff6152ca2c37284025f4e
+          ln -s "$PWD/node_modules" /tmp/wa2-art/node_modules
+          cp scripts/audit-wa3-art-parity.mjs /tmp/wa2-art/scripts/
+          (cd /tmp/wa2-art && node --experimental-strip-types scripts/audit-wa3-art-parity.mjs "$GITHUB_WORKSPACE/reports/wa3/baseline.json")
+          diff -u reports/wa3/baseline.json reports/wa3/candidate.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wa3-art-evidence
+          path: reports/wa3/
+          if-no-files-found: ignore
