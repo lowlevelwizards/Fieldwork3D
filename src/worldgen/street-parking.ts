@@ -1,7 +1,7 @@
 /** ST5: dimension-driven private parking pilot. No road overlap and no
  * stretching stalls to fill frontage. Dedicated vehicle entrance is kept
- * separate from the pedestrian approach. Single rows first; double rows
- * and angled geometry require the subsequent multi-row layout contract. */
+ * separate from the pedestrian approach. Complete mirrored rows fit only
+ * when there is enough depth. Angled bays require an oriented collision contract. */
 import type {Site,ExteriorZone} from '../breach-site.ts';
 import type {VehicleParkingLayout} from './vehicle-parking-layout.ts';
 import {STREET_DIMENSIONS as D} from './street-standards.ts';

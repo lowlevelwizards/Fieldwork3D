@@ -8,6 +8,9 @@ on:
       - 'tests/st-*.test.mjs'
       - 'scripts/audit-st-streets.mjs'
       - 'scripts/verification/st-lab-browser.mjs'
+      - 'scripts/verification/st-main-parity.mjs'
+      - 'src/breach-site.ts'
+      - 'tests/property-surface-substrate.mjs'
       - '.github/workflows/st-street.yml'
   workflow_dispatch:
 permissions:
@@ -48,4 +51,27 @@ jobs:
         with:
           name: st-lab-browser
           path: artifacts/st-lab-browser/
+          if-no-files-found: ignore
+  current-main-parity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || 'main' }}
+          path: st-before
+      - run: npm install --prefix st-before --no-audit --no-fund
+      - run: node --experimental-strip-types scripts/verification/st-main-parity.mjs
+        env:
+          ST_BASE_DIR: st-before
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: st-current-main-parity
+          path: st-main-parity.json
           if-no-files-found: ignore

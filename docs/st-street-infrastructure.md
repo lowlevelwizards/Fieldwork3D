@@ -49,3 +49,6 @@ Versioned secondary-road geometry joins a complete main street only where the en
 
 ## ST7 traffic control and new asset
 A separate chunky octagonal stop sign is registered in canonical scale and the Asset Lab. A side-road stopping bar appears only with a physically fitted right-hand approach sign; the sign and marking are accepted as one versioned layout after route/cover validation. If the map edge cannot fit a legal sign, omit the control instead of painting an unsupported stop. No simulated traffic or enforcement.
+
+## Exact main release evidence
+Dedicated ST current-main parity job checks the actual PR base against the explicit legacy path on 18 mission/scale cases; exact architecture, actors, objectives and encounters for the default path; same saved-world fixed-step physics across both engines; actual new ST replay/restart snapshot integrity. Audit now reports real default acceptance by scale, full lanes, secondary roads, stop control, double rows and observed generation costs. Historical V18 and C11 checks remain independent; their stale-fingerprint failures are not silently accepted. No production merge before actual final evidence.
