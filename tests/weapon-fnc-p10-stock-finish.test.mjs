@@ -6,7 +6,7 @@ import {FNC_P1,buildFNCStage1Silhouette} from '../src/weapons/geometry/fnc-stage
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../src/equipment-weapon-assemblies.ts';
-import {HK_BLACK_METAL,HK_DARK_POLYMER}
+import {FNC_BLACK_METAL,FNC_DARK_POLYMER}
  from '../src/weapons/geometry/weapon-visual-palette.ts';
 
 const box=x=>new THREE.Box3().setFromObject(x);
@@ -68,10 +68,10 @@ test('P10: factory butt gets former cheek polymer finish, all other stock beams 
  const butt=get(factory,'fncP10DarkThickButtpad');
  const hinge=get(factory,'fncP10RefinedHinge');
  const sheet=get(factory,'fncP10LongThinConnector');
- assert.equal(top?.material,HK_BLACK_METAL);
- assert.equal(hinge?.material,HK_BLACK_METAL);
- assert.equal(sheet?.material,HK_BLACK_METAL);
- assert.equal(butt?.material,HK_DARK_POLYMER);
+ assert.equal(top?.material,FNC_BLACK_METAL);
+ assert.equal(hinge?.material,FNC_BLACK_METAL);
+ assert.equal(sheet?.material,FNC_BLACK_METAL);
+ assert.equal(butt?.material,FNC_DARK_POLYMER);
  assert.equal(Boolean(get(factory,'fncCheekSleeve')),false);
  assert.equal(Boolean(get(factory,'fncP8OpenTriggerGuard')),false);
  assert.ok(factory.children.every(x=>x.name.startsWith('family-')));

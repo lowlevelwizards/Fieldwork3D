@@ -41,12 +41,17 @@ test('A2 AR, AK, HK, FAL and FNC all receive authored material refinements',()=>
  assert.equal(palette.AK_COVER_STAMP_METAL.type,'MeshStandardMaterial');
  assert.equal(palette.AK_COVER_STAMP_METAL.color.getHex(),0x728077);
  assert.equal(palette.HK_BLACK_METAL.color.getHex(),0x3e4441);
- assert.equal(palette.FAL_BLACK_METAL.color.getHex(),0x414845);
+ assert.equal(palette.FAL_BLACK_METAL.color.getHex(),0x495052,'WA4 reviewed cool-neutral steel');
+ assert.equal(palette.FAL_DARK_POLYMER.color.getHex(),0x343d32);
+ assert.equal(palette.FNC_BLACK_METAL.color.getHex(),0x474e50);
+ assert.equal(palette.FNC_DARK_POLYMER.color.getHex(),0x303831);
+ assert.notStrictEqual(palette.FNC_BLACK_METAL,palette.HK_BLACK_METAL);
  assert.equal(palette.FAL_DARK_POLYMER.metalness,.015);
- // FNC assembly intentionally uses HK steel and FAL lower/polymer, so
- // these refinements are propagated rather than color-protecting the model.
+ // WA4 FNC steel/polymer use scoped calibrated finishes; FAL lower/fore-end
+ // finish sharing is retained, and HK must not inherit this calibration.
  const fnc=readFileSync(new URL('../src/weapons/geometry/fnc-silhouettes.ts',import.meta.url),'utf8');
- assert.match(fnc,/HK_BLACK_METAL/);
+ assert.match(fnc,/FNC_BLACK_METAL/);
+ assert.doesNotMatch(fnc,/HK_BLACK_METAL/);
  assert.match(fnc,/FAL_DARK_POLYMER/);
  const ak=readFileSync(new URL('../src/weapons/geometry/ak-silhouettes.ts',import.meta.url),'utf8');
  assert.doesNotMatch(ak,/new THREE\.MeshLambertMaterial/);

@@ -47,13 +47,17 @@ export const WEAPON_FINISH_SPECS={
  'g36-rubber':{color:0x252d29,roughness:.99,metalness:.005,role:'polymer'},
  // Smoked magazine remains opaque; one quiet body-tone contrast, no alpha sort.
  'g36-smoked-mag':{color:0x525f59,roughness:.95,metalness:.008,role:'polymer'},
- 'fal-steel':{color:0x414845,roughness:.82,metalness:.12,role:'steel'},
- 'fal-lower-steel':{color:0x363d3a,roughness:.87,metalness:.10,role:'steel'},
- 'fal-polymer':{color:0x343d39,roughness:.93,metalness:.015,role:'polymer'},
+ 'fal-steel':{color:0x495052,roughness:.82,metalness:.12,role:'steel'},
+ 'fal-lower-steel':{color:0x3e4545,roughness:.87,metalness:.10,role:'steel'},
+ 'fal-polymer':{color:0x343d32,roughness:.93,metalness:.015,role:'polymer'},
  'fal-vent-shadow':{color:0x232c28,roughness:.98,metalness:.015,role:'polymer'},
  'fal-mag-rib':{color:0x404847,roughness:.94,metalness:.10,role:'steel'},
  'fal-transition-steel':{color:0x2a312e,roughness:.86,metalness:.13,role:'steel'},
  'fal-muzzle-slot':{color:0x202624,roughness:.98,metalness:.06,role:'steel'},
+ // WA4: scoped FNC artwork calibration. Preserve the shared HK finish
+ // signatures; only the FNC borrows this reviewed WA3 cool/neutral study.
+ 'fnc-steel':{color:0x474e50,roughness:.82,metalness:.12,role:'steel'},
+ 'fnc-polymer':{color:0x303831,roughness:.95,metalness:.015,role:'polymer'},
  // G2.7 miniature sidearms: dedicated shared signatures keep G19X steel
  // distinct from its FDE polymer and soften the exaggerated port contrast.
  'glock-coyote-slide':{color:0x85745f,roughness:.84,metalness:.10,role:'steel'},

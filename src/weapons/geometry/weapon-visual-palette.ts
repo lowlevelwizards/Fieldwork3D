@@ -39,6 +39,9 @@ export const G36_LENS_BLACK=weaponFinish('g36-lens');
 export const G36_RUBBER=weaponFinish('g36-rubber');
 /** G36 FT1.9D0 shared opaque smoky-polymer magazine; no transparency sorting. */
 export const G36_SMOKED_MAGAZINE=weaponFinish('g36-smoked-mag');
+/** WA4 calibrated FNC-specific finish aliases; HK remains unchanged. */
+export const FNC_BLACK_METAL=weaponFinish('fnc-steel');
+export const FNC_DARK_POLYMER=weaponFinish('fnc-polymer');
 export const FAL_BLACK_METAL=weaponFinish('fal-steel');
 export const FAL_LOWER_METAL=weaponFinish('fal-lower-steel');
 export const FAL_DARK_POLYMER=weaponFinish('fal-polymer');
