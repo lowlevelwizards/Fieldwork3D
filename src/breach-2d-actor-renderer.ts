@@ -130,6 +130,16 @@ function missionMarkers(){
   draw.fillStyle='#e1d1a2';draw.font='600 12px "Work Sans",sans-serif';
   draw.textAlign='center';
   draw.fillText(state.mission==='secure'?'SECURE':'EXTRACT',p.x,p.y-39);
+  if(!replaying&&state.mission==='secure'&&state.missionType==='hold'){
+    const progress=Math.max(0,Math.min(1,state.holdTime/7));
+    draw.save();draw.strokeStyle='rgba(216,204,152,.25)';draw.lineWidth=3;
+    draw.beginPath();draw.arc(p.x,p.y,26,0,Math.PI*2);draw.stroke();
+    draw.strokeStyle='#d8cc98';draw.lineCap='round';
+    draw.beginPath();draw.arc(p.x,p.y,26,-Math.PI/2,-Math.PI/2+Math.PI*2*progress);draw.stroke();
+    draw.fillStyle='#d8cc98';draw.font='600 10px "Work Sans",sans-serif';
+    draw.textAlign='center';draw.fillText(state.holdTime.toFixed(1)+'/7s',p.x,p.y+43);
+    draw.restore();
+  }
 }
 function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
   const {state,replaying}=getFrame();
