@@ -94,8 +94,8 @@ el('render-tactical').addEventListener('click',async()=>{
  try{
   tactical??=(await import('./wall-material-lab-tactical.ts')).createTacticalMaterialPreview(el('tactical-host'));
   const building=el<HTMLSelectElement>('tactical-building').value as Parameters<typeof tactical.draw>[0],seed=Number(el<HTMLInputElement>('tactical-seed').value)||23;
-  tactical.draw(building,seed,Number(condition.value),el<HTMLSelectElement>('tactical-distance').value==='close');
-  status.textContent=building+' · seed '+seed+' · wear '+condition.value+'/100';
+  tactical.draw(building,seed,Number(condition.value),el<HTMLSelectElement>('tactical-distance').value==='close',el<HTMLSelectElement>('density').value==='56');
+  status.textContent=building+' · seed '+seed+' · wear '+condition.value+'/100 · '+(el<HTMLSelectElement>('density').value==='56'?'metric wall candidate':'production wall atlas');
  }catch(error){status.textContent='Scene unavailable: '+String(error);}
  finally{tacticalBusy=false;button.disabled=false;}
 });
