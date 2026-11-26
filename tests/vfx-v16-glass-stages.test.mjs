@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {glassImpactDamage} from '../src/breach-glass-damage.ts';
 import {initializeWindows,damageWindow,windowPaneSegment} from '../src/breach-windows.ts';
-import {segmentAttachment,windowMarkPose,doorMarkLocalPose} from '../src/breach-impact-surface.ts';
+import {segmentAttachment,windowMarkPose,doorMarkLocalPose,surfaceMarkFacesCamera} from '../src/breach-impact-surface.ts';
 import {createShotEnvironmentCommitter} from '../src/breach-shot-environment.ts';
 import {bloodMarkTint} from '../src/breach-blood-evidence.ts';
 test('abstract standard attack pacing leaves two readable damaged stages',()=>{
@@ -31,4 +31,14 @@ test('door glazing stages deduplicate one shot and retain frame ownership',()=>{
 test('blood keeps muted original ground tint, darker pools',()=>{
  assert.equal(bloodMarkTint({bloodKind:'splat'}),0x763c38);
  assert.equal(bloodMarkTint({bloodKind:'pool'}),0x703b37);
+});
+
+test('Glass impact art is visible from both faces, solid marks remain one-sided',()=>{
+ for(const kind of ['window','door']){
+  assert.equal(surfaceMarkFacesCamera('glass',{kind},1),true);
+  assert.equal(surfaceMarkFacesCamera('glass',{kind},-1),true);
+  assert.equal(surfaceMarkFacesCamera('metal',{kind},-1),false);
+ }
+ assert.equal(surfaceMarkFacesCamera('glass',{kind:'wall'},-1),false);
+ assert.equal(surfaceMarkFacesCamera('stone',{kind:'wall'},1),true);
 });
