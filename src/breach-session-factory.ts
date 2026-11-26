@@ -107,7 +107,9 @@ export function assembleSession(index=0,siteSeed?:number,
         a.routineIndex=0;a.routinePauseUntil=1.5+enemyRng()*3;
         a.encounterReactionUntil=Number.POSITIVE_INFINITY;}
       a.health=enemyRng()<.18?3:4;
-      const issued=enemyKitForEncounter(spec,site.seed,i);
+      const group=site.encounter?.groups.find(g=>g.id===spec?.groupId);
+      const issued=enemyKitForEncounter(spec,site.seed,i,group?.behaviorProfile?
+        {kind:group.behaviorProfile,id:group.id}:undefined);
       a.weapon=issued.weapon;
       a.weaponConfiguration=issued.weaponConfiguration;
       a.equipment=issued.equipment;a.wardrobe=issued.wardrobe;
@@ -121,7 +123,6 @@ export function assembleSession(index=0,siteSeed?:number,
       a.injuryStage=0;
       // One seeded draw for temperament when applicable, one for resolve:
       // no extra random draws or coupling between unrelated actors.
-      const group=site.encounter?.groups.find(g=>g.id===spec?.groupId);
       const purpose=group?.purpose;
       const doctrine=group?.behaviorProfile?doctrineForGroup(group.behaviorProfile):doctrineForPurpose(purpose);
       a.npcIdentity=npcIdentity(site.seed,a.id,purpose,spec?.role,site.encounter?.premise,

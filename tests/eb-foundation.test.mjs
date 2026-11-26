@@ -171,3 +171,23 @@ test('EB12 fallen ally index preserves actual membership and ordering',()=>{
  const grouped=fallenAlliesByGroup([a,b,actor('live','g',2),actor('blue','g',0,'blue'),actor('captive','g',0,'red',true),c]);
  assert.deepEqual(grouped.get('g'),[a,c]);assert.deepEqual(grouped.get('h'),[b]);
 });
+
+import {enemyKitForEncounter} from '../src/breach-enemy-loadouts.ts';
+import {resolvedWardrobe} from '../src/operator-wardrobe-data.ts';
+import {ENEMY_OUTFIT_PROFILES} from '../src/breach-enemy-outfit-profiles.ts';
+test('EB13 generated group kit is deterministic, actual and independent of role',()=>{
+ for(const kind of AI_GROUP_KINDS){
+  const group={kind,id:'group-1'};
+  for(let i=0;i<10;i++){
+   const a=enemyKitForEncounter({role:'occupant'},31,i,group);
+   const b=enemyKitForEncounter({role:'leader'},31,i,group);
+   assert.deepEqual(a.equipment,b.equipment);assert.deepEqual(a.wardrobe,b.wardrobe);
+   assert.ok(ENEMY_OUTFIT_PROFILES[kind].weapons.includes(a.preset.id));
+   assert.equal(a.equipment.slots.primary,'primary-'+a.weapon);
+   assert.ok(a.weaponConfiguration.build);
+   assert.equal(a.equipment.slots.tactical,'tactical-none');
+   assert.equal(a.equipment.slots.utility,'utility-none');
+   assert.ok(resolvedWardrobe(a.wardrobe,a.equipment).top);
+  }
+ }
+});
