@@ -75,7 +75,7 @@ export function createShotResolver(ports:ShotResolverPorts){
  const {team,enemies,isSeen,liveVisibility,hear,notify,battleEvent,random,
   observedCivilianFireLane,civilianShotWithheld,requestClearFireStep,
   emitMaterialEvents,damageStruckCover,shatterStruckDoorGlass,
-  shatterStruckWindows}=ports;
+  shatterStruckWindows,damageStruckCoverings}=ports;
  function commitShot(s:Session,a:TeamActor,target:TeamActor,
   ctx:ShotCommitContext):void{
   if(!activeCombatant(a)||!activeCombatant(target))return;
@@ -248,6 +248,7 @@ export function createShotResolver(ports:ShotResolverPorts){
     return t!==null&&t<=stopFraction+.0001;
   });
   const glassDamage=glassImpactDamage(a.weapon,!!secondaryWeapon);
+  damageStruckCoverings(s,strike.coveringHits,glassDamage,stopFraction);
   shatterStruckWindows(s,actualRay,glassDamage);
   shatterStruckDoorGlass(s,strike.glassDoorHits,stopFraction,glassDamage);
   damageStruckCover(s,strike.coverHits,weapon.damage*.45,stopFraction,a.id);

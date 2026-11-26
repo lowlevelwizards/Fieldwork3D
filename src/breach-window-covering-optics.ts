@@ -41,15 +41,25 @@ export function coveringStripsBlockRay(strips:readonly CoveringOpticalStrip[],a:
   if(height>=s.bottom&&height<=s.top)return true;
  }return false;
 }
-type Optics={windows:Session['windows'];site:Session['site'];revision:number;strips:CoveringOpticalStrip[];standing:Segment[];low:Segment[];all:Segment[]};
+type PhysicalStrip=CoveringOpticalStrip & {windowIndex:number;family:WindowCovering['family']};
+type Optics={physical:PhysicalStrip[];windows:Session['windows'];site:Session['site'];revision:number;strips:CoveringOpticalStrip[];standing:Segment[];low:Segment[];all:Segment[]};
 const cache=new WeakMap<Session,Optics>(),empty:Session['windows']=[];
 export function sessionCoveringOptics(s:Session):Optics{
  const windows=s.windows??empty,revision=s.objectRevision;
  const old=cache.get(s);
  if(old&&old.windows===windows&&old.site===s.site&&old.revision===revision)return old;
- const strips=windows.flatMap(w=>windowCoveringOpticalStrips(w));
+ const physical:PhysicalStrip[]=[];
+ const strips=windows.flatMap((w,index)=>{
+  const c=normalizeWindowCovering(w),strips=windowCoveringOpticalStrips(w,c);
+  if(c)for(const strip of strips){
+   const shift=(w.vertical?-c.side:c.side)*8,plane=strip.plane+shift;
+   const edge:Segment=w.vertical?{a:{x:plane,y:strip.lo},b:{x:plane,y:strip.hi}}:{a:{x:strip.lo,y:plane},b:{x:strip.hi,y:plane}};
+   physical.push({...strip,plane,edge,windowIndex:index,family:c.family});
+  }
+  return strips;
+ });
  const at=(height:number)=>strips.filter(p=>height>=p.bottom&&height<=p.top).map(p=>p.edge);
- const next={windows,site:s.site,revision,strips,standing:at(32),low:at(22),all:strips.map(p=>p.edge)};
+ const next={physical,windows,site:s.site,revision,strips,standing:at(32),low:at(22),all:strips.map(p=>p.edge)};
  cache.set(s,next);return next;
 }
 export function windowCoveringsBlockSight(s:Session,a:Pt,b:Pt,fromHeight:number,toHeight=fromHeight):boolean{
@@ -68,3 +78,5 @@ export function setSessionWindowCovering(s:Session,id:string,covering:WindowCove
  if(!next||JSON.stringify(next)===JSON.stringify(w.covering))return false;
  w.covering=next;s.objectRevision++;s.illuminationRevision=(s.illuminationRevision??0)+1;return true;
 }
+
+export function windowCoveringPhysicalStrips(s:Session):readonly PhysicalStrip[]{return sessionCoveringOptics(s).physical;}

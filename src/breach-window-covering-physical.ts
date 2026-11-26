@@ -19,3 +19,11 @@ export function hardCoveringBlocksPaneContact(w:WindowOpening,p:Pt):boolean{
  const c=normalizeWindowCovering(w);
  return !!c&&hardCoveringBlocksTraversal(w)&&coveringMountedSide(w,c,p)>0;
 }
+
+/** Stylized game material durability; not real-world protection ratings. */
+export function coveringDamageAfterHit(c:WindowCovering,force:number):WindowCovering|null{
+ if(c.integrity===0||!Number.isFinite(force)||force<=0)return null;
+ const divisor=c.family==='rolling-shutter'?8:c.family==='hinged-shutter'?3:1;
+ const integrity=Math.max(0,(c.integrity??1)-force/divisor);
+ return normalizeWindowCovering({covering:{...c,integrity,...(integrity===0?{locked:false,opening:1 as const}:{})}})??null;
+}

@@ -91,7 +91,7 @@ function random(s:Session){
 /** Shared post-ignition impact authority. Aim and LOS never call these. */
  const shotEnvironment=createShotEnvironmentCommitter({enemies,hear,battleEvent});
  const {emitMaterialEvents,damageStruckCover,
-  shatterStruckDoorGlass,shatterStruckWindows}=shotEnvironment;
+  shatterStruckDoorGlass,shatterStruckWindows,damageStruckCoverings}=shotEnvironment;
 /** One physically authoritative shot resolver for this game session. */
  const {commitShot}=createShotResolver({
   team,enemies,isSeen,liveVisibility,hear,notify,battleEvent,random,
@@ -264,6 +264,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     return at!==null&&at<=fraction+.0001;
   });
   const glassDamage=glassImpactDamage(a.weapon);
+  damageStruckCoverings(s,impact.coveringHits,glassDamage,fraction);
   shatterStruckWindows(s,reachedPanes,glassDamage);
   shatterStruckDoorGlass(s,impact.glassDoorHits,fraction,glassDamage);
   damageStruckCover(s,impact.coverHits,WEAPONS[a.weapon].damage*.36,fraction,a.id);
