@@ -5,6 +5,7 @@
 import {doorCenter,type Pt} from './breach-core.ts';
 import {liveVisibility,type Session,type TeamActor} from './breach-game.ts';
 import {coverTargetIndex} from './worldgen/site-object-identity.ts';
+import {windowBashPoint} from './breach-window-bash.ts';
 import {presentCivilian}
  from './rendering/breach-3d-disclosure-presenter.ts';
 export type ActionTargetMarker={p:Pt;kind:'person'|'prop'|'door'|'weapon'};
@@ -31,6 +32,12 @@ export function selectedActionTarget(s:Session,a:TeamActor,
  const patient=node.kind==='treat'||node.kind==='evacuate'?
    node.patientId:null;
  const id=patient??node.objectId??'';
+ if(id.startsWith('window:')){
+  const window=s.windows.find(w=>w.id===id.slice(7));
+  if(!window)return null;
+  const p=windowBashPoint(window,node.p);
+  return liveVisibility(s,p)?{p,kind:'prop'}:null;
+ }
  if(id.startsWith('prop:')){
   const index=coverTargetIndex(s.coverState,id.slice(5));
   const prop=s.coverState[index];
