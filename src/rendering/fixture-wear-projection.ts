@@ -39,13 +39,13 @@ function materialFor(base:THREE.MeshStandardMaterial,surface:PixelSurface,mark:O
  const bucket=wearOpacityBucket(mark.opacity),key=[base.uuid,surface,mark.kind,bucket,texture.uuid].join(':');
  let m=cache.get(key);if(m)return m;
  m=base.clone();delete m.userData.fieldworkR718WorldGraphic;
- const finish=wearFinish(surface,mark.kind,base.color.getHex()),color=new THREE.Color(finish.color),opacity=WEAR_ALPHA_BANDS[bucket];
+ const finish=wearFinish(surface,mark.kind,base.color.getHex()),color=new THREE.Color(finish.color),rim=new THREE.Color(finish.rimColor),opacity=WEAR_ALPHA_BANDS[bucket];
  m.onBeforeCompile=shader=>{
-  Object.assign(shader.uniforms,{fwFixtureWear:{value:texture},fwFixtureTint:{value:color},fwFixtureOpacity:{value:opacity},fwFixtureBoost:boost,fwFixtureAtlas:{value:texture.image.width===64?1:0}});
+  Object.assign(shader.uniforms,{fwFixtureWear:{value:texture},fwFixtureTint:{value:color},fwFixtureRim:{value:rim},fwFixtureOpacity:{value:opacity},fwFixtureBoost:boost,fwFixtureAtlas:{value:texture.image.width===64?1:0}});
   shader.vertexShader='attribute vec3 fwFixtureWearUV;\nattribute float fwFixtureWearVariant;\nvarying float vFWFixtureWearVariant;\nvarying vec3 vFWFixtureWearUV;\n'+
    shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvFWFixtureWearUV=fwFixtureWearUV;\nvFWFixtureWearVariant=fwFixtureWearVariant;');
-  shader.fragmentShader='uniform sampler2D fwFixtureWear;\nuniform vec3 fwFixtureTint;\nuniform float fwFixtureOpacity;\nuniform float fwFixtureBoost;\nuniform float fwFixtureAtlas;\nvarying float vFWFixtureWearVariant;\nvarying vec3 vFWFixtureWearUV;\n'+
-   shader.fragmentShader.replace('#include <map_fragment>','#include <map_fragment>\nvec2 fwUV=vFWFixtureWearUV.xy;\nfloat fwInside=step(0.0,fwUV.x)*step(fwUV.x,1.0)*step(0.0,fwUV.y)*step(fwUV.y,1.0);\nvec2 fwCell=vec2(mod(vFWFixtureWearVariant,2.0),floor(vFWFixtureWearVariant/2.0));\nvec2 fwSample=mix(clamp(fwUV,0.0,1.0),(fwCell*32.0+0.5+clamp(fwUV,0.0,1.0)*31.0)/64.0,fwFixtureAtlas);\nfloat fwWearA=texture2D(fwFixtureWear,fwSample).a*fwInside*step(.999,vFWFixtureWearUV.z)*min(1.0,fwFixtureOpacity*fwFixtureBoost);\ndiffuseColor.rgb=mix(diffuseColor.rgb,fwFixtureTint,fwWearA);');
+  shader.fragmentShader='uniform sampler2D fwFixtureWear;\nuniform vec3 fwFixtureTint;\nuniform vec3 fwFixtureRim;\nuniform float fwFixtureOpacity;\nuniform float fwFixtureBoost;\nuniform float fwFixtureAtlas;\nvarying float vFWFixtureWearVariant;\nvarying vec3 vFWFixtureWearUV;\n'+
+   shader.fragmentShader.replace('#include <map_fragment>','#include <map_fragment>\nvec2 fwUV=vFWFixtureWearUV.xy;\nfloat fwInside=step(0.0,fwUV.x)*step(fwUV.x,1.0)*step(0.0,fwUV.y)*step(fwUV.y,1.0);\nvec2 fwCell=vec2(mod(vFWFixtureWearVariant,2.0),floor(vFWFixtureWearVariant/2.0));\nvec2 fwSample=mix(clamp(fwUV,0.0,1.0),(fwCell*32.0+0.5+clamp(fwUV,0.0,1.0)*31.0)/64.0,fwFixtureAtlas);\nfloat fwCoverage=texture2D(fwFixtureWear,fwSample).a;\nfloat fwWearA=fwCoverage*fwInside*step(.999,vFWFixtureWearUV.z)*min(1.0,fwFixtureOpacity*fwFixtureBoost);\ndiffuseColor.rgb=mix(diffuseColor.rgb,mix(fwFixtureRim,fwFixtureTint,step(.72,fwCoverage)),fwWearA);');
  };
  m.customProgramCacheKey=()=> 'ma-r-fixture-wear-v2';
  m.needsUpdate=true;track(m);cache.set(key,m);return m;
