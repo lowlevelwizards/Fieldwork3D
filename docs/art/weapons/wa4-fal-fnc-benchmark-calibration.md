@@ -11,3 +11,6 @@ Status: candidate implementation committed; WA4 dedicated verification and visua
 
 ## Scope correction
 Run 45755700346 passed typecheck and focused tests but exact delta gate identified unintended M9 color change through the historically shared lower-steel material. Downloaded delta artifact 15086674519 confirms 9 intended FAL/FNC cases, one unintended M9 case, all non-color hashes identical. Restore legacy lower-steel signature and use a calibrated lower alias only inside FAL/FNC builders. Re-run the gate; do not waive the unrelated-family assertion.
+
+## Verified corrected checkpoint
+Run 45757430184 at a532c644bb6d619eafe5d9e7f1e9e0310417571d passed all dedicated checks: 9 intended cases, 92 unrelated exact, all 101 non-color inputs exact, 107 matched panels, 12 pixel-identical silhouettes. Artifact 15088617082. This is technical verification; final human art sign-off remains separate.
