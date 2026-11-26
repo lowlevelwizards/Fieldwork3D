@@ -11,10 +11,10 @@ test('Operator Workbench loads personal recipes through an explicit whole-build 
  assert.ok(wb.includes("loadDialog.showModal()"));
  assert.ok(wb.includes("loadDialog.close()"));
 });
-test('Quick Play class changes disclose magazine reset and require confirmation',()=>{
+test('Quick Play weapon issue changes disclose magazine reset and require confirmation',()=>{
  const wb=source('src/arsenal/workbench-screen.ts');
  const main=source('src/breach-main.ts');
  assert.match(main,/quoteQuickPlayArsenalEdit/);
- assert.match(wb,/checked\?\.changesClass/);
+ assert.match(wb,/checked\?\.changesWeaponIssue/);
  assert.match(wb,/replaces the loaded and spare magazines/);
 });

@@ -49,7 +49,7 @@ import {quoteCampaignFieldStockChange,fieldRestockPreference,
  from './equipment-campaign-field-stock.ts';
 import {readWeaponConfiguration,changeWeaponPlatform,
  setWeaponAttachment,
- selectWeaponFamilyPreset,setConfiguredFamilyPart,sameWeaponConfiguration,
+ setConfiguredFamilyPart,sameWeaponConfiguration,
  type WeaponConfiguration,type WeaponAttachmentSlot}
  from './equipment-weapon-assemblies.ts';
 import {defaultCatalogReference,familyPreset,matchingFamilyPreset,type FamilyPartSlot} from './equipment-weapon-families.ts';
@@ -816,24 +816,6 @@ export function equipCampaignWeaponAttachment(c:CampaignState,id:string,
  if(!quote.canCommit||!quote.stockAfter)return c;
  return {...c,inventory:{...c.inventory,attachments:quote.stockAfter},
   operators:c.operators.map(m=>m.id===id?{...m,weaponConfiguration:next}:m)};
-}
-/** Family builds are an appearance-only prototype on owned gameplay classes.
- * No fabricated magazines, ammunition, serialized guns or attachment stock.
- * Named physical weapon ownership will be a separate campaign migration.
- */
-export function equipCampaignWeaponPreset(c:CampaignState,id:string,presetId:string):CampaignState{
- if(c.activeContractId||!mayChooseCampaignContent(c,'weapon-preset',presetId))return c;
- const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
- if(!o)return c;
- const next=selectWeaponFamilyPreset(o.weaponConfiguration,presetId);
- if(sameWeaponConfiguration(next,o.weaponConfiguration)||
-  !hasValidPhysicalLayout(next))return c;
- const transfer=quoteAttachmentTransfer(c.inventory.attachments,
-  o.weaponConfiguration,next,Math.max(0,c.funds),false);
- if(!transfer.canCommit||!transfer.stockAfter)return c;
- return synchronizeIssuedCatalogBodies({...c,inventory:{...c.inventory,attachments:transfer.stockAfter},
-  operators:c.operators.map(m=>m.id===id?{...m,weaponConfiguration:next,
-   ...fitMagazineInventory(m.id,m.weapon,next,m.magazine,m.reserve,m.magazines)}:m)});
 }
 export function equipCampaignWeaponFamilyPart(c:CampaignState,id:string,
  slot:FamilyPartSlot,partId:string):CampaignState{

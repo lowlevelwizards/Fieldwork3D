@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newCampaign,equipCampaignGear,equipCampaignWeapon,
- equipCampaignWeaponPreset,buyWeapon,hireRecruit,equipCampaignWeaponFamilyPart,
+ equipCampaignOwnedPreset,buyWeapon,hireRecruit,equipCampaignWeaponFamilyPart,
  buyWeaponAttachment,equipCampaignWeaponAttachment,
  setCampaignWardrobe,applyCampaignKitPreset} from '../src/campaign-state.ts';
 import {newDispatchPilotCampaign} from '../src/dispatch-campaign-starter.ts';
@@ -37,7 +37,7 @@ test('D3.1 new Dispatch selections are guarded while existing saves survive',()=
  assert.equal(equipCampaignGear(c,id,'backpack','backpack-field'),c);
  assert.equal(equipCampaignGear(c,id,'armor','armor-carrier'),c);
  assert.equal(equipCampaignWeapon(c,id,'rifle'),c);
- assert.equal(equipCampaignWeaponPreset(c,id,'ak-aks74u'),c);
+ assert.equal(equipCampaignOwnedPreset(c,id,'ak-aks74u'),c);
  assert.equal(buyWeapon(c,'rifle'),c);
  const recruit=hireRecruit(c);
  assert.equal(recruit.operators.at(-1)?.background,'Tactical Police');

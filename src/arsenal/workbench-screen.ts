@@ -789,7 +789,7 @@ export function openArsenalWorkbench(
     }
     const quote=context?.quote?.(build.recipe);
     if(quote&&(!quote.valid||quote.canCommit===false||
-      quote.cost||quote.changesClass)){
+      quote.cost||quote.changesWeaponIssue)){
      const warning=document.createElement('p');warning.className='arsenal-wb-load-warning';
      warning.textContent=arsenalApplyMessage(quote);
      loadChanges.append(warning);
@@ -887,8 +887,8 @@ export function openArsenalWorkbench(
   if(checked&&(!checked.valid||checked.canCommit===false)){
    saveFeedback.textContent=checked.reason??'This build cannot be equipped';return;
   }
-  if(checked?.changesClass&&
-   !window.confirm('Switch weapon class? This replaces the loaded and spare magazines.'))return;
+  if(checked?.changesWeaponIssue&&
+   !window.confirm('Switch weapon model or magazine? This replaces the loaded and spare magazines.'))return;
   try{
    const result=context.onApply(draft.working);
    if(!result.ok){saveFeedback.textContent=result.message??'Unable to equip build';return;}

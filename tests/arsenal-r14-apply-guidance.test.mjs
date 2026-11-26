@@ -8,7 +8,7 @@ test('Campaign credits are disclosed even when a preview cannot yet be purchased
   valid:false,canCommit:false,reason:'Swap weapon class in the Armory first'}),/Armory first/);
  assert.match(arsenalApplyMessage({valid:true,canCommit:true,cost:80}),/80 CR on Apply/);
 });
-test('Quick Play class changes warn about magazines without claiming a purchase',()=>{
- assert.match(arsenalApplyMessage({valid:true,changesClass:true}),/magazines will reset/);
+test('Quick Play weapon issue changes warn about magazines without claiming a purchase',()=>{
+ assert.match(arsenalApplyMessage({valid:true,changesWeaponIssue:true}),/magazines will reset/);
  assert.match(arsenalApplyMessage({valid:true,cost:0}),/NO PURCHASE NEEDED/);
 });

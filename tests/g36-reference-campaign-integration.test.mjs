@@ -11,7 +11,7 @@ import {historicalEquipment} from '../src/faction-reference-historical-equipment
 import {gameMappingForHistorical} from '../src/faction-reference-game-mapping.ts';
 import {generateHistoricalLoadout} from '../src/faction-reference-loadout-generator.ts';
 import {createCampaignRules} from '../src/campaign-rules.ts';
-import {newCampaign,readCampaign,buyWeapon,equipCampaignWeaponPreset}
+import {newCampaign,readCampaign,buyCatalogWeapon,equipCampaignOwnedPreset}
  from '../src/campaign-state.ts';
 import {dispatchPresetDraft} from '../src/dispatch-campaign-setup.ts';
 import {newDispatchPilotCampaign} from '../src/dispatch-campaign-starter.ts';
@@ -60,36 +60,39 @@ test('evidence-backed 1997 German G36 resolves playable genuine family, not obso
  assert.equal(proposal.completeKitVerified,false);
 });
 
-test('Operations campaign owned carbine/rifle can equip all corresponding G36 factory variants and persist',()=>{
+test('Operations campaign purchases exact G36 models, exchanges serials and persists',()=>{
  const c=newCampaign(2006,createCampaignRules('operations'));
  const carbine=c.operators.find(o=>o.weapon==='carbine');
  const rifle=c.operators.find(o=>o.weapon==='rifle');
  assert.ok(carbine&&rifle);
- const stockBefore=JSON.stringify(stockByPlatform(c));
  let updated=c;
+ for(const id of ['g36-k-dual','g36-c-classic','g36-ka4','g36-service'])updated=buyCatalogWeapon(updated,id);
+ const total=updated.inventory.serializedWeapons.length;
+ const stockBefore=JSON.stringify(stockByPlatform(updated));
  for(const id of ['g36-k-dual','g36-c-classic','g36-ka4']){
-  updated=equipCampaignWeaponPreset(updated,carbine.id,id);
+  updated=equipCampaignOwnedPreset(updated,carbine.id,id);
   const operator=updated.operators.find(o=>o.id===carbine.id);
   assert.equal(operator.weapon,'carbine');
   assert.equal(operator.weaponConfiguration.build.family,'g36');
   assert.equal(operator.weaponConfiguration.build.parts.barrel,
    id==='g36-c-classic'?'g36-barrel-228':'g36-barrel-318');
  }
- updated=equipCampaignWeaponPreset(updated,rifle.id,'g36-service');
+ updated=equipCampaignOwnedPreset(updated,rifle.id,'g36-service');
  assert.equal(updated.operators.find(o=>o.id===rifle.id).weaponConfiguration.build.family,'g36');
  assert.equal(resolveWeaponAssembly(updated.operators.find(o=>o.id===rifle.id).weaponConfiguration).muzzleX,19.5);
  assert.equal(JSON.stringify(stockByPlatform(updated)),stockBefore,
-  'factory appearance selection never mints a weapon or spends class-level funds');
- assert.strictEqual(equipCampaignWeaponPreset(updated,rifle.id,'g36-ka4'),updated,
-  'carbine preset cannot bypass weapon-class ownership on rifle operator');
+  'factory selection conserves owned spare counts');
+ assert.equal(updated.inventory.serializedWeapons.length,total);
+ assert.strictEqual(equipCampaignOwnedPreset(updated,rifle.id,'g36-ka4'),updated,
+  'cannot issue a model already assigned to another operator');
  assert.deepEqual(weaponOwnershipIssues(updated),[]);
  const recovered=readCampaign(JSON.stringify(updated));
  assert.ok(recovered);
  assert.deepEqual(recovered.operators.map(o=>o.weaponConfiguration.build?.parts),
   updated.operators.map(o=>o.weaponConfiguration.build?.parts));
- const paid=buyWeapon(c,'rifle');
+ const paid=buyCatalogWeapon(c,'g36-service');
  assert.equal(stockByPlatform(paid).rifle,stockByPlatform(c).rifle+1);
- assert.ok(paid.funds<c.funds,'Operations still procures real weapon classes through campaign funds');
+ assert.ok(paid.funds<c.funds,'Operations purchases exact models through campaign funds');
 });
 
 test('Dispatch 2015 specialist G36C unlock uses standing and is not default or retroactive 1995 issue',()=>{
@@ -98,13 +101,16 @@ test('Dispatch 2015 specialist G36C unlock uses standing and is not default or r
  assert.equal(member.weapon,'carbine');
  assert.notEqual(member.weaponConfiguration.build?.family,'g36');
  assert.equal(mayChooseCampaignContent(career,'weapon-preset','g36-c-classic'),false);
- assert.strictEqual(equipCampaignWeaponPreset(career,member.id,'g36-c-classic'),career);
+ assert.strictEqual(equipCampaignOwnedPreset(career,member.id,'g36-c-classic'),career);
  const authorized={...career,dispatchDepartment:{...career.dispatchDepartment,standing:70}};
  assert.equal(mayChooseCampaignContent(authorized,'weapon-preset','g36-c-classic'),true);
  assert.equal(mayChooseCampaignContent(authorized,'weapon-preset','g36-service'),false);
  assert.equal(mayChooseCampaignContent(authorized,'weapon-preset','g36-ka4'),false);
- const issued=equipCampaignWeaponPreset(authorized,member.id,'g36-c-classic');
- assert.notStrictEqual(issued,authorized);
+ assert.strictEqual(equipCampaignOwnedPreset(authorized,member.id,'g36-c-classic'),authorized);
+ const bought=buyCatalogWeapon(authorized,'g36-c-classic');
+ assert.notStrictEqual(bought,authorized);
+ const issued=equipCampaignOwnedPreset(bought,member.id,'g36-c-classic');
+ assert.notStrictEqual(issued,bought);
  assert.equal(issued.operators[0].weaponConfiguration.build?.parts.barrel,'g36-barrel-228');
  assert.deepEqual(weaponOwnershipIssues(issued),[]);
  const restored=readCampaign(JSON.stringify(issued));
