@@ -240,3 +240,25 @@ export function optionalIntelRecovered(s:IntelMission):OptionalIntelItem[]{
   ].map(a=>a.id));
  return s.optionalIntel.filter(i=>i.collectedBy!==null&&holders.has(i.collectedBy));
 }
+
+/** EB18: only the extraction-accountable item IDs can enter the archive.
+ * A receipt is evidence type, not an omniscient identity or location dump. */
+export type RecoveredIntelReceipt={id:string;kind:OptionalIntelKind;model?:OptionalIntelModel};
+export function validRecoveredIntelReceipt(raw:unknown):raw is RecoveredIntelReceipt{
+ if(!raw||typeof raw!=='object')return false;
+ const r=raw as RecoveredIntelReceipt;
+ return typeof r.id==='string'&&r.id.length>0&&r.id.length<=200&&
+  ['documents','communications','digital'].includes(r.kind)&&
+  (r.model===undefined||['folder','papers','laptop','flash-drive','phone','notebook'].includes(r.model));
+}
+export function recoveredIntelReceipts(items:readonly OptionalIntelItem[],recoveredIds:readonly string[]):RecoveredIntelReceipt[]{
+ const ids=new Set(recoveredIds),seen=new Set<string>(),out:RecoveredIntelReceipt[]=[];
+ for(const item of items){
+  if(!ids.has(item.id)||item.collectedBy===null||item.collectedAt===null||seen.has(item.id))continue;
+  const receipt={id:item.id,kind:item.kind,model:item.model};
+  if(!validRecoveredIntelReceipt(receipt))continue;
+  seen.add(item.id);out.push(receipt);
+  if(out.length>=6)break;
+ }
+ return out;
+}

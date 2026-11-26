@@ -23,3 +23,20 @@ test('EB17 disclosure follows resolved actors and quality without exposing posit
  assert.ok(model.reports.threat.some(c=>c.id.startsWith('threat-kit-')));
  assert.ok(high.rendered.standard.includes('THREAT ASSESSMENT'));
 });
+
+import {recoveredIntelReceipts} from '../src/breach-optional-intel.ts';
+import {contractThreatIntel,researchContractThreat} from '../src/campaign-state.ts';
+test('EB18 recovered evidence is accountable and threat research spends existing intel without altering objective/map',()=>{
+ const items=[{id:'a',kind:'documents',model:'folder',collectedBy:'rook',collectedAt:1},
+ {id:'b',kind:'digital',model:'laptop',collectedBy:null,collectedAt:null},
+ {id:'c',kind:'communications',model:'phone',collectedBy:'moss',collectedAt:2}];
+ assert.deepEqual(recoveredIntelReceipts(items,['a','b']),[{id:'a',kind:'documents',model:'folder'}]);
+ const job={id:'j',status:'available',intel:'unknown',objectiveIntel:'unknown'};
+ const c={intelligence:3,contracts:[job],activeContractId:null};
+ const medium=researchContractThreat(c,'j'),high=researchContractThreat(medium,'j');
+ assert.equal(contractThreatIntel(medium.contracts[0]),'medium');
+ assert.equal(contractThreatIntel(high.contracts[0]),'high');
+ assert.equal(high.intelligence,0);assert.equal(high.contracts[0].objectiveIntel,'unknown');
+ assert.equal(high.contracts[0].intel,'unknown');assert.equal(researchContractThreat(high,'j'),high);
+ assert.equal(researchContractThreat({...c,activeContractId:'j'},'j').intelligence,3);
+});

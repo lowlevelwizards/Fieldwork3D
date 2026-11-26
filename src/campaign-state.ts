@@ -1,4 +1,6 @@
 /** Campaign domain. Nothing here advances in the render/simulation loop. */
+import type {ReportQuality} from './briefing/briefing-types.ts';
+import {validRecoveredIntelReceipt,type RecoveredIntelReceipt} from './breach-optional-intel.ts';
 import type {OperationKind} from './breach-operations.ts';
 import type {ObjectiveIntelLevel} from './breach-objective-intel.ts';
 import {currentDispatchReference,effectiveDispatchSetup,validDispatchSetup,type DispatchCampaignSetupV1} from './dispatch-campaign-setup.ts';
@@ -102,6 +104,8 @@ export type Contract={
  recoveryOperatorId?:string;
  /** Optional recon outcome, independent of floor-plan intelligence. */
  objectiveIntel?:ObjectiveIntelLevel;
+ /** Purchased threat research, independent of map and objective reconnaissance. */
+ threatIntel?:ReportQuality;
  /** D8: optional authored incident; missing on all pre-D8 contracts. */
  dispatchCase?:DispatchCaseV1;
 };
@@ -116,6 +120,8 @@ export type CampaignReport={
  extractedIds?:string[];leftBehindIds?:string[];
  /** Actual optional evidence physically recovered, not merely discovered. */
  intelRecovered?:number;
+ /** Physical evidence receipt, absent on old reports. No hostile truth or map coordinates. */
+ recoveredEvidence?:RecoveredIntelReceipt[];
  /** Only the couriers who physically extracted with verified optional evidence. */
  intelRecoveryBy?:Record<string,number>;
  performance?:OperatorPerformance[];gains?:SkillGains[];
@@ -173,6 +179,18 @@ export function reconContract(c:CampaignState,id:string):CampaignState{
  const next:ObjectiveIntelLevel=level==='unknown'?'approximate':'confirmed';
  return {...c,intelligence:campaignIntelBalance(c)-cost,
   contracts:c.contracts.map(k=>k.id===id?{...k,objectiveIntel:next}:k)};
+}
+export const contractThreatIntel=(job:Contract):ReportQuality=>job.threatIntel??'low';
+export function researchContractThreat(c:CampaignState,id:string):CampaignState{
+ const job=c.contracts.find(k=>k.id===id);
+ if(!job||job.status!=='available'||c.activeContractId)return c;
+ const level=contractThreatIntel(job);
+ if(level==='high')return c;
+ const cost=level==='low'?1:2;
+ if(campaignIntelBalance(c)<cost)return c;
+ const next:ReportQuality=level==='low'?'medium':'high';
+ return {...c,intelligence:campaignIntelBalance(c)-cost,
+  contracts:c.contracts.map(k=>k.id===id?{...k,threatIntel:next}:k)};
 }
 const WEAPONS=['carbine','smg','rifle','shotgun'] as const;
 const REGIONS=['Cutwoods','Breadlands','Flooded Belt','Verdigris City','Timberline'] as const;
@@ -305,6 +323,9 @@ export function readCampaign(raw:string|null):CampaignState|null{
      !validDispatchDepartment(c.dispatchDepartment)))return null;
   for(const report of c.history){
    if(!report||typeof report!=='object')return null;
+   if(report.recoveredEvidence!==undefined&&(!Array.isArray(report.recoveredEvidence)||
+    report.recoveredEvidence.length>6||!report.recoveredEvidence.every(validRecoveredIntelReceipt)||
+    new Set(report.recoveredEvidence.map(i=>i.id)).size!==report.recoveredEvidence.length))return null;
    if(report.dispatchCareer!==undefined&&
      (parsedRules?.template!=='dispatch'||
       !validDispatchCareerReceipt(report.dispatchCareer)))return null;
@@ -321,6 +342,7 @@ export function readCampaign(raw:string|null):CampaignState|null{
      (contract.recoveryOperatorId!==undefined&&
        (typeof contract.recoveryOperatorId!=='string'||
         !c.operators.some(o=>o.id===contract.recoveryOperatorId)))||
+     (contract.threatIntel!==undefined&&!['low','medium','high'].includes(contract.threatIntel))||
      (contract.objectiveIntel!==undefined&&
        !(['unknown','approximate','confirmed'] as string[]).includes(contract.objectiveIntel))||
      (contract.dispatchCase!==undefined&&
@@ -576,6 +598,7 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
      template.description,
    risk:Math.min(3,contract.risk+1) as 1|2|3,
    intel:'scouted',objectiveIntel:'approximate',
+   ...(leadRecovered?{threatIntel:'medium' as const}:{}),
    reward:contract.reward+180,deadline:day+3,status:'available'};
   contracts.push(c.rules?.template==='dispatch'?assignDispatchCase(followup,
    contracts.map(k=>k.dispatchCase?.incidentId).filter((id):id is string=>!!id)):followup);
