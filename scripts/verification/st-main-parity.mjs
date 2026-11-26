@@ -24,8 +24,8 @@ for(const {seed,mission,scale} of cases){
  const context={mission,premise:'routine'};
  const old=oldGenerate(seed,scale,undefined,context);
  const oldLegacy=oldGenerate(seed,scale,undefined,context,{streetInfrastructure:false});
- const legacy=generateSite(seed,scale,undefined,context,{streetInfrastructure:false,expandedDoorFamilies:false});
- const historicalStreet=generateSite(seed,scale,undefined,context,{expandedDoorFamilies:false});
+ const legacy=generateSite(seed,scale,undefined,context,{streetInfrastructure:false});
+ const historicalStreet=generateSite(seed,scale,undefined,context);
  const next=generateSite(seed,scale,undefined,context);
  const sameArchitecture=generateSite(seed,scale,undefined,context,{streetInfrastructure:false});
  assert.deepEqual(structuralSite(legacy),structuralSite(oldLegacy),'exact base legacy layout '+seed+':'+mission+':'+scale);

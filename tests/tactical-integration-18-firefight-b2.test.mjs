@@ -63,7 +63,7 @@ test('encounter regression: no false initial audio suspicion; real gunfire inter
  assert.equal(hasRecentSound(2,1.5),true);
  assert.equal(hasRecentSound(9,1.5),false);
  const ai=readFileSync(new URL('../src/breach-ai-reconciliation.ts',import.meta.url),'utf8');
- assert.match(ai,/const recentNoise=hasRecentSound\(s\.seconds,a\.lastNoiseAt\)/);
+ assert.match(ai,/const recentNoise=a\.lastNoiseAt>exhaustedAt&&\s*hasRecentSound\(s\.seconds,a\.lastNoiseAt\)/);
  const intake=readFileSync(new URL('../src/breach-ai-acoustic-perception.ts',import.meta.url),'utf8');
  // E1/E5 and the later architecture split consume each new audible item once
  // using its ID/clock and never invent unseen target positions.
