@@ -17,7 +17,7 @@ export const WEAR_BUDGET:Record<NonNullable<Site['condition']>,number>={
 };
 export function planEnvironmentalWear(site:Site):WearMark[]{
  const mood=surfaceMood(site.archetype);
- const random=seeded(site.seed^0x66ee4a12);
+
  const rooms=site.rooms.filter(r=>r.w>=40&&r.h>=40);
  if(!rooms.length)return [];
  const continuous=site.conditionLevel!==undefined;
@@ -30,6 +30,7 @@ export function planEnvironmentalWear(site:Site):WearMark[]{
  if(!budget)return [];
  const marks:WearMark[]=[];
  for(let i=0;i<budget;i++){
+  const random=seeded(site.seed^0x66ee4a12^Math.imul(i+1,7919));
   // Distribute marks across a site rather than multiplying per room.
   const room=continuous?rooms[(i+(site.seed%rooms.length))%rooms.length]:
     rooms[Math.floor(random()*rooms.length)];
@@ -51,7 +52,7 @@ export function planEnvironmentalWear(site:Site):WearMark[]{
   else if(['loading','aisle','service'].includes(role))kind=i%2===0?'mud':'scuff';
   else if(site.condition==='neglected')kind=i%3===0?'chip':'stain';
   else kind=i%2===0?'scuff':'scratch';
-  if(continuous&&t>.55&&!industrial&&!cooking&&!wet){
+  if(continuous&&i>=Math.round(rooms.length*.8)&&!industrial&&!cooking&&!wet){
    if(i%4===0)kind='stain';
    else if(i%7===0)kind='chip';
   }
@@ -75,7 +76,7 @@ export function planEnvironmentalWear(site:Site):WearMark[]{
   const threshold=touching.length&&kind==='scuff'?
    touching[Math.floor(random()*touching.length)]:null;
   const clamp=(v:number,a:number,b:number)=>Math.min(b,Math.max(a,v));
-  const fixtures=site.cover.filter(o=>o.fixture&&o.x>=room.x&&o.x<=room.x+room.w&&
+  const fixtures=site.cover.filter(o=>o.fixture&&!o.destroyed&&!o.toppled&&o.x>=room.x&&o.x<=room.x+room.w&&
     o.y>=room.y&&o.y<=room.y+room.h);
   const associated=kind==='oil'||kind==='grease'||kind==='rust'?
     ['vehicle-lift','workbench','compressor','generator','tank','stove',
