@@ -201,7 +201,7 @@ test('Logistics has stock, replenish actions and armory in task-first DOM order'
  assert.match(logistics,/this\.handlers\.buyAmmo/);
  assert.match(logistics,/this\.handlers\.buyMedical/);
  assert.match(logistics,/this\.handlers\.buyFlash/);
- assert.match(logistics,/this\.handlers\.buyWeapon\(weapon\)/);
+ assert.match(logistics,/this\.handlers\.buyCatalogWeapon\(quote\.presetId\)/);
  assert.match(logistics,/buy\.disabled=!quote\.canPurchase/);
 });
 
@@ -341,7 +341,7 @@ test('C5 Logistics preserves purchases, shows truthful low stock and discloses w
  assert.match(logistics,/eligibility\.append\(status\)/);
  assert.match(logistics,/buy\.setAttribute\('aria-describedby',reasonId\)/);
  assert.match(logistics,/buy\.disabled=!quote\.canPurchase/);
- assert.match(logistics,/this\.handlers\.buyWeapon\(weapon\)/);
+ assert.match(logistics,/this\.handlers\.buyCatalogWeapon\(quote\.presetId\)/);
 });
 test('C5 Logistics compact rows respect phone and desktop layout',()=>{
  const css=source('campaign-style.css');
@@ -487,7 +487,7 @@ test('C11 campaign actions reuse save-aware feedback for squad, procurement and 
   flow.indexOf('equipWeaponPreset:(id,presetId)=>'));
  for(const [handler,mutator] of [
   ['assignSlot','assignOperatorToSlot'],
-  ['buyWeapon','buyWeapon'],
+  ['buyCatalogWeapon','buyCatalogWeapon'],
   ['equipWeapon','equipCampaignWeapon'],
   ['repairArmor','repairCampaignArmor'],
   ['serviceWeapon','serviceCampaignWeapon'],

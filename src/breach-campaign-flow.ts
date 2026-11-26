@@ -22,7 +22,7 @@ import {resolveOperation,tacticalSlotOperator,campaignSquadPresent,type Campaign
 import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
  purchaseFieldStock,
   resupplyOperator,resupplyMedicalOperator,treatOperator,hireRecruit,
-  assignOperatorToSlot,buyWeapon,equipCampaignWeapon,repairCampaignArmor,
+  assignOperatorToSlot,buyCatalogWeapon,equipCampaignWeapon,repairCampaignArmor,
   serviceCampaignWeapon,equipCampaignGear,equipCampaignCarryGear,equipCampaignFieldInventory,equipCampaignPreGoFieldInventory,copyCampaignFieldInventory,equipCampaignWeaponPreset,
   equipCampaignWeaponFamilyPart,equipCampaignWeaponAttachment,
   purchaseAndEquipWeaponAttachment,moveCampaignMagazine,saveCampaignKitPreset,
@@ -364,8 +364,8 @@ const campaignScreen=new CampaignScreen({
  recruit:()=>applyVisibleCampaignAction(hireRecruit,'New operator joined the roster'),
  assignSlot:(slot,id)=>applyVisibleCampaignAction(
   c=>assignOperatorToSlot(c,slot,id),'Deployment squad updated'),
- buyWeapon:(weapon)=>applyVisibleCampaignAction(
-  c=>buyWeapon(c,weapon),weapon.toUpperCase()+' weapon added to armory'),
+ buyCatalogWeapon:(presetId)=>applyVisibleCampaignAction(
+  c=>buyCatalogWeapon(c,presetId),(familyPreset(presetId)?.name??'Weapon')+' added to armory'),
  equipWeapon:(id,weapon)=>applyVisibleCampaignAction(
   c=>equipCampaignWeapon(c,id,weapon),'Operator primary weapon updated'),
  repairArmor:(id)=>applyVisibleCampaignAction(

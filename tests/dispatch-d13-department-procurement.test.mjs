@@ -130,8 +130,8 @@ test('D13 legacy saves and original campaigns preserve their old procurement beh
  assert.equal(campaignWeaponQuote(nonDispatch,'rifle').status,'ready');
  assert.deepEqual(readCampaign(JSON.stringify(nonDispatch)),nonDispatch);
  const ui=source('src/campaign-ui.ts');
- assert.match(ui,/campaignWeaponQuote\(c,weapon\)/);
+ assert.match(ui,/catalogWeaponOfferings\(c\)/);
  assert.match(ui,/dispatchDepartmentView\(c\)/);
- assert.match(ui,/\['carbine','rifle'\] as const/);
- assert.match(ui,/CAMPAIGN_WEAPON_PLATFORMS/);
+ assert.match(ui,/this\.handlers\.buyCatalogWeapon\(quote\.presetId\)/);
+ assert.doesNotMatch(ui,/CAMPAIGN_WEAPON_PLATFORMS/);
 });

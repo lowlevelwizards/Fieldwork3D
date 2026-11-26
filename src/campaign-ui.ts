@@ -19,7 +19,7 @@ import {effectiveDispatchSetup,currentDispatchReference,
  type DispatchCampaignDraft} from './dispatch-campaign-setup.ts';
 import {factionReference} from './faction-reference-catalog.ts';
 import {dispatchDepartmentView} from './dispatch-department-view.ts';
-import {campaignWeaponQuote,CAMPAIGN_WEAPON_PLATFORMS}
+import {catalogWeaponOfferings}
  from './campaign-weapon-procurement.ts';
 import {SKILL_NAMES,canAffordCampaignPurchase,
  armorRepairCost,weaponServiceCost,canApplyCampaignKitPreset}
@@ -88,7 +88,7 @@ export type CampaignHandlers={
  resupplySquad:()=>void;resupplyField:(id:string)=>void;
  treat:(id:string)=>void;
  recruit:()=>void;assignSlot:(slot:number,id:string)=>void;
- buyWeapon:(weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
+ buyCatalogWeapon:(presetId:string)=>void;
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
  equipCarryGear:(id:string,slot:CarryGearSlot,itemId:string)=>void;
@@ -122,6 +122,7 @@ export class CampaignScreen{
  private selectedSquadOperatorId:string|null=null;
  private selectedCaseId:string|null=null;
  private selectedSupplyIndex=0;
+ private selectedProcurementPreset='';
  private selectedRecordId:string|null=null;
  /** Keeps the selected case available while preparing squad or supplies. */
  private preparationContractId:string|null=null;
@@ -880,38 +881,46 @@ export class CampaignScreen{
   logisticsWorkspace.append(supplyPanel);
   const inventory=node('div','campaign-armory');
   inventory.append(node('h2','','FIELD ARMORY'));
-  const offerings=isDispatchPilot(c)?CAMPAIGN_WEAPON_PLATFORMS:
-   (['carbine','rifle'] as const);
-  for(const weapon of offerings){
-   const quote=campaignWeaponQuote(c,weapon);
-   const row=node('div','campaign-procurement-item');
-   const heading=node('div','campaign-procurement-heading');
-   heading.append(node('strong','',weapon.toUpperCase()+' PLATFORM'),
-    node('small','',quote.priceLabel));
-   const metrics=node('small','campaign-procurement-metrics',
-    quote.stock+' SPARE IN ARMORY · '+quote.issued+' ISSUED');
-   const eligibility=node('details','campaign-procurement-eligibility');
-   eligibility.dataset.campaignDetail='weapon:'+weapon;
-   const eligibilitySummary=node('summary','',
-    quote.canPurchase?'PURCHASE ELIGIBILITY':'UNAVAILABLE · VIEW REQUIREMENTS');
-   eligibilitySummary.setAttribute('aria-label',
-    (quote.canPurchase?'Purchase eligibility':'Purchase restrictions')+
-    ' for '+weapon.toUpperCase()+' platform');
-   eligibility.append(eligibilitySummary);
-   const status=node('p','campaign-procurement-status',quote.authorization);
-   const reasonId='campaign-procurement-reason-'+weapon;
-   status.id=reasonId;
-   eligibility.append(status);
-   const buy=button('PURCHASE '+weapon.toUpperCase(),()=>this.handlers.buyWeapon(weapon));
-   buy.disabled=!quote.canPurchase;
-   buy.title=quote.authorization;
-   buy.setAttribute('aria-describedby',reasonId);
-   row.append(heading,metrics,buy,eligibility);inventory.append(row);
-  }
-  const procurement=node('details','campaign-uxr-procurement');
-  procurement.dataset.campaignDetail='weapon-procurement';
-  procurement.append(node('summary','','WEAPON PROCUREMENT · '+offerings.length+' PLATFORMS'),inventory);
-  logisticsWorkspace.append(procurement);
+  const offerings=catalogWeaponOfferings(c);
+   const chooser=node('select','campaign-procurement-model');
+   chooser.setAttribute('aria-label','Choose catalog weapon to purchase');
+   for(const quote of offerings){
+    const option=node('option','',quote.name+(quote.canPurchase?'':' · UNAVAILABLE'));
+    option.value=quote.presetId;chooser.append(option);
+   }
+   const selected=offerings.find(q=>q.presetId===this.selectedProcurementPreset)??offerings[0];
+   if(selected)chooser.value=selected.presetId;
+   const detail=node('div','campaign-procurement-selection');
+   const renderProcurement=()=>{
+    const quote=offerings.find(q=>q.presetId===chooser.value);
+    detail.replaceChildren();if(!quote)return;
+    this.selectedProcurementPreset=quote.presetId;
+    const row=node('div','campaign-procurement-item');
+    const heading=node('div','campaign-procurement-heading');
+    heading.append(node('strong','',quote.name),node('small','',quote.priceLabel));
+    const metrics=node('small','campaign-procurement-metrics',
+     quote.stock+' SPARE IN ARMORY · '+quote.issued+' ISSUED');
+    const eligibility=node('details','campaign-procurement-eligibility');
+    eligibility.dataset.campaignDetail='weapon:'+quote.presetId;
+    const eligibilitySummary=node('summary','',
+     quote.canPurchase?'PURCHASE ELIGIBILITY':'UNAVAILABLE · VIEW REQUIREMENTS');
+    eligibilitySummary.setAttribute('aria-label',
+     (quote.canPurchase?'Purchase eligibility':'Purchase restrictions')+' for '+quote.name);
+    eligibility.append(eligibilitySummary);
+    const status=node('p','campaign-procurement-status',quote.authorization);
+    const reasonId='campaign-procurement-reason-'+quote.presetId;
+    status.id=reasonId;eligibility.append(status);
+    const buy=button('PURCHASE '+quote.name,()=>this.handlers.buyCatalogWeapon(quote.presetId));
+    buy.disabled=!quote.canPurchase;
+    buy.title=quote.authorization;buy.setAttribute('aria-describedby',reasonId);
+    row.append(heading,metrics,buy,eligibility);detail.append(row);
+   };
+   chooser.addEventListener('change',renderProcurement);
+   renderProcurement();inventory.append(chooser,detail);
+   const procurement=node('details','campaign-uxr-procurement');
+   procurement.dataset.campaignDetail='weapon-procurement';
+   procurement.append(node('summary','','WEAPON PROCUREMENT · '+offerings.length+' MODELS'),inventory);
+   logisticsWorkspace.append(procurement);
   logistics.append(logisticsWorkspace);
   const recruit=button('RECRUIT OPERATOR · '+
    (isDispatchPilot(c)&&effectiveDispatchSetup(c).economy==='unlimited'?

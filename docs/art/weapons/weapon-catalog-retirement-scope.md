@@ -21,3 +21,6 @@ Run 45837826324 passed the new save migration and deployment tests, CI routing, 
 
 ## R4.2 — exact catalog transactions candidate
 Added explicit named acquisition and exact serial issue, with same-category swaps supported and no new ownership ledger. Both use existing authorization, price, stock and attachment transaction guards. The old class-based public procurement UI is still present pending the new transaction tests; do not claim complete retirement. New path never substitutes a different model or changes an existing serial's service history. No new gameplay behavior. Pending verification.
+
+## R4.3a — named procurement UI candidate
+Logistics selects actual catalog models with one compact picker, checks both existing class and named-reference authorization, and counts exact serialized bodies. No new prices or ownership ledger. The old class quote remains for Dispatch creation and compatibility. Non-Dispatch procurement exposes authored references already accepted by unrestricted mutation policy. Restricted Dispatch default class offers may remain unassessed at named-model level; reconcile curated named equivalents before release. Squad/Outfitter issue and category ledger remain transitional. Removed stale CI requirement for deleted generic-shotgun capture while keeping modular/runtime visual gates and artwork parity. Exact-head verification pending.

@@ -80,3 +80,27 @@ test('named acquisition and exact serial exchange retain model identity and serv
  assert.strictEqual(buyCatalogWeapon(next,'missing-reference'),next);
  assert.strictEqual(buyCatalogWeapon({...next,activeContractId:'live'},'ar-m4a1').inventory.serializedWeapons,next.inventory.serializedWeapons);
 });
+
+import {catalogWeaponQuote,catalogWeaponOfferings} from '../src/campaign-weapon-procurement.ts';
+import {newDispatchPilotCampaign} from '../src/dispatch-campaign-starter.ts';
+import {dispatchPresetDraft,DISPATCH_PRESETS} from '../src/dispatch-campaign-setup.ts';
+test('named quote counts exact owned models, not same-class pools',()=>{
+ const c=newCampaign(987);
+ const a=buyCatalogWeapon(c,'ar-colt733'),b=buyCatalogWeapon(a,'ar-m4a1');
+ assert.equal(catalogWeaponQuote(b,'ar-colt733').stock,1);
+ assert.equal(catalogWeaponQuote(b,'ar-m4a1').stock,1);
+ assert.equal(catalogWeaponQuote(b,'missing-reference'),undefined);
+ assert.equal(catalogWeaponQuote({...b,activeContractId:'live'},'ar-colt733').canPurchase,false);
+});
+test('named procurement quotes agree with mutations across campaign policies',()=>{
+ for(const c of [newCampaign(988),...DISPATCH_PRESETS.map(p=>newDispatchPilotCampaign(988,dispatchPresetDraft(p)))]){
+  const quotes=catalogWeaponOfferings(c);
+  assert.equal(new Set(quotes.map(q=>q.presetId)).size,quotes.length);
+  assert.ok(quotes.length>4);
+  for(const q of quotes){
+   const next=buyCatalogWeapon(c,q.presetId);
+   assert.equal(next!==c,q.canPurchase,q.presetId+' '+q.status);
+   if(q.canPurchase)assert.equal(catalogWeaponQuote(next,q.presetId).stock,q.stock+1);
+  }
+ }
+});
