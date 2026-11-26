@@ -53,44 +53,47 @@ export function conditionFloorPixels(site:Site,room:Room,level=effectiveConditio
   [72,70,60];
  for(let y=0;y<size;y++)for(let x=0;x<size;x++){
   const u=(x+.5)/size,v=(y+.5)/size;
-  const edge=clamp((.22-Math.min(u,1-u,v,1-v))/.22);
-  const corner=Math.pow(edge,2)*(0.4+0.6*noise(u,v,4,s+4));
-  const broad=noise(u,v,3,s),medium=noise(u,v,11,s+17);
-  const fine=hash(x,y,s+79);
-  const asym=.5*(1-u)+.5*v;
+  // Broad, nested regions with deliberate empty space; physical edge
+  // distance prevents a large warehouse from acquiring metre-wide borders.
+  const broad=noise(u,v,3,s),medium=noise(u,v,7,s+17);
+  const dEdge=Math.min(u*room.w,(1-u)*room.w,v*room.h,(1-v)*room.h);
+  const edgeReach=3+Math.min(room.w,room.h)*.13*t*(.55+.45*medium);
+  const edge=clamp(1-dEdge/Math.max(1,edgeReach));
+  const corner=edge*(.32+.68*noise(u,v,4,s+4));
   let source=0;
   for(const f of fixtures){
    const fx=(f.x-room.x)/room.w,fy=(f.y-room.y)/room.h;
    const distance=Math.hypot((u-fx)*room.w,(v-fy)*room.h);
-   const radius=wet?46:industrial?64:29;
-   source=Math.max(source,Math.pow(clamp(1-distance/radius),2));
+   const radius=(wet?46:industrial?64:29)*(.55+.45*t);
+   source=Math.max(source,clamp(1-distance/radius));
   }
-  // Favor coherent color regions, edge accumulation, and intermittent
-  // source stains. Keep dark channels strong enough at tactical zoom.
-  const patches=clamp((broad-.38)*2.2)*(.35+.65*medium);
-  let coverage=.075+.30*patches+.32*corner+.15*source+
-    .09*asym*(medium>.48?1:.2)+.06*(fine-.5);
-  // Washable finishes retain calmer clean fields. Porous and industrial
-  // substrates retain stronger age witnesses at edges and real sources.
-  // Darken actual repeated tile grout and weathered wood seams rather
-  // than laying uniform stains over clean underlying material.
-  const wx=room.x+u*room.w,wy=room.y+v*room.h;
-  const joint=(p:number,spacing:number)=>Math.min(
-    ((p%spacing)+spacing)%spacing,spacing-((p%spacing)+spacing)%spacing);
-  if(surface==='tile'&&Math.min(joint(wx,10),joint(wy,10))<1.8)
-    coverage+=.20*(.35+.65*medium);
-  if(surface==='wood'&&joint(wy,10)<1.6)
-    coverage+=.09*(.4+.6*broad);
+  // Wear grows spatially at fixed seed: no stipple, no time-dependent
+  // random changes, no whole-room opaque blanket.
+  const region=clamp((broad-(.72-.34*t))*3.2);
+  const patch=region*(.55+.45*medium);
+  let coverage=(industrial?.13:.075)+.29*patch+.29*corner+.23*source;
+  const wx=u*room.w,wy=v*room.h;
+  const joint=(p:number,spacing:number)=>Math.min(((p%spacing)+spacing)%spacing,spacing-((p%spacing)+spacing)%spacing);
+  // Pixel library repeats eight-world-unit courses; use local floor
+  // coordinates instead of drifting global-grid grout.
+  if(surface==='tile'&&Math.min(joint(wx,8),joint(wy,8))<.95)
+   coverage+=.13*(.5+.5*medium);
+  if(surface==='wood'&&joint(wy,8)<.8)
+   coverage+=.085*(.4+.6*broad);
   if((surface==='concrete'||surface==='sealed-concrete')&&t>.55){
-    const crack=.28+.25*Math.sin(v*8+s)+.06*Math.sin(v*27+s);
-    if(Math.abs(u-crack)<.012)coverage+=.34*(t-.55)/.45;
+   const drift=(hash(3,1,s)-.5)*.24;
+    const points=[.23+drift,.29+drift,.27+drift,.39+drift,.35+drift,.46+drift];
+   const f=v*(points.length-1),j=Math.min(points.length-2,Math.floor(f));
+   const crack=points[j]+(points[j+1]-points[j])*(f-j);
+   if(v<.30+.70*t&&Math.abs(u-crack)<Math.max(.009,.52/size))coverage+=.27*(t-.55)/.45;
   }
   coverage=clamp(coverage);
   const opacity=Math.round(255*Math.pow(t,1.38)*coverage*(clinical?1.02:washable?1.24:1.55));
   const i=(y*size+x)*4;
-  out[i]=Math.round(tint[0]*(.85+.26*medium));
-  out[i+1]=Math.round(tint[1]*(.83+.30*medium));
-  out[i+2]=Math.round(tint[2]*(.86+.24*medium));
+  const tone=source>.6||corner>.65?.86:patch>.48?1.02:1.14;
+  out[i]=Math.round(tint[0]*tone);
+  out[i+1]=Math.round(tint[1]*tone);
+  out[i+2]=Math.round(tint[2]*tone);
   out[i+3]=Math.min(232,opacity);
  }
  return out;
