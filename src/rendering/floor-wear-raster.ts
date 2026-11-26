@@ -1,17 +1,18 @@
 /** Straight-alpha sRGB mask storage; composite in linear light, like the lit shader. */
 import type {Room} from '../breach-site.ts';
 import {FLOOR_WEAR_COLOR} from '../worldgen/floor-wear-plan.ts';
-import type {WearKind,WearMark} from '../worldgen/environment-wear.ts';
-import {wearPixels} from './pixel-decals.ts';
+import type {WearMark} from '../worldgen/environment-wear.ts';
+import {wearPixels,wearVariant} from './pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './wear-opacity.ts';
 import {SRGB_BYTE_TO_LINEAR as linear,linearToSRGBByte as encode} from './surface-color-space.ts';
-const masks=new Map<WearKind,Uint8Array>();
+const masks=new Map<string,Uint8Array>();
 export function rasterFloorWear(out:Uint8Array,room:Room,inset:number,marks:readonly WearMark[],size:number,boost=1){
  const w=room.w-inset,d=room.h-inset,left=room.x+inset/2,top=room.y+inset/2;
  if(w<=0||d<=0)return out;
  for(const m of marks){
   if(m.roomId!==room.id||m.width<=0||m.depth<=0)continue;
-  let mask=masks.get(m.kind);if(!mask){mask=wearPixels(m.kind);masks.set(m.kind,mask);}
+  const variant=wearVariant(m.id),key=m.kind+':'+variant;
+  let mask=masks.get(key);if(!mask){mask=wearPixels(m.kind,variant);masks.set(key,mask);}
   const color=FLOOR_WEAR_COLOR[m.kind],rgb=[linear[(color>>>16)&255],linear[(color>>>8)&255],linear[color&255]];
   const c=Math.cos(m.rotation),s=Math.sin(m.rotation),hw=m.width/2,hd=m.depth/2;
   const rx=Math.abs(c)*hw+Math.abs(s)*hd,rz=Math.abs(s)*hw+Math.abs(c)*hd;
