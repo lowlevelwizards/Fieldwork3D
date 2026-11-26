@@ -1,5 +1,6 @@
 import {WALL_EFFECTS,WALL_FINISHES,WALL_WITNESSES,wallSample,samplePixels,selectWallEvents} from './wall-material-lab-samples.ts';
 import {PIXEL_SURFACES,pixelPattern} from './rendering/pixel-recipes.ts';
+import {FLOOR_WITNESSES,FIXTURE_WITNESSES,floorWitness,fixtureWitness} from './wall-material-lab-context.ts';
 import {createMaterialSpecimen} from './wall-material-lab-specimen.ts';
 import {referenceWallPixels} from './wall-material-lab-reference.ts';
 import {SRGB_BYTE_TO_LINEAR,linearToSRGBByte} from './rendering/surface-color-space.ts';
@@ -37,7 +38,7 @@ for(const kind of WALL_EFFECTS){
 wallCard(el('combined'),'Exterior masonry','Damp foundation, moss and sill runoff',wallSample(2,['damp','moss','runoff','crack']));
 wallCard(el('combined'),'Industrial cladding','Sun fading and seam corrosion',wallSample(6,['fade','rust']));
 wallCard(el('combined'),'Painted corridor','Door traffic, jamb chips and repair',wallSample(1,['contact','chip','repair']));
-wallCard(el('combined'),'Kitchen wall','Cooking residue and sink splashes (separate anchors in maps)',wallSample(5,['grease','splash']));
+wallCard(el('combined'),'Kitchen wall','Cooking residue and sink splashes at separate anchors',(()=>{const r=wallSample(5,['grease','splash']);return {...r,events:r.events.map(e=>({...e,x:e.kind==='grease'?29:67}))};})());
 for(const [i,w] of WALL_FINISHES.entries())wallCard(el('finishes'),w.name,'96 × '+wallSample(i).height+' world units',wallSample(i),false);
 const materials=PIXEL_SURFACES.map(kind=>{const f=figure(kind.replaceAll('-',' '));el('materials').append(f.root);return {kind,canvas:f.canvas};});
 const kinds=['dust','stain','scrape','scuff','oil','grease','rust','chip','crack','scratch','drip','mud','footprint','mineral','fade','soot','moss','paint-peel','fray','abrade'] as const satisfies readonly WearTextureKind[];
@@ -57,6 +58,14 @@ function drawPatterns(){
   paint(canvas,bytes,32,32);
  }
 }
+const contexts:{before:ReturnType<typeof figure>;after:ReturnType<typeof figure>;pair:HTMLDivElement;sample:(level:number,seed:number)=>{width:number;height:number;bytes:Uint8Array}}[]=[];
+function contextCard(parent:HTMLElement,title:string,sample:(level:number,seed:number)=>{width:number;height:number;bytes:Uint8Array}){
+ const card=node('article');card.className='card';card.append(node('h3',title));
+ const pair=node('div');pair.className='pair';const before=figure('Clean'),after=figure('Current wear');
+ pair.append(before.root,after.root);card.append(pair);parent.append(card);contexts.push({before,after,pair,sample});
+}
+FLOOR_WITNESSES.forEach((w,i)=>contextCard(el('floor-context'),w.name,(level,seed)=>floorWitness(i,level,seed)));
+FIXTURE_WITNESSES.forEach((w,i)=>contextCard(el('fixture-context'),w.name,(level,seed)=>fixtureWitness(i,level,seed)));
 const specimenEffect=el<HTMLSelectElement>('specimen-effect');
 for(const kind of WALL_EFFECTS){const o=node('option',WALL_WITNESSES[kind].label);o.value=kind;specimenEffect.append(o);}
 let specimen:ReturnType<typeof createMaterialSpecimen>|undefined;
@@ -83,6 +92,11 @@ function redraw(){
  }
  for(const {recipe,canvas} of finishCards){const p=audition(recipe,0);paint(canvas,p.bytes,p.width,p.height);}
  for(const b of document.querySelectorAll<HTMLButtonElement>('[data-level]'))b.setAttribute('aria-pressed',String(Number(b.dataset.level)===level));
+ for(const {before,after,pair,sample} of contexts){
+  const variant=Number(el<HTMLSelectElement>('variant').value),p=sample(level,variant),clean=sample(0,variant);
+  paint(before.canvas,clean.bytes,clean.width,clean.height);paint(after.canvas,p.bytes,p.width,p.height);
+  before.root.hidden=single;pair.className=single?'single':'pair';after.caption.textContent='Wear '+level+'/100';
+ }
  drawSpecimen();
  el('status').textContent=WALL_EFFECTS.length+' wall effects · '+WALL_FINISHES.length+' wall finishes · '+materials.length+' pixel motifs · '+masks.length+' local wear masks';
 }
