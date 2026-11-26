@@ -41,7 +41,9 @@ export const WEAPON_FINISH_SPECS={
  'hk-muzzle-metal':{color:0x2f3533,roughness:.78,metalness:.16,role:'steel'},
  // G36 O3 color audit: G36-only opaque and pooled finishes. Do not recolor
  // G3/HK33/MP5/FAL by editing the shared HK material signatures.
- 'g36-polymer':{color:0x3b423e,roughness:.96,metalness:.012,role:'polymer'},
+ 'g36-polymer':{color:0x3c443a,roughness:.96,metalness:.012,role:'polymer'},
+ // WA5: scoped cool-neutral steel for the modern polymer family.
+ 'g36-steel':{color:0x474e50,roughness:.82,metalness:.12,role:'steel'},
  'g36-optic-rim':{color:0x303832,roughness:.96,metalness:.012,role:'polymer'},
  'g36-lens':{color:0x141c18,roughness:.99,metalness:0,role:'polymer'},
  'g36-rubber':{color:0x252d29,roughness:.99,metalness:.005,role:'polymer'},

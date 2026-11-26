@@ -33,6 +33,7 @@ export const HK_MUZZLE_METAL=weaponFinish('hk-muzzle-metal');
 /** G36 O3: scoped factory poly/rim/lens/rubber finish hierarchy.
  * Other HK families intentionally keep their existing shared colors.
  */
+export const G36_CALIBRATED_STEEL=weaponFinish('g36-steel');
 export const G36_DARK_POLYMER=weaponFinish('g36-polymer');
 export const G36_OPTIC_RIM=weaponFinish('g36-optic-rim');
 export const G36_LENS_BLACK=weaponFinish('g36-lens');

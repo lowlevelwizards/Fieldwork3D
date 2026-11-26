@@ -1,19 +1,9 @@
 name: WA4 FAL FNC artwork calibration
+# Historical stage checkpoint; later stages use their own incremental gate.
 on:
-  push:
-    branches: [feature/wa0-wa2-weapon-art-foundation]
-    paths:
-      - 'src/weapons/geometry/weapon-material-registry.ts'
-      - 'src/weapons/geometry/weapon-visual-palette.ts'
-      - 'src/weapons/geometry/fnc-silhouettes.ts'
-      - 'src/weapons/geometry/fal-silhouettes.ts'
-      - 'scripts/*wa4*'
-      - 'scripts/capture-weapon-art-baseline.mjs'
-      - 'scripts/capture-wa0-operator-context.mjs'
-      - '.github/workflows/wa4-benchmark-calibration.yml'
   workflow_dispatch:
 concurrency:
-  group: wa4-benchmark-${{ github.ref }}
+  group: wa4-benchmark-historical-${{ github.run_id }}
   cancel-in-progress: true
 jobs:
   calibration:
@@ -25,6 +15,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: a532c644bb6d619eafe5d9e7f1e9e0310417571d
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

@@ -11,7 +11,7 @@ import {G36_B_ART as A} from '../src/weapons/geometry/g36-art-layout.ts';
 import {weaponFinish,WEAPON_FINISH_SPECS}
  from '../src/weapons/geometry/weapon-material-registry.ts';
 import {G36_DARK_POLYMER,G36_OPTIC_RIM,G36_LENS_BLACK,G36_RUBBER,
- G36_SMOKED_MAGAZINE,HK_DARK_POLYMER,HK_BLACK_METAL}
+ G36_SMOKED_MAGAZINE,HK_DARK_POLYMER,HK_BLACK_METAL,G36_CALIBRATED_STEEL}
  from '../src/weapons/geometry/weapon-visual-palette.ts';
 import {clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
 
@@ -103,7 +103,10 @@ test('O3-S5: full factory adapter applies audited G36-only palette by semantic r
   assert.equal(one(g,k).material,G36_LENS_BLACK);
  assert.equal(one(g,'g36Buttpad').material,G36_RUBBER);
  assert.equal(one(g,'g36SelectorLever').material,G36_RUBBER);
- assert.equal(one(g,'g36ChargingHandle').material,HK_BLACK_METAL);
+ assert.equal(one(g,'g36ChargingHandle').material,G36_CALIBRATED_STEEL);
+ assert.notStrictEqual(G36_CALIBRATED_STEEL,HK_BLACK_METAL);
+ assert.equal(G36_CALIBRATED_STEEL.color.getHex(),0x474e50);
+ assert.equal(G36_DARK_POLYMER.color.getHex(),0x3c443a);
  assert.equal(one(g,'g36Magazine').material.color.getHex(),
   G36_SMOKED_MAGAZINE.color.getHex());
  assert.equal(one(g,'g36Magazine').material.transparent,false);

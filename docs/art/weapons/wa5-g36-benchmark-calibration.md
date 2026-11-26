@@ -1,0 +1,10 @@
+# WA5 — Modern polymer benchmark
+## Review
+Review WA0 archived side, three-quarter and native 128px evidence for all four G36 factory variants. Preserve the recognizable continuous angular body, genuine apertures, distinct short and long silhouettes, and smoked magazine. The compact and KA4 rail treatments remain recognizable at native size; detailed accessory/rail review belongs in WA12. No arbitrary thinning or geometry expansion. WA3 actual G36 service material study (artifact 15086214526) is the color reference: slightly warmer, muted polymer with cooler neutral steel. Diagnostic key is not live mission lighting.
+## Candidate
+Update existing G36 polymer finish to #3c443a and use a scoped #474e50 steel registry entry rather than changing HK steel. Preserve opaque smoked magazine, rubber, optic rims and lenses, textures, silhouette, geometry, appearance slots, saved IDs, attachments and gameplay. Identical finish specifications share the existing registry cache. Do not add mesh/texture allocations.
+## Acceptance
+Against exact corrected WA4 commit a532c644bb6d619eafe5d9e7f1e9e0310417571d, hash all 101 artwork cases. Only G36 cases may change and only the two reviewed color transitions; all other data and families remain exact. Capture before/current with shared cameras and framing (factory, custom, representative equipped, and actual operator context). Compare exact silhouettes, triangles and render submissions. Inspect actual images before declaring art acceptance. Real mission lighting and broader presentation remain WA15/16.
+## Workflow
+WA4's historical checkpoint is pinned to its corrected SHA for future manual reruns; WA5 verifies incremental delta so later intended palette changes do not invalidate the earlier scope gate. No production merge/deploy. WA4's paired WebGL run 45757430184 must finish independently.
+Status: candidate committed; dedicated tests, paired capture and final visual review pending.
