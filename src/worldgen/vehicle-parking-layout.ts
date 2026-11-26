@@ -4,6 +4,7 @@
  */
 import type {Site,ExteriorZone} from '../breach-site.ts';
 import type {Obstacle} from '../breach-core.ts';
+import {primaryEntranceSpan} from './primary-entrance.ts';
 import {planPublicStreet} from './public-street-layout.ts';
 import {arrivalAccessLane} from './property-access-lane.ts';
 import {proposeStreetParkingLayout} from './street-parking.ts';
@@ -89,7 +90,7 @@ export function proposeResidentialDriveway(site:Site,front:ExteriorZone):{drivew
  const available=outer-inner;
  const bayDepth=Math.min(136,available-8);
  if(long<166||bayDepth<87)return null;
- const bayWidth=site.streetInfrastructure?64:62,frontDoor=site.doors.find(d=>d.id==='FRONT');
+ const bayWidth=site.streetInfrastructure?64:62,frontDoor=primaryEntranceSpan(site.doors);
  const entrance=frontDoor?(frontDoor.a[axis]+frontDoor.b[axis])/2:site.entrance[axis];
  const edges=[-1,1].map(s=>({s,at:front[axis]+s*(long/2-bayWidth/2)}))
   .sort((a,b)=>Math.abs(b.at-entrance)-Math.abs(a.at-entrance));

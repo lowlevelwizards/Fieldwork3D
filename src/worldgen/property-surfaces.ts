@@ -2,6 +2,7 @@
  * Visual-only marks attached to existing exterior zones, never new collision.
  */
 import {type Site,type ExteriorZone} from '../breach-site.ts';
+import {primaryEntranceSpan} from './primary-entrance.ts';
 import {arrivalAccessLane} from './property-access-lane.ts';
 import {parkingStallCount,reservedParkingBay} from './parking-stalls.ts';
 import {planRearServiceMarks} from './rear-service-program.ts';
@@ -28,7 +29,7 @@ export type PropertySurface={
 export function planPropertySurfaces(site:Site):PropertySurface[]{
  const marks:PropertySurface[]=[];
  const entry=site.entrySide??'south';
- const front=site.doors.find(d=>d.id==='FRONT');
+ const front=primaryEntranceSpan(site.doors);
  const frontCenter=front?{x:(front.a.x+front.b.x)/2,y:(front.a.y+front.b.y)/2}:undefined;
  const add=(zone:ExteriorZone,kind:SurfaceKind,x:number,y:number,
    width:number,depth:number)=>{

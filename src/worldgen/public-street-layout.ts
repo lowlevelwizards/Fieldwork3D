@@ -7,6 +7,7 @@
  */
 import type {Site} from '../breach-site.ts';
 import type {Obstacle} from '../breach-core.ts';
+import {primaryEntranceSpan} from './primary-entrance.ts';
 
 type StreetSite=Pick<Site,'entrySide'|'entrance'> &
  Partial<Pick<Site,'bounds'|'rooms'|'doors'|'exteriorZones'|'streetInfrastructure'>>;
@@ -57,7 +58,7 @@ export function planPublicStreet(site:StreetSite):PublicStreet|null{
  const road=rect(along,span,roadCenter,roadWidth);
  const sidewalk=sidewalkWidth>=9?
    rect(along,span,sidewalkCenter,sidewalkWidth):null;
- const front=site.doors?.find(d=>d.id==='FRONT');
+ const front=primaryEntranceSpan(site.doors);
  const entrance=front?{x:(front.a.x+front.b.x)/2,
    y:(front.a.y+front.b.y)/2}:site.entrance;
  const center=vertical?entrance.x:entrance.y;

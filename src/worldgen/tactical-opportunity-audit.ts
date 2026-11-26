@@ -4,6 +4,7 @@
  */
 import type {Site,Room,WindowOpening} from '../breach-site.ts';
 import type {Door,Pt} from '../breach-core.ts';
+import {primaryEntranceSpan} from './primary-entrance.ts';
 import {accessibleExteriorWall} from '../breach-site-footprint.ts';
 import {initializeWindows} from '../breach-windows.ts';
 import {windowClimbAvailability} from '../breach-mantle.ts';
@@ -47,7 +48,7 @@ const uniqueDoor=(a:Door,b:Door)=>a.pairedWith===b.id&&
 export function auditTacticalOpportunities(site:Site,
  verified:readonly DeploymentChoice[]=[]):TacticalOpportunityAudit{
  const verifiedIds=new Set(verified.map(c=>c.id));
- const front=site.doors.find(d=>d.id==='FRONT');
+ const front=primaryEntranceSpan(site.doors);
  const frontP=front?middle(front):site.entrance;
  const entries:EntryOpportunity[]=[];
  const consumed=new Set<string>();
@@ -59,7 +60,7 @@ export function auditTacticalOpportunities(site:Site,
    if(twin)consumed.add(twin.id);
   }
   consumed.add(door.id);
-  const at=middle(door);
+  const at=door.id==='FRONT'?frontP:middle(door);
   entries.push({id:door.id,kind:door.id==='FRONT'?'primary':
     door.kind==='shutter'?'shutter':'secondary',
     at,distanceFromFront:Math.round(dist(at,frontP)),status:'door',

@@ -4,12 +4,13 @@
  */
 import type {Site,ExteriorZone} from '../breach-site.ts';
 import type {Obstacle} from '../breach-core.ts';
+import {primaryEntranceSpan} from './primary-entrance.ts';
 type Entrance=Pick<Site,'doors'|'entrySide'|'entrance'>;
 const clamp=(v:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,v));
 export type ArrivalLane={x:number;y:number;w:number;h:number};
 export function arrivalAccessLane(site:Entrance,zone:ExteriorZone):ArrivalLane|null{
  if(zone.id!=='arrival-forecourt'||zone.w<24||zone.h<24)return null;
- const front=site.doors.find(d=>d.id==='FRONT');
+ const front=primaryEntranceSpan(site.doors);
  const at=front?{x:(front.a.x+front.b.x)/2,y:(front.a.y+front.b.y)/2}:site.entrance;
  const side=site.entrySide??'south';
  if(side==='north'||side==='south')

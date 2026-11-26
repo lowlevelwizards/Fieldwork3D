@@ -2,6 +2,7 @@
  * tactical renderer. No new world renderer, hidden-map discovery or orders.
  */
 import type {Pt} from '../breach-core.ts';
+import {primaryEntranceSpan} from '../worldgen/primary-entrance.ts';
 import type {Site} from '../breach-site.ts';
 import type {DeploymentChoice} from '../breach-deployment.ts';
 
@@ -14,7 +15,8 @@ export function entryMapPoints(site:Pick<Site,'doors'|'windows'|'entrance'>,
  const all=[{id:'FRONT',kind:'primary' as const,status:'door' as const,
    approach:site.entrance},...choices.filter(choice=>choice.id!=='FRONT')];
  return all.map(entry=>{
-   const door=site.doors.find(door=>door.id===entry.id);
+   const door=entry.id==='FRONT'?primaryEntranceSpan(site.doors):
+      site.doors.find(door=>door.id===entry.id);
    const window=site.windows?.find(window=>window.id===entry.id);
    const point=door?{x:(door.a.x+door.b.x)/2,y:(door.a.y+door.b.y)/2}:
      window?{x:window.x,y:window.y}:entry.approach;

@@ -4,6 +4,7 @@
  */
 import type {Site,Room} from '../breach-site.ts';
 import type {Pt} from '../breach-core.ts';
+import {primaryEntranceSpan} from './primary-entrance.ts';
 export type EntrySide='south'|'east'|'north'|'west';
 const sides:readonly EntrySide[]=['south','east','north','west'];
 export function orientArchitecturalSite(site:Site,seed:number):Site{
@@ -45,7 +46,7 @@ export function orientArchitecturalSite(site:Site,seed:number):Site{
  * all four entry sides and does not assume the building faces south.
  */
 export function entryInteriorPoint(site:Site,depth=20):Pt|null{
- const door=site.doors.find(d=>d.id==='FRONT');if(!door)return null;
+ const door=primaryEntranceSpan(site.doors);if(!door)return null;
  const mid={x:(door.a.x+door.b.x)/2,y:(door.a.y+door.b.y)/2};
  const from=site.spawn?.[0]??{x:mid.x,y:mid.y+45};
  const dx=mid.x-from.x,dy=mid.y-from.y,mag=Math.hypot(dx,dy)||1;

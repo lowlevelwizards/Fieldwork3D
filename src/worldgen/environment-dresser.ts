@@ -1,5 +1,6 @@
 /** Deterministic semantic dressing. Decorations never invent collision. */
 import {type Site} from '../breach-site.ts';
+import {primaryEntranceSpan} from './primary-entrance.ts';
 import {seeded} from './seeded-rng.ts';
 import {surfaceDetailBudget} from './environment-composition.ts';
 import {compatibleDecoration,visibleSurfaceHeight,surfaceOffset,
@@ -119,7 +120,7 @@ export function dressSite(site:Site,seed:number):Site{
   }
  }
  // The public entrance gets an actual mat, not a decoration on a door leaf.
- const front=site.doors.find(door=>door.id==='FRONT');
+ const front=primaryEntranceSpan(site.doors);
  if(front){
   const mx=(front.a.x+front.b.x)/2,my=(front.a.y+front.b.y)/2;
   const closest=site.rooms.slice().sort((a,b)=>{
