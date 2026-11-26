@@ -3,7 +3,8 @@
  * Pure alpha generation: no Canvas, no random state, no simulation changes.
  * Every nonzero texel lies inside the existing confined mark radius.
  */
-import {impactMaterialScale} from './breach-impact-finish-scale.ts';
+export const METAL_IMPACT_SCALE=.85;
+export const impactMaterialScale=(surface:string|undefined)=>surface==='metal'?METAL_IMPACT_SCALE:1;
 export const STAIN_CELL=32,STAIN_VARIANTS=4,BLOOD_STYLE_COUNT=8;
 const MATERIAL_STYLES=['wood','stone','metal','glass','dust'] as const;
 export const STAIN_STYLE_COUNT=BLOOD_STYLE_COUNT+MATERIAL_STYLES.length*2;
