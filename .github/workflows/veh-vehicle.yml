@@ -1,0 +1,72 @@
+name: VEH vehicle geometry and contracts
+on:
+  pull_request:
+    paths:
+      - 'src/worldgen/vehicle-*.ts'
+      - 'src/breach-reactive-cover.ts'
+      - 'src/breach-core.ts'
+      - 'src/breach-cover-height.ts'
+      - 'scripts/verification/veh-lab-browser.mjs'
+      - 'src/vehicle-lab-main.ts'
+      - 'vehicle-lab.html'
+      - 'scripts/audit-veh-parking.mjs'
+      - 'src/breach-site.ts'
+      - 'src/breach-archetypes.ts'
+      - 'src/breach-windows.ts'
+      - 'src/worldgen/exterior-sites.ts'
+      - 'src/worldgen/parking-stalls.ts'
+      - 'src/worldgen/property-surfaces.ts'
+      - 'src/worldgen/public-street-layout.ts'
+      - 'src/worldgen/world-scale.ts'
+      - 'src/worldgen/asset-catalog.ts'
+      - 'src/worldgen/asset-library.ts'
+      - 'src/worldgen/fixture-visuals.ts'
+      - 'src/worldgen/asset-character-visuals.ts'
+      - 'src/worldgen/asset-review.ts'
+      - 'src/asset-lab-main.ts'
+      - 'src/rendering/breach-site-scene-builder.ts'
+      - 'src/breach-3d.ts'
+      - 'src/breach-materials.ts'
+      - 'src/worldgen/pixel-surface-selection.ts'
+      - 'tests/veh-*.test.mjs'
+      - '.github/workflows/veh-vehicle.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  vehicle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/veh-vehicle-model.test.mjs tests/veh-placement.test.mjs tests/veh-replay.test.mjs tests/map-17-vehicles.test.mjs tests/map-24-vehicle-identity.test.mjs tests/map-21-asset-character-pass.test.mjs tests/texture3-01-routing.test.mjs tests/map-04-fixture-renderer.test.mjs tests/map-20-world-scale.test.mjs tests/exterior-composition-g-20261108.test.mjs tests/exterior-realism-stage1-20261108.test.mjs
+      - run: npm run check
+      - run: node --experimental-strip-types scripts/audit-veh-parking.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: veh-parking-baseline
+          path: veh-parking-baseline.json
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - run: node scripts/verification/veh-lab-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: veh-lab-browser
+          path: artifacts/veh-lab-browser/
+          if-no-files-found: ignore

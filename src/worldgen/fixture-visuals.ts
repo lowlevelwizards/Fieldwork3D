@@ -12,16 +12,19 @@ import {renderDetailedFixture} from './detailed-fixture-visuals.ts';
 import {renderCharacterFixture} from './asset-character-visuals.ts';
 import {renderFoliageCardFixture} from './foliage-card-visuals.ts';
 import {conditionColor,conditionRoughness} from './asset-condition.ts';
+import {renderVehicleFixture} from './vehicle-visual.ts';
 export type FixtureVisualContext={
  box:(parent:THREE.Object3D,x:number,y:number,z:number,
    w:number,h:number,d:number,material:THREE.Material,cast?:boolean)=>THREE.Mesh;
  solid:(hex:number,roughness?:number,surface?:PixelSurface)=>THREE.MeshStandardMaterial;
+ vehicleMaterial?:()=>THREE.MeshStandardMaterial;
 };
 export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
  ctx:FixtureVisualContext,wood:THREE.Material,steel:THREE.Material,
  olive:THREE.Material,metal:THREE.Material):void{
       const fixture=c.fixture??'crate';
       const asset=propDefinition(fixture);
+      if(renderVehicleFixture(group,c,i,ctx.vehicleMaterial))return;
       const nativeSurface=fixturePixelSurface(fixture);
       // In normal gameplay the original context is reused without overrides.
       const visualCtx:FixtureVisualContext=!c.artCondition&&!c.artSurface?ctx:{
@@ -210,62 +213,6 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           for(const sx of [-1,0,1])
             ctx.box(group,c.x+sx*w*.27,tall*.8,c.y+d/2+1,
               3,3,2,ctx.solid(0xc6b182),false);
-      }else if(['vehicle','sedan','pickup','van','suv'].includes(fixture)){
-        // Purpose-shaped low-poly bodies, not a generic block on four sticks.
-        // X is vehicle length and Z is width; collision uses the same footprint.
-        const model=fixture==='vehicle'?'sedan':fixture;
-        const paint=ctx.solid([0x647b72,0x9c8e74,0x71838c,0x99745d][i%4],.76,'metal');
-        const glass=ctx.solid(0x557579,.25);
-        const rubber=ctx.solid(0x252b2b,.94,'rubber');
-        const chrome=ctx.solid(0x9ea7a0,.48,'metal');
-        const radius=Math.max(2.2,Math.min(w*.085,d*.23));
-        ctx.box(group,c.x,10,c.y,w,11,d*.91,paint);
-        ctx.box(group,c.x,5,c.y,w*.9,4,d*.72,steel);
-        for(const sx of [-1,1])for(const sz of [-1,1]){
-          const tire=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,3,10),rubber);
-          tire.rotation.x=Math.PI/2;
-          tire.position.set(c.x+sx*w*.31,radius*.83,c.y+sz*d*.43);
-          tire.castShadow=true;group.add(tire);
-          const hub=new THREE.Mesh(new THREE.CylinderGeometry(radius*.42,radius*.42,3.3,10),chrome);
-          hub.rotation.x=Math.PI/2;hub.position.copy(tire.position);
-          group.add(hub);
-        }
-        if(model==='van'){
-          const roof=asset?.height??42;
-          ctx.box(group,c.x,(15+roof)/2,c.y,w*.78,roof-15,d*.86,paint);
-          ctx.box(group,c.x-w*.32,(16+roof)/2,c.y-d*.44,
-            w*.21,(roof-16)*.65,1,glass,false);
-          ctx.box(group,c.x+w*.27,(16+roof)/2,c.y,2,(roof-16)*.62,d*.7,glass,false);
-        }else{
-          const truck=model==='pickup',high=model==='suv';
-          const cabWidth=truck?w*.37:high?w*.63:w*.52;
-          const cabCenter=truck?c.x-w*.20:c.x-w*.035;
-          const cabHeight=Math.max(12,(asset?.height??32)-15);
-          ctx.box(group,cabCenter,15+cabHeight*.5,c.y,
-            cabWidth,cabHeight,d*.79,paint);
-          const windshield=ctx.box(group,cabCenter+cabWidth*.40,
-            16+cabHeight*.40,c.y,1.6,cabHeight*.65,d*.70,glass,false);
-          windshield.rotation.z=-.15;
-          const rearGlass=ctx.box(group,cabCenter-cabWidth*.43,
-            16+cabHeight*.40,c.y,1.4,cabHeight*.59,d*.67,glass,false);
-          rearGlass.rotation.z=.12;
-          if(truck){
-            const bedX=c.x+w*.27,bedW=w*.40;
-            ctx.box(group,bedX,14,c.y,bedW,3,d*.82,paint);
-            for(const sz of [-1,1])
-              ctx.box(group,bedX,17,c.y+sz*d*.41,bedW,6,2,paint);
-            ctx.box(group,c.x+w*.46,16,c.y,3,6,d*.85,paint);
-          }else if(model==='sedan'){
-            ctx.box(group,c.x+w*.36,12,c.y,w*.25,4,d*.85,paint);
-            ctx.box(group,c.x-w*.38,12,c.y,w*.21,4,d*.85,paint);
-          }
-        }
-        for(const sx of [-1,1]){
-          ctx.box(group,c.x+sx*w*.51,8,c.y,w*.025,3,d*.84,chrome,false);
-          const lamp=ctx.solid(sx>0?0xd8ca9e:0x954d48,.62);
-          ctx.box(group,c.x+sx*w*.515,12,c.y-d*.26,1.2,4,d*.17,lamp,false);
-          ctx.box(group,c.x+sx*w*.515,12,c.y+d*.26,1.2,4,d*.17,lamp,false);
-        }
       }else if(fixture==='public-bench'){
         // Public seating needs a cast-metal support frame, visible slats
         // and unmistakable seat/back profile, not a generic box.

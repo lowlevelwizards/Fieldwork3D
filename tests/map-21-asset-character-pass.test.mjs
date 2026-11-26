@@ -4,6 +4,8 @@ import {readFileSync} from 'node:fs';
 import * as THREE from 'three';
 import {propCatalog,propDefinition} from '../src/worldgen/asset-catalog.ts';
 import {assetLibrary} from '../src/worldgen/asset-library.ts';
+import {VEHICLE_FAMILIES} from '../src/worldgen/vehicle-catalog.ts';
+import {renderVehicleFixture,createVehicleMaterial} from '../src/worldgen/vehicle-visual.ts';
 import {CHARACTER_FIXTURE_IDS,characterVariant,renderCharacterFixture}
  from '../src/worldgen/asset-character-visuals.ts';
 
@@ -28,8 +30,8 @@ test('silhouette-first upgrade registry covers only valid physical catalog asset
   assert.ok(existing.has(id),id);
   assert.equal(assetLibrary().find(x=>x.id===id)?.presentation,'bespoke',id);
  }
- assert.ok(CHARACTER_FIXTURE_IDS.size>=45);
- assert.ok(['sedan','pickup','suv','van','vehicle'].every(x=>CHARACTER_FIXTURE_IDS.has(x)));
+ assert.ok(CHARACTER_FIXTURE_IDS.size+VEHICLE_FAMILIES.length>=45);
+ assert.ok(VEHICLE_FAMILIES.every(x=>!CHARACTER_FIXTURE_IDS.has(x)));
 });
 
 test('every upgraded asset produces visible non-box-only geometry within its footprint',()=>{
@@ -60,17 +62,19 @@ test('every upgraded asset produces visible non-box-only geometry within its foo
  assert.equal(verified,CHARACTER_FIXTURE_IDS.size*3);
 });
 
-test('vehicle families have a sloped cabin, instanced wheels, and recognisable trims',()=>{
- for(const id of ['vehicle','sedan','pickup','van','suv']){
-  const item=propDefinition(id),group=new THREE.Group();
-  assert.equal(renderCharacterFixture(group,{
-   x:2,y:3,w:item.width,h:item.depth,fixture:id},id,1,ctx,...materials),true);
-  assert.ok(group.children.some(x=>x instanceof THREE.Mesh&&
-    x.geometry instanceof THREE.ExtrudeGeometry),id+' shaped roof');
-  assert.ok(group.children.filter(x=>x instanceof THREE.InstancedMesh).length>=2,
-    id+' instanced wheels');
-  assert.ok(group.children.length<=60,id+' mesh budget');
- }
+test('vehicles use a single shared opaque vertex-colored model, including the archive alias',()=>{
+ const mat=createVehicleMaterial();
+ try{
+  for(const id of ['vehicle',...VEHICLE_FAMILIES]){
+   const item=propDefinition(id),group=new THREE.Group();
+   assert.equal(renderVehicleFixture(group,{x:2,y:3,w:item.width,h:item.depth,fixture:id},1,()=>mat),true);
+   assert.equal(group.children.length,1);
+   const mesh=group.children[0];assert.equal(mesh.material,mat);
+   assert.ok(mesh.geometry.getAttribute('color'));
+   assert.ok(mesh.geometry.getAttribute('position').count/3<=450);
+   mesh.geometry.dispose();
+  }
+ }finally{mat.dispose();}
 });
 
 test('all three trims are stable and never change tactical physical dimensions',()=>{

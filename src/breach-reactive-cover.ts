@@ -4,6 +4,7 @@
 import type {Obstacle} from './breach-core.ts';
 import {materialForFixture,MATERIALS} from './breach-materials.ts';
 import {coverHeight} from './breach-cover-height.ts';
+import {vehicleFamily} from './worldgen/vehicle-catalog.ts';
 export type CoverDamageState='intact'|'damaged'|'collapsed'|'immune';
 const permanent=new Set(['vehicle','vehicle-lift','generator','tank',
  'window-sill','fence','concrete-column']);
@@ -11,12 +12,12 @@ const permanent=new Set(['vehicle','vehicle-lift','generator','tank',
 export function coverInitialIntegrity(obstacle:Pick<Obstacle,'fixture'|'material'>):number{
  const material=obstacle.material??materialForFixture(obstacle.fixture),base=MATERIALS[material].integrity;
  const fixture=obstacle.fixture??'';
- if(permanent.has(fixture)||material==='glass'||material==='brick'||material==='concrete'||fixture.startsWith('target-')||/column|wall|fence|barrier|shutter|door|training/.test(fixture))return base;
+ if(permanent.has(fixture)||vehicleFamily(fixture)||material==='glass'||material==='brick'||material==='concrete'||fixture.startsWith('target-')||/column|wall|fence|barrier|shutter|door|training/.test(fixture))return base;
  return base*(/desk|cabinet|bookcase|wardrobe|workbench|counter|locker|fridge|dresser|shelf/.test(fixture)?1.75:1.5);
 }
 export function damageCover(obstacle:Obstacle,amount:number,at?:number):CoverDamageState{
  if(!Number.isFinite(amount)||amount<=0)return 'immune';
- if(permanent.has(obstacle.fixture??'')||obstacle.destroyed)return 'immune';
+ if(permanent.has(obstacle.fixture??'')||vehicleFamily(obstacle.fixture??'')||obstacle.destroyed)return 'immune';
  const max=coverInitialIntegrity(obstacle);
  const before=obstacle.integrity??max;
  const after=Math.max(0,before-amount);

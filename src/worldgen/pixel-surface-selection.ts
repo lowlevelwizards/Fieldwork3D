@@ -76,7 +76,7 @@ export function fixturePixelSurface(fixture:string|undefined):PixelSurface{
  'rug'].includes(id))return 'fabric';
  if(['fridge','cooler','locker','filing-cabinet','stove','laundry-machine',
  'microwave','generator','control-panel','tool-chest','vehicle','sedan',
- 'pickup','van','suv','tank','barrel','vehicle-lift','compressor',
+ 'pickup','van','suv','hatchback','light-truck','tank','barrel','vehicle-lift','compressor',
  'shopping-cart'].includes(id))return 'metal';
  if(['tree','tree-broadleaf','tree-conifer','tree-scrub','shrub-round',
  'shrub-tall','hedge','bush','plant'].includes(id))return 'foliage';

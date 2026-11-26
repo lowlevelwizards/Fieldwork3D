@@ -42,7 +42,7 @@ try{
       const result=await page.evaluate(({scenario,after})=>{
        const {scene,generateSite,newSession,team,activateSite,planPropertySurfaces}=window.v18;
        const {seed,scale,archetype}=scenario;
-       const site=generateSite(seed,scale,undefined,{mission:'intel'},{archetype});
+       const site=generateSite(seed,scale,undefined,{mission:'intel'},{archetype,vehiclePlacement:false});
        const snapshot=JSON.stringify(site);
        const old=[];scene.root.traverse(o=>{if(o.userData.fieldworkDrawFamily==='exterior-ground-finish')old.push(o.geometry);});
        const disposal=new Map(old.map(g=>[g,0]));

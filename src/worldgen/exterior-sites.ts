@@ -10,6 +10,7 @@ import {type Obstacle} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {arrivalAccessLane,overlapsArrivalLane} from './property-access-lane.ts';
 import {parkingStallCandidates} from './parking-stalls.ts';
+import {proposeVehicleParkingLayout,proposeResidentialDriveway,intersectsVehicleParkingReserve} from './vehicle-parking-layout.ts';
 import {SERVICE_EDGE_FIXTURES,serviceYardEdgeCandidates} from './service-yard-layout.ts';
 import {SERVICED_FACING_FIXTURES,serviceEnvelope,
  serviceFacingOrientation,intersectsServiceAccess}
@@ -23,7 +24,7 @@ import {landscapePhysicalFootprint,TREE_FIXTURES} from './landscape-footprint.ts
 import {outdoorFixtureAllowed,frontageEdgeCandidates,expandFrontageCandidates}
  from './outdoor-fixture-policy.ts';
 const overlaps=(a:Obstacle,b:Obstacle)=>Math.abs(a.x-b.x)<(a.w+b.w)/2+17&&Math.abs(a.y-b.y)<(a.h+b.h)/2+17;
-export function addExteriorProperty(site:Site,seed:number):Site{
+export function addExteriorProperty(site:Site,seed:number,vehiclePlacement=false,arrivalRetrofit=false):Site{
  const minX=Math.min(...site.rooms.map(r=>r.x));
  const maxX=Math.max(...site.rooms.map(r=>r.x+r.w));
  const minY=Math.min(...site.rooms.map(r=>r.y));
@@ -70,6 +71,24 @@ export function addExteriorProperty(site:Site,seed:number):Site{
     w:horizontal?width:thickness,h:horizontal?thickness:depth});
  };
  edgeZone(entry,'arrival-forecourt',frontKind,118);
+ // Try a larger, genuinely paved arrival only in the explicit new-site
+ // pilot. If the actual private depth cannot hold a row plus its aisle,
+ // restore the original forecourt exactly, with no parking placeholders.
+ if(vehiclePlacement&&['clinic','retail','motel','office','restaurant','apartment','garage','warehouse','utility'].includes(kind)){
+  const original=zones[0];
+  if(original?.id==='arrival-forecourt'){
+   zones.shift();
+   edgeZone(entry,'arrival-forecourt',industrial?'driveway':'parking',220);
+   const candidate=zones[0];
+   const layout=candidate&&proposeVehicleParkingLayout({...site,exteriorZones:zones},candidate);
+   if(layout)zones[0]={...candidate,vehicleParking:layout};
+   else{zones.length=0;zones.push(original);}
+  }
+ }
+ if(vehiclePlacement&&['house','townhouse'].includes(kind)&&zones[0]){
+  const domestic=proposeResidentialDriveway({...site,exteriorZones:zones},zones[0]);
+  if(domestic){zones[0]=domestic.yard;zones.push(domestic.driveway);}
+ }
  edgeZone(opposite[entry],'rear-property',backKind,80);
  const sideOptions:Cardinal[]=entry==='north'||entry==='south'?
    ['east','west']:['north','south'];
@@ -105,20 +124,44 @@ export function addExteriorProperty(site:Site,seed:number):Site{
  // Author the property frontage ONCE from the final exterior zones.
  // A single geometric road/curb plan drives BOTH placement and presentation.
  // Never introduce extra runtime geometry or a second motor collider.
+ // A finished-site retrofit owns only the frontage. Preserve every other
+ // authored zone (including courts), wall, door and structural prop.
+ const originalFront=site.exteriorZones?.find(z=>z.id==='arrival-forecourt');
+ const modernFront=zones.filter(z=>z.id==='arrival-forecourt'||z.id==='residential-driveway');
+ if(arrivalRetrofit){
+  if(!originalFront||!modernFront.some(z=>z.vehicleParking))return site;
+  const existing=site.exteriorZones??[];
+  zones.splice(0,zones.length,...existing.flatMap(z=>z.id==='arrival-forecourt'?modernFront:[z]));
+ }
  const streetPlan=planPublicStreet({...site,exteriorZones:zones});
  const doorCenters=site.doors.map(d=>({
    x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2}));
  const doorReserves=exteriorDoorReserves(site.doors);
- const cover=site.cover.slice();
- const protectedPoints=[...site.spawn,...site.enemies,site.objective,site.extract,site.entrance];
+ const managed=arrivalRetrofit&&originalFront?new Set([
+  ...exteriorRoleRequests(kind,originalFront,seed).flatMap(r=>r.alternatives),
+  ...landscapeEdgeCandidates(originalFront,seed).map(p=>p.fixture),'parking-block'
+ ]):null;
+ const isFrontAmenity=(o:Obstacle)=>!!managed?.has(o.fixture??'')&&!!originalFront&&
+  Math.abs(o.x-originalFront.x)+o.w/2<=originalFront.w/2&&
+  Math.abs(o.y-originalFront.y)+o.h/2<=originalFront.h/2&&
+  !site.rooms.some(r=>o.x+o.w/2>r.x&&o.x-o.w/2<r.x+r.w&&o.y+o.h/2>r.y&&o.y-o.h/2<r.y+r.h);
+ // Re-author only ordinary frontage amenities that physically conflict
+ // with the new row/aisle; never delete structural or indoor obstacles.
+ const cover=site.cover.filter(o=>!arrivalRetrofit||!isFrontAmenity(o)||
+   !(o.fixture==='parking-block'||o.fixture==='parking-sign'||modernFront.some(z=>intersectsVehicleParkingReserve(z,o))));
+ const initialCount=cover.length;
+ const protectedPoints=[...site.spawn,...site.enemies,site.objective,site.extract,site.entrance,
+  ...(arrivalRetrofit?(site.encounter?.actors??[]).flatMap(a=>[a.position,...(a.routine??[])]):[]),
+  ...(arrivalRetrofit?(site.encounter?.neutrals??[]).flatMap(a=>[a.position,...(a.routine??[])]):[])];
  const worldBounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
- for(const zone of zones){
+ const placementZones=arrivalRetrofit?modernFront:zones;
+ for(const zone of placementZones){
   const requests=exteriorRoleRequests(kind,zone,seed);
   const budget=exteriorRoleBudget(zone);
   let acceptedRoles=0;
   const acceptedByRole=new Map<string,Obstacle>();
   for(const request of requests){
-   if(acceptedRoles>=budget||cover.length-site.cover.length>=20)break;
+   if(acceptedRoles>=budget||cover.length-initialCount>=20)break;
    // Independent per-zone/role stream: a rejected asset never shifts
    // another role or a subsequent zone's random candidate sequence.
    let roleSeed=seed^0x15b8ad1;
@@ -128,8 +171,9 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    // Try every legal alternative in this bounded semantic recipe.
    // No relaxation of the existing door, spawn, road or overlap rules.
    for(const item of request.alternatives){
-    if(retiredShrub(item)||!outdoorFixtureAllowed(site,zone,item))continue;
-    if(cover.some((o,index)=>index>=site.cover.length&&o.fixture===item&&
+    if(retiredShrub(item)||!outdoorFixtureAllowed(site,zone,item)||
+      (zone.vehicleParking&&item==='parking-sign'))continue;
+    if(cover.some((o,index)=>(arrivalRetrofit||index>=initialCount)&&o.fixture===item&&
       Math.abs(o.x-zone.x)<=zone.w/2&&Math.abs(o.y-zone.y)<=zone.h/2))continue;
    const asset=propDefinition(item);if(!asset)continue;
    const footprint=landscapePhysicalFootprint(item,asset.width,asset.depth);
@@ -188,7 +232,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
     if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+32&&Math.abs(p.y-y)<h/2+32))continue;
     if(doorCenters.some(d=>(d.x-x)**2+(d.y-y)**2<68*68)||
       intersectsExteriorDoorReserve(doorReserves,candidate))continue;
-    if(overlapsArrivalLane(site,zone,candidate))continue;
+    if(overlapsArrivalLane(site,zone,candidate)||intersectsVehicleParkingReserve(zone,candidate))continue;
     if(cover.some(o=>overlaps(o,candidate)))continue;
     cover.push(candidate);acceptedByRole.set(request.role,candidate);accepted=true;break;
    }
@@ -199,7 +243,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
  // Wheel stops are actual low physical parking-block fixtures in empty
  // marked stalls, not painted decals and never on the front approach.
  // They are placed after vehicle selection so vacant bays remain usable.
- for(const zone of zones.filter(z=>z.kind==='parking')){
+ for(const zone of placementZones.filter(z=>z.kind==='parking'&&!z.vehicleParking)){
    const block=propDefinition('parking-block');
    if(!block)continue;
    const broad=zone.w>=zone.h;
@@ -207,7 +251,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    const lane=arrivalAccessLane(site,zone);
    let inserted=0;
    for(const slot of candidates){
-     if(inserted>=2||cover.length-site.cover.length>=24)break;
+     if(inserted>=2||cover.length-initialCount>=24)break;
      const w=broad?block.width:block.depth;
      const h=broad?block.depth:block.width;
      const candidate:Obstacle={
@@ -234,10 +278,10 @@ export function addExteriorProperty(site:Site,seed:number):Site{
  // The landscaped perimeter is a sparse, legible set of real objects,
  // not a scatter cloud. Every object goes through the same collision,
  // tactical spawn and protected arrival-lane tests as furnishing.
- for(const zone of zones){
+ for(const zone of placementZones){
    const points=landscapeEdgeCandidates(zone,seed);
    for(const point of points){
-     if(cover.length-site.cover.length>=24)break;
+     if(cover.length-initialCount>=24)break;
      if(retiredShrub(point.fixture))continue;
      const asset=propDefinition(point.fixture);if(!asset)continue;
      const footprint=landscapePhysicalFootprint(point.fixture,
@@ -257,7 +301,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
        Math.abs(p.y-y)<h/2+31))continue;
      if(doorCenters.some(d=>(d.x-x)**2+(d.y-y)**2<66*66)||
        intersectsExteriorDoorReserve(doorReserves,candidate))continue;
-     if(overlapsArrivalLane(site,zone,candidate))continue;
+     if(overlapsArrivalLane(site,zone,candidate)||intersectsVehicleParkingReserve(zone,candidate))continue;
      if(TREE_FIXTURES.has(point.fixture)){
        const canopy={...candidate,w:asset.width,h:asset.depth};
        if(site.rooms.some(room=>x+canopy.w/2>room.x-4&&

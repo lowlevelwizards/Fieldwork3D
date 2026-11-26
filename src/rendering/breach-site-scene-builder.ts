@@ -42,6 +42,8 @@ import {planInteriorFragments,type InteriorFragment} from '../worldgen/interior-
 import {visibleSurfaceHeight} from '../worldgen/decoration-anchors.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from '../worldgen/fixture-visuals.ts';
 import {consolidateStaticFixtureParts} from './breach-fixture-draw-batching.ts';
+import {acquireVehicleTemplate,createVehicleMaterial} from '../worldgen/vehicle-visual.ts';
+import {vehicleFamily} from '../worldgen/vehicle-catalog.ts';
 import {acquireRigidFixtureTemplate,adoptRigidFixtureVisual}
  from './breach-fixture-template.ts';
 import {consolidateOwnedStaticSiteDetails} from './breach-owner-static-merge.ts';
@@ -69,6 +71,7 @@ export type SiteSceneBuildPort={
  sharedBoxGeometries:Set<THREE.BufferGeometry>;
  visualTemplates?:StaticVisualTemplateLibrary;
  fixtureTemplates?:StaticVisualTemplateLibrary;
+ vehicleTemplates?:StaticVisualTemplateLibrary;
  includeServiceFixtureTemplates?:boolean;
  /** V3 audition: owner-local exterior shrub replacement only. */
  previewBush?:(parent:THREE.Group,width:number,height:number,depth:number)=>void;
@@ -219,7 +222,8 @@ export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
     consolidateStaticFixtureParts(host.root,{recursive:false,cellSize:220});
     host.repeatedFixtures?.flush(host.root,new Set([
       ...host.sharedBoxGeometries,
-      ...(host.fixtureTemplates?.sharedGeometries()??[])]));
+      ...(host.fixtureTemplates?.sharedGeometries()??[]),
+      ...(host.vehicleTemplates?.sharedGeometries()??[])]));
     // Preserve exact existing cross-owner instance membership before adding
     // unique fixture UVs. An owner with detached parts is not a safe ray target.
     for(const apply of host.pendingFixtureWear??[])apply();
@@ -604,7 +608,12 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
     const doorTrim=host.solid(age(theme.trim,'painted-wood'),.9,'painted-wood');
     const metal=host.solid(0x586665,.78,'industrial-steel');
     buildSiteDoors(site,openingHost,{theme,doorTrim,metal});
+    let vehicleMaterial:THREE.MeshStandardMaterial|undefined;
     const fixtureCtx:FixtureVisualContext={
+      vehicleMaterial:()=>{
+        if(!vehicleMaterial){vehicleMaterial=createVehicleMaterial();host.siteMaterials.track(vehicleMaterial);}
+        return vehicleMaterial;
+      },
       box:(parent,x,y,z,w,h,d,material,cast)=>
         host.box(parent,x,y,z,w,h,d,material,cast),
       solid:(hex,roughness,surface)=>host.solid(age(hex,surface),roughness,surface),
@@ -646,10 +655,11 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       const bushHeight=visual.fixture==='shrub-round'?23:
         visual.fixture==='shrub-tall'?37:visual.fixture==='bush'?25:0;
       const previewBush=!!host.previewBush&&!fixtureRoom&&bushHeight>0;
-      const templateLease=!previewBush&&host.fixtureTemplates&&host.registerVisualLease?
-        acquireRigidFixtureTemplate(host.fixtureTemplates,visual,i,localCtx,palette,
-          host.includeServiceFixtureTemplates===true):
-        null;
+      const isVehicle=!!vehicleFamily(visual.fixture??'');
+      const templateLease=!previewBush&&host.registerVisualLease?
+        (isVehicle&&host.vehicleTemplates?acquireVehicleTemplate(host.vehicleTemplates,visual,i,fixtureCtx.vehicleMaterial!):
+          host.fixtureTemplates?acquireRigidFixtureTemplate(host.fixtureTemplates,visual,i,localCtx,palette,
+            host.includeServiceFixtureTemplates===true):null):null;
       if(previewBush){
         host.previewBush!(intact,visual.w,bushHeight,visual.h);
       }else if(templateLease){
@@ -659,7 +669,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
           adoptRigidFixtureVisual(intact,templateLease));
       }else renderFixtureVisual(intact,visual,i,localCtx,
         palette.wood,palette.steel,palette.olive,palette.metal);
-      if(!host.floorWearCompiled)for(const mark of marksOn('fixture',i)){
+      if(!isVehicle&&!host.floorWearCompiled)for(const mark of marksOn('fixture',i)){
         const height=visibleSurfaceHeight(c.fixture??'crate');
         if(height<8)continue;
         host.addSurfaceWear(intact,mark,(mark.u-.5)*visual.w,
@@ -675,7 +685,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         .85,'industrial-steel');
       // Batch only opaque, rigid, site-lifetime fixture pieces.
       if(!templateLease)consolidateStaticFixtureParts(intact);
-      if(host.floorWearCompiled&&!previewBush&&host.fixtureWearStrength)for(const mark of marksOn('fixture',i)){
+      if(!isVehicle&&host.floorWearCompiled&&!previewBush&&host.fixtureWearStrength)for(const mark of marksOn('fixture',i)){
         const height=visibleSurfaceHeight(c.fixture??'crate');if(height<8)continue;
         const originalChildren=[...intact.children];
         host.pendingFixtureWear!.push(()=>{
@@ -688,7 +698,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
           });
         });
       }
-      for(let j=0;j<3;j++){
+      for(let j=0;j<(isVehicle?0:3);j++){
         const sx=(j%3-1)*visual.w*.105,sz=(Math.floor(j/3)-.5)*visual.h*.15;
         const width=Math.max(3.2,visual.w*(j%2?.16:.20));
         const depth=Math.max(3.2,visual.h*(j%2?.18:.20));

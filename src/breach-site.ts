@@ -5,6 +5,7 @@
 import {type Pt,type Segment,type Door,type Obstacle} from './breach-core.ts';
 import {applyArchetype} from './breach-archetypes.ts';
 import {withSitePropIds} from './worldgen/site-object-identity.ts';
+import {attachPlannedVehicles} from './worldgen/vehicle-site-integration.ts';
 import {compileArchitecturalSite} from './worldgen/architectural-compiler.ts';
 import {partitionMotelGuestUnits} from './worldgen/motel-suites.ts';
 import {orientArchitecturalSite,type EntrySide} from './worldgen/site-orientation.ts';
@@ -20,7 +21,9 @@ import type {EncounterContext,EncounterPlan} from './worldgen/encounter-types.ts
 export type Room={id:string;zoneId?:string;unitId?:string;x:number;y:number;w:number;h:number;
   kind:'room'|'hall';tone:number;purpose?:string};
 export type BuildingArchetype='house'|'townhouse'|'apartment'|'retail'|'office'|'garage'|'warehouse'|'restaurant'|'motel'|'utility'|'clinic';
-export type ExteriorZone={id:string;kind:'yard'|'patio'|'driveway'|'service'|'garden'|'parking';x:number;y:number;w:number;h:number};
+export type ExteriorZone={id:string;kind:'yard'|'patio'|'driveway'|'service'|'garden'|'parking';x:number;y:number;w:number;h:number;
+  /** Optional new-site vehicle row, serialized with the site. Older sites retain their original markings. */
+  vehicleParking?:import('./worldgen/vehicle-parking-layout.ts').VehicleParkingLayout;};
 export type WideOpening={id:string;a:Pt;b:Pt;kind:'arch'|'wide'|'serving'};
 export type EnvironmentCondition='occupied'|'busy'|'neglected'|'vacant'|'renovation'|'disturbed';
 export type WindowStyle='standard'|'tall'|'picture'|'bay'|'industrial'|
@@ -79,7 +82,7 @@ export {seeded} from './worldgen/seeded-rng.ts';
 export function generateSite(seed:number,scale:SiteScale='standard',
  onProgress?:(phase:'layout'|'furnishing'|'scoring',attempt:number)=>void,
  encounterContext:EncounterContext={},
- generationOptions:{archetype?:BuildingArchetype}={}):Site{
+ generationOptions:{archetype?:BuildingArchetype;vehiclePlacement?:boolean}={}):Site{
  const kind=generationOptions.archetype??
    (['house','townhouse','apartment','retail','office',
   'garage','warehouse','restaurant','motel','utility','clinic'] as const)
@@ -101,6 +104,10 @@ export function generateSite(seed:number,scale:SiteScale='standard',
  let bestGrade:ReturnType<typeof measureSiteCompleteness>|undefined;
  let firstSuccess=-1;
  const sampleDiversity=shouldSampleTopologyAlternative(seed,scale);
+ // Select the same canonical architecture and encounter as the existing
+ // generator, then retrofit its finished frontage. Parking may not change
+ // mission selection, room programs, enemy/civilian positions or retries.
+ const finish=(site:Site)=>withSitePropIds(generationOptions.vehiclePlacement!==false?attachPlannedVehicles(site):site);
  for(let attempt=0;attempt<6;attempt++){
   // One optional alternate after the first navigable map; do not multiply
   // full scene generation on every mobile load.
@@ -129,20 +136,20 @@ export function generateSite(seed:number,scale:SiteScale='standard',
    if(firstSuccess<0){
     firstSuccess=attempt;
     if(!sampleDiversity&&!shouldTryAnotherLayout(grade,scale))
-      return withSitePropIds(candidate);
+      return finish(candidate);
    }
    // Only the first eligible complete site earns ONE extra comparison.
    // Once selected, never run an unbounded search for a desired shape.
-   if(grade.score===0&&!sampleDiversity)return withSitePropIds(candidate);
+   if(grade.score===0&&!sampleDiversity)return finish(candidate);
    if(sampleDiversity&&firstSuccess>=0&&attempt===firstSuccess+1)
-     return withSitePropIds(best!);
+     return finish(best!);
   }catch(error){
    // Preserve useful failure evidence for offline diagnosis. Retry decisions
    // remain unchanged; do not silently hide why all variants failed.
    failures.push(error instanceof Error?error.message:String(error));
   }
  }
- if(best)return withSitePropIds(best);
+ if(best)return finish(best);
  throw new Error('Cannot generate connected '+kind+' site for seed '+seed+
   (failures.length?' (last: '+failures.at(-1)+')':''));
 }

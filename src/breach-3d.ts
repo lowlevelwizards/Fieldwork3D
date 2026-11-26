@@ -1409,6 +1409,7 @@ export class TacticalScene3D{
       sharedBoxGeometries:scene.sharedBoxGeometries,
       visualTemplates:scene.useArchitectureTemplates?
         scene.architecturalVisualTemplates:undefined,
+      vehicleTemplates:scene.architecturalVisualTemplates,
       fixtureTemplates:scene.useFixtureTemplates?
         scene.architecturalVisualTemplates:undefined,
       includeServiceFixtureTemplates:scene.includeServiceFixtureTemplates,

@@ -14,7 +14,11 @@ definitions.push(
  {id:'van',category:'exterior',width:72,depth:34,height:37,solid:true,
   cover:'high',rooms:['parking','driveway','service-yard']},
  {id:'suv',category:'exterior',width:65,depth:34,height:33,solid:true,
-  cover:'high',rooms:['parking','driveway','yard','service-yard']}
+  cover:'high',rooms:['parking','driveway','yard','service-yard']},
+ {id:'hatchback',category:'exterior',width:77,depth:36,height:33,solid:true,
+  cover:'high',rooms:['parking','driveway','yard']},
+ {id:'light-truck',category:'exterior',width:128,depth:48,height:59,solid:true,
+  cover:'high',rooms:['parking','driveway','service-yard']}
 );
 definitions.push(
  {id:'tree-broadleaf',category:'exterior',width:46,depth:45,height:82,

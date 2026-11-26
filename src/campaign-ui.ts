@@ -269,6 +269,7 @@ export class CampaignScreen{
      ['MAP LAB','./map-lab.html'],
      ['EFFECTS LAB','./breach-visual-lab.html'],
      ['ASSET LAB','./asset-lab.html'],
+     ['VEHICLE LAB','./vehicle-lab.html'],
      ['BRIEFING LAB','./briefing-lab.html'],
      ['POSE WORKBENCH','./pose-workbench.html']
     ]){

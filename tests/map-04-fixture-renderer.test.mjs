@@ -13,7 +13,7 @@ test('MAP 04 fixture shapes have one authoritative renderer path',()=>{
  assert.ok(builder.includes('group.position.set(c.x,0,c.y)'));
  assert.doesNotMatch(scene,/renderFixtureVisual\(intact,visual/);
  assert.ok(models.includes('export function renderFixtureVisual'));
- assert.ok(models.includes("fixture==='vehicle'")||models.includes("'sedan'"));
+ assert.ok(models.includes('renderVehicleFixture(group,c,i,ctx.vehicleMaterial)'));
  assert.ok(!models.includes('this.box('));
  assert.ok(!models.includes('this.solid('));
 });

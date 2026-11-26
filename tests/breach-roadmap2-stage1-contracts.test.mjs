@@ -44,6 +44,8 @@ const GOLDENS=Object.freeze({
  // V18 intentionally changes generated physical exterior cover, which
  // is included in every snapshot. The old generated site's exact hash
  // is separately verified on the archived input by V18 replay acceptance.
+ // Keep this exact historical scenario; default VEH generation has a separate
+ // occupied-site recorder/restart witness rather than silently replacing it.
  civilian:'4493f9bf02ba61ed927422ee60ef48dbf402eeda0b4aaa813e609246a59c1d88'
 });
 function authorDoorEntry(s){
@@ -197,7 +199,7 @@ test('enemy hearing records authentic evidence rather than inventing target sigh
 });
 test('civilian rescue targets survive simulation and are recorded as real entities',()=>{
  const site=generateSite(27,'small',undefined,
-  {seed:27,mission:'rescue',premise:'routine'});
+  {seed:27,mission:'rescue',premise:'routine'},{vehiclePlacement:false});
  const run=()=>runStage1Scenario({
   site,mission:'rescue',intel:'floor-plan',enableCivilians:true,
   ticks:120,sampleEvery:20,record:true

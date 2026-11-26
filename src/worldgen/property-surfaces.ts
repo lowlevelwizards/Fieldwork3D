@@ -67,7 +67,7 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
        add(zone,'path',zone.x,y,zone.w*.92,Math.min(24,zone.h*.26));
      }
    }
-   if(zone.kind==='driveway'){
+   if(zone.kind==='driveway'&&!zone.vehicleParking){
      const lane=arrivalAccessLane(site,zone);
      if(lane&&!street)add(zone,'path',lane.x,lane.y,
        Math.min(lane.w,24),Math.min(lane.h,zone.h*.9));
@@ -84,7 +84,37 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
      else add(zone,'drainage-grate',
        zone.x-zone.w*.37,zone.y,3.5,zone.h*.62);
    }
-   if(zone.kind==='parking'){
+   if(zone.vehicleParking){
+     const p=zone.vehicleParking,broad=p.axis==='x',stride=p.alongLength/p.count;
+     if(p.role==='loading'){
+      for(let i=0;i<p.count;i++){
+       const along=p.alongCenter+(i+.5-p.count/2)*stride;
+       if(broad)add(zone,'loading-zone',along,p.rowCenter,stride*.70,p.rowDepth*.70);
+       else add(zone,'loading-zone',p.rowCenter,along,p.rowDepth*.70,stride*.70);
+      }
+     }
+     if(p.role!=='residential')for(let i=0;i<=p.count;i++){
+       const along=p.alongCenter+(i-p.count/2)*stride;
+       if(broad)add(zone,'parking-divider',along,p.rowCenter,1.6,p.rowDepth);
+       else add(zone,'parking-divider',p.rowCenter,along,p.rowDepth,1.6);
+     }
+     const edge=p.rowCenter+Math.sign(p.aisleCenter-p.rowCenter)*p.rowDepth/2;
+     if(p.role!=='residential'){
+      if(broad)add(zone,'stall-end-line',p.alongCenter,edge,p.alongLength,1.5);
+      else add(zone,'stall-end-line',edge,p.alongCenter,1.5,p.alongLength);
+     }
+     const reserved=reservedParkingBay(site,zone);
+     if(reserved){
+      const {x,y,bayWidth,short,side}=reserved;
+      if(broad){
+       add(zone,'reserved-parking',x,y,bayWidth,short*.55);
+       for(let n=-1;n<=1;n++)add(zone,'access-hatch',x+side*(bayWidth/2+5)+n*3.5,y,1.5,short*.48);
+      }else{
+       add(zone,'reserved-parking',x,y,short*.55,bayWidth);
+       for(let n=-1;n<=1;n++)add(zone,'access-hatch',x,y+side*(bayWidth/2+5)+n*3.5,short*.48,1.5);
+      }
+     }
+   }else if(zone.kind==='parking'){
      if(zone.id==='arrival-forecourt'&&frontCenter&&!street){
        const vertical=entry==='south'||entry==='north';
        if(vertical){

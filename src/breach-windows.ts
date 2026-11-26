@@ -30,7 +30,7 @@ export function openingStyle(kind:BuildingArchetype|undefined,seed:number,index:
  const list=windowStyles[kind??'house'];
  return list[(Math.abs(seed)+index*3)%list.length];
 }
-export function buildArchetypeEnvironment(site:Site,seed:number):Site{
+export function buildArchetypeEnvironment(site:Site,seed:number,vehiclePlacement=false):Site{
   const minX=Math.min(...site.rooms.map(r=>r.x));
   const maxX=Math.max(...site.rooms.map(r=>r.x+r.w));
   const minY=Math.min(...site.rooms.map(r=>r.y));
@@ -135,7 +135,7 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
   // The physical and visual window list share one idempotent collider owner.
   const physical=synchronizeWindowBarriers(glazed);
   return addSecurityPerimeter(addCoveredEntries(
-    addExteriorProperty(physical,seed),seed),seed);
+    addExteriorProperty(physical,seed,vehiclePlacement),seed),seed);
 }
 
 /** Gameplay window state never mutates the seed-derived architectural plan. */

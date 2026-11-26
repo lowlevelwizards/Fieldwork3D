@@ -1,6 +1,7 @@
 /** Human art review remains explicit, never inferred from whether a model renders. */
 import {assetLibrary} from './asset-library.ts';
 import {CHARACTER_FIXTURE_IDS} from './asset-character-visuals.ts';
+import {vehicleFamily} from './vehicle-catalog.ts';
 import {DETAILED_FIXTURE_IDS} from './detailed-fixture-visuals.ts';
 import {WORLD_UNITS_PER_METRE} from './world-scale.ts';
 export type ArtReviewStatus='needs-review'|'needs-cleanup'|'needs-redesign'|'approved';
@@ -13,11 +14,6 @@ const flagged:Readonly<Record<string,readonly string[]>>={
  'office-chair':['Replace unsupported-looking arm posts and rudimentary caster base'],
  'shower':['Reconnect pipe, head and controls to panel; establish door opening'],
  'bike-rack':['Horizontal half-torus produces C-shaped plan silhouette'],
- 'vehicle':['Retired legacy vehicle placeholder; total rebuild required'],
- 'sedan':['Retired from missions; rebuild body silhouette and material hierarchy'],
- 'pickup':['Retired from missions; rebuild cab, bed, wheels and proportions'],
- 'van':['Featureless single cargo slab; define passenger and loading compartments'],
- 'suv':['Differentiate window pillars, rear hatch and roof'],
  'tree-broadleaf':['Replace equal-size canopy blobs with asymmetric branching'],
  'tree-conifer':['Avoid identical stacked cones'],
  'tree-scrub':['Differentiate low branching from scaled-down tree'],
@@ -26,15 +22,14 @@ export function assetReviewInventory():readonly AssetReview[]{
  return assetLibrary().map(entry=>{
   const modelFamily=entry.origin==='structure'?'architectural':
     entry.origin==='dressing'?'dressing':
-    CHARACTER_FIXTURE_IDS.has(entry.id)?'character':
+    vehicleFamily(entry.id)||CHARACTER_FIXTURE_IDS.has(entry.id)?'character':
     DETAILED_FIXTURE_IDS.has(entry.id)?'detailed':'shared';
   const scores=Object.fromEntries(ART_REVIEW_DIMENSIONS.map(d=>[d,null])) as Record<ArtReviewDimension,number|null>;
   return {id:entry.id,category:entry.category,
-   status:['vehicle','sedan','pickup','van','suv'].includes(entry.id)?
-     'needs-redesign' as const:flagged[entry.id]?
+   status:flagged[entry.id]?
      'needs-cleanup' as const:'needs-review' as const,
    metres:[entry.width,entry.depth,entry.height].map(n=>Number((n/WORLD_UNITS_PER_METRE).toFixed(3))) as [number,number,number],
-   modelFamily,scores,notes:flagged[entry.id]??[]};
+   modelFamily,scores,notes:flagged[entry.id]??(vehicleFamily(entry.id)?['Rebuilt using shared vehicle geometry; review in Vehicle Lab at tactical scale']:[])};
  });
 }
 export const REVIEW_PRIORITY=Object.keys(flagged);

@@ -24,6 +24,7 @@ export default defineConfig({
       a3PhysicalityLab: 'a3-physicality-lab.html',
       doorTestRange: 'door-test-range.html',
       assetLab: 'asset-lab.html',
+      vehicleLab: 'vehicle-lab.html',
       soundLab: 'sound-lab.html',
       briefingLab: 'briefing-lab.html',
       fncStage1Lab: 'fnc-stage1-lab.html',

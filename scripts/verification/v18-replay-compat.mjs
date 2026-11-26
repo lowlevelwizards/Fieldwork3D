@@ -14,16 +14,20 @@ const oldGenerate=(await import(pathToFileURL(resolve(base,'src/breach-site.ts')
 const oldRun=(await import(pathToFileURL(resolve(base,'tests/fixtures/breach-stage1-contract-runner.mjs')).href)).runStage1Scenario;
 const options={seed:27,mission:'rescue',premise:'routine'};
 const oldSite=oldGenerate(27,'small',undefined,options);
-const newSite=generateSite(27,'small',undefined,options);
+// The V18 witness is deliberately vehicle-free even after VEH becomes default.
+const newSite=generateSite(27,'small',undefined,options,{vehiclePlacement:false});
 const args={mission:'rescue',intel:'floor-plan',enableCivilians:true,ticks:120,sampleEvery:20,record:true};
 const oldResult=oldRun({...args,site:oldSite});
 const preserved=runStage1Scenario({...args,site:oldSite});
 const revised=runStage1Scenario({...args,site:newSite});
-assert.equal(oldResult.fingerprint,'32b97cc3908c2c2655d5729996b6513d57efa339f1ed63b8b82aadf204592136');
+const preV18='32b97cc3908c2c2655d5729996b6513d57efa339f1ed63b8b82aadf204592136';
+const releasedV18='4493f9bf02ba61ed927422ee60ef48dbf402eeda0b4aaa813e609246a59c1d88';
+assert.ok([preV18,releasedV18].includes(oldResult.fingerprint),'base must be one of the verified V18 historical fingerprints');
 assert.equal(preserved.fingerprint,oldResult.fingerprint,'saved site simulation changed');
 assert.deepEqual(preserved.checkpoints,oldResult.checkpoints,'saved physical and actor snapshots changed');
-assert.equal(revised.fingerprint,'4493f9bf02ba61ed927422ee60ef48dbf402eeda0b4aaa813e609246a59c1d88');
-assert.notDeepEqual(newSite.cover,oldSite.cover,'new exterior generation must actually change');
+assert.equal(revised.fingerprint,releasedV18);
+if(oldResult.fingerprint===preV18)assert.notDeepEqual(newSite.cover,oldSite.cover,'V18 migration must actually change cover');
+else assert.deepEqual(newSite.cover,oldSite.cover,'released V18 historical layout must remain identical');
 assert.equal(revised.fingerprint,runStage1Scenario({...args,site:newSite,record:false}).fingerprint);
 for(const [site,result] of [[oldSite,preserved],[newSite,revised]]){
  assert.equal(result.recorder.completeness.complete,true);

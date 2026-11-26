@@ -7,6 +7,11 @@ on:
       - 'src/breach-ai-contextual-observation.ts'
       - 'src/worldgen/encounter-placement.ts'
       - 'src/worldgen/encounter-roles.ts'
+      - 'src/breach-site.ts'
+      - 'src/worldgen/vehicle-site-integration.ts'
+      - 'src/worldgen/vehicle-placement.ts'
+      - 'src/worldgen/exterior-sites.ts'
+      - 'scripts/compare-veh-mission-parity.mjs'
       - 'src/rendering/breach-site-scene-builder.ts'
       - 'tests/release-c3-*'
       - 'scripts/audit-release-c11-missions.mjs'
@@ -78,10 +83,24 @@ jobs:
           cp scripts/audit-release-c11-missions.mjs c3-vfx-exact-base/scripts/audit-release-c11-missions.mjs
           (cd c3-vfx-exact-base && node --experimental-strip-types scripts/audit-release-c11-missions.mjs ../c3-vfx-exact-base-missions.json)
           node scripts/compare-release-c11-missions.mjs c3-vfx-exact-base-missions.json c3-after-missions.json c3-vfx-exact-base-delta.json
-      - name: Reject physical map and mission world regression
+      - name: Checkout exact production base for vehicle migration
+        if: ${{ github.head_ref == 'feature/veh-vehicle-overhaul' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: c3-veh-exact-base
+      - name: Verify vehicle mission parity against exact base and attribute historical drift
+        if: ${{ github.head_ref == 'feature/veh-vehicle-overhaul' }}
         run: |
-          node scripts/compare-release-c0.mjs c3-before-map.json c3-after-map.json c3-map-delta.json
-          node scripts/compare-release-c11-missions.mjs c3-before-missions.json c3-after-missions.json c3-mission-delta.json
+          ln -s "$PWD/node_modules" c3-veh-exact-base/node_modules
+          cp scripts/audit-release-c11-missions.mjs c3-veh-exact-base/scripts/audit-release-c11-missions.mjs
+          (cd c3-veh-exact-base && node --experimental-strip-types scripts/audit-release-c11-missions.mjs ../c3-veh-exact-base-missions.json)
+          node scripts/compare-veh-mission-parity.mjs c3-before-missions.json c3-veh-exact-base-missions.json c3-after-missions.json c3-veh-parity.json
+      - name: Reject physical map regression
+        run: node scripts/compare-release-c0.mjs c3-before-map.json c3-after-map.json c3-map-delta.json
+      - name: Reject exact historic mission world regression (non-vehicle changes)
+        if: ${{ github.head_ref != 'feature/veh-vehicle-overhaul' }}
+        run: node scripts/compare-release-c11-missions.mjs c3-before-missions.json c3-after-missions.json c3-mission-delta.json
       - name: TypeScript and production Vite build
         run: npm run build
       - uses: actions/upload-artifact@v4
@@ -98,3 +117,5 @@ jobs:
             c3-mission-delta.json
             c3-vfx-exact-base-missions.json
             c3-vfx-exact-base-delta.json
+            c3-veh-exact-base-missions.json
+            c3-veh-parity.json

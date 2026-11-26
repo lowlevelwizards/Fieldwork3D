@@ -3,6 +3,7 @@
  * actual physical height. The target posture changes the aim height. */
 import type {Pt,Obstacle} from './breach-core.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
+import {vehicleCoverImpact} from './worldgen/vehicle-cover-profile.ts';
 /** Glass panes are physically full height, not knee-high furniture.
  * Raised masonry sills remain low cover and still stop crouched fire. */
 /** A3.9-H0: one effective physical top for cover, ballistics and bracing.
@@ -27,6 +28,7 @@ export const effectiveEyeHeight=(a:TacticalStance)=>
   eyeHeight(a.posture==='crouch')-(a.coverStanceDrop??0);
 export function coverImpactFraction(from:Pt,to:Pt,fromZ:number,toZ:number,
   c:Obstacle):number|null{
+  if(c.vehicleProfile){const hit=vehicleCoverImpact(from,to,fromZ,toZ,c);if(hit!==undefined)return hit;}
   let lo=0,hi=1;
   const dx=to.x-from.x,dy=to.y-from.y;
   for(const [origin,delta,min,max] of [
