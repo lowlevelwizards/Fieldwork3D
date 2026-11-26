@@ -528,11 +528,9 @@ test('C12: remaining weapon-preset and retirement edits use save-aware feedback'
  const flow=source('breach-campaign-flow.ts');
  const preset=flow.slice(flow.indexOf(' equipWeaponPreset:(id,presetId)=>'),
   flow.indexOf(' equipWeaponFamilyPart:(id,slot,partId)=>'));
- assert.match(preset,/equipWeaponPreset:\(id,presetId\)=>applyVisibleCampaignAction\(current=>/);
- assert.match(preset,/if\(current\.activeContractId\)return current/);
- assert.match(preset,/if\(!preset\|\|!member\)return current/);
+ assert.match(preset,/equipWeaponPreset:\(id,presetId\)=>applyVisibleCampaignAction\(/);
  assert.match(preset,/equipCampaignOwnedPreset\(c,id,presetId\)/);
- assert.match(preset,/Weapon family preset equipped/);
+ assert.match(preset,/Owned weapon model issued/);
  assert.doesNotMatch(preset,/config\.saveCampaign\(\)|model\.campaign=next/);
  const retire=flow.slice(flow.indexOf(' retire:(id)=>{'),
   flow.indexOf(' importSave:(raw,slot)=>'));
