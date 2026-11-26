@@ -39,3 +39,6 @@ Named purchases append a specific catalog serial directly; exact issue changes t
 
 ## R4.4b — exact kit and retirement paths, true spare thumbnails
 Cross-category saved kits require an exact matching owned serial body, then issue it without substituting another owned model. Retirement releases the actual serial and projects stock rather than allocating through class counts. Spare primary thumbnails capture their actual stored body through the existing offscreen preview and async readback path, never the currently equipped body by accident. Compatibility count and historical reader remain pending R4.4c. Exact-head tests pending; Pages preflight also reported a separate release in progress (45844088292).
+
+## R4.4c — quarantine missing serials and catalog capacity
+Save reconciliation now reserves a valid existing lost-operator serial across reloads, with active claims first for corrupt duplicates. It neither mints a missing serial nor exposes that serial as spare stock. Named procurement capacity now checks actual serialized objects, not stale numeric class counts; the class quote remains legacy-compatible. The class-count migration reader and old class transaction APIs still remain. Exact-head tests pending.

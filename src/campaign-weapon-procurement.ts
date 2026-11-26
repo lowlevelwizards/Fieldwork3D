@@ -3,7 +3,7 @@
  */
 import type {CampaignState,CampaignOperator} from './campaign-state.ts';
 import {WEAPON_PRICES,canAffordCampaignPurchase,
- campaignWeaponStockAtCapacity,canEquipCampaignCatalogWeapon} from './campaign-state.ts';
+ campaignWeaponStockAtCapacity,campaignCatalogStockAtCapacity,canEquipCampaignCatalogWeapon} from './campaign-state.ts';
 import {isDispatchPilot,mayChooseCampaignContent,mayChooseDispatchSetupContent}
  from './dispatch-campaign-eligibility.ts';
 import {effectiveDispatchSetup,currentDispatchReference}
@@ -22,7 +22,7 @@ export type CampaignWeaponQuote=Readonly<{
  authorization:string;priceLabel:string;
 }>;
 export function campaignWeaponQuote(c:CampaignState,
- weapon:CampaignOperator['weapon']):CampaignWeaponQuote{
+ weapon:CampaignOperator['weapon'],serialAuthority=false):CampaignWeaponQuote{
  const price=WEAPON_PRICES[weapon],stock=c.inventory.weapons[weapon]??0;
  const issued=c.operators.filter(x=>x.status!=='retired'&&x.status!=='lost'&&
   x.weapon===weapon).length;
@@ -37,7 +37,7 @@ export function campaignWeaponQuote(c:CampaignState,
  const status:CampaignWeaponProcurementStatus=!offered?
   access==='offered'?'reference-locked':access:
   c.activeContractId?'deployment-locked':
-  campaignWeaponStockAtCapacity(c)?'armory-full':
+  (serialAuthority?campaignCatalogStockAtCapacity(c):campaignWeaponStockAtCapacity(c))?'armory-full':
   !canAffordCampaignPurchase(c,price)?'funds-locked':'ready';
  const authorization=status==='reference-locked'?
   'NOT OFFERED · Current reference, time or access policy':
@@ -61,7 +61,7 @@ export type CatalogWeaponQuote=CampaignWeaponQuote & Readonly<{presetId:string;n
 export function catalogWeaponQuote(c:CampaignState,presetId:string):CatalogWeaponQuote|undefined{
  const preset=familyPreset(presetId);
  if(!preset)return undefined;
- const base=campaignWeaponQuote(c,preset.weapon);
+ const base=campaignWeaponQuote(c,preset.weapon,true);
  const assigned=new Set(c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').map(o=>o.weaponSerialId));
  const matching=(c.inventory.serializedWeapons??[]).filter(w=>matchingFamilyPreset(w.catalogBody)?.id===presetId);
  const issued=matching.filter(w=>assigned.has(w.id)).length,

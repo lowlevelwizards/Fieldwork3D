@@ -760,6 +760,9 @@ export const campaignWeaponStockAtCapacity=(c:CampaignState):boolean=>{
   Object.values(c.inventory.weapons).reduce((sum,count)=>sum+count,0);
  return Math.max(serialized??0,accounted)>=MAX_OWNED_WEAPONS;
 };
+/** Catalog mutations use actual owned serials, including quarantined custody. */
+export const campaignCatalogStockAtCapacity=(c:CampaignState):boolean=>
+ !c.inventory.serializedWeapons||c.inventory.serializedWeapons.length>=MAX_OWNED_WEAPONS;
 const charge=(c:CampaignState,cost:number)=>unlimitedDispatch(c)?c.funds:c.funds-cost;
 export const WEAPON_PRICES:Record<CampaignOperator['weapon'],number>={
  carbine:300,smg:260,rifle:420,shotgun:330
@@ -779,7 +782,7 @@ export function buyCatalogWeapon(c:CampaignState,presetId:string):CampaignState{
  if(!preset||!mayChooseCampaignContent(c,'weapon-preset',presetId)||
   !mayChooseCampaignContent(c,'equipment','primary-'+preset.weapon,'primary'))return c;
  const price=WEAPON_PRICES[preset.weapon];
- if(!price||c.activeContractId||!canSpend(c,price)||campaignWeaponStockAtCapacity(c)||
+ if(!price||c.activeContractId||!canSpend(c,price)||campaignCatalogStockAtCapacity(c)||
   !c.inventory.serializedWeapons)return c;
  const body=issueWeaponPreset(presetId).weaponConfiguration.build;
  if(!body)return c;

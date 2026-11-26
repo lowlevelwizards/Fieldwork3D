@@ -175,3 +175,25 @@ test('retirement returns actual named serial with service history unchanged',()=
  assert.deepEqual(catalogOwnedStock(retired).find(x=>x.id===w.id),w);
  assert.deepEqual(weaponOwnershipIssues(retired),[]);
 });
+
+test('missing operator custody survives save reload and cannot become spare inventory',()=>{
+ const c=newCampaign(995),op=c.operators[0],w=c.inventory.serializedWeapons.find(x=>x.id===op.weaponSerialId);
+ const missing={...c,operators:c.operators.map(o=>o.id===op.id?{...o,status:'lost',missingSinceOperationId:'missing-op'}:o)};
+ const loaded=readCampaign(JSON.stringify(missing));
+ assert.ok(loaded);
+ assert.equal(loaded.operators[0].weaponSerialId,w.id);
+ assert.deepEqual(loaded.inventory.serializedWeapons.find(x=>x.id===w.id),w);
+ assert.ok(!catalogOwnedStock(loaded).some(x=>x.id===w.id));
+ assert.deepEqual(weaponOwnershipIssues(loaded),[]);
+ assert.deepEqual(readCampaign(JSON.stringify(loaded)),loaded);
+});
+test('named procurement capacity ignores a stale compatibility class count',()=>{
+ const c=newCampaign(996);
+ const stale={...c,inventory:{...c.inventory,weapons:{carbine:128,smg:0,rifle:0,shotgun:0}}};
+ assert.equal(catalogWeaponQuote(stale,'ar-m4a1').canPurchase,true);
+ const next=buyCatalogWeapon(stale,'ar-m4a1');
+ assert.notStrictEqual(next,stale);
+ assert.equal(next.inventory.serializedWeapons.length,c.inventory.serializedWeapons.length+1);
+ assert.equal(next.inventory.weapons.carbine,1);
+ assert.deepEqual(weaponOwnershipIssues(next),[]);
+});

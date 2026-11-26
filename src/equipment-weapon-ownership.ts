@@ -25,6 +25,13 @@ export function reconcileCampaignWeaponOwnership(c:CampaignState):CampaignState{
    w.platform===operator.weapon&&!claimed.has(w.id));
   if(weapon){reserved.set(operator.id,weapon.id);claimed.add(weapon.id);}
  }
+ // A missing operator's last known serial is quarantined, not spare stock.
+ // Active valid claims retain priority if a corrupt save duplicates a claim.
+ for(const operator of c.operators){
+  if(operator.status!=='lost'||typeof operator.weaponSerialId!=='string')continue;
+  const weapon=existing.find(w=>w.id===operator.weaponSerialId&&w.platform===operator.weapon&&!claimed.has(w.id));
+  if(weapon){reserved.set(operator.id,weapon.id);claimed.add(weapon.id);}
+ }
  const kept:SerializedWeapon[]=[];
  let sequence=0;
  const nextId=()=>{
@@ -42,6 +49,11 @@ export function reconcileCampaignWeaponOwnership(c:CampaignState):CampaignState{
   return weapon.id;
  };
  const operators=c.operators.map(o=>{
+  if(o.status==='lost'){
+   const serial=reserved.get(o.id);
+   // Preserve a real existing claim, never manufacture a missing asset.
+   return {...o,weaponSerialId:serial?take(o.weapon,serial):null};
+  }
   if(!active(o))return {...o,weaponSerialId:null};
   return {...o,weaponSerialId:take(o.weapon,reserved.get(o.id),o.weaponConfiguration.build)};
  });
@@ -52,8 +64,8 @@ export function reconcileCampaignWeaponOwnership(c:CampaignState):CampaignState{
   for(let i=0;i<count;i++)take(platform);
   counts[platform]=count;
  }
- return {...c,operators,inventory:{...c.inventory,
-  weapons:counts,serializedWeapons:kept}};
+ return projectCatalogInventory({...c,operators,inventory:{...c.inventory,
+  weapons:counts,serializedWeapons:kept}});
 }
 /** Check the invariants without editing a Campaign. */
 export function weaponOwnershipIssues(c:CampaignState):string[]{
@@ -65,6 +77,11 @@ export function weaponOwnershipIssues(c:CampaignState):string[]{
   if(!w||w.platform!==o.weapon)issues.push('missing:'+o.id);
   if(o.weaponSerialId&&assigned.has(o.weaponSerialId))issues.push('duplicate:'+o.id);
   if(o.weaponSerialId)assigned.add(o.weaponSerialId);
+ }
+ for(const o of c.operators.filter(o=>o.status==='lost'&&o.weaponSerialId)){
+  if(assigned.has(o.weaponSerialId!))issues.push('duplicate:'+o.id);
+  if(!weapons.some(w=>w.id===o.weaponSerialId&&w.platform===o.weapon))issues.push('missing:'+o.id);
+  assigned.add(o.weaponSerialId!);
  }
  for(const platform of PLATFORMS){
   const stocked=weapons.filter(w=>w.platform===platform&&!assigned.has(w.id)).length;
