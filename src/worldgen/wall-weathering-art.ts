@@ -25,6 +25,7 @@ export function prepareWallArt(kind:WallEffect,seed:number,progress:number,texel
  const edge=Array.from({length:9},(_,i)=>rand(i)*.32-.16);
  const contour=(u:number)=>edge[Math.min(8,Math.max(0,Math.floor((u+1)*4)))];
  const growth=.64+.36*progress;
+ const splashPatches=[[-.46,.34,.34,.44],[.12,.56,.41,.34],[.51,.13,.23,.28],[-.10,-.43,.13,.22]];
  const phase=(rand(23)-.5)*.18;
  const points:Point[]=[[-.30,-.94],[-.18,-.66],[-.33,-.38],[.03,-.10],[-.07,.15],[.26,.38],[.16,.61],[.48,.91]].map(([x,y],i)=>[x+(rand(i+30)-.5)*.22,y] as Point);
  const main:Point[]=points.map(([x,y])=>[x,y]);
@@ -32,7 +33,7 @@ export function prepareWallArt(kind:WallEffect,seed:number,progress:number,texel
  // A continuous path even in the coarse 24-row atlas: use a conservative
  // raster footprint rather than a row-index zigzag or isolated dots.
  const stroke=Math.max(.075,.55*Math.hypot(texelU,texelV));
- const path=(u:number,v:number,ps:Point[],thickness:number)=>ps.slice(1).some((p,i)=>lineDistance(u,v,ps[i],p)<thickness);
+ const path=(u:number,v:number,ps:Point[],thickness:number)=>{for(let i=1;i<ps.length;i++)if(lineDistance(u,v,ps[i-1],ps[i])<thickness)return true;return false;};
  return (rawU:number,rawV:number):ArtInk=>{
   const u=rawU*flip,v=rawV,jag=contour(u);
   const x=u/growth,y=v/growth;
@@ -103,8 +104,7 @@ export function prepareWallArt(kind:WallEffect,seed:number,progress:number,texel
     return ink(body<.62&&v>.10?.81:.54,body<.62&&v>.10?2:1);
    }
    case 'splash':{
-    const patches=[[-.46,.34,.34,.44],[.12,.56,.41,.34],[.51,.13,.23,.28],[-.10,-.43,.13,.22]];
-    const body=Math.min(...patches.map(([a,b,c,d])=>lobe(x,y,a,b,c,d)));
+    let body=Infinity;for(const [a,b,c,d] of splashPatches)body=Math.min(body,lobe(x,y,a,b,c,d));
     if(body<1+jag)return ink(.79,body>.61?0:1);
     if(v>-.24&&v<.8&&Math.abs(u-.5)<Math.max(.08,texelU*.48))return ink(.60,1);
     return ink(0);
