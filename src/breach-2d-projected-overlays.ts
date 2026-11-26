@@ -436,6 +436,16 @@ function renderProjectedPlans(){
     draw.beginPath();draw.arc(target.x,target.y,17,0,2*Math.PI);draw.stroke();
     draw.fillStyle='#e8d5a6';draw.font='700 12px "Saira Condensed",sans-serif';
     draw.fillText(state.mission.toUpperCase(),target.x,target.y-23);
+    if(!replaying&&state.mission==='secure'&&state.missionType==='hold'){
+      const progress=Math.max(0,Math.min(1,state.holdTime/7));
+      draw.save();draw.strokeStyle='rgba(216,204,152,.25)';draw.lineWidth=3;
+      draw.beginPath();draw.arc(target.x,target.y,12,0,Math.PI*2);draw.stroke();
+      draw.strokeStyle='#e8d5a6';draw.lineCap='round';
+      draw.beginPath();draw.arc(target.x,target.y,12,-Math.PI/2,-Math.PI/2+Math.PI*2*progress);draw.stroke();
+      draw.fillStyle='#e8d5a6';draw.font='600 10px "Work Sans",sans-serif';
+      draw.textAlign='center';draw.fillText(state.holdTime.toFixed(1)+'/7s',target.x,target.y+29);
+      draw.restore();
+    }
   }
   replay2D.renderReplayMovementHistory(true);
   replay2D.renderReplayGhosts(true);
