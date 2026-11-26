@@ -137,7 +137,7 @@ export function addExteriorProperty(site:Site,seed:number,vehiclePlacement=false
   const existing=site.exteriorZones??[];
   zones.splice(0,zones.length,...existing.flatMap(z=>z.id==='arrival-forecourt'?modernFront:[z]));
  }
- const refreshed=site.streetInfrastructure?proposeStreetInfrastructure({...site,exteriorZones:zones},site.streetInfrastructure.kind,site.streetInfrastructure.privateReserve):null;
+ const refreshed=site.streetInfrastructure?proposeStreetInfrastructure({...site,exteriorZones:zones},site.streetInfrastructure.kind,site.streetInfrastructure.privateReserve,!!site.streetInfrastructure.curbside):null;
  const streetSite=refreshed?{...site,streetInfrastructure:refreshed,exteriorZones:zones}:{...site,exteriorZones:zones};
  const streetPlan=planPublicStreet(streetSite);
  const doorCenters=site.doors.map(d=>({

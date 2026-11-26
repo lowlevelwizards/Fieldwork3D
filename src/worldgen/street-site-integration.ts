@@ -12,17 +12,22 @@ import {intersectsVehicleParkingReserve} from './vehicle-parking-layout.ts';
 import {vehicleFamily} from './vehicle-catalog.ts';
 import {planStreetFurniture} from './street-furniture.ts';
 import {attachStreetJunction,proposeJunctionStop} from './street-junction.ts';
+import {attachCurbsideParking,clearStreetAccess} from './street-access-final.ts';
 export function attachStreetInfrastructure(site:Site,vehicles=true):Site{
  const baseline=vehicles?attachPlannedVehicles(site):site;
  const oldCount=baseline.cover.filter(c=>vehicleFamily(c.fixture??'')).length;
  const domestic=['house','townhouse'].includes(site.archetype??'');
  const reserves=vehicles?(domestic?[132,34]:[390,270,178,34]):[34];
- for(const reserve of reserves){
-  const plan=proposeStreetInfrastructure(site,undefined,reserve);if(!plan)continue;
+ for(const reserve of reserves)for(const curbside of (vehicles?[true,false]:[false])){
+  const plan=proposeStreetInfrastructure(site,undefined,reserve,curbside);if(!plan||curbside&&!plan.curbside)continue;
   const start={...site,streetInfrastructure:plan};
-  const frontage=addExteriorProperty(start,site.seed,vehicles,true);
+  let frontage=addExteriorProperty(start,site.seed,vehicles,true);
   if(frontage===start||!frontage.streetInfrastructure)continue;
   if(streetConflicts(frontage,frontage.streetInfrastructure).length)continue;
+  if(frontage.streetInfrastructure.curbside){
+   const extended=attachCurbsideParking(frontage);if(!extended)continue;
+   frontage=extended;
+  }
   const modern=(frontage.exteriorZones??[]).filter(z=>z.vehicleParking);
   if(modern.some(z=>frontage.cover.some(c=>intersectsVehicleParkingReserve(z,c))))continue;
   if(modern.some(z=>z.vehicleParking?.access&&!frontage.streetInfrastructure?.accessConnection))continue;
@@ -32,7 +37,7 @@ export function attachStreetInfrastructure(site:Site,vehicles=true):Site{
   if(parked.length<oldCount)continue;
   const parkedSite={...frontage,cover:[...frontage.cover,...parked]};
   const candidate={...parkedSite,streetInfrastructure:attachStreetJunction(parkedSite)};
-  if(streetConflicts(candidate,candidate.streetInfrastructure!).length)continue;
+  if(streetConflicts(candidate,candidate.streetInfrastructure!).length||!clearStreetAccess(candidate))continue;
   if(validExteriorRetrofit(site,candidate)){
    const control=proposeJunctionStop(candidate);
    let accepted:Site=candidate;
@@ -43,7 +48,7 @@ export function attachStreetInfrastructure(site:Site,vehicles=true):Site{
    const hardware=planStreetFurniture(accepted);
    if(hardware.length){
     const furnished={...accepted,cover:[...accepted.cover,...hardware]};
-    if(validExteriorRetrofit(accepted,furnished))return furnished;
+    if(clearStreetAccess(furnished)&&validExteriorRetrofit(accepted,furnished))return furnished;
    }
    return accepted;
   }

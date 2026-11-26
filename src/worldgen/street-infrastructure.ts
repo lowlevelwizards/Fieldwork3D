@@ -13,10 +13,12 @@ export type StreetInfrastructure=Readonly<{
  verge:StreetRect|null;shoulder:StreetRect|null;privateEdge:number;
  privateReserve:number;accessConnection:StreetRect|null;
  centerline:StreetRect|null;diagnostics:readonly string[];
+ /** Separate full-width parking lane, never counted as a travel lane. */
+ curbside?:StreetRect;
  /** Real secondary road, accepted only after physical placement. */
  junction?:Readonly<{road:StreetRect;axis:'x'|'y';laneWidth:number;side:-1|1;mainEdge:number;stopAt?:number}>;
 }>;
-export function proposeStreetInfrastructure(site:Site,override?:StreetKind,privateReserve:number=D.propertyAccess):StreetInfrastructure|null{
+export function proposeStreetInfrastructure(site:Site,override?:StreetKind,privateReserve:number=D.propertyAccess,allowCurbside=false):StreetInfrastructure|null{
  const b=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
  if(!site.rooms.length)return null;
  const entry=site.entrySide??'south',axis=entry==='north'||entry==='south'?'x':'y';
@@ -45,7 +47,10 @@ export function proposeStreetInfrastructure(site:Site,override?:StreetKind,priva
   {x:border-sign*(inner+thickness/2),y:along,width:thickness,depth:length};
  const road=rect(mid,span,0,roadWidth);
  const shoulder=shoulderWidth?rect(mid,span,roadWidth,shoulderWidth):null;
- const curbAt=roadWidth+shoulderWidth;
+ const curbsideWidth=allowCurbside&&kind!=='industrial'&&kind!=='rural'&&roadWidth===nominal&&sidewalkWidth===spec.sidewalkWidth&&
+  span>=D.parallel.length*3&&available-roadWidth-sidewalkWidth-curbWidth-shoulderWidth>=D.parallel.width+vergeWidth?D.parallel.width:0;
+ const curbside=curbsideWidth?rect(mid,span,roadWidth,curbsideWidth):undefined;
+ const curbAt=roadWidth+shoulderWidth+curbsideWidth;
  const sidewalkAt=curbAt+curbWidth;
  const sidewalk=sidewalkWidth?rect(mid,span,sidewalkAt,sidewalkWidth):null;
  const vergeAt=sidewalkAt+sidewalkWidth;
@@ -80,6 +85,7 @@ export function proposeStreetInfrastructure(site:Site,override?:StreetKind,priva
  const cropped=roadWidth<nominal;
  const diagnostics:string[]=[];
  if(cropped)diagnostics.push('cropped-carriageway');
+ if(curbside)diagnostics.push('separate-curbside-lane');
  if(!sidewalk&&spec.sidewalkWidth)diagnostics.push('no-space-for-sidewalk');
  if(vergeWidth<spec.vergeWidth)diagnostics.push('verge-omitted');
  if(cutWidth&&!curbRamp&&sidewalk)diagnostics.push('curb-cut-omitted');
@@ -91,7 +97,7 @@ export function proposeStreetInfrastructure(site:Site,override?:StreetKind,priva
  return {version:1,kind,entry,axis,nominalLaneWidth:spec.laneWidth,nominalLanes:spec.lanes,
   visibleRoadWidth:roadWidth,cropped,completeLanes:Math.floor(roadWidth/spec.laneWidth),
   frontage:{road,sidewalk,sidewalkPieces,approach,curb,curbRamp,entry},
-  verge,shoulder,privateEdge:border-sign*privateDepth,privateReserve:reserve,accessConnection,centerline,diagnostics};
+  verge,shoulder,...(curbside?{curbside}:{}),privateEdge:border-sign*privateDepth,privateReserve:reserve,accessConnection,centerline,diagnostics};
 }
 /** Existing physical props are never deleted by the shadow planner. */
 export function streetConflicts(site:Site,plan:StreetInfrastructure):string[]{

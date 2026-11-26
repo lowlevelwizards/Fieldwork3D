@@ -15,7 +15,7 @@ export function assertPropertySurfaceSubstrate(site,mark){
   const substrates=mark.kind==='sidewalk-joint'?p.frontage.sidewalkPieces:
    ['road-patch','road-manhole','street-drain','road-centerline','road-edge-line'].includes(mark.kind)?[p.frontage.road,p.junction?.road]:[];
   const full=mark.kind==='street-verge'?p.verge:mark.kind==='street-shoulder'?p.shoulder:
-   mark.kind==='street-driveway-link'?p.accessConnection:mark.kind==='street-side-road'?p.junction?.road:null;
+   mark.kind==='street-driveway-link'?p.accessConnection:mark.kind==='street-side-road'?(p.junction?.road??p.curbside):null;
   const publicSlabs=[...p.frontage.sidewalkPieces.map(r=>({kind:'sidewalk',r})),...p.frontage.curb.map(r=>({kind:'curb-edge',r})),{kind:'path',r:p.frontage.approach},{kind:'curb-ramp',r:p.frontage.curbRamp}];
   assert.ok(exact(full)||substrates.some(contains)||publicSlabs.some(s=>s.kind===mark.kind&&exact(s.r)), 'ST mark outside its authoritative substrate: '+mark.kind);
   return;

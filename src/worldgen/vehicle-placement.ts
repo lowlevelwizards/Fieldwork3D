@@ -35,6 +35,7 @@ function advanceLegacyArtStream(family:VehicleFamily,site:Site,rng:()=>number){
 }
 function targetFor(site:Site,zone:ExteriorZone):number{
  const slots=parkingStallCount(zone);
+ if(zone.id.startsWith('curbside-'))return site.condition==='vacant'?0:Math.min(2,Math.max(1,slots-1));
  if(zone.vehicleParking?.role==='residential')return site.condition==='vacant'||(site.seed>>>0)%5===0?0:1;
  if(zone.vehicleParking?.role==='loading')return site.condition==='vacant'?0:Math.min(3,Math.max(1,slots-1));
  const ratio=site.condition==='busy'?.8:site.condition==='vacant'?.15:

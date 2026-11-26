@@ -55,3 +55,6 @@ Dedicated ST current-main parity job checks the actual PR base against the expli
 
 ## Build repair
 Exact current-main comparison passed all 18 cases including historical playback and new-ST replay/restart; 19 ST contracts passed. The build failed on two narrow TypeScript issues (unused stop planner coordinate and inferred optional metadata type); corrected without changing generation behavior. Fresh exact-head build pending.
+
+## ST final parking/access checkpoint
+Dedicated curbside parallel parking is attempted only with a complete main road, full sidewalk and independent 52-unit lane; no travel lane is sacrificed. Fit/occupancy share existing cardinal vehicle contract. Added approach/transfer connection collision validation. Pending critical CI. The current engine has cardinal-only authoritative vehicle orientation, so diagonal parking is not faked with mismatched collision.

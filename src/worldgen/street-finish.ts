@@ -12,6 +12,7 @@ export function planStreetFinishes(site:Site):PropertySurface[]{
  if(p.shoulder)add('street-shoulder',p.shoulder);
  if(p.accessConnection)add('street-driveway-link',p.accessConnection);
  if(p.junction)add('street-side-road',p.junction.road);
+ if(p.curbside)add('street-side-road',p.curbside);
  const road=p.frontage.road,along=p.axis,across=along==='x'?'y':'x';
  const len=along==='x'?road.width:road.depth,depth=p.visibleRoadWidth;
  const rect=(at:number,other:number,w:number,h:number):StreetRect=>along==='x'?
@@ -33,7 +34,7 @@ export function planStreetFinishes(site:Site):PropertySurface[]{
  }
  // Real curb drain positions lie on the road edge, not on the sidewalk.
  const sign=p.entry==='south'||p.entry==='east'?1:-1;
- for(const curb of p.frontage.curb){
+ for(const curb of p.curbside?[]:p.frontage.curb){
   const span=along==='x'?curb.width:curb.depth;
   if(span<55)continue;
   const at=curb[along]+span*.22;

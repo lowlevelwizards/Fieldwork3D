@@ -12,7 +12,7 @@ export function attachStreetJunction(site:Site):StreetInfrastructure|undefined{
  const p=site.streetInfrastructure;if(!p)return undefined;
  // A side road needs a full two-lane main section and a real walk edge.
  // Rural shoulders and verge layouts are deferred rather than clipped incorrectly.
- if(p.cropped||!p.frontage.sidewalk||p.verge||p.shoulder||p.junction)return p;
+ if(p.cropped||!p.frontage.sidewalk||p.verge||p.shoulder||p.curbside||p.junction)return p;
  const b=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
  const axis=p.axis,across=axis==='x'?'y':'x',sign=p.entry==='south'||p.entry==='east'?1:-1;
  const alongMin=axis==='x'?b.minX:b.minY,alongMax=axis==='x'?b.maxX:b.maxY;
