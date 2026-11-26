@@ -11,7 +11,7 @@ test('default occupied site has deterministic live, recording and restarted vehi
  const site=generateSite(4,'large');
  const cars=site.cover.filter(c=>vehicleFamily(c.fixture??''));
  assert.ok(cars.length>=2,'known office parking witness must actually contain vehicles');
- assert.ok(cars.every(c=>c.id&&c.vehicleProfile?.version===1));
+ assert.ok(cars.every(c=>c.id&&c.vehicleProfile?.version===2));
  const authored=JSON.stringify(site);
  const args={site,mission:'hold',intel:'exterior-known',ticks:120,sampleEvery:20,record:true};
  const first=runStage1Scenario(args),again=runStage1Scenario({...args,site:structuredClone(site),record:false});

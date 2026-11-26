@@ -8,8 +8,8 @@ test('six canonical families and at least twenty deterministic configurations',(
  for(const family of VEHICLE_FAMILIES)assert.deepEqual(vehicleRecipe(family,17),vehicleRecipe(family,17));
 });
 test('all compiled models have one opaque geometry, finite attributes and bounded dimensions',()=>{
- for(const family of VEHICLE_FAMILIES)for(const configuration of VEHICLE_CONFIGURATIONS[family]){
-  const recipe={...vehicleRecipe(family),configuration};
+ for(const family of VEHICLE_FAMILIES)for(const configuration of VEHICLE_CONFIGURATIONS[family])for(const condition of ['clean','weathered']){
+  const recipe={...vehicleRecipe(family),configuration,condition};
   const dimensions=VEHICLE_DIMENSIONS[family];
   const geo=buildVehicleGeometry(recipe);
   try{
@@ -86,4 +86,35 @@ test('new vehicle cover follows coarse shared body and roof; archived box behavi
  const rotated={...car,w:39,h:96,orientation:1};
  assert.equal(coverImpactFraction({x:-50,y:-40},{x:50,y:-40},27,27,rotated),null);
  assert.notEqual(coverImpactFraction({x:-50,y:0},{x:50,y:0},27,27,rotated),null);
+});
+
+import {vehicleShape} from '../src/worldgen/vehicle-shape.ts';
+test('VEH11 has independent axle positions, actual arch clearance, roof taper and ground contact',()=>{
+ for(const family of VEHICLE_FAMILIES){
+  const shape=vehicleShape(family),[w,d,h]=VEHICLE_DIMENSIONS[family];
+  const g=buildVehicleGeometry(vehicleRecipe(family));
+  try{
+   assert.ok(shape.roofWidth<shape.cw);
+   assert.ok(shape.lower*h>0);
+   assert.ok(Math.abs(g.boundingBox.min.y)<.01);
+   const mesh=new THREE.Mesh(g,new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));
+   const ray=new THREE.Raycaster();
+   // The side body no longer occupies the wheel arch just above its tire.
+   // Probe from outside at the tire top plus half the clearance margin.
+   for(const axle of shape.wheels){
+    const y=2*d*shape.tire+Math.min(1.1,d*.028)*.45;
+    ray.set(new THREE.Vector3(axle*w,y,d),new THREE.Vector3(0,0,-1));
+    assert.equal(ray.intersectObject(mesh).length,0,family+' wheel arch must be open');
+   }
+   mesh.material.dispose();
+  }finally{g.dispose();}
+ }
+});
+test('version two cover follows tapered roof, while version one historical cover is unchanged',()=>{
+ const old={x:0,y:0,w:96,h:39,fixture:'sedan',vehicleProfile:{version:1,configuration:'civilian'}};
+ const modern={...old,vehicleProfile:{version:2,configuration:'civilian'}};
+ const across=(c,z,y)=>coverImpactFraction({x:-2,y:z},{x:2,y:z},y,y,c);
+ assert.notEqual(across(old,14,30),null);
+ assert.equal(across(modern,14,30),null);
+ assert.notEqual(across(modern,0,30),null);
 });

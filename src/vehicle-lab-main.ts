@@ -63,11 +63,11 @@ function rebuild(){
 function draw(){
  const width=Math.max(1,viewport.clientWidth),height=Math.max(1,viewport.clientHeight),aspect=width/height;
  renderer.setSize(width,height,false);
- const extent=span*(vehicleCount===1?.64:.76),halfX=extent*Math.max(1,aspect),halfY=extent*Math.max(1,1/aspect);
+ const extent=span*(vehicleCount===1?.53:.76),halfX=extent*Math.max(1,aspect),halfY=extent*Math.max(1,1/aspect);
  camera.left=-halfX;camera.right=halfX;camera.top=halfY;camera.bottom=-halfY;
  camera.up.set(0,1,0);
  switch(view.value){
-  case 'side':camera.position.set(0,23,1000);break;
+  case 'side':camera.position.set(0,18,1000);break;
   case 'front':camera.position.set(1000,23,0);break;
   case 'rear':camera.position.set(-1000,23,0);break;
   case 'top':camera.position.set(0,1000,0);camera.up.set(0,0,-1);break;

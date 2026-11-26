@@ -95,7 +95,7 @@ export function planVehiclePlacement(site:Site,seed=site.seed,modernOnly=false):
      if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+32&&Math.abs(p.y-y)<h/2+32)){reject('encounter');continue;}
      if([...site.cover,...vehicles].some(o=>intersects(o,c,17))){reject('occupied');continue;}
      c.artVariant=artVariant(family,site,rng);
-     c.vehicleProfile={version:1,configuration:vehicleRecipe(family,c.artVariant).configuration};
+     c.vehicleProfile={version:2,configuration:vehicleRecipe(family,c.artVariant).configuration};
      c.artCondition=site.condition==='vacant'?'vacant':site.condition==='neglected'?'neglected':site.condition==='busy'?'used':'clean';
      vehicles.push(c);usedSlots.add(slotKey);diag.accepted++;found=true;break;
     }
