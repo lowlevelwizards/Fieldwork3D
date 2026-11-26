@@ -189,6 +189,7 @@ export type TeamActor=Operator & {
   treatmentActive:boolean;treatmentProgress:number;
   carryingId:string|null;carriedById:string|null;
   transportLatched?:boolean;
+  downWeaponsReleased?:boolean;
   /** Physical downed-person drag/carry presentation, recorded for replay. */
   transportMode?:TransportMode|null;
   wedgeRemaining:number;restraintRemaining:number;
