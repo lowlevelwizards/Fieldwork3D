@@ -120,8 +120,9 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   // Sound events expire quickly. The optional muzzle-clearance early return
   // must not consume away an actionable noise before the guard can react.
   const strongest=scanEnemySoundEvidence(s,a);
-  const freshAlarm=strongest&&
-    ['investigate','alarm'].includes(npcSoundResponse(strongest.kind,strongest.intensity,a.npcIdentity));
+  const noiseDisposition=strongest?
+    npcSoundResponse(strongest.kind,strongest.intensity,a.npcIdentity):'ignore';
+  const freshAlarm=!!strongest&&(noiseDisposition==='investigate'||noiseDisposition==='alarm');
   // The same local clearance motor is available to red and blue, but
   // never outranks a defensive withdrawal or interrupts a timed traversal.
   if(a.fireRetreatTarget){
@@ -283,8 +284,6 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.alert='investigating';a.contact=a.heard??a.contact;
   }
   reconcileEnemyPosture(s,a,visible);
-  const noiseDisposition=strongest?
-    npcSoundResponse(strongest.kind,strongest.intensity,a.npcIdentity):'ignore';
   if(strongest&&noiseDisposition==='orient'&&!visible.length&&
      !a.contacted&&a.alert!=='retreat'){
     a.heard=clone(strongest.estimate);a.alert='suspicious';
@@ -740,11 +739,11 @@ function distributeReports(s:Session){
    a.coordinationRole=roles[a.id];a.coordinationReportId=report.id;
    const heard=a.awareness.observations.find(observation=>
      observation.id==='report/'+report.id+'/'+a.id);
-   const purpose=s.site?.encounter?.groups.find(g=>
-     g.id===a.encounterGroupId)?.purpose;
+   const group=s.site?.encounter?.groups.find(g=>g.id===a.encounterGroupId);
+   const purpose=group?.purpose;
    a.coordinationUntil=renewCoordinationUntil(s.seconds,a.coordinationUntil,
      roles[a.id],heard?.uncertainty??report.uncertainty,
-     s.site?.encounter?.groups.find(g=>g.id===a.encounterGroupId)?.behaviorProfile&&a.npcIdentity?doctrineForGroup(a.npcIdentity.groupKind):doctrineForPurpose(purpose),a.npcIdentity);
+     group?.behaviorProfile&&a.npcIdentity?doctrineForGroup(a.npcIdentity.groupKind):doctrineForPurpose(purpose),a.npcIdentity);
    const covering=roles[a.id]==='watch'||roles[a.id]==='support';
    if(covering&&a.intent?.kind!=='engage'&&a.alert!=='retreat'&&
       !a.retreatPoint){

@@ -31,3 +31,15 @@ test('EB2 shared withdrawal owner prevents duplicate shelter work and retains ex
  assert.equal(calls,1);
  assert.ok(npcPressurePolicy('cautious').contactWithdraw<npcPressurePolicy('aggressor').contactWithdraw);
 });
+
+import {aiSiteIndex,connectedAreaCenters} from '../src/breach-ai-site-index.ts';
+test('EB3 cache ignores leaf motion but catches in-place threshold edits and new geometry',()=>{
+ const site={rooms:[{id:'a',kind:'room',x:0,y:0,w:100,h:100},{id:'b',kind:'room',x:100,y:0,w:100,h:100}]};
+ const world={site,cover:[],revision:0};
+ const doors=[{id:'a-b',a:{x:100,y:30},b:{x:100,y:70},open:false}];
+ const first=aiSiteIndex(world,doors);
+ assert.deepEqual(connectedAreaCenters(first,{x:50,y:50}),[{x:150,y:50}]);
+ doors[0].open=true;assert.equal(aiSiteIndex(world,doors),first);
+ doors[0].a.y=35;const changed=aiSiteIndex(world,doors);assert.notEqual(changed,first);
+ world.revision++;assert.notEqual(aiSiteIndex(world,doors),changed);
+});
