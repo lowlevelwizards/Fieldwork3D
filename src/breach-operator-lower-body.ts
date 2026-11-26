@@ -86,7 +86,7 @@ export function applyOperatorLegIK(r:OperatorRig,p:OperatorPose,
     LEG_ANKLE_HEIGHT+target.height,target.position.y);
   // A recorded kick remains visible even in legacy frames without a
   // selected foot. This does not change simulation impact or reach.
-  const kicking=!!kick&&i===(p.kickFoot??1);
+  const kicking=!!kick&&p.kickFoot!==null&&i===(p.kickFoot??1);
   if(kicking&&kick){
    // Chamber without unplanting the support foot. At .53 the sole touches
    // the fixed, SIMULATION-RECORDED leaf point; the hinge never owns it.
