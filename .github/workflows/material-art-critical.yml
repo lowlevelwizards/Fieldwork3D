@@ -12,6 +12,10 @@ on:
       - 'src/rendering/floor-wear-raster.ts'
       - 'src/worldgen/object-wear.ts'
       - 'src/rendering/wear-finish.ts'
+      - 'src/rendering/fixture-wear-projection.ts'
+      - 'src/rendering/material-art-*.ts'
+      - 'src/rendering/wall-surface-atlas.ts'
+      - 'src/rendering/floor-surface-atlas.ts'
       - 'scripts/verification/ma-material-art-browser.mjs'
       - 'tests/ma-*.test.mjs'
       - '.github/workflows/material-art-critical.yml'
@@ -31,22 +35,22 @@ jobs:
           npm run build
           test -s dist/wall-material-lab.html
       - name: Install browser harness
-        if: github.head_ref == 'feature/ma-material-art-batch-b'
+        if: github.head_ref == 'feature/ma-r-acceptance'
         run: npm install --no-save --package-lock=false playwright@1.56.1
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
-      - name: Pin MA0 visual reference
-        if: github.head_ref == 'feature/ma-material-art-batch-b'
+      - name: Pin pre-refinement visual reference
+        if: github.head_ref == 'feature/ma-r-acceptance'
         run: |
-          git fetch --no-tags --depth=1 origin 8d685d2bee24d5f84b592e34ed15897a8ec87d6a
-          git worktree add --detach "$RUNNER_TEMP/ma-reference" 8d685d2bee24d5f84b592e34ed15897a8ec87d6a
+          git fetch --no-tags --depth=1 origin 323088e0b8d327279907f4f0d00fc642d95dfd16
+          git worktree add --detach "$RUNNER_TEMP/ma-reference" 323088e0b8d327279907f4f0d00fc642d95dfd16
           ln -s "$PWD/node_modules" "$RUNNER_TEMP/ma-reference/node_modules"
           echo "MA_REFERENCE_ROOT=$RUNNER_TEMP/ma-reference" >> "$GITHUB_ENV"
       - name: Real-renderer art comparison
-        if: github.head_ref == 'feature/ma-material-art-batch-b'
+        if: github.head_ref == 'feature/ma-r-acceptance'
         run: node scripts/verification/ma-material-art-browser.mjs
       - uses: actions/upload-artifact@v4
-        if: always() && github.head_ref == 'feature/ma-material-art-batch-b'
+        if: always() && github.head_ref == 'feature/ma-r-acceptance'
         with:
           name: ma-material-art-comparison
           path: artifacts/ma-art/

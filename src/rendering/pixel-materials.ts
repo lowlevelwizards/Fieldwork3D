@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import {pixelPattern,pixelRepeats,TILE_PIXELS,TILE_WORLD_SIZE,MATERIAL_RECIPE_VERSION,
   type PixelSurface} from './pixel-recipes.ts';
+import {wallAtlasLayout} from './material-art-scale.ts';
 import {readableMipChain} from './texture-lod.ts';
 import {materialProfile} from './pixel-profiles.ts';
 export {PIXEL_SURFACES,TEXELS_PER_OPERATOR,PIXEL_WORLD_SIZE,TILE_WORLD_SIZE}
@@ -96,7 +97,8 @@ export function mapPackedWallUV(geometry:THREE.BoxGeometry){
  uv.needsUpdate=true;return geometry;
 }
 /** Site-owned atlas geometry; local positions and indices are unchanged. */
-export function mapAtlasWallUV(geometry:THREE.BoxGeometry,row:number,pageHeight:number){
+export function mapAtlasWallUV(geometry:THREE.BoxGeometry,row:number,pageHeight:number,metricWidth?:number,pageWidth?:number){
+ const layout=wallAtlasLayout(metricWidth!==undefined);
  const uv=geometry.getAttribute('uv') as THREE.BufferAttribute;
  const ranges=boxFaceVertexRanges(geometry);
  for(let face=0;face<6;face++){
@@ -105,8 +107,9 @@ export function mapAtlasWallUV(geometry:THREE.BoxGeometry,row:number,pageHeight:
    if(face<4)uv.setXY(i,.5,(row+.5)/pageHeight);
    else{
     const u=face===4?uv.getX(i):1-uv.getX(i);
-    const faceRow=face===4?4:36;
-    uv.setXY(i,u,(row+faceRow+.5+(1-uv.getY(i))*23)/pageHeight);
+    const faceRow=face===4?layout.front:layout.back;
+    const x=metricWidth!==undefined&&pageWidth?(.5+u*(metricWidth-1))/pageWidth:u;
+    uv.setXY(i,x,(row+faceRow+.5+(1-uv.getY(i))*(layout.faceRows-1))/pageHeight);
    }
   }
  }

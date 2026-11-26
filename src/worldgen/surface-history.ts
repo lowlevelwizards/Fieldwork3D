@@ -11,7 +11,7 @@ export type SurfaceRepair={incidentId:string;quality:number};
 export type SurfaceHistory={version:1;siteSeed:number;incidents:SurfaceIncident[];
  repairs:SurfaceRepair[]};
 export function generateSurfaceHistory(site:Site):SurfaceHistory{
- const rng=seeded(site.seed^0x82ae981a),incidents:SurfaceIncident[]=[];
+ const incidents:SurfaceIncident[]=[];
  const continuous=site.conditionLevel!==undefined,t=effectiveCondition(site)/100;
  if(continuous?t<.12:site.condition==='occupied')
    return {version:1,siteSeed:site.seed,incidents,repairs:[]};
@@ -21,6 +21,7 @@ export function generateSurfaceHistory(site:Site):SurfaceHistory{
  };
  const prefer=roomKinds[site.archetype??'']??'stain';
  for(const [i,r] of site.rooms.entries()){
+  const rng=seeded(site.seed^0x82ae981a^Math.imul(i+1,7919));
   if(incidents.length>=(continuous?Math.min(10,Math.round(t*11)):5))break;
   if(rng()>(continuous?.08+.82*t:.35))continue;
   const surface=roomPixelSurface(site.archetype,r.purpose??r.kind);
@@ -43,8 +44,10 @@ export function applySurfaceRepair(h:SurfaceHistory,repair:SurfaceRepair):Surfac
   {incidentId:repair.incidentId,quality:Math.max(0,Math.min(1,repair.quality))}]};
 }
 export function planHistoryWear(site:Site,h=generateSurfaceHistory(site)):WearMark[]{
- const rng=seeded(site.seed^0x902c3dbb),out:WearMark[]=[];
+ const out:WearMark[]=[];
  for(const incident of h.incidents){
+  let stable=site.seed^0x902c3dbb;for(let i=0;i<incident.id.length;i++)stable=Math.imul(stable^incident.id.charCodeAt(i),16777619);
+  const rng=seeded(stable);
   const r=site.rooms.find(room=>room.id===incident.roomId);
   if(!r)continue;
   const repair=h.repairs.find(p=>p.incidentId===incident.id);
@@ -59,7 +62,7 @@ export function planHistoryWear(site:Site,h=generateSurfaceHistory(site)):WearMa
    scratch:['workbench','desk','dining-table'],
    mud:['vehicle','rack','pallet'],
   };
-  const fixture=site.cover.find(o=>o.fixture&&anchors[kind]?.includes(o.fixture)&&
+  const fixture=site.cover.find(o=>o.fixture&&!o.destroyed&&!o.toppled&&anchors[kind]?.includes(o.fixture)&&
     o.x>=r.x&&o.x<=r.x+r.w&&o.y>=r.y&&o.y<=r.y+r.h);
   const x=clamp(fixture?.x??r.x+r.w*(.32+rng()*.36),r.x+size/2,r.x+r.w-size/2);
   const y=clamp(fixture?.y??r.y+r.h*(.32+rng()*.36),r.y+size/2,r.y+r.h-size/2);

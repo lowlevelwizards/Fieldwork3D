@@ -20,10 +20,13 @@ export function wearFinish(surface:PixelSurface,effect:WearEffect,baseColor?:num
   effect==='fade'?0xd2ccba:effect==='dust'?0xb3a48a:
   effect==='drip'?0x77877a:effect==='mud'?0x78634c:
   effect==='scuff'?0x666b60:effect==='crack'?0x5c5a51:0x817963;
- if(baseColor===undefined)return {roughness,metalness,color};
+ if(baseColor===undefined)return {roughness,metalness,color,rimColor:color};
  const base=artRGB(baseColor),light=artLuma(base)>180;
  const direction=effect==='mineral'||effect==='scuff'||effect==='scratch'||effect==='abrade'||effect==='fray'?(light?'dark':'light'):
   effect==='fade'?'light':effect==='oil'||effect==='soot'||effect==='grease'?'dark':'auto';
  const strong=effect==='mineral'||effect==='oil'||effect==='paint-peel'||effect==='rust'||effect==='chip';
- return {roughness,metalness,color:artHex(relativeArtColor(base,artRGB(color),.75,strong?46:25,strong?108:68,direction))};
+ const core=relativeArtColor(base,artRGB(color),.75,strong?46:25,strong?108:68,direction);
+ const rimTarget=effect==='rust'?0xc59161:effect==='chip'||effect==='paint-peel'?wearSubstrateColor(surface):effect==='oil'?0x676b55:effect==='mineral'?0xb8b8a0:effect==='moss'?0x91a16d:color;
+ const rim=strong||effect==='moss'?relativeArtColor(base,artRGB(rimTarget),.55,18,55,direction):core;
+ return {roughness,metalness,color:artHex(core),rimColor:artHex(rim)};
 }

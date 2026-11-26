@@ -24,7 +24,7 @@ try{
  await lab.goto(candidate+'/wall-material-lab.html');
  await lab.locator('#effects canvas').first().waitFor();
  assert.equal(await lab.locator('#effects article').count(),12);
- await lab.selectOption('#comparison','reference');
+ await lab.selectOption('#comparison','ma');
  await lab.screenshot({path:dir+'/lab-ma0-current.png'});
  await lab.selectOption('#density','56');
  await lab.selectOption('#variant','2');
@@ -38,9 +38,13 @@ try{
   await lab.screenshot({path:dir+'/lab-'+tab+'.png'});
  }
  assert.equal(await lab.locator('#specimen-error').textContent(),'');
+ await lab.locator('[data-tab="tactical"]').click();
+ await lab.locator('#render-tactical').click();
+ await lab.waitForFunction(()=>document.querySelector('#tactical-status')?.textContent?.includes('metric wall and floor candidate'),{},{timeout:60000});
+ await lab.screenshot({path:dir+'/lab-metric-tactical.png'});
  assert.deepEqual(errors,[]);
  await lab.close();
- const cases=[{seed:23,archetype:'house',viewport:{width:390,height:844}},{seed:97,archetype:'garage',viewport:{width:1280,height:800}}];
+ const cases=[{seed:23,archetype:'house',viewport:{width:390,height:844}},{seed:97,archetype:'garage',viewport:{width:1280,height:800}},{seed:61,archetype:'clinic',viewport:{width:390,height:844}},{seed:45,archetype:'office',viewport:{width:1280,height:800}}];
  for(const scenario of cases){
   const results=[];
   for(const [label,url] of [['reference',reference],['candidate',candidate]]){
@@ -68,12 +72,12 @@ try{
     const saved=textures.map(t=>t.image.data.slice()),ids=textures.map(t=>t.uuid);
     scene.previewConditionMasks(site,0);draw();scene.previewConditionMasks(site,100);draw();
     if(textures.some((t,i)=>t.uuid!==ids[i]||t.image.data.some((v,j)=>v!==saved[i][j])))throw Error('Wall atlas condition roundtrip changed identity or artwork');
-    window.maScene=scene;
+    window.maScene=scene;window.maDraw=draw;
     return {walls:site.walls.length,rooms:site.rooms.length,atlasBytes,atlasTextures:textures.length,buildMs,frames,gpuTextures:renderer.info.memory.textures,geometries:renderer.info.memory.geometries,programs:renderer.info.programs?.length};
    },scenario);
    await page.screenshot({path:dir+'/'+scenario.archetype+'-'+label+'-tactical.png'});
-   await page.evaluate(()=>{window.maScene.view.zoom=2.5;});
-   // Camera zoom is applied on next explicit draw in the scene probe.
+   await page.evaluate(()=>{window.maScene.view.zoom=2.5;window.maDraw();});
+   await page.screenshot({path:dir+'/'+scenario.archetype+'-'+label+'-close.png'});
    await page.close();
    assert.deepEqual(errors,[],label+' '+scenario.archetype);
    results.push({label,...data});

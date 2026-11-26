@@ -4,7 +4,7 @@ import type {WearMark} from './worldgen/environment-wear.ts';
 import {conditionFloorPixels} from './worldgen/condition-visual.ts';
 import {rasterFloorWear} from './rendering/floor-wear-raster.ts';
 import {roomPixelSurface,fixturePixelSurface} from './worldgen/pixel-surface-selection.ts';
-import {buildingTheme} from './worldgen/building-palettes.ts';
+import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {pixelPattern,type PixelSurface} from './rendering/pixel-recipes.ts';
 import {wearPixels,type WearTextureKind} from './rendering/pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
@@ -43,20 +43,21 @@ export function floorWitness(index:number,level:number,seed:number){
  const w=FLOOR_WITNESSES[index],room:Room={id:'lab',kind:'room',purpose:w.purpose,x:0,y:0,w:96,h:96,tone:0};
  const point={x:0,y:0};
  const site:Site={seed,name:'Lab specimen',archetype:w.archetype,rooms:[room],walls:[],doors:[],cover:w.fixture?[{fixture:w.fixture,x:48,y:19,w:22,h:20,orientation:0}]:[],entrance:point,spawn:[],enemies:[],objective:point,extract:point,roomCount:1,layout:'office',conditionLevel:level,programLocked:true};
- const surface=roomPixelSurface(w.archetype,w.purpose),base=buildingTheme(w.archetype,seed).floor,size=64;
+ const surface=roomPixelSurface(w.archetype,w.purpose),base=roomFloor(buildingTheme(w.archetype,seed),room.purpose,room.tone),size=64;
  const bytes=baseBytes(surface,base,size,size,seed,room.w,room.h),mask=conditionFloorPixels(site,room,level,size);
  const marks:WearMark[]=level>=20?[{id:'lab:'+index+':'+seed,roomId:room.id,kind:w.kind,x:w.fixture?48:18,y:w.fixture?34:55,width:16+level*.14,depth:11+level*.09,rotation:.2,opacity:.12+level*.003}]:[];
- rasterFloorWear(mask,room,0,marks,size);return {width:size,height:size,bytes:apply(bytes,mask)};
+ rasterFloorWear(mask,room,0,marks,size,1,base);return {width:size,height:size,bytes:apply(bytes,mask)};
 }
 export function fixtureWitness(index:number,level:number,seed:number){
  const w=FIXTURE_WITNESSES[index],surface=w.surface??fixturePixelSurface(w.fixture),size=64;
  const color=ageMaterialColor(w.color,surface,level,0),bytes=baseBytes(surface,color,size,size,seed,48,48),mask=wearPixels(w.kind,seed);
- const finish=wearFinish(surface,w.kind,color).color;
+ const finish=wearFinish(surface,w.kind,color);
  if(level>=20)for(let y=0;y<size;y++)for(let x=0;x<size;x++){
   const span=24+Math.round(level*.12),left=Math.floor((size-span)/2),top=Math.floor((size-span)/2);
   if(x<left||x>=left+span||y<top||y>=top+span)continue;
-  const i=(y*size+x)*4,alpha=mask[(Math.floor((y-top)*32/span)*32+Math.floor((x-left)*32/span))*4+3]/255*WEAR_ALPHA_BANDS[wearOpacityBucket(.16+.40*level/100)];
-  for(let k=0;k<3;k++)bytes[i+k]=encode(linear[bytes[i+k]]*(1-alpha)+linear[(finish>>((2-k)*8))&255]*alpha);
+  const i=(y*size+x)*4,coverage=mask[(Math.floor((y-top)*32/span)*32+Math.floor((x-left)*32/span))*4+3]/255;
+  const ink=coverage>=.72?finish.color:finish.rimColor,alpha=coverage*WEAR_ALPHA_BANDS[wearOpacityBucket(.16+.40*level/100)];
+  for(let k=0;k<3;k++)bytes[i+k]=encode(linear[bytes[i+k]]*(1-alpha)+linear[(ink>>((2-k)*8))&255]*alpha);
  }
  return {width:size,height:size,bytes};
 }
