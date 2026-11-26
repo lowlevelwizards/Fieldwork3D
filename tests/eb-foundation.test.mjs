@@ -205,3 +205,22 @@ test('EB14 civilian wardrobe selections survive save and actual loadout resoluti
  }
  assert.equal(kit.slots.top,'top-light');assert.equal(kit.slots.legs,'legs-light');assert.equal(kit.slots.feet,'feet-light');
 });
+
+test('EB15 uniform groups share palette and issue; civilian silhouettes remain distinct',()=>{
+ for(const kind of ['security','regular-force','specialists']){
+  const group={kind,id:'unit'};
+  const a=enemyKitForEncounter(undefined,97,0,group);
+  const b=enemyKitForEncounter(undefined,97,1,group);
+  assert.equal(a.preset.id,b.preset.id);
+  assert.deepEqual(a.wardrobe.fabricSolids,b.wardrobe.fabricSolids);
+  assert.deepEqual(a.wardrobe.fabricCamo,b.wardrobe.fabricCamo);
+  assert.equal(a.wardrobe.styles.top,b.wardrobe.styles.top);
+ }
+ const group={kind:'opportunists',id:'loose'};
+ for(let i=0;i<10;i++){
+  const a=enemyKitForEncounter(undefined,97,i,group);
+  const look=resolvedWardrobe(a.wardrobe,a.equipment);
+  assert.ok(['jeans','civilian-cargo','track-pants'].includes(look.trousers));
+  assert.equal(look.footwear,'sneakers');assert.equal(a.equipment.slots.armor,'armor-none');
+ }
+});

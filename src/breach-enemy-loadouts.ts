@@ -9,7 +9,7 @@ import {initialWardrobe,setWardrobeStyle,type WardrobeOptions}
  from './operator-wardrobe-data.ts';
 import {initialFieldInventory} from './equipment-field-inventory.ts';
 import {selectWardrobeItem} from './operator-wardrobe-unified.ts';
-import {setWardrobeFabricSolid,resolvedWardrobe,type WardrobeSlot} from './operator-wardrobe-data.ts';
+import {setWardrobeFabricSolid,resolvedWardrobe,matchWardrobeUniformCamo,type WardrobeSlot} from './operator-wardrobe-data.ts';
 import {ENEMY_OUTFIT_PROFILES,outfitPick,outfitRoll} from './breach-enemy-outfit-profiles.ts';
 import type {AiGroupKind} from './breach-ai-group-profiles.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
@@ -89,7 +89,7 @@ function groupEnemyKit(spec:Pick<EncounterActorSpec,'role'|'weaponProfile'>|unde
   armorStyle:armored?profile.armorStyle:'armor-bare',
   rigStyle:armored?profile.rigStyle:'no-rig',beltStyle:profile.belt,packStyle:profile.pack,
   gloves:light||group.kind==='security'?'gloves-none':'gloves-field',
-  footwear:'field-boots',headset:group.kind==='specialists'?'boom-headset':'comms-none'
+  footwear:light?'sneakers':'field-boots',headset:group.kind==='specialists'?'boom-headset':'comms-none'
  };
  for(const [slot,id] of Object.entries(styles)){
   const choice=selectWardrobeItem(equipment,wardrobe,slot as WardrobeSlot,id);
@@ -102,6 +102,25 @@ function groupEnemyKit(spec:Pick<EncounterActorSpec,'role'|'weaponProfile'>|unde
  const looks=resolvedWardrobe(wardrobe,equipment);
  wardrobe=setWardrobeFabricSolid(wardrobe,'top',pick(profile.topColors,'top-color',shared),looks);
  wardrobe=setWardrobeFabricSolid(wardrobe,'trousers',pick(profile.trouserColors,'leg-color',shared),looks);
+ // Shared uniform print uses the approved compatibility matrix.
+ // Group issue, never individual training, owns palette and silhouette.
+ const kind=group.kind;
+ if(kind==='regular-force'||kind==='specialists'){
+  const camo=kind==='regular-force'?
+    pick(['scorpion-w2','russian-emr','multicam'] as const,'uniform-print',group.id):
+    pick(['multicam','multicam-black'] as const,'uniform-print',group.id);
+  wardrobe=matchWardrobeUniformCamo(wardrobe,looks,camo);
+  wardrobe={...wardrobe,headwearColor:kind==='regular-force'?'olive-drab':'black'};
+ }else if(kind==='security'){
+  wardrobe={...wardrobe,headwearColor:'navy'};
+  wardrobe=setWardrobeFabricSolid(wardrobe,'armor','black',looks);
+ }else if(kind==='organised-criminals'){
+  wardrobe={...wardrobe,headwearColor:'black'};
+  if(looks.top==='button-up-shirt'&&outfitRoll(seed,person,'flannel')<.4)
+    wardrobe={...wardrobe,topColorway:'flannel-gray'};
+ }else if(kind==='opportunists'&&looks.top==='button-up-shirt'){
+  wardrobe={...wardrobe,topColorway:pick(['flannel-rust-red','flannel-blue','flannel-green'] as const,'flannel')};
+ }
  const integrity=initialArmorIntegrity(equipment);
  return {...issue,role:spec?.role??'occupant',equipment,wardrobe,
   appearanceSeed:((seed>>>0)^Math.imul(index+1,0x9e3779b1))>>>0,
