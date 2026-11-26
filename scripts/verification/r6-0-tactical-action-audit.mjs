@@ -40,6 +40,7 @@ export const R60_INTERACTIONS=Object.freeze({
  'push':{class:'object-contact',planner:'planNearbyInteraction'},
  'open-window':{class:'object-contact',planner:'planNearbyInteraction'},
  'close-window':{class:'object-contact',planner:'planNearbyInteraction'},
+ 'break-window':{class:'object-contact',planner:'planNearbyInteraction'},
  'secure-civilian':{class:'person-contact',planner:'planCivilianInteraction'},
  'follow-civilian':{class:'voice',planner:'planCivilianInteraction'},
  'stop-following-civilian':{class:'voice',planner:'planCivilianInteraction'},
