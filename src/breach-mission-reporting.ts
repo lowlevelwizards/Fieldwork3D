@@ -88,11 +88,24 @@ export function debrief(s:Session){
   const attributable=attributableCivilianHarm(s.civilianHarmEvents);
   // Retrospective only: the reviewer never feeds AI, fog, or score rules.
   const forceReview=assessDispatchForce(s.civilianHarmEvents,s.battleEvents);
+  // Count distinct physical evidence and current custody, not UI commands.
+  const interventionCounts={
+    weaponsSecured:(s.droppedFirearms??[]).filter(w=>w.status==='secured').length,
+    suspectsRestrained:enemies(s).filter(e=>e.restrained&&captureVitalStatus(e)!=='deceased').length,
+    personsStabilized:[...own,...enemies(s)].filter(a=>
+      captureVitalStatus(a)!=='deceased'&&a.medical.wounds.some(w=>w.stabilized)&&
+      !a.medical.wounds.some(w=>w.bleeding>0&&!w.stabilized)).length,
+    casualtiesEvacuated:evacuated.length,
+    intelligenceRecovered:recoveredIntel.length
+  };
   const assessment=assessOperation({
     outcome:s.phase==='won'?'success':'failure',
     disposition:operationOutcome.disposition,
     evacuatedCasualties:operationOutcome.evacuatedCasualtyIds.length,
     recoveredIntel:recoveredIntel.length,
+    weaponsSecured:interventionCounts.weaponsSecured,
+    suspectsRestrained:interventionCounts.suspectsRestrained,
+    personsStabilized:interventionCounts.personsStabilized,
     kind:s.missionType as OperationKind,
     elapsed:Math.floor(s.seconds),casualties,teamSize:own.length,
     shots,hits,objective:operationOutcome.objectiveSecured,
@@ -103,7 +116,7 @@ export function debrief(s:Session){
     civilianPlayerDown:attributable.down,
     extracted:operationOutcome.extractedOperatorIds.length,
   },true);
-  return {result:s.phase,operationOutcome,
+  return {result:s.phase,operationOutcome,interventionCounts,
     missingPersonRecovery,
     optionalIntel:{total:s.optionalIntel?.length??0,
       discovered:s.optionalIntel?.filter(i=>i.discovered).length??0,
