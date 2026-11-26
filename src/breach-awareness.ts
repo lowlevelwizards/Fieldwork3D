@@ -62,6 +62,12 @@ export function clearObservedPosition(memory:ActorAwareness,id:string):void{
  if(belief.confidence<.04)delete memory.contacts[id];
 }
 export function bestBelief(memory:ActorAwareness):ContactBelief|null{
- return Object.values(memory.contacts).filter(c=>c.confidence>.1)
-  .sort((a,b)=>b.confidence-a.confidence||b.lastAt-a.lastAt)[0]??null;
+ let best:ContactBelief|null=null;
+ for(const candidate of Object.values(memory.contacts)){
+  if(!(candidate.confidence>.1))continue;
+  if(!best||candidate.confidence>best.confidence||
+     candidate.confidence===best.confidence&&candidate.lastAt>best.lastAt)
+   best=candidate;
+ }
+ return best;
 }
