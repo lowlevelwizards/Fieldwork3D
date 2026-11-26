@@ -21,6 +21,11 @@ export function reconcileEnemyIntent(s:Session,a:TeamActor,visibleCount:number):
     suppression:a.suppression,morale:a.morale,
     temperament:a.personality},s.seconds);
   if(visibleCount===0){
+    // The controller owns an active search destination. A remembered
+    // estimate is evidence, not an instruction to restart that search.
+    // Fresh visual, acoustic or delivered report evidence interrupts it
+    // explicitly in the decision controller.
+    if(a.alert==='investigating'&&a.searchOrigin&&a.contact)return;
     if(belief&&belief.lastAt>=s.seconds-24)
       a.contact={...belief.estimate};
     else if(!recentNoise){
