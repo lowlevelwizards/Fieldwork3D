@@ -38,7 +38,7 @@ function materialFor(base:THREE.MeshStandardMaterial,surface:PixelSurface,mark:O
  const bucket=wearOpacityBucket(mark.opacity),key=[base.uuid,surface,mark.kind,bucket].join(':');
  let m=cache.get(key);if(m)return m;
  m=base.clone();delete m.userData.fieldworkR718WorldGraphic;
- const finish=wearFinish(surface,mark.kind),color=new THREE.Color(finish.color),opacity=WEAR_ALPHA_BANDS[bucket];
+ const finish=wearFinish(surface,mark.kind,base.color.getHex()),color=new THREE.Color(finish.color),opacity=WEAR_ALPHA_BANDS[bucket];
  m.onBeforeCompile=shader=>{
   Object.assign(shader.uniforms,{fwFixtureWear:{value:texture},fwFixtureTint:{value:color},fwFixtureOpacity:{value:opacity},fwFixtureBoost:boost});
   shader.vertexShader='attribute vec3 fwFixtureWearUV;\nvarying vec3 vFWFixtureWearUV;\n'+
