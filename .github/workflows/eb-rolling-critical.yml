@@ -47,7 +47,7 @@ jobs:
           ln -s "$PWD/node_modules" eb-base/node_modules
           (cd eb-base && node --experimental-strip-types scripts/audit-eb-rescue.mjs ../artifacts/eb/base-rescue.json)
           node --experimental-strip-types scripts/audit-eb-rescue.mjs artifacts/eb/candidate-rescue.json
-          node --input-type=module -e 'import fs from "node:fs";const [a,b]=["base","candidate"].map(n=>JSON.parse(fs.readFileSync(`artifacts/eb/${n}-rescue.json`,"utf8")));for(let i=0;i<a.checkpoints.length;i++){const x=a.checkpoints[i],y=b.checkpoints[i];const changes=[];function diff(p,q,k){if(JSON.stringify(p)===JSON.stringify(q))return;if(p&&q&&typeof p==="object"&&typeof q==="object"){for(const f of new Set([...Object.keys(p),...Object.keys(q)]))diff(p[f],q[f],k+"."+f);}else changes.push([k,p,q]);}diff(x,y,"");console.log("EB RESCUE DELTA",i,JSON.stringify(changes));}'
+          node scripts/verify-eb-rescue-pair.mjs artifacts/eb/base-rescue.json artifacts/eb/candidate-rescue.json
           cp scripts/audit-eb0-scale.mjs eb-base/scripts/
           (cd eb-base && GITHUB_SHA=385b18428bc1724c20fcac2f98ad53c6aa4c2f87 node --experimental-strip-types scripts/audit-eb0-scale.mjs ../artifacts/eb/base-scale.json)
           node --experimental-strip-types scripts/audit-eb0-scale.mjs artifacts/eb/candidate-scale.json
