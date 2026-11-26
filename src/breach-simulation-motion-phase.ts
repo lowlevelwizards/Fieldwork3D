@@ -61,7 +61,7 @@ export function advanceSimulationMotion(s:Session,h:number,
     // A single ordered roster replaces four filtering/mapping arrays;
     // keep live positions and operator-before-civilian contact semantics.
     const others:Pt[]=[];
-    for(const o of s.operators)if(o!==carrier&&o!==civil&&o.health>0)
+    for(const o of s.operators)if(o!==carrier&&o.health>0)
       others.push(o.p);
     for(const c of s.civilians)if(c!==civil)others.push(c.p);
     const next=proposedCivilianTransportStep(bodyFrom,from,carrier.p,
