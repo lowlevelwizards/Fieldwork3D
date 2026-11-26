@@ -41,6 +41,7 @@ import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
 import {localFixtureObservation} from './breach-ai-contextual-observation.ts';
 import {doctrineForPurpose} from './breach-ai-doctrine.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
+import {activeCombatant} from './breach-suspect-operational-state.ts';
 
 /** The authoritative simulation owns the motor, shot/geometry, visibility and
  * event ports. The AI owns observation response, tactical commitments and
@@ -92,7 +93,7 @@ function firingPosition(a:TeamActor,target:TeamActor,s:Session):Pt|null{
 }
 function enemyDecisions(s:Session,a:TeamActor,dt:number){
  const world=sessionWorldGeometry(s);
-  if(a.health<=0||a.surrendered)return;
+  if(!activeCombatant(a))return;
   // Sound events expire quickly. The optional muzzle-clearance early return
   // must not consume away an actionable noise before the guard can react.
   const strongest=scanEnemySoundEvidence(s,a);
@@ -576,9 +577,14 @@ function distributeReports(s:Session){
  const world=sessionWorldGeometry(s);
  for(const report of s.reports){
   if(s.seconds-report.at>1.5)continue;
+  const roster=enemies(s);
+  const sender=roster.find(a=>a.id===report.senderId);
+  if(!sender)continue;
+  const eligible=(a:TeamActor)=>activeCombatant(a)&&
+    a.encounterGroupId===sender.encounterGroupId;
   const newlyInformed:string[]=[];
-  for(const recipient of enemies(s)){
-   if(recipient.health<=0||report.deliveredTo.includes(recipient.id))continue;
+  for(const recipient of roster){
+   if(!eligible(recipient)||report.deliveredTo.includes(recipient.id))continue;
    const observation=reportToListener(report,recipient.id,recipient.p,
      s.doors,world.walls,s.seconds);
    if(!observation)continue;
@@ -595,6 +601,7 @@ function distributeReports(s:Session){
     recipient.lastNoiseAt=s.seconds;
     recipient.contacted=true;
     recipient.alert='investigating';
+    recipient.searchOrigin=null;recipient.searchQueue=[];recipient.searchPauseUntil=0;
     recipient.nav=[];
    }
   }
@@ -602,14 +609,14 @@ function distributeReports(s:Session){
   // investigator keeps their role; only newcomers receive fresh orders.
   // Never coordinate an actor who did not actually hear the report.
   if(!newlyInformed.length)continue;
-  const listeners=enemies(s).filter(a=>a.health>0&&
+  const listeners=roster.filter(a=>eligible(a)&&
     report.deliveredTo.includes(a.id));
   const prior=stableCoordination(listeners,s.seconds);
   // For a sound warning, the person who heard and raised it is already
   // investigating. Recipients can watch/support instead of duplicating
   // the same blind move. Direct-sight reports keep their prior behavior.
   const reporter=report.source==='auditory'?
-    enemies(s).find(a=>a.id===report.senderId&&a.health>0):undefined;
+    (eligible(sender)?sender:undefined):undefined;
   const participants=reporter?
      [{id:reporter.id,p:reporter.p,role:reporter.encounterRole},
        ...listeners.map(a=>({id:a.id,p:a.p,role:a.encounterRole}))]:
