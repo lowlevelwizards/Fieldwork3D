@@ -75,7 +75,7 @@ test('D13 frozen, unaffordable and saturated transactions do not charge money',(
  assert.equal(campaignWeaponQuote(deployed,'smg').status,'deployment-locked');
  assert.strictEqual(buyWeapon(deployed,'smg'),deployed);
  const atCap={...open,inventory:{...open.inventory,
-  weapons:{...stockByPlatform(open),smg:124}}};
+  serializedWeapons:[...open.inventory.serializedWeapons,...Array.from({length:128-open.inventory.serializedWeapons.length},(_,i)=>({...open.inventory.serializedWeapons[0],id:'capacity-'+i}))]}};
  assert.equal(campaignWeaponStockAtCapacity(atCap),true);
  assert.equal(campaignWeaponQuote(atCap,'smg').status,'armory-full');
  assert.strictEqual(buyWeapon(atCap,'smg'),atCap);

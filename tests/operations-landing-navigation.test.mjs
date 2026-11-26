@@ -488,7 +488,7 @@ test('C11 campaign actions reuse save-aware feedback for squad, procurement and 
  for(const [handler,mutator] of [
   ['assignSlot','assignOperatorToSlot'],
   ['buyCatalogWeapon','buyCatalogWeapon'],
-  ['equipWeapon','equipCampaignWeapon'],
+  ['equipCatalogWeapon','equipCampaignCatalogWeapon'],
   ['repairArmor','repairCampaignArmor'],
   ['serviceWeapon','serviceCampaignWeapon'],
   ['equipGear','equipCampaignGear']
