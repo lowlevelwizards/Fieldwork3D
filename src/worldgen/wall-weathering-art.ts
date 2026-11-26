@@ -16,7 +16,8 @@ const lineDistance=(x:number,y:number,a:Point,b:Point)=>{
 };
 const lobe=(u:number,v:number,x:number,y:number,rx:number,ry:number)=>Math.abs((u-x)/rx)**1.45+Math.abs((v-y)/ry)**1.45;
 export type ArtInk={coverage:number;tone:0|1|2};
-const ink=(coverage:number,tone:0|1|2=1):ArtInk=>({coverage,tone});
+const INKS:ArtInk[][]=Array.from({length:3},(_,tone)=>Array.from({length:101},(_,i)=>({coverage:i/100,tone:tone as 0|1|2})));
+const ink=(coverage:number,tone:0|1|2=1):ArtInk=>INKS[tone][Math.round(coverage*100)];
 /** Geometry changes with wear progress, but the underlying shape identity
  * stays fixed. Dark core, midtone and pale edge are separate color roles. */
 export function prepareWallArt(kind:WallEffect,seed:number,progress:number,texelU:number,texelV:number,edgeSide?:1|-1){
