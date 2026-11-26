@@ -1867,8 +1867,8 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1,
  profile?:((section:string,elapsedMs:number)=>void)){
  const patient=a.transportLatched&&a.carryingId?
   s.operators.find(o=>o.id===a.carryingId)??s.civilians.find(c=>c.id===a.carryingId):null;
- const scale=patient?Math.min(speedScale,patient.transportMode==='carry'?.38:.48):speedScale;
- return advanceActorMotor(a,p,dt,s,motorHooks,scale,profile);
+ if(patient)speedScale=Math.min(speedScale,patient.transportMode==='carry'?.38:.48);
+ return advanceActorMotor(a,p,dt,s,motorHooks,speedScale,profile);
 }
 /** Authoritative 60 Hz session keeps the clock, gameplay side effects and
  * stable navigation/visibility services; order handlers own execution.
