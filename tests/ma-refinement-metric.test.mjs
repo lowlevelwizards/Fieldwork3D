@@ -52,3 +52,18 @@ test('fixture variants share one site-owned atlas and actual worktop projection'
   assert.deepEqual(tracked[0].image.data.slice(start,start+128),mask.slice(row*128,(row+1)*128));}
  material.map.dispose();material.dispose();owned.forEach(m=>m.dispose());tracked.forEach(t=>t.dispose());
 });
+
+import {buildFloorMaskAtlas,writeFloorMaskSlot,floorMaskGeometry} from '../src/rendering/floor-surface-atlas.ts';
+test('metric floors use square world texels and bounded rectangular atlas pages',()=>{
+ const room={id:'r',kind:'room',purpose:'living',x:0,y:0,w:96,h:72,tone:0};
+ const s={...site,rooms:[room],programLocked:true};
+ const normal=buildFloorMaskAtlas(s,100),metric=buildFloorMaskAtlas(s,100,[],1,true),slot=metric.slots.get('r');
+ assert.equal(normal.pages[0].image.width,64);
+ assert.equal(slot.metricWidth,96);assert.equal(slot.metricHeight,72);
+ assert.equal(slot.texture.image.width,128);assert.equal(slot.texture.image.height,128);
+ const data=slot.texture.image.data.slice(),g=floorMaskGeometry(96,1.6,72,slot),uv=g.getAttribute('fwFloorMaskUV');
+ for(let i=0;i<uv.count;i++){assert.ok(uv.getX(i)>=.5/128&&uv.getX(i)<=95.5/128);assert.ok(uv.getY(i)>=.5/128&&uv.getY(i)<=71.5/128);}
+ writeFloorMaskSlot(s,slot,0);assert.ok(slot.texture.image.data.every((v,i)=>i%4!==3||v===0));
+ writeFloorMaskSlot(s,slot,100);assert.deepEqual(slot.texture.image.data,data);
+ g.dispose();[...normal.pages,...metric.pages].forEach(t=>t.dispose());
+});
