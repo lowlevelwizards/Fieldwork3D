@@ -9,3 +9,22 @@ Compare actual rendered panels and operator context with pinned WA5; report emit
 Run 45758436014, artifact 15088714097: 13 AR cases changed, 88 unrelated exact, 1,440 aggregate emitted triangles removed across 5 relief cases, 146 paired views and 54 identical PNGs. Reviewed side and three-quarter comparisons of all nine factory models: cleaner contiguous band treatment, retained variants and warmer furniture, cooler receiver. Remaining findings: the pale metal magazine and dark polymer-colored lower receiver compete with the primary silhouette. Retain rails for their identity, avoid uniform thinning or unnecessary ornament.
 ## WA6.2/3 — graphic detail and structural readability
 Replace separate decorative metal magazine relief meshes with one opaque shared 64px-tile atlas on the original body, using existing authored graphic shapes and neutral edge faces. Preserve the body geometry, polymer toe and legacy shared FNC materials. Calibrate the metal magazine to a quieter cool-neutral and distinguish the lower receiver/rail base as dark steel, retaining established exterior geometry and configuration data. This is visual-only; verify before/after actual renders and no unrelated changes. Further shape rebuilding is not justified unless actual evidence shows a remaining defect. Status: WA6.2/3 candidate committed; incremental verification and visual review pending. No merge or deployment.
+
+## WA6.4 — cross-variant review checkpoint
+Reviewed the verified WA6.1 actual side, three-quarter, fitted 128px and Operator Lab side/game-view captures of all nine factory references (artifact 15088714097). The images below are relative assessments of artwork, not physical specifications or new configuration proposals.
+
+| Reference | Retained identity | Review finding |
+|---|---|---|
+| M16A1 | Long, angular classic silhouette | Broad shapes read clearly; no need for further geometric detail. |
+| M16A2 | Rounded furniture and long silhouette | Continuous decorative bands improve coherence; material hierarchy needs WA6.2 review. |
+| M16A4 | Modernized long silhouette | Rail pattern is readable; retain visual distinction from other long variants. |
+| C7A2 proxy | Distinct mixed-era outline | Remains labeled proxy; not a new historical authenticity claim. |
+| Mk12 Mod 0 | Long smooth front mass | Quiet fore-end and recognizable top contour; retain distinctive visual identity. |
+| CAR-15 | Compact retro appearance | Cleaner broad bands; retain its contrast with the longer models. |
+| Colt 733 | Related compact appearance | Subtle distinction at small size; avoid inventing features to force a stronger contrast. |
+| M4A1 | Compact modern profile | Strong family recognition; review WA6.2 lower mass and graphic contrast. |
+| Mk18 | Short modern profile with contrasting tan | Color and proportions distinguish it well; preserve the finish identity. |
+
+WA6.1 factory aggregate: 6,910 → 5,706 emitted triangles (1,204 removed, 17.4% across the nine default references). The 1,440 total includes a custom case. Operator Lab captures establish that broad silhouette and color masses dominate at that framing; they are not live mission frames and cannot establish full gameplay material acceptance. No additional geometry changes justified by this checkpoint alone.
+
+At ce621f0d89ec8a20ef68ba3c8c55d1361727e297, run 45759896200 has passed typecheck, focused integrated artwork tests, full-catalog and incremental structural comparisons; actual before/after WebGL capture remains in progress. Do not mark WA6.5 complete until the artifact is available and reviewed. Final weighted grades remain unassigned; full accessory and game-context reviews remain WA12/15/16. No production release authorized.
