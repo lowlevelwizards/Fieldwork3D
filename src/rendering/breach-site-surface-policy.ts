@@ -20,4 +20,6 @@ export const SITE_PROPERTY_SURFACE_COLORS:Readonly<Record<SurfaceKind,number>>={
       'waste-bay-line':0xcdb677,'utility-bay-line':0xa6b8a8,
       'loading-bay-line':0xbeb59b,
       'amenity-apron':0x918d7e,'work-wear':0x64675e,'pavement-joint':0x64685e,
+      'street-verge':0x758561,'street-shoulder':0x858174,'road-patch':0x4d5350,
+      'road-manhole':0x3d4744,'street-drain':0x3b4542,'sidewalk-joint':0x777b71,
 };

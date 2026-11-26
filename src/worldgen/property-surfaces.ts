@@ -8,6 +8,7 @@ import {planRearServiceMarks} from './rear-service-program.ts';
 import {planPublicStreet,type StreetRect} from './public-street-layout.ts';
 import {planLandscapeBedMarks} from './landscape-bed-surfaces.ts';
 import {planServiceBoundaryMarks} from './service-boundary-marks.ts';
+import {planStreetFinishes} from './street-finish.ts';
 import {planExteriorFinishDetails} from './exterior-finish-details.ts';
 export type SurfaceKind='path'|'driveway-stripe'|'parking-divider'|
  'garden-border'|'service-pad'|'patio-paver'|'drainage-grate'|
@@ -16,7 +17,8 @@ export type SurfaceKind='path'|'driveway-stripe'|'parking-divider'|
  'loading-zone'|'maintenance-bay'|'waste-collection'|'clear-route'|
  'planting-bed'|'planting-edge'|
  'waste-bay-line'|'utility-bay-line'|'loading-bay-line'|
- 'amenity-apron'|'work-wear'|'pavement-joint';
+ 'amenity-apron'|'work-wear'|'pavement-joint'|
+ 'street-verge'|'street-shoulder'|'road-patch'|'road-manhole'|'street-drain'|'sidewalk-joint';
 export type PropertySurface={
  id:string;zoneId:string;kind:SurfaceKind;
  x:number;y:number;width:number;depth:number;
@@ -39,10 +41,10 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
  // These are presentation marks only: no new invisible obstruction.
  const street=planPublicStreet(site);
  const publicZone=site.exteriorZones?.find(z=>z.id==='arrival-forecourt');
- if(street&&publicZone){
+ if(street&&(publicZone||site.streetInfrastructure)){
    const addStreet=(kind:SurfaceKind,r:StreetRect)=>{
      marks.push({id:'street:'+kind+':'+marks.length,
-       zoneId:publicZone.id,kind,x:r.x,y:r.y,
+       zoneId:publicZone?.id??'public-street',kind,x:r.x,y:r.y,
        width:r.width,depth:r.depth});
    };
    for(const strip of street.sidewalkPieces)addStreet('sidewalk',strip);
@@ -207,5 +209,5 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
   clipped.push({...mark,x:(minX+maxX)/2,y:(minY+maxY)/2,
     width:maxX-minX,depth:maxY-minY});
  }
- return [...clipped,...planExteriorFinishDetails(site,clipped)];
+ return [...clipped,...planExteriorFinishDetails(site,clipped),...planStreetFinishes(site)];
 }

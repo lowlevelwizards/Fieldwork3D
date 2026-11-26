@@ -16,3 +16,6 @@ Every orientation, three scales and varied archetypes; no new blocked routes, no
 
 ## ST2 — pure versioned frontage proposal
 New five-kind section planner handles all orientations, preserves nominal lane widths and explicitly records partial lanes, reserves a private approach, conditionally fits whole sidewalks/verges/shoulders and derives centerline location from the nominal section. Serialized optional frontage is authoritative to existing public-street consumers; absent field retains exact historical planner. Shadow conflict reporting identifies existing props requiring later relocation. No default generation changes or new collision. Junctions/side streets require subsequent topology pass; not claimed complete. Synthetic matrix covers 100 sections across types, orientations and setbacks.
+
+## ST3 — surface finish vocabulary
+Added deterministic bounded resurfacing patches, eight-sided manholes, curb drains, sidewalk joints, grass verge and gravel shoulder surfaces. New mark kinds participate in the existing static material/spatial packet batching; no per-frame work and no physical obstacle. Marks are confined to their authoritative public substrate and versioned sites only. Synthetic orientation/material containment tests. Road surface still uses the approved asphalt base; alternate heavy-duty surface policies and further weathering remain future work.

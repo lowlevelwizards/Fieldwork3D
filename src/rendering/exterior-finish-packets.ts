@@ -7,13 +7,14 @@ import type {PropertySurface} from '../worldgen/property-surfaces.ts';
 import {propertySurfaceCenterHeight,PROPERTY_SURFACE_THICKNESS} from './property-surface-elevation.ts';
 const flatKinds=new Set(['amenity-apron','work-wear','pavement-joint','parking-divider',
  'driveway-stripe','stall-end-line','access-hatch','crosswalk-stripe','garden-border',
- 'waste-bay-line','utility-bay-line','loading-bay-line','clear-route']);
+ 'waste-bay-line','utility-bay-line','loading-bay-line','clear-route',
+ 'street-verge','street-shoulder','road-patch','road-manhole','street-drain','sidewalk-joint']);
 export const isFlatExteriorFinish=(kind:PropertySurface['kind'])=>flatKinds.has(kind);
 export class ExteriorFinishPackets{
  private readonly buckets=new Map<THREE.Material,Map<string,THREE.BufferGeometry[]>>();
  add(mark:PropertySurface,material:THREE.Material){
   const y=propertySurfaceCenterHeight(mark.kind)+PROPERTY_SURFACE_THICKNESS/2;
-  const geom=mapPlanePixelUV(new THREE.PlaneGeometry(mark.width,mark.depth),
+  const geom=mapPlanePixelUV(mark.kind==='road-manhole'?new THREE.CircleGeometry(mark.width/2,8):new THREE.PlaneGeometry(mark.width,mark.depth),
    mark.width,mark.depth,mark.x,mark.y);
   geom.rotateX(-Math.PI/2);geom.translate(mark.x,y,mark.y);
   const key=Math.floor(mark.x/220)+':'+Math.floor(mark.y/220);
