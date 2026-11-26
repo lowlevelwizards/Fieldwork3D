@@ -21,6 +21,7 @@ export function proposeStreetParkingLayout(site:Site,zone:ExteriorZone):VehicleP
  const rowDepth=loading?D.loading.length:perpendicular?D.parking.length:D.parallel.width;
  const aisleDepth=perpendicular?D.aisle.twoWay:D.aisle.oneWay;
  if(usable<rowDepth+aisleDepth)return null;
+ const doubleRow=!loading&&perpendicular&&usable>=2*rowDepth+aisleDepth+8;
  const lane=arrivalAccessLane(site,zone);if(!lane)return null;
  const at=axis==='x'?lane.x:lane.y;
  const accessWidth=loading?D.industrialAccess:D.driveway.single;
@@ -30,13 +31,14 @@ export function proposeStreetParkingLayout(site:Site,zone:ExteriorZone):VehicleP
  // Choose the larger side; put the vehicle entrance at its outer end.
  const sides=[{lo:start,hi:Math.min(end,at-D.pedestrianClear/2-10),side:-1},{lo:Math.max(start,at+D.pedestrianClear/2+10),hi:end,side:1}].sort((a,b)=>(b.hi-b.lo)-(a.hi-a.lo));
  for(const s of sides){
-  const count=Math.min(14,Math.floor((s.hi-s.lo-accessWidth-8)/pitch));
+  const count=Math.min(doubleRow?7:14,Math.floor((s.hi-s.lo-accessWidth-8)/pitch));
   if(count<2)continue;
   const length=count*pitch;
   const entrance=s.side<0?s.lo+accessWidth/2:s.hi-accessWidth/2;
   const alongCenter=s.side<0?s.lo+accessWidth+8+length/2:s.hi-accessWidth-8-length/2;
   return {version:1,mode,role:loading?'loading':'public',axis,rowCenter:sign*(inner+rowDepth/2),rowDepth,
    aisleCenter:sign*(inner+rowDepth+aisleDepth/2),aisleDepth,alongCenter,alongLength:length,count,
+   ...(doubleRow?{secondRowCenter:sign*(inner+rowDepth+aisleDepth+rowDepth/2)}:{}),
    access:{alongCenter:entrance,width:accessWidth,acrossCenter:sign*(inner+(outer-inner)/2),depth:outer-inner}};
  }
  return null;

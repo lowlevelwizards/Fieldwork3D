@@ -13,6 +13,8 @@ export type VehicleParkingLayout=Readonly<{
  role?:'public'|'residential'|'loading';
  axis:'x'|'y';
  rowCenter:number;rowDepth:number;aisleCenter:number;aisleDepth:number;
+ /** Optional mirrored second row across the same physical aisle. */
+ secondRowCenter?:number;
  alongCenter:number;alongLength:number;count:number;
  /** Dedicated vehicle entrance, separate from the pedestrian route. */
  access?:Readonly<{alongCenter:number;width:number;acrossCenter:number;depth:number}>;
@@ -69,6 +71,7 @@ export function intersectsVehicleParkingReserve(zone:ExteriorZone,c:Pick<Obstacl
  const alongHalf=(p.axis==='x'?c.w:c.h)/2,acrossHalf=(p.axis==='x'?c.h:c.w)/2;
  if(Math.abs(along-p.alongCenter)>=p.alongLength/2+alongHalf+4)return false;
  return Math.abs(across-p.rowCenter)<p.rowDepth/2+acrossHalf+4||
+  (p.secondRowCenter!==undefined&&Math.abs(across-p.secondRowCenter)<p.rowDepth/2+acrossHalf+4)||
   (p.aisleDepth>0&&Math.abs(across-p.aisleCenter)<p.aisleDepth/2+acrossHalf+4);
 }
 

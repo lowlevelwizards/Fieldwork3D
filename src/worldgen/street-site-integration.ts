@@ -15,7 +15,7 @@ export function attachStreetInfrastructure(site:Site,vehicles=true):Site{
  const baseline=vehicles?attachPlannedVehicles(site):site;
  const oldCount=baseline.cover.filter(c=>vehicleFamily(c.fixture??'')).length;
  const domestic=['house','townhouse'].includes(site.archetype??'');
- const reserves=vehicles?(domestic?[132,34]:[270,178,34]):[34];
+ const reserves=vehicles?(domestic?[132,34]:[390,270,178,34]):[34];
  for(const reserve of reserves){
   const plan=proposeStreetInfrastructure(site,undefined,reserve);if(!plan)continue;
   const start={...site,streetInfrastructure:plan};

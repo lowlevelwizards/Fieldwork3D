@@ -8,7 +8,8 @@ import type {Site} from '../breach-site.ts';
 import {arrivalAccessLane} from './property-access-lane.ts';
 export const PARKING_VEHICLES=new Set(['sedan','pickup','van','suv','hatchback','light-truck']);
 export function parkingStallCount(zone:ExteriorZone):number{
- return zone.vehicleParking?.count??Math.min(5,Math.max(2,Math.floor(Math.max(zone.w,zone.h)/58)));
+ const p=zone.vehicleParking;
+ return p?p.count*(p.secondRowCenter===undefined?1:2):Math.min(5,Math.max(2,Math.floor(Math.max(zone.w,zone.h)/58)));
 }
 export function parkingStallCandidates(zone:ExteriorZone,width:number,depth:number):
  Pick<Obstacle,'x'|'y'|'w'|'h'|'orientation'>[]{
@@ -20,10 +21,11 @@ export function parkingStallCandidates(zone:ExteriorZone,width:number,depth:numb
   const alongSize=broad?w:h,acrossSize=broad?h:w;
   const stride=plan.alongLength/plan.count;
   if(alongSize+8>stride||acrossSize+6>plan.rowDepth)return [];
-  return Array.from({length:plan.count},(_,i)=>{
+  const rows=plan.secondRowCenter===undefined?[plan.rowCenter]:[plan.rowCenter,plan.secondRowCenter];
+  return rows.flatMap(row=>Array.from({length:plan.count},(_,i)=>{
    const along=plan.alongCenter+(i+.5-plan.count/2)*stride;
-   return {x:broad?along:plan.rowCenter,y:broad?plan.rowCenter:along,w,h,orientation:(turned?1:0) as 0|1};
-  }).sort((a,b)=>Math.abs((broad?b.x:b.y)-plan.alongCenter)-Math.abs((broad?a.x:a.y)-plan.alongCenter)||(broad?a.x-b.x:a.y-b.y));
+   return {x:broad?along:row,y:broad?row:along,w,h,orientation:(turned?1:0) as 0|1};
+  })).sort((a,b)=>Math.abs((broad?b.x:b.y)-plan.alongCenter)-Math.abs((broad?a.x:a.y)-plan.alongCenter)||(broad?a.x-b.x:a.y-b.y));
  }
  const broad=zone.w>=zone.h,slots=parkingStallCount(zone);
  const w=broad?depth:width,h=broad?width:depth;

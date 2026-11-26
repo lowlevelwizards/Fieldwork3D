@@ -36,6 +36,7 @@ export function planStreetFurniture(site:Site):Obstacle[]{
   const n=site.cover.filter(c=>c.fixture===fixture&&Math.abs(c[across]-p.privateEdge)<100).length+out.filter(c=>c.fixture===fixture).length;
   const cap=fixture==='street-lamp'&&end-start>=400?2:1;if(n>=cap)continue;
   const phase=((site.seed>>>0)%13-6)*3;
+  let placed=false;
   for(const t of [0.18,0.82,0.34,0.66,0.48,0.92,0.08]){
    const at=start+(end-start)*t+phase;
    for(const inset of [5,15,27]){
@@ -51,9 +52,9 @@ export function planStreetFurniture(site:Site):Obstacle[]{
     if([...site.cover,...out].some(o=>overlap(o,c,12)||
       (o.fixture===fixture&&Math.hypot(o.x-c.x,o.y-c.y)<(fixture==='street-lamp'?150:75))))continue;
     if(streetConflicts({...site,cover:[c]},p).length)continue;
-    out.push(c);break;
+    out.push(c);placed=true;break;
    }
-   if(out.filter(c=>c.fixture===fixture).length+n>n)break;
+   if(placed)break;
   }
  }
  return out;

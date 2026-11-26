@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {proposeStreetInfrastructure} from '../src/worldgen/street-infrastructure.ts';
 import {proposeStreetParkingLayout} from '../src/worldgen/street-parking.ts';
-import {parkingStallCandidates,reservedParkingBay} from '../src/worldgen/parking-stalls.ts';
+import {parkingStallCandidates,reservedParkingBay,parkingStallCount} from '../src/worldgen/parking-stalls.ts';
 import {STREET_DIMENSIONS as D} from '../src/worldgen/street-standards.ts';
 import {VEHICLE_DIMENSIONS} from '../src/worldgen/vehicle-catalog.ts';
 function site(side,depth,archetype='retail'){
@@ -36,4 +36,19 @@ test('accessible bay owns a complete adjacent transfer slot within the row',()=>
  assert.ok(r&&r.transferCenter!==undefined&&r.transferWidth===D.parking.width);
  assert.equal(Math.abs(r.x-r.transferCenter),D.parking.width);
  assert.ok(Math.abs(r.transferCenter-p.alongCenter)+r.transferWidth/2<=p.alongLength/2+.001);
+});
+
+test('two complete parking rows share the same aisle without consuming the transfer bay',()=>{
+ for(const side of ['north','south','east','west']){
+  const [s,z]=site(side,420),p=proposeStreetParkingLayout(s,z);
+  assert.ok(p&&p.secondRowCenter!==undefined,side);
+  assert.equal(Math.abs(p.rowCenter-p.aisleCenter),p.rowDepth/2+p.aisleDepth/2);
+  assert.equal(Math.abs(p.secondRowCenter-p.aisleCenter),p.rowDepth/2+p.aisleDepth/2);
+  const zone={...z,vehicleParking:p};
+  const [w,h]=VEHICLE_DIMENSIONS.sedan;
+  const slots=parkingStallCandidates(zone,w,h);
+  assert.equal(slots.length,2*p.count);
+  assert.equal(parkingStallCount(zone),slots.length);
+  assert.equal(new Set(slots.map(c=>c.x+':'+c.y)).size,slots.length);
+ }
 });

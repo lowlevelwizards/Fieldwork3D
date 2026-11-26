@@ -82,7 +82,7 @@ export function addExteriorProperty(site:Site,seed:number,vehiclePlacement=false
   const original=zones[0];
   if(original?.id==='arrival-forecourt'){
    zones.shift();
-   edgeZone(entry,'arrival-forecourt',industrial?'driveway':'parking',site.streetInfrastructure?320:220);
+   edgeZone(entry,'arrival-forecourt',industrial?'driveway':'parking',site.streetInfrastructure?440:220);
    const candidate=zones[0];
    const layout=candidate&&proposeVehicleParkingLayout({...site,exteriorZones:zones},candidate);
    if(layout)zones[0]={...candidate,vehicleParking:layout};

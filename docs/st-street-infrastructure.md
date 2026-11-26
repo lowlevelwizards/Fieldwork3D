@@ -37,3 +37,6 @@ Foundation checkpoint d1f1357 passed 12 focused tests, TS, browser captures, and
 
 ## ST7–10 first physical fixture checkpoint
 Contextual private-side lamp, hydrant, bollard, wayfinding and bench placement using existing asset geometry. Bounded deterministic spacing, actual public/door/parking reserves, actor clearance, complete physical route revalidation and fallback to the unfurnished accepted ST layout. No moving traffic or extra per-frame lights. Correct stale legacy source assertion for the new shared street plan. Pending exact-head CI. Further work: richer sign art, junction and parking topology, power/light presentation, broader generation audit and default enablement.
+
+## ST5 extension — double-row parking
+For sufficiently deep non-industrial lots, two full perpendicular rows share one full-width circulation aisle and a separate connection. Each row retains fixed pitch and each physical stall/paint/clearance consumer uses the same row coordinates. Accessible transfer reservation stays on the primary pedestrian-side row. Deep lot proposal has a bounded fallback to single-row and legacy plans. Pending exact-head tests.

@@ -59,7 +59,7 @@ export function planVehiclePlacement(site:Site,seed=site.seed,modernOnly=false):
   const rng=seeded(key),artRng=seeded(key^0x371e6a93),roster=fleet(site,zone);
   const reserved=reservedParkingBay(site,zone);
   const broad=zone.vehicleParking?zone.vehicleParking.axis==='x':zone.w>=zone.h;
-  const stride=(zone.vehicleParking?.alongLength??(broad?zone.w:zone.h))/parkingStallCount(zone);
+  const stride=(zone.vehicleParking?.alongLength??(broad?zone.w:zone.h))/(zone.vehicleParking?.count??parkingStallCount(zone));
   const lane=arrivalAccessLane(site,zone);
   const usedSlots=new Set<string>();
   for(let n=0;n<target;n++){
@@ -83,7 +83,7 @@ export function planVehiclePlacement(site:Site,seed=site.seed,modernOnly=false):
      if(intersectsStreet(c,street?.sidewalk??null)||intersectsStreet(c,street?.curbRamp??null)){reject('sidewalk');continue;}
      if(lane&&overlapsArrivalLane(site,zone,c)){reject('arrival');continue;}
      if(intersectsServiceAccess(zone,c)){reject('service');continue;}
-     if(reserved){
+     if(reserved&&(!zone.vehicleParking?.secondRowCenter||Math.abs((broad?y:x)-zone.vehicleParking.rowCenter)<.001)){
       const at=broad?x:y,center=broad?reserved.x:reserved.y,half=(broad?w:h)/2;
       const transfer=reserved.transferCenter??center+reserved.side*(reserved.bayWidth/2+5);
       if(Math.abs(at-center)<stride*.5||Math.abs(at-transfer)<half+(reserved.transferWidth??16)/2){reject('reserved');continue;}
