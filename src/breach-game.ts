@@ -1,7 +1,7 @@
 import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
-import {canConcludeWithdrawal,commitIndividualExtractions,deployedTeam} from './breach-operation-outcomes.ts';
+import {canConcludeWithdrawal,commitIndividualExtractions,commitTransportExtractions,deployedTeam} from './breach-operation-outcomes.ts';
 import {observeOptionalIntel,beginOptionalIntelGather,collectProximityOptionalIntel,advanceOptionalIntel,
  type OptionalIntelItem,type OptionalIntelGather,eligibleOptionalIntel}
  from './breach-optional-intel.ts';
@@ -429,6 +429,7 @@ export type Session=Omit<TacticalState,'operators'> & {
   withdrawalCompleted?:boolean;
   /** Archived by the 60 Hz mission tick; excluded from all live AI/motor. */
   extractedOperators?:TeamActor[];
+  extractedSuspects?:TeamActor[];
   /** Selected individual physical exit commands await the next GO tick. */
   pendingExtractionIds?:string[];
   /** A named MIA casualty-recovery mission, not a second objective authority. */
@@ -1895,6 +1896,13 @@ function mission(s:Session,dt:number){
   // The equipment range is an intentionally open-ended live simulation.
   // It cannot accidentally complete a Campaign mission or generate a debrief.
   if(s.site?.training){advanceTrainingTrial(s);return;}
+  for(const {patient,carrier} of commitTransportExtractions(s)){
+    const message=patient.name+' EXTRACTED';
+    notify(s,message);
+    battleEvent(s,'objective',carrier,patient.p,message,{
+      action:patient.side==='blue'?'individual-extraction':'suspect-extracted',
+      targetId:patient.id,contributorId:carrier.id});
+  }
   if(s.withdrawalRequested){
     const departed=commitIndividualExtractions(s);
     for(const member of departed){
@@ -2167,6 +2175,8 @@ function mission(s:Session,dt:number){
     (!s.withdrawalRequested||canConcludeWithdrawal(s))&&
     team(s).some(a=>a.health>0&&
     near(a.p,s.scenario.extract,37)&&
+    !(a.transportLatched&&a.carryingId&&
+      s.operators.some(p=>p.id===a.carryingId&&p.id!==s.captureTarget))&&
     validLivingCaptureExtraction(a)&&
     (s.missionType!=='intel'||s.intelCarrierId===a.id)&&
     validRescueCustody(a))){
