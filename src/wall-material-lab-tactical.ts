@@ -10,12 +10,13 @@ export function createTacticalMaterialPreview(container:HTMLElement){
  container.append(canvas);canvas.style.cssText='display:block;width:100%;height:auto;aspect-ratio:16/10;pointer-events:none;';
  let session:ReturnType<typeof newSession>|undefined;
  let key='';
- function draw(archetype:BuildingArchetype,seed:number,level:number,close:boolean){
-  const next=[archetype,seed,level].join(':');
+ function draw(archetype:BuildingArchetype,seed:number,level:number,close:boolean,metric=false){
+  const next=[archetype,seed,level,metric].join(':');
   const w=Math.max(1,container.clientWidth),h=Math.max(1,Math.round(w*10/16));
   scene.resize(w,h);
   if(next!==key||!session){
    const site={...generateSite(seed,'standard',undefined,{mission:'intel'},{archetype}),conditionLevel:level};
+   scene.wallAudition={effect:'all',atlas:true,story:true,metric};
    activateSite(site);session=newSession(0,seed,'floor-plan','standard',undefined,site);
    scene.applySite(site);scene.resetCamera();key=next;
   }
