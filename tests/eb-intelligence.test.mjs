@@ -40,3 +40,27 @@ test('EB18 recovered evidence is accountable and threat research spends existing
  assert.equal(high.contracts[0].intel,'unknown');assert.equal(researchContractThreat(high,'j'),high);
  assert.equal(researchContractThreat({...c,activeContractId:'j'},'j').intelligence,3);
 });
+
+import {campaignEnemyContext,createCampaignRules} from '../src/campaign-rules.ts';
+import {selectEncounterGroupProfile} from '../src/worldgen/encounter-group-identity.ts';
+test('EB20 campaign contexts are explicit and never leak to Quick Play or training',()=>{
+ const cases=[['dispatch','civilian'],['operations','military'],['wasteland','survival'],['custom','civilian']];
+ for(const [template,expected] of cases){
+  const campaign={rules:createCampaignRules(template)};
+  assert.equal(campaignEnemyContext('mission',campaign),expected);
+  assert.equal(campaignEnemyContext('quick',campaign),undefined);
+  assert.equal(campaignEnemyContext('training',campaign),undefined);
+ }
+ const g={id:'g1',purpose:'organised',members:[]};
+ for(let seed=1;seed<50;seed++){
+  const survival=selectEncounterGroupProfile(g,[],'defensive',seed,{forceContext:'survival'});
+  assert.ok(['armed-irregulars','organised-criminals'].includes(survival));
+ }
+});
+test('EB20 generated profile, issued kit and briefing remain stable after resolved-site restart',()=>{
+ const seed=19,site=generateSite(seed,'small',undefined,{mission:'clear',forceContext:'military'});
+ const first=newSession(0,seed,'true-blind','small','clear',site);
+ const again=newSession(0,seed,'true-blind','small','clear',structuredClone(site));
+ assert.deepEqual(compileMissionFacts(first).threatGroups,compileMissionFacts(again).threatGroups);
+ assert.deepEqual(createOperationDossier(compileMissionFacts(first),{quality:'high'}),createOperationDossier(compileMissionFacts(again),{quality:'high'}));
+});

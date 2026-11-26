@@ -22,6 +22,12 @@ export function selectEncounterGroupProfile(group:EncounterGroup,actors:readonly
    return roll<.18?'specialists':roll<.77?'regular-force':'armed-irregulars';
   return roll<.65?'armed-irregulars':'opportunists';
  }
+ // Survival settings use the shared irregular/civilian catalog, not a new faction or military pool.
+ if(context.forceContext==='survival'){
+  if(group.purpose==='security')return roll<.65?'security':'armed-irregulars';
+  if(group.purpose==='organised')return roll<.65?'armed-irregulars':'organised-criminals';
+  return premise==='defensive'&&roll<.55?'armed-irregulars':'opportunists';
+ }
  if(group.purpose==='security')return premise==='guarded'&&context.risk===3&&roll<.18?'specialists':'security';
  if(group.purpose==='organised')return premise==='defensive'?'armed-irregulars':'organised-criminals';
  if(incidentId==='organizer-apprehension'||incidentId==='compromised-hideout'||
