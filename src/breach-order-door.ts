@@ -11,6 +11,7 @@ import {doorInteraction} from './breach-interactions.ts';
 import {releasePrivacyLockOnOpen} from './breach-door-security.ts';
 import {doorClosingContested} from './breach-door-pressure-frame.ts';
 import {claimOpeningIntent} from './breach-door-opening-ownership.ts';
+import {preOpenDoorCandidate} from './breach-preopen-contact.ts';
 import {kickDoor,doorWouldStrikeActors,doorApproach,doorReachable,doorClear,
  PUSHED_OPEN_LIMIT} from './breach-door.ts';
 import {KICK_DURATION} from './breach-door-actions.ts';
@@ -169,6 +170,16 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
     const required=n.method==='kick'?KICK_DURATION:
       n.method==='hold'?1.3:n.method==='close'?.75:.78;
     if(a.actionTimer===0){
+      // At the actual OPEN windup, stop locomotion and acquire the
+      // physical contact before the .78s action clock moves the leaf.
+      if((n.method==='open'||!n.method)&&!door.open){
+        a.velocity=0;
+        const prior=a.physicalContact;
+        if(!prior||prior.releasedAt!==null||prior.intent!=='door'){
+          const contact=preOpenDoorCandidate(s,a,door,sessionWorldGeometry(s),prior);
+          if(contact)a.physicalContact=contact;
+        }
+      }
       a.lastDoorAt=s.seconds;a.lastDoorId=door.id;
       a.lastDoorMethod=n.method??'open';
       if(n.method==='kick'){
