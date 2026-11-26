@@ -1,5 +1,5 @@
 # WA0–WA2 — Weapon artwork foundation
-Status: scoped; implementation and visual evidence pending. Baseline main: 7bc12b336e88827a4183ee352039691e6bb7b393.
+Status: WA0 baseline and initial review verified; WA1 targeted verification passed; WA2 standard published on feature branch. Outstanding scope exceptions documented below; no merge/deploy. Baseline main: 7bc12b336e88827a4183ee352039691e6bb7b393.
 Owner: Arsenal artwork. This is an art-only, read-only foundation release; no remodels or production enablement changes.
 
 ## Purpose
@@ -31,6 +31,11 @@ Establish graphic miniature realism: confident primary forms, compact character,
 
 ## Invariants and release gate
 No weapon gameplay, physics, ammo, capacity, stats, timing, recipes, saves, attachment compatibility, inventory, faction access, operator pose/contact or canonical art change. No new weapon families. No real-world functional/internal designs. Keep existing production paths and shared ownership intact. Use targeted inventory/appearance/geometry tests, typecheck, build and real WebGL smoke; do not run redundant broad suites. Stage commits on feature branch. Draft PR until evidence complete. Group release after critical checks and previous production Pages deployment verified successful; do not pile merges. Explicitly distinguish source-level findings, generated artifacts, measured outcomes and human visual review. Do not mark incomplete stages complete.
+
+## Foundation status / explicit remaining evidence
+- WA0: 53 default references, seven accessory samples, all 41 non-factory parts and 53 operator contexts captured (762 PNGs). Exhaustive individually mounted accessory coverage, dropped/replay and actual mission evidence are deferred to WA12/16. Per-reference qualitative dispositions are recorded; final weighted ratings remain unassigned.
+- WA1: browser verification passed. In-lab synchronized live operator comparisons, full tactical lighting and true cross-category game scale are outstanding; archived context and live Operator Lab handoff are implemented. Full contact sheets use WA0 harness. Baseline artifact is retention-limited; preserve independently before expiry.
+- WA2: canonical Standard 2.0 adds evidence-linked teaching benchmarks, form/surface/material language, exception register, rubric and acceptance gates. Material swatches remain qualitative pending WA3 actual game-light calibration. No asset has been newly approved and no production art modified. See weapon-production-standard.md.
 
 ## Follow-on handoff
 WA3 shared vocabulary implementation; WA4–11 benchmark/family passes; WA12–13 accessory/finish consistency; WA14 condition; WA15 scale; WA16 presentation; WA17 optimization; WA18 final verification. Prioritize high-impact drift from evidence rather than chronological age alone.
