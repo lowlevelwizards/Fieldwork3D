@@ -52,3 +52,6 @@ A separate chunky octagonal stop sign is registered in canonical scale and the A
 
 ## Exact main release evidence
 Dedicated ST current-main parity job checks the actual PR base against the explicit legacy path on 18 mission/scale cases; exact architecture, actors, objectives and encounters for the default path; same saved-world fixed-step physics across both engines; actual new ST replay/restart snapshot integrity. Audit now reports real default acceptance by scale, full lanes, secondary roads, stop control, double rows and observed generation costs. Historical V18 and C11 checks remain independent; their stale-fingerprint failures are not silently accepted. No production merge before actual final evidence.
+
+## Build repair
+Exact current-main comparison passed all 18 cases including historical playback and new-ST replay/restart; 19 ST contracts passed. The build failed on two narrow TypeScript issues (unused stop planner coordinate and inferred optional metadata type); corrected without changing generation behavior. Fresh exact-head build pending.

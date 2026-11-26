@@ -56,7 +56,7 @@ export function attachStreetJunction(site:Site):StreetInfrastructure|undefined{
 export function proposeJunctionStop(site:Site):{site:Site;sign:Obstacle}|null{
  const p=site.streetInfrastructure,j=p?.junction;if(!p||!j||j.stopAt!==undefined)return null;
  const asset=propDefinition('traffic-stop-sign');if(!asset)return null;
- const axis=p.axis,across=axis==='x'?'y':'x',sign=p.entry==='south'||p.entry==='east'?1:-1;
+ const axis=p.axis,sign=p.entry==='south'||p.entry==='east'?1:-1;
  const right=axis==='x'?-sign:sign;
  if(right!==-j.side)return null;
  const orientation=p.entry==='south'?2:p.entry==='north'?0:p.entry==='east'?3:1;

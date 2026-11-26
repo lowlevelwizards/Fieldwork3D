@@ -35,7 +35,7 @@ export function attachStreetInfrastructure(site:Site,vehicles=true):Site{
   if(streetConflicts(candidate,candidate.streetInfrastructure!).length)continue;
   if(validExteriorRetrofit(site,candidate)){
    const control=proposeJunctionStop(candidate);
-   let accepted=candidate;
+   let accepted:Site=candidate;
    if(control){
     const signed={...control.site,cover:[...candidate.cover,control.sign]};
     if(!streetConflicts(signed,signed.streetInfrastructure!).length&&validExteriorRetrofit(candidate,signed))accepted=signed;
