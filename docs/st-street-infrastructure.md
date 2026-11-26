@@ -19,3 +19,6 @@ New five-kind section planner handles all orientations, preserves nominal lane w
 
 ## ST3 — surface finish vocabulary
 Added deterministic bounded resurfacing patches, eight-sided manholes, curb drains, sidewalk joints, grass verge and gravel shoulder surfaces. New mark kinds participate in the existing static material/spatial packet batching; no per-frame work and no physical obstacle. Marks are confined to their authoritative public substrate and versioned sites only. Synthetic orientation/material containment tests. Road surface still uses the approved asphalt base; alternate heavy-duty surface policies and further weathering remain future work.
+
+## ST4 — straight-section marking rules
+Batched muted dashed centerlines, continuous industrial centerline and selected rural/industrial edge stripes. Center paint is tied to actual nominal lane boundary; a cropped near lane never gets a false centerline. No invented stops, crossings or arrows on straight segments. Junction-specific markings are deferred until connected topology exists. Synthetic containment/orientation checks.
