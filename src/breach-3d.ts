@@ -1,3 +1,4 @@
+import {detonationSmokeWeight} from './rendering/breach-detonation-art.ts';
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {bloodMarkRadius,bloodMarkTint} from './breach-blood-evidence.ts';
@@ -3251,6 +3252,8 @@ export class TacticalScene3D{
         if(!omniscient&&!this.presentationSight.query(s,'effect','puff-burst:'+burst.id,burst.p))continue;
         for(let i=0;i<puffCount('flash');i++){
           if(!samplePuff('flash',burst.id,i,burst.age,burst.p.x,13,burst.p.y,puff))continue;
+          puff.alpha*=detonationSmokeWeight(burst.age);
+          if(puff.alpha<=0)continue;
           if(!omniscient&&!this.presentationSight.query(s,'effect','puff-burst:'+burst.id+':'+i,{x:puff.x,y:puff.z}))continue;
           if(!this.dustPuffs){this.dustPuffs=new DustPuffBatch();this.effects.add(this.dustPuffs.mesh);}
           this.dustPuffs.add(puff);
