@@ -20,7 +20,7 @@ import {mayManipulateOpening,claimContactReadyOpening,claimOpeningIntent}
 
 type TickClaims={
  at:number;
- protectedBySide:Set<string>;
+ protectedBySide:Map<string,Set<string>>;
  occupiedDoors:Set<string>;
  actorsOpening:Set<string>;
  claimedImpulses:Set<string>;
@@ -33,7 +33,7 @@ export function doorPressureTick(s:Session):TickClaims{
  const prior=cache.get(s);
  if(prior&&prior.at===s.seconds)return prior;
  const tick:TickClaims={
-  at:s.seconds,protectedBySide:new Set(),occupiedDoors:new Set(),
+  at:s.seconds,protectedBySide:new Map(),occupiedDoors:new Set(),
   actorsOpening:new Set(),claimedImpulses:new Set(),
   inspected:new Set()
  };
@@ -57,7 +57,13 @@ function inspectDoor(s:Session,tick:TickClaims,door:Door):void{
   if(dx*dx+dy*dy>80*80)continue;
   const queued=actor.plan.some(n=>n.kind==='move'&&
     n.entryDoorId===door.id);
-  if(queued)tick.protectedBySide.add(sideKey(door.id,actor.side));
+  const protect=()=>{
+   const key=sideKey(door.id,actor.side);
+   let ids=tick.protectedBySide.get(key);
+   if(!ids){ids=new Set();tick.protectedBySide.set(key,ids);}
+   ids.add(actor.id);
+  };
+  if(queued)protect();
   const n=actor.plan[0];
   // R2.3: an active operator physically brushing an already OPEN leaf
   // is occupying that aperture even if a temporary nav leg means
@@ -68,14 +74,14 @@ function inspectDoor(s:Session,tick:TickClaims,door:Door):void{
   if((n.kind==='move'||n.kind==='pie')&&door.open&&
      (door.openFraction??0)>.08&&
      pointToSegment(actor.p,doorLeafSegment(door))<OPERATOR_RADIUS+7){
-    tick.protectedBySide.add(sideKey(door.id,actor.side));
+    protect();
     tick.occupiedDoors.add(door.id);
   }
   if(!['move','pie','door','sync'].includes(n.kind)||
      n.kind==='door'&&n.method==='close')continue;
   if(!activeDoorCrossingIntent(actor,door,true)&&
      !(n.kind==='move'&&n.entryDoorId===door.id))continue;
-  tick.protectedBySide.add(sideKey(door.id,actor.side));
+  protect();
   tick.occupiedDoors.add(door.id);
   tick.actorsOpening.add(actorKey(actor.id,door.id));
  }
@@ -104,7 +110,11 @@ export function sessionDoorPressurePolicy(
   deferClosing:door=>{
    const frame=doorPressureTick(s);
    inspectDoor(s,frame,door);
-   return frame.protectedBySide.has(sideKey(door.id,actor.side));
+   const claims=frame.protectedBySide.get(sideKey(door.id,actor.side));
+    // Protect real crossing peers, not a lone operator deliberately
+    // walking into the reverse face. Own authored crossing still wins.
+    return !!claims&&(claims.size>(claims.has(actor.id)?1:0)||
+      actor.plan.some(n=>n.kind==='move'&&n.entryDoorId===door.id));
   },
   claimContact:door=>{
    // The selected opener alone may inject incidental pressure while the
