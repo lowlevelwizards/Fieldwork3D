@@ -82,6 +82,11 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
       if(a.carryingId===n.patientId){a.carryingId=null;a.transportLatched=false;}
       pop(a);return true;
     }
+    // A stale queued pickup must never overwrite a different reciprocal
+    // custody link acquired by an earlier order or restored from replay.
+    if(a.carryingId&&a.carryingId!==patient.id){
+      failCurrentOrder(s,a,n,'ALREADY TRANSPORTING A CASUALTY');return true;
+    }
     if(patient.carriedById&&patient.carriedById!==a.id){
       failCurrentOrder(s,a,n,'CASUALTY ALREADY IN TRANSPORT');return true;
     }
