@@ -15,7 +15,7 @@ test('stable contextual placement, privacy bias, independent pane geometry',()=>
   const a=chooseWindowCovering(site,w,seed);
   assert.deepEqual(a,chooseWindowCovering(site,w,seed));
   if(a){covered++;if(a.opening===0)closed++;
-   if(a.family.includes('shutter'))assert.equal(a.opening,1);
+   if(a.family.includes('shutter')){assert.ok([0,1].includes(a.opening));assert.equal(a.side,-1);}
    else assert.equal(a.side,1);}
   for(const treatment of ['bars','boarded'])assert.equal(chooseWindowCovering(site,{...w,treatment},seed),undefined);
   assert.equal(chooseWindowCovering(site,{...w,style:'clerestory'},seed),undefined);
@@ -42,7 +42,7 @@ test('all six families are reachable through appropriate room and archetype cont
   const local={...site,archetype,rooms:[{...room,purpose}]};
   for(let seed=0;seed<80;seed++){
    const a=chooseWindowCovering(local,{...w,style},seed*9973);
-   if(a){found.add(a.family);if(a.family.includes('shutter'))assert.equal(a.opening,1);}
+   if(a){found.add(a.family);if(a.family.includes('shutter'))assert.ok([0,1].includes(a.opening));}
   }
  }
  assert.deepEqual([...found].sort(),['curtain','hinged-shutter','horizontal-blind','roller-shade','rolling-shutter','vertical-blind']);

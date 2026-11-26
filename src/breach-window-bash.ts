@@ -1,3 +1,4 @@
+import {hardCoveringBlocksPaneContact} from './breach-window-covering-physical.ts';
 /** EI4: one physical target and reach contract for the explicit glass-bash
  * order. The pane itself is the only exempted collision volume. */
 import {doorBlocksRay,type Pt} from './breach-core.ts';
@@ -26,6 +27,7 @@ export function windowCanBash(w:WindowState):boolean{
    (w.headHeight??windowVisualHeadHeight(w.style))>12;
 }
 export function windowBashLaneClear(s:Session,w:WindowState,from:Pt):boolean{
+ if(hardCoveringBlocksPaneContact(w,from))return false;
  const to=windowBashPoint(w,from),world=sessionWorldGeometry(s);
  if(Math.hypot(to.x-from.x,to.y-from.y)>WINDOW_BASH_REACH)return false;
  const ray={a:from,b:to};

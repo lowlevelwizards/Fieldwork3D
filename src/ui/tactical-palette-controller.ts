@@ -412,7 +412,7 @@ export function createTacticalPaletteController(config:{
   const nearCovering=coveringActorAvailable(a,state)?nearestCoveringInteraction(state,at,p=>liveVisibility(state,p),current.posture==='crouch'):undefined;
   const coveringActions:ContextAction[]=nearCovering?nearCovering.actions.map(method=>({
     id:'ctxCovering:'+method+':'+nearCovering.window.id,
-    label:COVERING_ACTION_LABELS[method]+' '+(nearCovering.covering.family.includes('blind')?'BLINDS':nearCovering.covering.family==='curtain'?'CURTAINS':'SHADE'),
+    label:COVERING_ACTION_LABELS[method]+' '+(nearCovering.covering.family.includes('blind')?'BLINDS':nearCovering.covering.family==='curtain'?'CURTAINS':nearCovering.covering.family.includes('shutter')?'SHUTTER':'SHADE'),
     group:'advanced',title:'Queue a physical covering adjustment; glazing remains independent'
   })):[];
   const powerActions:ContextAction[]=[];

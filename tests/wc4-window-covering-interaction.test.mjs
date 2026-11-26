@@ -15,7 +15,7 @@ test('explicit requests are idempotent and locked hard shutters remain unavailab
  assert.equal(desiredCovering(closed,'tilt-covering').tilted,true);
  assert.equal(desiredCovering(c,'tilt-covering'),null);
  assert.equal(desiredCovering({...c,locked:true},'close-covering'),null);
- assert.equal(desiredCovering({...c,family:'rolling-shutter'},'close-covering'),null);
+ assert.equal(desiredCovering({...c,family:'rolling-shutter'},'close-covering').opening,0);
  assert.equal(desiredCovering({...c,integrity:0},'close-covering'),null);
 });
 test('motion is seekable, uses recorded contact clock and does not mutate pane',()=>{

@@ -54,10 +54,11 @@ export function chooseWindowCovering(site:Site,w:WindowOpening,seed:number):Wind
  if(!family)return;
  const hard=family.includes('shutter');
  if(hard){if(w.interior||faces.length!==1)return;side=face.side===1?-1:1;}
- // Hard shutters remain fully stowed until physical/traversal ownership in WC5.
- const opening:CoveringPosition=hard?1:privacy?(state<.62?0:state<.84?.25:.5):
+ // Security shutters may be closed on quiet/private or vacant premises; occupied public glazing generally stays open.
+ const opening:CoveringPosition=hard?(state<(vacant?.65:family==='hinged-shutter'?.27:.22)?0:1):privacy?(state<.62?0:state<.84?.25:.5):
   publicRoom?(state<.7?1:.5):state<.22?0:state<.42?.25:state<.72?.5:1;
  const palette:CoveringPalette=hard?'slate':(['linen','sand','sage','slate'] as const)[Math.floor(sample(seed,face.room.id,'palette')*4)]!;
  return normalizeWindowCovering({covering:{family,side,opening,palette,
+  locked:family==='rolling-shutter'&&opening===0&&(vacant||rng('lock')<.45),
   tilted:family.includes('blind')&&opening!==1&&!privacy&&rng('tilt')<.23}});
 }

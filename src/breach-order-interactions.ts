@@ -1,4 +1,4 @@
-import {isCoveringAction,coveringActorAvailable,coveringContactClear,coveringHandContact,desiredCovering,sameCovering,COVERING_ACTION_SECONDS,COVERING_ACTION_LABELS} from './breach-window-covering-interaction.ts';
+import {isCoveringAction,coveringActorAvailable,coveringContactClear,coveringHandContact,desiredCovering,sameCovering,coveringActionSeconds,coveringTransitionClear,COVERING_ACTION_LABELS} from './breach-window-covering-interaction.ts';
 import {normalizeWindowCovering} from './breach-window-coverings.ts';
 import {setSessionWindowCovering} from './breach-window-covering-optics.ts';
 import {releasePhysicalContact} from './breach-physical-contact-anchor.ts';
@@ -490,6 +490,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         failCurrentOrder(s,a,n,'COVERING LOCKED OR OUT OF REACH');return true;
       }
       if(sameCovering(c,next)){clearCurrentOrderIssue(a);pop(a);return true;}
+      if(!coveringTransitionClear(s,w,c,next,a)){failCurrentOrder(s,a,n,'SHUTTER CLEARANCE BLOCKED');return true;}
       const point=coveringHandContact(w,c,a,s.seconds,a.physicalContact);
       a.velocity=0;
       if(!rotate(a,Math.atan2(point.anchor.point.z-a.p.y,point.anchor.point.x-a.p.x),dt,s))return true;
@@ -497,12 +498,13 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         failCurrentOrder(s,a,n,'COVERING IN USE');return true;
       }
       a.aim=0;a.fireCd=Math.max(a.fireCd,.25);a.physicalContact=point;a.actionTimer+=dt;
-      if(a.actionTimer<COVERING_ACTION_SECONDS)return true;
+      if(a.actionTimer<coveringActionSeconds(c))return true;
       if(!setSessionWindowCovering(s,w.id,next)){
         failCurrentOrder(s,a,n,'COVERING UNAVAILABLE');return true;
       }
       a.physicalContact=releasePhysicalContact(point,s.seconds);
       const message=a.name+' '+COVERING_ACTION_LABELS[n.interaction]+' '+c.family.replaceAll('-',' ').toUpperCase();
+      hear(s,{x:w.x,y:w.y},c.family==='rolling-shutter'?100:c.family==='hinged-shutter'?65:25,'window');
       notify(s,message);battleEvent(s,'interaction',a,{x:w.x,y:w.y},message);
       clearCurrentOrderIssue(a);pop(a);return true;
     }
