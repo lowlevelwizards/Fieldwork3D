@@ -9,7 +9,7 @@ import {visualMaterialRole} from '../rendering/material-identity.ts';
 const get=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const select=(id:string)=>get<HTMLSelectElement>(id);
 const entries=[...refs,...equipped,...customEntries];
-const category=(e:Entry)=>e.sidearm?'Sidearm':e.custom?'Custom part':e.equipped?'Equipped sample':e.primary?.legacy.weapon??'shotgun';
+const category=(e:Entry)=>e.sidearm?'Sidearm':e.custom?'Custom part':e.equipped?'Equipped sample':e.primary?.legacy.weapon??'Unspecified';
 const family=(e:Entry)=>e.primary?.platformId??e.platform.replace(/^custom-/,'');
 const review=(e:Entry)=>WA0_REVIEW_RECORDS[e.id];
 const disposition=(e:Entry)=>review(e)?.disposition??'Supplementary';
@@ -94,7 +94,7 @@ function showArchived(e:Entry){
  return file?panel.metrics:undefined;
 }
 function context(e:Entry){
- const host=get('context');host.replaceChildren();const link=get<HTMLAnchorElement>('operator-link');const hostId=e.custom?.hostId??e.primary?.id??(e.status==='fallback'?'shotgun':e.id);link.href='operator-lab.html?tab=poses&artReference='+encodeURIComponent(hostId);link.textContent='Open '+(e.custom||e.equipped?'base host':'selected reference')+' in live Operator Lab ↗';if(contextUrl){URL.revokeObjectURL(contextUrl);contextUrl='';}
+ const host=get('context');host.replaceChildren();const link=get<HTMLAnchorElement>('operator-link');const hostId=e.custom?.hostId??e.primary?.id??e.id;link.href='operator-lab.html?tab=poses&artReference='+encodeURIComponent(hostId);link.textContent='Open '+(e.custom||e.equipped?'base host':'selected reference')+' in live Operator Lab ↗';if(contextUrl){URL.revokeObjectURL(contextUrl);contextUrl='';}
  const file=fileFor('operator-context/'+e.id+'-game.png');if(!file){host.textContent='No archived operator frame for this reference. Use Operator Lab for live context.';return;}
  const img=document.createElement('img');contextUrl=URL.createObjectURL(file);img.src=contextUrl;img.alt=e.name+' in actual archived Operator Lab';host.append(img);
 }

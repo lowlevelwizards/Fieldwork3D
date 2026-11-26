@@ -25,9 +25,7 @@ export function collectWeaponArtInventory(){
   status:Object.hasOwn(SECONDARY_CAPACITY,ref.id)?'issued-sidearm-appearance':'preview-only',
   parts:null,verifiedRigidFactory:false
  }));
- const fallback={id:'legacy-shotgun',name:'Legacy shotgun fallback',
-  platform:'legacy',family:'legacy',status:'fallback',parts:null,verifiedRigidFactory:false};
- const references=[...primary,...sidearms,fallback];
+ const references=[...primary,...sidearms];
  if(new Set(references.map(r=>r.id)).size!==references.length)
   throw Error('Duplicate WA reference ID');
  if(primary.length!==FAMILY_PRESETS.length)
@@ -45,7 +43,7 @@ export function collectWeaponArtInventory(){
  return {schema:'fieldwork-wa0-source-inventory',version:1,
   evidence:'source catalogs only; no visual, compatibility, or performance approval',
   totals:{primary:primary.length,sidearms:sidearms.length,
-   authoredReferences:primary.length+sidearms.length,fallback:1,
+   authoredReferences:primary.length+sidearms.length,
    issuedSidearms:sidearms.filter(r=>r.status==='issued-sidearm-appearance').length,
    previewSidearms:sidearms.filter(r=>r.status==='preview-only').length,
    primaryPlatforms:ARSENAL_PLATFORMS.length,parts:parts.length,

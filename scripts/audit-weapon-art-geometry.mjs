@@ -92,7 +92,8 @@ export function collectWeaponArtGeometry(){
    if(isSidearm)root=buildSidearmPreview(ref.id);
    else{
     const primary=ARSENAL_REFERENCES.find(r=>r.id===ref.id);
-    const config=primary?selectWeaponFamilyPreset(initialWeaponConfiguration(primary.legacy.weapon),primary.id):initialWeaponConfiguration('shotgun');
+    if(!primary)throw Error('Missing authored reference: '+ref.id);
+    const config=selectWeaponFamilyPreset(initialWeaponConfiguration(primary.legacy.weapon),primary.id);
     if(primary&&(!config.build||Object.entries(primary.legacy.parts).some(([k,v])=>config.build.parts[k]!==v)))throw Error('Reference resolution drift: '+ref.id);
     body=buildWeaponSilhouette(config.weapon,WEAPON_ACCESSORY_STEEL,WEAPON_ACCESSORY_POLYMER,config);
     accessories=buildWeaponAccessories(config,WEAPON_ACCESSORY_STEEL,WEAPON_ACCESSORY_POLYMER);

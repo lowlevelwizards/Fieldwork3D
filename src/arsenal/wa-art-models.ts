@@ -14,8 +14,7 @@ type Sidearm=(typeof SIDEARM_PREVIEW_REFERENCES)[number];
 export type Entry={id:string;name:string;platform:string;status:string;primary?:Primary;sidearm?:Sidearm;equipped?:boolean;custom?:CustomArtCase};
 export const refs:Entry[]=[
  ...ARSENAL_REFERENCES.map(primary=>({id:primary.id,name:primary.name,platform:primary.platformId,status:'primary-reference',primary})),
- ...SIDEARM_PREVIEW_REFERENCES.map(sidearm=>({id:sidearm.id,name:sidearm.name,platform:sidearm.family,status:sidearm.family==='beretta'?'preview-only':'issued-sidearm-appearance',sidearm})),
- {id:'legacy-shotgun',name:'Legacy shotgun fallback',platform:'legacy',status:'fallback'}
+ ...SIDEARM_PREVIEW_REFERENCES.map(sidearm=>({id:sidearm.id,name:sidearm.name,platform:sidearm.family,status:sidearm.family==='beretta'?'preview-only':'issued-sidearm-appearance',sidearm}))
 ];
 // Representative accepted accessory choices; no claim of exhaustive coverage.
 const equippedIds=new Set(['ar-m4a1','ak-ak74m','hk-g3a3','hk-mp5a3','g36-ka4','fal-5000','fnc-service']);
@@ -28,7 +27,8 @@ export function construct(entry:Entry){
   const id=entry.sidearm.id;
   return {model,accepted:[] as string[],cleanup:()=>clearSidearmPreview(id,model)};
  }
- let config=entry.custom?entry.custom.config:entry.primary?selectWeaponFamilyPreset(initialWeaponConfiguration(entry.primary.legacy.weapon),entry.primary.id):initialWeaponConfiguration('shotgun');
+ if(!entry.custom&&!entry.primary)throw Error('Missing authored art reference: '+entry.id);
+ let config=entry.custom?entry.custom.config:selectWeaponFamilyPreset(initialWeaponConfiguration(entry.primary!.legacy.weapon),entry.primary!.id);
  const accepted:string[]=[];
  if(entry.equipped){
   if(config.build?.family==='hk')config=setWeaponAttachment(config,'opticMount','optic-hk-claw');

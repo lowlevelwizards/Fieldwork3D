@@ -27,9 +27,8 @@ export function starterWeaponPreset(id:string):string{
  * Preserve existing attachment selections on the compatible platform. */
 export function resolveIssuedOrLegacy(config:WeaponConfiguration|undefined,
  weapon:WeaponId,presetId:string):WeaponConfiguration{
- if(config?.build||weapon==='shotgun')
-  return config??initialWeaponConfiguration(weapon);
- const preferred=issueWeaponPreset(weapon==='smg'?'hk-mp5a3':presetId);
+ if(config?.build)return config;
+ const preferred=issueWeaponPreset(weapon==='shotgun'?'r870-police-wood':weapon==='smg'?'hk-mp5a3':presetId);
  // A saved generic rifle/carbine can differ from this operator's new default.
  // Select a genuine same-class silhouette rather than leave a placeholder.
  const issue=preferred.weapon===weapon?preferred:

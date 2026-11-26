@@ -23,7 +23,7 @@ try{
   if(ids?.some(id=>!all.some(r=>r.id===id)))throw Error('Unknown operator reference');
   for(const ref of all.filter(r=>!ids||ids.includes(r.id))){
    const sidearm=ref.status==='issued-sidearm-appearance'||ref.status==='preview-only';
-   const id=ref.status==='fallback'?'shotgun':ref.id;
+   const id=ref.id;
    const track=sidearm?'pistol-low-ready':'low-ready';
    await page.locator('#poseWeapon').selectOption(id);
    await page.locator('#poseAnimation').selectOption(track);

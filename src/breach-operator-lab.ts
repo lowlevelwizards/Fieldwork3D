@@ -806,7 +806,6 @@ const poseAnimationSelect=choose<HTMLSelectElement>('poseAnimation');
 const poseStrictContact=choose<HTMLInputElement>('poseStrictContact');
 poseStrictContact.addEventListener('change',()=>draw());
 poseWeaponSelect.add(new Option('No Weapon','none'));
-poseWeaponSelect.add(new Option('Shotgun','shotgun'));
 // Show every real Arsenal factory reference, including FAL, FNC and G36.
  // Group by physical platform (G3 / HK33 / MP5 are distinct), not by an
  // old hard-coded trio. A new factory model appears here automatically.

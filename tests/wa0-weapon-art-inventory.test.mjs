@@ -16,9 +16,8 @@ test('WA0 inventory covers all authoritative references, parts and attachments',
  assert.equal(report.totals.parts,Object.keys(FAMILY_PARTS).length);
  assert.equal(report.totals.attachments,Object.keys(WEAPON_ATTACHMENTS).length);
  assert.deepEqual(new Set(report.references.map(r=>r.id)),
-  new Set([...ARSENAL_REFERENCES.map(r=>r.id),...SIDEARM_PREVIEW_REFERENCES.map(r=>r.id),'legacy-shotgun']));
- assert.equal(report.references.length,report.totals.authoredReferences+1);
- assert.equal(report.references.filter(r=>r.status==='fallback').length,1);
+  new Set([...ARSENAL_REFERENCES.map(r=>r.id),...SIDEARM_PREVIEW_REFERENCES.map(r=>r.id)]));
+ assert.equal(report.references.length,report.totals.authoredReferences);
  for(const ref of report.references.filter(r=>r.status==='primary-reference'))
   for(const id of Object.values(ref.parts))
    assert.ok(report.parts.some(part=>part.id===id&&part.appearsInFactory));
