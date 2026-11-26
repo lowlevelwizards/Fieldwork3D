@@ -7,6 +7,8 @@ import {weaponFinish} from './weapon-material-registry.ts';
 export const AR_BLACK_METAL=weaponFinish('ar-steel');
 export const AR_BLACK_POLYMER=weaponFinish('ar-polymer');
 export const AR_WA6_STEEL=weaponFinish('ar-wa6-steel');
+export const AR_WA6_LOWER_STEEL=weaponFinish('ar-wa6-lower-steel');
+export const AR_WA6_MAGAZINE_STEEL=weaponFinish('ar-wa6-magazine-steel');
 export const AR_WA6_POLYMER=weaponFinish('ar-wa6-polymer');
 export const AR_POLYMER_RIB=weaponFinish('ar-polymer-rib');
 export const AR_STANAG_METAL=weaponFinish('ar-stanag');

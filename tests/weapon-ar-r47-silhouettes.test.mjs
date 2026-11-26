@@ -82,8 +82,8 @@ test('R4.7 curved metal STANAGs are still uniform, with delayed lower sweep',()=
  assert.ok(poly.power>1.7&&poly.power<1.9);
  assert.equal(arMagazinePolyLowerFacet(poly).length,4);
  const m4=model('ar-m4a1'),mk=model('ar-mk18');
- assert.equal(part(m4.g,'magazine').length,3);
- assert.ok(part(m4.g,'magazine').slice(1).every(x=>x.material===AR_STANAG_RIB));
+ assert.equal(part(m4.g,'magazine').length,1);
+ assert.ok(part(m4.g,'magazine')[0].userData.arWA6IntegratedMagazineArt);
  assert.equal(part(mk.g,'magazine').length,2);
  assert.ok(bounds(mk.g,'magazine').max.z-bounds(mk.g,'magazine').min.z<2,
   'polymer bevel remains shallow and does not overinflate sideways');

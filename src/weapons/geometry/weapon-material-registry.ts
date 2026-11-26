@@ -17,6 +17,10 @@ export const WEAPON_FINISH_SPECS={
  // WA6: scoped art calibration; retain legacy shared signatures for other
  // families and historical art studies. Shared magazine finishes stay put.
  'ar-wa6-steel':{color:0x4b5154,roughness:.76,metalness:.12,role:'steel'},
+ // WA6.2: dark metal blocks separate from the polymer furniture; shared
+ // legacy magazine finish remains untouched for FNC and other consumers.
+ 'ar-wa6-lower-steel':{color:0x3c4546,roughness:.86,metalness:.10,role:'steel'},
+ 'ar-wa6-magazine-steel':{color:0x525b59,roughness:.87,metalness:.12,role:'steel'},
  'ar-wa6-polymer':{color:0x343d33,roughness:.90,metalness:.015,role:'polymer'},
  'ar-polymer-rib':{color:0x2c3630,roughness:.98,metalness:.015,role:'polymer'},
  'ar-stanag':{color:0x657067,roughness:.87,metalness:.12,role:'steel'},

@@ -88,12 +88,12 @@ test('R4.6 constant-width STANAG art has metal ribs but no PMAG panel',()=>{
   assert.ok(mag.max.x-mag.min.x>=3.3,id+' broad side profile');
   assert.ok(mag.max.z-mag.min.z<=2.18,id+' slim Z');
   const meshes=group.children.filter(x=>x.name.startsWith('family-magazine-'));
-  assert.equal(meshes.length,id==='ar-mk18'?2:3,
-   id+' has body plus stamped geometry or molded toe');
+  assert.equal(meshes.length,id==='ar-mk18'?2:1,
+   id+' has integrated graphic or molded toe');
   assert.equal(group.children.filter(x=>x.name==='family-art-ar-poly-panel').length,0,
    'no fake side panel on the poly mag');
   if(id==='ar-mk18')assert.notEqual(meshes[1].material,meshes[0].material);
-  else assert.notEqual(meshes[1].material,meshes[0].material);
+  else assert.ok(meshes[0].userData.arWA6IntegratedMagazineArt&&meshes[0].material.map);
   clearWeaponSilhouette(group);
  }
 });
