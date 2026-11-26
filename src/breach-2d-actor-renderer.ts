@@ -11,7 +11,7 @@ import {presentActor,presentCivilian,presentUnrecordedRescueMarker,presentTransi
 import {contactFade} from './breach-presentation.ts';
 import {presentShotEvidence} from './rendering/breach-shot-disclosure.ts';
 import {recordedEffectAllows,shotEffectRow} from './breach-replay-effect-evidence.ts';
-import {objectiveLocationKnown,approximateObjectiveBounds} from './breach-objective-intel.ts';
+import {objectiveLocationKnown,approximateObjectiveBounds,holdObjectiveBounds} from './breach-objective-intel.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 export type Actor2DFrame={
  state:Session;replaying:boolean;selected:string;
@@ -126,7 +126,14 @@ function missionMarkers(){
     (state.mission==='secure'&&!objectiveLocationKnown(
       state,replaying,replayKnowledge.omniscient)))return;
   draw.strokeStyle='#d8cc98';draw.lineWidth=2;
-  draw.beginPath();draw.arc(p.x,p.y,33,0,Math.PI*2);draw.stroke();
+  const holdArea=state.mission==='secure'&&state.missionType==='hold'?
+    holdObjectiveBounds(state.site,state.scenario.objective):null;
+  if(holdArea){
+    draw.save();draw.fillStyle='rgba(216,204,152,.07)';
+    draw.fillRect(holdArea.minX,holdArea.minY,holdArea.maxX-holdArea.minX,holdArea.maxY-holdArea.minY);
+    draw.strokeRect(holdArea.minX,holdArea.minY,holdArea.maxX-holdArea.minX,holdArea.maxY-holdArea.minY);
+    draw.restore();
+  }else{draw.beginPath();draw.arc(p.x,p.y,33,0,Math.PI*2);draw.stroke();}
   draw.fillStyle='#e1d1a2';draw.font='600 12px "Work Sans",sans-serif';
   draw.textAlign='center';
   draw.fillText(state.mission==='secure'?'SECURE':'EXTRACT',p.x,p.y-39);
