@@ -5,6 +5,9 @@ on:
     paths:
       - 'src/breach-weapon-geometry.ts'
       - 'src/breach-weapon-issue.ts'
+      - 'src/breach-quickplay-kit-preferences.ts'
+      - 'src/equipment-deployment-snapshot.ts'
+      - 'tests/weapon-catalog-migration.test.mjs'
       - 'src/arsenal/wa-art-models.ts'
       - 'scripts/verify-catalog-retirement.mjs'
       - '.github/workflows/weapon-catalog-retirement.yml'
@@ -25,13 +28,13 @@ jobs:
       - name: Current branch dependency inventory
         run: |
           mkdir -p reports/retirement
-          git grep -nE 'WeaponId|WEAPON_PLATFORMS|\bWEAPONS\b|primary-(carbine|smg|rifle|shotgun)|resolveIssuedOrLegacy' -- src > reports/retirement/class-dependencies.txt || true
+          git grep -nE 'WeaponId|WEAPON_PLATFORMS|\bWEAPONS\b|primary-(carbine|smg|rifle|shotgun)|resolveCatalogConfiguration' -- src > reports/retirement/class-dependencies.txt || true
           git grep -nE 'legacy-shotgun|weaponSilhouetteParts|weaponDetailParts|weaponSignatureParts|compileLegacyShotgunBody|shotgun-legacy|arsenal-m30-shotgun-capture' -- src scripts tests .github '*.html' > reports/retirement/obsolete-art-references.txt || true
           wc -l reports/retirement/*.txt
           cat reports/retirement/obsolete-art-references.txt
       - run: npm install --no-audit --no-fund
       - run: npm run check
-      - run: node --experimental-strip-types --test tests/operator-weapon-detail.test.mjs tests/replay-weapon-and-retired-geometry.test.mjs tests/equipment-19-02-weapon-silhouettes.test.mjs tests/wa0-weapon-art-inventory.test.mjs tests/wa0-weapon-art-geometry.test.mjs tests/arsenal-m30-weapon-quality-audit.test.mjs
+      - run: node --experimental-strip-types --test tests/operator-weapon-detail.test.mjs tests/replay-weapon-and-retired-geometry.test.mjs tests/equipment-19-02-weapon-silhouettes.test.mjs tests/wa0-weapon-art-inventory.test.mjs tests/wa0-weapon-art-geometry.test.mjs tests/arsenal-m30-weapon-quality-audit.test.mjs tests/weapon-catalog-migration.test.mjs tests/quickplay-field-preferences.test.mjs tests/equipment-deployment-snapshot.test.mjs tests/ci-weapon-visual-routing.test.mjs
       - name: Retained authored artwork parity
         run: |
           git worktree add --detach /tmp/pre-retirement bbf4c427574efbde20cee8bddf284c3ce1b0874b

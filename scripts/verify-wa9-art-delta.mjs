@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync} from 'node:fs';
 const before=JSON.parse(readFileSync(process.argv[2])),after=JSON.parse(readFileSync(process.argv[3]));
-const map=new Map(before.records.map(r=>[r.id,r]));
+// R1 independently verified that only the retired placeholder was removed.
+// Compare the full retained catalog against the historical WA8 checkpoint.
+const retained=before.records.filter(r=>r.platform!=='legacy');
+assert.equal(before.records.length-retained.length,1);
+const map=new Map(retained.map(r=>[r.id,r]));
 const permitted=new Map([[0x3e4441,0x474e50],[0x313735,0x303831],[0x2f3434,0x414749]]);
-assert.equal(before.records.length,after.records.length);
+assert.equal(retained.length,after.records.length);
 assert.equal(new Set(after.records.map(r=>r.id)).size,after.records.length);
 const changed=[],unchanged=[];
 for(const r of after.records){

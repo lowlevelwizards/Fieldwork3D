@@ -1,6 +1,11 @@
 name: WA9 MP5 artwork overhaul
-# Historical calibration checkpoint, prior to catalog retirement.
 on:
+  push:
+    branches: [feature/wa0-wa2-weapon-art-foundation]
+    paths:
+      - 'tests/weapon-hk-mp5-r2-refinements.test.mjs'
+      - 'scripts/verify-wa9-art-delta.mjs'
+      - '.github/workflows/wa9-mp5-art-overhaul.yml'
   workflow_dispatch:
 concurrency:
   group: wa9-mp5-${{ github.ref }}
@@ -15,14 +20,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: bbf4c427574efbde20cee8bddf284c3ce1b0874b
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - run: npm run check
       - run: node --experimental-strip-types --test tests/weapon-hk-r4-material-selector.test.mjs tests/weapon-hk-mp5-family.test.mjs tests/weapon-hk-mp5-r2-refinements.test.mjs tests/arsenal-a2-material-unification.test.mjs tests/wa0-weapon-art-geometry.test.mjs
-      - name: Verify color-only scoped delta against WA8
+      - name: Verify retained catalog color-only delta against WA8
         run: |
           mkdir -p reports/wa9
           git worktree add --detach /tmp/wa8-art 4ab746c0097676a0c18d49aa5ff11fa2993d61c6
