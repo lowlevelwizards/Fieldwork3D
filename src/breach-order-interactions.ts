@@ -1,3 +1,4 @@
+import {hardCoveringBlocksPaneContact} from './breach-window-covering-physical.ts';
 import {isCoveringAction,coveringActorAvailable,coveringContactClear,coveringHandContact,desiredCovering,sameCovering,coveringActionSeconds,coveringTransitionClear,COVERING_ACTION_LABELS} from './breach-window-covering-interaction.ts';
 import {normalizeWindowCovering} from './breach-window-coverings.ts';
 import {setSessionWindowCovering} from './breach-window-covering-optics.ts';
@@ -578,7 +579,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
           n.interaction==='close-window'&&!window.open)){
         pop(a);return true; // Already in the state the player requested.
       }
-      if(window&&d(a.p,{x:window.x,y:window.y})<54&&
+      if(window&&!hardCoveringBlocksPaneContact(window,a.p)&&d(a.p,{x:window.x,y:window.y})<54&&
          manipulateWindow(window,n.interaction==='open-window'?'open':'close')){
         s.objectRevision++;
         hear(s,{x:window.x,y:window.y},85,'window');

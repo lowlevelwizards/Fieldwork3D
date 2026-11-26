@@ -42,7 +42,7 @@ export function coveringStripsBlockRay(strips:readonly CoveringOpticalStrip[],a:
  }return false;
 }
 type PhysicalStrip=CoveringOpticalStrip & {windowIndex:number;family:WindowCovering['family']};
-type Optics={physical:PhysicalStrip[];windows:Session['windows'];site:Session['site'];revision:number;strips:CoveringOpticalStrip[];standing:Segment[];low:Segment[];all:Segment[]};
+type Optics={physical:PhysicalStrip[];hard:PhysicalStrip[];windows:Session['windows'];site:Session['site'];revision:number;strips:CoveringOpticalStrip[];standing:Segment[];low:Segment[];all:Segment[]};
 const cache=new WeakMap<Session,Optics>(),empty:Session['windows']=[];
 export function sessionCoveringOptics(s:Session):Optics{
  const windows=s.windows??empty,revision=s.objectRevision;
@@ -59,7 +59,7 @@ export function sessionCoveringOptics(s:Session):Optics{
   return strips;
  });
  const at=(height:number)=>strips.filter(p=>height>=p.bottom&&height<=p.top).map(p=>p.edge);
- const next={physical,windows,site:s.site,revision,strips,standing:at(32),low:at(22),all:strips.map(p=>p.edge)};
+ const next={physical,hard:physical.filter(p=>p.family==='hinged-shutter'||p.family==='rolling-shutter'),windows,site:s.site,revision,strips,standing:at(32),low:at(22),all:strips.map(p=>p.edge)};
  cache.set(s,next);return next;
 }
 export function windowCoveringsBlockSight(s:Session,a:Pt,b:Pt,fromHeight:number,toHeight=fromHeight):boolean{
@@ -80,3 +80,8 @@ export function setSessionWindowCovering(s:Session,id:string,covering:WindowCove
 }
 
 export function windowCoveringPhysicalStrips(s:Session):readonly PhysicalStrip[]{return sessionCoveringOptics(s).physical;}
+
+/** Physical hard panels only, at the actual mounted plane. Soft cloth never obstructs a weapon. */
+export function hardWindowCoveringsBlockRay(s:Session,a:Pt,b:Pt,fromHeight:number,toHeight=fromHeight):boolean{
+ return coveringStripsBlockRay(sessionCoveringOptics(s).hard,a,b,fromHeight,toHeight);
+}

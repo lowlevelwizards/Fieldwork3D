@@ -1,3 +1,4 @@
+import {hardCoveringBlocksPaneContact} from './breach-window-covering-physical.ts';
 import {isCoveringAction} from './breach-window-covering-interaction.ts';
 import {planWindowCovering} from './breach-game.ts';
 import {assessTacticalAction} from './breach-action-assessment.ts';
@@ -280,7 +281,7 @@ export function dispatchTacticalContextCommand(input:{
    let nearby:typeof state.windows[number]|undefined;
    let best=54*54;
    for(const w of state.windows){
-     if(!w.operable||w.shattered)continue;
+     if(!w.operable||w.shattered||hardCoveringBlocksPaneContact(w,at))continue;
      const dx=w.x-at.x,dy=w.y-at.y,dist=dx*dx+dy*dy;
      if(dist<best){best=dist;nearby=w;}
    }

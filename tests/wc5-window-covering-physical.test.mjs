@@ -75,3 +75,15 @@ test('hard material integrity, destruction unlock and acoustic state follow inde
  assert.equal(w.covering.integrity,0);assert.equal(w.covering.locked,false);
  assert.equal(hardCoveringBlocksTraversal(w),false);assert.equal(w.shattered,false);
 });
+
+import {hardWindowCoveringsBlockRay} from '../src/breach-window-covering-optics.ts';
+test('mounted physical muzzle lane rejects hard panels, not soft curtains or gaps',()=>{
+ const w=pane('rolling-shutter'),s=make(w);
+ assert.equal(hardWindowCoveringsBlockRay(s,outside,inside,30),true);
+ assert.equal(hardWindowCoveringsBlockRay(s,outside,p(300,213),30),false);
+ setSessionWindowCovering(s,'W',c('rolling-shutter',.5));
+ assert.equal(hardWindowCoveringsBlockRay(s,outside,inside,20),false);
+ assert.equal(hardWindowCoveringsBlockRay(s,outside,inside,39),true);
+ setSessionWindowCovering(s,'W',c('curtain'));
+ assert.equal(hardWindowCoveringsBlockRay(s,outside,inside,30),false);
+});

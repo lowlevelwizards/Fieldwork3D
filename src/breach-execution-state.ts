@@ -160,7 +160,7 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
        a.actionTimer/(n.method==='close'?.75:.78):undefined);
  }
  if(n.kind==='interact'&&isCoveringAction(n.interaction))
-   return result('working','COVERING',COVERING_ACTION_LABELS[n.interaction],id,'interact',a.actionTimer/COVERING_ACTION_SECONDS);
+   return result('working','COVERING',COVERING_ACTION_LABELS[n.interaction],id,'interact',a.actionTimer/(n.duration??COVERING_ACTION_SECONDS));
  if(n.kind==='tool'||n.kind==='interact'||
     n.kind==='flash'||n.kind==='reload'||n.kind==='treat'||
     n.kind==='recover-medical'||n.kind==='evacuate')

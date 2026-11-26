@@ -1,3 +1,4 @@
+import {hardWindowCoveringsBlockRay} from './breach-window-covering-optics.ts';
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Roadmap 2 / Stage 10: authoritative confirmed-target shot resolution.
@@ -113,6 +114,9 @@ export function createShotResolver(ports:ShotResolverPorts){
     return;
   }
   const sightMuzzle=sightClearance.muzzle;
+  if(hardWindowCoveringsBlockRay(s,a.p,{x:sightMuzzle.x,y:sightMuzzle.z},sightMuzzle.y)){
+   a.lastFireBlock='cover';requestClearFireStep(s,a,target,'muzzle');return;
+  }
   const threatYaw=Math.atan2(target.p.y-a.p.y,target.p.x-a.p.x);
   if(sightClearance.carryOverride==='short'&&
     urgentFireMode(mode,a.aim,sightClearance,threatYaw)!=='point')return;
@@ -123,9 +127,10 @@ export function createShotResolver(ports:ShotResolverPorts){
   }
   // One shared near-target preflight: teammate safety takes precedence
   // over penetrable cover. The final shot path is ALWAYS checked again.
-  const lane=nearShotLane({x:sightMuzzle.x,y:sightMuzzle.z},
+  let lane=nearShotLane({x:sightMuzzle.x,y:sightMuzzle.z},
     sightMuzzle.y,target.p,effectiveAimHeight(target),
     COVER,WALLS,s.doors,friends);
+  if(lane.blocker==='clear'&&hardWindowCoveringsBlockRay(s,{x:sightMuzzle.x,y:sightMuzzle.z},target.p,sightMuzzle.y,effectiveAimHeight(target)))lane={blocker:'cover'};
   a.lastFireBlock=lane.blocker;
   if(lane.blocker==='friendly'){
     requestClearFireStep(s,a,target,'friendly');
@@ -168,6 +173,7 @@ export function createShotResolver(ports:ShotResolverPorts){
   const muzzle=shotClearance.muzzle;
   const yaw=muzzle.yaw; // fire exactly along the physically cleared barrel
   const muzzlePoint={x:muzzle.x,y:muzzle.z};
+  if(hardWindowCoveringsBlockRay(s,a.p,muzzlePoint,muzzle.y)){a.lastFireBlock='cover';return;}
   // Spread may put another teammate in the actual bullet corridor.
   const shotTarget=muzzleEndpoint(muzzlePoint,yaw,
     Math.max(1,d(muzzlePoint,target.p)));

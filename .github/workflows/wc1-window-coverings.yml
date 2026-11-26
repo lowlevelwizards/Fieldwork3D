@@ -6,7 +6,9 @@ on:
       - 'src/rendering/window-covering-visual.ts'
       - 'src/asset-lab-main.ts'
       - 'tests/wc*.test.mjs'
-      - 'src/breach-window-covering-optics.ts'
+      - 'src/breach-window-covering-*.ts'
+      - 'src/breach-ballistic-resolution.ts'
+      - 'src/breach-mantle.ts'
       - 'src/worldgen/window-covering-placement.ts'
       - '.github/workflows/wc1-window-coverings.yml'
   workflow_dispatch:

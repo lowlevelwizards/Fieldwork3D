@@ -1,3 +1,4 @@
+import {hardCoveringBlocksPaneContact} from '../breach-window-covering-physical.ts';
 import {nearestCoveringInteraction,coveringActorAvailable,COVERING_ACTION_LABELS} from '../breach-window-covering-interaction.ts';
 import {captureVitalStatus} from '../breach-capture-vitals.ts';
 import {medicalTreatmentChoices,medicalPatientStatus,
@@ -402,7 +403,7 @@ export function createTacticalPaletteController(config:{
   // an unrevealed room/window cannot advertise its operability in the menu.
   // Match the command dispatcher's nearest actionable pane exactly.
   // Never reveal the nearer pane's open state unless it is visible.
-  const nearestWindow=state.windows.filter(w=>w.operable&&!w.shattered&&
+  const nearestWindow=state.windows.filter(w=>w.operable&&!w.shattered&&!hardCoveringBlocksPaneContact(w,at)&&
     paletteDistance(at,{x:w.x,y:w.y})<54)
     .sort((a,b)=>paletteDistance(at,{x:a.x,y:a.y})-
       paletteDistance(at,{x:b.x,y:b.y}))[0];

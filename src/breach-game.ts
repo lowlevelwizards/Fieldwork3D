@@ -1,3 +1,5 @@
+import {hardCoveringBlocksPaneContact} from './breach-window-covering-physical.ts';
+import {coveringActionSeconds} from './breach-window-covering-interaction.ts';
 import {plannedControl} from './breach-tactical-control-commands.ts';
 import {coveringActorAvailable,coveringContactClear,desiredCovering,sameCovering,type CoveringAction} from './breach-window-covering-interaction.ts';
 import {normalizeWindowCovering} from './breach-window-coverings.ts';
@@ -604,7 +606,7 @@ export function planNearbyInteraction(s:Session,id:string,
  }
  let target:typeof s.windows[number]|undefined,bestWindow=54*54;
  for(const w of s.windows){
-   if(!w.operable||w.shattered||w.open!==(action==='close-window'))
+   if(!w.operable||w.shattered||hardCoveringBlocksPaneContact(w,at)||w.open!==(action==='close-window'))
      continue;
    const dx=w.x-at.x,dy=w.y-at.y,dist=dx*dx+dy*dy;
    if(dist<bestWindow){bestWindow=dist;target=w;}
@@ -622,7 +624,7 @@ export function planWindowCovering(s:Session,id:string,windowId:string,action:Co
  if(!c||!liveVisibility(s,{x:w.x,y:w.y})||!coveringContactClear(s,w,c,at,plannedControl(s,id,afterNodeId).posture==='crouch'))return false;
  const next=desiredCovering(c,action);if(!next||sameCovering(c,next))return false;
  return edit(s,a,()=>{
-  const order:PlanNode={id:s.nextId++,kind:'interact',p:clone(at),objectId:'covering:'+w.id,interaction:action};
+  const order:PlanNode={id:s.nextId++,kind:'interact',p:clone(at),objectId:'covering:'+w.id,interaction:action,duration:coveringActionSeconds(c)};
   if(index>=0)a.plan.splice(index+1,0,order);else a.plan.push(order);
  });
 }
