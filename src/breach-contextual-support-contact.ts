@@ -186,7 +186,11 @@ export function chooseTeammateSupport(
 ):ContactClaim|null{
  if(a.side!=='blue')return null;
  const f=forward(a.heading),l=left(a.heading);
- const from=handOrigin(a,f,l);
+ // Shoulder-top contacts originate from the raised support arm, not
+ // the low weapon/bracing wrist used for walls. This avoids rejecting
+ // an anatomically reachable shoulder solely due to the vertical rise.
+ const from={...handOrigin(a,f,l),
+   y:(a.posture==='crouch'?20:27)-(a.coverStanceDrop??0)};
  let best:ScoredSupport|null=null;
  let retained:ScoredSupport|null=null;
  for(const lead of s.operators){
@@ -222,7 +226,7 @@ export function chooseTeammateSupport(
    // High point wins wherever physically valid, rather than choosing
    // the numerically closest lower shoulder and burying the wrist.
    const candidate={claim:{contact,reach:e},
-    score:drop*100+Math.hypot(shoulder.x-from.x,
+    score:drop*100+ahead*.35+Math.hypot(shoulder.x-from.x,
      shoulder.y-from.y,shoulder.z-from.z)};
    if(!best||nearerSupport(candidate,best)<0)best=candidate;
    if(previous?.releasedAt===null&&sameContact(contact,previous)&&
