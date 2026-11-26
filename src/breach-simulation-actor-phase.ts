@@ -80,6 +80,7 @@ export function advanceSimulationActors(s:Session,h:number,
       const resolve=moraleResponse(a.morale,a.suppression,
         a.injuryStage,a.personality,{nearbyAllies:peerSupport,
           recentlySeenThreats:recentThreats,
+          motivation:a.encounterGroupId?a.npcIdentity?.motivation:undefined,
           retreatBlocked:a.alert==='retreat'&&a.blockedTime>=2.5});
       if(resolve==='withdraw'&&a.alert!=='retreat'&&s.seconds>=(a.withdrawRetryAt??0)){
         const threat=a.contact??a.heard??a.watch;

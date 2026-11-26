@@ -330,10 +330,12 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       distanceOfEvidenceToPost:d(heard,s.scenario.objective),
       heardActionableEvidence:noiseDisposition==='alarm'||
         noiseDisposition==='investigate',
-      directSight:visible.length>0,suppression:a.suppression
+      directSight:visible.length>0,suppression:a.suppression,
+      motivation:a.encounterGroupId?a.npcIdentity?.motivation:undefined
     });
     const needsCover=a.personality==='cautious'||
-      (a.personality==='guard'&&a.morale<.65);
+      (a.personality==='guard'&&a.morale<.65)||
+      (a.encounterGroupId&&a.npcIdentity?.motivation==='survive'&&noiseDisposition==='alarm'&&a.morale<.72);
     if(objectiveResponse==='hold-post'){
       // Objective position is assigned mission geography, not enemy intel.
       a.defense=defensivePosition(a,heard,s);
@@ -362,7 +364,8 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     confirmedSight:visible.length>0,heardAlarm,
     hasEstimate:!!threatEstimate,
     isAlreadyWithdrawing:a.alert==='retreat',
-    secondsSinceAttempt:s.seconds-a.lastMissionEvadeAt
+    secondsSinceAttempt:s.seconds-a.lastMissionEvadeAt,
+    motivation:a.encounterGroupId?a.npcIdentity?.motivation:undefined
   })&&threatEstimate){
     a.lastMissionEvadeAt=s.seconds;
     const safe=defensivePosition(a,threatEstimate,s,'shelter');

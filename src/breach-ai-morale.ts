@@ -2,7 +2,8 @@
 export type Resolve='hold'|'withdraw'|'surrender';
 import {npcPressurePolicy,type Temperament} from './breach-ai-pressure-policy.ts';
 export type {Temperament} from './breach-ai-pressure-policy.ts';
-export type MoraleContext={nearbyAllies?:number;
+import type {AiMotivation} from './breach-ai-group-profiles.ts';
+export type MoraleContext={nearbyAllies?:number;motivation?:AiMotivation;
  recentlySeenThreats?:number;retreatBlocked?:boolean};
 export function moraleResponse(morale:number,suppression:number,
  injury:number,personality:Temperament,
@@ -16,8 +17,15 @@ export function moraleResponse(morale:number,suppression:number,
  // only nearby friendly bodies and preserves the prior four-arg behavior.
  const outnumbered=Math.max(0,Math.min(3,
    (context.recentlySeenThreats??0)-(context.nearbyAllies??0)-1));
+ // Motivation changes willingness to remain in danger, not physical ability.
+ // Support-group only benefits from actual nearby allies. No faction-wide
+ // knowledge, and no resolve bonus can bypass custody/medical authority.
+ const commitment=context.motivation==='protect-assignment'?.065:
+   context.motivation==='support-group'&&support>0?.055:
+   context.motivation==='survive'?-.065:
+   context.motivation==='avoid-capture'?-.045:0;
  const effectiveMorale=Math.max(0,Math.min(1,
-   morale+support-outnumbered*.045));
+   morale+support-outnumbered*.045+commitment));
  const endangered=suppression+Math.min(2,injury)*.12+
    outnumbered*.035+(context.retreatBlocked?.08:0);
  if(endangered>.64&&effectiveMorale<.19+courage*-1)return 'surrender';

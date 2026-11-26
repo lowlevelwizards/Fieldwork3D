@@ -101,3 +101,20 @@ test('EB6 experience separates assessment and task persistence without modifying
  assert.equal(encounterReactionDelay('attentive','same',100),
   encounterReactionDelay('attentive','same',100,undefined));
 });
+
+import {moraleResponse} from '../src/breach-ai-morale.ts';
+import {captureTargetMayWithdraw,missionObjectiveResponse} from '../src/breach-ai-mission-response.ts';
+test('EB7 motivations alter resolve and assigned duties, never fabricate contact',()=>{
+ assert.equal(moraleResponse(.57,.5,0,'guard',{motivation:'survive'}),'withdraw');
+ assert.equal(moraleResponse(.57,.5,0,'guard',{motivation:'protect-assignment'}),'hold');
+ const facts={mission:'rescue',role:'sentry',distanceToPost:60,distanceOfEvidenceToPost:90,
+  heardActionableEvidence:true,directSight:false,suppression:0};
+ assert.equal(missionObjectiveResponse(facts),'observe-approach');
+ assert.equal(missionObjectiveResponse({...facts,motivation:'protect-assignment'}),'hold-post');
+ assert.equal(missionObjectiveResponse({...facts,motivation:'protect-assignment',heardActionableEvidence:false}),'investigate');
+ const evade={mission:'clear',role:'occupant',confirmedSight:false,heardAlarm:false,
+  hasEstimate:true,isAlreadyWithdrawing:false,secondsSinceAttempt:10,motivation:'avoid-capture'};
+ assert.equal(captureTargetMayWithdraw(evade),false);
+ assert.equal(captureTargetMayWithdraw({...evade,heardAlarm:true}),true);
+ assert.equal(captureTargetMayWithdraw({...evade,heardAlarm:true,hasEstimate:false}),false);
+});
