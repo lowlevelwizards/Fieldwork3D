@@ -143,3 +143,13 @@ test('EB10 cover travel is physically bounded, arrival wins over expiration',()=
  assert.equal(defensiveTravelState(40,0,16,16),'expired');
  assert.equal(defensiveTravelState(40,0,12,16),'travel');
 });
+
+import {groupResponse} from '../src/breach-ai-coordination.ts';
+test('EB11 loose groups share warnings without formal support; commitments remain stable',()=>{
+ const listeners=['a','b','c'].map((id,i)=>({id,p:{x:i*30,y:0}}));
+ const loose=groupResponse(listeners,{x:0,y:0},{},'opportunists');
+ const organized=groupResponse(listeners,{x:0,y:0},{},'regular-force');
+ assert.deepEqual(Object.values(loose),['investigate','watch','watch']);
+ assert.deepEqual(Object.values(organized),['investigate','watch','support']);
+ assert.equal(groupResponse(listeners,{x:0,y:0},{c:'investigate'},'security').c,'investigate');
+});

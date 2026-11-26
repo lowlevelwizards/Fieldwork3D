@@ -712,13 +712,14 @@ function distributeReports(s:Session){
   if(!sender)continue;
   const eligible=(a:TeamActor)=>activeCombatant(a)&&
     a.encounterGroupId===sender.encounterGroupId;
-  const newlyInformed:string[]=[];
+  const newlyInformed=new Set<string>();
+  const delivered=new Set(report.deliveredTo);
   for(const recipient of roster){
-   if(!eligible(recipient)||report.deliveredTo.includes(recipient.id))continue;
+   if(!eligible(recipient)||delivered.has(recipient.id))continue;
    const observation=reportToListener(report,recipient.id,recipient.p,
      s.doors,world.walls,s.seconds);
    if(!observation)continue;
-   report.deliveredTo.push(recipient.id);
+   report.deliveredTo.push(recipient.id);delivered.add(recipient.id);
    addObservation(recipient.awareness,observation);
    if(report.kind==='area-checked'){
     if(observation.uncertainty<=30&&report.at>=recipient.suspicion.lastEvidenceAt)
@@ -726,7 +727,7 @@ function distributeReports(s:Session){
         observation.estimate,report.at,recipient.suspicion.lastEvidenceAt,'report');
     continue;
    }
-   newlyInformed.push(recipient.id);
+   newlyInformed.add(recipient.id);
    observeSuspicion(recipient.suspicion,{
      id:observation.id,at:s.seconds,kind:'report',
      cause:'heard-verbal-warning'
@@ -745,9 +746,9 @@ function distributeReports(s:Session){
   // A report may reach another ally on a later tick. The earlier
   // investigator keeps their role; only newcomers receive fresh orders.
   // Never coordinate an actor who did not actually hear the report.
-  if(!newlyInformed.length)continue;
+  if(!newlyInformed.size)continue;
   const listeners=roster.filter(a=>eligible(a)&&
-    report.deliveredTo.includes(a.id)&&a.alert!=='retreat'&&!a.retreatPoint&&a.intent?.kind!=='engage');
+    delivered.has(a.id)&&a.alert!=='retreat'&&!a.retreatPoint&&a.intent?.kind!=='engage');
   const prior=stableCoordination(listeners,s.seconds);
   // For a sound warning, the person who heard and raised it is already
   // investigating. Recipients can watch/support instead of duplicating
@@ -761,10 +762,10 @@ function distributeReports(s:Session){
   const committed={...(report.assignedRoles??{}),...prior,
        ...(reporter?{[reporter.id]:'investigate' as const}:{})};
   const roles=missionGroupResponse(participants,report.estimate,
-      committed,s.missionType,s.scenario.objective);
+      committed,s.missionType,s.scenario.objective,sender.encounterGroupId?sender.npcIdentity?.groupKind:undefined);
   report.assignedRoles=roles;report.coordinated=true;
   for(const a of listeners){
-   if(!newlyInformed.includes(a.id)||!canAcceptNpcAssignment(a,s.seconds))continue;
+   if(!newlyInformed.has(a.id)||!canAcceptNpcAssignment(a,s.seconds))continue;
    a.coordinationRole=roles[a.id];a.coordinationReportId=report.id;
    const heard=a.awareness.observations.find(observation=>
      observation.id==='report/'+report.id+'/'+a.id);
