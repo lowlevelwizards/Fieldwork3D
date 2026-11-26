@@ -23,11 +23,12 @@ export function searchCandidates(estimate:Pt,uncertainty:number,
  const eligible=rooms.filter(room=>{
   const center={x:room.x+room.w/2,y:room.y+room.h/2};
   return dist(center,estimate)<=radius+Math.max(room.w,room.h)/2;
- }).slice(0,14);
+ }).sort((a,b)=>dist({x:a.x+a.w/2,y:a.y+a.h/2},estimate)-dist({x:b.x+b.w/2,y:b.y+b.h/2},estimate)||(a.id??'').localeCompare(b.id??'')).slice(0,14);
  // Inspect real thresholds from a stand-off position INSIDE the known room,
  // not at the door-leaf center or across an invisible wall.
- for(let di=0;di<doors.length&&di<24;di++){
-  const door=doors[di];
+ const nearbyDoors=doors.map((door,i)=>({door,i,d:dist({x:(door.a.x+door.b.x)/2,y:(door.a.y+door.b.y)/2},estimate)}))
+   .filter(x=>x.d<=radius+45).sort((a,b)=>a.d-b.d||a.i-b.i).slice(0,24);
+ for(const {door} of nearbyDoors){
   const threshold={x:(door.a.x+door.b.x)/2,
     y:(door.a.y+door.b.y)/2};
   if(dist(threshold,estimate)>radius+45)continue;
@@ -44,8 +45,9 @@ export function searchCandidates(estimate:Pt,uncertainty:number,
  }
  // Observe around plausible furniture silhouettes within the search area.
  // A cover corner is a *viewing* approach, never a claim the target is there.
- for(let ci=0;ci<cover.length&&ci<40;ci++){
-  const fixture=cover[ci];
+ const nearbyCover=cover.map((fixture,i)=>({fixture,i,d:dist(fixture,estimate)}))
+   .filter(x=>x.d<=radius+35).sort((a,b)=>a.d-b.d||a.i-b.i).slice(0,40);
+ for(const {fixture} of nearbyCover){
   const center={x:fixture.x,y:fixture.y};
   if(dist(center,estimate)>radius+35)continue;
   for(const point of [

@@ -18,6 +18,7 @@ import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
 import {freshMagazineIssue} from './arsenal/live-magazine-capacity.ts';
 import {enemyKitForEncounter} from './breach-enemy-loadouts.ts';
 import {doctrineForPurpose,doctrinePersonality,doctrineInitialMorale} from './breach-ai-doctrine.ts';
+import {npcIdentity} from './breach-ai-identity.ts';
 import {createCivilian} from './breach-civilian-types.ts';
 import {civilianRefugePoints} from './breach-civilian-refuge.ts';
 import {materialForFixture} from './breach-materials.ts';
@@ -120,9 +121,12 @@ export function assembleSession(index=0,siteSeed?:number,
       a.injuryStage=0;
       // One seeded draw for temperament when applicable, one for resolve:
       // no extra random draws or coupling between unrelated actors.
-      const purpose=site.encounter?.groups.find(g=>
-        g.id===spec?.groupId)?.purpose;
+      const group=site.encounter?.groups.find(g=>g.id===spec?.groupId);
+      const purpose=group?.purpose;
       const doctrine=doctrineForPurpose(purpose);
+      a.npcIdentity=npcIdentity(site.seed,a.id,purpose,spec?.role,site.encounter?.premise,
+        group?.behaviorProfile,group?.competenceOverride);
+      a.routineExtensionAttempted=false;
       a.personality=spec?.role==='investigator'?'aggressor':
         spec?.role==='reserve'||spec?.role==='target'?'cautious':
         doctrinePersonality(doctrine,spec?.role,enemyRng());

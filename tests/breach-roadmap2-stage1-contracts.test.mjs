@@ -40,7 +40,11 @@ const GOLDENS=Object.freeze({
  // contact that overrides the player's explicit LOOK/WATCH. This changes
  // the contact timeline; reproducible live shots, real downing, health and
  // AI observation gates below remain strict.
- combat:'f7f44ce49bfb9d70bd7df8bf464e781f947e36ef147e0d22d2db3446959df27b',
+ // EA: the approved NPC behavior upgrade changes the fixed-clock contact
+ // outcome, not the physical contract. Run 45841205007 independently
+ // passed every semantic assertion before failing only the old digest.
+ // Exact new digest remains mandatory; unchanged golden cases stay pinned.
+ combat:'58cc9811aa9dff4345bffad189abae7787714fc442368745e943bd4a0bb46810',
  // V18 intentionally changes generated physical exterior cover, which
  // is included in every snapshot. The old generated site's exact hash
  // is separately verified on the archived input by V18 replay acceptance.

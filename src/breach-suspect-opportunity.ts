@@ -11,6 +11,7 @@ import {advanceSecondarySwitch,initialSecondarySwitch}
 import type {Session,TeamActor} from './breach-game.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import type {DroppedFirearm} from './breach-suspect-weapons.ts';
+import {bestBelief} from './breach-awareness.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const angle=(a:Pt,b:Pt)=>Math.atan2(b.y-a.y,b.x-a.x);
 const delta=(a:number,b:number)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
@@ -65,7 +66,8 @@ function availableSidearm(a:TeamActor):boolean{
 function chooseFlightGoal(s:Session,a:TeamActor):Pt|null{
  const world=sessionWorldGeometry(s);
  // Heading and last personally experienced contact, not the hidden squad.
- const away=a.contact?angle(a.contact,a.p):a.heading+Math.PI;
+ const remembered=bestBelief(a.awareness)?.estimate??a.contact;
+ const away=remembered?angle(remembered,a.p):a.heading+Math.PI;
  for(const yaw of [away,away+.65,away-.65,away+1.3,away-1.3]){
   const p={x:a.p.x+Math.cos(yaw)*76,y:a.p.y+Math.sin(yaw)*76};
   if(world.passable(p)&&

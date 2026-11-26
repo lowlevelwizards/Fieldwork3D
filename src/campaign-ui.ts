@@ -267,6 +267,7 @@ export class CampaignScreen{
     for(const [name,href] of [
      ['OPERATOR LAB','./operator-lab.html'],
      ['MAP LAB','./map-lab.html'],
+     ['ENEMY AI LAB','./enemy-ai-lab.html'],
      ['EFFECTS LAB','./breach-visual-lab.html'],
      ['ASSET LAB','./asset-lab.html'],
      ['VEHICLE LAB','./vehicle-lab.html'],

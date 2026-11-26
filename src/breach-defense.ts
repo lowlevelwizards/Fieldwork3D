@@ -1,11 +1,12 @@
 import type {SessionWorldGeometry} from './breach-world-context.ts';
 /** Build 098: room defense positions, spacing and threat-oriented watches. */
-import {COVER,WALLS,activeSite,passable,route,doorCenter,type Door,type Pt} from './breach-core.ts';
+import {COVER,WALLS,activeSite,passable,route,doorCenter,segmentsCross,type Door,type Pt} from './breach-core.ts';
 import {assessFireLane} from './breach-fire-safety.ts';
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {directionalCoverFrom} from './breach-cover-direction.ts';
 import {coverScore} from './breach-defense-scoring.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
+import {aiSiteIndex,buildAiSiteIndex} from './breach-ai-site-index.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type Defender={id:string;p:Pt;health:number;defense:Pt|null;
  posture?:'stand'|'crouch'};
@@ -22,74 +23,49 @@ export function defenseCandidates(origin:Pt,threat:Pt,doors:Door[],world?:Sessio
     // Require a valid swept physical corridor instead. Pursuit/search still
     // use authoritative routed navigation when moving across rooms.
     if(!sweptBodyClear(origin,p,doors,8,world))return;
-    candidates.add(key);options.push(p);
+    candidates.add(key);options.push({...p});
   };
-  for(const c of (world?.cover??COVER)){
-    for(const q of [{x:c.x-c.w/2-19,y:c.y},{x:c.x+c.w/2+19,y:c.y},
-      {x:c.x,y:c.y-c.h/2-19},{x:c.x,y:c.y+c.h/2+19}]){
-      consider(q);
-    }
-  }
-  // Derive actual room corners rather than assuming a fixed 640x740
-  // floor-plan. This also works with corridor and archetype sites.
-  const site=world?world.site:activeSite();
-  const rooms=site?.rooms??[{x:112,y:100,w:478,h:432}];
-  for(const room of rooms){
-    const margin=29;
-    for(const x of [room.x+margin,room.x+room.w-margin])
-      for(const y of [room.y+margin,room.y+room.h-margin])
-        consider({x,y},240);
-    // Slightly offset wall overlooks create alternative watched approaches.
-    for(const x of [room.x+margin,room.x+room.w-margin])
-      consider({x,y:room.y+room.h/2},215);
-    for(const y of [room.y+margin,room.y+room.h-margin])
-      consider({x:room.x+room.w/2,y},215);
-  }
-  for(const door of doors){
-    const p=doorCenter(door);
-    for(const x of [-38,38])for(const y of [-38,38]){
-      const q={x:p.x+x,y:p.y+y};
-      consider(q,195);
-    }
-  }
+  const index=world?aiSiteIndex(world,doors):buildAiSiteIndex(activeSite()??null,COVER,doors);
+  for(const anchor of index.anchors)consider(anchor.p,anchor.radius);
   if(world?world.passable(origin):passable(origin))consider(origin);
   return options;
 }
-export type DefenseOptions={requireFiringLane?:boolean;targetHeight?:number};
+export type DefenseOptions={requireFiringLane?:boolean;targetHeight?:number;purpose?:'observe'|'shelter'};
 export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
   others:Defender[],selfId:string,policy:DefenseOptions={},
  world?:SessionWorldGeometry):Pt|null{
   const options=defenseCandidates(origin,threat,doors,world);
   let best:Pt|null=null,score=-Infinity;
+  // The roster and origin cover are unchanged during this pure selection.
+  // Prepare once rather than allocating and rescanning per candidate.
+  const peers=others.filter(a=>a.id!==selfId&&a.health>0);
+  const bodies=peers.map(safetyBodyFor);
+  const fixtures=world?.cover??COVER,walls=world?.walls??WALLS;
+  const originProtected=directionalCoverFrom(threat,origin,fixtures).crouched;
   for(const p of options){
-    const occupancy=others.filter(a=>a.id!==selfId&&a.health>0)
-      .reduce((n,a)=>n+(dist(p,a.defense??a.p)<35?190:0),0);
-    const protectedSpot=directionalCoverFrom(threat,p,world?.cover??COVER).crouched;
-    // Cover is only useful if the defender can still bring the muzzle
-    // above or around it. Eye-level sight does not guarantee a firing lane.
-    const lane=assessFireLane(p,26,threat,
-      policy.targetHeight??32,world?.cover??COVER,world?.walls??WALLS,doors,
-      others.filter(o=>o.id!==selfId&&o.health>0).map(safetyBodyFor));
-    const firingValue=lane.blocker==='clear';
-    // When actually repositioning to shoot a visible opponent, a point
-    // with no real muzzle lane is not a valid destination, even if it
-    // scores well as passive cover. Defensive holds still accept cover.
-    if(policy.requireFiringLane&&!firingValue)continue;
-    const span=others.filter(a=>a.id!==selfId&&a.health>0)
-      .reduce((n,a)=>n+(dist(p,a.p)>55&&dist(p,a.p)<160?15:0),0);
+    const occupancy=peers.some(a=>dist(p,a.defense??a.p)<35);
+    const structureProtected=policy.purpose==='shelter'&&(world?
+      world.staticWallBlocksRay({a:threat,b:p}):walls.some(w=>segmentsCross({a:threat,b:p},w)));
+    const protectedSpot=structureProtected||directionalCoverFrom(threat,p,fixtures).crouched;
+    const span=peers.reduce((n,a)=>{
+      const separation=dist(p,a.p);
+      return n+(separation>55&&separation<160?15:0);
+    },0);
     const doorHazard=doors.reduce((penalty,door)=>{
       const distance=dist(p,doorCenter(door));
       return penalty+(distance<24?45:distance<45?10:0);
     },0);
-    // Choose watchable positions while favoring actual directional cover.
-    const facing=dist(p,threat)>15?8:0;
-    const value=coverScore({
-      protected:protectedSpot,shotClear:firingValue,travel:dist(origin,p),
-      range:dist(p,threat),allyConflict:occupancy>0,
-      nearDoor:doorHazard>25,
-      approachExposed:!directionalCoverFrom(threat,origin,world?.cover??COVER).crouched&&
-        dist(origin,p)>85
-    })+span+facing;
+    const travel=dist(origin,p),range=dist(p,threat),facing=range>15?8:0;
+    const facts={protected:protectedSpot,shotClear:true,travel,range,
+      allyConflict:occupancy,nearDoor:doorHazard>25,approachExposed:!originProtected&&travel>85};
+    // A clear lane is an upper bound for either scoring purpose. A candidate
+    // which cannot beat the current winner cannot benefit from a costly ray.
+    const upper=coverScore(facts,policy.purpose)+span+facing;
+    if(upper<=score)continue;
+    const lane=assessFireLane(p,26,threat,policy.targetHeight??32,fixtures,walls,doors,bodies);
+    const firingValue=lane.blocker==='clear';
+    if(policy.requireFiringLane&&!firingValue)continue;
+    const value=firingValue?upper:coverScore({...facts,shotClear:false},policy.purpose)+span+facing;
     if(value>score){score=value;best=p;}
   }
   return best;
@@ -113,25 +89,41 @@ export function watchPoint(p:Pt,doors:Door[],world?:SessionWorldGeometry):Pt|nul
       center.y>=room.y-3&&center.y<=room.y+room.h+3;
   }):[];
   const choices=adjacent.length?adjacent:doors;
-  const best=choices.slice().sort((a,b)=>
-    dist(p,doorCenter(a))-dist(p,doorCenter(b)))[0];
-  return best?doorCenter(best):null;
+  let best:Pt|null=null,nearest=Infinity;
+  for(const door of choices){const q=doorCenter(door),distance=dist(p,q);
+    if(distance<nearest){nearest=distance;best=q;}}
+  return best;
 }
 /** Search a few legal points around a noisy estimate, never omniscient
  * access to the hidden source. Avoid pursuing a location inside cover. */
+export type InvestigationProbeResult=
+  {kind:'pending';cursor:number}|{kind:'exhausted'}|
+  {kind:'found';point:Pt;route:Pt[]};
+/** Deterministic resumable candidate enumeration with a route-call budget. */
+export function probeInvestigationRoute(origin:Pt,target:Pt,cursor:number,
+  routeBudget:number,routeFor:(from:Pt,to:Pt)=>Pt[],
+  canStand:(p:Pt)=>boolean):InvestigationProbeResult{
+  let calls=0;
+  for(let i=Math.max(0,Math.floor(cursor));i<25;i++){
+    let point=target;
+    if(i>0){
+      const n=i-1,distance=[17,35,55][Math.floor(n/8)];
+      const angle=(n%8)*Math.PI/4;
+      point={x:target.x+Math.cos(angle)*distance,
+        y:target.y+Math.sin(angle)*distance};
+    }
+    if(!canStand(point))continue;
+    if(calls>=routeBudget)return {kind:'pending',cursor:i};
+    calls++;
+    const result=routeFor(origin,point);
+    if(result.length)return {kind:'found',point:{...point},route:result};
+  }
+  return {kind:'exhausted'};
+}
+/** Compatibility for existing synchronous callers. */
 export function reachableInvestigation(origin:Pt,target:Pt,
   routeFor:(from:Pt,to:Pt)=>Pt[]=route,
- canStand:(p:Pt)=>boolean=passable):Pt|null{
-  const options=[target];
-  for(const distance of [17,35,55])
-    for(let i=0;i<8;i++){
-      const angle=i*Math.PI/4;
-      options.push({x:target.x+Math.cos(angle)*distance,
-        y:target.y+Math.sin(angle)*distance});
-    }
-  for(const point of options){
-    if(!canStand(point))continue;
-    if(routeFor(origin,point).length)return point;
-  }
-  return null;
+  canStand:(p:Pt)=>boolean=passable):Pt|null{
+  const result=probeInvestigationRoute(origin,target,0,25,routeFor,canStand);
+  return result.kind==='found'?result.point:null;
 }

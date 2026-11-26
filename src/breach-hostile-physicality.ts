@@ -6,7 +6,7 @@
 import type {TeamActor} from './breach-game.ts';
 type Hostile=Pick<TeamActor,
  'side'|'p'|'heading'|'health'|'surrendered'|'alert'|'aim'|
- 'velocity'|'reload'|'suppression'|'lastNoiseAt'|'heard'|'contact'>;
+ 'velocity'|'reload'|'suppression'|'lastNoiseAt'|'heard'|'contact'>&{lastReportAt?:number};
 const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
 const wrap=(v:number)=>Math.atan2(Math.sin(v),Math.cos(v));
 const ease=(v:number)=>{const t=clamp(v,0,1);return t*t*(3-2*t);};
@@ -29,11 +29,14 @@ export function hostilePhysicalityAt(a:Hostile,now:number):HostilePhysicality{
  const investigating=(a.alert==='suspicious'||a.alert==='investigating')&&
    a.velocity<=7;
  const defensive=a.alert==='cover'||a.alert==='retreat';
- if(!investigating&&!defensive)return neutral();
+ const reportAge=now-(a.lastReportAt??-100);
+ const communication=a.velocity<=7&&reportAge>=0&&reportAge<.85?
+   Math.sin(Math.PI*reportAge/.85)*.065:0;
+ if(!investigating&&!defensive)return {...neutral(),headPitch:communication};
  const guarding=defensive&&a.suppression>=.27;
  // Defensive recoil is deliberately tiny because the shared chest joint
  // also owns the rifle. A head-only inclination can't move the muzzle.
- const headPitch=guarding?clamp((a.suppression-.20)*.15,0,.115):0;
+ const headPitch=clamp((guarding?clamp((a.suppression-.20)*.15,0,.115):0)+communication,0,.115);
  const age=now-a.lastNoiseAt;
  const point=a.heard;
  if(!point||a.lastNoiseAt<0||!Number.isFinite(age)||age<0||
