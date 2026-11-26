@@ -203,6 +203,8 @@ export type TeamActor=Operator & {
   withdrawRetryAt?:number;
   lastMoraleEventAt:number;
   searchOrigin:Pt|null;searchQueue:Pt[];searchPauseUntil:number;
+  /** A failed route is not a checked location, including across deferred work slots. */
+  searchRecoveryPending?:boolean;
   checkedSearchAreas?:import('./breach-ai-search-memory.ts').CheckedArea[];
   lastSearchReportAt?:number;
   witnessedCasualtyTimes?:Record<string,number>;

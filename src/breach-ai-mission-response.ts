@@ -26,11 +26,7 @@ export type ObjectiveDefenseFacts={
  suppression:number;motivation?:AiMotivation;
 };
 export function shouldProtectObjective(f:ObjectiveDefenseFacts):boolean{
- return (f.mission==='hold'||f.mission==='intel'||
-         f.mission==='rescue'||f.mission==='capture')&&
-   (f.role==='sentry'||f.role==='reserve'||f.role==='leader')&&
-   f.distanceToPost<=140&&f.distanceOfEvidenceToPost<=240&&
-   f.heardActionableEvidence&&!f.directSight&&f.suppression<.7;
+ return missionObjectiveResponse(f)!=='investigate';
 }
 
 /** Mission goal is assigned geography, never knowledge of hostile location.

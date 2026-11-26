@@ -8,7 +8,8 @@ export type {EncounterDoctrine} from './breach-ai-group-profiles.ts';
 export function doctrineForGroup(groupKind:AiGroupKind):EncounterDoctrine{
  return AI_GROUP_PROFILES[groupKind].doctrine;
 }
-export type Temperament='guard'|'aggressor'|'cautious';
+import type {Temperament} from './breach-ai-pressure-policy.ts';
+export type {Temperament} from './breach-ai-pressure-policy.ts';
 export function doctrineForPurpose(purpose:EncounterGroup['purpose']|undefined):
  EncounterDoctrine{
  return purpose==='organised'?'organised':
@@ -30,4 +31,10 @@ export function doctrineInitialMorale(doctrine:EncounterDoctrine,
  const r=Math.max(0,Math.min(1,roll));
  return doctrine==='organised'?.60+r*.38:
    doctrine==='security'?.53+r*.45:.45+r*.53;
+}
+
+/** One doctrine selection at both session issue and report lease renewal.
+ * Old resolved plans keep their historical purpose fallback. */
+export function encounterDoctrine(group?:Pick<EncounterGroup,'purpose'|'behaviorProfile'>):EncounterDoctrine{
+ return group?.behaviorProfile?doctrineForGroup(group.behaviorProfile):doctrineForPurpose(group?.purpose);
 }

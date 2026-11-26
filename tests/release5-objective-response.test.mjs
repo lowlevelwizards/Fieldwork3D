@@ -19,7 +19,7 @@ test('R5.3 mission semantics never grant knowledge or outrank urgent direct cont
   assert.equal(shouldProtectObjective({...base,...change}),false,JSON.stringify(change));
  }
  const code=readFileSync(new URL('../src/breach-enemy-decision-controller.ts',import.meta.url),'utf8');
- assert.match(code,/shouldProtectObjective\(\{/);
+ assert.match(code,/missionObjectiveResponse\(\{/);
  assert.match(code,/distanceOfEvidenceToPost:d\(heard,s\.scenario\.objective\)/);
  assert.match(code,/a\.defense=defensivePosition\(a,heard,s\)/);
 });

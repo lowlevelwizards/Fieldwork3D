@@ -39,7 +39,7 @@ import {captureTargetMayWithdraw,missionObjectiveResponse} from './breach-ai-mis
 import {retreatDoorClosureEligible,routineDoorClosureEligible} from './breach-ai-door-response.ts';
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
 import {localFixtureObservation} from './breach-ai-contextual-observation.ts';
-import {doctrineForPurpose,doctrineForGroup} from './breach-ai-doctrine.ts';
+import {encounterDoctrine} from './breach-ai-doctrine.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
 import {aiSiteIndex,connectedAreaCenters,groupObservationProposals} from './breach-ai-site-index.ts';
@@ -574,7 +574,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
     return;
   }
-  let recoveringSearch=false;
+  let recoveringSearch=!!a.searchRecoveryPending;
   if(a.contact&&a.alert==='investigating'&&!visible.length){
     // A failed approach is not proof that the disturbance vanished. Move
     // through remaining uncertain probes or eventually settle back down.
@@ -586,11 +586,11 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
     const recovery=stalledInvestigationAction(a.blockedTime,a.searchQueue.length);
     if(recovery==='inspect-next'){
-      recoveringSearch=true;
+      recoveringSearch=true;a.searchRecoveryPending=true;
       a.nav=[];a.contact=clone(a.p);
       a.searchPauseUntil=s.seconds-.01;
     }else if(recovery==='stand-down'){
-      a.nav=[];a.contact=null;a.searchOrigin=null;a.alert='cover';
+      clearNpcSearch(a);a.nav=[];a.contact=null;a.alert='cover';
       exhaustSuspicionSearch(a.suspicion,s.seconds);
       a.defenseUntil=s.seconds+2;
     }
@@ -616,7 +616,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
           a.contact=clone(result.point);
         }else{
           a.alert='cover';a.contact=null;a.defense=null;
-          a.searchOrigin=null;a.searchQueue=[];a.searchPauseUntil=0;
+          clearNpcSearch(a);
           exhaustSuspicionSearch(a.suspicion,s.seconds);
         }
       }
@@ -669,9 +669,9 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       if(next){
         a.contact=clone(next);
         // Inspect only after arriving at the next search point.
-        a.searchPauseUntil=0;
+        a.searchPauseUntil=0;a.searchRecoveryPending=false;
       }else if(!a.searchQueue.length){
-        a.alert='cover';a.contact=null;a.searchOrigin=null;
+        a.alert='cover';a.contact=null;clearNpcSearch(a);
         exhaustSuspicionSearch(a.suspicion,s.seconds);
         a.searchPauseUntil=0;
         a.defense=defensivePosition(a,a.heard??a.p,s);
@@ -770,10 +770,9 @@ function distributeReports(s:Session){
    const heard=a.awareness.observations.find(observation=>
      observation.id==='report/'+report.id+'/'+a.id);
    const group=s.site?.encounter?.groups.find(g=>g.id===a.encounterGroupId);
-   const purpose=group?.purpose;
    a.coordinationUntil=renewCoordinationUntil(s.seconds,a.coordinationUntil,
      roles[a.id],heard?.uncertainty??report.uncertainty,
-     group?.behaviorProfile&&a.npcIdentity?doctrineForGroup(a.npcIdentity.groupKind):doctrineForPurpose(purpose),a.npcIdentity);
+     encounterDoctrine(group),a.npcIdentity);
    const covering=roles[a.id]==='watch'||roles[a.id]==='support';
    if(covering&&a.intent?.kind!=='engage'&&a.alert!=='retreat'&&
       !a.retreatPoint){

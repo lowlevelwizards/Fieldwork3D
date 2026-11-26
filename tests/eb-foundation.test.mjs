@@ -241,3 +241,14 @@ test('EB16 actual warning events produce spatial live and replay cues; aim and c
  assert.equal(hostilePhysicalityAt({...a,aim:1},1.425).headPitch,0);
  assert.equal(hostilePhysicalityAt({...a,surrendered:true},1.425).headPitch,0);
 });
+
+import {encounterDoctrine} from '../src/breach-ai-doctrine.ts';
+import {clearNpcSearch} from '../src/breach-ai-task-state.ts';
+test('EB21 one doctrine owner and a persistent inspection recovery flag',()=>{
+ assert.equal(encounterDoctrine({purpose:'security',behaviorProfile:'specialists'}),'organised');
+ assert.equal(encounterDoctrine({purpose:'security'}),'security');
+ assert.equal(encounterDoctrine(undefined),'irregular');
+ const actor={searchOrigin:{x:3,y:2},searchQueue:[{x:5,y:6}],searchPauseUntil:8,searchRecoveryPending:true};
+ assert.equal(canRecordInspection(actor.searchRecoveryPending,0,9,8),false);
+ clearNpcSearch(actor);assert.equal(actor.searchRecoveryPending,false);assert.equal(actor.searchPauseUntil,0);
+});

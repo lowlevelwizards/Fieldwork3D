@@ -3,7 +3,7 @@
 import type {TeamActor} from './breach-game.ts';
 import type {Pt} from './breach-core.ts';
 export function clearNpcSearch(a:TeamActor):void{
- a.searchOrigin=null;if(a.searchQueue.length)a.searchQueue=[];a.searchPauseUntil=0;
+ a.searchOrigin=null;if(a.searchQueue.length)a.searchQueue=[];a.searchPauseUntil=0;a.searchRecoveryPending=false;
 }
 export function clearNpcCoordination(a:TeamActor,releaseDestination=false):void{
  if(releaseDestination&&a.coordinationOwnsDefense){a.defense=null;a.nav=[];}
