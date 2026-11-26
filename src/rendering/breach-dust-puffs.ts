@@ -1,4 +1,4 @@
-/** V8: visual-only, deterministic soft dust and flash wisps.
+/** V8: visual-only, deterministic graphic dust and smoke wisps.
  * No volume simulation, no new event history, no visibility authority.
  * One fixed-capacity billboard batch, view-facing in every camera pass.
  */
@@ -25,7 +25,7 @@ export function samplePuff(kind:PuffKind,id:number,i:number,age:number,x:number,
  const d=(2+expansion*p.spread)*(.75+(i%3)*.13);
  out.x=x+Math.cos(theta)*d;out.z=z+Math.sin(theta)*d;
  out.y=Math.max(2,y+p.lift*t+(i%3)*1.5-(kind==='dust'||kind==='wood'||kind==='stone'||kind==='collapse'?8*t*t:0));
- out.size=p.size*(.72+expansion*1.12)*(1+(i%3)*.12);
+ out.size=p.size*.88*(.72+expansion*1.12)*(1+(i%3)*.12);
  out.alpha=p.alpha*(1-t*t)*(1-t*.40);out.color=p.color;out.phase=theta;
  return true;
 }
@@ -64,16 +64,16 @@ export class DustPuffBatch{
     void main(){
      vec2 p=vPuff;
      vec2 offset=vAlphaOffset.yz;
-     // Two broad round lobes and soft edge, no procedural grain.
+     // Graphic rounded lobes: narrow feather, flat interior, no grain.
      vec2 axis=normalize(offset+vec2(.0001));
      vec2 across=vec2(-axis.y,axis.x);
      vec2 q=vec2(dot(p,axis),dot(p,across));
-     float body=1.0-smoothstep(.48,.86,length(q));
-     float lobe=1.0-smoothstep(.30,.60,length(q-vec2(.30,.12)));
+     float body=1.0-smoothstep(.73,.81,length(q));
+     float lobe=1.0-smoothstep(.46,.54,length(q-vec2(.36,.15)));
      float density=max(body,lobe*.88);
      float alpha=density*vAlphaOffset.x;
      if(alpha<.012)discard;
-     float shade=.85+.15*smoothstep(-.55,.5,q.y);
+     float shade=.94+.06*smoothstep(-.55,.5,q.y);
      gl_FragColor=vec4(vTint*shade,alpha);
      #include <tonemapping_fragment>
      #include <colorspace_fragment>
