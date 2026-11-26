@@ -30,7 +30,7 @@ import {shouldSeekHoldCover} from './breach-ai-tactical-response.ts';
 import {reportToListener} from './breach-communication.ts';
 import {missionGroupResponse} from './breach-ai-coordination.ts';
 import {stableCoordination,renewCoordinationUntil} from './breach-ai-team-commitment.ts';
-import {coverMoveDeadline,coverMoveCommitted} from './breach-ai-position-commitment.ts';
+import {coverMoveDeadline,coverMoveCommitted,defensiveTravelState} from './breach-ai-position-commitment.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo,stalledInvestigationAction} from './breach-ai-investigation.ts';
 import {routineDwellSeconds,contextualRoutineDwell,ambientStationary} from './breach-ai-routine-dwell.ts';
@@ -684,9 +684,20 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
   }
   if(a.alert==='cover'&&a.defense&&d(a.p,a.defense)>10){
-    if(!a.nav.length)a.nav=cachedEnemyRoute(s,a.p,a.defense);
-    if(a.nav.length)approach(a,a.defense,dt,s,.7);
-    else{a.defense=null;a.defenseUntil=s.seconds+.8;}
+    // A destination has a finite physical commitment. Don't retry a
+    // blocked elective cover route sixty times a second.
+    if(a.encounterGroupId&&defensiveTravelState(d(a.p,a.defense),a.blockedTime,s.seconds,a.defenseUntil)==='expired'){
+      a.defense=null;a.nav=[];a.velocity=0;a.defenseUntil=s.seconds+.8;
+    }else{
+      if(!a.nav.length){
+        if(a.encounterGroupId&&!visible.length&&!electiveAiWork(s,a,'cover-route')){
+          a.velocity=0;return;
+        }
+        a.nav=cachedEnemyRoute(s,a.p,a.defense);
+      }
+      if(a.nav.length)approach(a,a.defense,dt,s,.7);
+      else{a.defense=null;a.defenseUntil=s.seconds+.8;}
+    }
   }
   if(!a.contact&&a.watch)rotate(a,angle(a.p,a.watch),dt,s);
 }

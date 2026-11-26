@@ -135,3 +135,11 @@ test('EB9 failed routes never count as inspected; dwell and physical arrival are
  assert.equal(canRecordInspection(false,0,12,0),false);
  assert.equal(canRecordInspection(false,15,12,11),true);
 });
+
+import {defensiveTravelState} from '../src/breach-ai-position-commitment.ts';
+test('EB10 cover travel is physically bounded, arrival wins over expiration',()=>{
+ assert.equal(defensiveTravelState(8,5,12,11),'arrived');
+ assert.equal(defensiveTravelState(40,2.7,12,16),'expired');
+ assert.equal(defensiveTravelState(40,0,16,16),'expired');
+ assert.equal(defensiveTravelState(40,0,12,16),'travel');
+});
