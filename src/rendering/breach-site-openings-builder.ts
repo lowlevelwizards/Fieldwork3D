@@ -355,7 +355,7 @@ export function buildSiteWindows(site:Site,host:SiteOpeningsHost,
       // Glazed openings still need the SAME continuous dark crown as the
       // adjoining walls. Without it the exposed lintel becomes a bright
       // bridge with abruptly terminated dark wall caps.
-      host.box(group,0,WALL_VISUAL_HEIGHT+.3,0,
+      host.box(group,0,WALL_VISUAL_HEIGHT+.38,0,
         Math.max(1,opening.width-.4),2,11.4,capMat,false);
       // Place the trim BELOW the pane's bottom edge and in front of its
       // surface. Overlapping transparent glass/mullion faces used to shimmer.
