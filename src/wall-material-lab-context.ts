@@ -4,7 +4,7 @@ import type {WearMark} from './worldgen/environment-wear.ts';
 import {conditionFloorPixels} from './worldgen/condition-visual.ts';
 import {rasterFloorWear} from './rendering/floor-wear-raster.ts';
 import {roomPixelSurface,fixturePixelSurface} from './worldgen/pixel-surface-selection.ts';
-import {buildingTheme} from './worldgen/building-palettes.ts';
+import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {pixelPattern,type PixelSurface} from './rendering/pixel-recipes.ts';
 import {wearPixels,type WearTextureKind} from './rendering/pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
@@ -43,10 +43,10 @@ export function floorWitness(index:number,level:number,seed:number){
  const w=FLOOR_WITNESSES[index],room:Room={id:'lab',kind:'room',purpose:w.purpose,x:0,y:0,w:96,h:96,tone:0};
  const point={x:0,y:0};
  const site:Site={seed,name:'Lab specimen',archetype:w.archetype,rooms:[room],walls:[],doors:[],cover:w.fixture?[{fixture:w.fixture,x:48,y:19,w:22,h:20,orientation:0}]:[],entrance:point,spawn:[],enemies:[],objective:point,extract:point,roomCount:1,layout:'office',conditionLevel:level,programLocked:true};
- const surface=roomPixelSurface(w.archetype,w.purpose),base=buildingTheme(w.archetype,seed).floor,size=64;
+ const surface=roomPixelSurface(w.archetype,w.purpose),base=roomFloor(buildingTheme(w.archetype,seed),room.purpose,room.tone),size=64;
  const bytes=baseBytes(surface,base,size,size,seed,room.w,room.h),mask=conditionFloorPixels(site,room,level,size);
  const marks:WearMark[]=level>=20?[{id:'lab:'+index+':'+seed,roomId:room.id,kind:w.kind,x:w.fixture?48:18,y:w.fixture?34:55,width:16+level*.14,depth:11+level*.09,rotation:.2,opacity:.12+level*.003}]:[];
- rasterFloorWear(mask,room,0,marks,size);return {width:size,height:size,bytes:apply(bytes,mask)};
+ rasterFloorWear(mask,room,0,marks,size,1,base);return {width:size,height:size,bytes:apply(bytes,mask)};
 }
 export function fixtureWitness(index:number,level:number,seed:number){
  const w=FIXTURE_WITNESSES[index],surface=w.surface??fixturePixelSurface(w.fixture),size=64;
