@@ -1,0 +1,34 @@
+name: MA-R exact production mission parity
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/ma-r-exact-parity.yml'
+jobs:
+  exact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Candidate mission semantics
+        run: node --experimental-strip-types scripts/audit-release-c11-missions.mjs candidate-missions.json
+      - uses: actions/checkout@v4
+        with:
+          ref: 56dbacf8001244a8de67f4ea852409d9404e07e5
+          path: release-b-base
+      - name: Exact verified production baseline
+        run: |
+          ln -s "$PWD/node_modules" release-b-base/node_modules
+          cp scripts/audit-release-c11-missions.mjs release-b-base/scripts/audit-release-c11-missions.mjs
+          (cd release-b-base && node --experimental-strip-types scripts/audit-release-c11-missions.mjs ../base-missions.json)
+          node scripts/compare-release-c11-missions.mjs base-missions.json candidate-missions.json exact-delta.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ma-r-exact-mission-parity
+          path: |
+            base-missions.json
+            candidate-missions.json
+            exact-delta.json
