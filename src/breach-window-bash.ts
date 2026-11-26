@@ -7,8 +7,13 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {windowBarrierMatches} from './worldgen/window-geometry-contract.ts';
 import {segmentHitsBox} from './breach-ray.ts';
 import {windowVisualHeadHeight} from './breach-opening-proportions.ts';
-export const WINDOW_BASH_REACH=34;
-export const WINDOW_BASH_WINDUP=.28;
+import {GLASS_BASH_IMPACT} from './breach-contact-reactions.ts';
+export const WINDOW_BASH_REACH=24;
+export const WINDOW_BASH_WINDUP=GLASS_BASH_IMPACT;
+export function windowBashHeight(w:WindowState,crouched:boolean):number{
+ const sill=w.sillHeight??14,head=w.headHeight??windowVisualHeadHeight(w.style);
+ return Math.max(sill+2,Math.min(head-2,crouched?22:32));
+}
 export function windowBashPoint(w:WindowState,from:Pt):Pt{
  const half=Math.max(0,w.width/2-5);
  const clamp=(v:number,mid:number)=>Math.max(mid-half,Math.min(mid+half,v));

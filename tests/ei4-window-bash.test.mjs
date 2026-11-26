@@ -10,7 +10,7 @@ test('fixed full-height glass is a breakable target independently of operability
   assert.equal(windowCanBash({...pane,...state}),false);
  assert.deepEqual(windowBashPoint(pane,{x:80,y:130}),{x:100,y:119});
  assert.deepEqual(windowBashPoint({...pane,vertical:false},{x:120,y:80}),{x:119,y:100});
- assert.equal(WINDOW_BASH_REACH,34);
+ assert.equal(WINDOW_BASH_REACH,24);
 });
 test('glass break command is separate from opening an operable sash',()=>{
  const o={door:false,node:false,flashRemaining:2,posture:'stand',pace:'walk',

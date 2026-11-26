@@ -2923,6 +2923,7 @@ export class TacticalScene3D{
         lastThrowAt:actor.lastThrowAt,lastDoorAt:actor.lastDoorAt,
         flashHookPoint,
         lastBashAt:actor.lastBashAt,bashRole:actor.lastBashRole,
+        glassBashContact:actor.glassBashContact,
         doorMethod:actor.lastDoorMethod,kickFoot:actor.kickFoot,
         kickImpactPoint:actor.kickImpactPoint??undefined,
         lockpickActive,lockpickProgress,

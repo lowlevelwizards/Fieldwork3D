@@ -22,7 +22,7 @@ import {canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
 import {coverTargetIndex} from './worldgen/site-object-identity.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {manipulateWindow} from './breach-windows.ts';
-import {windowCanBash,windowBashPoint,windowBashLaneClear,WINDOW_BASH_WINDUP} from './breach-window-bash.ts';
+import {windowCanBash,windowBashPoint,windowBashLaneClear,windowBashHeight,WINDOW_BASH_WINDUP} from './breach-window-bash.ts';
 import {powerControlAt,controlPosition,POWER_CONTROL_REACH,
  POWER_ACTION_SECONDS} from './equipment-site-power-controls.ts';
 import {setSiteCircuitPower,setSiteFixtureSwitch} from './equipment-site-power.ts';
@@ -524,7 +524,10 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         const point=windowBashPoint(window,a.p);
         a.velocity=0;
         if(!rotate(a,Math.atan2(point.y-a.p.y,point.x-a.p.x),dt,s))return true;
-        if(a.actionTimer<=0){a.lastBashAt=s.seconds;a.lastBashRole='push';}
+        if(a.actionTimer<=0){
+          a.lastBashAt=s.seconds;a.lastBashRole='glass';
+          a.glassBashContact={...point,height:windowBashHeight(window,a.posture==='crouch')};
+        }
         a.fireCd=Math.max(a.fireCd,.55);
         a.aim=0;a.actionTimer+=dt;
         if(a.actionTimer<WINDOW_BASH_WINDUP)return true;

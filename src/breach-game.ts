@@ -282,7 +282,8 @@ export type TeamActor=Operator & {
   weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
   /** A3 fixed-step micro-aim state. Never sourced from render history. */
   aimSideOffset?:number;aimSideTarget?:number;lastAimSideProbeAt?:number;
-  lastBashAt:number;lastBashRole:'push'|'receive'|null;
+  lastBashAt:number;lastBashRole:import('./breach-contact-reactions.ts').BashRole;
+  glassBashContact?:import('./breach-contact-reactions.ts').GlassBashContact|null;
   /** Bounded, idle-only clearer gaze; never an authored aim or detection. */
   clearLookBearing?:number|null;lastClearLookProbeAt?:number;
   /** Brief physical interruption after a door leaf impact, not a wound. */

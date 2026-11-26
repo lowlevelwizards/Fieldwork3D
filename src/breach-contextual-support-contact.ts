@@ -243,8 +243,9 @@ function contactOwnersForActor(s:Session,a:TeamActor):ContactOwners{
  const doorActive=!!a.doorHandContact||
    now-a.lastDoorAt>=0&&now-a.lastDoorAt<1.12&&
      a.lastDoorMethod!=='kick';
- const pushActive=now-a.lastBashAt>=0&&now-a.lastBashAt<.53&&
-   a.lastBashRole==='push';
+ const bashAge=now-a.lastBashAt;
+ const pushActive=bashAge>=0&&((a.lastBashRole==='push'&&bashAge<.53)||
+   (a.lastBashRole==='glass'&&bashAge<.62));
  const guardActive=woundedHandGuard({
   down:a.health<=0,injury:a.injuryStage,hitRegion:a.lastHitRegion,
   aiming:a.aim>.20,
