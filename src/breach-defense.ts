@@ -45,29 +45,25 @@ export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
   for(const p of options){
     const occupancy=peers.some(a=>dist(p,a.defense??a.p)<35);
     const protectedSpot=directionalCoverFrom(threat,p,fixtures).crouched;
-    // Cover is only useful if the defender can still bring the muzzle
-    // above or around it. Eye-level sight does not guarantee a firing lane.
-    const lane=assessFireLane(p,26,threat,
-      policy.targetHeight??32,fixtures,walls,doors,bodies);
-    const firingValue=lane.blocker==='clear';
-    // When actually repositioning to shoot a visible opponent, a point
-    // with no real muzzle lane is not a valid destination, even if it
-    // scores well as passive cover. Defensive holds still accept cover.
-    if(policy.requireFiringLane&&!firingValue)continue;
-    const span=peers.reduce((n,a)=>n+(dist(p,a.p)>55&&dist(p,a.p)<160?15:0),0);
+    const span=peers.reduce((n,a)=>{
+      const separation=dist(p,a.p);
+      return n+(separation>55&&separation<160?15:0);
+    },0);
     const doorHazard=doors.reduce((penalty,door)=>{
       const distance=dist(p,doorCenter(door));
       return penalty+(distance<24?45:distance<45?10:0);
     },0);
-    // Choose watchable positions while favoring actual directional cover.
-    const facing=dist(p,threat)>15?8:0;
-    const value=coverScore({
-      protected:protectedSpot,shotClear:firingValue,travel:dist(origin,p),
-      range:dist(p,threat),allyConflict:occupancy,
-      nearDoor:doorHazard>25,
-      approachExposed:!originProtected&&
-        dist(origin,p)>85
-    },policy.purpose)+span+facing;
+    const travel=dist(origin,p),range=dist(p,threat),facing=range>15?8:0;
+    const facts={protected:protectedSpot,shotClear:true,travel,range,
+      allyConflict:occupancy,nearDoor:doorHazard>25,approachExposed:!originProtected&&travel>85};
+    // A clear lane is an upper bound for either scoring purpose. A candidate
+    // which cannot beat the current winner cannot benefit from a costly ray.
+    const upper=coverScore(facts,policy.purpose)+span+facing;
+    if(upper<=score)continue;
+    const lane=assessFireLane(p,26,threat,policy.targetHeight??32,fixtures,walls,doors,bodies);
+    const firingValue=lane.blocker==='clear';
+    if(policy.requireFiringLane&&!firingValue)continue;
+    const value=firingValue?upper:coverScore({...facts,shotClear:false},policy.purpose)+span+facing;
     if(value>score){score=value;best=p;}
   }
   return best;
@@ -91,9 +87,10 @@ export function watchPoint(p:Pt,doors:Door[],world?:SessionWorldGeometry):Pt|nul
       center.y>=room.y-3&&center.y<=room.y+room.h+3;
   }):[];
   const choices=adjacent.length?adjacent:doors;
-  const best=choices.slice().sort((a,b)=>
-    dist(p,doorCenter(a))-dist(p,doorCenter(b)))[0];
-  return best?doorCenter(best):null;
+  let best:Pt|null=null,nearest=Infinity;
+  for(const door of choices){const q=doorCenter(door),distance=dist(p,q);
+    if(distance<nearest){nearest=distance;best=q;}}
+  return best;
 }
 /** Search a few legal points around a noisy estimate, never omniscient
  * access to the hidden source. Avoid pursuing a location inside cover. */

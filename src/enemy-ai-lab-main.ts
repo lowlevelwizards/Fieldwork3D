@@ -1,6 +1,7 @@
 /** Isolated developer lab using ordinary live sessions and the fixed-step motor. */
 import {generateSite} from './breach-site.ts';
 import type {OperationKind} from './breach-operations.ts';
+import type {AiGroupKind,AiCompetence} from './breach-ai-identity.ts';
 import {newSession,stepSession,toggling,team,enemies,planMove,type Session} from './breach-game.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {aiSiteIndex} from './breach-ai-site-index.ts';
@@ -23,6 +24,10 @@ function reset(){
   const seed=Number(get<HTMLInputElement>('seed').value)>>>0;
   const mission=get<HTMLSelectElement>('mission').value as OperationKind;
   const site=generateSite(seed,'small',undefined,{mission,enableIncidentIntent:true});
+  const profile=get<HTMLSelectElement>('group').value as AiGroupKind|'';
+  const tier=get<HTMLSelectElement>('tier').value as AiCompetence|'';
+  if(site.encounter&&(profile||tier))site.encounter.groups=site.encounter.groups.map(g=>({...g,
+    ...(profile?{behaviorProfile:profile}:{}),...(tier?{competenceOverride:tier}:{})}));
   session=newSession(0,seed,'floor-plan','small',mission,site,{enableCivilians:true});
   driver='Quiet observation';
   if(get<HTMLSelectElement>('scenario').value==='entry'){

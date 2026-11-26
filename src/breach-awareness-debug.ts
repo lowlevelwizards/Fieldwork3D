@@ -8,6 +8,7 @@ export function awarenessDebugLine(actor:TeamActor):string{
  return [
   actor.name+' · '+actor.personality.toUpperCase(),
   'IDENTITY '+(actor.npcIdentity?.competence??'legacy')+' · '+(actor.npcIdentity?.motivation??'unspecified'),
+  'GROUP '+(actor.npcIdentity?.groupKind??'legacy'),
   'INTENT '+(actor.intent?.kind??'none')+
    (actor.intent?.reason?' · '+actor.intent.reason:''),
   'COMBAT '+(actor.combatChoice??'none')+

@@ -223,3 +223,21 @@ test('EA7 received area-clear report records an inspection without creating a th
  assert.equal(recipient.checkedSearchAreas.length,1);assert.equal(recipient.contact,null);
  assert.equal(recipient.coordinationRole,null);assert.equal(recipient.alert,'idle');
 });
+
+import {npcGroupKind,npcSoundResponse} from '../src/breach-ai-identity.ts';
+test('EA5 explicit authored group profiles and lab tier overrides remain independent',()=>{
+ assert.equal(npcGroupKind('organised','defensive'),'armed-irregulars');
+ assert.equal(npcGroupKind('organised','hideout'),'organised-criminals');
+ assert.equal(npcGroupKind('security','guarded'),'security');
+ const regular=npcIdentity(14,'red1','occupants','occupant','routine','regular-force','trained');
+ assert.equal(regular.groupKind,'regular-force');assert.equal(regular.competence,'trained');
+ assert.equal(regular.motivation,'support-group');
+ assert.equal(npcSoundResponse('door',.4,{...regular,curiosity:0}),'orient');
+ assert.equal(npcSoundResponse('gunshot',.4,{...regular,curiosity:0}),'alarm');
+});
+test('EA2 clear-lane score is a safe upper bound for shelter and observe scoring',()=>{
+ for(const purpose of ['observe','shelter'])for(const protectedSpot of [true,false]){
+  const facts={protected:protectedSpot,shotClear:true,travel:90,range:120,allyConflict:false,nearDoor:true,approachExposed:true};
+  assert.ok(coverScore(facts,purpose)>=coverScore({...facts,shotClear:false},purpose));
+ }
+});

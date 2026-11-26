@@ -21,7 +21,7 @@ import {assessFireLane} from './breach-fire-safety.ts';
 import {chooseDefense,chooseFiringDefense,watchPoint,probeInvestigationRoute} from './breach-defense.ts';
 import {scanEnemyVisualEvidence} from './breach-ai-visual-evidence.ts';
 import {scanEnemySoundEvidence} from './breach-ai-acoustic-perception.ts';
-import {soundResponse} from './breach-sound-evidence.ts';
+import {npcSoundResponse} from './breach-ai-identity.ts';
 import {observeSuspicion,exhaustSuspicionSearch} from './breach-ai-suspicion.ts';
 import {bestBelief,addObservation} from './breach-awareness.ts';
 import {reconcileEnemyIntent,reconcileEnemyPosture} from './breach-ai-reconciliation.ts';
@@ -121,7 +121,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   // must not consume away an actionable noise before the guard can react.
   const strongest=scanEnemySoundEvidence(s,a);
   const freshAlarm=strongest&&
-    ['investigate','alarm'].includes(soundResponse(strongest.kind,strongest.intensity));
+    ['investigate','alarm'].includes(npcSoundResponse(strongest.kind,strongest.intensity,a.npcIdentity));
   // The same local clearance motor is available to red and blue, but
   // never outranks a defensive withdrawal or interrupts a timed traversal.
   if(a.fireRetreatTarget){
@@ -292,7 +292,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   }
   reconcileEnemyPosture(s,a,visible);
   const noiseDisposition=strongest?
-    soundResponse(strongest.kind,strongest.intensity):'ignore';
+    npcSoundResponse(strongest.kind,strongest.intensity,a.npcIdentity):'ignore';
   if(strongest&&noiseDisposition==='orient'&&!visible.length&&
      !a.contacted&&a.alert!=='retreat'){
     a.heard=clone(strongest.estimate);a.alert='suspicious';
@@ -504,6 +504,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       if(a.nav.length&&!a.squeeze)rotate(a,angle(a.p,a.nav[0]),dt,s);
     }else{
       a.alert='cover';a.retreatPoint=null;a.nav=[];
+      a.defense=clone(a.p);a.withdrawRetryAt=s.seconds+1.5;
       notify(s,a.name+' TOOK COVER');
       // Only upon REAL physical arrival, and only after a genuinely
       // observed/alarmed retreat, try to close an open nearby door.
@@ -749,7 +750,7 @@ function distributeReports(s:Session){
      g.id===a.encounterGroupId)?.purpose;
    a.coordinationUntil=renewCoordinationUntil(s.seconds,a.coordinationUntil,
      roles[a.id],heard?.uncertainty??report.uncertainty,
-     doctrineForPurpose(purpose));
+     doctrineForPurpose(purpose),a.npcIdentity);
    const covering=roles[a.id]==='watch'||roles[a.id]==='support';
    if(covering&&a.intent?.kind!=='engage'&&a.alert!=='retreat'&&
       !a.retreatPoint){

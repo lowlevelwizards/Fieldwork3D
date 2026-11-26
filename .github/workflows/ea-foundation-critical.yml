@@ -39,7 +39,7 @@ jobs:
       - name: Foundation regressions
         run: |
           npm run check
-          node --experimental-strip-types --test tests/ea-foundation.test.mjs tests/awareness-ai-policy.test.mjs tests/breach-roadmap4-ai-reconciliation.test.mjs tests/breach-roadmap2-stage9-enemy-ai.test.mjs tests/breach-ai-work-scheduler-performance.test.mjs tests/breach-perception-cache-performance.test.mjs tests/performance-p2-8-cover-los.test.mjs tests/release6-doctrine.test.mjs tests/awareness-team-commitment-e2a.test.mjs tests/awareness-cover.test.mjs tests/eqa3-16-hostile-intent.test.mjs tests/eqa3-16g-defensive-gestures.test.mjs tests/dispatch-d15-suspect-restraint.test.mjs tests/performance-r3-r4-combat-morale.test.mjs tests/breach-141e.test.mjs
+          node --experimental-strip-types --test tests/ea-foundation.test.mjs tests/awareness-ai-policy.test.mjs tests/breach-roadmap4-ai-reconciliation.test.mjs tests/breach-roadmap2-stage9-enemy-ai.test.mjs tests/breach-ai-work-scheduler-performance.test.mjs tests/breach-perception-cache-performance.test.mjs tests/performance-p2-8-cover-los.test.mjs tests/release6-doctrine.test.mjs tests/awareness-team-commitment-e2a.test.mjs tests/awareness-cover.test.mjs tests/eqa3-16-hostile-intent.test.mjs tests/eqa3-16g-defensive-gestures.test.mjs tests/dispatch-d15-suspect-restraint.test.mjs tests/performance-r3-r4-combat-morale.test.mjs tests/breach-141e.test.mjs tests/breach-roadmap2-acoustic-perception.test.mjs tests/dispatch-d15-opportunity-escape-rearm.test.mjs
       - name: Build and verify lab entry
         run: |
           npm run build

@@ -121,10 +121,11 @@ export function assembleSession(index=0,siteSeed?:number,
       a.injuryStage=0;
       // One seeded draw for temperament when applicable, one for resolve:
       // no extra random draws or coupling between unrelated actors.
-      const purpose=site.encounter?.groups.find(g=>
-        g.id===spec?.groupId)?.purpose;
+      const group=site.encounter?.groups.find(g=>g.id===spec?.groupId);
+      const purpose=group?.purpose;
       const doctrine=doctrineForPurpose(purpose);
-      a.npcIdentity=npcIdentity(site.seed,a.id,purpose,spec?.role);
+      a.npcIdentity=npcIdentity(site.seed,a.id,purpose,spec?.role,site.encounter?.premise,
+        group?.behaviorProfile,group?.competenceOverride);
       a.routineExtensionAttempted=false;
       a.personality=spec?.role==='investigator'?'aggressor':
         spec?.role==='reserve'||spec?.role==='target'?'cautious':
