@@ -5,6 +5,7 @@
 import {doorLeafSegment,doorCenter,type Door,type Pt}
  from './breach-core.ts';
 import {doorReachable,handlePoint} from './breach-door.ts';
+import {mayManipulateOpening} from './breach-door-opening-ownership.ts';
 import {contactWithinReach,sameContact,
  type PhysicalContact,type ContactPoint3}
  from './breach-physical-contact-anchor.ts';
@@ -35,7 +36,7 @@ export function preOpenDoorCandidate(
  s:Session,a:TeamActor,d:Door,world:SessionWorldGeometry,
  prior:PhysicalContact|null=null
 ):PhysicalContact|null{
- if(!preOpenDoorEligible(a,d))return null;
+ if(!preOpenDoorEligible(a,d)||!mayManipulateOpening(s,a,d))return null;
  const f={x:Math.cos(a.heading),y:Math.sin(a.heading)};
  const l={x:-f.y,y:f.x};
  const from:ContactPoint3={

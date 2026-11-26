@@ -15,7 +15,7 @@ export function planServiceDockBumpers(site:ServiceSite):DockBumper[]{
    if(zone.kind!=='service')continue;
    const broad=zone.w>=zone.h;
    for(const door of site.doors){
-     if(door.id==='FRONT')continue;
+     if(door.id==='FRONT'||door.id==='FRONT-R')continue;
      const x=(door.a.x+door.b.x)/2,y=(door.a.y+door.b.y)/2;
      const width=Math.hypot(door.b.x-door.a.x,door.b.y-door.a.y);
      // Too small for a meaningful industrial loading/service guard.

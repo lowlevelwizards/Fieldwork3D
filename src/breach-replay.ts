@@ -48,7 +48,7 @@ export type ActorFrame=Pick<TeamActor,
   'reloadFromRounds'|'reloadTargetRounds'|'reloadSelectedMagazineId'|
   'lastHitAt'|'lastDownAt'|'lastHitRegion'|'lastHitYaw'|
   'lastHitSeverity'|'downPose'|'downClearance'|'flashUntil'|'suppression'|
-  'wedgeRemaining'|'carryingId'|'carriedById'|'transportMode'|
+  'wedgeRemaining'|'carryingId'|'carriedById'|'transportMode'|'transportLatched'|'downWeaponsReleased'|
   'lastTreatmentAt'|'lastTreatmentTargetId'|'treatmentActive'|'treatmentProgress'|
   'medical'|'medicalSupplies'|'weapon'|'weaponConfiguration'|'weaponLightOn'|'nvgDeployed'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|'aimInstruction'|
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'lastDoorMethod'|'stride'|
@@ -85,6 +85,8 @@ export type ReplayActorFrame=ActorFrame & {
  actionTimer?:number;
  /** EQA3.16: auditory estimate at this film time, never future AI memory. */
  heard?:Pt|null;contact?:Pt|null;lastNoiseAt?:number;
+ /** EA11: actual report timestamp for read-only presentation. */
+ lastReportAt?:number;
  /** F2: sparse historical field inventory locations for actual replayed depletion. */
  fieldInventory?:FieldInventory;
  /** EQA3.10: finite physical restraint quantity (older films default zero). */
@@ -95,6 +97,8 @@ export type ReplayActorFrame=ActorFrame & {
  doorHandContact?:DoorHandContact|null;
  kickFoot?:0|1|null;
  kickImpactPoint?:Pt|null;
+ lastBashAt?:number;lastBashRole?:TeamActor['lastBashRole'];
+ glassBashContact?:TeamActor['glassBashContact'];
  coverStanceDrop?:number;
  /** A3.6–7 optional for backwards-compatible historical films. */
  physicalContact?:PhysicalContact|null;
@@ -201,6 +205,7 @@ export function snapshot(s:Session,seenGround?:string[],
       heard:a.heard?position(a.heard):null,
       contact:a.contact?position(a.contact):null,
       lastNoiseAt:a.lastNoiseAt,
+      lastReportAt:a.side==='red'?a.lastReportAt:undefined,
       magazine:a.magazine,reserve:a.reserve,reload:a.reload,
       secondarySwitch:a.secondarySwitch?{...a.secondarySwitch}:initialSecondarySwitch(),
       secondaryEquipment:a.equipment?.secondary?
@@ -234,6 +239,8 @@ export function snapshot(s:Session,seenGround?:string[],
        lastTreatmentTargetId:a.lastTreatmentTargetId,
        treatmentActive:a.treatmentActive,treatmentProgress:a.treatmentProgress,
        carryingId:a.carryingId,carriedById:a.carriedById,
+       transportLatched:a.transportLatched??false,
+       downWeaponsReleased:a.downWeaponsReleased??false,
        transportMode:a.transportMode??null,
        wedgeRemaining:a.wedgeRemaining,
        restraintRemaining:a.restraintRemaining,
@@ -253,6 +260,8 @@ export function snapshot(s:Session,seenGround?:string[],
       lastDoorId:a.lastDoorId,lastDoorMethod:a.lastDoorMethod,
       kickFoot:a.kickFoot??null,
       kickImpactPoint:a.kickImpactPoint?position(a.kickImpactPoint):null,
+      lastBashAt:a.lastBashAt,lastBashRole:a.lastBashRole,
+      glassBashContact:a.glassBashContact?{...a.glassBashContact}:null,
       coverStanceDrop:a.coverStanceDrop??0,
       doorHandContact:a.doorHandContact?{
         ...a.doorHandContact,point:{...a.doorHandContact.point}
@@ -602,6 +611,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       lastCivilianContactAt:copy.lastCivilianContactAt??-100,
       // Historical frames without a mode cannot inherit the future one.
       transportMode:copy.transportMode??null,
+      transportLatched:copy.transportLatched??false,
+      downWeaponsReleased:copy.downWeaponsReleased??false,
       downedAt:copy.downedAt??null,deathAt:copy.deathAt??null,
       lastDownById:copy.lastDownById??null,
       lastSurrenderAt:copy.lastSurrenderAt,
@@ -623,11 +634,14 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       heard:copy.heard?position(copy.heard):null,
       contact:copy.contact?position(copy.contact):null,
       lastNoiseAt:copy.lastNoiseAt??-100,
+      lastReportAt:copy.lastReportAt??-100,
       restraintRemaining:copy.restraintRemaining??0,
       // Pre-A3.6 films have no anchor: do not leak one from a later seek.
       kickFoot:copy.kickFoot??null,
       kickImpactPoint:copy.kickImpactPoint?
         position(copy.kickImpactPoint):null,
+      lastBashAt:copy.lastBashAt??-100,lastBashRole:copy.lastBashRole??null,
+      glassBashContact:copy.glassBashContact?{...copy.glassBashContact}:null,
       coverStanceDrop:copy.coverStanceDrop??0,
       coverStanceSource:null,
       pivotEpisode:null,

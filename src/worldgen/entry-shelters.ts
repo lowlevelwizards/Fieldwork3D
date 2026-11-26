@@ -4,13 +4,14 @@
  */
 import type {Site} from '../breach-site.ts';
 import type {Obstacle,Pt} from '../breach-core.ts';
+import {primaryEntranceSpan} from './primary-entrance.ts';
 
 const center=(d:{a:Pt;b:Pt}):Pt=>({x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2});
 const overlap=(a:Obstacle,b:Obstacle,margin=10)=>
  Math.abs(a.x-b.x)<(a.w+b.w)/2+margin&&
  Math.abs(a.y-b.y)<(a.h+b.h)/2+margin;
 export function addCoveredEntries(site:Site,seed:number):Site{
- const front=site.doors.find(d=>d.id==='FRONT');
+ const front=primaryEntranceSpan(site.doors);
  if(!front)return site;
  const side=site.entrySide??'south';
  const axis=side==='east'||side==='west'?'vertical':'horizontal';
@@ -22,7 +23,8 @@ export function addCoveredEntries(site:Site,seed:number):Site{
  const residential=['house','townhouse','motel'].includes(kind);
  const industrial=['garage','warehouse','utility'].includes(kind);
  const roofKind=residential?'porch-roof':industrial?'service-awning':'entrance-canopy';
- const width=industrial?106:residential?90+(seed%2)*6:96;
+ const width=Math.max(Math.hypot(front.b.x-front.a.x,front.b.y-front.a.y)+20,
+  industrial?106:residential?90+(seed%2)*6:96);
  const depth=residential?47:industrial?38:40;
  const middle={x:source.x+outward.x*(depth/2-5),
   y:source.y+outward.y*(depth/2-5)};

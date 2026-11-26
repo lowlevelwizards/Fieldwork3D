@@ -2,6 +2,7 @@
  * No authoritative planning or camera sight runs from a pointer preview.
  */
 import {team,planWatch,retargetActiveWatch,movePlanNode,moveFlashTarget,planMoveStroke,finalPoint,planNearbyInteraction,planCasualtyTransport,setFirePolicy,planDoorFlash,planFlash,planAim,planMove,type Session,type TeamActor} from './breach-game.ts';
+import {aimNodeForOrigin} from './breach-plan-aim-commands.ts';
 import {doorCenter,type Pt} from './breach-core.ts';
 
 import type {TacticalInteractionState} from './breach-tactical-interaction-state.ts';
@@ -141,11 +142,13 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
       const node=port.uid(port.selected)?.plan.find(n=>n.id===p.nodeId);
       const target=node?aimTargetFromTap(node.p,pt):null;
       const accepted=!p.dragCommitted||
-        (!!target&&planWatch(port.state,port.selected,target,p.nodeId));
-      if(!accepted)port.rejectAt(pt,'WATCH TARGET UNAVAILABLE');
+        (!!target&&!!node&&(node.aimMode==='track'?
+          planWatch(port.state,port.selected,target,p.nodeId):
+          planAim(port.state,port.selected,node.aimMode??'free',target,p.nodeId,'look')));
+      if(!accepted)port.rejectAt(pt,'AIM TARGET UNAVAILABLE');
       port.selectedNode=p.nodeId;port.doorFocusId=null;
       if(accepted)port.tacticalFeedback.emit(p.dragCommitted?'command':'select',pt,
-        p.dragCommitted?'WATCH UPDATED':undefined);
+        p.dragCommitted?(node?.aimMode==='track'?'WATCH UPDATED':'LOOK UPDATED'):undefined);
     }else if(p.mode==='node'&&p.nodeId!==null){
       port.adoptPointerOwner(p);
       if(p.dragCommitted){
@@ -323,9 +326,9 @@ export function commitTacticalGroundCommand(port:GroundCommandPort,pt:Pt,
     const placedId=port.state.nextId;
     const retargetingActive=port.targeting.facing.lookMode==='watch'&&port.selectedActiveWatch;
     const actor=team(port.state).find(actor=>actor.id===port.selected);
-    const source=retargetingActive?actor?.p:port.selectedNode!==null?
-      actor?.plan.find(node=>node.id===port.selectedNode)?.p:
-      actor?(port.targeting.facing.armedOrigin==='here'?actor.p:finalPoint(actor)):null;
+    const existing=actor?aimNodeForOrigin(actor,port.selectedNode??undefined,port.targeting.facing.armedOrigin):undefined;
+    const source=retargetingActive?actor?.p:existing?.p??
+      (actor?(port.targeting.facing.armedOrigin==='here'?actor.p:finalPoint(actor)):null);
     const target=source?aimTargetFromTap(source,pt):null;
     const committed=!!target&&(retargetingActive?
       retargetActiveWatch(port.state,port.selected,target):
@@ -341,12 +344,12 @@ export function commitTacticalGroundCommand(port:GroundCommandPort,pt:Pt,
       port.tacticalFeedback.emit('command',target!,port.targeting.facing.lookMode==='watch'?'WATCH':'LOOK');
       port.audio.playOrderCue(port.targeting.facing.lookMode==='watch'?'orders.watch':'orders.look');
       if(!retargetingActive&&port.selectedNode===null){
-        port.selectedNode=placedId;port.selectedActiveWatch=false;
+        port.selectedNode=existing?.id??placedId;port.selectedActiveWatch=false;
       }
       port.teach(port.targeting.facing.lookMode==='watch'?'watch-placed':'look-placed',
         port.targeting.facing.lookMode==='watch'?
           'WATCH stays on that point while moving. Drag its ring to adjust.':
-          'LOOK checks that direction briefly, then returns to the route.',4100);
+          'LOOK checks that direction briefly, then returns to the route. Drag its ring to adjust.',4100);
     }
     if(committed)port.targeting.reset();
     port.updateHud();return;

@@ -52,6 +52,9 @@ export type CivilianSpec={
 export type EncounterGroup = {
   id:string;purpose:'occupants'|'security'|'organised'|'response'|'target';
   zoneId?:string;members:string[];
+  /** Optional authored scenario identity; ordinary generation remains unchanged. */
+  behaviorProfile?:import('../breach-ai-identity.ts').AiGroupKind;
+  competenceOverride?:import('../breach-ai-identity.ts').AiCompetence;
 };
 export type EncounterDiagnostics = {
   targetHostiles:number;placedHostiles:number;rejected:number;

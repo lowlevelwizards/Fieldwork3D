@@ -42,6 +42,7 @@ export const FIXTURE_MATERIAL_OVERRIDES:Readonly<Record<string,Partial<Record<Fi
  'tool-chest':{body:'painted-metal',hardware:'metal'},
  generator:{body:'painted-metal',frame:'industrial-steel'},
  'utility-cabinet':{body:'painted-metal',frame:'industrial-steel'},
+ 'street-power-box':{body:'painted-metal',frame:'industrial-steel'},
 };
 export function fixtureComponentSurface(fixture:string,role:FixtureMaterialRole):PixelSurface{
  const override=FIXTURE_MATERIAL_OVERRIDES[fixture]?.[role];
@@ -83,7 +84,7 @@ export function fixturePixelSurface(fixture:string|undefined):PixelSurface{
  if(['tire-stack','tire','parking-block'].includes(id))return 'rubber';
  if(['cardboard-box','package','product-box','box'].includes(id))return 'paper';
  if(['fence','bollard','hydrant','utility-cabinet','street-lamp',
- 'mailbox','trash-bin','parking-sign','bike-rack','recycling-bin',
+ 'mailbox','trash-bin','parking-sign','traffic-stop-sign','bike-rack','recycling-bin',
  'tipped-trash-bin','fire-extinguisher','step-ladder','supply-cart',
  'linen-cart','tool-rack','dish-rack','ice-machine','chest-freezer',
  'upright-freezer','refrigerated-display','utility-sink'].includes(id))

@@ -7,9 +7,10 @@
  */
 import type {Site} from '../breach-site.ts';
 import type {Obstacle} from '../breach-core.ts';
+import {primaryEntranceSpan} from './primary-entrance.ts';
 
 type StreetSite=Pick<Site,'entrySide'|'entrance'> &
- Partial<Pick<Site,'bounds'|'rooms'|'doors'|'exteriorZones'>>;
+ Partial<Pick<Site,'bounds'|'rooms'|'doors'|'exteriorZones'|'streetInfrastructure'>>;
 export type StreetRect={x:number;y:number;width:number;depth:number};
 export type PublicStreet={
  road:StreetRect;
@@ -27,6 +28,7 @@ const overlap=(a:StreetRect,b:StreetRect,pad=0)=>
 const clamp=(n:number,min:number,max:number)=>Math.min(max,Math.max(min,n));
 
 export function planPublicStreet(site:StreetSite):PublicStreet|null{
+ if(site.streetInfrastructure?.version===1)return site.streetInfrastructure.frontage;
  const bounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
  if(!site.rooms?.length)return null;
  const entry=site.entrySide??'south';
@@ -56,7 +58,7 @@ export function planPublicStreet(site:StreetSite):PublicStreet|null{
  const road=rect(along,span,roadCenter,roadWidth);
  const sidewalk=sidewalkWidth>=9?
    rect(along,span,sidewalkCenter,sidewalkWidth):null;
- const front=site.doors?.find(d=>d.id==='FRONT');
+ const front=primaryEntranceSpan(site.doors);
  const entrance=front?{x:(front.a.x+front.b.x)/2,
    y:(front.a.y+front.b.y)/2}:site.entrance;
  const center=vertical?entrance.x:entrance.y;
@@ -123,6 +125,7 @@ export function overlapsPublicStreetRoad(
  // Only the OFFLINE exterior placement pass supplies this precomputed plan.
  planned?:PublicStreet|null):boolean{
  const plan=planned===undefined?planPublicStreet(site):planned;
- return !!plan&&overlap(plan.road,{x:obstacle.x,y:obstacle.y,
-   width:obstacle.w,depth:obstacle.h},1);
+ const box={x:obstacle.x,y:obstacle.y,width:obstacle.w,depth:obstacle.h};
+ return (!!plan&&overlap(plan.road,box,1))||
+  (!!site.streetInfrastructure?.junction&&overlap(site.streetInfrastructure.junction.road,box,1));
 }

@@ -7,6 +7,8 @@ import type {Site} from '../breach-site.ts';
 import type {PixelSurface} from './pixel-materials.ts';
 import type {PixelOverlay} from './pixel-overlays.ts';
 import {W,H} from '../breach-core.ts';
+import {exteriorAgeMaterial} from './material-art-exterior.ts';
+import {effectiveCondition} from '../worldgen/condition-visual.ts';
 import {outdoorVisualCondition} from '../worldgen/outdoor-condition.ts';
 import {zonePixelSurface} from '../worldgen/pixel-surface-selection.ts';
 import {exteriorZoneRenderLift,propertySurfaceCenterHeight,
@@ -32,12 +34,21 @@ export type SiteExteriorBuildHost={
  solid:(hex:number,roughness?:number,surface?:PixelSurface)=>THREE.Material;
  overlay:(kind:PixelOverlay)=>THREE.Material;
  track:(material:THREE.Material)=>THREE.Material;
+ trackTexture?:(texture:THREE.DataTexture)=>void;
  age:(hex:number,surface:PixelSurface|undefined)=>number;
 };
 export function buildSiteExterior(site:Site,host:SiteExteriorBuildHost):void{
     const age=host.age;
     const outdoors=outdoorVisualCondition(site);
-    const earth=host.solid(age(site.layout==='courtyard'?0x69825e:0x607a58,'grass'),.9,'grass');
+    const level=effectiveCondition(site),grass=level>=76?'scruffy-grass':'grass';
+    const earth=host.solid(age(site.layout==='courtyard'?0x69825e:0x607a58,grass),.9,grass);
+    let zoneBudget=4;
+    const ageGround=(base:THREE.Material,kind:PixelSurface,w:number,d:number,seed:number,origin?:{x:number;y:number})=>{
+      if(!host.trackTexture)return base;
+      const baked=exteriorAgeMaterial(base,kind,w,d,seed,level,origin);
+      if(!baked)return base;
+      host.trackTexture(baked.texture);return host.track(baked.material);
+    };
     const bounds=site.bounds??{minX:0,minY:0,maxX:W,maxY:H};
     const bw=bounds.maxX-bounds.minX,bh=bounds.maxY-bounds.minY;
     host.plane(host.root,(bounds.minX+bounds.maxX)/2,
@@ -46,8 +57,11 @@ export function buildSiteExterior(site:Site,host:SiteExteriorBuildHost):void{
     for(const zone of site.exteriorZones??[]){
       const ground=zonePixelSurface(zone.kind,outdoors);
       const lift=exteriorZoneRenderLift(zone.id);
-      host.plane(host.root,zone.x,zone.y,zone.w,zone.h,-1.45+lift,
-        host.solid(age(zoneColor[zone.kind],ground),.91,ground));
+      const base=host.solid(age(zoneColor[zone.kind],ground),.91,ground);
+      const eligible=zoneBudget>0&&level>=50&&zone.w>=28&&zone.h>=24&&['grass','scruffy-grass','asphalt','worn-asphalt','concrete'].includes(ground);
+      const material=eligible?ageGround(base,ground,zone.w,zone.h,site.seed^Math.imul(Math.round(zone.x+zone.y*3),7919),{x:zone.x-zone.w/2,y:zone.y-zone.h/2}):base;
+      if(eligible)zoneBudget--;
+      host.plane(host.root,zone.x,zone.y,zone.w,zone.h,-1.45+lift,material);
       // One cheap repeated layer per relevant exterior zone, no dynamic allocation.
       const overlay=overlayForZone(outdoors,zone.kind);
       if(overlay){
@@ -183,17 +197,21 @@ export function buildSiteExterior(site:Site,host:SiteExteriorBuildHost):void{
         continue;
       }
       if(mark.kind==='curb-edge'){
-        const thickness=CURB_GROUND_LEVELS.sidewalk-
-          CURB_GROUND_LEVELS.road;
+        // A slight real curb crown keeps the top distinct from the
+        // sidewalk at tight junctions/corners. No material depth hack.
+        const curbTop=CURB_GROUND_LEVELS.sidewalk+.075;
+        const thickness=curbTop-CURB_GROUND_LEVELS.road;
         host.box(host.root,mark.x,
-          (CURB_GROUND_LEVELS.sidewalk+CURB_GROUND_LEVELS.road)/2,
+          (curbTop+CURB_GROUND_LEVELS.road)/2,
           mark.y,mark.width,thickness,mark.depth,curbMaterial,false);
         continue;
       }
       if(isFlatExteriorFinish(mark.kind)){
         let material=finishMaterials.get(mark.kind);
         if(!material){
-          const surface=mark.kind==='work-wear'?'packed-earth':'concrete';
+          const surface=mark.kind==='street-verge'?'grass':mark.kind==='street-shoulder'?'gravel':
+            mark.kind==='road-patch'||mark.kind==='street-side-road'?'asphalt':mark.kind==='road-manhole'||mark.kind==='street-drain'?'industrial-steel':
+            mark.kind==='work-wear'?'packed-earth':'concrete';
           material=host.solid(age(surfaceColor[mark.kind],surface),.91,surface);
           finishMaterials.set(mark.kind,material);
         }
@@ -211,7 +229,8 @@ export function buildSiteExterior(site:Site,host:SiteExteriorBuildHost):void{
     // sidewalks, curb cuts and worldgen street-exclusion checks.
     const street=planPublicStreet(site);
     if(street){
-      const road=host.solid(age(0x595d59,'asphalt'),.94,'asphalt');
+      const roadKind=level>=76?'worn-asphalt':'asphalt';
+      const road=ageGround(host.solid(age(0x595d59,roadKind),.94,roadKind),roadKind,street.road.width,street.road.depth,site.seed^0x23a79bc);
       host.box(host.root,street.road.x,-1.41,street.road.y,
         street.road.width,.24,street.road.depth,road,false);
     }

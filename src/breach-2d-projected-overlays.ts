@@ -6,12 +6,13 @@ import {doorCenter,type Pt} from './breach-core.ts';
 import {type Session,type TeamActor,team,enemies,isSeen,lastKnown,
  plannedWindowRoute,flashTrajectory} from './breach-game.ts';
 import type {TacticalScene3D} from './breach-3d.ts';
+import {plannedAimHandle} from './breach-plan.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {paintPassageRanks} from './ui/passage-rank-badges.ts';
 import {selectedActionTarget} from './breach-action-target-marker.ts';
 import {intelPassable} from './breach-intel.ts';
-import {objectiveLocationKnown,approximateObjectiveBounds} from './breach-objective-intel.ts';
+import {objectiveLocationKnown,approximateObjectiveBounds,holdObjectiveBounds} from './breach-objective-intel.ts';
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {doorReachable} from './breach-door.ts';
 import {doorVisibility} from './breach-presentation.ts';
@@ -154,22 +155,23 @@ function renderProjectedPlans(){
         draw.textAlign='left';draw.fillText('NARROW',point.x+12,point.y+27);
         draw.restore();
       }
-      if(n.facing!==undefined){
+      const aimHandle=plannedAimHandle(n);
+      if(n.facing!==undefined&&!aimHandle){
         const aim=worldToScreen({x:n.p.x+Math.cos(n.facing)*38,
           y:n.p.y+Math.sin(n.facing)*38},8);
         line(point,aim,color,2);
         circle(aim.x,aim.y,3,color);
       }
-      if(n.aimMode==='track'&&n.aimPoint){
+      if(aimHandle){
         const watched=selectedNow&&draggingWatchTarget&&draggingNode?
-          draggingNode:n.aimPoint;
+          draggingNode:aimHandle;
         const target=worldToScreen(watched,12);
         line(point,target,color,1.8);
         circle(target.x,target.y,8,color);
         circle(target.x,target.y,3,'#264039');
-        draw.fillStyle='#f1d7a4';draw.textAlign='left';
+        draw.fillStyle=n.aimMode==='track'?'#f1d7a4':'#d2eee4';draw.textAlign='left';
         draw.font='700 12px "Saira Condensed",sans-serif';
-        draw.fillText('WATCH',point.x+12,point.y-13);
+        draw.fillText(n.aimMode==='track'?'WATCH':'LOOK',point.x+12,point.y-13);
       }else if(n.aimMode==='fixed'||(n.aimMode==='free'&&n.facing!==undefined)){
         draw.fillStyle='#d2eee4';draw.textAlign='left';
         draw.font='700 12px "Saira Condensed",sans-serif';
@@ -386,15 +388,16 @@ function renderProjectedPlans(){
     draw.strokeStyle='#f0cd96';draw.lineWidth=3;draw.stroke();
   }
   if(!replaying){
-    for(const item of state.optionalIntel??[]){
+    const evidence=state.optionalIntel??[];
+    for(let i=0;i<evidence.length+(state.primaryIntel?1:0);i++){
+      const item=i<evidence.length?evidence[i]:state.primaryIntel!;
       if(!item.discovered||item.collectedBy)continue;
-      const at=worldToScreen(item.p,7);
+      const at=worldToScreen(item.surface?.p??item.p,(item.surface?.height??0)+7);
       draw.save();draw.fillStyle='#343f34';draw.strokeStyle='#e0cb94';
       draw.lineWidth=2;
-      draw.fillRect(at.x-10,at.y-7,20,14);
-      draw.strokeRect(at.x-10,at.y-7,20,14);
+      draw.beginPath();draw.arc(at.x,at.y,3,0,Math.PI*2);draw.stroke();
       draw.fillStyle='#f1dfb0';draw.font='700 11px "Saira Condensed",sans-serif';
-      draw.textAlign='center';draw.fillText('INTEL',at.x,at.y-14);
+      draw.textAlign='center';draw.fillText(item.model?.replace('-',' ').toUpperCase()??'INTEL',at.x,at.y-14);
       draw.restore();
     }
   }
@@ -433,9 +436,30 @@ function renderProjectedPlans(){
     const target=worldToScreen(state.mission==='secure'?
       state.scenario.objective:state.scenario.extract,9);
     draw.strokeStyle='#e8d5a6';draw.lineWidth=2;
-    draw.beginPath();draw.arc(target.x,target.y,17,0,2*Math.PI);draw.stroke();
+    const holdArea=state.mission==='secure'&&state.missionType==='hold'?
+      holdObjectiveBounds(state.site,state.scenario.objective):null;
+    if(holdArea){
+      const corners=[
+        {x:holdArea.minX,y:holdArea.minY},{x:holdArea.maxX,y:holdArea.minY},
+        {x:holdArea.maxX,y:holdArea.maxY},{x:holdArea.minX,y:holdArea.maxY}
+      ].map(p=>worldToScreen(p,1));
+      draw.save();draw.fillStyle='rgba(216,204,152,.07)';
+      draw.beginPath();draw.moveTo(corners[0].x,corners[0].y);
+      for(const corner of corners.slice(1))draw.lineTo(corner.x,corner.y);
+      draw.closePath();draw.fill();draw.stroke();draw.restore();
+    }else{draw.beginPath();draw.arc(target.x,target.y,17,0,2*Math.PI);draw.stroke();}
     draw.fillStyle='#e8d5a6';draw.font='700 12px "Saira Condensed",sans-serif';
     draw.fillText(state.mission.toUpperCase(),target.x,target.y-23);
+    if(!replaying&&state.mission==='secure'&&state.missionType==='hold'){
+      const progress=Math.max(0,Math.min(1,state.holdTime/7));
+      draw.save();draw.strokeStyle='rgba(216,204,152,.25)';draw.lineWidth=3;
+      draw.beginPath();draw.arc(target.x,target.y,12,0,Math.PI*2);draw.stroke();
+      draw.strokeStyle='#e8d5a6';draw.lineCap='round';
+      draw.beginPath();draw.arc(target.x,target.y,12,-Math.PI/2,-Math.PI/2+Math.PI*2*progress);draw.stroke();
+      draw.fillStyle='#e8d5a6';draw.font='600 10px "Work Sans",sans-serif';
+      draw.textAlign='center';draw.fillText(state.holdTime.toFixed(1)+'/7s',target.x,target.y+29);
+      draw.restore();
+    }
   }
   replay2D.renderReplayMovementHistory(true);
   replay2D.renderReplayGhosts(true);

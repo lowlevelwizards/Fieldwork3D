@@ -8,6 +8,18 @@ import {planPublicStreet} from '../src/worldgen/public-street-layout.ts';
 
 export function assertPropertySurfaceSubstrate(site,mark){
  const zone=site.exteriorZones?.find(z=>z.id===mark.zoneId);
+ const p=site.streetInfrastructure;
+ if(p&&mark.id.startsWith('street:')&&mark.zoneId==='public-street'){
+  const contains=r=>r&&Math.abs(r.x-mark.x)+mark.width/2<=r.width/2+.001&&Math.abs(r.y-mark.y)+mark.depth/2<=r.depth/2+.001;
+  const exact=r=>r&&r.x===mark.x&&r.y===mark.y&&r.width===mark.width&&r.depth===mark.depth;
+  const substrates=mark.kind==='sidewalk-joint'?p.frontage.sidewalkPieces:
+   ['road-patch','road-manhole','street-drain','road-centerline','road-edge-line'].includes(mark.kind)?[p.frontage.road,p.junction?.road]:[];
+  const full=mark.kind==='street-verge'?p.verge:mark.kind==='street-shoulder'?p.shoulder:
+   mark.kind==='street-driveway-link'?p.accessConnection:mark.kind==='street-side-road'?(p.junction?.road??p.curbside):null;
+  const publicSlabs=[...p.frontage.sidewalkPieces.map(r=>({kind:'sidewalk',r})),...p.frontage.curb.map(r=>({kind:'curb-edge',r})),{kind:'path',r:p.frontage.approach},{kind:'curb-ramp',r:p.frontage.curbRamp}];
+  assert.ok(exact(full)||substrates.some(contains)||publicSlabs.some(s=>s.kind===mark.kind&&exact(s.r)), 'ST mark outside its authoritative substrate: '+mark.kind);
+  return;
+ }
  assert.ok(zone,'missing authored exterior zone: '+mark.zoneId);
  if(mark.id.startsWith('street:')){
   assert.equal(zone.id,'arrival-forecourt',

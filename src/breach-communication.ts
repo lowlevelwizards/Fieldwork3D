@@ -7,6 +7,7 @@ export type TacticalReport={
  id:number;senderId:string;at:number;origin:Pt;estimate:Pt;
  uncertainty:number;deliveredTo:string[];coordinated?:boolean;
  source?:'visual'|'auditory';sourceEventId?:number;
+ kind?:'warning'|'area-checked';
  assignedRoles?:Record<string,GroupRole>;
 };
 export function reportToListener(report:TacticalReport,listenerId:string,
@@ -17,6 +18,6 @@ export function reportToListener(report:TacticalReport,listenerId:string,
  if(clarity<.18)return null;
  return {id:'report/'+report.id+'/'+listenerId,
   observerId:listenerId,at:now,source:'reported',
-  kind:'hostile-warning',estimate:{...report.estimate},
+  kind:report.kind==='area-checked'?'area-checked':'hostile-warning',estimate:{...report.estimate},
   uncertainty:report.uncertainty+Math.round((1-clarity)*65)};
 }

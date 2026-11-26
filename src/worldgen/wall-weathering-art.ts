@@ -28,9 +28,18 @@ export function prepareWallArt(kind:WallEffect,seed:number,progress:number,texel
  const growth=.64+.36*progress;
  const splashPatches=[[-.46,.34,.34,.44],[.12,.56,.41,.34],[.51,.13,.23,.28],[-.10,-.43,.13,.22]];
  const phase=(rand(23)-.5)*.18;
- const points:Point[]=[[-.30,-.94],[-.18,-.66],[-.33,-.38],[.03,-.10],[-.07,.15],[.26,.38],[.16,.61],[.48,.91]].map(([x,y],i)=>[x+(rand(i+30)-.5)*.22,y] as Point);
- const main:Point[]=points.map(([x,y])=>[x,y]);
- const branches:Point[][]=[[main[3],[.49,-.25],[.78,-.19]],[main[5],[-.28,.50],[-.64,.77]]];
+ const crackFamily=Math.floor(rand(25)*4);
+ const skeletons:Point[][]=[
+  [[-.58,-.98],[-.46,-.68],[-.52,-.42],[-.12,-.18],[-.18,.08],[.22,.38],[.18,.65],[.41,.94]],
+  [[-.82,-.95],[-.62,-.69],[-.31,-.61],[-.37,-.25],[.06,-.19],[.26,.14],[.56,.29],[.76,.74]],
+  [[.22,-.98],[.05,-.72],[.19,-.41],[-.16,-.16],[-.30,.13],[-.12,.42],[-.45,.65],[-.56,.94]],
+  [[-.10,-.98],[-.19,-.72],[-.06,-.46],[.06,-.25],[-.04,.06],[.13,.31],[.10,.62],[.24,.94]]
+ ];
+ const main:Point[]=skeletons[crackFamily].map(([x,y],i)=>[x+(rand(i+30)-.5)*.20,y] as Point);
+ const branches:Point[][]=[
+  [main[3],[main[3][0]+.38,main[3][1]-.19],[main[3][0]+.59,main[3][1]-.08]],
+  [main[5],[main[5][0]-.34,main[5][1]+.05],[main[5][0]-.59,main[5][1]+.29]]
+ ];
  // A continuous path even in the coarse 24-row atlas: use a conservative
  // raster footprint rather than a row-index zigzag or isolated dots.
  const stroke=Math.max(.075,.55*Math.hypot(texelU,texelV));
@@ -60,7 +69,7 @@ export function prepareWallArt(kind:WallEffect,seed:number,progress:number,texel
     return ink(0);
    }
    case 'damp':{
-    const top=-.03-.43*progress+contour(u)*1.9+.28*Math.abs(u);
+    const top=-.03-.56*progress+contour(u)*2.35+.28*Math.abs(u);
     const side=.91-.12*Math.max(0,-v);
     if(v<top||Math.abs(u)>side)return ink(0);
     if(v<top+.17)return ink(.34,0);
@@ -77,7 +86,8 @@ export function prepareWallArt(kind:WallEffect,seed:number,progress:number,texel
    case 'crack':{
     if(v<-.98||v>-.2+1.16*progress)return ink(0);
     if(path(u,v,main,stroke*.85))return ink(.82,2);
-    if(progress>.65&&path(u,v,branches[0],stroke*.63))return ink(.56,2);
+    if(progress>.65&&crackFamily!==3&&path(u,v,branches[crackFamily%2],stroke*.63))return ink(.56,2);
+    if(progress>.9&&crackFamily===1&&path(u,v,branches[1],stroke*.53))return ink(.43,2);
     if(path(u-.10,v,main,stroke*.47))return ink(.29,0);
     return ink(0);
    }
@@ -87,7 +97,7 @@ export function prepareWallArt(kind:WallEffect,seed:number,progress:number,texel
     return ink(region>.80?.45:.73,region>.80?0:1);
    }
    case 'moss':{
-    const top=-.14+contour(u)*2.4-.21*progress+.25*Math.abs(u);
+    const top=-.14+contour(u)*2.9-.30*progress+.25*Math.abs(u);
     if(Math.abs(u)>.95||v<top)return ink(0);
     return ink(v>top+.49?.88:.71,v>top+.49?2:v<top+.20?0:1);
    }

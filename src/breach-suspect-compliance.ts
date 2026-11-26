@@ -5,6 +5,7 @@
 import type {Session,TeamActor} from './breach-game.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import {releaseSuspectHeldFirearm} from './breach-suspect-weapons.ts';
+import {clearNpcTasks} from './breach-ai-task-state.ts';
 
 export const SUSPECT_CHALLENGE_RANGE=100;
 /** Spoken FOLLOW ME / STOP commands need not approach hand-contact range. */
@@ -40,7 +41,7 @@ export function commitSuspectSurrender(
  target.velocity=0;target.nav=[];target.plan=[];
  target.reload=0;target.reloadMode=null;target.secondaryReload=null;
  target.aim=0;target.targetId=null;target.combatChoice=null;
- target.intent=null;target.defense=null;target.retreatPoint=null;
+ target.intent=null;clearNpcTasks(target);
  target.suspectEscapeMode=null;target.suspectEscapeGoal=null;
  target.suspectEscapeWeaponId=null;target.suspectEscapeStartedAt=-100;
  target.suspectEscapeCooldownUntil=s.seconds+3;

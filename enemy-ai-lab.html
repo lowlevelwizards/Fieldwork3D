@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FIELDWORK / ENEMY AI LAB</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#192522;color:#e7e4d8;font:13px/1.45 system-ui,sans-serif}header{padding:14px 18px;border-bottom:1px solid #53675f;display:flex;align-items:center;justify-content:space-between;gap:12px}header strong{letter-spacing:.09em}a{color:#d7bd8e}main{max-width:1440px;margin:auto;padding:12px;display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,350px);gap:12px}.panel{background:#22312d;border:1px solid #53675f;border-radius:8px;padding:12px}.toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px}button,select,input{color:#eee9d9;background:#34483f;border:1px solid #718578;border-radius:4px;min-height:40px;padding:8px;font:inherit}input[type=number]{width:106px}label{display:flex;align-items:center;gap:5px}input[type=checkbox]{min-height:0}canvas{width:100%;height:clamp(300px,60vh,780px);display:block;background:#111c19;border-radius:5px}h2{font-size:12px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.08em;color:#c3cdbf}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.55 ui-monospace,monospace;margin:8px 0;max-height:45vh;overflow:auto}output{display:block;color:#d1d9cb}.muted{color:#a2b0a5;font-size:12px}#actor{width:100%}#history{max-height:200px}@media(max-width:780px){main{grid-template-columns:1fr}canvas{height:45vh}}
+</style></head><body><header><strong>FIELDWORK / ENEMY AI LAB</strong><a href="./index.html">BACK TO FIELDWORK</a></header>
+<main><section class="panel"><div class="toolbar">
+<label>Seed <input id="seed" type="number" min="1" max="4294967295" value="14"></label>
+<label>Mission <select id="mission"><option value="clear">Clear</option><option value="hold">Hold</option><option value="intel">Intel</option><option value="rescue">Rescue</option><option value="capture">Capture</option></select></label>
+<label>Scenario <select id="scenario"><option value="quiet">Quiet observation</option><option value="entry">Authored entry move</option></select></label>
+<label>Group <select id="group"><option value="">Scenario default</option><option value="opportunists">Opportunists</option><option value="organised-criminals">Organised criminals</option><option value="armed-irregulars">Armed irregulars</option><option value="security">Security</option><option value="regular-force">Regular force</option><option value="specialists">Specialists</option><option value="fugitives">Fugitives</option></select></label>
+<label>Tier <select id="tier"><option value="">Seeded mix</option><option value="untrained">Untrained</option><option value="experienced">Experienced</option><option value="trained">Trained</option><option value="specialist">Specialist</option></select></label>
+<button id="reset">Reset</button><button id="play">Play</button><button id="step">Step 1 tick</button>
+<label>Speed <select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
+<label><input id="geometry" type="checkbox"> Scene anchors</label>
+<label><input id="routes" type="checkbox" checked> NPC routes</label>
+</div><canvas id="map"></canvas><output id="status" role="status"></output><p class="muted">Developer-only full scene view. Uses the actual fixed-step game session, not a second AI simulation. Red actors have their normal individual evidence and no special knowledge from this display.</p></section>
+<aside class="panel"><h2>NPC inspector</h2><select id="actor" aria-label="Select NPC"></select><pre id="details">No session</pre><h2>Simulation timing</h2><output id="perf">No samples</output><h2>Decision history</h2><pre id="history"></pre></aside></main>
+<script type="module" src="./src/enemy-ai-lab-main.ts"></script></body></html>

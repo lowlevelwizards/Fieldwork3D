@@ -25,6 +25,7 @@ import {weaponLightEmitting} from './equipment-weapon-light-operations.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
 import {bloodMarkRadius} from './breach-blood-evidence.ts';
 import {impactFinishScale} from './rendering/breach-impact-finish-scale.ts';
+import {impactMaterialScale} from './rendering/breach-stain-atlas.ts';
 import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose,isGroundImpactMark} from './breach-impact-surface.ts';
 import {markDoorOwner,markWindowOwner,markWallOwnerKnown,markCoverOwnerKnown} from './rendering/breach-evidence-owner.ts';
 import {recordedEffectAllows,groundEffectRow} from './breach-replay-effect-evidence.ts';
@@ -384,7 +385,7 @@ function renderFixtureLighting2D(){
  const evidence=observer?
   replayKnowledge.personalGround?.at(replayPlayback.time,observer)??null:null;
  for(const f of view.fixtures){
-  if(spatialSurfaceState(state,'room',f.roomId,
+  if(f.kind!=='street'&&spatialSurfaceState(state,'room',f.roomId,
      replaying&&replayKnowledge.omniscient)==='unknown')continue;
   const micro='micro:'+Math.floor(f.p.x/10)+','+Math.floor(f.p.y/10);
   const fine='fine:'+Math.floor(f.p.x/20)+','+Math.floor(f.p.y/20);
@@ -540,7 +541,7 @@ function renderGroundMarks(){
    }
    if(!point||!omni&&!liveVisibility(s,point))continue;
    draw.globalAlpha=.9;
-   circle(point.x,point.y,(2.5+.4*((mark.damageCount??1)-1))*impactFinishScale(s.site,ref),mark.surface==='metal'?'#242b2b':'#3a3028');
+   circle(point.x,point.y,(2.5+.4*((mark.damageCount??1)-1))*impactFinishScale(s.site,ref)*impactMaterialScale(mark.surface),mark.surface==='metal'?'#242b2b':'#3a3028');
    draw.globalAlpha=1;
   }
  }

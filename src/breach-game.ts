@@ -1,8 +1,8 @@
 import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
-import {canConcludeWithdrawal,commitIndividualExtractions,deployedTeam} from './breach-operation-outcomes.ts';
-import {observeOptionalIntel,beginOptionalIntelGather,collectProximityOptionalIntel,advanceOptionalIntel,
+import {canConcludeWithdrawal,commitIndividualExtractions,commitTransportExtractions,deployedTeam} from './breach-operation-outcomes.ts';
+import {observeOptionalIntel,beginOptionalIntelGather,collectProximityOptionalIntel,advanceOptionalIntel,updateEvidenceSupport,
  type OptionalIntelItem,type OptionalIntelGather,eligibleOptionalIntel}
  from './breach-optional-intel.ts';
 import {coverTargetToken} from './worldgen/site-object-identity.ts';
@@ -85,6 +85,7 @@ import {relocateCover,canRelocateCover} from './breach-movable-cover.ts';
 
 
 import type {WindowState} from './breach-windows.ts';
+import {nearestBashableWindow} from './breach-window-bash.ts';
 import {type AIIntent} from './breach-ai-policy.ts';
 
 import {sessionWorldGeometry,publishSessionCoverToActiveSite} from './breach-world-context.ts';
@@ -109,7 +110,7 @@ import {SUSPECT_CHALLENGE_RANGE,SUSPECT_ESCORT_VOICE_RANGE}
 import {activeCombatant,captureTargetResolved} from './breach-suspect-operational-state.ts';
 import {captureVitalStatus,livingCaptureStatus,CAPTURE_VITAL_CHECK_SECONDS,
  recordActualDown} from './breach-capture-vitals.ts';
-import {captureTargetTransportEligible,designatedDownedCaptureTarget}
+import {captureTargetTransportEligible}
  from './breach-capture-transport-policy.ts';
 
 
@@ -160,7 +161,7 @@ import {verifiedDeploymentChoices,type DeploymentChoice} from './breach-deployme
 import type {OperationKind} from './breach-operations.ts';
 
 import {initialIntel,bindIntelWorld,observeIntel,routeWithIntel,intelPassable,intelNudgeSegmentClear,doorKnown,type IntelMode,type IntelState} from './breach-intel.ts';
-import {discoverObjective,type ObjectiveKnowledge} from './breach-objective-intel.ts';
+import {discoverObjective,holdObjectiveBounds,inHoldObjectiveBounds,type ObjectiveKnowledge} from './breach-objective-intel.ts';
 
 import {stageMagazines,chooseReloadMagazine,reloadMagazineDelay} from './equipment-magazine-placement.ts';
 import {magazineKit,reloadDuration as reloadTiming,type MagazineItem,type ReloadMode} from './breach-magazines.ts';
@@ -188,6 +189,8 @@ export type TeamActor=Operator & {
   lastTreatmentAt:number;lastTreatmentTargetId:string|null;
   treatmentActive:boolean;treatmentProgress:number;
   carryingId:string|null;carriedById:string|null;
+  transportLatched?:boolean;
+  downWeaponsReleased?:boolean;
   /** Physical downed-person drag/carry presentation, recorded for replay. */
   transportMode?:TransportMode|null;
   wedgeRemaining:number;restraintRemaining:number;
@@ -195,8 +198,14 @@ export type TeamActor=Operator & {
   suspicion:SuspicionMemory;lastVisualSuspicionId:string|null;
   intent:AIIntent|null;combatChoice:CombatAction|null;lastReportAt:number;
   coordinationRole:GroupRole|null;coordinationUntil:number;
+  coordinationReportId?:number;coordinationPending?:boolean;coordinationOwnsDefense?:boolean;
+  coordinationCandidates?:Pt[];
+  withdrawRetryAt?:number;
   lastMoraleEventAt:number;
   searchOrigin:Pt|null;searchQueue:Pt[];searchPauseUntil:number;
+  checkedSearchAreas?:import('./breach-ai-search-memory.ts').CheckedArea[];
+  lastSearchReportAt?:number;
+  witnessedCasualtyTimes?:Record<string,number>;
   plan:PlanNode[];history:PlanHistory;nav:Pt[];activeNode:number;
   posture:Posture;pace:'walk'|'run';alert:Alert;velocity:number;turning:number;
   aim: number;targetId:string|null;suppression:number;stamina:number;
@@ -269,6 +278,8 @@ export type TeamActor=Operator & {
   encounterActivity?:EncounterActivity;encounterReadiness?:EncounterReadiness;
   encounterRole?:EncounterRole;encounterGroupId?:string;
   encounterRoutine?:Pt[];routineIndex?:number;routinePauseUntil?:number;
+  npcIdentity?:import('./breach-ai-identity.ts').NpcIdentity;
+  routineExtensionAttempted?:boolean;
   encounterReactionUntil?:number;encounterReactionStartedAt?:number;
   lastNoiseExaminedAt:number;lastNoiseExaminedId:number;
   /** Render-only brief arm reach after actual GO-time civilian contact. */
@@ -279,7 +290,8 @@ export type TeamActor=Operator & {
   weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
   /** A3 fixed-step micro-aim state. Never sourced from render history. */
   aimSideOffset?:number;aimSideTarget?:number;lastAimSideProbeAt?:number;
-  lastBashAt:number;lastBashRole:'push'|'receive'|null;
+  lastBashAt:number;lastBashRole:import('./breach-contact-reactions.ts').BashRole;
+  glassBashContact?:import('./breach-contact-reactions.ts').GlassBashContact|null;
   /** Bounded, idle-only clearer gaze; never an authored aim or detection. */
   clearLookBearing?:number|null;lastClearLookProbeAt?:number;
   /** Brief physical interruption after a door leaf impact, not a wound. */
@@ -427,10 +439,12 @@ export type Session=Omit<TacticalState,'operators'> & {
   withdrawalCompleted?:boolean;
   /** Archived by the 60 Hz mission tick; excluded from all live AI/motor. */
   extractedOperators?:TeamActor[];
+  extractedSuspects?:TeamActor[];
   /** Selected individual physical exit commands await the next GO tick. */
   pendingExtractionIds?:string[];
   /** A named MIA casualty-recovery mission, not a second objective authority. */
   missingRecoveryTargetId?:string;
+  primaryIntel?:OptionalIntelItem;
   optionalIntel:OptionalIntelItem[];
   intelGather:OptionalIntelGather|null;};
 // The elective enemy-planning budget is mission-local and never serialized.
@@ -533,7 +547,7 @@ function knownPortalGesture(s:Session,from:Pt,to:Pt,blocked:Pt):boolean{
  * Using the selected waypoint's world position avoids context buttons that
  * appear available but target the unrelated final route endpoint. */
 export function planNearbyInteraction(s:Session,id:string,
- action:'push'|'open-window'|'close-window',afterNodeId?:number,
+ action:'push'|'open-window'|'close-window'|'break-window',afterNodeId?:number,
  pushPoint?:Pt):boolean{
  const a=party(s,id);if(!a||!canEdit(s))return false;
  const insertion=afterNodeId===undefined?-1:
@@ -579,6 +593,10 @@ export function planNearbyInteraction(s:Session,id:string,
    const yaw=base+clamp(delta,-Math.PI*4/9,Math.PI*4/9);
    return queue('prop:'+coverTargetToken(item.o,item.index),
       {x:Math.cos(yaw),y:Math.sin(yaw)});
+ }
+ if(action==='break-window'){
+  const window=nearestBashableWindow(s,at,p=>liveVisibility(s,p));
+  return !!window&&queue('window:'+window.id);
  }
  let target:typeof s.windows[number]|undefined,bestWindow=54*54;
  for(const w of s.windows){
@@ -1375,6 +1393,20 @@ export function planCasualtyTransport(s:Session,id:string,patientId:string,
  return addNode(s,id,'evacuate',to,{patientId,transportMode:mode,
    transportPath:waypoints.map(p=>({...p}))});
 }
+/** Queue a physical pickup, without a destination. GO owns actual custody. */
+export function planCasualtyPickup(s:Session,id:string,patientId:string,
+ mode:TransportMode='drag'):boolean{
+ const a=party(s,id),subject=s.operators.find(o=>o.id===patientId),
+  civil=s.civilians.find(c=>c.id===patientId),patient=subject??civil;
+ if(!a||!patient||patient===a||!canEdit(s)||a.health<=0||a.carryingId||
+    a.plan.some(n=>n.kind==='evacuate')||patient.health>0||patient.carriedById||
+    subject&&captureVitalStatus(subject)==='deceased'||
+    subject&&subject.side!==a.side&&!liveVisibility(s,subject.p)||
+    civil&&!liveVisibility(s,civil.p))return false;
+ const at=finalPoint(a);
+ if(d(at,patient.p)>=34||!sweptBodyClear(at,patient.p,s.doors,5.5,sessionWorldGeometry(s)))return false;
+ return addNode(s,id,'evacuate',at,{patientId,transportMode:mode,transportPickup:true});
+}
 /** Authored emergency release supersedes only this patient's transport.
  * Other subsequent planned orders remain intact and the edit is undoable. */
 export function planCivilianRelease(s:Session,id:string):boolean{
@@ -1392,7 +1424,7 @@ export function planCaptureTransportRelease(s:Session,id:string):boolean{
   const a=party(s,id);
   const patient=s.operators.find(o=>o.id===a?.carryingId);
   if(!a||!patient||!canEdit(s)||
-     !designatedDownedCaptureTarget(s,patient)||
+     patient.health>0||
      patient.carriedById!==a.id)return false;
   return edit(s,a,()=>{
     a.plan=a.plan.filter(n=>n.kind!=='evacuate'||n.patientId!==patient.id);
@@ -1404,7 +1436,7 @@ export function planMedicalTreatment(s:Session,id:string,patientId:string,
  afterNodeId?:number):boolean{
  const a=party(s,id),patient=s.operators.find(o=>o.id===patientId);
  const captive=!!a&&!!patient&&a.side==='blue'&&
-   designatedDownedCaptureTarget(s,patient)&&
+   patient.side==='red'&&patient.health<=0&&
    captureVitalStatus(patient)!=='deceased'&&
    liveVisibility(s,patient.p);
  if(!a||!patient||(!captive&&patient.side!==a.side)||
@@ -1770,6 +1802,7 @@ function observe(s:Session){
       if(observed&&rescueSubject)
         s.scenario.objective=clone(actualObjective);
       if(!s.objectiveIntel.discovered)discoverObjective(s,observed);
+      if(observed&&s.primaryIntel&&s.mission==='secure')s.primaryIntel.discovered=true;
     }
   }
   // Site knowledge persists, current knowledge does not. Sight has geometry,
@@ -1850,6 +1883,9 @@ const motorHooks:ActorMotorHooks={
 };
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1,
  profile?:((section:string,elapsedMs:number)=>void)){
+ const patient=a.transportLatched&&a.carryingId?
+  s.operators.find(o=>o.id===a.carryingId)??s.civilians.find(c=>c.id===a.carryingId):null;
+ if(patient)speedScale=Math.min(speedScale,patient.transportMode==='carry'?.38:.48);
  return advanceActorMotor(a,p,dt,s,motorHooks,speedScale,profile);
 }
 /** Authoritative 60 Hz session keeps the clock, gameplay side effects and
@@ -1876,6 +1912,13 @@ function mission(s:Session,dt:number){
   // The equipment range is an intentionally open-ended live simulation.
   // It cannot accidentally complete a Campaign mission or generate a debrief.
   if(s.site?.training){advanceTrainingTrial(s);return;}
+  for(const {patient,carrier} of commitTransportExtractions(s)){
+    const message=patient.name+' EXTRACTED';
+    notify(s,message);
+    battleEvent(s,'objective',patient.side==='blue'?patient:carrier,patient.p,message,{
+      action:patient.side==='blue'?'individual-extraction':'suspect-extracted',
+      targetId:patient.id,contributorId:carrier.id});
+  }
   if(s.withdrawalRequested){
     const departed=commitIndividualExtractions(s);
     for(const member of departed){
@@ -1885,6 +1928,9 @@ function mission(s:Session,dt:number){
         {action:'individual-extraction',contributorId:member.id});
     }
   }
+  for(const item of s.optionalIntel)updateEvidenceSupport(item,s.coverState);
+  if(s.primaryIntel&&s.mission==='secure'&&updateEvidenceSupport(s.primaryIntel,s.coverState))
+    s.scenario.objective=clone(s.primaryIntel.p);
   if(s.optionalIntel.length){
     // Legacy timed interactions still advance for replay/save compatibility.
     // Ordinary scattered evidence is collected instantly as an operator
@@ -1911,6 +1957,11 @@ function mission(s:Session,dt:number){
     if(!courier||courier.health<=0){
       if(courier)s.scenario.objective=clone(courier.p);
       s.intelCarrierId=null;s.mission='secure';s.holdTime=0;
+      if(s.primaryIntel){
+        s.primaryIntel.p=clone(s.scenario.objective);
+        delete s.primaryIntel.surface;
+        s.primaryIntel.collectedBy=null;s.primaryIntel.discovered=true;
+      }
       notify(s,'INTEL DROPPED — RECOVER AT CASUALTY');
       battleEvent(s,'objective',courier??null,s.scenario.objective,
         'INTEL DROPPED');
@@ -2009,9 +2060,11 @@ function mission(s:Session,dt:number){
   const objectivePoint=rescuePerson?rescuePerson.p:
     s.missionType==='capture'&&capturePerson?capturePerson.p:
     s.scenario.objective;
+  const holdBounds=s.missionType==='hold'?holdObjectiveBounds(s.site,objectivePoint):null;
   const atObjective=team(s).filter(a=>a.health>0&&
-    near(a.p,objectivePoint,36)&&
-    sweptBodyClear(a.p,objectivePoint,s.doors,4,sessionWorldGeometry(s)));
+    (holdBounds?inHoldObjectiveBounds(a.p,holdBounds):
+      near(a.p,objectivePoint,36)&&
+      sweptBodyClear(a.p,objectivePoint,s.doors,4,sessionWorldGeometry(s))));
   const objectiveReached=atObjective.length>0;
   if(s.mission==='secure'&&objectiveReached&&
      (s.missionType!=='rescue'||!rescuePerson||
@@ -2034,6 +2087,9 @@ function mission(s:Session,dt:number){
       const collector=atObjective[0];
       if(!collector)return;
       s.intelCarrierId=collector.id;
+      if(s.primaryIntel){
+        s.primaryIntel.collectedBy=collector.id;s.primaryIntel.collectedAt=s.seconds;
+      }
     }
     if(s.missionType==='capture'){
       const target=capturePerson;
@@ -2148,6 +2204,8 @@ function mission(s:Session,dt:number){
     (!s.withdrawalRequested||canConcludeWithdrawal(s))&&
     team(s).some(a=>a.health>0&&
     near(a.p,s.scenario.extract,37)&&
+    !(a.transportLatched&&a.carryingId&&
+      s.operators.some(p=>p.id===a.carryingId&&p.id!==s.captureTarget))&&
     validLivingCaptureExtraction(a)&&
     (s.missionType!=='intel'||s.intelCarrierId===a.id)&&
     validRescueCustody(a))){
@@ -2266,7 +2324,7 @@ export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
  * this facade only provides session-specific AI and order services. */
 const actorSimulationPhasePort:ActorSimulationPhasePort={
  notify,battleEvent,unobstructed,
- defensivePosition:(a,threat,s)=>runEnemyAi.defensivePosition(a,threat,s),
+ defensivePosition:(a,threat,s,purpose)=>runEnemyAi.defensivePosition(a,threat,s,purpose),
  decideEnemy:(s,a,h)=>runEnemyAi.decide(s,a,h),
  runCustody:(s,a,goal,h)=>{approach(a,goal,h,s,.80);},
  runFriendly:runOrders

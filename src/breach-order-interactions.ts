@@ -22,6 +22,7 @@ import {canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
 import {coverTargetIndex} from './worldgen/site-object-identity.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {manipulateWindow} from './breach-windows.ts';
+import {windowCanBash,windowBashPoint,windowBashLaneClear,windowBashHeight,WINDOW_BASH_WINDUP} from './breach-window-bash.ts';
 import {powerControlAt,controlPosition,POWER_CONTROL_REACH,
  POWER_ACTION_SECONDS} from './equipment-site-power-controls.ts';
 import {setSiteCircuitPower,setSiteFixtureSwitch} from './equipment-site-power.ts';
@@ -309,14 +310,14 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
     }
     if(n.interaction==='release-capture-target'){
       const target=s.operators.find(o=>o.id===n.objectId&&
-        o.side==='red'&&o.health<=0&&o.id===s.captureTarget&&
-        s.missionType==='capture');
+        o.health<=0);
       if(!target||target.carriedById!==a.id||a.carryingId!==target.id){
         failCurrentOrder(s,a,n,'CAPTURE TARGET NOT IN TRANSPORT');return true;
       }
       // A stopped/replanned carrier releases the actual actor where the
       // previous resolved physical tick left it. No off-screen relocation.
       target.carriedById=null;target.transportMode=null;a.carryingId=null;
+      a.transportLatched=false;
       a.velocity=0;
       const message=a.name+' RELEASED '+target.name;
       notify(s,message);
@@ -515,6 +516,31 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         a.motorPause='window-clearance';a.velocity=0;a.actionTimer=0;return true;
       }
       const window=s.windows.find(w=>w.id===id);
+      if(n.interaction==='break-window'){
+        if(window?.shattered){clearCurrentOrderIssue(a);pop(a);return true;}
+        if(!window||!windowCanBash(window)||!windowBashLaneClear(s,window,a.p)){
+          failCurrentOrder(s,a,n,'GLASS NOT IN REACH');return true;
+        }
+        const point=windowBashPoint(window,a.p);
+        a.velocity=0;
+        if(!rotate(a,Math.atan2(point.y-a.p.y,point.x-a.p.x),dt,s))return true;
+        if(a.actionTimer<=0){
+          a.lastBashAt=s.seconds;a.lastBashRole='glass';
+          a.glassBashContact={...point,height:windowBashHeight(window,a.posture==='crouch')};
+        }
+        a.fireCd=Math.max(a.fireCd,.55);
+        a.aim=0;a.actionTimer+=dt;
+        if(a.actionTimer<WINDOW_BASH_WINDUP)return true;
+        if(!manipulateWindow(window,'break')){
+          failCurrentOrder(s,a,n,'GLASS UNAVAILABLE');return true;
+        }
+        window.shatteredAt=s.seconds;
+        s.objectRevision++;
+        hear(s,point,170,'glass');
+        notify(s,a.name+' BROKE GLASS');
+        battleEvent(s,'impact',a,point,'GLASS SHATTERED',{action:'break-window',objectId:window.id});
+        clearCurrentOrderIssue(a);pop(a);return true;
+      }
       if(window&&
          (n.interaction==='open-window'&&window.open||
           n.interaction==='close-window'&&!window.open)){

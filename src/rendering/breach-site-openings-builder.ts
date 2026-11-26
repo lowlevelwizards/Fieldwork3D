@@ -159,23 +159,29 @@ export function buildSiteDoors(site:Site,host:SiteOpeningsHost,
       const jambX=length/2+profile.jambWidth/2-DOOR_FRAME_INSET;
       const jambSides=door.pairedWith?
         [door.hinge==='b'?1:-1]:[-1,1];
+      // Structural walls are 9 units thick. Project opaque trim beyond
+      // both wall faces, not exactly onto them (shutter jambs were coplanar).
+      const jambDepth=Math.max(9.6,profile.jambDepth);
+      const headerDepth=Math.max(9.8,profile.headerDepth);
+      const headerExtension=door.pairedWith?profile.jambWidth-.1:2*profile.jambWidth;
+      const headerX=door.pairedWith?(door.hinge==='b'?1:-1)*profile.jambWidth/2:0;
       for(const side of jambSides){
         host.box(frame,side*jambX,DOOR_CLEAR_VISUAL_HEIGHT/2,0,
-          profile.jambWidth,DOOR_CLEAR_VISUAL_HEIGHT,profile.jambDepth,doorTrim);
+          profile.jambWidth,DOOR_CLEAR_VISUAL_HEIGHT,jambDepth,doorTrim);
         // Small face rebate keeps the chunky iconography without two
         // massive offset bars dominating the aperture.
         host.box(frame,side*jambX,DOOR_CLEAR_VISUAL_HEIGHT/2,
-          profile.jambDepth/2+1.25,profile.casingWidth,
+          jambDepth/2+1.25,profile.casingWidth,
           DOOR_CLEAR_VISUAL_HEIGHT-3,
           profile.casingDepth,doorTrim,false);
       }
-      host.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight/2,0,
-        length+2*profile.jambWidth,
-        profile.headerHeight,profile.headerDepth,doorTrim);
-      host.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight+.5,1.50,
-        length+2*profile.jambWidth+1,
-        1.1,profile.headerDepth+.8,doorTrim,false);
-      const threshold=host.box(frame,0,.275,0,length,
+      host.box(frame,headerX,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight/2,0,
+        length+headerExtension,
+        profile.headerHeight,headerDepth,doorTrim);
+      host.box(frame,headerX,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight+.58,1.50,
+        length+headerExtension+(door.pairedWith?0:1),
+        1.1,headerDepth+.8,doorTrim,false);
+      const threshold=host.box(frame,0,profile.thresholdHeight/2+.04,0,length-(door.pairedWith?.12:0),
         profile.thresholdHeight,profile.thresholdDepth,doorTrim,false);
       const leaf=new THREE.Group();
       let glassPane:THREE.Mesh|undefined;
@@ -198,9 +204,11 @@ export function buildSiteDoors(site:Site,host:SiteOpeningsHost,
         host.box(leaf,0,4,2.5,length*.37,2,1.4,doorTrim,false); // lower pull
       }else{
         if(door.kind==='sliding'){
-          host.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+2,1.6,
-            length*2.1,3,6,metal,false);
-          host.box(frame,0,1,1.6,length*2.1,1.3,4,metal,false);
+          const railX=door.pairedWith?(door.slideDirection??1)*length/2:0;
+          const railWidth=door.pairedWith?length*2-.15:length*2.1;
+          host.box(frame,railX,DOOR_CLEAR_VISUAL_HEIGHT+2,1.6,
+            railWidth,3,6,metal,false);
+          host.box(frame,railX,1,1.6,railWidth,1.3,4,metal,false);
         }
         const style=door.style??'wood';
         const panel=style==='wood'?doorMat:style==='exit'?
@@ -349,8 +357,8 @@ export function buildSiteWindows(site:Site,host:SiteOpeningsHost,
       // Glazed openings still need the SAME continuous dark crown as the
       // adjoining walls. Without it the exposed lintel becomes a bright
       // bridge with abruptly terminated dark wall caps.
-      host.box(group,0,WALL_VISUAL_HEIGHT+.3,0,
-        Math.max(1,opening.width-.4),2,11,capMat,false);
+      host.box(group,0,WALL_VISUAL_HEIGHT+.38,0,
+        Math.max(1,opening.width-.4),2,11.4,capMat,false);
       // Place the trim BELOW the pane's bottom edge and in front of its
       // surface. Overlapping transparent glass/mullion faces used to shimmer.
       if(baseTop>0)host.box(group,0,baseTop-1.05,6,
@@ -367,7 +375,7 @@ export function buildSiteWindows(site:Site,host:SiteOpeningsHost,
           host.box(group,frac*opening.width,
             baseTop+glassHeight/2,2,1.8,glassHeight+1,2.2,bars,false);
         for(const y of [baseTop+3,glassTop-3])
-          host.box(group,0,y,2,opening.width-3,1.7,2.2,bars,false);
+          host.box(group,0,y,2,opening.width-3,1.7,2.55,bars,false);
       }
       if(opening.treatment==='open-curtains'){
         const fabric=host.solid(0x8f8779,.95,'fabric');
@@ -381,8 +389,11 @@ export function buildSiteWindows(site:Site,host:SiteOpeningsHost,
       }
 
       for(const x of [-opening.width/2,opening.width/2])
-        host.box(group,x,baseTop+glassHeight/2,0,3,
-          glassHeight+2,9,trim,false);
+        host.box(group,x,baseTop+glassHeight/2,0,3.5,
+          glassHeight+2,11.4,trim,false);
+      const railWidth=Math.max(1,opening.width-3.5);
+      for(const y of [baseTop+1,glassTop-1])
+        host.box(group,0,y,0,railWidth,2,10.8,trim,false);
       // Architectural divisions remain thin mullions, never extra cover.
       if(style==='standard'||style==='bay')
         host.box(group,0,baseTop+glassHeight*.48,2.3,
@@ -412,8 +423,8 @@ export function buildSiteWindows(site:Site,host:SiteOpeningsHost,
           2.5,glassHeight,5,trim,false);
         host.box(group,opening.width*.37,baseTop+glassHeight/2,-2.3,
           2.5,glassHeight,5,trim,false);
-        host.box(group,0,baseTop,-2.3,opening.width,2,5,trim,false);
-        host.box(group,0,actualTop,-2.3,opening.width,2,5,trim,false);
+        host.box(group,0,baseTop,-2.3,opening.width,2,5.4,trim,false);
+        host.box(group,0,actualTop,-2.3,opening.width,2,5.4,trim,false);
       }
       const edge=windowApertureSegment(opening);
       const publicWindow=!opening.interior&&accessibleExteriorWall(site,edge);

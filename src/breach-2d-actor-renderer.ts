@@ -11,7 +11,7 @@ import {presentActor,presentCivilian,presentUnrecordedRescueMarker,presentTransi
 import {contactFade} from './breach-presentation.ts';
 import {presentShotEvidence} from './rendering/breach-shot-disclosure.ts';
 import {recordedEffectAllows,shotEffectRow} from './breach-replay-effect-evidence.ts';
-import {objectiveLocationKnown,approximateObjectiveBounds} from './breach-objective-intel.ts';
+import {objectiveLocationKnown,approximateObjectiveBounds,holdObjectiveBounds} from './breach-objective-intel.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 export type Actor2DFrame={
  state:Session;replaying:boolean;selected:string;
@@ -74,16 +74,19 @@ function missionMarkers(){
   if(replaying&&!replayObjectiveMarkers)return;
   // Small chunky dossier silhouette. Discovery is authoritative and sticky;
   // map/plan rendering cannot reveal unobserved evidence.
-  for(const item of state.optionalIntel??[]){
+  const evidence=state.optionalIntel??[];
+  if(!replaying)for(let i=0;i<evidence.length+(state.primaryIntel?1:0);i++){
+    const item=i<evidence.length?evidence[i]:state.primaryIntel!;
     if(!item.discovered||item.collectedBy)continue;
+    const at=item.surface?.p??item.p;
     draw.save();
     draw.fillStyle='#4b5141';draw.strokeStyle='#ddcc91';
     draw.lineWidth=2;
-    draw.fillRect(item.p.x-8,item.p.y-5,16,11);
-    draw.strokeRect(item.p.x-8,item.p.y-5,16,11);
-    draw.fillStyle='#e5d5a6';draw.fillRect(item.p.x-4,item.p.y-2,8,2);
+    draw.fillRect(at.x-8,at.y-5,16,11);
+    draw.strokeRect(at.x-8,at.y-5,16,11);
+    draw.fillStyle='#e5d5a6';draw.fillRect(at.x-4,at.y-2,8,2);
     draw.font='600 9px "Work Sans",sans-serif';draw.textAlign='center';
-    draw.fillText('INTEL',item.p.x,item.p.y-12);
+    draw.fillText(item.model?.replace('-',' ').toUpperCase()??'INTEL',at.x,at.y-12);
     draw.restore();
   }
   if(!replaying&&state.withdrawalRequested){
@@ -126,10 +129,27 @@ function missionMarkers(){
     (state.mission==='secure'&&!objectiveLocationKnown(
       state,replaying,replayKnowledge.omniscient)))return;
   draw.strokeStyle='#d8cc98';draw.lineWidth=2;
-  draw.beginPath();draw.arc(p.x,p.y,33,0,Math.PI*2);draw.stroke();
+  const holdArea=state.mission==='secure'&&state.missionType==='hold'?
+    holdObjectiveBounds(state.site,state.scenario.objective):null;
+  if(holdArea){
+    draw.save();draw.fillStyle='rgba(216,204,152,.07)';
+    draw.fillRect(holdArea.minX,holdArea.minY,holdArea.maxX-holdArea.minX,holdArea.maxY-holdArea.minY);
+    draw.strokeRect(holdArea.minX,holdArea.minY,holdArea.maxX-holdArea.minX,holdArea.maxY-holdArea.minY);
+    draw.restore();
+  }else{draw.beginPath();draw.arc(p.x,p.y,33,0,Math.PI*2);draw.stroke();}
   draw.fillStyle='#e1d1a2';draw.font='600 12px "Work Sans",sans-serif';
   draw.textAlign='center';
   draw.fillText(state.mission==='secure'?'SECURE':'EXTRACT',p.x,p.y-39);
+  if(!replaying&&state.mission==='secure'&&state.missionType==='hold'){
+    const progress=Math.max(0,Math.min(1,state.holdTime/7));
+    draw.save();draw.strokeStyle='rgba(216,204,152,.25)';draw.lineWidth=3;
+    draw.beginPath();draw.arc(p.x,p.y,26,0,Math.PI*2);draw.stroke();
+    draw.strokeStyle='#d8cc98';draw.lineCap='round';
+    draw.beginPath();draw.arc(p.x,p.y,26,-Math.PI/2,-Math.PI/2+Math.PI*2*progress);draw.stroke();
+    draw.fillStyle='#d8cc98';draw.font='600 10px "Work Sans",sans-serif';
+    draw.textAlign='center';draw.fillText(state.holdTime.toFixed(1)+'/7s',p.x,p.y+43);
+    draw.restore();
+  }
 }
 function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
   const {state,replaying}=getFrame();

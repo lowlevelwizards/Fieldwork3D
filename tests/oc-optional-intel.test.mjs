@@ -1,7 +1,7 @@
 /** OC3/5: physical optional intel must be seen, collected and extracted. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {generateOptionalIntel,observeOptionalIntel,beginOptionalIntelGather,
+import {generateOptionalIntel,generatePrimaryIntel,updateEvidenceSupport,observeOptionalIntel,beginOptionalIntelGather,
  advanceOptionalIntel,autoBeginOptionalIntelGather,collectProximityOptionalIntel,
  eligibleOptionalIntel,optionalIntelRecovered}
  from '../src/breach-optional-intel.ts';
@@ -106,4 +106,48 @@ test('OC6 walk-over collection is immediate, visible-only and preserves courier 
  s.operators[1].p={...item.p};
  assert.equal(collectProximityOptionalIntel(s,visible)?.collectedBy,'moss',
   'another teammate can recover dropped evidence immediately');
+});
+
+test('EI2 prefers justified surfaces and exposes a separate reachable contact point',()=>{
+ const furnished={...site,rooms:rooms.map((r,i)=>({...r,purpose:i===0?'office':'living'})),
+  cover:rooms.map((r,i)=>({id:'fixture'+i,fixture:i===0?'desk':'coffee-table',
+   x:r.x+48,y:r.y+48,w:36,h:28}))};
+ const items=generateOptionalIntel(furnished);
+ assert.equal(items.length,3);
+ assert.equal(items[0].roomId,'room0');
+ assert.ok(items.every(i=>i.surface&&i.model));
+ for(const item of items){
+  const support=furnished.cover.find(o=>o.fixture===item.surface.fixture&&
+   Math.abs(item.surface.p.x-o.x)<o.w/2&&Math.abs(item.surface.p.y-o.y)<o.h/2);
+  assert.ok(support,'visual lies on actual fixture');
+  assert.ok(item.surface.height>0);
+  assert.ok(Math.abs(item.p.x-support.x)>support.w/2||
+   Math.abs(item.p.y-support.y)>support.h/2,'pickup anchor is outside furniture');
+ }
+ const item=items[0];item.discovered=true;item.collectedBy='rook';
+ const s={phase:'running',seconds:2,optionalIntel:[item],intelGather:null,
+  scenario:{extract:{x:610,y:0}},operators:[soldier('rook',10,10,0)]};
+ advanceOptionalIntel(s,.1,visible);
+ assert.equal(item.surface,undefined);
+ assert.deepEqual(item.p,{x:10,y:10});
+});
+test('EI2 furnished sites without compatible surfaces do not create arbitrary floor evidence',()=>{
+ const barren={...site,cover:[{fixture:'sofa',x:50,y:50,w:34,h:22}]};
+ assert.deepEqual(generateOptionalIntel(barren),[]);
+});
+
+test('EI2 primary cache stays in the designated objective room and follows real furniture',()=>{
+ const fixture={fixture:'desk',x:48,y:48,w:36,h:28};
+ const actual={...site,objective:{x:52,y:52},cover:[fixture]};
+ const item=generatePrimaryIntel(actual);
+ assert.equal(item.roomId,'room0');assert.ok(item.surface);
+ assert.ok(item.p.x>=0&&item.p.x<=105&&item.p.y>=0&&item.p.y<=105);
+ assert.ok(generateOptionalIntel(actual,item.roomId).every(x=>x.roomId!=='room0'));
+ const before={...item.p},surface={...item.surface.p};
+ assert.equal(updateEvidenceSupport(item,[{...fixture,x:fixture.x+9,y:fixture.y+3}]),true);
+ assert.deepEqual(item.p,{x:before.x+9,y:before.y+3});
+ assert.deepEqual(item.surface.p,{x:surface.x+9,y:surface.y+3});
+ assert.equal(updateEvidenceSupport(item,[{...fixture,x:fixture.x+9,y:fixture.y+3}]),false);
+ assert.equal(updateEvidenceSupport(item,[{...fixture,destroyed:true}]),true);
+ assert.equal(item.surface,undefined);
 });

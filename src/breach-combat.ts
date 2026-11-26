@@ -63,12 +63,12 @@ export type BattleEvent={id:number;t:number;kind:'shot'|'wound'|'down'|'flash'|
   'door'|'objective'|'surrender'|'reload'|'intel'|'impact'|
   'interaction';actor?:string;p?:Pt;text:string;
   meta?:{action?:'spot'|'door-open'|'door-forced'|'door-close'|
-    'door-resisted'|'door-blocked'|'window-open'|'window-traverse'|
+    'door-resisted'|'door-blocked'|'window-open'|'window-traverse'|'break-window'|
     'objective-secure'|'door-impact'|'suspect-challenge'|'suspect-refusal'|
     'suspect-compliance'|'suspect-surrender'|'suspect-restrained'|
     'suspect-searched'|'weapon-secured'|'suspect-escort'|'suspect-escort-stop'|'capture-target-released'|
     'suspect-escape'|'suspect-rearm-attempt'|'suspect-rearmed'|'suspect-armed-secondary'|
     'capture-vitals-checked'|'capture-target-deceased'|
     'optional-intel-recovered'|'withdrawal-complete'|
-    'individual-extraction';
+    'individual-extraction'|'suspect-extracted';
     objectId?:string;targetId?:string;contributorId?:string};};

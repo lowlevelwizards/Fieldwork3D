@@ -47,3 +47,11 @@ test('V14 appends deterministic distinct dark-core and light-rim damage masks wi
  assert.equal(damageVariant(undefined,0,0),-1);
  assert.equal(damageVariant('blood',0,0),-1);
 });
+
+test('Metal marks shrink 15 percent at every damage count, other material sizes remain unchanged',()=>{
+ for(let count=1;count<=4;count++){
+  assert.ok(Math.abs(damageRadius('metal',count)-3.8*.85*(1+.23*(count-1)))<1e-9);
+  assert.ok(Math.abs(damageRadius('stone',count)-5*(1+.23*(count-1)))<1e-9);
+ }
+ assert.equal(damageRadius('wood'),4.8);assert.equal(damageRadius('glass'),4.2);assert.equal(damageRadius('dust'),4.6);
+});

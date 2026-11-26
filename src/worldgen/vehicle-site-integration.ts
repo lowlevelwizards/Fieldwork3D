@@ -16,7 +16,11 @@ export function attachPlannedVehicles(site:Site):Site{
  const planned=planVehiclePlacement(frontage,site.seed,true).vehicles;
  if(!planned.length)return site;
  const candidate={...frontage,cover:[...frontage.cover,...planned]};
- const from=candidate.spawn[0];if(!from)return site;
+ return validExteriorRetrofit(site,candidate)?candidate:site;
+}
+/** Reusable unchanged mission/route authority for all exterior migrations. */
+export function validExteriorRetrofit(site:Site,candidate:Site):boolean{
+ const from=candidate.spawn[0];if(!from)return false;
  const civilians=(site.encounter?.neutrals??[]).flatMap(a=>[a.position,...(a.routine??[])]);
  const routines=(site.encounter?.actors??[]).flatMap(a=>a.routine??[]);
  const points=[...candidate.spawn,...candidate.enemies,candidate.objective,candidate.extract,...civilians,...routines];
@@ -26,8 +30,8 @@ export function attachPlannedVehicles(site:Site):Site{
  const valid=withTemporarySiteGeometry(candidate,()=>
   points.every((p,i)=>!baseline[i]||passable(p))&&
   [candidate.objective,candidate.extract,...candidate.enemies].every(p=>passable(p)&&route(from,p).length>0));
- if(!valid)return site;
+ if(!valid)return false;
  const before=new Set(auditTacticalMobility(site).issues.map(x=>JSON.stringify(x)));
- if(auditTacticalMobility(candidate).issues.some(x=>!before.has(JSON.stringify(x))))return site;
- return candidate;
+ if(auditTacticalMobility(candidate).issues.some(x=>!before.has(JSON.stringify(x))))return false;
+ return true;
 }

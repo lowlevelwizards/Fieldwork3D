@@ -106,3 +106,16 @@ test('D3 never scans unrelated doors or repeats same-leaf claims within one tick
  assert.equal(policy.claimContact(first),true);
  assert.equal(policy.claimContact(first),false);
 });
+
+test('D3 lone operator pressing an open leaf does not reserve against their own reverse pressure',()=>{
+ const door=createDoor(),faces=pressure(door);
+ const lead=actor('lead',faces.closing.from,faces.closing.to);
+ const s={seconds:21,operators:[lead],doors:[door]};
+ const policy=sessionDoorPressurePolicy(s,lead);
+ assert.equal(policy.preferOpening(door),false);
+ assert.equal(policy.deferClosing(door),false);
+ const result=pressDoorOnBodyAttempt(faces.closing.from,faces.closing.to,
+  [door],1/60,[faces.closing.from],policy);
+ assert.equal(result?.doorId,door.id);
+ assert.equal(door.open,false);
+});

@@ -4,7 +4,7 @@ import {bloodMarkRadius,bloodMarkTint} from './breach-blood-evidence.ts';
 import {damageRadius,damageTint} from './rendering/breach-stain-atlas.ts';
 import {isIntermediateMaterialCue,MAX_MATERIAL_CUES} from './breach-material-cues.ts';
 import {sampleBloodBurst,BLOOD_BURST_COUNT} from './rendering/breach-blood-burst.ts';
-import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose,isGroundImpactMark,type SurfaceMarkPose} from './breach-impact-surface.ts';
+import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose,isGroundImpactMark,surfaceMarkFacesCamera,type SurfaceMarkPose} from './breach-impact-surface.ts';
 import {hostileNpcTransitionKey,hostileCustodyWalkBlend}
  from './breach-hostile-pose-transition.ts';
 import {rebuildFrameIdIndex} from './breach-frame-lookup.ts';
@@ -1181,7 +1181,9 @@ export class TacticalScene3D{
    * Entirely observational: neither raycast targets nor collection state
    * is stored on the scene graph. Do not animate in the main game loop. */
   private syncOptionalEvidenceMeshes(s:Session,replaying:boolean):void{
-    for(const item of s.optionalIntel??[]){
+    const items=s.optionalIntel??[];
+    for(let i=0;i<items.length+(s.primaryIntel?1:0);i++){
+      const item=i<items.length?items[i]:s.primaryIntel!;
       let group=this.optionalEvidenceMeshes.get(item.id);
       const exposed=!replaying&&item.discovered&&item.collectedBy===null;
       if(!group&&exposed){
@@ -1190,24 +1192,57 @@ export class TacticalScene3D{
         const shell=this.solid(0x555b45,.88);
         const detail=this.solid(0xdfc792,.89);
         const dark=this.solid(0x303d3a,.86);
-        if(item.kind==='documents'){
-          this.box(group,0,1.8,0,13,2.5,9,shell,false);
-          this.box(group,0,3.2,-1,11,1,7,detail,false);
-          this.box(group,0,3.8,-3,6,.7,1,dark,false);
-        }else if(item.kind==='communications'){
-          this.box(group,0,4.5,0,9,8,7,dark,false);
-          this.box(group,0,8.7,-.7,7,1.8,5,shell,false);
-          this.box(group,2.4,13.5,-1.5,1.5,9,1.5,detail,false);
-          this.box(group,-2.5,5.5,-3.6,1.8,1.8,1.2,detail,false);
-        }else{
-          this.box(group,0,1.6,0,14,2.3,9,dark,false);
-          this.box(group,0,5,-3.8,13,7,1.8,shell,false);
-          this.box(group,0,5,-4.9,10,4,.9,detail,false);
+        const model=item.model??(item.kind==='documents'?'folder':
+          item.kind==='communications'?'phone':'laptop');
+        const paper=this.solid(0xe4dfc5,.92);
+        const ink=this.solid(0x676b62,.9);
+        const screen=this.solid(0x6b8582,.65);
+        switch(model){
+          case 'folder':
+            this.box(group,0,.7,0,13,1.4,9,detail,false);
+            this.box(group,3.8,1.2,-4.6,5,.9,2,detail,false);
+            this.box(group,0,1.7,.2,11,.6,7,paper,false);
+            this.box(group,0,2.1,1.3,12,.6,6,shell,false);
+            break;
+          case 'papers':
+            this.box(group,0,.5,0,11,1,8,paper,false);
+            this.box(group,1,1.2,.6,10,.5,7,paper,false);
+            for(const z of [-1.6,0,1.6])
+              this.box(group,1,1.5,z,6,.12,.45,ink,false);
+            break;
+          case 'laptop':
+            this.box(group,0,.8,0,13,1.6,9,dark,false);
+            this.box(group,0,1.65,-.5,10,.15,4,shell,false);
+            this.box(group,0,5,-3.8,13,8,1.2,dark,false);
+            this.box(group,0,5,-3.05,11,6,.3,screen,false);
+            this.box(group,0,1.7,2.6,4,.15,1.4,ink,false);
+            break;
+          case 'flash-drive':
+            this.box(group,0,.8,0,5,1.6,3,dark,false);
+            this.box(group,3.3,.65,0,2.2,1.3,2.2,detail,false);
+            this.box(group,-1,.85,0,1.2,1.7,3.1,shell,false);
+            break;
+          case 'phone':
+            this.box(group,0,.65,0,5,1.3,8,dark,false);
+            this.box(group,0,1.35,-.3,4,.15,6,screen,false);
+            this.box(group,0,1.4,3.1,1.3,.15,.5,ink,false);
+            break;
+          case 'notebook':
+            this.box(group,0,.8,0,8,1.6,10,shell,false);
+            this.box(group,.35,1.5,0,7,.5,9,paper,false);
+            this.box(group,0,1.9,0,8,.5,10,shell,false);
+            this.box(group,-3.7,1,0,1,2,10,dark,false);
+            break;
         }
         this.root.add(group);
         this.optionalEvidenceMeshes.set(item.id,group);
       }
-      if(group){group.visible=exposed;group.position.set(item.p.x,0,item.p.y);}
+      if(group){
+        group.visible=exposed;
+        const at=item.surface?.p??item.p;
+        group.position.set(at.x,item.surface?.height??0,at.y);
+        group.rotation.y=item.surface?.yaw??0;
+      }
     }
   }
   private box(parent:THREE.Object3D,x:number,y:number,z:number,
@@ -2613,9 +2648,9 @@ export class TacticalScene3D{
       const activeDoor=plannedDoor??(actor.lastDoorId?
         this.frameDoorsById.get(actor.lastDoorId):undefined);
       const handle=activeDoor?
-        actor.lastDoorMethod==='kick'&&actor.kickImpactPoint?
+        actor.lastDoorMethod==='kick'&&actor.kickImpactPoint&&activeDoor.id===actor.lastDoorId&&s.seconds-actor.lastDoorAt<.76?
           actor.kickImpactPoint:
-        actor.lastDoorMethod==='kick'?
+        actor.lastDoorMethod==='kick'&&activeDoor.id===actor.lastDoorId&&s.seconds-actor.lastDoorAt<.76?
           (()=>{const leaf=doorLeafSegment(activeDoor);
             return {x:leaf.a.x+(leaf.b.x-leaf.a.x)*.78,
               y:leaf.a.y+(leaf.b.y-leaf.a.y)*.78};})():
@@ -2888,13 +2923,14 @@ export class TacticalScene3D{
         lastThrowAt:actor.lastThrowAt,lastDoorAt:actor.lastDoorAt,
         flashHookPoint,
         lastBashAt:actor.lastBashAt,bashRole:actor.lastBashRole,
+        glassBashContact:actor.glassBashContact,
         doorMethod:actor.lastDoorMethod,kickFoot:actor.kickFoot,
         kickImpactPoint:actor.kickImpactPoint??undefined,
         lockpickActive,lockpickProgress,
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
          doorGrip:previewPreOpen?undefined:doorGrip,physicalContact,
         down:actor.health<=0,surrender:actor.surrendered,
-        worldWeaponReleased:actor.surrendered&&actor.releasedWeaponId!=null,
+        worldWeaponReleased:!!actor.downWeaponsReleased||actor.surrendered&&actor.releasedWeaponId!=null,
         restrained:actor.restrained===true,
         // Gameplay and replay use the same named NPC transition contract as
         // the Lab. In particular surrender -> cuffed must not snap wrists.
@@ -3305,7 +3341,7 @@ export class TacticalScene3D{
         !recordedEffectAllows(s,replayDisclosurePolicy.observerId,groundEffectRow(mark))))continue;
       let attached:SurfaceMarkPose|null=null;
       const ref=mark.surfaceRef;
-      const artRadius=damageRadius(mark.surface,mark.damageCount);
+      const artRadius=damageRadius(mark.surface,mark.damageCount)*(mark.surface==='glass'?1.28:1);
       if(mark.surface!=='blood'&&ref){
         if(ref.kind==='wall'){
           if(!markWallOwnerKnown(s,ref,omniscient))continue;
@@ -3368,7 +3404,7 @@ export class TacticalScene3D{
           const vx=orthoBlood?this.bloodCameraDirection.x:bloodCamera.x-attached.x;
           const vy=orthoBlood?this.bloodCameraDirection.y:bloodCamera.y-attached.y;
           const vz=orthoBlood?this.bloodCameraDirection.z:bloodCamera.z-attached.z;
-          if(vx*attached.nx+vy*attached.ny+vz*attached.nz<=0)continue;
+          if(!surfaceMarkFacesCamera(mark.surface,ref,vx*attached.nx+vy*attached.ny+vz*attached.nz))continue;
         }
         if(orthoBlood?groundMarkOccludedFromCamera(markPoint,this.bloodCameraDirection,s.site?.walls??WALLS,WALL_VISUAL_HEIGHT,y):
           groundMarkHiddenByWallFromCamera(markPoint,bloodCamera,s.site?.walls??WALLS,WALL_VISUAL_HEIGHT,y))continue;

@@ -12,12 +12,13 @@ import {resolveMissionKind,captureTargetIndex} from './breach-mission-semantics.
 import type {IntelMode} from './breach-intel.ts';
 import {initialIntel,bindIntelWorld} from './breach-intel.ts';
 import {createObjectiveKnowledge} from './breach-objective-intel.ts';
-import {generateOptionalIntel} from './breach-optional-intel.ts';
+import {generateOptionalIntel,generatePrimaryIntel} from './breach-optional-intel.ts';
 import {withActions} from './breach-actor-initial-state.ts';
 import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
 import {freshMagazineIssue} from './arsenal/live-magazine-capacity.ts';
 import {enemyKitForEncounter} from './breach-enemy-loadouts.ts';
 import {doctrineForPurpose,doctrinePersonality,doctrineInitialMorale} from './breach-ai-doctrine.ts';
+import {npcIdentity} from './breach-ai-identity.ts';
 import {createCivilian} from './breach-civilian-types.ts';
 import {civilianRefugePoints} from './breach-civilian-refuge.ts';
 import {materialForFixture} from './breach-materials.ts';
@@ -120,9 +121,12 @@ export function assembleSession(index=0,siteSeed?:number,
       a.injuryStage=0;
       // One seeded draw for temperament when applicable, one for resolve:
       // no extra random draws or coupling between unrelated actors.
-      const purpose=site.encounter?.groups.find(g=>
-        g.id===spec?.groupId)?.purpose;
+      const group=site.encounter?.groups.find(g=>g.id===spec?.groupId);
+      const purpose=group?.purpose;
       const doctrine=doctrineForPurpose(purpose);
+      a.npcIdentity=npcIdentity(site.seed,a.id,purpose,spec?.role,site.encounter?.premise,
+        group?.behaviorProfile,group?.competenceOverride);
+      a.routineExtensionAttempted=false;
       a.personality=spec?.role==='investigator'?'aggressor':
         spec?.role==='reserve'||spec?.role==='target'?'cautious':
         doctrinePersonality(doctrine,spec?.role,enemyRng());
@@ -210,6 +214,13 @@ export function assembleSession(index=0,siteSeed?:number,
     holdTime:0,rescue:null,captureTarget:null,captureSecured:false,
     intelCarrierId:null,optionalIntel:generateOptionalIntel(site),intelGather:null,
     extractedOperators:[],pendingExtractionIds:[]};
+  if(state.missionType==='intel'){
+    state.primaryIntel=generatePrimaryIntel(site);
+    if(state.primaryIntel){
+      state.scenario.objective=clone(state.primaryIntel.p);
+      state.optionalIntel=generateOptionalIntel(site,state.primaryIntel.roomId);
+    }
+  }
   if(state.missionType==='capture'){
     // Respect the mission-specific target role from the actual encounter.
     // Fallback to the legacy first defender for older saved/practice maps.

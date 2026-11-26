@@ -49,7 +49,7 @@ import {npcLocomotionSupport} from './breach-npc-locomotion-support.ts';
 import {packInertia} from './breach-gear-inertia.ts';
 import {LEG_HIP_HEIGHT,legRestRise} from './breach-leg-geometry.ts';
 import {turnHierarchy} from './breach-turn-hierarchy.ts';
-import {contactReaction} from './breach-contact-reactions.ts';
+import {contactReaction,glassBashMotion} from './breach-contact-reactions.ts';
 import {kickMotion} from './breach-door-actions.ts';
 import {reloadPhase} from './breach-magazines.ts';
 import {reloadHandKey,reloadHandChestTarget} from './breach-reload-motion.ts';
@@ -125,7 +125,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.bashRole??null,!!p.blocked);
   const preparedDecision=prepareOperatorPoseDecision(p,{
     previousPose:r.lastPose,downProgress,
-    pushActive:bash.active&&p.bashRole==='push',
+    pushActive:bash.active&&(p.bashRole==='push'||p.bashRole==='glass'),
     receivingBash:bash.active&&p.bashRole==='receive',
     previousHandling:r.lastHandling??undefined,
     previousHandlingAt:r.lastHandlingAt
@@ -153,7 +153,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     frame.chest.position.x+=balance.chestForward;
   }
   const kickAge=p.seconds-p.lastDoorAt;
-  const kick=p.doorMethod==='kick'&&kickAge>=0&&kickAge<.76?
+  const kick=!p.down&&!p.surrender&&p.doorMethod==='kick'&&kickAge>=0&&kickAge<.76?
     kickMotion(kickAge):null;
   const {handling}=preparedDecision;
   // The existing transition sampler remains the ONLY rig-owned historical
@@ -818,7 +818,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   heldWeapon.visible=((!p.down&&!p.surrender)||downProgress<.30)&&
     (p.secondarySwitch?.fraction??0)<.50;
   droppedWeapon.visible=(p.down||p.surrender)&&downProgress>=.30&&
-    !(p.surrender&&p.worldWeaponReleased);
+    !p.worldWeaponReleased;
   if(droppedWeapon.visible&&r.droppedWeaponBody.children.length===0){
     const buildStart=profilePose?performance.now():0;
     // Build the same real silhouette (including accessories) at the exact
@@ -939,6 +939,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       leftGrip.set(-1,3+15*raised,-6);
       rightGrip.set(-1,3+15*raised,6);
     }
+  }else if(bash.active&&p.bashRole==='glass'&&p.glassBashContact){
+    // Capture the real pane before fracture; bounded IK owns the limb.
+    reaching=true;
+    const motion=glassBashMotion(p.seconds-(p.lastBashAt??-100));
+    const target=p.glassBashContact;
+    const local=P(target.x-p.x,target.height-frame.chest.position.y,target.y-p.z);
+    local.applyAxisAngle(P(0,1,0),-r.legacyYaw);
+    local.applyAxisAngle(P(0,1,0),-frame.chest.rotation.y);
+    local.sub(frame.chest.position.clone().setY(0));
+    leftGrip.copy(fit.support).lerp(P(3,7,-7),motion.windup).lerp(local,motion.strike);
   }else if(bash.active&&p.bashRole==='push'){
     // A short forearm/shoulder extension separates the opponent, while
     // the primary hand keeps the gun from flailing through the torso.
@@ -1194,7 +1204,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }else if(i===0&&contactReach>.001){
       desired.lerp(shoulder.clone().add(P(11,-3,-2)),contactReach);
     }
-    if(carryTransitionActive&&carryTransitionHands)
+    if(carryTransitionActive&&carryTransitionHands&&!(i===0&&reaching))
       desired.copy(carryTransitionHands[i]).lerp(
         desired,carryTransitionAlpha);
     // At phase zero reproduce the *exact* displayed source anatomy.
@@ -1215,7 +1225,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // No second IK pass may undo a validated elbow/armor solution.
     const destinationArms=coupled?.arms??coordinatedDynamic?.arms??null;
     const pairedArms=!carryTransitionActive&&!authoredBridge&&
-      !p.unarmedPreview&&contactReach<.001&&!equipmentActive?destinationArms:null;
+      !reaching&&!p.unarmedPreview&&contactReach<.001&&!equipmentActive?destinationArms:null;
     if(pairedArms){
       const limb=pairedArms[i];
       r.elbowSpread[i]=Math.max(0,sign*(limb.joint.z-shoulder.z));
@@ -1247,7 +1257,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // arm from the weapon must not hide an unreachable world interaction.
     const contactDistance=i===0&&fullDoorContact?
       fullDoorContact.distanceTo(shoulder):0;
-    if(i===0&&reaching&&!physicalContact&&
+    if(i===0&&reaching&&!physicalContact&&p.bashRole!=='glass'&&
        (!reachable||contactDistance>19.92))
       r.reachRequest={kind:'door',distance:Math.max(
         desired.distanceTo(shoulder),contactDistance)};

@@ -14,19 +14,20 @@ export type PieSide='cw'|'ccw';
 export type DoorMethod='open'|'close'|'kick'|'hold';
 export type PlanNode={
   id:number;kind:PlanKind;p:Pt;facing?:number;doorId?:string;
-  objectId?:string;pushDirection?:Pt;interaction?:'push'|'open-window'|'close-window'|
+  objectId?:string;pushDirection?:Pt;interaction?:'push'|'open-window'|'close-window'|'break-window'|
     'secure-civilian'|'follow-civilian'|'stop-following-civilian'|'restrain-civilian'|'release-civilian'|'release-capture-target'|'challenge-suspect'|'restrain-suspect'|'search-suspect'|'secure-firearm'|'escort-suspect'|'stop-escorting-suspect'|
     'power-on'|'power-off';
   method?:DoorMethod;duration?:number;syncCode?:string;holdOnContact?:boolean;
   postureState?:'stand'|'crouch';paceState?:'walk'|'run';
   moveMode?:MoveMode;pivot?:Pt;pieSide?:PieSide;pieDegrees?:number;arc?:Pt[];
-  aimMode?:AimMode;aimPoint?:Pt;aimLabel?:'look'|'watch'|'strafe'|'pie';
+  aimMode?:AimMode;aimPoint?:Pt;lookDistance?:number;aimLabel?:'look'|'watch'|'strafe'|'pie';
   toolMethod?:'pick'|'pry'|'cut'|'wedge'|'unwedge'|'breach';
   weaponHand?:'primary'|'secondary';
   patientId?:string;woundId?:number;
   transportMode?:'drag'|'carry';
   /** Authored patient-transport bends, consumed during actual GO traversal. */
   transportPath?:Pt[];
+  transportPickup?:boolean;
   stackDoorId?:string;
   /** The physical threshold for a generated squad-entry clearing handoff.
    * Ordinary authored MOVE/LOOK orders intentionally omit this marker. */
@@ -97,4 +98,12 @@ export function interruptsWatch(node:Pick<PlanNode,'kind'|'paceState'|'moveMode'
    node.moveMode==='sprint'||
    ['door','tool','interact','flash','reload','treat','recover-medical',
     'evacuate','switch-weapon'].includes(node.kind);
+}
+
+/** Shared projected/picking handle. LOOK keeps a heading, never a tracking point. */
+export function plannedAimHandle(node:PlanNode):Pt|null{
+ if(node.aimMode==='track'&&node.aimPoint)return node.aimPoint;
+ if(node.aimLabel!=='look'||node.facing===undefined||node.aimMode==='track')return null;
+ const distance=node.lookDistance??40;
+ return {x:node.p.x+Math.cos(node.facing)*distance,y:node.p.y+Math.sin(node.facing)*distance};
 }

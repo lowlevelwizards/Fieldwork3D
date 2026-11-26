@@ -47,15 +47,15 @@ test('R6.0 inventories every authored kind and subtype exactly once',()=>{
  assert.equal(R60_READ_ONLY,true);
  assert.equal(verifyR60(report),true,JSON.stringify(report.problems));
  assert.equal(report.declared.kinds.length,15);
- assert.equal(report.declared.interactions.length,17);
- assert.equal(report.contextActions.length,35);
+ assert.equal(report.declared.interactions.length,18);
+ assert.equal(report.contextActions.length,36);
  assert.deepEqual(report.contextActions,[...R60_CONTEXT_COMMANDS].sort());
  assert.deepEqual(report.methods,R60_METHODS);
  assert.deepEqual(report.methods.door,['open','close','kick','hold']);
  assert.equal(report.methods.tool.length,6);
  assert.deepEqual(R60_PALETTE_ONLY,['ctxWatch']);
  assert.equal(new Set(report.declared.kinds).size,15);
- assert.equal(new Set(report.declared.interactions).size,17);
+ assert.equal(new Set(report.declared.interactions).size,18);
  assert.deepEqual(report.declared.kinds.slice().sort(),
   Object.keys(R60_ORDER_OWNERS).sort());
  assert.deepEqual(report.declared.interactions.slice().sort(),
@@ -100,8 +100,8 @@ test('R6.0 reports all action layers while keeping unproven candidates explicit'
  assert.match(report.caveat,/Static source evidence only/);
  const markdown=renderR60(report);
  assert.match(markdown,/Read-only: yes/);
- assert.match(markdown,/17/);
- assert.match(markdown,/contextual command lexemes: 35/);
+ assert.match(markdown,/18/);
+ assert.match(markdown,/contextual command lexemes: 36/);
  assert.match(markdown,/door methods: 4/);
  assert.match(markdown,/Context actions/);
  assert.match(markdown,/Existing execution and feedback boundaries/);

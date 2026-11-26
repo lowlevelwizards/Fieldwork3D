@@ -56,6 +56,17 @@ export function renderStructuredMissionDetails(input:{
    ['EVACUATED CASUALTIES',String(stats.operationOutcome.evacuatedCasualtyIds.length)],
    ['LEFT BEHIND',String(stats.operationOutcome.leftBehindOperatorIds.length)]
  ]));
+ if(stats.interventionCounts){
+  const counts=stats.interventionCounts;
+  root.append(section('INTERVENTIONS & RECOVERY',[
+   ['WEAPONS SECURED',String(counts.weaponsSecured)],
+   ['SUSPECTS RESTRAINED',String(counts.suspectsRestrained)],
+   ['SUSPECTS EXTRACTED',String(counts.suspectsExtracted)],
+   ['PERSONS STABILIZED',String(counts.personsStabilized)],
+   ['CASUALTIES EVACUATED',String(counts.casualtiesEvacuated)],
+   ['INTELLIGENCE RECOVERED',String(counts.intelligenceRecovered)]
+  ]));
+ }
  if(stats.optionalIntel.total>0)root.append(section('OPTIONAL INTELLIGENCE',[
    ['DISCOVERED',String(stats.optionalIntel.discovered)+' / '+stats.optionalIntel.total],
    ['COLLECTED · FINAL',String(stats.optionalIntel.collected)],

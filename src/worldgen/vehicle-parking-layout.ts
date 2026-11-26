@@ -4,17 +4,25 @@
  */
 import type {Site,ExteriorZone} from '../breach-site.ts';
 import type {Obstacle} from '../breach-core.ts';
+import {primaryEntranceSpan} from './primary-entrance.ts';
 import {planPublicStreet} from './public-street-layout.ts';
 import {arrivalAccessLane} from './property-access-lane.ts';
+import {proposeStreetParkingLayout} from './street-parking.ts';
 export type VehicleParkingLayout=Readonly<{
+ version?:1;
  mode:'parallel'|'perpendicular';
  role?:'public'|'residential'|'loading';
  axis:'x'|'y';
  rowCenter:number;rowDepth:number;aisleCenter:number;aisleDepth:number;
+ /** Optional mirrored second row across the same physical aisle. */
+ secondRowCenter?:number;
  alongCenter:number;alongLength:number;count:number;
+ /** Dedicated vehicle entrance, separate from the pedestrian route. */
+ access?:Readonly<{alongCenter:number;width:number;acrossCenter:number;depth:number}>;
 }>;
 const MIN_AISLE=48,EDGE=6;
 export function proposeVehicleParkingLayout(site:Site,zone:ExteriorZone):VehicleParkingLayout|null{
+ if(site.streetInfrastructure)return proposeStreetParkingLayout(site,zone);
  if(zone.id!=='arrival-forecourt'||!['parking','driveway'].includes(zone.kind))return null;
  const side=site.entrySide??'south',axis=side==='north'||side==='south'?'x':'y';
  const sign=side==='south'||side==='east'?1:-1;
@@ -57,10 +65,14 @@ export function proposedVehicleParkingSite(site:Site):Site{
  */
 export function intersectsVehicleParkingReserve(zone:ExteriorZone,c:Pick<Obstacle,'x'|'y'|'w'|'h'>):boolean{
  const p=zone.vehicleParking;if(!p)return false;
+ if(p.access){const a=p.access,broad=p.axis==='x';
+  if(Math.abs((broad?c.x:c.y)-a.alongCenter)<((broad?c.w:c.h)+a.width)/2+4&&Math.abs((broad?c.y:c.x)-a.acrossCenter)<((broad?c.h:c.w)+a.depth)/2+4)return true;
+ }
  const along=p.axis==='x'?c.x:c.y,across=p.axis==='x'?c.y:c.x;
  const alongHalf=(p.axis==='x'?c.w:c.h)/2,acrossHalf=(p.axis==='x'?c.h:c.w)/2;
  if(Math.abs(along-p.alongCenter)>=p.alongLength/2+alongHalf+4)return false;
  return Math.abs(across-p.rowCenter)<p.rowDepth/2+acrossHalf+4||
+  (p.secondRowCenter!==undefined&&Math.abs(across-p.secondRowCenter)<p.rowDepth/2+acrossHalf+4)||
   (p.aisleDepth>0&&Math.abs(across-p.aisleCenter)<p.aisleDepth/2+acrossHalf+4);
 }
 
@@ -74,11 +86,11 @@ export function proposeResidentialDriveway(site:Site,front:ExteriorZone):{drivew
  const street=planPublicStreet(site);if(!street)return null;
  const strip=street.sidewalk??street.road,stripSize=axis==='x'?strip.depth:strip.width;
  const inner=sign*front[across]-depth/2+4;
- const outer=sign*strip[across]-stripSize/2;
+ const outer=site.streetInfrastructure?sign*site.streetInfrastructure.privateEdge:sign*strip[across]-stripSize/2;
  const available=outer-inner;
  const bayDepth=Math.min(136,available-8);
  if(long<166||bayDepth<87)return null;
- const bayWidth=62,frontDoor=site.doors.find(d=>d.id==='FRONT');
+ const bayWidth=site.streetInfrastructure?64:62,frontDoor=primaryEntranceSpan(site.doors);
  const entrance=frontDoor?(frontDoor.a[axis]+frontDoor.b[axis])/2:site.entrance[axis];
  const edges=[-1,1].map(s=>({s,at:front[axis]+s*(long/2-bayWidth/2)}))
   .sort((a,b)=>Math.abs(b.at-entrance)-Math.abs(a.at-entrance));
@@ -87,7 +99,7 @@ export function proposeResidentialDriveway(site:Site,front:ExteriorZone):{drivew
  const along=selected.at,center=sign*(inner+available/2);
  const driveway:ExteriorZone={id:'residential-driveway',kind:'driveway',x:axis==='x'?along:center,y:axis==='x'?center:along,
   w:axis==='x'?bayWidth:available,h:axis==='x'?available:bayWidth,
-  vehicleParking:{role:'residential',mode:'perpendicular',axis,rowCenter:sign*(inner+4+bayDepth/2),rowDepth:bayDepth,
+  vehicleParking:{...(site.streetInfrastructure?{version:1 as const}:{}),role:'residential',mode:'perpendicular',axis,rowCenter:sign*(inner+4+bayDepth/2),rowDepth:bayDepth,
    aisleCenter:sign*(outer-2),aisleDepth:0,alongCenter:along,alongLength:bayWidth-8,count:1}};
  const remainingCenter=front[axis]-selected.s*bayWidth/2;
  const yard={...front,[axis]:remainingCenter,...(axis==='x'?{w:long-bayWidth}:{h:long-bayWidth})};

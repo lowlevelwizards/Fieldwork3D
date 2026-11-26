@@ -1,21 +1,21 @@
 /** Grounded investigation timing. Personalities only change tempo
  * and risk tolerance; they never improve the knowledge available to AI. */
+import type {NpcIdentity} from './breach-ai-identity.ts';
 export type InvestigationPersonality='guard'|'aggressor'|'cautious';
 export type InvestigationTempo={
  orientSeconds:number;inspectSeconds:number;approachScale:number;
 };
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
 export function investigationTempo(personality:InvestigationPersonality,
- uncertainty=65):InvestigationTempo{
+ uncertainty=65,identity?:NpcIdentity):InvestigationTempo{
  const uncertaintyDelay=clamp(uncertainty,0,240)/240*.18;
- if(personality==='aggressor')
-   return {orientSeconds:.22+uncertaintyDelay*.4,
-     inspectSeconds:.26,approachScale:1.10};
- if(personality==='cautious')
-   return {orientSeconds:.74+uncertaintyDelay,
-     inspectSeconds:.72,approachScale:.70};
- return {orientSeconds:.43+uncertaintyDelay*.7,
-   inspectSeconds:.46,approachScale:.82};
+ const base=personality==='aggressor'?{orientSeconds:.22+uncertaintyDelay*.4,inspectSeconds:.26,approachScale:1.10}:
+   personality==='cautious'?{orientSeconds:.74+uncertaintyDelay,inspectSeconds:.72,approachScale:.70}:
+   {orientSeconds:.43+uncertaintyDelay*.7,inspectSeconds:.46,approachScale:.82};
+ if(!identity)return base;
+ // Human variation in assessment and inspection, never awareness or aim.
+ return {...base,orientSeconds:base.orientSeconds*(1.20-.40*identity.composure),
+   inspectSeconds:base.inspectSeconds*(.80+.40*identity.patience)};
 }
 
 /** Investigations cannot cling forever to a physically blocked candidate.
