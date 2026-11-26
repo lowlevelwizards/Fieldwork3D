@@ -1,0 +1,51 @@
+name: ST street infrastructure contracts
+on:
+  pull_request:
+    paths:
+      - 'src/worldgen/street-*.ts'
+      - 'src/street-lab-main.ts'
+      - 'street-lab.html'
+      - 'tests/st-*.test.mjs'
+      - 'scripts/audit-st-streets.mjs'
+      - 'scripts/verification/st-lab-browser.mjs'
+      - '.github/workflows/st-street.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/st-*.test.mjs tests/public-street-layout-20261108.test.mjs tests/map-16-property-surfaces.test.mjs
+      - run: npm run check
+      - run: node --experimental-strip-types scripts/audit-st-streets.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: st-street-baseline
+          path: st-street-baseline.json
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - run: node scripts/verification/st-lab-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: st-lab-browser
+          path: artifacts/st-lab-browser/
+          if-no-files-found: ignore

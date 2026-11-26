@@ -22,3 +22,6 @@ Added deterministic bounded resurfacing patches, eight-sided manholes, curb drai
 
 ## ST4 — straight-section marking rules
 Batched muted dashed centerlines, continuous industrial centerline and selected rural/industrial edge stripes. Center paint is tied to actual nominal lane boundary; a cropped near lane never gets a false centerline. No invented stops, crossings or arrows on straight segments. Junction-specific markings are deferred until connected topology exists. Synthetic containment/orientation checks.
+
+## Early ST11 — Street Lab and first validation batch
+Actual tactical renderer, generated site with existing vehicles and operators, seed/scale/type selectors, iso/overhead and legacy/proposal comparison. Reports cropped lanes, fixture conflicts and actual render counts. Shadow proposals may overlap old props, explicitly shown as diagnostics; they are not playable migrations. Dedicated focused tests plus 44-site corpus and browser screenshots at desktop/mobile. Corrected octagonal manhole UV path to avoid rectangular UV remapping. No default enablement yet.
