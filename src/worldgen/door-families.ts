@@ -27,6 +27,23 @@ function adjoining(site:Site,door:Door):[Room|undefined,Room|undefined]{
  });
  return [at(14),at(-14)];
 }
+/** Both sliding leaves need an uninterrupted pocket on their outer side.
+ * This uses the actual authored wall geometry, not merely the room width. */
+function hasPairedSlidingPocket(site:Site,door:Door):boolean{
+ const outward=door.hinge==='b'?door.b:door.a;
+ const inward=door.hinge==='b'?door.a:door.b;
+ const dx=outward.x-inward.x,dy=outward.y-inward.y;
+ const length=Math.hypot(dx,dy);
+ if(length<1)return false;
+ const ux=dx/length,uy=dy/length;
+ return site.walls.some(w=>{
+  const a=(w.a.x-outward.x)*ux+(w.a.y-outward.y)*uy;
+  const b=(w.b.x-outward.x)*ux+(w.b.y-outward.y)*uy;
+  const offA=Math.abs((w.a.x-outward.x)*uy-(w.a.y-outward.y)*ux);
+  const offB=Math.abs((w.b.x-outward.x)*uy-(w.b.y-outward.y)*ux);
+  return offA<.1&&offB<.1&&Math.min(a,b)<=.1&&Math.max(a,b)>=length+2;
+ });
+}
 export function styleArchitecturalDoors(site:Site,seed:number):Site{
  const kind=site.archetype??'house';
  const doors=site.doors.map((door,index):Door=>{
@@ -43,7 +60,16 @@ export function styleArchitecturalDoors(site:Site,seed:number):Site{
   let mode:Door['kind']=door.kind;
   if(door.pairedWith){
    // Both leaves of a double opening must agree on construction.
-   finish=['retail','restaurant','office'].includes(kind)?'glazed':'wood';
+   const partner=site.doors.find(d=>d.id===door.pairedWith);
+   const residential=['house','townhouse'].includes(kind);
+   const industrial=['warehouse','garage','utility'].includes(kind);
+   const commercial=['retail','restaurant','office','clinic','motel'].includes(kind);
+   finish=industrial?(kind==='utility'?'reinforced':'steel'):
+     residential?'french':commercial?'glazed':'wood';
+   if(isCourt&&kind==='motel')finish='glazed';
+   if(partner&&finish==='glazed'&&seed%2===0&&
+      hasPairedSlidingPocket(site,door)&&hasPairedSlidingPocket(site,partner))
+     mode='sliding';
   }else if(isFront){
    finish=['retail','restaurant','office','clinic'].includes(kind)?'glazed':
      exterior[kind];
@@ -99,7 +125,7 @@ export function styleArchitecturalDoors(site:Site,seed:number):Site{
     frameIntegrity:3.2}:finish==='exit'?{resistance:1.15,latchIntegrity:1.1,
     frameIntegrity:3}:null;
   return {...door,style:finish,kind:mode,
-    ...(mode==='sliding'?{slideDirection:(seed%2===0?1:-1) as 1|-1}:{}),
+    ...(mode==='sliding'?{slideDirection:(door.pairedWith?(door.hinge==='b'?1:-1):(seed%2===0?1:-1)) as 1|-1}:{}),
     ...(strength??{})};
  });
  return {...site,doors};
