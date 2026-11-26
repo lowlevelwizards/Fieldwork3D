@@ -6,15 +6,30 @@ import {vehiclePaintWeights,allowedVehiclePaint} from './worldgen/vehicle-palett
 import type {Obstacle} from './breach-core.ts';
 const select=(id:string)=>document.getElementById(id) as HTMLSelectElement;
 const family=select('family'),configuration=select('configuration'),paint=select('paint'),condition=select('condition'),view=select('view'),count=select('count'),batch=select('batch'),footprint=select('footprint');
+const swatches=document.getElementById('swatches')!;
 const canvas=document.getElementById('canvas') as HTMLCanvasElement,viewport=document.getElementById('viewport')!,output=document.getElementById('diagnostics')!;
 function options(el:HTMLSelectElement,values:readonly string[]){el.replaceChildren(...values.map((v,i)=>new Option(v,String(i))));}
 options(family,VEHICLE_FAMILIES);
 const selected=()=>VEHICLE_FAMILIES[Number(family.value)]??'sedan';
+function activeConfig(){return VEHICLE_CONFIGURATIONS[selected()][Number(configuration.value)]??'civilian';}
+function paintPool(){return vehiclePaintWeights(selected(),activeConfig());}
+function updateSwatches(){
+ const pool=paintPool(),total=pool.reduce((sum,[,w])=>sum+w,0);
+ swatches.replaceChildren(...pool.map(([i,w])=>{
+  const b=document.createElement('button');b.type='button';b.className='swatch';
+  const name=VEHICLE_PAINT_NAMES[i]+' · '+Math.round(w/total*100)+'%';b.title=name;b.setAttribute('aria-label',name);
+  b.setAttribute('aria-pressed',String(Number(paint.value)===i));
+  const chip=document.createElement('span');chip.style.background='#'+VEHICLE_PAINTS[i].toString(16).padStart(6,'0');chip.className='chip';
+  b.append(chip,document.createTextNode(Math.round(w/total*100)+'%'));
+  b.addEventListener('click',()=>{paint.value=String(i);count.value='1';updateSwatches();rebuild();});return b;
+ }));
+}
 function updatePaints(){
  const previous=paint.value,config=VEHICLE_CONFIGURATIONS[selected()][Number(configuration.value)]??'civilian';
  const weights=vehiclePaintWeights(selected(),config),total=weights.reduce((n,[,w])=>n+w,0);
  paint.replaceChildren(...weights.map(([i,w])=>new Option(VEHICLE_PAINT_NAMES[i]+' · '+Math.round(w/total*100)+'%',String(i))));
  if(allowedVehiclePaint(selected(),config,Number(previous))&&previous!=='')paint.value=previous;
+ updateSwatches();
 }
 function updateConfigs(){options(configuration,VEHICLE_CONFIGURATIONS[selected()]);updatePaints();}
 updateConfigs();
@@ -34,19 +49,21 @@ function clear(){
  for(const g of outlineGeometries)g.dispose();outlineGeometries=[];
  for(const i of instances)i.dispose();instances=[];
 }
-function obstacle(id:VehicleFamily,index:number,x:number,z:number):Obstacle{
+function obstacle(id:VehicleFamily,index:number,x:number,z:number,overridePaint?:number):Obstacle{
  const [w,h]=VEHICLE_DIMENSIONS[id];
  const cfg=Number(count.value)===6?0:Number(configuration.value);
- const name=VEHICLE_CONFIGURATIONS[id][cfg],chosen=Number(paint.value);
+ const name=VEHICLE_CONFIGURATIONS[id][cfg],chosen=overridePaint??Number(paint.value);
  const paintIndex=allowedVehiclePaint(id,name,chosen)?chosen:vehiclePaintWeights(id,name)[0][0];
  return {fixture:id,x,y:z,w,h,artVariant:(cfg%VEHICLE_CONFIGURATIONS[id].length)+(paintIndex%VEHICLE_PAINTS.length)*VEHICLE_CONFIGURATIONS[id].length,
  artCondition:condition.value as Obstacle['artCondition'],id:'preview-'+index};
 }
 function rebuild(){
- clear();triangles=0;vehicleCount=Number(count.value);mainMeshes=0;
+ clear();triangles=0;const palette=count.value==='palette';
+ const pool=palette?paintPool():[];vehicleCount=palette?pool.length:Number(count.value);mainMeshes=0;
  const columns=Math.ceil(Math.sqrt(vehicleCount)),rows=Math.ceil(vehicleCount/columns);
  span=Math.max(130,columns*158,rows*88);
- const useBatch=batch.value==='instanced'&&vehicleCount!==6&&vehicleCount>1;
+ const lineup=count.value==='6';
+ const useBatch=!palette&&!lineup&&batch.value==='instanced'&&vehicleCount>1;
  const positions=Array.from({length:vehicleCount},(_,i)=>[(i%columns-(columns-1)/2)*158,(Math.floor(i/columns)-(rows-1)/2)*88] as const);
  if(useBatch){
   const lease=acquireVehicleTemplate(cache,obstacle(selected(),0,0,0),0,()=>material)!;leases.push(lease);
@@ -57,13 +74,13 @@ function rebuild(){
   instanced.instanceMatrix.needsUpdate=true;instanced.computeBoundingSphere();root.add(instanced);instances.push(instanced);
   triangles=mesh.geometry.getAttribute('position').count/3*vehicleCount;mainMeshes=1;
  }else for(let i=0;i<vehicleCount;i++){
-  const id=vehicleCount===6?VEHICLE_FAMILIES[i]:selected(),[x,z]=positions[i];
-  const lease=acquireVehicleTemplate(cache,obstacle(id,i,x,z),0,()=>material)!;leases.push(lease);
+  const id=lineup?VEHICLE_FAMILIES[i]:selected(),[x,z]=positions[i];
+  const lease=acquireVehicleTemplate(cache,obstacle(id,i,x,z,palette?pool[i][0]:undefined),0,()=>material)!;leases.push(lease);
   const mesh=lease.root.children[0] as THREE.Mesh;triangles+=mesh.geometry.getAttribute('position').count/3;
   root.add(lease.root);mainMeshes++;
  }
  if(footprint.value==='on')positions.forEach(([x,z],i)=>{
-  const id=vehicleCount===6?VEHICLE_FAMILIES[i]:selected(),[w,d,h]=VEHICLE_DIMENSIONS[id];
+  const id=lineup?VEHICLE_FAMILIES[i]:selected(),[w,d,h]=VEHICLE_DIMENSIONS[id];
   const b=new THREE.BoxGeometry(w,h,d),g=new THREE.EdgesGeometry(b);b.dispose();outlineGeometries.push(g);
   const line=new THREE.LineSegments(g,outlineMaterial);line.position.set(x,h/2,z);root.add(line);
  });
@@ -87,6 +104,7 @@ function draw(){
 }
 family.addEventListener('change',()=>{updateConfigs();rebuild();});
 configuration.addEventListener('change',()=>{updatePaints();rebuild();});
-for(const el of [paint,condition,count,batch,footprint])el.addEventListener('change',rebuild);
+paint.addEventListener('change',()=>{updateSwatches();rebuild();});
+for(const el of [condition,count,batch,footprint])el.addEventListener('change',rebuild);
 view.addEventListener('change',draw);const resize=new ResizeObserver(draw);resize.observe(viewport);rebuild();
 window.addEventListener('pagehide',event=>{if(event.persisted)return;resize.disconnect();clear();cache.clear();material.dispose();outlineMaterial.dispose();ground.geometry.dispose();ground.material.dispose();renderer.dispose();});

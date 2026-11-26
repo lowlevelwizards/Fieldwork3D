@@ -43,6 +43,13 @@ try{
     await page.locator('#view').selectOption('side');
     await page.screenshot({path:output+'/'+viewport.width+'-family-'+i+'-side.png'});
    }
+   await page.locator('#family').selectOption('0');await page.locator('#configuration').selectOption('1');
+   await page.locator('#count').selectOption('palette');
+   const paletteCount=await page.locator('#paint option').count();
+   assert.match(await page.locator('#diagnostics').innerText(),new RegExp('^'+paletteCount+' vehicles'));
+   assert.equal(await page.locator('#swatches button').count(),paletteCount);
+   await page.screenshot({path:output+'/'+viewport.width+'-taxi-colorways.png'});
+   await page.locator('#swatches button').last().click();assert.equal(await page.locator('#count').inputValue(),'1');
    await page.locator('#count').selectOption('6');await page.locator('#view').selectOption('iso');
    await page.screenshot({path:output+'/'+viewport.width+'-lineup.png'});
    await page.locator('#family').selectOption('0');

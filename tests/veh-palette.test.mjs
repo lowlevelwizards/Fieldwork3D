@@ -29,3 +29,18 @@ test('contextual deterministic selection respects allowed configurations and wei
 test('older encoded palette indices retain their original mapping',()=>{
  for(const family of VEHICLE_FAMILIES){const n=VEHICLE_CONFIGURATIONS[family].length;for(let i=0;i<12*n;i++)assert.deepEqual(vehicleRecipe(family,i),vehicleRecipe(family,i,true));}
 });
+
+test('paint weights are realized by the deterministic art sampler, not only declared',()=>{
+ for(const family of VEHICLE_FAMILIES){
+  const context={archetype:'office'},rng=seeded(28391),counts={};
+  for(let i=0;i<12000;i++){
+   const r=vehicleRecipe(family,chooseVehicleArt(family,context,rng)),k=r.configuration;
+   const row=counts[k]??={total:0,paints:{}};row.total++;row.paints[r.paint]=(row.paints[r.paint]??0)+1;
+  }
+  for(const [c,row] of Object.entries(counts)){
+   if(row.total<1500)continue;
+   const weights=vehiclePaintWeights(family,c),total=weights.reduce((n,[,w])=>n+w,0);
+   for(const [i,w] of weights)assert.ok(Math.abs((row.paints[VEHICLE_PAINTS[i]]??0)/row.total-w/total)<.04,family+':'+c+':'+i);
+  }
+ }
+});

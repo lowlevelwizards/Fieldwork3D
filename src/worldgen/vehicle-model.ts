@@ -181,8 +181,10 @@ export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIM
  if(van&&['delivery','medical','contractor'].includes(config)){
   pane(-.42,-.09,-.09,-.42,.20,.67,config==='medical'?0xd6d5c8:config==='delivery'?0x648577:0x696e5a);
   if(config==='medical'){
-   pane(-.28,-.20,-.20,-.28,.23,.64,0x466d79,.0025);
-   pane(-.36,-.12,-.12,-.36,.37,.50,0x466d79,.003);
+   // Match actual world-unit proportions, not normalized X/Y fractions.
+   // A nearly square, chunky cross stays legible from the gameplay angle.
+   pane(-.257,-.223,-.223,-.257,.22,.65,0x466d79,.0025);
+   pane(-.282,-.198,-.198,-.282,.365,.505,0x466d79,.003);
   }
  }
  if(truck&&config==='municipal')side(-.42,.025,.61,.75,.461,0xb9a259);

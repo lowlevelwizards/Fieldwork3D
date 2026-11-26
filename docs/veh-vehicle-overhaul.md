@@ -61,3 +61,6 @@ Append four muted paint colors without moving legacy indices. New curated family
 
 ## VEH12 stage 2 — exaggerated family identity and accessories
 Six hero silhouettes retain exact external dimensions. Shorter stance, fatter work tires and smaller hubs, higher chunky hoods, more upright compact rear and cargo van, taller cab-over truck. Police/medical transverse mounted lens bars, contrasting taller trapezoidal taxi sign, larger graphic service markings; remove hidden taxi/unmarked/military paint tints. Maintained colors represent actual selected swatches. New records use cover profile v3; historical v1 and v2 geometry retained for saved ballistic authority. Lab mobile select font and safe-area padding revised. Keep 450 triangle budget and shared mesh cache. Final critical CI, screenshots and production verification pending.
+
+## VEH12 stage 3 — colorway comparison and graphic service finishing
+Lab shows actual color chips and relative weights for the selected configuration, with a colorway lineup scene and direct swatch selection. Test the realized conditional paint distribution independently of the configuration weights. Medical cross dimensions corrected in world units to avoid a stretched horizontal symbol. Browser captures complete config matrix and taxi palette lineup; no additional mesh/material per normal vehicle. CI remains the release gate.
