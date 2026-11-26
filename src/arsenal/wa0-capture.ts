@@ -105,7 +105,7 @@ async function generate(){
   const m=construct(entry);try{
    const size=bounds(m.model).getSize(new THREE.Vector3());
    const cohort=entry.sidearm?'sidearm':'primary';
-   spans[cohort]=Math.max(spans[cohort],size.x,size.y*2)*1.16;
+   spans[cohort]=Math.max(spans[cohort],Math.max(size.x,size.y*2)*1.16);
   }finally{m.cleanup();}
  }
  for(const entry of selected){
