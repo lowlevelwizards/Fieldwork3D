@@ -1213,7 +1213,7 @@ export class TacticalScene3D{
   private box(parent:THREE.Object3D,x:number,y:number,z:number,
     w:number,h:number,d:number,material:THREE.Material,cast=true,packedWall=false,atlasSlot?:WallAtlasSlot){
     const key=w+':'+h+':'+d+(packedWall?':wall-packed':'');
-    let geometry=atlasSlot?mapAtlasWallUV(new THREE.BoxGeometry(w,h,d),atlasSlot.row,atlasSlot.texture.image.height):this.boxGeometryCache.get(key);
+    let geometry=atlasSlot?mapAtlasWallUV(new THREE.BoxGeometry(w,h,d),atlasSlot.row,atlasSlot.texture.image.height,atlasSlot.metricWidth,atlasSlot.texture.image.width):this.boxGeometryCache.get(key);
     if(!geometry){
       geometry=packedWall?mapPackedWallUV(new THREE.BoxGeometry(w,h,d)):mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d);
       // Bound cache memory; uncommon one-off sizes remain independently owned.
