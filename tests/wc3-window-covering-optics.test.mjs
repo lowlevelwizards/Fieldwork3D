@@ -51,3 +51,25 @@ test('covering evidence is per observer and never inferred before discovery',()=
  assert.equal(h.at(.5,'A','W').covering.opening,0);assert.equal(h.at(.5,'B','W'),null);
  assert.equal(h.at(1,'B','W').covering.opening,1);assert.equal(h.at(1,'A','W').covering.opening,0);
 });
+
+import {safeTransientLightRange,fillTransientLightReach,transientReachAt,TRANSIENT_LIGHT_SECTORS} from '../src/rendering/breach-transient-light-geometry.ts';
+import {windowCoveringPresentationKnown,windowPresentationKnown} from '../src/breach-presentation.ts';
+import {windowBarrierFootprint} from '../src/worldgen/window-geometry-contract.ts';
+test('covering knowledge is independent of architectural briefing',()=>{
+ const site={windows:[window],cover:[windowBarrierFootprint(window)]};
+ const s={site,intel:{mode:'floor-plan',cover:new Set()}};
+ assert.equal(windowPresentationKnown(s,window),true);
+ assert.equal(windowCoveringPresentationKnown(s,window),false);
+ s.intel.cover.add(0);assert.equal(windowCoveringPresentationKnown(s,window),true);
+ s.intel.cover.clear();assert.equal(windowCoveringPresentationKnown(s,window,true),true);
+});
+test('transient point lights and receiver masks stop at covered apertures',()=>{
+ const world={someWallNearPoint:()=>false,someCoverNearPoint:()=>false};
+ const segments=windowCoveringOpticalStrips(window,c('curtain')).map(x=>x.edge);
+ assert.equal(safeTransientLightRange(world,[],a,100),100);
+ assert.ok(safeTransientLightRange(world,[],a,100,segments)<40);
+ const reach=new Float32Array(TRANSIENT_LIGHT_SECTORS);
+ assert.equal(fillTransientLightReach(world,[],a,100,reach,segments),true);
+ assert.ok(transientReachAt(reach,Math.PI/2)<40);
+ assert.equal(transientReachAt(reach,-Math.PI/2),100);
+});

@@ -1,4 +1,4 @@
-import {windowCoveringSightSegments} from './breach-window-covering-optics.ts';
+import {windowCoveringSightSegments,windowCoveringTransientSegments} from './breach-window-covering-optics.ts';
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {bloodMarkRadius,bloodMarkTint} from './breach-blood-evidence.ts';
@@ -129,7 +129,7 @@ import {readEquipmentInteraction} from './breach-equipment-interaction-pose.ts';
 import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
 import {downedTransportPresentation} from './breach-capture-transport-presentation.ts';
 import {SurrenderedFirearmsPresenter} from './rendering/breach-surrendered-firearms-presenter.ts';
-import {spatialSurfaceKnown,shotVisibility,windowPresentationKnown} from './breach-presentation.ts';
+import {spatialSurfaceKnown,shotVisibility,windowPresentationKnown,windowCoveringPresentationKnown} from './breach-presentation.ts';
 import {markWindowOwner,markWallOwnerKnown,markCoverOwnerKnown} from './rendering/breach-evidence-owner.ts';
 import {ShotFrameDisclosure} from './rendering/breach-shot-disclosure.ts';
 import {recordedEffectAllows,groundEffectRow,shotEffectRow} from './breach-replay-effect-evidence.ts';
@@ -2160,7 +2160,8 @@ export class TacticalScene3D{
         null;
       // WC3 coverings are static until WC4; personal playback requires observation.
       const covering=glass.parent?.getObjectByName('window-covering:'+id);
-      if(covering)covering.visible=!personalWindows||!!seen?.covering;
+      if(covering)covering.visible=personalWindows?!!seen?.covering:
+        !!current&&windowCoveringPresentationKnown(s,current,omniscient);
       const broken=personalWindows?!!seen?.shattered:!!current?.shattered;
       const opened=personalWindows?!!seen?.open:!!current?.open;
       glass.visible=!(broken||opened);
@@ -3062,7 +3063,7 @@ export class TacticalScene3D{
         if(!omniscient&&!this.presentationSight.query(s,'effect','flash-light:'+burst.id,burst.p))continue;
         this.transientLights.offer('flash',burst.id,burst.p.x,13,burst.p.y,burst.age);
       }
-    this.transientLights?.confine(sessionWorldGeometry(s),s.doors);
+    this.transientLights?.confine(sessionWorldGeometry(s),s.doors,windowCoveringTransientSegments(s));
     this.combatEffects.update(s,omniscient,
       personalDisclosure,p=>this.presentationSight.query(
         s,'effect',p.x+','+p.y,p));

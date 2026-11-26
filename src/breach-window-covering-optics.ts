@@ -42,7 +42,7 @@ export function coveringStripsBlockRay(strips:readonly CoveringOpticalStrip[],a:
   if(height>=s.bottom&&height<=s.top)return true;
  }return false;
 }
-type Optics={windows:Session['windows'];site:Session['site'];revision:number;worldRevision:number;strips:CoveringOpticalStrip[];standing:Segment[];low:Segment[]};
+type Optics={windows:Session['windows'];site:Session['site'];revision:number;worldRevision:number;strips:CoveringOpticalStrip[];standing:Segment[];low:Segment[];all:Segment[]};
 const cache=new WeakMap<Session,Optics>(),empty:Session['windows']=[];
 export function sessionCoveringOptics(s:Session):Optics{
  const windows=s.windows??empty,revision=s.objectRevision,worldRevision=sessionWorldGeometry(s).revision;
@@ -50,7 +50,7 @@ export function sessionCoveringOptics(s:Session):Optics{
  if(old&&old.windows===windows&&old.site===s.site&&old.revision===revision&&old.worldRevision===worldRevision)return old;
  const strips=windows.flatMap(w=>windowCoveringOpticalStrips(w));
  const at=(height:number)=>strips.filter(p=>height>=p.bottom&&height<=p.top).map(p=>p.edge);
- const next={windows,site:s.site,revision,worldRevision,strips,standing:at(32),low:at(22)};
+ const next={windows,site:s.site,revision,worldRevision,strips,standing:at(32),low:at(22),all:strips.map(p=>p.edge)};
  cache.set(s,next);return next;
 }
 export function windowCoveringsBlockSight(s:Session,a:Pt,b:Pt,fromHeight:number,toHeight=fromHeight):boolean{
@@ -59,6 +59,9 @@ export function windowCoveringsBlockSight(s:Session,a:Pt,b:Pt,fromHeight:number,
 export function windowCoveringSightSegments(s:Session,low=false):readonly Segment[]{
  const o=sessionCoveringOptics(s);return low?o.low:o.standing;
 }
+/** Conservative receiver-light projection: any opaque part can stop a
+ * height-spanning flash or point-light sphere. Shared cached geometry. */
+export function windowCoveringTransientSegments(s:Session):readonly Segment[]{return sessionCoveringOptics(s).all;}
 /** WC4 callers must also synchronize the visual group before exposing actions. */
 export function setSessionWindowCovering(s:Session,id:string,covering:WindowCovering):boolean{
  const w=s.windows.find(w=>w.id===id);if(!w)return false;

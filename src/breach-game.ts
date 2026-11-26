@@ -1822,7 +1822,7 @@ function observe(s:Session){
       // Preserve the exact historical ordering of fine and micro samples,
       // and keep occlusion / memory mutation in authoritative simulation.
       forEachGroundSightCandidate(sight,bounds,20,(col,row,p)=>{
-        if(!unobstructed(blue.p,p,s,blue.posture==='crouch'))return;
+        if(!unobstructed(blue.p,p,s,blue.posture==='crouch'||effectiveEyeHeight(blue)<25))return;
         const fine='fine:'+col+','+row;
         s.seenGround.add(fine);
         notePersonalGround(s,blue.id,s.seconds,fine);
@@ -1831,7 +1831,7 @@ function observe(s:Session){
         notePersonalGround(s,blue.id,s.seconds,coarse);
       });
       forEachGroundSightCandidate(sight,bounds,10,(col,row,p)=>{
-        if(!unobstructed(blue.p,p,s,blue.posture==='crouch'))return;
+        if(!unobstructed(blue.p,p,s,blue.posture==='crouch'||effectiveEyeHeight(blue)<25))return;
         const micro=microKeyAt(col,row);
         s.seenGround.add(micro);
         notePersonalGround(s,blue.id,s.seconds,micro);
@@ -1854,7 +1854,7 @@ function observe(s:Session){
           if(dx*dx+dy*dy<=NEAR_FINE_SIGHT_RANGE**2)return;
           const fine='fine:'+col+','+row;
           if(viewed.has(fine))return;
-          if(!unobstructed(blue.p,p,s,blue.posture==='crouch'))return;
+          if(!unobstructed(blue.p,p,s,blue.posture==='crouch'||effectiveEyeHeight(blue)<25))return;
           viewed.add(fine);s.seenGround.add(fine);
           notePersonalGround(s,blue.id,s.seconds,fine);
           const coarse=Math.floor(p.x/40)+','+Math.floor(p.y/40);

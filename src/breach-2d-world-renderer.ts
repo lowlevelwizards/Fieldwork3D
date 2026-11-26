@@ -13,7 +13,7 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {team,type Session,type TeamActor,liveVisibility,isSeen} from './breach-game.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 import {previewKnownDoorSwing} from './breach-door-swing-preview.ts';
-import {spatialSurfaceKnown,spatialSurfaceState,windowPresentationKnown} from './breach-presentation.ts';
+import {spatialSurfaceKnown,spatialSurfaceState,windowPresentationKnown,windowCoveringPresentationKnown} from './breach-presentation.ts';
 import {windowApertureSegment} from './worldgen/window-geometry-contract.ts';
 import {doorKnown} from './breach-intel.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
@@ -331,7 +331,8 @@ function architecture(){
       line(pane.a,pane.b,'#8bb6af',4);
       const personal=replaying&&replayKnowledge.observerId;
       const observed=personal?replayKnowledge.windowHistory?.at(replayPlayback.time,personal,opening.id):null;
-      const covering=personal?observed?.covering:opening.covering;
+      const covering=personal?observed?.covering:
+        windowCoveringPresentationKnown(state,opening,replaying&&replayKnowledge.omniscient)?opening.covering:undefined;
       if(covering)for(const strip of windowCoveringOpticalStrips(opening,covering))
         line(strip.edge.a,strip.edge.b,'#b4a38d',3);
       const dx=pane.b.x-pane.a.x,dy=pane.b.y-pane.a.y;

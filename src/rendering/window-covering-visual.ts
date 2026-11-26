@@ -8,7 +8,7 @@ export function buildWindowCovering(opening:WindowOpening,parent:THREE.Group,hos
  const c=normalizeWindowCovering(opening);if(!c)return;
  const pieces=windowCoveringPieces(opening,c);if(!pieces.length)return;
  const root=new THREE.Group();root.name='window-covering:'+opening.id;
- const surface=c.family==='curtain'||c.family==='roller-shade'?'fabric':'painted-metal';
+ const surface=c.family==='curtain'||c.family==='roller-shade'?'fabric':c.family==='hinged-shutter'?'painted-wood':'painted-metal';
  const color=palette[c.palette];
  const materials={body:host.solid(color,.91,surface),
   fold:host.solid(new THREE.Color(color).multiplyScalar(.76).getHex(),.93,surface),

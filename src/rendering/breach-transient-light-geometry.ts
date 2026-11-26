@@ -2,12 +2,12 @@
  * PointLight. This is presentation-only, not sight or gameplay illumination.
  * No map-wide scan: static walls and high cover use the session broadphase.
  */
-import {doorOpticalSegment,doorTransmitsSightAndLight,type Door,type Pt} from '../breach-core.ts';
+import {doorOpticalSegment,doorTransmitsSightAndLight,type Door,type Pt,type Segment} from '../breach-core.ts';
 import {groundDistanceToSegment} from '../breach-ground-geometry.ts';
 import {coverBlocksOpticalSight} from '../breach-optical-occlusion.ts';
 import type {SessionWorldGeometry} from '../breach-world-context.ts';
 export type TransientLightWorld=Pick<SessionWorldGeometry,'someWallNearPoint'|'someCoverNearPoint'>;
-export function safeTransientLightRange(world:TransientLightWorld,doors:readonly Door[],source:Pt,maximum:number):number{
+export function safeTransientLightRange(world:TransientLightWorld,doors:readonly Door[],source:Pt,maximum:number,coveringSegments:readonly Segment[]=[]):number{
  if(!Number.isFinite(source.x)||!Number.isFinite(source.y)||!Number.isFinite(maximum)||maximum<=0)return 0;
  let safe=maximum;
  world.someWallNearPoint(source,maximum+5,wall=>{
@@ -20,6 +20,10 @@ export function safeTransientLightRange(world:TransientLightWorld,doors:readonly
   const leaf=doorOpticalSegment(door);
   if(Math.hypot(leaf.b.x-leaf.a.x,leaf.b.y-leaf.a.y)<=.1)continue;
   safe=Math.min(safe,Math.max(0,groundDistanceToSegment(source,leaf)-5));
+  if(safe===0)return 0;
+ }
+ for(const edge of coveringSegments){
+  safe=Math.min(safe,Math.max(0,groundDistanceToSegment(source,edge)-1));
   if(safe===0)return 0;
  }
  world.someCoverNearPoint(source,safe+1,cover=>{
@@ -46,7 +50,8 @@ function angleDelta(a:number,b:number):number{
  return Math.atan2(Math.sin(a-b),Math.cos(a-b));
 }
 export function fillTransientLightReach(
- world:TransientLightWorld,doors:readonly Door[],source:Pt,maximum:number,out:Float32Array
+ world:TransientLightWorld,doors:readonly Door[],source:Pt,maximum:number,out:Float32Array,
+ coveringSegments:readonly Segment[]=[]
 ):boolean{
  if(out.length!==TRANSIENT_LIGHT_SECTORS)throw Error('Invalid transient reach buffer');
  out.fill(0);
@@ -78,6 +83,8 @@ export function fillTransientLightReach(
   if(Math.hypot(leaf.b.x-leaf.a.x,leaf.b.y-leaf.a.y)<=.1)continue;
   if(segment(leaf.a.x,leaf.a.y,leaf.b.x,leaf.b.y,5))break;
  }
+ if(!failed)for(const edge of coveringSegments)
+  if(segment(edge.a.x,edge.a.y,edge.b.x,edge.b.y,1))break;
  if(!failed)world.someCoverNearPoint(source,maximum+1,cover=>{
   if(!coverBlocksOpticalSight(cover,false))return false;
   const l=cover.x-cover.w/2,r=cover.x+cover.w/2,t=cover.y-cover.h/2,b=cover.y+cover.h/2;

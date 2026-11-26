@@ -34,3 +34,16 @@ test('boarding remains idempotent on neglected sites',()=>{
  }
  assert.ok(boarded>0);
 });
+
+test('all six families are reachable through appropriate room and archetype contexts',()=>{
+ const contexts=[['house','bedroom','standard'],['townhouse','living','standard'],['apartment','bedroom','standard'],['motel','guest','standard'],['office','office','picture'],['clinic','exam','standard'],['retail','sales','storefront'],['restaurant','dining','picture'],['garage','workshop','industrial'],['warehouse','storage','industrial'],['utility','equipment','industrial']];
+ const found=new Set();
+ for(const [archetype,purpose,style] of contexts){
+  const local={...site,archetype,rooms:[{...room,purpose}]};
+  for(let seed=0;seed<80;seed++){
+   const a=chooseWindowCovering(local,{...w,style},seed*9973);
+   if(a){found.add(a.family);if(a.family.includes('shutter'))assert.equal(a.opening,1);}
+  }
+ }
+ assert.deepEqual([...found].sort(),['curtain','hinged-shutter','horizontal-blind','roller-shade','rolling-shutter','vertical-blind']);
+});
