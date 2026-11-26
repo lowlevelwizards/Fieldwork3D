@@ -23,3 +23,11 @@ test('V7 fixed two shadowless lights, strongest eligible event and deterministic
  p.reset();assert.equal(p.muzzle.intensity,0);assert.equal(p.flash.intensity,0);
  assert.equal(root.children.length,2);p.dispose();assert.equal(root.children.length,0);
 });
+
+test('Graphic flashbang lighting has a stronger short pulse without adding lights',()=>{
+ assert.equal(transientLightIntensity('flash',0),1650);
+ assert.ok(transientLightIntensity('flash',.24)>0);
+ assert.equal(transientLightIntensity('flash',.30),0);
+ assert.equal(transientLightIntensity('muzzle',0),240);
+ assert.equal(TRANSIENT_LIGHT_LIMIT,2);
+});
