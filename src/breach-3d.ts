@@ -2613,9 +2613,9 @@ export class TacticalScene3D{
       const activeDoor=plannedDoor??(actor.lastDoorId?
         this.frameDoorsById.get(actor.lastDoorId):undefined);
       const handle=activeDoor?
-        actor.lastDoorMethod==='kick'&&actor.kickImpactPoint?
+        actor.lastDoorMethod==='kick'&&actor.kickImpactPoint&&activeDoor.id===actor.lastDoorId&&s.seconds-actor.lastDoorAt<.76?
           actor.kickImpactPoint:
-        actor.lastDoorMethod==='kick'?
+        actor.lastDoorMethod==='kick'&&activeDoor.id===actor.lastDoorId&&s.seconds-actor.lastDoorAt<.76?
           (()=>{const leaf=doorLeafSegment(activeDoor);
             return {x:leaf.a.x+(leaf.b.x-leaf.a.x)*.78,
               y:leaf.a.y+(leaf.b.y-leaf.a.y)*.78};})():
