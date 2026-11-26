@@ -3,7 +3,7 @@
  */
 import type {CampaignState,CampaignOperator} from './campaign-state.ts';
 import {WEAPON_PRICES,canAffordCampaignPurchase,
- campaignWeaponStockAtCapacity} from './campaign-state.ts';
+ campaignWeaponStockAtCapacity,canEquipCampaignCatalogWeapon} from './campaign-state.ts';
 import {isDispatchPilot,mayChooseCampaignContent,mayChooseDispatchSetupContent}
  from './dispatch-campaign-eligibility.ts';
 import {effectiveDispatchSetup,currentDispatchReference}
@@ -53,7 +53,7 @@ export function campaignWeaponQuote(c:CampaignState,
   authorization,priceLabel:unlimited?'NO CHARGE':price+' CR'};
 }
 
-import {FAMILY_PRESETS,familyPreset,matchingFamilyPreset} from './equipment-weapon-families.ts';
+import {FAMILY_PRESETS,FAMILY_PARTS,familyPreset,matchingFamilyPreset} from './equipment-weapon-families.ts';
 import {DISPATCH_PLAYABLE_REFERENCE_IDS} from './dispatch-campaign-setup.ts';
 import {dispatchStarterChoiceStatus} from './dispatch-starter-choices.ts';
 /** Named quote uses real owned bodies and both existing authorization guards. */
@@ -82,4 +82,17 @@ export function catalogWeaponQuote(c:CampaignState,presetId:string):CatalogWeapo
 export function catalogWeaponOfferings(c:CampaignState):CatalogWeaponQuote[]{
  return FAMILY_PRESETS.map(p=>catalogWeaponQuote(c,p.id)!)
   .sort((a,b)=>Number(b.canPurchase)-Number(a.canPurchase)||a.name.localeCompare(b.name)||a.presetId.localeCompare(b.presetId));
+}
+
+import type {SerializedWeapon} from './equipment-weapon-identity.ts';
+export function ownedCatalogWeaponName(w:SerializedWeapon):string{
+ return matchingFamilyPreset(w.catalogBody)?.name??
+  ((FAMILY_PARTS[w.catalogBody.parts.receiver]?.name??w.catalogBody.family.toUpperCase())+' · CUSTOM');
+}
+export function catalogWeaponIssueOptions(c:CampaignState,operatorId:string){
+ const assigned=new Set(c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').map(o=>o.weaponSerialId));
+ return (c.inventory.serializedWeapons??[]).filter(w=>!assigned.has(w.id)).map(w=>({
+  serialId:w.id,name:ownedCatalogWeaponName(w),condition:w.condition,
+  enabled:canEquipCampaignCatalogWeapon(c,operatorId,w.id)
+ })).sort((a,b)=>Number(b.enabled)-Number(a.enabled)||a.name.localeCompare(b.name)||a.serialId.localeCompare(b.serialId));
 }

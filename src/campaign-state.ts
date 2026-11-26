@@ -895,30 +895,39 @@ export function equipCampaignWeapon(c:CampaignState,id:string,
 
 /** Issue one exact unassigned owned catalog object, including same-category
  * exchanges. No appearance substitution, new asset or hidden purchase. */
-export function equipCampaignCatalogWeapon(c:CampaignState,id:string,serialId:string):CampaignState{
- if(c.activeContractId)return c;
+function preflightCatalogIssue(c:CampaignState,id:string,serialId:string){
+ if(c.activeContractId)return undefined;
  const m=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
- if(!m||c.operators.some(o=>o.status!=='lost'&&o.status!=='retired'&&o.weaponSerialId===serialId))return c;
+ if(!m||c.operators.some(o=>o.status!=='lost'&&o.status!=='retired'&&o.weaponSerialId===serialId))return undefined;
  const incoming=c.inventory.serializedWeapons?.find(w=>w.id===serialId);
- if(!incoming||!incoming.catalogBody||c.inventory.weapons[incoming.platform]<1)return c;
+ if(!incoming||!incoming.catalogBody||c.inventory.weapons[incoming.platform]<1)return undefined;
  const weapon=incoming.platform;
- if(!mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'))return c;
+ if(!mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'))return undefined;
  const preset=matchingFamilyPreset(incoming.catalogBody);
  if(preset?!mayChooseCampaignContent(c,'weapon-preset',preset.id):
-  !dispatchPilotUnclassifiedEditingEnabled(c))return c;
+  !dispatchPilotUnclassifiedEditingEnabled(c))return undefined;
  const base=changeWeaponPlatform(m.weaponConfiguration,weapon);
  const target=readWeaponConfiguration({...base,build:incoming.catalogBody,
   mountSelections:undefined,stockPosition:undefined},weapon);
  if(!target.build||JSON.stringify(target.build)!==JSON.stringify(incoming.catalogBody)||
-  !hasValidPhysicalLayout(target))return c;
+  !hasValidPhysicalLayout(target))return undefined;
  const transfer=quoteAttachmentTransfer(c.inventory.attachments,m.weaponConfiguration,target,
   Math.max(0,c.funds),false);
- if(!transfer.canCommit||!transfer.stockAfter)return c;
+ if(!transfer.canCommit||!transfer.stockAfter)return undefined;
+ return {m,weapon,target,stockAfter:transfer.stockAfter};
+}
+export function canEquipCampaignCatalogWeapon(c:CampaignState,id:string,serialId:string):boolean{
+ return !!preflightCatalogIssue(c,id,serialId);
+}
+export function equipCampaignCatalogWeapon(c:CampaignState,id:string,serialId:string):CampaignState{
+ const plan=preflightCatalogIssue(c,id,serialId);
+ if(!plan)return c;
+ const {m,weapon,target,stockAfter}=plan;
  const normalized=synchronizeIssuedCatalogBodies(c);
  const counts={...normalized.inventory.weapons};
  counts[weapon]--;counts[m.weapon]++;
  const next=reconcileCampaignWeaponOwnership({...normalized,inventory:{...normalized.inventory,
-  weapons:counts,attachments:transfer.stockAfter},operators:normalized.operators.map(o=>o.id===id?
+  weapons:counts,attachments:stockAfter},operators:normalized.operators.map(o=>o.id===id?
    {...o,weapon,weaponSerialId:serialId,magazine:0,reserve:0,magazines:[],
     loadedMagazineId:o.id+'/'+weapon+'/loaded',loadout:syncPrimaryWeapon(o.loadout,weapon),
     weaponConfiguration:target}:o)});

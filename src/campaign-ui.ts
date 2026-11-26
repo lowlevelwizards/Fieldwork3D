@@ -19,7 +19,7 @@ import {effectiveDispatchSetup,currentDispatchReference,
  type DispatchCampaignDraft} from './dispatch-campaign-setup.ts';
 import {factionReference} from './faction-reference-catalog.ts';
 import {dispatchDepartmentView} from './dispatch-department-view.ts';
-import {catalogWeaponOfferings}
+import {catalogWeaponOfferings,catalogWeaponIssueOptions,ownedCatalogWeaponName}
  from './campaign-weapon-procurement.ts';
 import {SKILL_NAMES,canAffordCampaignPurchase,
  armorRepairCost,weaponServiceCost,canApplyCampaignKitPreset}
@@ -89,6 +89,7 @@ export type CampaignHandlers={
  treat:(id:string)=>void;
  recruit:()=>void;assignSlot:(slot:number,id:string)=>void;
  buyCatalogWeapon:(presetId:string)=>void;
+ equipCatalogWeapon:(id:string,serialId:string)=>void;
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
  equipCarryGear:(id:string,slot:CarryGearSlot,itemId:string)=>void;
@@ -695,17 +696,29 @@ export class CampaignScreen{
    const careActions=node('div','campaign-person-care-actions');
    const weaponPick=node('select','campaign-select');
    weaponPick.setAttribute('aria-label','Select weapon for '+p.callsign);
-   for(const weapon of ['carbine','smg','rifle','shotgun'] as const){
-    const opt=node('option','',weapon.toUpperCase()+' · '+c.inventory.weapons[weapon]+' SPARE');
-    opt.value=weapon;opt.disabled=(weapon!==p.weapon&&c.inventory.weapons[weapon]<1)||
-     ((weapon==='smg'||weapon==='shotgun')&&weapon!==p.weapon)||
-      (isDispatchPilot(c)&&weapon!==p.weapon&&
-       !mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'));
-    weaponPick.append(opt);
-   }
-   weaponPick.value=p.weapon;weaponPick.disabled=!!c.activeContractId;
-   weaponPick.addEventListener('change',()=>this.handlers.equipWeapon(p.id,
-    weaponPick.value as 'carbine'|'smg'|'rifle'|'shotgun'));
+   const currentSerial=c.inventory.serializedWeapons?.find(w=>w.id===p.weaponSerialId);
+   const currentOption=node('option','',(currentSerial?ownedCatalogWeaponName(currentSerial):
+    (p.weaponConfiguration.build?matchingFamilyPreset(p.weaponConfiguration.build)?.name:undefined)??'Current weapon')+' · EQUIPPED');
+   currentOption.value=p.weaponSerialId??'';weaponPick.append(currentOption);
+   weaponPick.value=currentOption.value;
+   weaponPick.disabled=!!c.activeContractId;
+   // Only resolve the physical issue options when this operator's care panel opens.
+   let issueOptionsLoaded=false;
+   const loadIssueOptions=()=>{
+    if(issueOptionsLoaded||!care.open)return;
+    issueOptionsLoaded=true;
+    for(const choice of catalogWeaponIssueOptions(c,p.id)){
+     const serial=choice.serialId.split(':').at(-1)??choice.serialId;
+     const opt=node('option','',choice.name+' · #'+serial+' · '+choice.condition+'%'+
+      (choice.enabled?'':' · UNAVAILABLE'));
+     opt.value=choice.serialId;opt.disabled=!choice.enabled;weaponPick.append(opt);
+    }
+   };
+   care.addEventListener('toggle',loadIssueOptions);loadIssueOptions();
+   weaponPick.addEventListener('change',()=>{
+    if(weaponPick.value!==currentOption.value)
+     this.handlers.equipCatalogWeapon(p.id,weaponPick.value);
+   });
    const loadoutButton=button('LOADOUT',()=>{
     this.armoryOperatorId=p.id;this.home(c);
    },'campaign-primary');

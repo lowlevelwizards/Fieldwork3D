@@ -104,3 +104,30 @@ test('named procurement quotes agree with mutations across campaign policies',()
   }
  }
 });
+
+import {catalogWeaponIssueOptions} from '../src/campaign-weapon-procurement.ts';
+import {canEquipCampaignCatalogWeapon} from '../src/campaign-state.ts';
+test('squad issuance options project exact unassigned serials and shared mutation guards',()=>{
+ const c=buyCatalogWeapon(newCampaign(989),'ar-colt733');
+ const op=c.operators[0],other=c.operators[1];
+ const options=catalogWeaponIssueOptions(c,op.id);
+ assert.equal(options.some(x=>x.serialId===other.weaponSerialId),false);
+ const spare=options.find(x=>x.name===catalogWeaponQuote(c,'ar-colt733').name);
+ assert.ok(spare?.enabled);
+ assert.equal(canEquipCampaignCatalogWeapon(c,op.id,spare.serialId),true);
+ assert.equal(canEquipCampaignCatalogWeapon({...c,activeContractId:'live'},op.id,spare.serialId),false);
+ const next=equipCampaignCatalogWeapon(c,op.id,spare.serialId);
+ assert.equal(next.operators[0].weaponSerialId,spare.serialId);
+ assert.ok(catalogWeaponIssueOptions(next,op.id).some(x=>x.serialId===op.weaponSerialId));
+});
+test('curated named shotgun migration preserves existing specialist access',()=>{
+ for(const p of DISPATCH_PRESETS){
+  const c=newDispatchPilotCampaign(990,dispatchPresetDraft(p));
+  const q=catalogWeaponQuote(c,'r870-police-wood');
+  assert.equal(q.canPurchase,buyCatalogWeapon(c,'r870-police-wood')!==c);
+ }
+ const historical=newDispatchPilotCampaign(990,dispatchPresetDraft('historical'));
+ assert.equal(catalogWeaponQuote(historical,'r870-police-wood').canPurchase,true);
+ const career=newDispatchPilotCampaign(990,dispatchPresetDraft('career'));
+ assert.equal(catalogWeaponQuote(career,'r870-police-wood').status,'standing-locked');
+});
