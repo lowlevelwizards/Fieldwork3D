@@ -32,5 +32,5 @@ test('Campaign and Quick Play reuse the DOM factory without re-owning gear',()=>
  assert.match(quick,/uiNode as node,uiButton as command/);
  assert.match(gallery,/uiNode as el,uiButton as action/);
  assert.match(gallery,/OutfitterChoiceSource/);
- assert.match(quick,/catalogOutfitterSources\(selected\.loadout\)/);
+ assert.match(quick,/catalogOutfitterSources\(selected\.loadout,selected\.weaponConfiguration\)/);
 });
