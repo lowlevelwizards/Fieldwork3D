@@ -36,3 +36,6 @@ Both desktop picker and mobile gallery expose equipped and exact spare serials r
 
 ## R4.4a — serial-first named transactions candidate
 Named purchases append a specific catalog serial directly; exact issue changes the assignment and projects compatibility counts from serials, without the old class-count allocator. The projection preserves all owned IDs, bodies and stable order. Unresolved missing operator claims are excluded from spare stock. Legacy class-based mutations and save reconciliation remain transitional; the next stage must migrate their call sites and establish explicit persistent custody before the numeric ledger can be deleted. No full R4.4 completion claim. Exact verification pending.
+
+## R4.4b — exact kit and retirement paths, true spare thumbnails
+Cross-category saved kits require an exact matching owned serial body, then issue it without substituting another owned model. Retirement releases the actual serial and projects stock rather than allocating through class counts. Spare primary thumbnails capture their actual stored body through the existing offscreen preview and async readback path, never the currently equipped body by accident. Compatibility count and historical reader remain pending R4.4c. Exact-head tests pending; Pages preflight also reported a separate release in progress (45844088292).

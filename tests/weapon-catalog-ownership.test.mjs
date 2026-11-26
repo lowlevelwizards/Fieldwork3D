@@ -151,3 +151,27 @@ test('a weapon attached to an unresolved missing operator is not armory stock',(
  assert.ok(!catalogOwnedStock(missing).some(w=>w.id===operator.weaponSerialId));
  assert.strictEqual(equipCampaignCatalogWeapon(missing,c.operators[1].id,operator.weaponSerialId),missing);
 });
+
+import {saveCampaignKitPreset,applyCampaignKitPreset,campaignKitWeaponAvailable,hireRecruit,retireOperator} from '../src/campaign-state.ts';
+test('cross-category saved kit requires matching authored body, not any spare of the same category',()=>{
+ let c=saveCampaignKitPreset(newCampaign(993),'rook','M4 kit');
+ const p=c.kitPresets[0],operator=c.operators[1];
+ c=buyCatalogWeapon(c,'ar-colt733');
+ assert.equal(campaignKitWeaponAvailable(c,operator.id,p.id),false);
+ assert.strictEqual(applyCampaignKitPreset(c,operator.id,p.id),c);
+ c=buyCatalogWeapon(c,'ar-m4a1');
+ const exact=catalogOwnedStock(c).find(w=>matchingFamilyPreset(w.catalogBody)?.id==='ar-m4a1');
+ assert.ok(exact);
+ assert.equal(campaignKitWeaponAvailable(c,operator.id,p.id),true);
+ const issued=applyCampaignKitPreset(c,operator.id,p.id);
+ assert.equal(issued.operators[1].weaponSerialId,exact.id);
+ assert.deepEqual(weaponOwnershipIssues(issued),[]);
+});
+test('retirement returns actual named serial with service history unchanged',()=>{
+ const c=hireRecruit({...newCampaign(994),funds:5000});
+ const op=c.operators.at(-1),w=c.inventory.serializedWeapons.find(x=>x.id===op.weaponSerialId);
+ const retired=retireOperator(c,op.id);
+ assert.ok(retired!==c);
+ assert.deepEqual(catalogOwnedStock(retired).find(x=>x.id===w.id),w);
+ assert.deepEqual(weaponOwnershipIssues(retired),[]);
+});

@@ -940,13 +940,13 @@ export function retireOperator(c:CampaignState,id:string):CampaignState{
  if(available.length<=4)return c;
  const o=available.find(m=>m.id===id);
  if(!o)return c;
- const weapons={...c.inventory.weapons,[o.weapon]:c.inventory.weapons[o.weapon]+1};
+ const normalized=synchronizeIssuedCatalogBodies(c);
  const event:CareerEvent={id:'retired-'+id+'-'+c.day,day:c.day,operatorId:id,
   kind:'retirement',detail:'Retired from active field service'};
- return reconcileCampaignWeaponOwnership({...c,inventory:{...c.inventory,weapons,
+ return projectCatalogInventory({...normalized,inventory:{...normalized.inventory,
   attachments:returnAttachments(c.inventory.attachments,o.weaponConfiguration)},
-  operators:c.operators.map(m=>
-  m.id===id?{...m,status:'retired' as const}:m),
+  operators:normalized.operators.map(m=>
+  m.id===id?{...m,status:'retired' as const,weaponSerialId:null}:m),
   journal:[...c.journal,event].slice(-1000)});
 }
 
@@ -1092,11 +1092,27 @@ export function saveCampaignKitPreset(c:CampaignState,id:string,name:string):Cam
  * Equipment slots and weapon build must remain within the authored pilot.
  * Legacy/Sandbox campaigns retain existing preset semantics.
  */
+/** Find an exact matching spare body for a cross-category recipe. A class
+ * count is not evidence that the named weapon is owned. */
+export function campaignKitWeaponAvailable(c:CampaignState,id:string,presetId:string):boolean{
+ const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ const preset=c.kitPresets.find(p=>p.id===presetId);
+ return !!member&&!!preset&&(member.weapon===preset.weapon||!!matchingKitSpare(c,id,preset.weaponConfiguration));
+}
+function matchingKitSpare(c:CampaignState,id:string,desired:WeaponConfiguration){
+ if(!desired.build)return undefined;
+ return catalogOwnedStock(c).find(w=>w.platform===desired.weapon&&
+  w.catalogBody.family===desired.build!.family&&
+  Object.keys(w.catalogBody.parts).every(k=>
+   w.catalogBody.parts[k as FamilyPartSlot]===desired.build!.parts[k as FamilyPartSlot])&&
+  Object.keys(w.catalogBody.parts).length===Object.keys(desired.build!.parts).length&&
+  canEquipCampaignCatalogWeapon(c,id,w.id));
+}
 export function canApplyCampaignKitPreset(c:CampaignState,id:string,presetId:string):boolean{
  if(c.activeContractId)return false;
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  const preset=c.kitPresets.find(p=>p.id===presetId);
- if(!member||!preset)return false;
+ if(!member||!preset||!campaignKitWeaponAvailable(c,id,presetId))return false;
  const proposed=readEquipmentLoadout(preset.kit,preset.weapon);
  const incoming=proposed.fieldInventory??initialFieldInventory(proposed);
  if(!fieldCarryReport(proposed,member.magazines,incoming).valid)return false;
@@ -1121,15 +1137,15 @@ export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string
  const preset=c.kitPresets.find(p=>p.id===presetId);
  if(!member||!preset)return c;
  // Entire recipe is atomic. Never silently skip a missing primary weapon.
- if(member.weapon!==preset.weapon&&c.inventory.weapons[preset.weapon]<1)return c;
- const desired=readWeaponConfiguration(preset.weaponConfiguration,preset.weapon);
+ const desired=resolveCatalogConfiguration(readWeaponConfiguration(preset.weaponConfiguration,preset.weapon),preset.weapon);
  if(!hasValidPhysicalLayout(desired))return c;
  // Apply one return-before-acquire transaction, independent of UI entry.
  const transfer=quoteAttachmentTransfer(c.inventory.attachments,
   member.weaponConfiguration,desired,Math.max(0,c.funds),false);
  if(!transfer.canCommit||!transfer.stockAfter)return c;
  const attachments=transfer.stockAfter;
- const swapped=member.weapon===preset.weapon?c:equipCampaignWeapon(c,id,preset.weapon);
+ const spare=member.weapon===preset.weapon?undefined:matchingKitSpare(c,id,desired);
+ const swapped=member.weapon===preset.weapon?c:spare?equipCampaignCatalogWeapon(c,id,spare.id):c;
  if(swapped===c&&member.weapon!==preset.weapon)return c;
  const targetKit=readEquipmentLoadout(preset.kit,preset.weapon);
  const fieldStock=quoteCampaignFieldStockChange(swapped,member.loadout,targetKit);

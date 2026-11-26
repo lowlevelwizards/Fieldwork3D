@@ -22,20 +22,20 @@ import {dispatchDepartmentView} from './dispatch-department-view.ts';
 import {catalogWeaponOfferings,catalogWeaponIssueOptions,ownedCatalogWeaponName}
  from './campaign-weapon-procurement.ts';
 import {SKILL_NAMES,canAffordCampaignPurchase,
- armorRepairCost,weaponServiceCost,canApplyCampaignKitPreset}
+ armorRepairCost,weaponServiceCost,canApplyCampaignKitPreset,campaignKitWeaponAvailable}
  from './campaign-state.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {sharedService} from './campaign-history.ts';
 import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts';
 import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
  type LoadoutSlot} from './equipment-loadouts.ts';
-import type {EquipmentPreviewFocus} from './equipment-preview.ts';
+import type {EquipmentPreviewFocus,EquipmentThumbnailTarget} from './equipment-preview.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {WeaponWorkbenchPreview,type WeaponWorkbenchViewState}
  from './equipment-weapon-workbench.ts';
 import type {WorkbenchSocket} from './equipment-weapon-workbench-layout.ts';
-import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
+import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,initialWeaponConfiguration,readWeaponConfiguration,
  weaponAttachmentAllowed,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
 import {FAMILY_PART_SLOTS,FAMILY_PARTS,
  compatibleFamilyPart,matchingFamilyPreset,proposeFamilyPartChange,type FamilyPartSlot}
@@ -1894,12 +1894,11 @@ export class CampaignScreen{
   }
   for(const preset of c.kitPresets){
    const allowed=canApplyCampaignKitPreset(c,id,preset.id);
-   const available=preset.weapon===person.weapon||
-    (c.inventory.weapons[preset.weapon]??0)>0;
+   const available=campaignKitWeaponAvailable(c,id,preset.id);
    const card=node('article','campaign-kit-preset-card');
    const heading=node('div','campaign-kit-preset-heading');
    heading.append(node('strong','',preset.name),
-    node('small','',preset.weapon.toUpperCase()+' · '+
+    node('small','',(preset.weaponConfiguration.build?matchingFamilyPreset(preset.weaponConfiguration.build)?.name??'CUSTOM BUILD':'Saved weapon')+' · '+
      totalEquipmentMass(preset.kit,preset.weaponConfiguration).toFixed(2)+' KG'));
    const detail=node('p','campaign-kit-preset-summary',
     (itemDefinition(preset.kit.slots.head)?.name??'No headwear')+' · '+
@@ -1990,6 +1989,15 @@ export class CampaignScreen{
   const benchRows=new Map<LoadoutSlot,HTMLElement>();
   const {selectedItems}=this.equipmentWorkspace.memoryFor(id);
   const gallerySources=new Map<LoadoutSlot,HTMLSelectElement>();
+  const ownedById=new Map(c.inventory.serializedWeapons?.map(w=>[w.id,w]));
+  const thumbnailTarget=(slot:LoadoutSlot,itemId:string):EquipmentThumbnailTarget=>{
+   if(slot!=='primary')return {kind:'gear',slot,itemId};
+   if(itemId===(person.weaponSerialId??'current'))return {kind:'gear',slot,itemId:person.loadout.slots.primary};
+   const serial=ownedById.get(itemId);
+   return serial?{kind:'gear',slot,itemId:'primary-'+serial.platform,
+    weaponConfiguration:readWeaponConfiguration({...initialWeaponConfiguration(serial.platform),build:serial.catalogBody},serial.platform)}:
+    {kind:'gear',slot,itemId:'primary-none'};
+  };
   let showGallery:((slot:LoadoutSlot)=>void)|null=null;
   let closeAdvanced:(()=>void)|null=null;
   const benchButtons=new Map<LoadoutSlot,HTMLButtonElement>();
@@ -2176,9 +2184,7 @@ export class CampaignScreen{
    gallerySources.set(slot,select);
    select.classList.add('campaign-kit-native-select');
    const picker=createCampaignGearPicker(select,slot.replace(/-/g,' '),
-    itemId=>slot==='primary'?(itemId===(person.weaponSerialId??'current')?
-     this.preview?.renderModelThumbnail({kind:'gear',slot,itemId:person.loadout.slots.primary})??null:null):
-     this.preview?.renderModelThumbnail({kind:'gear',slot,itemId})??null);
+    itemId=>this.preview?.renderModelThumbnail(thumbnailTarget(slot,itemId))??null);
    picker.addEventListener('click',()=>{
     const focus:EquipmentPreviewFocus=slot==='head'?'head':
      slot==='armor'?'torso':slot==='primary'?'weapon':
@@ -2520,9 +2526,7 @@ export class CampaignScreen{
    const gallery=this.equipmentWorkspace.mountGallery(id,{
     host:galleryRoot,sources:gallerySources,kit:person.loadout,
     magazines:person.magazines,locked,
-    renderModel:(slot,itemId)=>slot==='primary'?
-     (itemId===(person.weaponSerialId??'current')?this.preview?.renderModelThumbnailAsync({kind:'gear',slot,itemId:person.loadout.slots.primary})??null:null):
-     this.preview?.renderModelThumbnailAsync({kind:'gear',slot,itemId})??null,
+    renderModel:(slot,itemId)=>this.preview?.renderModelThumbnailAsync(thumbnailTarget(slot,itemId))??null,
     onAutoPack:()=>{
      const button=[...physicalEditor.querySelectorAll<HTMLButtonElement>('button')]
       .find(button=>button.textContent?.trim()==='AUTO PACK');
