@@ -1312,6 +1312,7 @@ function reset(next=state.variant,siteSeed?:number,
   missionController.transition(state,{
     variant:next,seed:siteSeed,missionOverride,prebuiltSite,
     risk:encounterRisk,deferScene,restartStart,
+    forceContext:encounterRisk!==undefined?(campaign?.rules?.template==='operations'?'military':campaign?.rules?.template==='wasteland'?'survival':'civilian'):undefined,
     incidentId:dispatchCase?.incidentId,archetype:dispatchCase?.archetype,
     trainingSquadSize:training?.squadSize,trainingLighting:training?.lighting,
     trainingLightKit:training?.lightKit
