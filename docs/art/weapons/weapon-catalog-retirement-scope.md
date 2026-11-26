@@ -57,3 +57,6 @@ Both preparation Outfitters use the same typed named-model choices, actual per-r
 
 ## Release gate follow-through
 At 4bae888, 39 workflows passed, including G36, mobile Outfitter, and mounting. FAL/FNC mesh contracts passed but browser captures failed due to primary/secondary search selector ambiguity. Scope browser selectors to the exact primary search accessible name. Expand the historical AR tests from eight to nine actual references while retaining their geometry assertions. User explicitly directs movement issues to separate workstream; do not modify or weaken movement checks here. Dedicated catalog run cancelled externally; rerun on updated candidate.
+
+## R4.5b — Dispatch creation and live named access
+One pure named-model authorization projection now drives the pre-creation review and live named procurement. The creation summary shows counts and up to five representative offered/specialist model names, plus restricted/unassessed counts, instead of four broad classes. Existing historical/time/standing/economy rules are preserved; no policy unlock bypass. Older class-only quote/access wrappers still exist for compatibility tests and other callers pending R5. Exact-head verification pending.

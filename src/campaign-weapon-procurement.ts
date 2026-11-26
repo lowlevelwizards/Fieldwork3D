@@ -4,11 +4,11 @@
 import type {CampaignState,CampaignOperator} from './campaign-state.ts';
 import {WEAPON_PRICES,canAffordCampaignPurchase,
  campaignCatalogStockAtCapacity,canEquipCampaignCatalogWeapon} from './campaign-state.ts';
-import {isDispatchPilot,mayChooseCampaignContent,mayChooseDispatchSetupContent}
+import {isDispatchPilot,mayChooseCampaignContent}
  from './dispatch-campaign-eligibility.ts';
 import {effectiveDispatchSetup,currentDispatchReference}
  from './dispatch-campaign-setup.ts';
-import {dispatchWeaponAccess} from './dispatch-weapon-access.ts';
+import {dispatchWeaponAccess,dispatchCatalogWeaponAccess} from './dispatch-weapon-access.ts';
 import {initialDispatchDepartment} from './dispatch-department.ts';
 
 export const CAMPAIGN_WEAPON_PLATFORMS=[
@@ -54,8 +54,6 @@ export function campaignWeaponQuote(c:CampaignState,
 }
 
 import {FAMILY_PRESETS,FAMILY_PARTS,familyPreset,matchingFamilyPreset} from './equipment-weapon-families.ts';
-import {DISPATCH_PLAYABLE_REFERENCE_IDS} from './dispatch-campaign-setup.ts';
-import {dispatchStarterChoiceStatus} from './dispatch-starter-choices.ts';
 /** Named quote uses real owned bodies and both existing authorization guards. */
 export type CatalogWeaponQuote=CampaignWeaponQuote & Readonly<{presetId:string;name:string}>;
 export function catalogWeaponQuote(c:CampaignState,presetId:string):CatalogWeaponQuote|undefined{
@@ -67,15 +65,12 @@ export function catalogWeaponQuote(c:CampaignState,presetId:string):CatalogWeapo
  const issued=matching.filter(w=>assigned.has(w.id)).length,
   stock=catalogOwnedStock(c).filter(w=>matchingFamilyPreset(w.catalogBody)?.id===presetId).length;
  let status=base.status,authorization=base.authorization;
- if(!mayChooseCampaignContent(c,'weapon-preset',presetId)){
-  const setup=effectiveDispatchSetup(c),reference=currentDispatchReference(c);
-  const standing=(c.dispatchDepartment??initialDispatchDepartment()).standing;
-  const at70=standing<70&&mayChooseDispatchSetupContent(setup,reference,70,'weapon-preset',presetId)&&
-   mayChooseDispatchSetupContent(setup,reference,70,'equipment','primary-'+preset.weapon,'primary');
-  const assessed=DISPATCH_PLAYABLE_REFERENCE_IDS.some(ref=>dispatchStarterChoiceStatus(ref,'weapon-preset',presetId)!==null);
-  status=at70?'standing-locked':assessed?'reference-locked':'not-assessed';
-  authorization=at70?'CAREER RESTRICTED · Standing 70 / 100 required (current '+standing+')':
-   assessed?'NOT OFFERED · Current reference, time or access policy':
+ const standing=(c.dispatchDepartment??initialDispatchDepartment()).standing;
+ const access=isDispatchPilot(c)?dispatchCatalogWeaponAccess(effectiveDispatchSetup(c),currentDispatchReference(c),standing,presetId):'offered';
+ if(access!=='offered'){
+  status=access;
+  authorization=access==='standing-locked'?'CAREER RESTRICTED · Standing 70 / 100 required (current '+standing+')':
+   access==='reference-locked'?'NOT OFFERED · Current reference, time or access policy':
    'NOT ASSESSED · No playable Dispatch reference evaluates this named model';
  }else if(status==='ready')authorization='ELIGIBLE · '+(stock>0?'Armory copies available':'No spare copies yet');
  return {...base,presetId,name:preset.name,stock,issued,status,authorization,canPurchase:status==='ready'};
