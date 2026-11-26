@@ -11,7 +11,7 @@ import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {paintPassageRanks} from './ui/passage-rank-badges.ts';
 import {selectedActionTarget} from './breach-action-target-marker.ts';
 import {intelPassable} from './breach-intel.ts';
-import {objectiveLocationKnown,approximateObjectiveBounds} from './breach-objective-intel.ts';
+import {objectiveLocationKnown,approximateObjectiveBounds,holdObjectiveBounds} from './breach-objective-intel.ts';
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {doorReachable} from './breach-door.ts';
 import {doorVisibility} from './breach-presentation.ts';
@@ -433,7 +433,18 @@ function renderProjectedPlans(){
     const target=worldToScreen(state.mission==='secure'?
       state.scenario.objective:state.scenario.extract,9);
     draw.strokeStyle='#e8d5a6';draw.lineWidth=2;
-    draw.beginPath();draw.arc(target.x,target.y,17,0,2*Math.PI);draw.stroke();
+    const holdArea=state.mission==='secure'&&state.missionType==='hold'?
+      holdObjectiveBounds(state.site,state.scenario.objective):null;
+    if(holdArea){
+      const corners=[
+        {x:holdArea.minX,y:holdArea.minY},{x:holdArea.maxX,y:holdArea.minY},
+        {x:holdArea.maxX,y:holdArea.maxY},{x:holdArea.minX,y:holdArea.maxY}
+      ].map(p=>worldToScreen(p,1));
+      draw.save();draw.fillStyle='rgba(216,204,152,.07)';
+      draw.beginPath();draw.moveTo(corners[0].x,corners[0].y);
+      for(const corner of corners.slice(1))draw.lineTo(corner.x,corner.y);
+      draw.closePath();draw.fill();draw.stroke();draw.restore();
+    }else{draw.beginPath();draw.arc(target.x,target.y,17,0,2*Math.PI);draw.stroke();}
     draw.fillStyle='#e8d5a6';draw.font='700 12px "Saira Condensed",sans-serif';
     draw.fillText(state.mission.toUpperCase(),target.x,target.y-23);
     if(!replaying&&state.mission==='secure'&&state.missionType==='hold'){
