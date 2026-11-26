@@ -74,7 +74,7 @@ export function coveringTransitionClear(s:Session,w:WindowState,c:WindowCovering
   const along=Math.abs(w.vertical?p.y-w.y:p.x-w.x);
   return normal>0&&normal<w.width/2+16&&along<w.width+10;
  };
- return !s.operators.some(o=>o!==actor&&o.health>0&&occupied(o.p))&&!s.civilians.some(o=>o.health>0&&occupied(o.p));
+ return !s.operators.some(o=>o!==actor&&o.health>0&&occupied(o.p))&&!(s.civilians??[]).some(o=>o.health>0&&occupied(o.p));
 }
 export function coveringActionSeconds(c:WindowCovering):number{return c.family==='rolling-shutter'?1.35:c.family==='hinged-shutter'?1.05:COVERING_ACTION_SECONDS;}
 export function coveringActorAvailable(a:TeamActor,s:Session):boolean{

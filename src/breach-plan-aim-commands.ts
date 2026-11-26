@@ -1,6 +1,6 @@
 /** LOOK/WATCH authored instructions. Keeps the active WATCH and route
  * independent and preserves the existing atomic edit semantics. */
-import type {Session} from './breach-game.ts';
+import type {Session,TeamActor} from './breach-game.ts';
 import type {Pt} from './breach-core.ts';
 import {type AimMode,type PlanNode,length,targetAngle} from './breach-plan.ts';
 import {edit} from './breach-plan-authoring.ts';
@@ -16,21 +16,41 @@ const clone=(p:Pt):Pt=>({...p});
  * A selected waypoint applies its instruction on arrival, then all subsequent
  * walking inherits it until another aim instruction explicitly overrides it.
  */
+/** Resolve the existing attention slot at HERE or the end of a route. */
+export function aimNodeForOrigin(a:TeamActor,nodeId:number|undefined,origin:'here'|'end'):PlanNode|undefined{
+ if(nodeId!==undefined)return a.plan.find(n=>n.id===nodeId);
+ if(origin==='end'){
+  const last=a.plan.at(-1);
+  return last&&['move','look','wait','sync','holdClear'].includes(last.kind)?last:undefined;
+ }
+ let here:PlanNode|undefined;
+ for(const n of a.plan){
+  if(d(n.p,a.p)>=2||n.kind!=='look')break;
+  here=n;
+ }
+ return here;
+}
 export function planAim(s:Session,id:string,mode:AimMode,target:Pt,nodeId?:number,
   label:'look'|'watch'|'strafe'|'pie'=mode==='track'?'watch':'look',
   origin:'end'|'here'='end'){
   const a=party(s,id);
   if(!a||!canEdit(s)||!Number.isFinite(target.x)||!Number.isFinite(target.y))return false;
-  const node=nodeId===undefined?undefined:a.plan.find(n=>n.id===nodeId);
+  const node=aimNodeForOrigin(a,nodeId,origin);
   if(nodeId!==undefined&&!node)return false;
   const pos=node?.p??(origin==='here'?a.p:finalPoint(a));
   if(d(pos,target)<2)return false;
   const patch:Partial<PlanNode>=mode==='track'?
-    {aimMode:'track',facing:undefined,aimPoint:clone(target),aimLabel:label}:
-    {aimMode:mode,facing:angle(pos,target),aimPoint:undefined,aimLabel:label};
+    {aimMode:'track',facing:undefined,aimPoint:clone(target),lookDistance:undefined,aimLabel:label}:
+    {aimMode:mode,facing:angle(pos,target),aimPoint:undefined,lookDistance:label==='look'?d(pos,target):undefined,aimLabel:label};
   if(node)return edit(s,a,()=>{
     node.aimMode=patch.aimMode;node.facing=patch.facing;
     node.aimPoint=patch.aimPoint;node.aimLabel=patch.aimLabel;
+    node.lookDistance=patch.lookDistance;
+    // Coalesce consecutive historical HERE attention nodes only.
+    const index=a.plan.indexOf(node);
+    if(node.kind==='look'&&d(node.p,a.p)<2&&a.plan.slice(0,index+1).every(n=>n.kind==='look'&&d(n.p,a.p)<2)){
+      a.plan.splice(0,index);
+    }
   });
   if(origin==='here')return edit(s,a,()=>{
     a.plan.unshift({id:s.nextId++,kind:'look',p:clone(a.p),...patch});
@@ -41,9 +61,7 @@ export function updatePlanFacing(s:Session,id:string,nodeId:number,p:Pt){
   return planAim(s,id,'fixed',p,nodeId);
 }
 export function planLook(s:Session,id:string,p:Pt,nodeId?:number){
-  const a=party(s,id);if(!a)return false;
-  const node=nodeId!==undefined?a.plan.find(n=>n.id===nodeId):a.plan.at(-1);
-  return planAim(s,id,'free',p,node?.id,'look');
+  return planAim(s,id,'free',p,nodeId,'look');
 }
 /** A WATCH target is world-fixed; heading follows it during movement. */
 export function planWatch(s:Session,id:string,p:Pt,nodeId?:number,
@@ -75,7 +93,7 @@ export function releaseWatch(s:Session,id:string,nodeId?:number,
   if(nodeId!==undefined&&!node)return false;
   if(node)return edit(s,a,()=>{
     node.aimMode='free';node.aimPoint=undefined;
-    node.facing=undefined;node.aimLabel=undefined;
+    node.facing=undefined;node.aimLabel=undefined;node.lookDistance=undefined;
   });
   const pos=origin==='here'?a.p:finalPoint(a);
   return edit(s,a,()=>{

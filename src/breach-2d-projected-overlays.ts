@@ -6,6 +6,7 @@ import {doorCenter,type Pt} from './breach-core.ts';
 import {type Session,type TeamActor,team,enemies,isSeen,lastKnown,
  plannedWindowRoute,flashTrajectory} from './breach-game.ts';
 import type {TacticalScene3D} from './breach-3d.ts';
+import {plannedAimHandle} from './breach-plan.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {paintPassageRanks} from './ui/passage-rank-badges.ts';
@@ -154,22 +155,23 @@ function renderProjectedPlans(){
         draw.textAlign='left';draw.fillText('NARROW',point.x+12,point.y+27);
         draw.restore();
       }
-      if(n.facing!==undefined){
+      const aimHandle=plannedAimHandle(n);
+      if(n.facing!==undefined&&!aimHandle){
         const aim=worldToScreen({x:n.p.x+Math.cos(n.facing)*38,
           y:n.p.y+Math.sin(n.facing)*38},8);
         line(point,aim,color,2);
         circle(aim.x,aim.y,3,color);
       }
-      if(n.aimMode==='track'&&n.aimPoint){
+      if(aimHandle){
         const watched=selectedNow&&draggingWatchTarget&&draggingNode?
-          draggingNode:n.aimPoint;
+          draggingNode:aimHandle;
         const target=worldToScreen(watched,12);
         line(point,target,color,1.8);
         circle(target.x,target.y,8,color);
         circle(target.x,target.y,3,'#264039');
-        draw.fillStyle='#f1d7a4';draw.textAlign='left';
+        draw.fillStyle=n.aimMode==='track'?'#f1d7a4':'#d2eee4';draw.textAlign='left';
         draw.font='700 12px "Saira Condensed",sans-serif';
-        draw.fillText('WATCH',point.x+12,point.y-13);
+        draw.fillText(n.aimMode==='track'?'WATCH':'LOOK',point.x+12,point.y-13);
       }else if(n.aimMode==='fixed'||(n.aimMode==='free'&&n.facing!==undefined)){
         draw.fillStyle='#d2eee4';draw.textAlign='left';
         draw.font='700 12px "Saira Condensed",sans-serif';

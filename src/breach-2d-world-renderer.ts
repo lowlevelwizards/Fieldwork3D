@@ -1,4 +1,4 @@
-import {windowCoveringSightSegments,windowCoveringOpticalStrips} from './breach-window-covering-optics.ts';
+import {windowCoveringSightSegments,windowCoveringOpticalStrips,sessionCoveringOptics} from './breach-window-covering-optics.ts';
 /** Owns floor, architecture, physical light and decal drawing.
  * Only reads live or historically disclosed presentation state.
  */
@@ -323,6 +323,7 @@ function architecture(){
   // Generated windows use the same real aperture as physical shots and 3D.
   // Unknown interior glass must not be outlined through historical fog.
   if(state.site){
+    const coveringOptics=sessionCoveringOptics(state);
     for(const opening of state.site.windows??[]){
       if(!windowPresentationKnown(state,opening,
           replaying&&replayKnowledge.omniscient))continue;
@@ -331,10 +332,9 @@ function architecture(){
       line(pane.a,pane.b,'#8bb6af',4);
       const personal=replaying&&replayKnowledge.observerId;
       const observed=personal?replayKnowledge.windowHistory?.at(replayPlayback.time,personal,opening.id):null;
-      const covering=personal?observed?.covering:
-        windowCoveringPresentationKnown(state,opening,replaying&&replayKnowledge.omniscient)?state.windows.find(w=>w.id===opening.id)?.covering:undefined;
-      if(covering)for(const strip of windowCoveringOpticalStrips(opening,covering))
-        line(strip.edge.a,strip.edge.b,'#b4a38d',3);
+      const strips=personal?(observed?.covering?windowCoveringOpticalStrips(opening,observed.covering):undefined):
+        windowCoveringPresentationKnown(state,opening,replaying&&replayKnowledge.omniscient)?coveringOptics.byWindow.get(opening.id):undefined;
+      if(strips)for(const strip of strips)line(strip.edge.a,strip.edge.b,'#b4a38d',3);
       const dx=pane.b.x-pane.a.x,dy=pane.b.y-pane.a.y;
       const length=Math.hypot(dx,dy)||1;
       const normal={x:-dy/length*3,y:dx/length*3};

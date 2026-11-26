@@ -1,4 +1,4 @@
-import {syncWindowCoveringVisual} from './rendering/window-covering-visual.ts';
+import {syncWindowCoveringVisual,windowCoveringVisualForParent} from './rendering/window-covering-visual.ts';
 import {coveringMotion,isCoveringAction} from './breach-window-covering-interaction.ts';
 import {normalizeWindowCovering} from './breach-window-coverings.ts';
 import {windowCoveringSightSegments,windowCoveringTransientSegments} from './breach-window-covering-optics.ts';
@@ -2169,7 +2169,7 @@ export class TacticalScene3D{
       const seen=personalWindows&&replayDisclosurePolicy?.observerId?
         replayWindowHistory?.at(s.seconds,replayDisclosurePolicy.observerId,id):
         null;
-      const covering=glass.parent?.getObjectByName('window-covering:'+id);
+      const covering=windowCoveringVisualForParent(glass.parent);
       if(covering){
         covering.visible=personalWindows?!!seen?.covering:
           !!current&&windowCoveringPresentationKnown(s,current,omniscient);

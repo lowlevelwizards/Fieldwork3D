@@ -8,7 +8,7 @@ import {buildWindowCovering,syncWindowCoveringVisual} from '../src/rendering/win
 import {contextActionChoices} from '../src/ui/context-actions.ts';
 const c=normalizeWindowCovering({covering:{family:'horizontal-blind',side:1,opening:1,palette:'linen'}});
 const w={id:'W',x:50,y:50,width:48,vertical:false,sillHeight:14,headHeight:43,covering:c};
-test('explicit requests are idempotent and locked hard shutters remain unavailable',()=>{
+test('explicit requests are idempotent and locked shutters reject opening but unlocked shutters work',()=>{
  const closed=desiredCovering(c,'close-covering');
  assert.equal(closed.opening,0);assert.equal(c.opening,1);
  assert.deepEqual(desiredCovering(closed,'close-covering'),closed);

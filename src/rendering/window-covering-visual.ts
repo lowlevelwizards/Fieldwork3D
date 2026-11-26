@@ -7,6 +7,11 @@ const palette={linen:0xd4cbb5,sand:0xa99a82,sage:0x879787,slate:0x737f83};
 type Slot={mesh:THREE.Mesh;piece:CoveringPiece};
 type Visual={slots:Slot[];opening:WindowOpening;lastOpening:number;lastTilt:number;lastSide:number;family:WindowCovering['family'];hidden:boolean};
 const visuals=new WeakMap<THREE.Object3D,Visual>();
+const rootsByParent=new WeakMap<THREE.Object3D,THREE.Group>();
+/** One dedicated owner per aperture; do not traverse the scene graph each frame. */
+export function windowCoveringVisualForParent(parent:THREE.Object3D|null):THREE.Group|undefined{
+ return parent?rootsByParent.get(parent):undefined;
+}
 export function syncWindowCoveringVisual(root:THREE.Object3D,c:WindowCovering|undefined,motion?:{opening:number;tilt:number}|null):void{
  const visual=visuals.get(root);if(!visual)return;
  if(!c||c.integrity===0||c.family!==visual.family){
@@ -40,5 +45,5 @@ export function buildWindowCovering(opening:WindowOpening,parent:THREE.Group,hos
  }
  visuals.set(root,{slots,opening,lastOpening:-1,lastTilt:-1,lastSide:0,family:c.family,hidden:false});
  syncWindowCoveringVisual(root,c);
- parent.add(root);return root;
+ parent.add(root);rootsByParent.set(parent,root);return root;
 }

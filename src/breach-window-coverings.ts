@@ -8,17 +8,23 @@ export type CoveringPosition=typeof COVERING_POSITIONS[number];
 export type CoveringPalette='linen'|'sand'|'sage'|'slate';
 export type WindowCovering=Readonly<{family:CoveringFamily;side:-1|1;opening:CoveringPosition;
  palette:CoveringPalette;tilted?:boolean;integrity?:number;locked?:boolean}>;
+const normalizedDescriptors=new WeakSet<WindowCovering>();
+const palettes=['linen','sand','sage','slate'] as const;
+const legacyCurtain:WindowCovering=Object.freeze({family:'curtain',side:1,opening:1,palette:'sand',integrity:1});
+normalizedDescriptors.add(legacyCurtain);
 export function normalizeWindowCovering(w:Pick<WindowOpening,'covering'|'treatment'>):WindowCovering|undefined{
  const c:WindowCovering|undefined=w.covering??(w.treatment==='open-curtains'?
-  {family:'curtain',side:1,opening:1,palette:'sand'}:undefined);
+  legacyCurtain:undefined);
  if(!c||!COVERING_FAMILIES.includes(c.family))return undefined;
+ if(normalizedDescriptors.has(c))return c;
  const opening=Number.isFinite(c.opening)?c.opening:1;
- return Object.freeze({family:c.family,side:c.side===-1?-1:1,
+ const result:WindowCovering=Object.freeze({family:c.family,side:c.side===-1?-1:1,
   opening:COVERING_POSITIONS.reduce((a,b)=>Math.abs(b-opening)<Math.abs(a-opening)?b:a),
-  palette:(['linen','sand','sage','slate'] as const).includes(c.palette)?c.palette:'linen',
+  palette:palettes.includes(c.palette)?c.palette:'linen',
   integrity:Number.isFinite(c.integrity)?Math.max(0,Math.min(1,c.integrity!)):1,
   ...(c.family.includes('blind')?{tilted:!!c.tilted}:{}),
   ...(c.family.includes('shutter')?{locked:!!c.locked}:{})});
+ normalizedDescriptors.add(result);return result;
 }
 export type CoveringPiece={x:number;y:number;z:number;w:number;h:number;d:number;
  role:'body'|'fold'|'hardware';yaw?:number};

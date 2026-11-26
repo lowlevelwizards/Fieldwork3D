@@ -42,15 +42,17 @@ export function coveringStripsBlockRay(strips:readonly CoveringOpticalStrip[],a:
  }return false;
 }
 type PhysicalStrip=CoveringOpticalStrip & {windowIndex:number;family:WindowCovering['family']};
-type Optics={physical:PhysicalStrip[];hard:PhysicalStrip[];windows:Session['windows'];site:Session['site'];revision:number;strips:CoveringOpticalStrip[];standing:Segment[];low:Segment[];all:Segment[]};
+type Optics={byId:Map<string,Session['windows'][number]>;byWindow:Map<string,CoveringOpticalStrip[]>;physical:PhysicalStrip[];hard:PhysicalStrip[];windows:Session['windows'];site:Session['site'];revision:number;strips:CoveringOpticalStrip[];standing:Segment[];low:Segment[];all:Segment[]};
 const cache=new WeakMap<Session,Optics>(),empty:Session['windows']=[];
 export function sessionCoveringOptics(s:Session):Optics{
  const windows=s.windows??empty,revision=s.objectRevision;
  const old=cache.get(s);
  if(old&&old.windows===windows&&old.site===s.site&&old.revision===revision)return old;
- const physical:PhysicalStrip[]=[];
+ const physical:PhysicalStrip[]=[],byId=new Map<string,Session['windows'][number]>(),byWindow=new Map<string,CoveringOpticalStrip[]>();
  const strips=windows.flatMap((w,index)=>{
+  byId.set(w.id,w);
   const c=normalizeWindowCovering(w),strips=windowCoveringOpticalStrips(w,c);
+  if(strips.length)byWindow.set(w.id,strips);
   if(c)for(const strip of strips){
    const shift=(w.vertical?-c.side:c.side)*8,plane=strip.plane+shift;
    const edge:Segment=w.vertical?{a:{x:plane,y:strip.lo},b:{x:plane,y:strip.hi}}:{a:{x:strip.lo,y:plane},b:{x:strip.hi,y:plane}};
@@ -59,7 +61,7 @@ export function sessionCoveringOptics(s:Session):Optics{
   return strips;
  });
  const at=(height:number)=>strips.filter(p=>height>=p.bottom&&height<=p.top).map(p=>p.edge);
- const next={physical,hard:physical.filter(p=>p.family==='hinged-shutter'||p.family==='rolling-shutter'),windows,site:s.site,revision,strips,standing:at(32),low:at(22),all:strips.map(p=>p.edge)};
+ const next={byId,byWindow,physical,hard:physical.filter(p=>p.family==='hinged-shutter'||p.family==='rolling-shutter'),windows,site:s.site,revision,strips,standing:at(32),low:at(22),all:strips.map(p=>p.edge)};
  cache.set(s,next);return next;
 }
 export function windowCoveringsBlockSight(s:Session,a:Pt,b:Pt,fromHeight:number,toHeight=fromHeight):boolean{
@@ -75,7 +77,8 @@ export function windowCoveringTransientSegments(s:Session):readonly Segment[]{re
 export function setSessionWindowCovering(s:Session,id:string,covering:WindowCovering):boolean{
  const w=s.windows.find(w=>w.id===id);if(!w)return false;
  const next=normalizeWindowCovering({covering});
- if(!next||JSON.stringify(next)===JSON.stringify(w.covering))return false;
+ const prev=normalizeWindowCovering(w);
+ if(!next||prev&&next.family===prev.family&&next.side===prev.side&&next.opening===prev.opening&&next.palette===prev.palette&&next.integrity===prev.integrity&&next.tilted===prev.tilted&&next.locked===prev.locked)return false;
  w.covering=next;s.objectRevision++;s.illuminationRevision=(s.illuminationRevision??0)+1;return true;
 }
 
