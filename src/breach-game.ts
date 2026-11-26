@@ -2,7 +2,7 @@ import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
 import {canConcludeWithdrawal,commitIndividualExtractions,commitTransportExtractions,deployedTeam} from './breach-operation-outcomes.ts';
-import {observeOptionalIntel,beginOptionalIntelGather,collectProximityOptionalIntel,advanceOptionalIntel,
+import {observeOptionalIntel,beginOptionalIntelGather,collectProximityOptionalIntel,advanceOptionalIntel,updateEvidenceSupport,
  type OptionalIntelItem,type OptionalIntelGather,eligibleOptionalIntel}
  from './breach-optional-intel.ts';
 import {coverTargetToken} from './worldgen/site-object-identity.ts';
@@ -435,6 +435,7 @@ export type Session=Omit<TacticalState,'operators'> & {
   pendingExtractionIds?:string[];
   /** A named MIA casualty-recovery mission, not a second objective authority. */
   missingRecoveryTargetId?:string;
+  primaryIntel?:OptionalIntelItem;
   optionalIntel:OptionalIntelItem[];
   intelGather:OptionalIntelGather|null;};
 // The elective enemy-planning budget is mission-local and never serialized.
@@ -1792,6 +1793,7 @@ function observe(s:Session){
       if(observed&&rescueSubject)
         s.scenario.objective=clone(actualObjective);
       if(!s.objectiveIntel.discovered)discoverObjective(s,observed);
+      if(observed&&s.primaryIntel&&s.mission==='secure')s.primaryIntel.discovered=true;
     }
   }
   // Site knowledge persists, current knowledge does not. Sight has geometry,
@@ -1917,6 +1919,9 @@ function mission(s:Session,dt:number){
         {action:'individual-extraction',contributorId:member.id});
     }
   }
+  for(const item of s.optionalIntel)updateEvidenceSupport(item,s.coverState);
+  if(s.primaryIntel&&s.mission==='secure'&&updateEvidenceSupport(s.primaryIntel,s.coverState))
+    s.scenario.objective=clone(s.primaryIntel.p);
   if(s.optionalIntel.length){
     // Legacy timed interactions still advance for replay/save compatibility.
     // Ordinary scattered evidence is collected instantly as an operator
@@ -1943,6 +1948,11 @@ function mission(s:Session,dt:number){
     if(!courier||courier.health<=0){
       if(courier)s.scenario.objective=clone(courier.p);
       s.intelCarrierId=null;s.mission='secure';s.holdTime=0;
+      if(s.primaryIntel){
+        s.primaryIntel.p=clone(s.scenario.objective);
+        delete s.primaryIntel.surface;
+        s.primaryIntel.collectedBy=null;s.primaryIntel.discovered=true;
+      }
       notify(s,'INTEL DROPPED — RECOVER AT CASUALTY');
       battleEvent(s,'objective',courier??null,s.scenario.objective,
         'INTEL DROPPED');
@@ -2068,6 +2078,9 @@ function mission(s:Session,dt:number){
       const collector=atObjective[0];
       if(!collector)return;
       s.intelCarrierId=collector.id;
+      if(s.primaryIntel){
+        s.primaryIntel.collectedBy=collector.id;s.primaryIntel.collectedAt=s.seconds;
+      }
     }
     if(s.missionType==='capture'){
       const target=capturePerson;
