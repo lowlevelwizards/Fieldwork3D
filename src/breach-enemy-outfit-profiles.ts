@@ -1,7 +1,6 @@
 /** EB13. Fictional game equipment pools, independent of experience rank.
  * Uses authored Arsenal assets and existing physical inventory slots. */
 import type {AiGroupKind} from './breach-ai-group-profiles.ts';
-import type {WardrobeSlot} from './operator-wardrobe-data.ts';
 import type {GarmentSolidId} from './operator-garment-color-policy.ts';
 export type EnemyOutfitProfile={
  weapons:readonly string[]; tops:readonly string[]; trousers:readonly string[];

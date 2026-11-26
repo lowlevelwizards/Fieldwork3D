@@ -1,4 +1,5 @@
 /** Intelligence is a report of world facts, never an x-ray into hidden actors. */
+import {threatDossierClaims} from './threat-dossier.ts';
 import type {IntelClaim,MissionTruth,ReportQuality} from './briefing-types.ts';
 
 export function intelligenceClaims(truth:MissionTruth,quality:ReportQuality):IntelClaim[]{
@@ -54,5 +55,6 @@ export function intelligenceClaims(truth:MissionTruth,quality:ReportQuality):Int
       text:'Property records list the site as vacant; current use may differ.',
       source:'records',confidence:'credible',
       provenance:'propertyCondition vacant',disclosure:'general'});
+  claims.push(...threatDossierClaims(truth.threatGroups??[],quality));
   return claims;
 }

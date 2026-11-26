@@ -31,8 +31,11 @@ function composeText(
       ?'SITUATION — '+lead+' '+context
       :'INTELLIGENCE SUMMARY — '+context+' '+lead;
   const content=[summary,'THREAT — '+threat,'SITE — '+site];
-  if(length==='detailed'&&other.length)
-    content.push('SUPPLEMENTAL REPORTS — '+other.map(c=>
+  const threatReports=other.filter(c=>c.id.startsWith('threat-'));
+  if(threatReports.length)content.push('THREAT ASSESSMENT — '+threatReports.map(c=>c.text).join(' '));
+  const supplemental=other.filter(c=>!c.id.startsWith('threat-'));
+  if(length==='detailed'&&supplemental.length)
+    content.push('SUPPLEMENTAL REPORTS — '+supplemental.map(c=>
       '['+LABEL(c.source)+' / '+LABEL(c.confidence)+'] '+c.text).join(' '));
   return [...content,'OBJECTIVE — '+objective,'SUCCESS — '+condition,
     'EXTRACTION — '+extraction].join('\n\n');

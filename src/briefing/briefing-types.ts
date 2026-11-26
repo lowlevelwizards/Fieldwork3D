@@ -25,6 +25,8 @@ export type MissionTruth={
   intelMode:IntelMode;
   roomCount:number;
   hostileCount:number;
+  /** Private, aggregate starting issue. Never serialized into a player dossier. */
+  threatGroups?:import('./threat-dossier.ts').ThreatGroupFacts[];
   armedProfileCount:{ordinary:number;security:number;prepared:number};
   activeCivilianCount:number;
   rescueTargetPresent:boolean;

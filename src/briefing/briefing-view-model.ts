@@ -47,7 +47,7 @@ const primaries:Record<OperationKind,string>={
  capture:'Secure the designated target.',
 };
 const claimGroup=(claim:IntelClaim):Exclude<BriefingTab,'contract'>=>{
- if(['threat','prepared-resistance','civilian-presence'].includes(claim.id))return 'threat';
+ if(claim.id.startsWith('threat-')||['threat','prepared-resistance','civilian-presence'].includes(claim.id))return 'threat';
  if(['floor-plan','layout-unknown','vacant-record'].includes(claim.id))return 'site';
  return 'case';
 };

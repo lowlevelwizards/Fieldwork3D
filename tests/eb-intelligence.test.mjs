@@ -1,0 +1,25 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {newSession,enemies} from '../src/breach-game.ts';
+import {generateSite} from '../src/breach-site.ts';
+import {compileMissionFacts} from '../src/briefing/mission-facts.ts';
+import {createOperationDossier} from '../src/briefing/briefing-composer.ts';
+import {createBriefingCardModel} from '../src/briefing/briefing-view-model.ts';
+import {matchingFamilyPreset} from '../src/equipment-weapon-families.ts';
+test('EB17 disclosure follows resolved actors and quality without exposing positions or private truth',()=>{
+ const site=generateSite(17,'small',undefined,{mission:'capture',groupProfile:'regular-force'});
+ const s=newSession(0,17,'true-blind','small','capture',site);
+ const facts=compileMissionFacts(s),before=JSON.stringify(facts);
+ const [low,medium,high]=['low','medium','high'].map(quality=>createOperationDossier(facts,{quality}));
+ const groups=d=>d.claims.filter(c=>c.id.startsWith('threat-group-'));
+ const kits=d=>d.claims.filter(c=>c.id.startsWith('threat-kit-'));
+ assert.equal(groups(low).length,0);assert.equal(kits(low).length,0);
+ assert.ok(groups(medium).length);assert.equal(kits(medium).length,0);
+ assert.ok(groups(high).length);assert.ok(kits(high).length);
+ assert.ok(kits(high)[0].text.includes(matchingFamilyPreset(enemies(s)[0].weaponConfiguration.build).name));
+ assert.equal(JSON.stringify(facts),before);
+ assert.ok(!JSON.stringify(high).includes('"threatGroups"'));
+ assert.ok(!high.claims.some(c=>c.disclosure==='floor-plan'));
+ const model=createBriefingCardModel(s.missionType,{...facts.objective,building:'Test',layout:'Unknown',squad:4},high);
+ assert.ok(model.reports.threat.some(c=>c.id.startsWith('threat-kit-')));
+ assert.ok(high.rendered.standard.includes('THREAT ASSESSMENT'));
+});

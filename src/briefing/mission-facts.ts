@@ -2,6 +2,7 @@
 import type {Session} from '../breach-game.ts';
 import {operationBrief} from '../breach-operations.ts';
 import {resolvedMissionPopulation} from '../breach-mission-semantics.ts';
+import {threatGroupFacts} from './threat-dossier.ts';
 import type {MissionTruth} from './briefing-types.ts';
 
 export function compileMissionFacts(
@@ -20,6 +21,7 @@ export function compileMissionFacts(
     encounterProfile:encounter?.profile??'unknown',
     risk,riskFromContract:opts.contractRisk!==undefined,
     intelMode:s.intel.mode,roomCount:site?.rooms.length??0,
+    threatGroups:threatGroupFacts(s.operators),
     hostileCount:population.hostileCount,armedProfileCount:population.armedProfileCount,
     activeCivilianCount:population.activeCivilianCount,
     rescueTargetPresent:population.rescueTargetPresent,
