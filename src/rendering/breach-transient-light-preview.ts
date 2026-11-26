@@ -9,8 +9,8 @@ import type {Door} from '../breach-core.ts';
 import {TransientReceiverLight,registerTransientReceiverLight} from './breach-transient-receiver-light.ts';
 export const TRANSIENT_LIGHT_LIMIT=2;
 type Channel='muzzle'|'flash';
-const settings={muzzle:{color:0xffd5a0,range:24,peak:180,life:.09},
- flash:{color:0xfff1ce,range:58,peak:1150,life:.24}} as const;
+const settings={muzzle:{color:0xffd5a0,range:24,peak:240,life:.09},
+ flash:{color:0xfff1ce,range:58,peak:1650,life:.30}} as const;
 export function transientLightIntensity(channel:Channel,age:number,strength=1):number{
  const p=settings[channel];
  if(!Number.isFinite(age)||age<0||age>=p.life||!Number.isFinite(strength))return 0;
