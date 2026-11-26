@@ -30,5 +30,6 @@ test('R6.4 organised responders keep personally delivered duties longer',()=>{
  const session=readFileSync(new URL('../src/breach-session-factory.ts',import.meta.url),'utf8');
  const ctrl=readFileSync(new URL('../src/breach-enemy-decision-controller.ts',import.meta.url),'utf8');
  assert.match(session,/doctrinePersonality\(doctrine,spec\?\.role,enemyRng\(\)\)/);
- assert.match(ctrl,/doctrineForPurpose\(purpose\)/);
+ assert.match(session,/encounterDoctrine\(group\)/);
+ assert.match(ctrl,/encounterDoctrine\(group\)/);
 });

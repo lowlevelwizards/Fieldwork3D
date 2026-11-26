@@ -8,6 +8,6 @@ assert.equal(a.fingerprint,b.fingerprint);
 const target=a.first.civilians.filter(c=>c.rescueTarget);assert.equal(target.length,1);
 assert.ok(a.last.civilians.some(c=>c.id===target[0].id&&c.health>0));
 assert.ok(a.recorder.completeness.complete);
-const result={fingerprint:a.fingerprint,first:a.first,last:a.last};
+const result={fingerprint:a.fingerprint,first:a.first,last:a.last,checkpoints:a.checkpoints};
 writeFileSync(process.argv[2],JSON.stringify(result,null,2));
 console.log('EB RESCUE WITNESS',JSON.stringify({fingerprint:a.fingerprint,civilians:a.last.civilians,phase:a.phase,shots:a.shotsFired}));
