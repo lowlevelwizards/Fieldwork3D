@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import {FAMILY_PARTS,type WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addBar,type Outline,type SlotName} from './profile-primitives.ts';
 import {AK_WARM_RESIN,AK_WOOD_AMBER,AK_WOOD_RED,
- AK_PLUM_POLYMER,AK_MAG_RIB,AK_COVER_STAMP_METAL} from './weapon-visual-palette.ts';
+ AK_PLUM_POLYMER,AK_MAG_RIB,AK_WA7_COVER_ACCENT} from './weapon-visual-palette.ts';
 import {akHandguardStart} from '../../breach-weapon-contact-zones.ts';
 import {AK_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
@@ -101,7 +101,7 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // set into its surface. Do not apply to modern smooth or hinged 74U roofs.
  if(parts.receiver==='akm'||parts.receiver==='ak74'||rpk){
   const ribs=new THREE.InstancedMesh(
-   new THREE.BoxGeometry(.30,.15,3.14),AK_COVER_STAMP_METAL,3);
+   new THREE.BoxGeometry(.30,.15,3.14),AK_WA7_COVER_ACCENT,3);
   const transform=new THREE.Matrix4();
   [-3.8,-2.5,-1.2].forEach((x,i)=>{
    transform.makeTranslation(x,2.38,0);

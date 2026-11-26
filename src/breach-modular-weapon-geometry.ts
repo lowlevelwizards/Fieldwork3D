@@ -13,7 +13,7 @@ import {addG36Family} from './weapons/geometry/g36-family-silhouettes.ts';
 import {addR870Family} from './weapons/geometry/r870-silhouettes.ts';
 
 import {AR_WA6_STEEL,AR_WA6_POLYMER,AR_MUTED_FDE,
- AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD,
+ AK_WA7_STEEL,AK_WA7_POLYMER,AK_DARK_WOOD,
  HK_BLACK_METAL,HK_DARK_POLYMER,HK_WOOD,
  FAL_BLACK_METAL,FAL_DARK_POLYMER}
  from './weapons/geometry/weapon-visual-palette.ts';
@@ -28,7 +28,7 @@ export function buildModularWeaponSilhouette(build:WeaponFamilyBuild,
   addARFamily(root,build,AR_WA6_STEEL,AR_WA6_POLYMER,
    AR_MUTED_FDE,showFactoryMuzzle);
  else if(build.family==='ak')
-  addAKFamily(root,build,AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD);
+  addAKFamily(root,build,AK_WA7_STEEL,AK_WA7_POLYMER,AK_DARK_WOOD);
  else if(build.family==='hk')
   addHKFamily(root,build,HK_BLACK_METAL,HK_DARK_POLYMER,
    HK_WOOD,showFactoryMuzzle);

@@ -28,6 +28,10 @@ export const WEAPON_FINISH_SPECS={
  'ar-fde':{color:0x95836b,roughness:.94,metalness:.015,role:'paint'},
  'ak-steel':{color:0x424942,roughness:.80,metalness:.12,role:'steel'},
  'ak-polymer':{color:0x343c37,roughness:.90,metalness:.015,role:'polymer'},
+ // WA7: family-scoped artwork study colors. Preserve warm authored finishes.
+ 'ak-wa7-steel':{color:0x4a5051,roughness:.80,metalness:.12,role:'steel'},
+ 'ak-wa7-polymer':{color:0x343b32,roughness:.90,metalness:.015,role:'polymer'},
+ 'ak-wa7-cover-accent':{color:0x5c6562,roughness:.85,metalness:.12,role:'steel'},
  'ak-wood-dark':{color:0x79553b,roughness:.94,metalness:0,role:'wood'},
  'ak-resin':{color:0x895c40,roughness:.92,metalness:.015,role:'polymer'},
  'ak-wood-amber':{color:0xa07842,roughness:.88,metalness:0,role:'wood'},

@@ -55,7 +55,10 @@ test('A2 AR, AK, HK, FAL and FNC all receive authored material refinements',()=>
  assert.match(fnc,/FAL_DARK_POLYMER/);
  const ak=readFileSync(new URL('../src/weapons/geometry/ak-silhouettes.ts',import.meta.url),'utf8');
  assert.doesNotMatch(ak,/new THREE\.MeshLambertMaterial/);
- assert.match(ak,/AK_COVER_STAMP_METAL/);
+ assert.match(ak,/AK_WA7_COVER_ACCENT/);
+ assert.equal(palette.AK_WA7_COVER_ACCENT.color.getHex(),0x5c6562);
+ assert.equal(palette.AK_WA7_STEEL.color.getHex(),0x4a5051);
+ assert.equal(palette.AK_WA7_POLYMER.color.getHex(),0x343b32);
 });
 
 test('A2 all existing finish swatches derive from the same approved material specs',()=>{
@@ -67,7 +70,7 @@ test('A2 all existing finish swatches derive from the same approved material spe
   ['ar-grip-poly','ar-wa6-polymer'],['ar-grip-poly-fde','ar-fde'],
   ['ak-wood','ak-wood-dark'],['ak-wood-amber','ak-wood-amber'],
   ['ak-wood-red','ak-wood-red'],['ak-grip-bakelite','ak-resin'],
-  ['ak-sidefold','ak-polymer'],['ak-sidefold-plum','ak-plum-polymer'],
+  ['ak-sidefold','ak-wa7-polymer'],['ak-sidefold-plum','ak-plum-polymer'],
   ['hk33-fixed-stock','hk-olive-polymer'],
   ['hk33-fixed-stock-black','hk-polymer']
  ]){

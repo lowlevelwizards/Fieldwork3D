@@ -28,7 +28,7 @@ export const ARSENAL_FINISH_FAMILIES:readonly ArsenalFinishFamily[]=[
   ['ak-wood74','Dark Wood','ak-wood-dark'],['ak-wood74-amber','Honey Birch','ak-wood-amber'],
   ['ak-wood74-red','Red Lacquer','ak-wood-red'],['ak-wood74-plum','Plum Polymer','ak-plum-polymer']]),
  group('stock','Polymer Sidefolder',[
-  ['ak-sidefold','Black Polymer','ak-polymer'],['ak-sidefold-plum','Plum Polymer','ak-plum-polymer']]),
+  ['ak-sidefold','Black Polymer','ak-wa7-polymer'],['ak-sidefold-plum','Plum Polymer','ak-plum-polymer']]),
  group('stock','RPK Clubfoot',[
   ['ak-rpk-clubfoot','Dark Wood','ak-wood-dark'],['ak-rpk-clubfoot-amber','Honey Birch','ak-wood-amber'],
   ['ak-rpk-clubfoot-red','Red Lacquer','ak-wood-red']]),
@@ -36,7 +36,7 @@ export const ARSENAL_FINISH_FAMILIES:readonly ArsenalFinishFamily[]=[
   ['ak-grip-wood','Dark Wood','ak-wood-dark'],['ak-grip-wood-amber','Honey Birch','ak-wood-amber'],
   ['ak-grip-wood-red','Red Lacquer','ak-wood-red']]),
  group('grip','Polymer Grip',[
-  ['ak-grip-poly','Black Polymer','ak-polymer'],['ak-grip-poly-plum','Plum Polymer','ak-plum-polymer']]),
+  ['ak-grip-poly','Black Polymer','ak-wa7-polymer'],['ak-grip-poly-plum','Plum Polymer','ak-plum-polymer']]),
  group('handguard','Rifle Wood',[
   ['ak-wood-long','Dark Wood','ak-wood-dark'],['ak-wood-long-amber','Honey Birch','ak-wood-amber'],
   ['ak-wood-long-red','Red Lacquer','ak-wood-red']]),
@@ -47,11 +47,11 @@ export const ARSENAL_FINISH_FAMILIES:readonly ArsenalFinishFamily[]=[
   ['ak-rpk-wood','Dark Wood','ak-wood-dark'],['ak-rpk-wood-amber','Honey Birch','ak-wood-amber'],
   ['ak-rpk-wood-red','Red Lacquer','ak-wood-red']]),
  group('handguard','Rifle Polymer',[
-  ['ak-poly-long','Black Polymer','ak-polymer'],['ak-poly-plum-long','Plum Polymer','ak-plum-polymer']]),
+  ['ak-poly-long','Black Polymer','ak-wa7-polymer'],['ak-poly-plum-long','Plum Polymer','ak-plum-polymer']]),
  group('handguard','Carbine Polymer',[
-  ['ak-poly-mid','Black Polymer','ak-polymer'],['ak-poly-plum-mid','Plum Polymer','ak-plum-polymer']]),
+  ['ak-poly-mid','Black Polymer','ak-wa7-polymer'],['ak-poly-plum-mid','Plum Polymer','ak-plum-polymer']]),
  group('handguard','Compact Polymer',[
-  ['ak-poly-short','Black Polymer','ak-polymer'],['ak-poly-plum-short','Plum Polymer','ak-plum-polymer']]),
+  ['ak-poly-short','Black Polymer','ak-wa7-polymer'],['ak-poly-plum-short','Plum Polymer','ak-plum-polymer']]),
  group('stock','HK33 Fixed',[
   ['hk33-fixed-stock','OD Polymer','hk-olive-polymer'],['hk33-fixed-stock-black','Black Polymer','hk-polymer']]),
  group('handguard','HK33 Slim',[
