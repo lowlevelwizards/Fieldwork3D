@@ -5,6 +5,8 @@ on:
     paths:
       - 'scripts/audit-weapon-art-inventory.mjs'
       - 'tests/wa0-weapon-art-inventory.test.mjs'
+      - 'scripts/audit-weapon-art-geometry.mjs'
+      - 'tests/wa0-weapon-art-geometry.test.mjs'
       - '.github/workflows/wa0-weapon-art-inventory.yml'
   workflow_dispatch:
 jobs:
@@ -19,10 +21,13 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - run: node --experimental-strip-types --test tests/wa0-weapon-art-inventory.test.mjs
+      - run: node --experimental-strip-types --test tests/wa0-weapon-art-inventory.test.mjs tests/wa0-weapon-art-geometry.test.mjs
       - run: node --experimental-strip-types scripts/audit-weapon-art-inventory.mjs
+      - run: node --experimental-strip-types scripts/audit-weapon-art-geometry.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: wa0-source-inventory
-          path: reports/wa0-source-inventory.json
+          path: |
+            reports/wa0-source-inventory.json
+            reports/wa0-geometry-census.json
           if-no-files-found: error
