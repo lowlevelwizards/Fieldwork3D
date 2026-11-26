@@ -42,6 +42,7 @@ import {localFixtureObservation} from './breach-ai-contextual-observation.ts';
 import {doctrineForPurpose} from './breach-ai-doctrine.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
+import {aiSiteIndex,connectedAreaCenters} from './breach-ai-site-index.ts';
 
 /** The authoritative simulation owns the motor, shot/geometry, visibility and
  * event ports. The AI owns observation response, tactical commitments and
@@ -382,7 +383,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   if(!visible.length&&a.alert==='investigating'&&a.contact&&
      a.lastNoiseAt>=0){
     const tempo=investigationTempo(a.personality,
-      bestBelief(a.awareness)?.uncertainty??65);
+      bestBelief(a.awareness)?.uncertainty??65,a.npcIdentity);
     if(s.seconds-a.lastNoiseAt<tempo.orientSeconds){
       a.velocity=0;rotate(a,angle(a.p,a.contact),dt,s);return;
     }
@@ -400,6 +401,19 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     const index=visit%a.encounterRoutine.length;
     const target=a.encounterRoutine[index];
     if(d(a.p,target)<13){
+      // An existing patrol may acquire one additional routine stop in a
+      // connected area. This is ambient activity, never contact pursuit.
+      // Only a physical route permits adoption, and the normal motor owns travel.
+      if(a.encounterRole==='patrol'&&!a.routineExtensionAttempted&&
+         a.encounterRoutine.length<4&&a.npcIdentity?.competence!=='untrained'){
+        if(!electiveAiWork(s,a,'routine-extension')){a.velocity=0;return;}
+        a.routineExtensionAttempted=true;
+        const candidates=connectedAreaCenters(aiSiteIndex(world,s.doors),a.p)
+          .filter(p=>world.passable(p)&&a.encounterRoutine!.every(q=>d(p,q)>35));
+        const candidate=candidates[0];
+        if(candidate&&cachedEnemyRoute(s,a.p,candidate).length)
+          a.encounterRoutine.push(candidate);
+      }
       // A settled occupant may quietly close a nearby hinged leaf after a
       // real journey. Other travelers retain priority over the doorway.
       if(visit%3===1){
@@ -425,11 +439,15 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       }
       a.routineIndex=visit+1;
       a.routinePauseUntil=s.seconds+routineDwellSeconds(a.id,
-        a.encounterActivity??'idle',index,visit);
+        a.encounterActivity??'idle',index,visit,a.npcIdentity?.patience);
       a.nav=[];a.velocity=0;
       return;
     }
-    if(!a.nav.length){
+    if(a.blockedTime>=2.7){
+      a.nav=[];a.routineIndex=visit+1;a.routinePauseUntil=s.seconds+4;
+      a.velocity=0;return;
+    }
+    if(!a.nav.length||d(a.nav.at(-1)!,target)>13){
       if(!electiveAiWork(s,a,'routine-route')){
         a.velocity=0;return;
       }
@@ -557,7 +575,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     if(a.alert==='investigating'&&a.contact&&d(a.p,a.contact)<35){
       const belief=bestBelief(a.awareness);
       const tempo=investigationTempo(a.personality,
-        belief?.uncertainty??65);
+        belief?.uncertainty??65,a.npcIdentity);
       if(!a.searchOrigin){
         a.searchOrigin=clone(a.contact);
         a.searchQueue=searchCandidates(a.searchOrigin,

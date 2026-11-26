@@ -118,3 +118,23 @@ test('EA7 local search is not starved by distant earlier fixtures or doors',()=>
  assert.ok(result.some(p=>Math.abs(p.x-100)===29||Math.abs(p.y-100)===29));
  assert.deepEqual(result,searchCandidates(point(100,100),45,[room],[],[near,...far]));
 });
+
+import {npcIdentity} from '../src/breach-ai-identity.ts';
+import {routineDwellSeconds} from '../src/breach-ai-routine-dwell.ts';
+import {investigationTempo} from '../src/breach-ai-investigation.ts';
+test('EA5 identities are deterministic, independent of appearance and separate from purpose',()=>{
+ const all=['untrained','experienced','trained','specialist'];
+ const occupants=Array.from({length:200},(_,i)=>npcIdentity(12,'npc'+i,'occupants','occupant'));
+ const organised=Array.from({length:200},(_,i)=>npcIdentity(12,'npc'+i,'organised','occupant'));
+ assert.ok(organised.filter(x=>all.indexOf(x.competence)>=2).length>occupants.filter(x=>all.indexOf(x.competence)>=2).length);
+ assert.ok(organised.some(x=>x.competence==='specialist'));
+ assert.deepEqual(organised[0],npcIdentity(12,'npc0','organised','occupant'));
+ assert.equal(npcIdentity(12,'npc0','organised','target').motivation,'avoid-capture');
+ assert.ok(organised.every(x=>x.patience>=0&&x.patience<=1));
+});
+test('EA5 personality changes ambient assessment and dwell without changing awareness',()=>{
+ const identity=npcIdentity(5,'a','security','patrol');
+ const quick={...identity,composure:1,patience:0},slow={...identity,composure:0,patience:1};
+ assert.ok(investigationTempo('guard',65,quick).orientSeconds<investigationTempo('guard',65,slow).orientSeconds);
+ assert.ok(routineDwellSeconds('a','patrolling',0,0,0)<routineDwellSeconds('a','patrolling',0,0,1));
+});

@@ -271,6 +271,8 @@ export type TeamActor=Operator & {
   encounterActivity?:EncounterActivity;encounterReadiness?:EncounterReadiness;
   encounterRole?:EncounterRole;encounterGroupId?:string;
   encounterRoutine?:Pt[];routineIndex?:number;routinePauseUntil?:number;
+  npcIdentity?:import('./breach-ai-identity.ts').NpcIdentity;
+  routineExtensionAttempted?:boolean;
   encounterReactionUntil?:number;encounterReactionStartedAt?:number;
   lastNoiseExaminedAt:number;lastNoiseExaminedId:number;
   /** Render-only brief arm reach after actual GO-time civilian contact. */

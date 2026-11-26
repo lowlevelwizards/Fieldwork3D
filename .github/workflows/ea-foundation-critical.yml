@@ -7,6 +7,8 @@ on:
       - 'src/breach-enemy-decision-controller.ts'
       - 'src/breach-awareness.ts'
       - 'src/breach-defense.ts'
+      - 'src/breach-game.ts'
+      - 'src/breach-session-factory.ts'
       - 'src/breach-ai-site-index.ts'
       - 'tests/ea-*.test.mjs'
       - 'scripts/audit-ea0-enemy-baseline.mjs'
