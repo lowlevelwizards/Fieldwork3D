@@ -12,7 +12,7 @@ import {FAL_MAG20_CENTER_X,FAL_MAG20_OUTLINE,falMagazineRibOutlines}
 import {FAL_VISUAL_ANATOMY} from '../src/weapons/geometry/weapon-receiver-anatomy.ts';
 import {FAL_BLACK_METAL,FAL_DARK_POLYMER,FAL_MAG_METAL,
  FAL_MAG_RIB,FAL_TRANSITION_METAL,FAL_MUZZLE_METAL,FAL_MUZZLE_SLOT,
- HK_MAG_METAL,HK_MUZZLE_METAL,AR_BLACK_METAL,AK_BLACK_METAL}
+ HK_MAG_METAL,HK_MUZZLE_METAL,AR_WA6_STEEL,AK_WA7_STEEL}
  from '../src/weapons/geometry/weapon-visual-palette.ts';
 import {ARSENAL_INSPECTION_BACKGROUND,ARSENAL_SKY_FILL,addArsenalInspectionLighting}
  from '../src/arsenal/inspection-lighting.ts';
@@ -103,8 +103,8 @@ test('P9 finishes share in-game HK/AK/AR material logic and dark muzzle steel',(
  const {root,m}=make();
  assert.equal(FAL_MAG_METAL,HK_MAG_METAL);
  assert.equal(FAL_MUZZLE_METAL,HK_MUZZLE_METAL);
- assert.ok(Math.abs(FAL_BLACK_METAL.color.getHex()-AR_BLACK_METAL.color.getHex())<0x040404);
- assert.ok(FAL_DARK_POLYMER.color.getHex()<AK_BLACK_METAL.color.getHex());
+ assert.ok(Math.abs(FAL_BLACK_METAL.color.getHex()-AR_WA6_STEEL.color.getHex())<0x040404);
+ assert.ok(FAL_DARK_POLYMER.color.getHex()<AK_WA7_STEEL.color.getHex());
  assert.equal(visualMaterialRole(FAL_MUZZLE_METAL),'steel');
  assert.equal(visualMaterialRole(FAL_MUZZLE_SLOT),'steel');
  const collar=root.children.find(x=>x.userData.falMuzzleCollar);

@@ -4,9 +4,10 @@
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type SlotName} from './profile-primitives.ts';
-import {AR_STANAG_METAL,AR_STANAG_RIB,AR_MUTED_FDE,AR_POLYMER_RIB} from './weapon-visual-palette.ts';
+import {AR_WA6_LOWER_STEEL,AR_WA6_MAGAZINE_STEEL,AR_MUTED_FDE,AR_POLYMER_RIB} from './weapon-visual-palette.ts';
 import {addARFacetedForearm,addARPolymerRibs,addARA1SurfaceVents} from './ar-handguard-profiles.ts';
-import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines,arMagazinePolyBaseplate,addARPolymerMagazineBody} from './ar-magazine-profiles.ts';
+import {arMagazineCurve,arMagazineOutline,arMagazinePolyBaseplate,addARPolymerMagazineBody} from './ar-magazine-profiles.ts';
+import {applyARMagazineGraphic} from './ar-magazine-graphic.ts';
 import {addARRailSegments} from './ar-rail-profiles.ts';
 import {AR_BARREL_ART,AR_VISUAL_AXIS_Y} from './ar-barrel-profiles.ts';
 import {arHandguardEnd,AR_HANDGUARD_START} from '../../breach-weapon-contact-zones.ts';
@@ -18,14 +19,14 @@ import {addWeaponPixelMark,addWeaponPixelMarkPair,addWeaponPixelMarkPairBatched}
 export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material,
  showFactoryMuzzle=true){
- const parts=build.parts,material=[steel,dark,wood,AR_STANAG_METAL] as const;
+ const parts=build.parts,material=[steel,dark,wood,AR_WA6_MAGAZINE_STEEL,AR_WA6_LOWER_STEEL] as const;
  const barrelArt=AR_BARREL_ART[parts.barrel];
  if(!barrelArt)throw new Error('Unknown AR art barrel: '+parts.barrel);
  const index:Record<SlotName,number>={stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0};
- const p=(slot:SlotName,outline:Outline,depth:number,finish:0|1|2|3=1)=>
+ const p=(slot:SlotName,outline:Outline,depth:number,finish:0|1|2|3|4=1)=>
   addOutline(root,slot,parts[slot],index[slot]++,outline,depth,material[finish]);
  const b=(slot:SlotName,x:number,y:number,z:number,w:number,h:number,d:number,
-  finish:0|1|2=1)=>addCuboid(root,slot,parts[slot],index[slot]++,
+  finish:0|1|2|4=1)=>addCuboid(root,slot,parts[slot],index[slot]++,
    x,y,z,w,h,d,material[finish]);
  const frame=(slot:SlotName,outer:Outline,inner:Outline,depth:number,finish:0|1|2=0)=>
   addProfileFrame(root,slot,parts[slot],index[slot]++,outer,inner,depth,material[finish]);
@@ -41,14 +42,14 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // angled magwell shoulder. Keep few deliberate corners rather than ribs.
  p('receiver',[[-5.56,-.93],[-4.76,-1.32],[-3.31,-2.18],
   [-1.74,-2.20],[-1.13,-1.75],[-.35,-1.82],
-  [1.74,-2.20],[2.39,-1.91],[3.38,-.86]],3.0,1);
+  [1.74,-2.20],[2.39,-1.91],[3.38,-.86]],3.0,4);
  // A distinct, tapered LOWER magwell makes the magazine part of the receiver,
  // not an object attached to the back of the fore-end.
  const m=AR_VISUAL_ANATOMY;
  p('receiver',[[m.magwellCenterX-1.86,m.magwellTopY],
    [m.magwellCenterX+1.86,m.magwellTopY],
    [m.magwellCenterX+1.68,m.magwellBottomY],
-   [m.magwellCenterX-1.60,m.magwellBottomY]],3.25,1);
+   [m.magwellCenterX-1.60,m.magwellBottomY]],3.25,4);
  const carry=['ar-a1','ar-a2','ar-retro'].includes(parts.receiver);
  if(carry){
   const a2=parts.receiver==='ar-a2';
@@ -59,12 +60,12 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   if(a2){
    // One meaningful rear sight wedge rather than several knobs.
    p('receiver',[[-5.05,2.04],[-4.96,3.72],
-    [-3.93,3.74],[-3.45,2.80],[-3.45,2.04]],2.35,1);
+    [-3.93,3.74],[-3.45,2.80],[-3.45,2.04]],2.35,4);
   }
  }else{
   // Low flat-top without a permanently molded carry handle.
   // Same rail elevation and tooth language on all flat-top uppers.
-  b('receiver',-1.5,2.28,0,8.3,.78,2.65,1);
+  b('receiver',-1.5,2.28,0,8.3,.78,2.65,4);
   addARRailSegments(root,'receiver',parts.receiver,index.receiver++,
    {startX:-5.3,endX:2.3,count:3,topY:2.84},material[0]);
  }
@@ -80,7 +81,7 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // receiver's side yields dimensionality without the R4.6 dotted z-fight.
  // It is farther rearward than R4.7 and intentionally oversized for 128px.
  const assist=addOutline(root,'receiver',parts.receiver,index.receiver++,
-  [[-4.08,.94],[-1.39,.31],[-1.54,-.32],[-4.23,.30]],.51,material[1]);
+  [[-4.08,.94],[-1.39,.31],[-1.54,-.32],[-4.23,.30]],.51,material[4]);
  assist.rotation.y=.16;
  assist.position.z=1.50;
  assist.userData.arForwardAssist=true;
@@ -152,12 +153,7 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  if(magStyle==='poly')
   addARPolymerMagazineBody(root,'magazine',mag,index.magazine++,
    curve,material[1]);
- else p('magazine',arMagazineOutline(curve),m.magazineDepthZ,3);
- for(const outline of arMagazineRibOutlines(curve)){
-  const rib=addOutline(root,'magazine',mag,index.magazine++,
-   outline,m.magazineDepthZ+.075,AR_STANAG_RIB);
-  rib.castShadow=false;rib.receiveShadow=false;
- }
+ else applyARMagazineGraphic(p('magazine',arMagazineOutline(curve),m.magazineDepthZ,3),curve);
  if(magStyle==='poly'){
   // The tapered solid and substantial tan toe replace disconnected overlays.
   addOutline(root,'magazine',mag,index.magazine++,

@@ -3,15 +3,17 @@
  * No firearm assets are allocated by a renderer, replay or Quick Play.
  */
 import type {CampaignState,CampaignOperator} from './campaign-state.ts';
-import {newSerializedWeapon,readSerializedWeapons,MAX_OWNED_WEAPONS,
+import {newSerializedWeapon,readSerializedWeapons,readOwnedCatalogBody,MAX_OWNED_WEAPONS,
  type SerializedWeapon} from './equipment-weapon-identity.ts';
+import {type WeaponFamilyBuild} from './equipment-weapon-families.ts';
 const PLATFORMS=['carbine','smg','rifle','shotgun'] as const;
 type WeaponId=CampaignOperator['weapon'];
 const active=(o:CampaignOperator)=>o.status!=='retired'&&o.status!=='lost';
 const stockCount=(n:unknown)=>typeof n==='number'&&Number.isInteger(n)&&n>0?
  Math.min(MAX_OWNED_WEAPONS,n):0;
-export function reconcileCampaignWeaponOwnership(c:CampaignState):CampaignState{
+export function reconcileCampaignWeaponOwnership(c:CampaignState,legacyStock?:Record<string,unknown>):CampaignState{
  const existing=readSerializedWeapons(c.inventory.serializedWeapons);
+ const serialAuthority=c.inventory.catalogVersion===1&&Array.isArray(c.inventory.serializedWeapons);
  const used=new Set<string>();
  // Existing active operators have first claim on their own matching serials.
  // Reserve those claims before assigning any operator without a valid preferred
@@ -24,6 +26,13 @@ export function reconcileCampaignWeaponOwnership(c:CampaignState):CampaignState{
    w.platform===operator.weapon&&!claimed.has(w.id));
   if(weapon){reserved.set(operator.id,weapon.id);claimed.add(weapon.id);}
  }
+ // A missing operator's last known serial is quarantined, not spare stock.
+ // Active valid claims retain priority if a corrupt save duplicates a claim.
+ for(const operator of c.operators){
+  if(operator.status!=='lost'||typeof operator.weaponSerialId!=='string')continue;
+  const weapon=existing.find(w=>w.id===operator.weaponSerialId&&w.platform===operator.weapon&&!claimed.has(w.id));
+  if(weapon){reserved.set(operator.id,weapon.id);claimed.add(weapon.id);}
+ }
  const kept:SerializedWeapon[]=[];
  let sequence=0;
  const nextId=()=>{
@@ -32,27 +41,31 @@ export function reconcileCampaignWeaponOwnership(c:CampaignState):CampaignState{
   while(used.has(id)||existing.some(w=>w.id===id));
   return id;
  };
- const take=(platform:WeaponId,preferred?:string|null)=>{
+ const take=(platform:WeaponId,preferred?:string|null,body?:WeaponFamilyBuild)=>{
   const match=existing.find(w=>w.platform===platform&&!used.has(w.id)&&
-    w.id===preferred)??existing.find(w=>w.platform===platform&&!used.has(w.id)&&
-    !claimed.has(w.id));
-  const weapon=match??newSerializedWeapon(nextId(),platform,c.day);
-  used.add(weapon.id);kept.push(weapon);
+    w.id===preferred)??(!serialAuthority?existing.find(w=>w.platform===platform&&!used.has(w.id)&&
+    !claimed.has(w.id)):undefined);
+  const weapon=match??newSerializedWeapon(nextId(),platform,c.day,body);
+  used.add(weapon.id);kept.push(body?{...weapon,catalogBody:readOwnedCatalogBody(body,platform)}:weapon);
   return weapon.id;
  };
  const operators=c.operators.map(o=>{
+  if(o.status==='lost'){
+   const serial=reserved.get(o.id);
+   // Preserve a real existing claim, never manufacture a missing asset.
+   return {...o,weaponSerialId:serial?take(o.weapon,serial):null};
+  }
   if(!active(o))return {...o,weaponSerialId:null};
-  return {...o,weaponSerialId:take(o.weapon,reserved.get(o.id))};
+  return {...o,weaponSerialId:take(o.weapon,reserved.get(o.id),o.weaponConfiguration.build)};
  });
- const counts={carbine:0,smg:0,rifle:0,shotgun:0};
- for(const platform of PLATFORMS){
+ if(serialAuthority){
+  for(const w of existing)if(!used.has(w.id)&&kept.length<MAX_OWNED_WEAPONS){kept.push(w);used.add(w.id);}
+ }else for(const platform of PLATFORMS){
   const remaining=Math.max(0,MAX_OWNED_WEAPONS-kept.length);
-  const count=Math.min(stockCount(c.inventory.weapons[platform]),remaining);
+  const count=Math.min(stockCount(legacyStock?.[platform]),remaining);
   for(let i=0;i<count;i++)take(platform);
-  counts[platform]=count;
  }
- return {...c,operators,inventory:{...c.inventory,
-  weapons:counts,serializedWeapons:kept}};
+ return projectCatalogInventory({...c,operators,inventory:{attachments:c.inventory.attachments,serializedWeapons:kept}});
 }
 /** Check the invariants without editing a Campaign. */
 export function weaponOwnershipIssues(c:CampaignState):string[]{
@@ -65,10 +78,54 @@ export function weaponOwnershipIssues(c:CampaignState):string[]{
   if(o.weaponSerialId&&assigned.has(o.weaponSerialId))issues.push('duplicate:'+o.id);
   if(o.weaponSerialId)assigned.add(o.weaponSerialId);
  }
- for(const platform of PLATFORMS){
-  const stocked=weapons.filter(w=>w.platform===platform&&!assigned.has(w.id)).length;
-  if(stocked!==stockCount(c.inventory.weapons[platform]))
-   issues.push('stock:'+platform);
+ for(const o of c.operators.filter(o=>o.status==='lost'&&o.weaponSerialId)){
+  if(assigned.has(o.weaponSerialId!))issues.push('duplicate:'+o.id);
+  if(!weapons.some(w=>w.id===o.weaponSerialId&&w.platform===o.weapon))issues.push('missing:'+o.id);
+  assigned.add(o.weaponSerialId!);
  }
+ if(weapons.length!==(c.inventory.serializedWeapons??[]).length)issues.push('invalid-or-duplicate-serial');
+ if(weapons.length>MAX_OWNED_WEAPONS)issues.push('capacity');
  return issues;
+}
+
+/** Only issued bodies are mirrored here; unassigned objects keep their own
+ * catalog data. This is a transition from class-count reconciliation to
+ * individually identified armory stock, not another ownership ledger. */
+export function synchronizeIssuedCatalogBodies(c:CampaignState):CampaignState{
+ if(!c.inventory.serializedWeapons)return c;
+ const bySerial=new Map(c.operators.filter(active).map(o=>[o.weaponSerialId,o]));
+ let changed=false;
+ const serials=c.inventory.serializedWeapons.map(w=>{
+  const owner=bySerial.get(w.id);
+  if(!owner||owner.weapon!==w.platform||!owner.weaponConfiguration.build)return w;
+  const body=readOwnedCatalogBody(owner.weaponConfiguration.build,w.platform);
+  if(JSON.stringify(body)===JSON.stringify(w.catalogBody))return w;
+  changed=true;return {...w,catalogBody:body};
+ });
+ return changed?{...c,inventory:{...c.inventory,serializedWeapons:serials}}:c;
+}
+
+/** Exact named transaction helpers. Spare stock is a view over serial custody. */
+export function catalogOwnedStock(c:CampaignState){
+ const reserved=new Set(c.operators.filter(o=>o.status!=='retired').map(o=>o.weaponSerialId));
+ return (c.inventory.serializedWeapons??[]).filter(w=>!reserved.has(w.id));
+}
+export function nextCatalogWeaponSerial(c:CampaignState):string{
+ const taken=new Set((c.inventory.serializedWeapons??[]).map(w=>w.id));
+ for(const o of c.operators)if(o.weaponSerialId)taken.add(o.weaponSerialId);
+ let n=0,id='';
+ do{id=c.id.slice(0,50)+':weapon:'+n++;}while(taken.has(id));
+ return id;
+}
+/** Preserve the historic stable array ordering for save round-trip parity.
+ * No minting, reassignment, or discard of any existing serial. */
+export function projectCatalogInventory(c:CampaignState):CampaignState{
+ const all=c.inventory.serializedWeapons??[];
+ const issued=c.operators.filter(active).flatMap(o=>{
+  const w=all.find(x=>x.id===o.weaponSerialId);return w?[w]:[];
+ });
+ const assigned=new Set(issued.map(w=>w.id));
+ const rest=all.filter(w=>!assigned.has(w.id));
+ return {...c,inventory:{attachments:c.inventory.attachments,catalogVersion:1,
+  serializedWeapons:[...issued,...PLATFORMS.flatMap(p=>rest.filter(w=>w.platform===p))]}};
 }

@@ -6,11 +6,11 @@ test('Quick Play uses Campaign Outfitter gallery with one roster authority',()=>
  const config=read('ui/quick-play-configurator.ts');
  const gallery=read('ui/campaign-outfitter-gallery.ts');
  assert.match(config,/equipmentWorkspace\.mountGallery\(selected\.id,\{/);
- assert.match(config,/catalogOutfitterSources\(selected\.loadout\)/);
+ assert.match(config,/catalogOutfitterSources\(selected\.loadout,selected\.weaponConfiguration\)/);
  assert.doesNotMatch(config,/sources=new Map<LoadoutSlot,HTMLSelectElement>/);
  assert.match(config,/onEquipCarryGear\?\.\(selected\.id,slot,itemId\)/);
  assert.match(config,/onEquipGear\?\.\(selected\.id,slot,itemId\)/);
- assert.match(config,/onEquipWeapon\?\.\(selected\.id,/);
+ assert.match(config,/onEquipWeaponPreset\?\.\(selected\.id,/);
  assert.match(config,/renderGadgets\(options\.getRoster/);
  assert.doesNotMatch(config,/attachCarryGearChangePreview\(/);
  assert.match(gallery,/option\.disabled/);

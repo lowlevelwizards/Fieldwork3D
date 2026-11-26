@@ -130,9 +130,6 @@ export function auditAllFactoryWeapons(){
    throw Error('Factory weapon failed to load: '+ref.id);
   results.push(auditWeaponProduction(config,ref.id));
  }
- // Shotgun legacy path is a supported live renderer, not a catalog preset.
- results.push(auditWeaponProduction(initialWeaponConfiguration('shotgun'),
-  'shotgun-legacy'));
  return results;
 }
 if(process.argv[1]?.endsWith('audit-weapon-production-m30.mjs')){

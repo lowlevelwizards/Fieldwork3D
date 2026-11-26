@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {weaponSilhouetteParts} from '../src/breach-weapon-geometry.ts';
+import {buildWeaponSilhouette,clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
+import {issueWeaponPreset} from '../src/breach-weapon-issue.ts';
 import {buildWeaponAccessories} from '../src/breach-weapon-accessories.ts';
 import {weaponGrips,fitWeaponPose} from '../src/breach-weapon-pose.ts';
 import {initialWeaponConfiguration,setWeaponAttachment,resolveWeaponAssembly}
@@ -13,21 +14,17 @@ const platforms={
  carbine:{pistol:7,guard:1},smg:{pistol:6,guard:1},
  rifle:{pistol:6,guard:1},shotgun:{pistol:6,guard:3}
 };
-const within=(x,y,part)=>Math.abs(x-part[0])<=part[3]/2+.25&&
- Math.abs(y-part[1])<=part[4]/2+1.2;
-test('24.00 the dedicated shotgun retains its modeled grip and pump sockets',()=>{
- const parts=weaponSilhouetteParts('shotgun');
- const loc=platforms.shotgun,g=weaponGrips('shotgun');
- assert.ok(within(g.primaryX,g.primaryY,parts[loc.pistol]));
- assert.ok(within(g.supportX,g.supportY,parts[loc.guard]));
- assert.ok(g.supportX>g.primaryX+4);
- assert.ok(Math.abs(1.8-parts[loc.pistol][5]/2)<1);
- assert.ok(Math.abs(-1.6+parts[loc.guard][5]/2)<1);
+test('24.00 authored shotgun uses its own visible geometry and configured contacts',()=>{
+ const config=issueWeaponPreset('r870-police-wood').weaponConfiguration;
+ const a=resolveWeaponAssembly(config),mat=new THREE.MeshBasicMaterial();
+ const model=buildWeaponSilhouette(config.weapon,mat,mat,config);
+ assert.ok(model.children.some(n=>n.name.startsWith('family-grip-')));
+ assert.ok(model.children.some(n=>n.name.startsWith('family-handguard-')));
+ assert.ok(Number.isFinite(a.primaryX)&&Number.isFinite(a.supportX));
+ clearWeaponSilhouette(model);mat.dispose();
 });
 test('24.00 current modular weapons preserve two separate grip contacts',()=>{
  for(const id of ['carbine','smg','rifle']){
-  assert.equal(weaponSilhouetteParts(id).length,0,
-   id+' must not load an obsolete placeholder firearm');
   const g=weaponGrips(id);
   assert.ok(Number.isFinite(g.primaryX)&&Number.isFinite(g.primaryY));
   assert.ok(Number.isFinite(g.supportX)&&Number.isFinite(g.supportY));

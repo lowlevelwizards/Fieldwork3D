@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import {FAMILY_PRESETS,FAMILY_PARTS} from '../src/equipment-weapon-families.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset,
  setConfiguredFamilyPart,resolveWeaponAssembly} from '../src/equipment-weapon-assemblies.ts';
+import {buildModularWeaponSilhouette} from '../src/breach-modular-weapon-geometry.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
 import {akBarrelArt} from '../src/weapons/geometry/ak-barrel-profiles.ts';
@@ -17,7 +18,13 @@ function build(id){
  const preset=FAMILY_PRESETS.find(p=>p.id===id);
  assert.ok(preset,id+' must exist');
  const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration(preset.weapon),id);
- const group=buildWeaponSilhouette(cfg.weapon,material,material,cfg);
+ // Historical per-piece assertions inspect the original exterior art before
+ // the existing factory compiler combines opaque siblings. The WA7 all-case
+ // hash gate independently tests the actual live compiled appearance.
+ const live=buildWeaponSilhouette(cfg.weapon,material,material,cfg);
+ assert.ok(live.children.length<=28,id+' live mesh budget');
+ clearWeaponSilhouette(live);
+ const group=buildModularWeaponSilhouette(cfg.build,material,material);
  group.updateMatrixWorld(true);
  return {preset,cfg,group};
 }
@@ -27,7 +34,7 @@ const release=(...all)=>all.forEach(x=>clearWeaponSilhouette(x.group));
 
 test('R4.7 clean receiver and no protruding trigger guard on all nine',()=>{
  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='ak').length,9);
- assert.equal(Object.keys(FAMILY_PARTS).length,93);
+ assert.equal(Object.values(FAMILY_PARTS).filter(p=>p.family==='ar'||p.family==='ak').length,93,'original AR/AK part cohort');
  for(const id of ids){
   const m=build(id),r=slot(m.group,'receiver');
   assert.ok(r.length>=5,id+' receiver keeps essential faces');

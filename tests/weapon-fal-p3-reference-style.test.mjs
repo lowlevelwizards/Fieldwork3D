@@ -9,7 +9,7 @@ const cfg=(id='fal-5000')=>selectWeaponFamilyPreset(initialWeaponConfiguration('
 const bb=x=>new THREE.Box3().setFromObject(x);
 const create=()=>{const mat=new THREE.MeshBasicMaterial();return {mat,root:buildWeaponSilhouette('rifle',mat,mat,cfg())};};
 
-import {FAL_LOWER_METAL,FAL_MAG_RIB} from '../src/weapons/geometry/weapon-visual-palette.ts';
+import {FAL_FNC_CALIBRATED_LOWER_METAL,FAL_MAG_RIB} from '../src/weapons/geometry/weapon-visual-palette.ts';
 import {FAL_MAG20_OUTLINE,FAL_MAG20_DEPTH} from '../src/weapons/geometry/fal-magazine-profiles.ts';
 import {carriedMagazineGeometry} from '../src/operator-carried-magazines.ts';
 test('the distinctive slanted heel survives a much narrower stamped magazine',()=>{
@@ -30,7 +30,7 @@ test('upper, one-piece lower/magwell and low bore-line ejection rectangle',()=>{
  const upper=root.getObjectByName('family-receiver-fal-50-receiver-0');
  const lower=root.getObjectByName('family-receiver-fal-50-receiver-1');
  assert.ok(upper&&lower);
- assert.strictEqual(lower.material,FAL_LOWER_METAL);
+ assert.strictEqual(lower.material,FAL_FNC_CALIBRATED_LOWER_METAL);
  assert.ok(bb(lower).min.y<=-3.19);
  assert.ok(!root.children.some(x=>x.userData.falTriggerGuard));
  const port=root.children.find(x=>x.userData.falEjectionPort);

@@ -1,0 +1,56 @@
+name: WA9 MP5 artwork overhaul
+on:
+  push:
+    branches: [feature/wa0-wa2-weapon-art-foundation]
+    paths:
+      - 'tests/weapon-hk-mp5-r2-refinements.test.mjs'
+      - 'scripts/verify-wa9-art-delta.mjs'
+      - '.github/workflows/wa9-mp5-art-overhaul.yml'
+  workflow_dispatch:
+concurrency:
+  group: wa9-mp5-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  calibration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run check
+      - run: node --experimental-strip-types --test tests/weapon-hk-r4-material-selector.test.mjs tests/weapon-hk-mp5-family.test.mjs tests/weapon-hk-mp5-r2-refinements.test.mjs tests/arsenal-a2-material-unification.test.mjs tests/wa0-weapon-art-geometry.test.mjs
+      - name: Verify retained catalog color-only delta against WA8
+        run: |
+          mkdir -p reports/wa9
+          git worktree add --detach /tmp/wa8-art 4ab746c0097676a0c18d49aa5ff11fa2993d61c6
+          ln -s "$PWD/node_modules" /tmp/wa8-art/node_modules
+          cp scripts/audit-wa4-art-delta.mjs scripts/capture-weapon-art-baseline.mjs scripts/capture-wa0-operator-context.mjs /tmp/wa8-art/scripts/
+          node --experimental-strip-types scripts/audit-wa4-art-delta.mjs reports/wa9/candidate.json
+          (cd /tmp/wa8-art && node --experimental-strip-types scripts/audit-wa4-art-delta.mjs "$GITHUB_WORKSPACE/reports/wa9/baseline.json")
+          node scripts/verify-wa9-art-delta.mjs reports/wa9/baseline.json reports/wa9/candidate.json reports/wa9/delta.json
+      - run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Render pinned before and actual candidate
+        env:
+          WA0_PLATFORMS: mp5,custom-mp5,accessory-samples
+          WA0_OPERATOR_IDS: hk-mp5a2,hk-mp5a3,hk-mp5sd2,hk-mp5sd3,hk-mp5k,hk-mp5k-pdw
+        run: |
+          WA0_OUTPUT="$PWD/reports/wa9/after" node --experimental-strip-types scripts/capture-weapon-art-baseline.mjs
+          WA0_OPERATOR_OUTPUT="$PWD/reports/wa9/after/operator-context" node --experimental-strip-types scripts/capture-wa0-operator-context.mjs
+          (cd /tmp/wa8-art && WA0_OUTPUT="$GITHUB_WORKSPACE/reports/wa9/before" node --experimental-strip-types scripts/capture-weapon-art-baseline.mjs)
+          (cd /tmp/wa8-art && WA0_OPERATOR_OUTPUT="$GITHUB_WORKSPACE/reports/wa9/before/operator-context" node --experimental-strip-types scripts/capture-wa0-operator-context.mjs)
+          node scripts/verify-wa4-capture-pairs.mjs reports/wa9/before reports/wa9/after
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wa9-mp5-evidence
+          path: reports/wa9/
+          if-no-files-found: ignore

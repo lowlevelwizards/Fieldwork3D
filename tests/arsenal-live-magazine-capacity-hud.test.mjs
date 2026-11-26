@@ -25,8 +25,11 @@ test('all sixteen authored magazine variants are simulation capacities',()=>{
   if(preset.weapon==='shotgun'){
    // Fixed tube and loose shells are not detachable ammunition magazines.
    assert.equal(ARSENAL_MAGAZINE_CAPACITIES[id],undefined,preset.id);
-   assert.equal(liveMagazineCapacity(preset.weapon,config),6);
-   assert.equal(issue.magazine,6);
+   // Authored R870 P14/P15 fixed tubes have distinct capacities, not the old class default.
+   const tubeCapacity={'r870-standard-tube':6,'r870-short-tube':4,'r870-extended-tube':8,'r870-mcs-mini-tube':3}[id];
+   assert.ok(tubeCapacity,preset.id+' valid tube identity');
+   assert.equal(liveMagazineCapacity(preset.weapon,config),tubeCapacity);
+   assert.equal(issue.magazine,tubeCapacity);
    assert.equal(issue.reserve,24);
    assert.deepEqual(issue.magazines,[]);
    continue;

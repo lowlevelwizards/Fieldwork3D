@@ -6,7 +6,7 @@ import {FAMILY_PRESETS,FAMILY_PARTS} from '../src/equipment-weapon-families.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset} from '../src/equipment-weapon-assemblies.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
 import {carriedMagazineProfile} from '../src/operator-carried-magazines.ts';
-import {HK_BLACK_METAL,HK_DARK_POLYMER,HK_OLIVE_POLYMER,HK_WOOD,
+import {HK_BLACK_METAL,HK_DARK_POLYMER,HK_WA8_RIFLE_STEEL,HK_WA8_RIFLE_POLYMER,HK_WA9_MP5_STEEL,HK_WA9_MP5_POLYMER,HK_WA9_SD_ACCENT,HK_OLIVE_POLYMER,HK_WOOD,
  HK_MAG_METAL,HK556_MAG_METAL,HK9_MAG_METAL,HK556_MAG_RIB,
  HK_SD_SUPPRESSOR_METAL,HK_MUZZLE_METAL} from '../src/weapons/geometry/weapon-visual-palette.ts';
 const testMaterial=new THREE.MeshBasicMaterial();
@@ -59,32 +59,35 @@ test('every HK part uses its intended black/olive/wood/steel family finish',()=>
   const g=model(p),receiver=slot(g,'receiver'),stock=slot(g,'stock'),
     handguard=slot(g,'handguard'),mag=slot(g,'magazine');
   assert.ok(receiver.length&&stock.length&&handguard.length&&mag.length,p.id);
-  assert.equal(receiver[0].material,HK_BLACK_METAL,p.id+' stamped receiver');
+  const rifle=!p.parts.receiver.startsWith('hk-mp5');
+  const expectedSteel=rifle?HK_WA8_RIFLE_STEEL:HK_WA9_MP5_STEEL;
+  const expectedPolymer=rifle?HK_WA8_RIFLE_POLYMER:HK_WA9_MP5_POLYMER;
+  assert.equal(receiver[0].material,expectedSteel,p.id+' stamped receiver');
   if(p.id==='hk-g3'){
    assert.equal(stock[0].material,HK_WOOD,'early G3 wood stock');
    assert.equal(handguard[0].material,HK_WOOD,'early G3 wood fore-end');
-   assert.equal(receiver[1].material,HK_BLACK_METAL,'early metal lower');
+   assert.equal(receiver[1].material,expectedSteel,'early metal lower');
   }
   if(p.id==='hk-g3a3')assert.equal(stock[0].material,HK_OLIVE_POLYMER);
   if(p.id==='hk-g3a3'||p.id==='hk-g3a4')
    assert.equal(handguard[0].material,HK_OLIVE_POLYMER);
   if(p.id==='hk-hk33a2'){
-   assert.equal(stock[0].material,HK_DARK_POLYMER);
-   assert.equal(handguard[0].material,HK_DARK_POLYMER);
+   assert.equal(stock[0].material,expectedPolymer);
+   assert.equal(handguard[0].material,expectedPolymer);
   }
-  if(p.id==='hk-hk53a3')assert.equal(handguard[0].material,HK_DARK_POLYMER);
+  if(p.id==='hk-hk53a3')assert.equal(handguard[0].material,expectedPolymer);
   const expected=p.weapon==='smg'?HK9_MAG_METAL:
    FAMILY_PARTS[p.parts.magazine].feed==='hk556'?HK556_MAG_METAL:HK_MAG_METAL;
   assert.equal(mag[0].material,expected,p.id+' dark steel magazine');
   assert.equal(carriedMagazineProfile(p.parts.magazine)?.material,
    expected.color.getHex(),p.id+' carried magazine shares current finish');
   if(p.weapon==='smg'||p.id.startsWith('hk-hk'))
-   assert.equal(receiver[1].material,HK_DARK_POLYMER,p.id+' polymer lower');
+   assert.equal(receiver[1].material,expectedPolymer,p.id+' polymer lower');
   const flash=g.children.filter(x=>x.userData.hkFactoryFlashHider);
   if(p.id==='hk-mp5sd2'||p.id==='hk-mp5sd3'){
    const sd=g.children.filter(x=>x.userData.hkMP5IntegralSuppressor);
    assert.equal(sd.length,1);
-   assert.equal(sd[0].material,HK_SD_SUPPRESSOR_METAL);
+   assert.equal(sd[0].material,HK_WA9_SD_ACCENT);
    assert.equal(flash.length,0);
   }else{
    assert.equal(flash.length,1,p.id+' flash hider');

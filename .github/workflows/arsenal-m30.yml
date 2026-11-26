@@ -19,7 +19,6 @@ jobs:
         run: |
           node --experimental-strip-types --test \
             tests/arsenal-m30-weapon-quality-audit.test.mjs \
-            tests/arsenal-m30-shotgun-rigid-compile.test.mjs \
             tests/arsenal-m30-rigid-part-pilot.test.mjs \
             tests/arsenal-m30-modular-visual-contract.test.mjs \
             tests/arsenal-m30c4-factory-runtime.test.mjs \
@@ -58,8 +57,6 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Real physical left/right optics and lights WebGL capture
         run: node scripts/smoke-arsenal-m26-visual.mjs
-      - name: Production shotgun original/compiled draw and pixel parity
-        run: node scripts/smoke-arsenal-m30-shotgun-visual.mjs
       - name: M3.0C3 real AK/AR original-vs-compiled WebGL comparison
         run: node scripts/smoke-arsenal-m30c3-modular-visual.mjs
       - name: M3.0C4 actual shared-builder WebGL runtime parity
@@ -77,10 +74,8 @@ jobs:
           path: |
             reports/arsenal-m26-mounted-*.png
             reports/arsenal-m26-mesh-stats.json
-            reports/arsenal-m30-shotgun-parity.png
             reports/arsenal-r870-p07-production.png
             reports/arsenal-r870-p07-production.json
-            reports/arsenal-m30-shotgun-parity.json
             reports/arsenal-m30c3-modular-parity.png
             reports/arsenal-m30c3-modular-parity.json
             reports/arsenal-m30c4-production-parity.png

@@ -66,9 +66,9 @@ test('R4.8 A1 and polymer handguards have real angular 3D cross sections',()=>{
  assert.ok(part(round.g,'handguard').some(x=>x.userData.arForearmProfile==='ribbed-round'));
  for(const [v,c] of [[round,7],[car,5],[commando,4]]){
   const ribs=part(v.g,'handguard').find(x=>x.userData.arPolymerRibs);
-  assert.ok(ribs instanceof THREE.InstancedMesh);
-  assert.equal(ribs.count,c*8,'each large rib bends around octagonal facets');
-  assert.ok(ribs.count>c,'not a pasted 2D stripe');
+  assert.ok(ribs instanceof THREE.Mesh&&ribs.userData.arContinuousGraphicBands);
+  assert.equal(ribs.userData.arRibBandCount,c);
+  assert.equal(ribs.geometry.index.count/3,c*48,'continuous faceted relief, no hidden box faces');
   assert.ok(!v.g.children.some(x=>x.name==='family-art-poly-ribs'||
    x.name==='family-art-car-ribs'));
  }

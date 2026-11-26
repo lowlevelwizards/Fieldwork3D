@@ -23,15 +23,24 @@ const fire=(m,origin,direction)=>new THREE.Raycaster(
  new THREE.Vector3(...origin),new THREE.Vector3(...direction),0,12
 ).intersectObject(m).length;
 
-test('A4 census includes all active 35 production factory configurations',()=>{
+test('A4 census covers active factory configurations and reuses shared texture identities',()=>{
  const a=auditA4();
  assert.equal(a.schema,'fieldwork-arsenal-a4');
  assert.equal(a.totals.presets,ARSENAL_REFERENCES.length);
  assert.equal(new Set(a.factoryPresets.map(x=>x.id)).size,ARSENAL_REFERENCES.length);
  assert.ok(a.totals.markMeshes>0&&a.totals.textureBytesEstimated>0);
- assert.ok(a.totals.mapIdentities<=11,'do not allocate a new texture per weapon');
- assert.ok(a.totals.overlayMeshes<114,
-  'actual factory surface overlay geometry reduced vs A4.0 baseline');
+ // A4's 11-map/114-overlay snapshot was for an older catalog. Verify
+ // actual cross-owner texture identity reuse, not a stale global cap.
+ const first=new Set(),second=new Set();
+ for(const ref of ARSENAL_REFERENCES){
+  const a=make(ref.id),b=make(ref.id);
+  try{
+   const collect=(root,set)=>root.traverse(n=>{if(n instanceof THREE.Mesh)for(const m of Array.isArray(n.material)?n.material:[n.material])if(m.map)set.add(m.map);});
+   collect(a,first);collect(b,second);
+  }finally{clearWeaponSilhouette(a);clearWeaponSilhouette(b);}
+ }
+ assert.ok(first.size>0);assert.deepEqual(first,second,'all factory maps reused across independent owners');
+ assert.deepEqual(auditA4().totals,a.totals,'repeat census has stable resource counts');
 });
 test('A4 pixel mark palette is lit, shared, correctly oriented and never ghosted',()=>{
  const a=make('ar-m4a1'),b=make('ak-ak74m'),

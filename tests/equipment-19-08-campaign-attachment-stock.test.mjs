@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newCampaign,readCampaign,buyWeaponAttachment,equipCampaignWeaponAttachment,
+import {newCampaign,readCampaign,buyWeapon,buyWeaponAttachment,equipCampaignWeaponAttachment,
  equipCampaignWeapon,acceptContract} from '../src/campaign-state.ts';
 import {attachmentPrice,catalogStockIds} from '../src/equipment-weapon-inventory.ts';
 
@@ -31,7 +31,7 @@ test('19.08 switching weapon returns incompatible parts and locks deployed kits'
  let c=newCampaign(11);
  c=buyWeaponAttachment(c,'optic-magnified');
  c=equipCampaignWeaponAttachment(c,'rook','optic','optic-magnified');
- c={...c,inventory:{...c.inventory,weapons:{...c.inventory.weapons,smg:1}}};
+ c=buyWeapon(c,'smg');
  c=equipCampaignWeapon(c,'rook','smg');
  assert.equal(c.operators[0].weaponConfiguration.slots.optic,'optic-irons');
  assert.equal(c.inventory.attachments['optic-magnified'],1);

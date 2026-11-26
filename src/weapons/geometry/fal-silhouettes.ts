@@ -9,7 +9,7 @@ import {buildFALCoreSilhouette} from './fal-core-silhouette.ts';
 import {addFALScoopedPort,addFALPivotPair} from './fal-receiver-form.ts';
 import {addCuboid} from './profile-primitives.ts';
 import {addFALHandguardVents} from './fal-handguard-profiles.ts';
-import {FAL_MAG_METAL,FAL_MAG_RIB,FAL_VENT_SHADOW,FAL_LOWER_METAL,FAL_TRANSITION_METAL,
+import {FAL_MAG_METAL,FAL_MAG_RIB,FAL_VENT_SHADOW,FAL_FNC_CALIBRATED_LOWER_METAL,FAL_TRANSITION_METAL,
  FAL_MUZZLE_METAL,FAL_MUZZLE_SLOT,FAL_WOOD,FAL_DARK_POLYMER} from './weapon-visual-palette.ts';
 
 export function addFALFamily(root:THREE.Group,build:WeaponFamilyBuild,
@@ -29,7 +29,7 @@ export function addFALFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // The approved P10 geometry is shared exactly; FAL wood changes materials
  // only, never receiver proportions, grip mounts or stock-contact datums.
  const core=buildFALCoreSilhouette({
-  stock:isPara?steel:woodStock?FAL_WOOD:polymer,receiver:steel,receiverLower:FAL_LOWER_METAL,
+  stock:isPara?steel:woodStock?FAL_WOOD:polymer,receiver:steel,receiverLower:FAL_FNC_CALIBRATED_LOWER_METAL,
   transitionMetal:FAL_TRANSITION_METAL,carryHandle:FAL_DARK_POLYMER,
   grip:woodGrip?FAL_WOOD:polymer,magazine:FAL_MAG_METAL,magazineRib:FAL_MAG_RIB,
   muzzleMetal:FAL_MUZZLE_METAL,muzzleSlot:FAL_MUZZLE_SLOT,

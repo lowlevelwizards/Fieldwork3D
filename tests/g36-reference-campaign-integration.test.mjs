@@ -65,7 +65,7 @@ test('Operations campaign owned carbine/rifle can equip all corresponding G36 fa
  const carbine=c.operators.find(o=>o.weapon==='carbine');
  const rifle=c.operators.find(o=>o.weapon==='rifle');
  assert.ok(carbine&&rifle);
- const stockBefore=JSON.stringify(c.inventory.weapons);
+ const stockBefore=JSON.stringify(stockByPlatform(c));
  let updated=c;
  for(const id of ['g36-k-dual','g36-c-classic','g36-ka4']){
   updated=equipCampaignWeaponPreset(updated,carbine.id,id);
@@ -78,7 +78,7 @@ test('Operations campaign owned carbine/rifle can equip all corresponding G36 fa
  updated=equipCampaignWeaponPreset(updated,rifle.id,'g36-service');
  assert.equal(updated.operators.find(o=>o.id===rifle.id).weaponConfiguration.build.family,'g36');
  assert.equal(resolveWeaponAssembly(updated.operators.find(o=>o.id===rifle.id).weaponConfiguration).muzzleX,19.5);
- assert.equal(JSON.stringify(updated.inventory.weapons),stockBefore,
+ assert.equal(JSON.stringify(stockByPlatform(updated)),stockBefore,
   'factory appearance selection never mints a weapon or spends class-level funds');
  assert.strictEqual(equipCampaignWeaponPreset(updated,rifle.id,'g36-ka4'),updated,
   'carbine preset cannot bypass weapon-class ownership on rifle operator');
@@ -88,7 +88,7 @@ test('Operations campaign owned carbine/rifle can equip all corresponding G36 fa
  assert.deepEqual(recovered.operators.map(o=>o.weaponConfiguration.build?.parts),
   updated.operators.map(o=>o.weaponConfiguration.build?.parts));
  const paid=buyWeapon(c,'rifle');
- assert.equal(paid.inventory.weapons.rifle,c.inventory.weapons.rifle+1);
+ assert.equal(stockByPlatform(paid).rifle,stockByPlatform(c).rifle+1);
  assert.ok(paid.funds<c.funds,'Operations still procures real weapon classes through campaign funds');
 });
 
@@ -113,3 +113,6 @@ test('Dispatch 2015 specialist G36C unlock uses standing and is not default or r
  assert.equal(mayChooseCampaignContent(historical,'weapon-preset','g36-c-classic'),false);
  assert.equal(mayChooseCampaignContent(historical,'weapon-preset','hk-mp5a3'),true);
 });
+
+import {catalogOwnedStock} from '../src/equipment-weapon-ownership.ts';
+const stockByPlatform=c=>Object.fromEntries(['carbine','smg','rifle','shotgun'].map(p=>[p,catalogOwnedStock(c).filter(w=>w.platform===p).length]));

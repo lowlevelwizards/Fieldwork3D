@@ -5,6 +5,7 @@
  * The same live-intended original G36 meshes are UV projected in place.
  */
 import * as THREE from 'three';
+import {createIntegratedArtAtlas,integratedArtUV,createIntegratedArtMaterialCache} from './weapon-integrated-surface-atlas.ts';
 import {G36_H3_VENT_CENTERS,G36_H3_VENT_SIZE}
  from './g36-h3-handguard.ts';
 import {arMagazineSample} from './ar-magazine-profiles.ts';
@@ -99,55 +100,19 @@ function ink(tile:Tile,x:number,y:number):number{
  }
  return 255;
 }
+const grid={tile:TILE,cols:COLS,rows:ROWS};
 let shared:THREE.DataTexture|undefined;
 export function g36PixelAtlas():THREE.DataTexture{
- if(shared)return shared;
- const width=TILE*COLS,height=TILE*ROWS;
- const data=new Uint8Array(width*height*4);
- for(const [name,def] of Object.entries(definitions) as [Tile,typeof definitions[Tile]][]){
-  const [x0,x1,y0,y1]=def.bounds;
-  for(let y=0;y<TILE;y++)for(let x=0;x<TILE;x++){
-   const px=x0+(x+.5)/TILE*(x1-x0),py=y0+(y+.5)/TILE*(y1-y0);
-   const shade=ink(name,px,py);
-   const i=((def.row*TILE+y)*width+def.col*TILE+x)*4;
-   data[i]=shade;data[i+1]=shade;data[i+2]=shade;data[i+3]=255;
-  }
- }
- // One reusable slightly dark front-cap swatch in the otherwise blank corner
- // of the guard atlas. No extra material, mesh, texture, or front cavity.
- const swatch=((2)*width+2)*4;
- data[swatch]=181;data[swatch+1]=181;data[swatch+2]=181;
- const tex=new THREE.DataTexture(data,width,height,THREE.RGBAFormat,THREE.UnsignedByteType);
- tex.name='G36 P8 broad HK identity atlas';
- tex.colorSpace=THREE.SRGBColorSpace;
- tex.wrapS=tex.wrapT=THREE.ClampToEdgeWrapping;
- tex.magFilter=tex.minFilter=THREE.NearestFilter;
- tex.generateMipmaps=false;tex.flipY=false;tex.needsUpdate=true;
- shared=tex;
- return tex;
+ return shared??=createIntegratedArtAtlas('G36 P8 broad HK identity atlas',grid,definitions,ink,(data,width)=>{
+  const swatch=(2*width+2)*4;
+  data[swatch]=181;data[swatch+1]=181;data[swatch+2]=181;
+ });
 }
-const cached=new WeakMap<THREE.Material,THREE.Material>();
-function mappedMaterial(source:THREE.Material):THREE.Material{
- // Re-applying the factory details must NEVER clone a previously mapped
- // finish; the same decorated mesh may be previewed many times.
- if(source.userData.g36PixelMarks)return source;
- let found=cached.get(source);
- if(found)return found;
- if(!(source instanceof THREE.MeshStandardMaterial))return source;
- const clone=source.clone();
- clone.map=g36PixelAtlas();
- clone.userData={...source.userData,g36PixelMarks:true};
- clone.needsUpdate=true;
- cached.set(source,clone);
- return clone;
-}
+const mappedMaterial=createIntegratedArtMaterialCache(g36PixelAtlas,'g36PixelMarks',{idempotent:true});
 const tileFor=(region:Region,sign:number):Tile=>
  (region+(sign>0?'-right':'-left')) as Tile;
 function uv(tile:Tile,x:number,y:number):readonly [number,number]{
- const t=definitions[tile],b=t.bounds;
- const u=Math.max(.004,Math.min(.996,(x-b[0])/(b[1]-b[0])));
- const v=Math.max(.004,Math.min(.996,(y-b[2])/(b[3]-b[2])));
- return [(t.col+u)/COLS,(t.row+v)/ROWS];
+ return integratedArtUV(definitions[tile],grid,x,y,.004);
 }
 /** Per-mesh projection is run once on FIRST factory detail application.
  * Any indexed geometry is expanded once for independent face UVs. Triangle

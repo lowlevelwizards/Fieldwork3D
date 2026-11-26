@@ -43,8 +43,11 @@ test('D13.6 unrestricted global and non-Dispatch modes retain their existing abi
  assert.equal(campaignWeaponQuote(creative,'rifle').priceLabel,'NO CHARGE');
  const bought=buyWeapon(creative,'rifle');
  assert.equal(bought.funds,creative.funds);
- assert.equal(bought.inventory.weapons.rifle,creative.inventory.weapons.rifle+1);
+ assert.equal(stockByPlatform(bought).rifle,stockByPlatform(creative).rifle+1);
  const operations=newCampaign(1619,createCampaignRules('operations'));
  assert.equal(campaignWeaponQuote(operations,'rifle').status,'ready');
  assert.equal(buyWeapon(operations,'rifle').funds,operations.funds-420);
 });
+
+import {catalogOwnedStock} from '../src/equipment-weapon-ownership.ts';
+const stockByPlatform=c=>Object.fromEntries(['carbine','smg','rifle','shotgun'].map(p=>[p,catalogOwnedStock(c).filter(w=>w.platform===p).length]));

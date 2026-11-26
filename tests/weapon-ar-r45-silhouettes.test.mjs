@@ -30,8 +30,8 @@ const cast=(group,x,y)=>new THREE.Raycaster(new THREE.Vector3(x,y,25),
  new THREE.Vector3(0,0,-1)).intersectObjects(
  group.children.filter(o=>!o.userData.weaponPixelArt),true).length>0;
 
-test('R4.5 shared AR axis and hand contact stay aligned across all eight presets',()=>{
- assert.equal(FAMILY_PRESETS.filter(p=>p.family==='ar').length,8);
+test('R4.5 shared AR axis and hand contact stay aligned across all nine presets',()=>{
+ assert.equal(FAMILY_PRESETS.filter(p=>p.family==='ar').length,9);
  for(const p of FAMILY_PRESETS.filter(p=>p.family==='ar')){
   const {config,group}=model(p.id),a=resolveWeaponAssembly(config);
   assert.ok(close(a.muzzleY,AR_VISUAL_AXIS_Y));
@@ -39,7 +39,8 @@ test('R4.5 shared AR axis and hand contact stay aligned across all eight presets
   assert.ok(a.supportY>-1.7,'support-hand contact rises with fore-end');
   const barrel=group.children.find(x=>x.name.startsWith('family-barrel-')&&
    x.name.endsWith('-0'));
-  assert.ok(barrel&&close(barrel.position.y,AR_VISUAL_AXIS_Y),
+  const barrelCenter=barrel?new THREE.Box3().setFromObject(barrel).getCenter(new THREE.Vector3()):null;
+  assert.ok(barrelCenter&&close(barrelCenter.y,AR_VISUAL_AXIS_Y),
    p.id+' barrel and muzzle use the same raised visual center');
   assert.ok(bounds(group,'barrel').intersectsBox(bounds(group,'handguard')));
   assert.ok(bounds(group,'grip').intersectsBox(bounds(group,'receiver')));
@@ -88,12 +89,12 @@ test('R4.6 constant-width STANAG art has metal ribs but no PMAG panel',()=>{
   assert.ok(mag.max.x-mag.min.x>=3.3,id+' broad side profile');
   assert.ok(mag.max.z-mag.min.z<=2.18,id+' slim Z');
   const meshes=group.children.filter(x=>x.name.startsWith('family-magazine-'));
-  assert.equal(meshes.length,id==='ar-mk18'?2:3,
-   id+' has body plus stamped geometry or molded toe');
+  assert.equal(meshes.length,id==='ar-mk18'?2:1,
+   id+' has integrated graphic or molded toe');
   assert.equal(group.children.filter(x=>x.name==='family-art-ar-poly-panel').length,0,
    'no fake side panel on the poly mag');
   if(id==='ar-mk18')assert.notEqual(meshes[1].material,meshes[0].material);
-  else assert.notEqual(meshes[1].material,meshes[0].material);
+  else assert.ok(meshes[0].userData.arWA6IntegratedMagazineArt&&meshes[0].material.map);
   clearWeaponSilhouette(group);
  }
 });
@@ -135,8 +136,7 @@ test('R4.5 attachments retain same raised muzzle position as visual body',()=>{
  const accessories=buildWeaponAccessories(suppressed,mat,mat);
  const box=new THREE.Box3().setFromObject(accessories);
  assert.ok(close(box.max.x,assembly.muzzleX));
- const suppressor=accessories.children.find(x=>x.geometry.type==='BoxGeometry'&&
-  x.geometry.parameters.width>5);
+ const suppressor=accessories.children.find(x=>x.name==='weapon-accessory-muzzle-suppressor');
  assert.ok(suppressor&&close(suppressor.position.y,assembly.muzzleY));
  clearWeaponSilhouette(group);clearWeaponSilhouette(accessories);
 });

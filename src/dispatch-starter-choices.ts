@@ -26,7 +26,9 @@ export const DISPATCH_STARTER_CHOICES:
   'solid-color':['navy','black'],
   'identity-marking':['label-swat']
  },{
-  equipment:['primary-shotgun','utility-breach']
+  equipment:['primary-shotgun','utility-breach'],
+  // Preserve the existing shotgun issue option using its authored migration default.
+  'weapon-preset':['r870-police-wood']
  }),
  'us-swat-2015':policy({
   equipment:['primary-carbine','head-helmet','armor-soft','rig-light',
@@ -44,7 +46,7 @@ export const DISPATCH_STARTER_CHOICES:
   // Optional specialist armory choice, NOT a statement that generic US
   // tactical-police agencies routinely issued the G36C. The D11 career
   // standing policy gates this preset at 70; global creative stays open.
-  'weapon-preset':['hk-mp5a3','g36-c-classic']
+  'weapon-preset':['hk-mp5a3','g36-c-classic','r870-police-wood']
  }),
  'us-police-polo-2020':policy({
   equipment:['head-cap','armor-soft','rig-none','belt-standard',

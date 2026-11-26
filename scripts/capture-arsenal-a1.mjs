@@ -5,6 +5,8 @@
 import {spawn} from 'node:child_process';
 import {mkdir} from 'node:fs/promises';
 import {chromium} from 'playwright';
+import {ARSENAL_REFERENCES} from '../src/arsenal/catalog.ts';
+const expected=ARSENAL_REFERENCES.length;
 
 const port=4259,origin='http://127.0.0.1:'+port;
 const server=spawn(process.execPath,[
@@ -39,15 +41,15 @@ try{
     image instanceof HTMLImageElement&&image.complete&&image.naturalWidth===480),
    names:[...document.querySelectorAll('.preset')].map(row=>row.dataset.presetId)
   }));
-  if(outcome.failed||outcome.rows!==35||outcome.count!==35||
-     outcome.views!==140||!outcome.loaded||
-     new Set(outcome.names).size!==35)
+  if(outcome.failed||outcome.rows!==expected||outcome.count!==expected||
+     outcome.views!==expected*4||!outcome.loaded||
+     new Set(outcome.names).size!==expected||ARSENAL_REFERENCES.some(r=>!outcome.names.includes(r.id)))
    throw Error('A1 contact-sheet incomplete: '+JSON.stringify(outcome));
   if(errors.length)throw Error('A1 WebGL failures: '+errors.join(' | '));
   await mkdir('reports',{recursive:true});
   await page.screenshot({path:'reports/arsenal-a1-contact-sheet.png',
    fullPage:true,animations:'disabled',timeout:120000});
-  console.log('Arsenal A1 WebGL contact sheet: 35 real factory models, 140 fixed-view panels');
+  console.log('Arsenal A1 WebGL contact sheet: '+expected+' real factory models, '+expected*4+' fixed-view panels');
   await page.close();
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}

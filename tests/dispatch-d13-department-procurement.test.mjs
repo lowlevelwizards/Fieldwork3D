@@ -29,7 +29,7 @@ test('D13 curated procurement surfaces all four supported classes without claimi
  assert.equal(shotgun.status,'ready',
   'historical preset deliberately grants authored specialist variants');
  const bought=buyWeapon(c,'smg');
- assert.equal(bought.inventory.weapons.smg,1);
+ assert.equal(stockByPlatform(bought).smg,1);
  assert.equal(bought.funds,c.funds-260);
  assert.deepEqual(weaponOwnershipIssues(bought),[]);
 });
@@ -42,12 +42,12 @@ test('D13 standing 70 distinguishes authorization from ownership, is enforced at
  const authorized={...c,dispatchDepartment:{...c.dispatchDepartment,standing:70}};
  assert.equal(campaignWeaponQuote(authorized,'smg').status,'ready');
  const next=buyWeapon(authorized,'smg');
- assert.equal(next.inventory.weapons.smg,1);
+ assert.equal(stockByPlatform(next).smg,1);
  assert.equal(next.funds,c.funds-260);
  assert.equal(campaignWeaponQuote(next,'smg').stock,1);
  const standingDropped={...next,dispatchDepartment:{...c.dispatchDepartment,standing:40}};
  assert.equal(campaignWeaponQuote(standingDropped,'smg').status,'standing-locked');
- assert.equal(standingDropped.inventory.weapons.smg,1,
+ assert.equal(stockByPlatform(standingDropped).smg,1,
   'standing drop never confiscates previously purchased gear');
 });
 
@@ -62,7 +62,7 @@ test('D13 Open Department offers Dispatch inventory; creative is no-charge yet f
  assert.equal(canAffordCampaignPurchase({...creative,funds:0},3000),true);
  const free=buyWeapon({...creative,funds:0},'smg');
  assert.equal(free.funds,0);
- assert.equal(free.inventory.weapons.smg,creative.inventory.weapons.smg+1);
+ assert.equal(stockByPlatform(free).smg,stockByPlatform(creative).smg+1);
  assert.deepEqual(weaponOwnershipIssues(free),[]);
 });
 
@@ -75,7 +75,7 @@ test('D13 frozen, unaffordable and saturated transactions do not charge money',(
  assert.equal(campaignWeaponQuote(deployed,'smg').status,'deployment-locked');
  assert.strictEqual(buyWeapon(deployed,'smg'),deployed);
  const atCap={...open,inventory:{...open.inventory,
-  weapons:{...open.inventory.weapons,smg:124}}};
+  serializedWeapons:[...open.inventory.serializedWeapons,...Array.from({length:128-open.inventory.serializedWeapons.length},(_,i)=>({...open.inventory.serializedWeapons[0],id:'capacity-'+i}))]}};
  assert.equal(campaignWeaponStockAtCapacity(atCap),true);
  assert.equal(campaignWeaponQuote(atCap,'smg').status,'armory-full');
  assert.strictEqual(buyWeapon(atCap,'smg'),atCap);
@@ -130,8 +130,11 @@ test('D13 legacy saves and original campaigns preserve their old procurement beh
  assert.equal(campaignWeaponQuote(nonDispatch,'rifle').status,'ready');
  assert.deepEqual(readCampaign(JSON.stringify(nonDispatch)),nonDispatch);
  const ui=source('src/campaign-ui.ts');
- assert.match(ui,/campaignWeaponQuote\(c,weapon\)/);
+ assert.match(ui,/catalogWeaponOfferings\(c\)/);
  assert.match(ui,/dispatchDepartmentView\(c\)/);
- assert.match(ui,/\['carbine','rifle'\] as const/);
- assert.match(ui,/CAMPAIGN_WEAPON_PLATFORMS/);
+ assert.match(ui,/this\.handlers\.buyCatalogWeapon\(quote\.presetId\)/);
+ assert.doesNotMatch(ui,/CAMPAIGN_WEAPON_PLATFORMS/);
 });
+
+import {catalogOwnedStock} from '../src/equipment-weapon-ownership.ts';
+const stockByPlatform=c=>Object.fromEntries(['carbine','smg','rifle','shotgun'].map(p=>[p,catalogOwnedStock(c).filter(w=>w.platform===p).length]));

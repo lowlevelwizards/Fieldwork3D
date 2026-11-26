@@ -11,6 +11,7 @@ import {visualMaterialRole} from '../src/rendering/material-identity.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset,setWeaponAttachment}
  from '../src/equipment-weapon-assemblies.ts';
 import {buildWeaponAccessories} from '../src/breach-weapon-accessories.ts';
+import {ARSENAL_REFERENCES} from '../src/arsenal/catalog.ts';
 import {collectArsenalA1Manifest} from '../scripts/audit-arsenal-a1.mjs';
 
 test('A2 shared palette: each finish has a role, exact PBR substrate response and cached material',()=>{
@@ -40,16 +41,26 @@ test('A2 AR, AK, HK, FAL and FNC all receive authored material refinements',()=>
  assert.equal(palette.AK_COVER_STAMP_METAL.type,'MeshStandardMaterial');
  assert.equal(palette.AK_COVER_STAMP_METAL.color.getHex(),0x728077);
  assert.equal(palette.HK_BLACK_METAL.color.getHex(),0x3e4441);
- assert.equal(palette.FAL_BLACK_METAL.color.getHex(),0x414845);
+ assert.equal(palette.HK_WA8_RIFLE_STEEL.color.getHex(),0x474e50);
+ assert.equal(palette.HK_WA8_RIFLE_POLYMER.color.getHex(),0x303831);
+ assert.equal(palette.FAL_BLACK_METAL.color.getHex(),0x495052,'WA4 reviewed cool-neutral steel');
+ assert.equal(palette.FAL_DARK_POLYMER.color.getHex(),0x343d32);
+ assert.equal(palette.FNC_BLACK_METAL.color.getHex(),0x474e50);
+ assert.equal(palette.FNC_DARK_POLYMER.color.getHex(),0x303831);
+ assert.notStrictEqual(palette.FNC_BLACK_METAL,palette.HK_BLACK_METAL);
  assert.equal(palette.FAL_DARK_POLYMER.metalness,.015);
- // FNC assembly intentionally uses HK steel and FAL lower/polymer, so
- // these refinements are propagated rather than color-protecting the model.
+ // WA4 FNC steel/polymer use scoped calibrated finishes; FAL lower/fore-end
+ // finish sharing is retained, and HK must not inherit this calibration.
  const fnc=readFileSync(new URL('../src/weapons/geometry/fnc-silhouettes.ts',import.meta.url),'utf8');
- assert.match(fnc,/HK_BLACK_METAL/);
+ assert.match(fnc,/FNC_BLACK_METAL/);
+ assert.doesNotMatch(fnc,/HK_BLACK_METAL/);
  assert.match(fnc,/FAL_DARK_POLYMER/);
  const ak=readFileSync(new URL('../src/weapons/geometry/ak-silhouettes.ts',import.meta.url),'utf8');
  assert.doesNotMatch(ak,/new THREE\.MeshLambertMaterial/);
- assert.match(ak,/AK_COVER_STAMP_METAL/);
+ assert.match(ak,/AK_WA7_COVER_ACCENT/);
+ assert.equal(palette.AK_WA7_COVER_ACCENT.color.getHex(),0x5c6562);
+ assert.equal(palette.AK_WA7_STEEL.color.getHex(),0x4a5051);
+ assert.equal(palette.AK_WA7_POLYMER.color.getHex(),0x343b32);
 });
 
 test('A2 all existing finish swatches derive from the same approved material specs',()=>{
@@ -58,12 +69,12 @@ test('A2 all existing finish swatches derive from the same approved material spe
   for(const option of group.options)assert.match(option.hex,/^[0-9a-f]{6}$/);
  }
  for(const [part,finish] of [
-  ['ar-grip-poly','ar-polymer'],['ar-grip-poly-fde','ar-fde'],
+  ['ar-grip-poly','ar-wa6-polymer'],['ar-grip-poly-fde','ar-fde'],
   ['ak-wood','ak-wood-dark'],['ak-wood-amber','ak-wood-amber'],
   ['ak-wood-red','ak-wood-red'],['ak-grip-bakelite','ak-resin'],
-  ['ak-sidefold','ak-polymer'],['ak-sidefold-plum','ak-plum-polymer'],
+  ['ak-sidefold','ak-wa7-polymer'],['ak-sidefold-plum','ak-plum-polymer'],
   ['hk33-fixed-stock','hk-olive-polymer'],
-  ['hk33-fixed-stock-black','hk-polymer']
+  ['hk33-fixed-stock-black','hk-wa8-rifle-polymer']
  ]){
   const option=arsenalFinishOption(part);
   // Bakelite is a valid authored material but not a same-geometry swatch option.
@@ -101,12 +112,17 @@ test('A2 canonical accessories survive the actual attachment compatibility path'
  steel.dispose();polymer.dispose();
 });
 
-test('A2 complete factory inventory retains exact A1 geometry and saved identifiers',()=>{
+test('A2 complete current factory inventory retains catalog identifiers and FNC benchmark',()=>{
  const m=collectArsenalA1Manifest();
- assert.equal(m.totals.presets,35);
- assert.equal(m.totals.meshes,881,'A4 shared symmetric mark batching removes ten redundant factory meshes');
- assert.equal(m.totals.triangles,18298);
- assert.deepEqual(Object.values(m.totals.byPlatform).sort((a,b)=>a-b),[1,3,4,6,9,9,3].sort((a,b)=>a-b));
+ // The historical 35-reference A1 totals remain in its dated report.
+ // Current coverage is catalog-derived; WA3 exact geometry parity is checked
+ // independently against a pinned revision rather than freezing old totals.
+ assert.equal(m.totals.presets,ARSENAL_REFERENCES.length);
+ assert.deepEqual(m.presets.map(p=>p.id).sort(),ARSENAL_REFERENCES.map(p=>p.id).sort());
+ const expected={};for(const r of ARSENAL_REFERENCES)expected[r.platformId]=(expected[r.platformId]??0)+1;
+ assert.deepEqual(m.totals.byPlatform,expected);
+ assert.equal(m.totals.meshes,m.presets.reduce((n,p)=>n+p.meshes,0));
+ assert.equal(m.totals.triangles,m.presets.reduce((n,p)=>n+p.triangles,0));
  assert.equal(m.presets.find(p=>p.id==='fnc-service')?.meshes,23);
  assert.equal(m.presets.find(p=>p.id==='fnc-service')?.triangles,536);
 });

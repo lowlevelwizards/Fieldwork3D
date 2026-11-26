@@ -20,7 +20,7 @@ const group=(slot:FamilyPartSlot,name:string,items:readonly Entry[]):ArsenalFini
 });
 export const ARSENAL_FINISH_FAMILIES:readonly ArsenalFinishFamily[]=[
  group('grip','Polymer Grip',[
-  ['ar-grip-poly','Black','ar-polymer'],['ar-grip-poly-fde','FDE','ar-fde']]),
+  ['ar-grip-poly','Black','ar-wa6-polymer'],['ar-grip-poly-fde','FDE','ar-fde']]),
  group('stock','Wood Fixed',[
   ['ak-wood','Dark Wood','ak-wood-dark'],['ak-wood-amber','Honey Birch','ak-wood-amber'],
   ['ak-wood-red','Red Lacquer','ak-wood-red']]),
@@ -28,7 +28,7 @@ export const ARSENAL_FINISH_FAMILIES:readonly ArsenalFinishFamily[]=[
   ['ak-wood74','Dark Wood','ak-wood-dark'],['ak-wood74-amber','Honey Birch','ak-wood-amber'],
   ['ak-wood74-red','Red Lacquer','ak-wood-red'],['ak-wood74-plum','Plum Polymer','ak-plum-polymer']]),
  group('stock','Polymer Sidefolder',[
-  ['ak-sidefold','Black Polymer','ak-polymer'],['ak-sidefold-plum','Plum Polymer','ak-plum-polymer']]),
+  ['ak-sidefold','Black Polymer','ak-wa7-polymer'],['ak-sidefold-plum','Plum Polymer','ak-plum-polymer']]),
  group('stock','RPK Clubfoot',[
   ['ak-rpk-clubfoot','Dark Wood','ak-wood-dark'],['ak-rpk-clubfoot-amber','Honey Birch','ak-wood-amber'],
   ['ak-rpk-clubfoot-red','Red Lacquer','ak-wood-red']]),
@@ -36,7 +36,7 @@ export const ARSENAL_FINISH_FAMILIES:readonly ArsenalFinishFamily[]=[
   ['ak-grip-wood','Dark Wood','ak-wood-dark'],['ak-grip-wood-amber','Honey Birch','ak-wood-amber'],
   ['ak-grip-wood-red','Red Lacquer','ak-wood-red']]),
  group('grip','Polymer Grip',[
-  ['ak-grip-poly','Black Polymer','ak-polymer'],['ak-grip-poly-plum','Plum Polymer','ak-plum-polymer']]),
+  ['ak-grip-poly','Black Polymer','ak-wa7-polymer'],['ak-grip-poly-plum','Plum Polymer','ak-plum-polymer']]),
  group('handguard','Rifle Wood',[
   ['ak-wood-long','Dark Wood','ak-wood-dark'],['ak-wood-long-amber','Honey Birch','ak-wood-amber'],
   ['ak-wood-long-red','Red Lacquer','ak-wood-red']]),
@@ -47,17 +47,17 @@ export const ARSENAL_FINISH_FAMILIES:readonly ArsenalFinishFamily[]=[
   ['ak-rpk-wood','Dark Wood','ak-wood-dark'],['ak-rpk-wood-amber','Honey Birch','ak-wood-amber'],
   ['ak-rpk-wood-red','Red Lacquer','ak-wood-red']]),
  group('handguard','Rifle Polymer',[
-  ['ak-poly-long','Black Polymer','ak-polymer'],['ak-poly-plum-long','Plum Polymer','ak-plum-polymer']]),
+  ['ak-poly-long','Black Polymer','ak-wa7-polymer'],['ak-poly-plum-long','Plum Polymer','ak-plum-polymer']]),
  group('handguard','Carbine Polymer',[
-  ['ak-poly-mid','Black Polymer','ak-polymer'],['ak-poly-plum-mid','Plum Polymer','ak-plum-polymer']]),
+  ['ak-poly-mid','Black Polymer','ak-wa7-polymer'],['ak-poly-plum-mid','Plum Polymer','ak-plum-polymer']]),
  group('handguard','Compact Polymer',[
-  ['ak-poly-short','Black Polymer','ak-polymer'],['ak-poly-plum-short','Plum Polymer','ak-plum-polymer']]),
+  ['ak-poly-short','Black Polymer','ak-wa7-polymer'],['ak-poly-plum-short','Plum Polymer','ak-plum-polymer']]),
  group('stock','HK33 Fixed',[
-  ['hk33-fixed-stock','OD Polymer','hk-olive-polymer'],['hk33-fixed-stock-black','Black Polymer','hk-polymer']]),
+  ['hk33-fixed-stock','OD Polymer','hk-olive-polymer'],['hk33-fixed-stock-black','Black Polymer','hk-wa8-rifle-polymer']]),
  group('handguard','HK33 Slim',[
-  ['hk33-poly-slim','OD Polymer','hk-olive-polymer'],['hk33-poly-slim-black','Black Polymer','hk-polymer']]),
+  ['hk33-poly-slim','OD Polymer','hk-olive-polymer'],['hk33-poly-slim-black','Black Polymer','hk-wa8-rifle-polymer']]),
  group('handguard','HK53 Compact',[
-  ['hk53-poly-short','OD Polymer','hk-olive-polymer'],['hk53-poly-short-black','Black Polymer','hk-polymer']]),
+  ['hk53-poly-short','OD Polymer','hk-olive-polymer'],['hk53-poly-short-black','Black Polymer','hk-wa8-rifle-polymer']]),
 ];
 const byPart=new Map<string,ArsenalFinishFamily>();
 for(const family of ARSENAL_FINISH_FAMILIES)

@@ -8,6 +8,7 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset,
  from '../src/equipment-weapon-assemblies.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
+import {buildModularWeaponSilhouette} from '../src/breach-modular-weapon-geometry.ts';
 import {partVisualBounds}
  from '../src/weapons/geometry/weapon-visual-anchors.ts';
 import {arMagazineCurve,arMagazinePolyLowerFacet}
@@ -61,9 +62,9 @@ test('R4.7 forward assist is one continuous, shallow extruded face',()=>{
 test('R4.7 polymer seams never create bright horizontal crosshatches',()=>{
  for(const [id,expected] of [['ar-m16a2',7],['ar-car15',5],['ar-colt733',4]]){
   const {g}=model(id),rib=g.children.find(x=>x.userData.arPolymerRibs);
-  assert.ok(rib instanceof THREE.InstancedMesh,id+' real molded ring ribs');
+  assert.ok(rib instanceof THREE.Mesh&&rib.userData.arContinuousGraphicBands,id+' continuous artwork relief');
   assert.equal(rib.userData.arRibBandCount,expected);
-  assert.equal(rib.count,expected*8,'eight faceted band segments');
+  assert.equal(rib.geometry.index.count/3,expected*48,'three visible strips per facet, no hidden box faces');
   assert.ok(!art(g,'poly-ribs')&&!art(g,'car-ribs'),
    'old flat stripe overlays removed');
   clearWeaponSilhouette(g);
@@ -81,8 +82,8 @@ test('R4.7 curved metal STANAGs are still uniform, with delayed lower sweep',()=
  assert.ok(poly.power>1.7&&poly.power<1.9);
  assert.equal(arMagazinePolyLowerFacet(poly).length,4);
  const m4=model('ar-m4a1'),mk=model('ar-mk18');
- assert.equal(part(m4.g,'magazine').length,3);
- assert.ok(part(m4.g,'magazine').slice(1).every(x=>x.material===AR_STANAG_RIB));
+ assert.equal(part(m4.g,'magazine').length,1);
+ assert.ok(part(m4.g,'magazine')[0].userData.arWA6IntegratedMagazineArt);
  assert.equal(part(mk.g,'magazine').length,2);
  assert.ok(bounds(mk.g,'magazine').max.z-bounds(mk.g,'magazine').min.z<2,
   'polymer bevel remains shallow and does not overinflate sideways');
@@ -119,9 +120,13 @@ test('R4.7 Mk18 rail reveals the nose, with no fixed A-frame',()=>{
 test('R4.7 canonical flash hiders use faceted six-sided bodies',()=>{
  for(const id of ['ar-m16a1','ar-m16a2','ar-m4a1','ar-mk18']){
   const {g,a,c}=model(id);
-  const device=part(g,'barrel').find(x=>x.geometry.type==='CylinderGeometry'&&
+  // Inspect the canonical uncompiled artwork; production can legally merge
+  // opaque meshes. Keep the live extent and replacement assertions below.
+  const source=buildModularWeaponSilhouette(c.build,basic,basic);
+  const device=part(source,'barrel').find(x=>x.geometry.type==='CylinderGeometry'&&
    x.geometry.parameters.radialSegments===6);
-  assert.ok(device,id+' symbolic six-sided muzzle');
+  assert.ok(device,id+' symbolic six-sided exterior artwork');
+  clearWeaponSilhouette(source);
   assert.ok(close(new THREE.Box3().setFromObject(g).max.x,a.muzzleX));
   assert.equal(g.children.filter(x=>x.name==='family-art-ar-birdcage').length,2);
   const replaced=setWeaponAttachment(c,'muzzle','muzzle-suppressor');
