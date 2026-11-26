@@ -39,81 +39,83 @@ export function prepareWallArt(kind:WallEffect,seed:number,progress:number,texel
   const x=u/growth,y=v/growth;
   switch(kind){
    case 'fade':{
-    const bottom=.23+contour(u)*1.8+progress*.41;
-    if(Math.abs(u)>.89||v>bottom||v<-.95)return ink(0);
-    return ink(v>bottom-.22?.34:.58,v>bottom-.22?0:1);
+    const bottom=.08+contour(u)*1.3+progress*.31;
+    if(Math.abs(u)>.94||v>bottom||v<-.99)return ink(0);
+    return ink(v>bottom-.20?.27:.47,v>bottom-.20?0:1);
    }
    case 'contact':{
-    const broad=lobe(x,y,-.15,.03,.93,.73);
-    const upper=Math.abs(y+.31+x*.17+contour(x)*.5)<Math.max(.13,texelV*.6)&&x>-.81&&x<.60;
-    const lower=Math.abs(y-.31+x*.13)<Math.max(.10,texelV*.5)&&x>-.45&&x<.88;
-    if(upper||lower)return ink(.85,2);
-    return broad<1+jag?ink(.45,1):ink(0);
+    const body=Math.min(lobe(x,y,-.32,.12,.58,.55),lobe(x,y,.28,-.14,.48,.37));
+    const upper=Math.abs(y+.22+x*.17+contour(x)*.5)<Math.max(.09,texelV*.37)&&x>-.72&&x<.18;
+    const lower=Math.abs(y-.23+x*.13)<Math.max(.075,texelV*.32)&&x>-.16&&x<.67;
+    if(upper||lower)return ink(.67,2);
+    return body<1+jag?ink(.38,1):ink(0);
    }
    case 'chip':{
-    const body=lobe(x,y,-.2,.18,.76,.78);
-    if(body<.64+jag)return ink(.95,2);
-    if(body<1+jag)return ink(.92,0);
-    if(progress>.6&&lobe(x,y,.68,-.52,.20,.24)<1)return ink(.88,1);
+    const boundary=-.13+contour(v)*2.3+.13*Math.sin(v*5);
+    const atEdge=u<boundary&&u>-.97&&v>-.88&&v<.93;
+    if(atEdge)return ink(u<boundary-.19?.89:.64,u<boundary-.19?2:0);
+    if(progress>.6&&lobe(x,y,.28,.36,.15,.19)<1)return ink(.77,1);
     return ink(0);
    }
    case 'damp':{
-    const top=-.12-.51*progress+contour(u)*2.1+.20*Math.abs(u);
-    if(v<top||Math.abs(u)>.96)return ink(0);
-    if(v<top+.15)return ink(.62,0);
-    if(v>.46+contour(u)*.9)return ink(.91,2);
-    return ink(.74,1);
+    const top=-.03-.43*progress+contour(u)*1.9+.28*Math.abs(u);
+    const side=.91-.12*Math.max(0,-v);
+    if(v<top||Math.abs(u)>side)return ink(0);
+    if(v<top+.17)return ink(.34,0);
+    if(v>.48+contour(u)*1.15)return ink(.77,2);
+    return ink(.63,1);
    }
    case 'runoff':{
-    const center=-.32+phase+.11*Math.max(0,v)+contour(v)*.30;
-    const w=Math.max(texelU*.57,.22*(1-(v+1)*.31));
-    if(v>-.93&&v<-.1+progress*.99&&Math.abs(u-center)<w)return ink(.86,Math.abs(u-center)<w*.58?2:1);
-    if(v>-.90&&v<-.45+progress*.76&&Math.abs(u-.41-phase)<Math.max(texelU*.48,.115))return ink(.66,1);
+    const center=-.32+phase+.10*Math.max(0,v)+contour(v)*.23;
+    const w=Math.max(texelU*.53,.19*(1-(v+1)*.30));
+    if(v>-.99&&v<-.12+progress*1.05&&Math.abs(u-center)<w)return ink(.78,Math.abs(u-center)<w*.57?2:1);
+    if(v>-.99&&v<-.50+progress*.91&&Math.abs(u-.35-phase)<Math.max(texelU*.48,.10))return ink(.60,1);
     return ink(0);
    }
    case 'crack':{
     if(v<-.98||v>-.2+1.16*progress)return ink(0);
-    if(path(u,v,main,stroke))return ink(.94,2);
-    if(progress>.65&&branches.some(b=>path(u,v,b,stroke*.74)))return ink(.73,2);
-    if(path(u-.12,v,main,stroke*.5))return ink(.50,0);
+    if(path(u,v,main,stroke*.85))return ink(.82,2);
+    if(progress>.65&&path(u,v,branches[0],stroke*.63))return ink(.56,2);
+    if(path(u-.10,v,main,stroke*.47))return ink(.29,0);
     return ink(0);
    }
    case 'repair':{
-    const region=lobe(x,y,0,0,.88,.86);
-    if(region>1+jag*.8)return ink(0);
-    return ink(region>.78?.70:.88,region>.78?0:1);
+    const angular=rand(51)<.5;
+    const region=angular?Math.max(Math.abs(x+.08)/.83,Math.abs(y)/.78):Math.max(Math.abs(x+.07)/.80,Math.abs(y+.08)/(.79+jag*.7));
+    if(region>1+jag*.46)return ink(0);
+    return ink(region>.80?.45:.73,region>.80?0:1);
    }
    case 'moss':{
-    const tops=[-.18,-.52,-.08,-.68,-.31,-.10,-.48,-.18,-.36];
-    const top=tops[Math.min(8,Math.max(0,Math.floor((u+1)*4)))]+jag-.18*progress;
+    const top=-.14+contour(u)*2.4-.21*progress+.25*Math.abs(u);
     if(Math.abs(u)>.95||v<top)return ink(0);
-    return ink(v>top+.48?.96:.83,v>top+.48?2:v<top+.20?0:1);
+    return ink(v>top+.49?.88:.71,v>top+.49?2:v<top+.20?0:1);
    }
    case 'rust':{
-    const bloom=lobe(x,y,-.05,-.40,.76,.51);
-    if(bloom<.62+jag)return ink(.94,2);
-    if(bloom<1+jag)return ink(.90,0);
-    const trail=Math.max(.11,texelU*.55);
-    if(v>-.48&&v<.2+progress*.74&&Math.abs(u-phase-contour(v)*.35)<trail*(1.28-.38*v))return ink(.83,1);
-    if(progress>.65&&v>.0&&v<.76&&Math.abs(u+.37)<trail*.62)return ink(.72,0);
+    const seam=phase*.32+contour(v)*.23;
+    const bloom=Math.min(lobe(x,y,-.08,-.48,.36,.45),lobe(x,y,.10,-.03,.27,.44));
+    if(bloom<.46+jag)return ink(.83,2);
+    if(bloom<1+jag)return ink(.79,0);
+    const trail=Math.max(.09,texelU*.52);
+    if(v>-.68&&v<.16+progress*.79&&Math.abs(u-seam)<trail*(1.21-.30*v))return ink(.74,1);
+    if(progress>.65&&v>.1&&v<.62&&Math.abs(u+.31)<trail*.58)return ink(.57,0);
     return ink(0);
    }
    case 'grease':{
-    const body=Math.min(lobe(x,y,-.24,.25,.64,.70),lobe(x,y,.35,.43,.50,.52),lobe(x,y,.06,-.35,.42,.54));
+    const body=Math.min(lobe(x,y,-.24,.40,.69,.51),lobe(x,y,.29,.33,.51,.54),lobe(x,y,.02,-.27,.35,.58));
     if(body>1+jag)return ink(0);
-    return ink(body<.62&&v>.10?.81:.54,body<.62&&v>.10?2:1);
+    return ink(body<.65&&v>.12?.76:.48,body<.65&&v>.12?2:1);
    }
    case 'splash':{
     let body=Infinity;for(const [a,b,c,d] of splashPatches)body=Math.min(body,lobe(x,y,a,b,c,d));
-    if(body<1+jag)return ink(.79,body>.61?0:1);
-    if(v>-.24&&v<.8&&Math.abs(u-.5)<Math.max(.08,texelU*.48))return ink(.60,1);
+    if(body<1+jag)return ink(body>.62?.83:.45,body>.62?0:1);
+    if(v>-.24&&v<.8&&Math.abs(u-.5)<Math.max(.08,texelU*.48))return ink(.59,1);
     return ink(0);
    }
    case 'workgrime':{
     const body=Math.min(lobe(x,y,-.30,.11,.65,.65),lobe(x,y,.35,-.06,.55,.48));
     if(body>1+jag)return ink(0);
-    const rubbed=Math.abs(y+x*.15+.12)<Math.max(.12,texelV*.48)||Math.abs(y-.34+x*.07)<Math.max(.09,texelV*.4);
-    return ink(rubbed?.92:.55,rubbed?2:1);
+    const rubbed=(x<.22&&Math.abs(y+x*.15+.12)<Math.max(.09,texelV*.39))||(x>-.20&&Math.abs(y-.34+x*.07)<Math.max(.08,texelV*.35));
+    return ink(rubbed?.73:.44,rubbed?2:1);
    }
   }
  };
