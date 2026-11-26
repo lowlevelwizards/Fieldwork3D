@@ -6,6 +6,8 @@ on:
       - 'src/weapons/geometry/hk-mp5-silhouettes.ts'
       - 'scripts/verify-wa9-art-delta.mjs'
       - 'tests/weapon-hk-r4-material-selector.test.mjs'
+      - 'tests/weapon-hk-mp5-family.test.mjs'
+      - 'tests/weapon-hk-mp5-r2-refinements.test.mjs'
       - '.github/workflows/wa9-mp5-art-overhaul.yml'
   workflow_dispatch:
 concurrency:

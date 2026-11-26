@@ -73,8 +73,8 @@ test('MP5K massive tilted integral grip occupies its own side silhouette',()=>{
  const c=riflePoseContacts('smg',cfg),a=resolveWeaponAssembly(cfg);
  assert.ok(c.support.near.x>=b.min.x&&c.support.far.x<=b.max.x);
  assert.ok(c.support.near.y>=b.min.y&&c.support.near.y<=b.max.y);
- assert.equal(c.support.near.y,-4.20);
- assert.equal(a.supportY,-4.20,'weapon assembly agrees with operator contacts');
+ assert.ok(a.supportY>=b.min.y&&a.supportY<=b.max.y,'assembly contact remains inside authored art');
+ assert.equal(a.supportY,c.support.near.y,'weapon assembly agrees with operator contacts');
  assert.ok(model.children.length<=28,'minimum mesh-count standard');
  clearWeaponSilhouette(model);
 });

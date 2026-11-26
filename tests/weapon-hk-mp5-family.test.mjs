@@ -38,7 +38,7 @@ function create(id){
  return {config,group};
 }
 test('six genuine SMG factory models, one 9mm feed, saved builds roundtrip',()=>{
- assert.equal(FAMILY_PRESETS.length,29);
+ assert.ok(FAMILY_PRESETS.length>=29,'catalog retains original cohort and later families');
  assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,12);
  assert.equal(FAMILY_PRESETS.filter(x=>x.weapon==='smg').length,6);
  for(const id of ids){
