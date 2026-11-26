@@ -87,7 +87,7 @@ export function createOrderExecutor(port:OrderExecutionPort){
   // execution. It reports elapsed order CPU without editing a plan or
   // interrupting traversal, collision, or door decisions.
   try{
-  if(a.carryingId&&
+  if(a.carryingId&&!a.transportLatched&&
      (n?.kind!=='evacuate'||n.patientId!==a.carryingId)&&
      (n?.interaction!=='release-civilian'||n.objectId!==a.carryingId)&&
      (n?.interaction!=='release-capture-target'||n.objectId!==a.carryingId)){

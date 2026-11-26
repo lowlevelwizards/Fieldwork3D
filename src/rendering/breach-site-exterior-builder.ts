@@ -197,9 +197,9 @@ export function buildSiteExterior(site:Site,host:SiteExteriorBuildHost):void{
         continue;
       }
       if(mark.kind==='curb-edge'){
-        // A tiny visible lip also separates overlapping legacy curb/sidewalk
-        // surfaces without changing the ramp or movement elevation.
-        const curbTop=CURB_GROUND_LEVELS.sidewalk+.06;
+        // A slight real curb crown keeps the top distinct from the
+        // sidewalk at tight junctions/corners. No material depth hack.
+        const curbTop=CURB_GROUND_LEVELS.sidewalk+.075;
         const thickness=curbTop-CURB_GROUND_LEVELS.road;
         host.box(host.root,mark.x,
           (curbTop+CURB_GROUND_LEVELS.road)/2,

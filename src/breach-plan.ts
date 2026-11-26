@@ -27,6 +27,7 @@ export type PlanNode={
   transportMode?:'drag'|'carry';
   /** Authored patient-transport bends, consumed during actual GO traversal. */
   transportPath?:Pt[];
+  transportPickup?:boolean;
   stackDoorId?:string;
   /** The physical threshold for a generated squad-entry clearing handoff.
    * Ordinary authored MOVE/LOOK orders intentionally omit this marker. */

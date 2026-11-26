@@ -44,7 +44,7 @@ export function captureReplayManifest(s:Session,
     // later frame body is intentionally absent from active simulation.
     // Include retained evacuated friendlies WITHOUT dropping live red-side
     // identities; archived members were removed from operators on GO.
-    actors:[...s.operators,...(s.extractedOperators??[])].map(a=>({
+    actors:[...s.operators,...(s.extractedOperators??[]),...(s.extractedSuspects??[])].map(a=>({
       id:a.id,name:a.name,side:a.side,
       appearanceSeed:a.appearanceSeed,weapon:a.weapon,
       equipment:a.equipment?structuredClone(a.equipment):undefined,

@@ -7,8 +7,6 @@ import {team,liveVisibility,type Session,type TeamActor} from './breach-game.ts'
 import {mostUrgentWound,bleedingRate} from './breach-medical-wounds.ts';
 import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
 import {captureVitalStatus} from './breach-capture-vitals.ts';
-import {designatedDownedCaptureTarget}
- from './breach-capture-transport-policy.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 
@@ -27,10 +25,11 @@ export function medicalTreatmentChoices(s:Session,actor:TeamActor,at:Pt):
  const world=sessionWorldGeometry(s);
  const choices:MedicalPatientChoice[]=[];
  const candidates:TeamActor[]=[...team(s)];
- const capture=s.operators.find(o=>designatedDownedCaptureTarget(s,o)&&
-   captureVitalStatus(o)!=='deceased'&&o.medical.wounds.length>0&&
-   liveVisibility(s,o.p));
- if(capture&&!candidates.includes(capture))candidates.push(capture);
+ for(const suspect of s.operators){
+  if(suspect.side==='red'&&suspect.health<=0&&
+    captureVitalStatus(suspect)!=='deceased'&&suspect.medical.wounds.length>0&&
+    liveVisibility(s,suspect.p))candidates.push(suspect);
+ }
  for(const patient of candidates){
   if(patient.health<=0&&captureVitalStatus(patient)==='deceased')continue;
   const self=patient.id===actor.id;

@@ -4,7 +4,7 @@ import {bloodMarkRadius,bloodMarkTint} from './breach-blood-evidence.ts';
 import {damageRadius,damageTint} from './rendering/breach-stain-atlas.ts';
 import {isIntermediateMaterialCue,MAX_MATERIAL_CUES} from './breach-material-cues.ts';
 import {sampleBloodBurst,BLOOD_BURST_COUNT} from './rendering/breach-blood-burst.ts';
-import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose,isGroundImpactMark,type SurfaceMarkPose} from './breach-impact-surface.ts';
+import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose,isGroundImpactMark,surfaceMarkFacesCamera,type SurfaceMarkPose} from './breach-impact-surface.ts';
 import {hostileNpcTransitionKey,hostileCustodyWalkBlend}
  from './breach-hostile-pose-transition.ts';
 import {rebuildFrameIdIndex} from './breach-frame-lookup.ts';
@@ -2646,9 +2646,9 @@ export class TacticalScene3D{
       const activeDoor=plannedDoor??(actor.lastDoorId?
         this.frameDoorsById.get(actor.lastDoorId):undefined);
       const handle=activeDoor?
-        actor.lastDoorMethod==='kick'&&actor.kickImpactPoint?
+        actor.lastDoorMethod==='kick'&&actor.kickImpactPoint&&activeDoor.id===actor.lastDoorId&&s.seconds-actor.lastDoorAt<.76?
           actor.kickImpactPoint:
-        actor.lastDoorMethod==='kick'?
+        actor.lastDoorMethod==='kick'&&activeDoor.id===actor.lastDoorId&&s.seconds-actor.lastDoorAt<.76?
           (()=>{const leaf=doorLeafSegment(activeDoor);
             return {x:leaf.a.x+(leaf.b.x-leaf.a.x)*.78,
               y:leaf.a.y+(leaf.b.y-leaf.a.y)*.78};})():
@@ -2927,7 +2927,7 @@ export class TacticalScene3D{
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
          doorGrip:previewPreOpen?undefined:doorGrip,physicalContact,
         down:actor.health<=0,surrender:actor.surrendered,
-        worldWeaponReleased:actor.surrendered&&actor.releasedWeaponId!=null,
+        worldWeaponReleased:!!actor.downWeaponsReleased||actor.surrendered&&actor.releasedWeaponId!=null,
         restrained:actor.restrained===true,
         // Gameplay and replay use the same named NPC transition contract as
         // the Lab. In particular surrender -> cuffed must not snap wrists.
@@ -3338,7 +3338,7 @@ export class TacticalScene3D{
         !recordedEffectAllows(s,replayDisclosurePolicy.observerId,groundEffectRow(mark))))continue;
       let attached:SurfaceMarkPose|null=null;
       const ref=mark.surfaceRef;
-      const artRadius=damageRadius(mark.surface,mark.damageCount);
+      const artRadius=damageRadius(mark.surface,mark.damageCount)*(mark.surface==='glass'?1.28:1);
       if(mark.surface!=='blood'&&ref){
         if(ref.kind==='wall'){
           if(!markWallOwnerKnown(s,ref,omniscient))continue;
@@ -3401,7 +3401,7 @@ export class TacticalScene3D{
           const vx=orthoBlood?this.bloodCameraDirection.x:bloodCamera.x-attached.x;
           const vy=orthoBlood?this.bloodCameraDirection.y:bloodCamera.y-attached.y;
           const vz=orthoBlood?this.bloodCameraDirection.z:bloodCamera.z-attached.z;
-          if(vx*attached.nx+vy*attached.ny+vz*attached.nz<=0)continue;
+          if(!surfaceMarkFacesCamera(mark.surface,ref,vx*attached.nx+vy*attached.ny+vz*attached.nz))continue;
         }
         if(orthoBlood?groundMarkOccludedFromCamera(markPoint,this.bloodCameraDirection,s.site?.walls??WALLS,WALL_VISUAL_HEIGHT,y):
           groundMarkHiddenByWallFromCamera(markPoint,bloodCamera,s.site?.walls??WALLS,WALL_VISUAL_HEIGHT,y))continue;

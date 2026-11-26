@@ -1,7 +1,7 @@
 import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
-import {canConcludeWithdrawal,commitIndividualExtractions,deployedTeam} from './breach-operation-outcomes.ts';
+import {canConcludeWithdrawal,commitIndividualExtractions,commitTransportExtractions,deployedTeam} from './breach-operation-outcomes.ts';
 import {observeOptionalIntel,beginOptionalIntelGather,collectProximityOptionalIntel,advanceOptionalIntel,
  type OptionalIntelItem,type OptionalIntelGather,eligibleOptionalIntel}
  from './breach-optional-intel.ts';
@@ -110,7 +110,7 @@ import {SUSPECT_CHALLENGE_RANGE,SUSPECT_ESCORT_VOICE_RANGE}
 import {activeCombatant,captureTargetResolved} from './breach-suspect-operational-state.ts';
 import {captureVitalStatus,livingCaptureStatus,CAPTURE_VITAL_CHECK_SECONDS,
  recordActualDown} from './breach-capture-vitals.ts';
-import {captureTargetTransportEligible,designatedDownedCaptureTarget}
+import {captureTargetTransportEligible}
  from './breach-capture-transport-policy.ts';
 
 
@@ -189,6 +189,8 @@ export type TeamActor=Operator & {
   lastTreatmentAt:number;lastTreatmentTargetId:string|null;
   treatmentActive:boolean;treatmentProgress:number;
   carryingId:string|null;carriedById:string|null;
+  transportLatched?:boolean;
+  downWeaponsReleased?:boolean;
   /** Physical downed-person drag/carry presentation, recorded for replay. */
   transportMode?:TransportMode|null;
   wedgeRemaining:number;restraintRemaining:number;
@@ -428,6 +430,7 @@ export type Session=Omit<TacticalState,'operators'> & {
   withdrawalCompleted?:boolean;
   /** Archived by the 60 Hz mission tick; excluded from all live AI/motor. */
   extractedOperators?:TeamActor[];
+  extractedSuspects?:TeamActor[];
   /** Selected individual physical exit commands await the next GO tick. */
   pendingExtractionIds?:string[];
   /** A named MIA casualty-recovery mission, not a second objective authority. */
@@ -1380,6 +1383,20 @@ export function planCasualtyTransport(s:Session,id:string,patientId:string,
  return addNode(s,id,'evacuate',to,{patientId,transportMode:mode,
    transportPath:waypoints.map(p=>({...p}))});
 }
+/** Queue a physical pickup, without a destination. GO owns actual custody. */
+export function planCasualtyPickup(s:Session,id:string,patientId:string,
+ mode:TransportMode='drag'):boolean{
+ const a=party(s,id),subject=s.operators.find(o=>o.id===patientId),
+  civil=s.civilians.find(c=>c.id===patientId),patient=subject??civil;
+ if(!a||!patient||patient===a||!canEdit(s)||a.health<=0||a.carryingId||
+    a.plan.some(n=>n.kind==='evacuate')||patient.health>0||patient.carriedById||
+    subject&&captureVitalStatus(subject)==='deceased'||
+    subject&&subject.side!==a.side&&!liveVisibility(s,subject.p)||
+    civil&&!liveVisibility(s,civil.p))return false;
+ const at=finalPoint(a);
+ if(d(at,patient.p)>=34||!sweptBodyClear(at,patient.p,s.doors,5.5,sessionWorldGeometry(s)))return false;
+ return addNode(s,id,'evacuate',at,{patientId,transportMode:mode,transportPickup:true});
+}
 /** Authored emergency release supersedes only this patient's transport.
  * Other subsequent planned orders remain intact and the edit is undoable. */
 export function planCivilianRelease(s:Session,id:string):boolean{
@@ -1397,7 +1414,7 @@ export function planCaptureTransportRelease(s:Session,id:string):boolean{
   const a=party(s,id);
   const patient=s.operators.find(o=>o.id===a?.carryingId);
   if(!a||!patient||!canEdit(s)||
-     !designatedDownedCaptureTarget(s,patient)||
+     patient.health>0||
      patient.carriedById!==a.id)return false;
   return edit(s,a,()=>{
     a.plan=a.plan.filter(n=>n.kind!=='evacuate'||n.patientId!==patient.id);
@@ -1409,7 +1426,7 @@ export function planMedicalTreatment(s:Session,id:string,patientId:string,
  afterNodeId?:number):boolean{
  const a=party(s,id),patient=s.operators.find(o=>o.id===patientId);
  const captive=!!a&&!!patient&&a.side==='blue'&&
-   designatedDownedCaptureTarget(s,patient)&&
+   patient.side==='red'&&patient.health<=0&&
    captureVitalStatus(patient)!=='deceased'&&
    liveVisibility(s,patient.p);
  if(!a||!patient||(!captive&&patient.side!==a.side)||
@@ -1855,6 +1872,9 @@ const motorHooks:ActorMotorHooks={
 };
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1,
  profile?:((section:string,elapsedMs:number)=>void)){
+ const patient=a.transportLatched&&a.carryingId?
+  s.operators.find(o=>o.id===a.carryingId)??s.civilians.find(c=>c.id===a.carryingId):null;
+ if(patient)speedScale=Math.min(speedScale,patient.transportMode==='carry'?.38:.48);
  return advanceActorMotor(a,p,dt,s,motorHooks,speedScale,profile);
 }
 /** Authoritative 60 Hz session keeps the clock, gameplay side effects and
@@ -1881,6 +1901,13 @@ function mission(s:Session,dt:number){
   // The equipment range is an intentionally open-ended live simulation.
   // It cannot accidentally complete a Campaign mission or generate a debrief.
   if(s.site?.training){advanceTrainingTrial(s);return;}
+  for(const {patient,carrier} of commitTransportExtractions(s)){
+    const message=patient.name+' EXTRACTED';
+    notify(s,message);
+    battleEvent(s,'objective',patient.side==='blue'?patient:carrier,patient.p,message,{
+      action:patient.side==='blue'?'individual-extraction':'suspect-extracted',
+      targetId:patient.id,contributorId:carrier.id});
+  }
   if(s.withdrawalRequested){
     const departed=commitIndividualExtractions(s);
     for(const member of departed){
@@ -2155,6 +2182,8 @@ function mission(s:Session,dt:number){
     (!s.withdrawalRequested||canConcludeWithdrawal(s))&&
     team(s).some(a=>a.health>0&&
     near(a.p,s.scenario.extract,37)&&
+    !(a.transportLatched&&a.carryingId&&
+      s.operators.some(p=>p.id===a.carryingId&&p.id!==s.captureTarget))&&
     validLivingCaptureExtraction(a)&&
     (s.missionType!=='intel'||s.intelCarrierId===a.id)&&
     validRescueCustody(a))){

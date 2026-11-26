@@ -488,16 +488,15 @@ export function createTacticalPaletteController(config:{
       !!e.escortLeaderId&&
       sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)),
       SUSPECT_ESCORT_VOICE_RANGE):null;
-  const downedCaptureAtPlan=routeEndCivilianActions&&
-    state.missionType==='capture'&&!!state.captureTarget?
-    nearestPaletteCandidate(focusedEnemies,at,e=>
-      e.id===state.captureTarget&&e.health<=0&&
-      captureVitalStatus(e)!=='deceased'&&
-      (!e.carriedById||e.carriedById===a.id)&&
-      liveVisibility(state,e.p)&&
+  const downedCaptureAtPlan=routeEndCivilianActions&&!a.carryingId&&
+    !a.plan.some(n=>n.kind==='evacuate')?
+    nearestPaletteCandidate(state.operators.filter(e=>e!==a&&
+      (!input.personFocusId||e.id===input.personFocusId)),at,e=>
+      e.health<=0&&captureVitalStatus(e)!=='deceased'&&!e.carriedById&&
+      (e.side===a.side||liveVisibility(state,e.p))&&
       sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)),34):null;
   const casualtyAtPlan=routeEndCivilianActions?
-    nearestPaletteCandidate(focusedCivilians,at,c=>
+    nearestPaletteCandidate(focusedCivilians,at,c=>!a.carryingId&&!a.plan.some(n=>n.kind==='evacuate')&&
       c.health<=0&&!c.carriedById&&liveVisibility(state,c.p)):null;
   const secondaryHand=plannedSecondaryHand(a.secondarySwitch,a.plan,node?.id);
   const secondaryKit=a.equipment?.secondary;
@@ -532,9 +531,9 @@ export function createTacticalPaletteController(config:{
     nearDownedCaptureTarget:!!downedCaptureAtPlan,
     carryingCivilian:!!a.carryingId&&state.civilians.some(c=>
       c.id===a.carryingId&&c.carriedById===a.id),
-    carryingCaptureTarget:!!a.carryingId&&state.missionType==='capture'&&
+    carryingCaptureTarget:!!a.carryingId&&
       state.operators.some(o=>o.id===a.carryingId&&
-        o.id===state.captureTarget&&o.health<=0&&o.carriedById===a.id),
+        o.health<=0&&o.carriedById===a.id),
     posture:current.posture,pace:current.pace,
     firePolicy:node?.firePolicyState??a.firePolicy,
     reserve:a.reserve,magazine:a.magazine,

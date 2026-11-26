@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {requestIndividualExtraction,commitIndividualExtractions,canConcludeWithdrawal,
+import {requestIndividualExtraction,commitIndividualExtractions,commitTransportExtractions,canConcludeWithdrawal,
  deriveOperationOutcome,deployedTeam} from '../src/breach-operation-outcomes.ts';
 import {optionalIntelRecovered,advanceOptionalIntel}
  from '../src/breach-optional-intel.ts';
@@ -160,4 +160,60 @@ test('OC10 departed friendly hides body, status, flashlight beam and shadows',()
  assert.ok(actor.contactShadows.every(x=>x.visible===false));
  assert.equal(host.actors.has('rook'),true,
   'retained rig can be reconstructed by prior historical replay');
+});
+
+test('latched recovery requires reciprocal custody and both bodies at the exit',()=>{
+ for(const side of ['blue','red']){
+  const s=session(),carrier=s.operators[0],patient=s.operators[2];
+  patient.side=side;patient.downedAt=1;patient.deathAt=null;
+  patient.nav=[];patient.transportMode='carry';
+  carrier.carryingId=patient.id;carrier.transportLatched=true;
+  patient.carriedById=carrier.id;
+  assert.equal(commitTransportExtractions(s).length,0,'no handoff in planning');
+  s.phase='running';
+  assert.equal(commitTransportExtractions(s).length,0,'body still outside extraction');
+  patient.p.x=120;patient.carriedById=null;
+  assert.equal(commitTransportExtractions(s).length,0,'broken custody');
+  patient.carriedById=carrier.id;patient.deathAt=2;
+  assert.equal(commitTransportExtractions(s).length,0,'fatality is not living recovery');
+  patient.deathAt=null;
+  assert.equal(commitTransportExtractions(s).length,1);
+  assert.equal(carrier.carryingId,null);
+  assert.equal(carrier.transportLatched,false);
+  assert.equal(patient.carriedById,null);
+  assert.equal(s.operators.includes(patient),false);
+  assert.equal((side==='blue'?s.extractedOperators:s.extractedSuspects).includes(patient),true);
+  assert.equal(commitTransportExtractions(s).length,0,'cannot credit a handoff twice');
+  if(side==='blue')assert.deepEqual(deriveOperationOutcome(s).evacuatedCasualtyIds,[patient.id]);
+ }
+});
+
+test('transport extraction requires both living participants at the gate, once only',()=>{
+ const s=session(), carrier=s.operators[0], patient=s.operators[2];
+ s.missionType='clear';carrier.carryingId=patient.id;carrier.transportLatched=true;
+ patient.carriedById=carrier.id;patient.transportMode='drag';
+ assert.equal(commitTransportExtractions(s).length,0);
+ s.phase='running';assert.equal(commitTransportExtractions(s).length,0);
+ patient.p.x=125;
+ assert.equal(commitTransportExtractions(s).length,1);
+ assert.equal(carrier.carryingId,null);assert.equal(carrier.transportLatched,false);
+ assert.equal(s.operators.includes(patient),false);
+ assert.deepEqual(deriveOperationOutcome(s).evacuatedCasualtyIds,['ash']);
+ assert.equal(commitTransportExtractions(s).length,0);
+ carrier.health=0;s.operators[1].health=0;
+ assert.equal(canConcludeWithdrawal(s),false,'evacuated casualty alone is not a mobile survivor');
+});
+test('non-objective suspect handoff is archived separately; deceased and primary capture are excluded',()=>{
+ const s=session(),carrier=s.operators[0];
+ s.phase='running';s.missionType='capture';s.captureTarget='guard';
+ const patient={...friend('guard',120,0),side:'red',carriedById:carrier.id};
+ s.operators.push(patient);carrier.carryingId=patient.id;carrier.transportLatched=true;
+ assert.equal(commitTransportExtractions(s).length,0);
+ s.captureTarget='other';patient.deathAt=2;
+ assert.equal(commitTransportExtractions(s).length,0);
+ patient.deathAt=null;
+ assert.equal(commitTransportExtractions(s).length,1);
+ assert.deepEqual(s.extractedSuspects.map(a=>a.id),['guard']);
+ assert.equal(s.extractedOperators.length,0);
+ assert.equal(s.operators.includes(patient),false);
 });

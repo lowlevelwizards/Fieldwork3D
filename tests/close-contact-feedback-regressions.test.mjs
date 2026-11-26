@@ -24,14 +24,12 @@ test('clinical badge tracks existing loss and stops progress when stabilized',()
  assert.equal(medicalStatusMarker(a).label,'CRITICAL');
  assert.equal(medicalStatusMarker(a).remaining,.25);
  stabilizeWound(medical,1);
- assert.equal(medicalStatusMarker(a).label,'STABLE');
- assert.equal(medicalStatusMarker(a).remaining,undefined);
- a.deathAt=2;assert.equal(medicalStatusMarker(a).label,'DECEASED');
+ assert.equal(medicalStatusMarker(a),null);
+ a.deathAt=2;assert.equal(medicalStatusMarker(a),null);
 });
 test('unverified down state never claims a bleed-out countdown',()=>{
  const a={health:0,medical:newMedicalCondition()};
- assert.equal(medicalStatusMarker(a).label,'DOWN · UNKNOWN');
- assert.equal(medicalStatusMarker(a).remaining,undefined);
+ assert.equal(medicalStatusMarker(a),null);
 });
 test('surface adjustment is cosmetic and does not scale unknown or non-wall marks',()=>{
  assert.equal(PLASTER_IMPACT_SCALE,.85);

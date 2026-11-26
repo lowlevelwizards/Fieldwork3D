@@ -310,14 +310,14 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
     }
     if(n.interaction==='release-capture-target'){
       const target=s.operators.find(o=>o.id===n.objectId&&
-        o.side==='red'&&o.health<=0&&o.id===s.captureTarget&&
-        s.missionType==='capture');
+        o.health<=0);
       if(!target||target.carriedById!==a.id||a.carryingId!==target.id){
         failCurrentOrder(s,a,n,'CAPTURE TARGET NOT IN TRANSPORT');return true;
       }
       // A stopped/replanned carrier releases the actual actor where the
       // previous resolved physical tick left it. No off-screen relocation.
       target.carriedById=null;target.transportMode=null;a.carryingId=null;
+      a.transportLatched=false;
       a.velocity=0;
       const message=a.name+' RELEASED '+target.name;
       notify(s,message);

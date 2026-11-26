@@ -5,6 +5,7 @@
 import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
 import {advanceMedicalCondition} from './breach-medical-wounds.ts';
 import {sampleBleedingEvidence} from './breach-blood-evidence.ts';
+import {releaseDownedSuspectWeapons} from './breach-suspect-weapons.ts';
 import {advanceDownedVitals,recordActualDown} from './breach-capture-vitals.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
@@ -50,11 +51,21 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
         if(patient?.carriedById===casualty.id){
           patient.carriedById=null;patient.transportMode=null;
         }
-        casualty.carryingId=null;
+        casualty.carryingId=null;casualty.transportLatched=false;
       }
     }
     if(casualty.health<=0){
+      releaseDownedSuspectWeapons(s,casualty);
       if(advanceDownedVitals(casualty,h,s.seconds)){
+        // A living extraction is no longer possible. Release reciprocal
+        // custody so a carrier cannot become stuck in transport mode.
+        if(casualty.carriedById){
+          const carrier=s.operators.find(o=>o.id===casualty.carriedById);
+          if(carrier?.carryingId===casualty.id&&carrier.transportLatched){
+            carrier.carryingId=null;carrier.transportLatched=false;
+            casualty.carriedById=null;casualty.transportMode=null;
+          }
+        }
         s.deaths++;
         if(casualty.lastDownById){
           const responsible=s.operators.find(o=>o.id===casualty.lastDownById);
@@ -72,6 +83,7 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
     casualty.health=Math.max(0,4-casualty.injuryStage);
     if(casualty.health<=0){
       recordActualDown(casualty,s.seconds);
+      releaseDownedSuspectWeapons(s,casualty);
       casualty.lastDownAt=s.seconds;
       const fall=wallSafeFall(casualty.p,casualty.heading,'slump',sessionWorldGeometry(s).walls);
       casualty.downPose=fall.pose;casualty.downClearance=fall.space;
