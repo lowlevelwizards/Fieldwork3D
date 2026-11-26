@@ -8,6 +8,8 @@ import {planRearServiceMarks} from './rear-service-program.ts';
 import {planPublicStreet,type StreetRect} from './public-street-layout.ts';
 import {planLandscapeBedMarks} from './landscape-bed-surfaces.ts';
 import {planServiceBoundaryMarks} from './service-boundary-marks.ts';
+import {planStreetMarkings} from './street-markings.ts';
+import {planStreetFinishes} from './street-finish.ts';
 import {planExteriorFinishDetails} from './exterior-finish-details.ts';
 export type SurfaceKind='path'|'driveway-stripe'|'parking-divider'|
  'garden-border'|'service-pad'|'patio-paver'|'drainage-grate'|
@@ -16,7 +18,9 @@ export type SurfaceKind='path'|'driveway-stripe'|'parking-divider'|
  'loading-zone'|'maintenance-bay'|'waste-collection'|'clear-route'|
  'planting-bed'|'planting-edge'|
  'waste-bay-line'|'utility-bay-line'|'loading-bay-line'|
- 'amenity-apron'|'work-wear'|'pavement-joint';
+ 'amenity-apron'|'work-wear'|'pavement-joint'|
+ 'street-verge'|'street-shoulder'|'road-patch'|'road-manhole'|'street-drain'|'sidewalk-joint'|
+ 'road-centerline'|'road-edge-line'|'street-driveway-link'|'street-side-road';
 export type PropertySurface={
  id:string;zoneId:string;kind:SurfaceKind;
  x:number;y:number;width:number;depth:number;
@@ -39,10 +43,10 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
  // These are presentation marks only: no new invisible obstruction.
  const street=planPublicStreet(site);
  const publicZone=site.exteriorZones?.find(z=>z.id==='arrival-forecourt');
- if(street&&publicZone){
+ if(street&&(publicZone||site.streetInfrastructure)){
    const addStreet=(kind:SurfaceKind,r:StreetRect)=>{
      marks.push({id:'street:'+kind+':'+marks.length,
-       zoneId:publicZone.id,kind,x:r.x,y:r.y,
+       zoneId:publicZone?.id??'public-street',kind,x:r.x,y:r.y,
        width:r.width,depth:r.depth});
    };
    for(const strip of street.sidewalkPieces)addStreet('sidewalk',strip);
@@ -86,6 +90,14 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
    }
    if(zone.vehicleParking){
      const p=zone.vehicleParking,broad=p.axis==='x',stride=p.alongLength/p.count;
+     // Paint the actual vehicular entrance's private-side waiting line;
+     // never paint a stop across the public carriageway or footway.
+     if(p.version===1&&p.access){
+      const a=p.access,sign=entry==='south'||entry==='east'?1:-1;
+      const across=a.acrossCenter+sign*(a.depth/2-10);
+      if(broad)add(zone,'stall-end-line',a.alongCenter,across,a.width-8,2);
+      else add(zone,'stall-end-line',across,a.alongCenter,2,a.width-8);
+     }
      if(p.role==='loading'){
       for(let i=0;i<p.count;i++){
        const along=p.alongCenter+(i+.5-p.count/2)*stride;
@@ -93,20 +105,27 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
        else add(zone,'loading-zone',p.rowCenter,along,p.rowDepth*.70,stride*.70);
       }
      }
-     if(p.role!=='residential')for(let i=0;i<=p.count;i++){
-       const along=p.alongCenter+(i-p.count/2)*stride;
-       if(broad)add(zone,'parking-divider',along,p.rowCenter,1.6,p.rowDepth);
-       else add(zone,'parking-divider',p.rowCenter,along,p.rowDepth,1.6);
-     }
-     const edge=p.rowCenter+Math.sign(p.aisleCenter-p.rowCenter)*p.rowDepth/2;
-     if(p.role!=='residential'){
-      if(broad)add(zone,'stall-end-line',p.alongCenter,edge,p.alongLength,1.5);
-      else add(zone,'stall-end-line',edge,p.alongCenter,1.5,p.alongLength);
+     if(p.role!=='residential')for(const row of p.secondRowCenter===undefined?[p.rowCenter]:[p.rowCenter,p.secondRowCenter]){
+       for(let i=0;i<=p.count;i++){
+        const along=p.alongCenter+(i-p.count/2)*stride;
+        if(broad)add(zone,'parking-divider',along,row,1.6,p.rowDepth);
+        else add(zone,'parking-divider',row,along,p.rowDepth,1.6);
+       }
+       const edge=row+Math.sign(p.aisleCenter-row)*p.rowDepth/2;
+       if(broad)add(zone,'stall-end-line',p.alongCenter,edge,p.alongLength,1.5);
+       else add(zone,'stall-end-line',edge,p.alongCenter,1.5,p.alongLength);
      }
      const reserved=reservedParkingBay(site,zone);
      if(reserved){
       const {x,y,bayWidth,short,side}=reserved;
-      if(broad){
+      if(reserved.transferCenter!==undefined&&reserved.transferWidth!==undefined){
+       const t=reserved.transferCenter,w=reserved.transferWidth;
+       if(broad){add(zone,'reserved-parking',x,y,bayWidth-4,short-6);
+        for(let n=-3;n<=3;n++)add(zone,'access-hatch',t+n*w/8,y,2,short-8);
+       }else{add(zone,'reserved-parking',x,y,short-6,bayWidth-4);
+        for(let n=-3;n<=3;n++)add(zone,'access-hatch',x,t+n*w/8,short-8,2);
+       }
+      }else if(broad){
        add(zone,'reserved-parking',x,y,bayWidth,short*.55);
        for(let n=-1;n<=1;n++)add(zone,'access-hatch',x+side*(bayWidth/2+5)+n*3.5,y,1.5,short*.48);
       }else{
@@ -207,5 +226,5 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
   clipped.push({...mark,x:(minX+maxX)/2,y:(minY+maxY)/2,
     width:maxX-minX,depth:maxY-minY});
  }
- return [...clipped,...planExteriorFinishDetails(site,clipped)];
+ return [...clipped,...planExteriorFinishDetails(site,clipped),...planStreetFinishes(site),...planStreetMarkings(site)];
 }

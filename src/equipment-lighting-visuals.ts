@@ -14,7 +14,7 @@ export const FIXTURE_VISUAL_CAP=32;
 export type FixtureVisualStatus='mains'|'backup'|'off'|'failed';
 export type FixtureVisual={
  id:string;roomId:string;p:Pt;kind:SiteLightTopology['kind'];
- status:FixtureVisualStatus;intensity:number;range:number;
+ status:FixtureVisualStatus;intensity:number;range:number;height?:number;
  /** A physically stopped, counterclockwise radial fan; index 0 = origin. */
  footprint:readonly Pt[];
 };
@@ -35,7 +35,7 @@ export function fixtureVisualColor(f:FixtureVisual):number{
  if(f.status==='off')return 0x4a5552;
  if(f.status==='backup')return 0xc58e65;
  if(f.kind==='fluorescent')return 0xe1e7d4;
- if(f.kind==='worklight')return 0xe7c48e;
+ if(f.kind==='worklight'||f.kind==='street')return 0xe7c48e;
  return 0xe4d5b5;
 }
 export function fixtureLightingVisuals(s:Session):FixtureLightingVisuals{
@@ -75,7 +75,7 @@ export function fixtureLightingVisuals(s:Session):FixtureLightingVisuals{
     y:authored.p.y+Math.sin(angle)*distance});
   }
   fixtures.push({id:authored.id,roomId:authored.roomId,p:authored.p,
-   kind:authored.kind,status,intensity:lit?.intensity??0,
+   kind:authored.kind,status,height:authored.height,intensity:lit?.intensity??0,
    range:lit?.range??authored.range,footprint});
  }
  const visuals={fixtures,activeCount,revision:powerRevision};

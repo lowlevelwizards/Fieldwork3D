@@ -8,7 +8,8 @@ import type {Site} from '../breach-site.ts';
 import {arrivalAccessLane} from './property-access-lane.ts';
 export const PARKING_VEHICLES=new Set(['sedan','pickup','van','suv','hatchback','light-truck']);
 export function parkingStallCount(zone:ExteriorZone):number{
- return zone.vehicleParking?.count??Math.min(5,Math.max(2,Math.floor(Math.max(zone.w,zone.h)/58)));
+ const p=zone.vehicleParking;
+ return p?p.count*(p.secondRowCenter===undefined?1:2):Math.min(5,Math.max(2,Math.floor(Math.max(zone.w,zone.h)/58)));
 }
 export function parkingStallCandidates(zone:ExteriorZone,width:number,depth:number):
  Pick<Obstacle,'x'|'y'|'w'|'h'|'orientation'>[]{
@@ -20,10 +21,11 @@ export function parkingStallCandidates(zone:ExteriorZone,width:number,depth:numb
   const alongSize=broad?w:h,acrossSize=broad?h:w;
   const stride=plan.alongLength/plan.count;
   if(alongSize+8>stride||acrossSize+6>plan.rowDepth)return [];
-  return Array.from({length:plan.count},(_,i)=>{
+  const rows=plan.secondRowCenter===undefined?[plan.rowCenter]:[plan.rowCenter,plan.secondRowCenter];
+  return rows.flatMap(row=>Array.from({length:plan.count},(_,i)=>{
    const along=plan.alongCenter+(i+.5-plan.count/2)*stride;
-   return {x:broad?along:plan.rowCenter,y:broad?plan.rowCenter:along,w,h,orientation:(turned?1:0) as 0|1};
-  }).sort((a,b)=>Math.abs((broad?b.x:b.y)-plan.alongCenter)-Math.abs((broad?a.x:a.y)-plan.alongCenter)||(broad?a.x-b.x:a.y-b.y));
+   return {x:broad?along:row,y:broad?row:along,w,h,orientation:(turned?1:0) as 0|1};
+  })).sort((a,b)=>Math.abs((broad?b.x:b.y)-plan.alongCenter)-Math.abs((broad?a.x:a.y)-plan.alongCenter)||(broad?a.x-b.x:a.y-b.y));
  }
  const broad=zone.w>=zone.h,slots=parkingStallCount(zone);
  const w=broad?depth:width,h=broad?width:depth;
@@ -50,7 +52,7 @@ export function reservedParkingBay(
  site:Pick<Site,'entrySide'|'doors'|'entrance'>,
  zone:ExteriorZone
 ):{x:number;y:number;bayWidth:number;short:number;broad:boolean;
-   side:1|-1}|null{
+   side:1|-1;transferCenter?:number;transferWidth?:number}|null{
  if(zone.kind!=='parking')return null;
  const modern=zone.vehicleParking;
  if(modern){
@@ -59,7 +61,16 @@ export function reservedParkingBay(
   if(modern.role!=='public'||modern.mode!=='perpendicular'||modern.count<4)return null;
   const broad=modern.axis==='x',stride=modern.alongLength/modern.count;
   const lane=arrivalAccessLane(site,zone),transverse=broad?lane?.x:lane?.y;
-  const candidates=Array.from({length:modern.count},(_,i)=>modern.alongCenter+(i+.5-modern.count/2)*stride)
+  const centers=Array.from({length:modern.count},(_,i)=>modern.alongCenter+(i+.5-modern.count/2)*stride);
+  if(modern.version===1){
+   // Closest end of row to the pedestrian approach is a complete
+   // unoccupied transfer slot; the adjacent bay is reserved as well.
+   const low=Math.abs(centers[0]-(transverse??modern.alongCenter))<=Math.abs(centers.at(-1)!-(transverse??modern.alongCenter));
+   const transferCenter=low?centers[0]:centers.at(-1)!;
+   const pos=low?centers[1]:centers[centers.length-2];
+   return {x:broad?pos:modern.rowCenter,y:broad?modern.rowCenter:pos,bayWidth:stride,short:modern.rowDepth,broad,side:low?-1:1,transferCenter,transferWidth:stride};
+  }
+  const candidates=centers
    .filter(pos=>transverse===undefined||Math.abs(pos-transverse)>stride/2+22)
    .sort((a,b)=>Math.abs(a-(transverse??modern.alongCenter))-Math.abs(b-(transverse??modern.alongCenter)));
   const pos=candidates[0];if(pos===undefined)return null;

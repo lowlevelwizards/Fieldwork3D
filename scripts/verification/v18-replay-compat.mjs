@@ -13,9 +13,9 @@ const base=resolve(process.env.V18_BASE_DIR??'v18-before');
 const oldGenerate=(await import(pathToFileURL(resolve(base,'src/breach-site.ts')).href)).generateSite;
 const oldRun=(await import(pathToFileURL(resolve(base,'tests/fixtures/breach-stage1-contract-runner.mjs')).href)).runStage1Scenario;
 const options={seed:27,mission:'rescue',premise:'routine'};
-const oldSite=oldGenerate(27,'small',undefined,options);
+const oldSite=oldGenerate(27,'small',undefined,options,{vehiclePlacement:false,streetInfrastructure:false});
 // The V18 witness is deliberately vehicle-free even after VEH becomes default.
-const newSite=generateSite(27,'small',undefined,options,{vehiclePlacement:false});
+const newSite=generateSite(27,'small',undefined,options,{vehiclePlacement:false,streetInfrastructure:false});
 const args={mission:'rescue',intel:'floor-plan',enableCivilians:true,ticks:120,sampleEvery:20,record:true};
 const oldResult=oldRun({...args,site:oldSite});
 const preserved=runStage1Scenario({...args,site:oldSite});

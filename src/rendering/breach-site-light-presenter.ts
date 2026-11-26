@@ -95,8 +95,8 @@ export class SiteFixtureLightingPresenter{
     ()=>false);
    const size=f.kind==='fluorescent'?[16,2.0,5]:
     f.kind==='worklight'?[10,3.2,9]:
-    f.kind==='emergency'?[8,2.6,5]:[10,2.2,10];
-   this.scratch.position.set(f.p.x,WALL_VISUAL_HEIGHT-5,f.p.y);
+    f.kind==='emergency'?[8,2.6,5]:f.kind==='street'?[10.5,1.05,6.6]:[10,2.2,10];
+   this.scratch.position.set(f.p.x,f.height??WALL_VISUAL_HEIGHT-5,f.p.y);
    this.scratch.scale.set(known?size[0]:0,known?size[1]:0,
     known?size[2]:0);
    this.scratch.rotation.set(0,0,0);this.scratch.updateMatrix();

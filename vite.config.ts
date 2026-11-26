@@ -26,6 +26,7 @@ export default defineConfig({
       doorTestRange: 'door-test-range.html',
       assetLab: 'asset-lab.html',
       vehicleLab: 'vehicle-lab.html',
+      streetLab: 'street-lab.html',
       soundLab: 'sound-lab.html',
       briefingLab: 'briefing-lab.html',
       fncStage1Lab: 'fnc-stage1-lab.html',

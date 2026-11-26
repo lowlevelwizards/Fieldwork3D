@@ -270,6 +270,7 @@ export class CampaignScreen{
      ['EFFECTS LAB','./breach-visual-lab.html'],
      ['ASSET LAB','./asset-lab.html'],
      ['VEHICLE LAB','./vehicle-lab.html'],
+     ['STREET LAB','./street-lab.html'],
      ['BRIEFING LAB','./briefing-lab.html'],
      ['POSE WORKBENCH','./pose-workbench.html']
     ]){
