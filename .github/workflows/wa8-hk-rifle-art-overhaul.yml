@@ -1,0 +1,59 @@
+name: WA8 HK rifle artwork overhaul
+on:
+  push:
+    branches: [feature/wa0-wa2-weapon-art-foundation]
+    paths:
+      - 'src/weapons/geometry/hk-556-silhouettes.ts'
+      - 'src/weapons/geometry/hk-silhouettes.ts'
+      - 'scripts/verify-wa8-art-delta.mjs'
+      - 'tests/weapon-hk-r4-material-selector.test.mjs'
+      - 'tests/weapon-hk556-ribbon-finish.test.mjs'
+      - '.github/workflows/wa8-hk-rifle-art-overhaul.yml'
+  workflow_dispatch:
+concurrency:
+  group: wa8-hk-rifle-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  calibration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run check
+      - run: node --experimental-strip-types --test tests/weapon-hk-r4-material-selector.test.mjs tests/weapon-hk556-ribbon-finish.test.mjs tests/weapon-hk-g3-sharing-contract.test.mjs tests/arsenal-a2-material-unification.test.mjs tests/wa0-weapon-art-geometry.test.mjs
+      - name: Verify color-only scoped delta against WA7
+        run: |
+          mkdir -p reports/wa8
+          git worktree add --detach /tmp/wa7-art 37dba90a9cf86e8b6149622814d699a42d454a93
+          ln -s "$PWD/node_modules" /tmp/wa7-art/node_modules
+          cp scripts/audit-wa4-art-delta.mjs scripts/capture-weapon-art-baseline.mjs scripts/capture-wa0-operator-context.mjs /tmp/wa7-art/scripts/
+          node --experimental-strip-types scripts/audit-wa4-art-delta.mjs reports/wa8/candidate.json
+          (cd /tmp/wa7-art && node --experimental-strip-types scripts/audit-wa4-art-delta.mjs "$GITHUB_WORKSPACE/reports/wa8/baseline.json")
+          node scripts/verify-wa8-art-delta.mjs reports/wa8/baseline.json reports/wa8/candidate.json reports/wa8/delta.json
+      - run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Render pinned before and actual candidate
+        env:
+          WA0_PLATFORMS: g3,hk33,custom-hk33,accessory-samples
+          WA0_OPERATOR_IDS: hk-g3,hk-g3a3,hk-g3a4,hk-hk33a2,hk-hk33a3,hk-hk53a3
+        run: |
+          WA0_OUTPUT="$PWD/reports/wa8/after" node --experimental-strip-types scripts/capture-weapon-art-baseline.mjs
+          WA0_OPERATOR_OUTPUT="$PWD/reports/wa8/after/operator-context" node --experimental-strip-types scripts/capture-wa0-operator-context.mjs
+          (cd /tmp/wa7-art && WA0_OUTPUT="$GITHUB_WORKSPACE/reports/wa8/before" node --experimental-strip-types scripts/capture-weapon-art-baseline.mjs)
+          (cd /tmp/wa7-art && WA0_OPERATOR_OUTPUT="$GITHUB_WORKSPACE/reports/wa8/before/operator-context" node --experimental-strip-types scripts/capture-wa0-operator-context.mjs)
+          node scripts/verify-wa4-capture-pairs.mjs reports/wa8/before reports/wa8/after
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wa8-hk-rifle-evidence
+          path: reports/wa8/
+          if-no-files-found: ignore
