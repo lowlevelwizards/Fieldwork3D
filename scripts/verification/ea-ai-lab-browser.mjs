@@ -46,6 +46,11 @@ try{
    await page.locator('#pin').click();
    if(!(await page.locator('#comparison').textContent())?.includes('Matched scenario'))throw Error('Comparison reference missing');
    if(!(await page.locator('#details').textContent())?.includes('ISSUED WEAPON'))throw Error('Kit inspector missing');
+   await page.locator('#tier').selectOption('untrained');
+   await page.locator('#reset').click();
+   await page.locator('#sample').click();
+   const comparison=await page.locator('#comparison').textContent();
+   if(!comparison?.includes('regular-force / trained')||!comparison.includes('regular-force / untrained')||!comparison.includes('Matched scenario'))throw Error('Matched tier comparison not retained');
    console.log('EA/EB lab browser',viewport.width,'PASS');
   }finally{await page.close();}
  }

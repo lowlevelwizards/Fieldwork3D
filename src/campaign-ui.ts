@@ -65,6 +65,7 @@ import {quoteCampaignSquadRefill,quoteCampaignOperatorRefill}
 import {FIELD_STOCK_PACKS,FIELD_STOCK_LIMIT}
  from './equipment-campaign-field-stock.ts';
 import {FieldInventoryUndoHistory} from './equipment-field-undo.ts';
+import {recoveredEvidenceSummary} from './breach-optional-intel.ts';
 import {campaignIntelBalance,contractObjectiveIntel,contractThreatIntel,campaignSquadPresent} from './campaign-state.ts';
 import {projectOperationsSummary} from './ui/campaign/operations-summary.ts';
 import './campaign-style.css';
@@ -1064,6 +1065,8 @@ export class CampaignScreen{
    facts.append(node('span','','GRADE '+report.grade),
     node('span','',report.participatingIds.length+' OPERATORS'));
    article.append(facts);
+   if(report.recoveredEvidence?.length)article.append(node('p','campaign-note',
+    'RECOVERED EVIDENCE · '+recoveredEvidenceSummary(report.recoveredEvidence)));
    // Technical references and after-action evidence remain accessible
    // without forcing eight separate expanded report bodies into the log.
    const recordDetail=node('details','campaign-operation-detail');

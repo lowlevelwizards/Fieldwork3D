@@ -262,3 +262,12 @@ export function recoveredIntelReceipts(items:readonly OptionalIntelItem[],recove
  }
  return out;
 }
+
+export function recoveredEvidenceSummary(items:readonly RecoveredIntelReceipt[]):string{
+ const groups=new Map<string,number>();
+ for(const item of items){
+  const label=(item.model??item.kind).replaceAll('-',' ');
+  groups.set(label,(groups.get(label)??0)+1);
+ }
+ return [...groups].map(([label,n])=>n+' × '+label).join(' · ');
+}

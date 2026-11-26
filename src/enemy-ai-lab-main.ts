@@ -23,7 +23,7 @@ let times:number[]=[],events:string[]=[],prior=new Map<string,string>();
 let driver='';let tickCount=0;
 let startingFacts:MissionTruth|null=null;
 let baseline:ReturnType<typeof comparisonSample>|null=null;
-let comparisonKey='';
+let comparisonKey='';let activeProfile='seeded',activeTier='mixed';
 let previewActor='';
 let preview:Awaited<ReturnType<typeof import('./enemy-ai-lab-kit-preview.ts')['createEnemyKitPreview']>>|null=null;
 let previewLoading=false;
@@ -42,6 +42,7 @@ function reset(){
   session=newSession(0,seed,'floor-plan','small',mission,site,{enableCivilians:true});
   startingFacts=compileMissionFacts(session);
   comparisonKey=[seed,mission,get<HTMLSelectElement>('scenario').value].join('/');
+  activeProfile=profile||'seeded';activeTier=tier||'mixed';
   previewActor='';
   driver='Quiet observation';
   if(get<HTMLSelectElement>('scenario').value==='entry'){
@@ -106,7 +107,7 @@ function comparisonSample(){
  const foes=enemies(s),sorted=[...times].sort((a,b)=>a-b);
  const q=(p:number)=>sorted.length?Number(sorted[Math.floor((sorted.length-1)*p)].toFixed(3)):null;
  return {key:comparisonKey,ticks:tickCount,seconds:Number(s.seconds.toFixed(2)),
-  profile:get<HTMLSelectElement>('group').value||'seeded',tier:get<HTMLSelectElement>('tier').value||'mixed',
+  profile:activeProfile,tier:activeTier,
   population:foes.length,contacted:foes.filter(a=>a.contacted).length,down:foes.filter(a=>a.health<=0).length,
   surrendered:foes.filter(a=>a.surrendered).length,shots:s.nextShotId-1,
   p50:q(.5),p95:q(.95),max:q(1)};

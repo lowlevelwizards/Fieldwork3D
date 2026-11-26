@@ -74,6 +74,9 @@ export function createBriefingCardModel(
   threat?.confidence==='credible'?'Occupants reported':
   threat?.confidence==='unverified'?'Possible hostiles':'Unconfirmed';
  const followUp=dossier?.campaign?.followUp;
+ if(followUp?.recoveredEvidenceSummary)reports.case.push({id:'recovered-case-evidence',
+  text:'Physically recovered in the preceding operation: '+followUp.recoveredEvidenceSummary+'.',
+  source:'records',confidence:'confirmed'});
  return {
   title:dossier?.identity.title??brief.code,
   missionLabel:brief.name,
