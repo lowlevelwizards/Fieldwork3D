@@ -16,6 +16,8 @@ on:
       - 'src/breach-hostile-physicality.ts'
       - 'src/breach-replay.ts'
       - 'vite.config.ts'
+      - 'scripts/compare-ea-baseline.mjs'
+      - 'scripts/verification/ea-ai-lab-browser.mjs'
       - 'scripts/audit-ea0-enemy-baseline.mjs'
       - '.github/workflows/ea-foundation-critical.yml'
   workflow_dispatch:
@@ -37,11 +39,16 @@ jobs:
       - name: Foundation regressions
         run: |
           npm run check
-          node --experimental-strip-types --test tests/ea-foundation.test.mjs tests/awareness-ai-policy.test.mjs tests/breach-roadmap4-ai-reconciliation.test.mjs tests/breach-roadmap2-stage9-enemy-ai.test.mjs tests/breach-ai-work-scheduler-performance.test.mjs tests/breach-perception-cache-performance.test.mjs tests/performance-p2-8-cover-los.test.mjs tests/release6-doctrine.test.mjs tests/awareness-team-commitment-e2a.test.mjs tests/awareness-cover.test.mjs tests/eqa3-16-hostile-intent.test.mjs tests/eqa3-16g-defensive-gestures.test.mjs tests/dispatch-d15-suspect-restraint.test.mjs
+          node --experimental-strip-types --test tests/ea-foundation.test.mjs tests/awareness-ai-policy.test.mjs tests/breach-roadmap4-ai-reconciliation.test.mjs tests/breach-roadmap2-stage9-enemy-ai.test.mjs tests/breach-ai-work-scheduler-performance.test.mjs tests/breach-perception-cache-performance.test.mjs tests/performance-p2-8-cover-los.test.mjs tests/release6-doctrine.test.mjs tests/awareness-team-commitment-e2a.test.mjs tests/awareness-cover.test.mjs tests/eqa3-16-hostile-intent.test.mjs tests/eqa3-16g-defensive-gestures.test.mjs tests/dispatch-d15-suspect-restraint.test.mjs tests/performance-r3-r4-combat-morale.test.mjs tests/breach-141e.test.mjs
       - name: Build and verify lab entry
         run: |
           npm run build
           test -s dist/enemy-ai-lab.html
+      - name: Browser smoke of built Enemy AI Lab
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install chromium
+          node scripts/verification/ea-ai-lab-browser.mjs
       - uses: actions/checkout@v4
         with:
           ref: d5b195275c7311ef72dc7fac3adcdd33133d3e4b
@@ -58,14 +65,28 @@ jobs:
           candidate_status=$?
           echo "baseline exit=$base_status candidate exit=$candidate_status"
           test "$base_status" -eq 0 && test "$candidate_status" -eq 0
+          node scripts/compare-ea-baseline.mjs artifacts/ea/base.json artifacts/ea/candidate.json artifacts/ea/paired-summary.json
       - name: Verify generated scenario parity against exact EA base
         run: |
           (cd ea-base && node --experimental-strip-types scripts/audit-release-c11-missions.mjs ../artifacts/ea/base-world.json)
           node --experimental-strip-types scripts/audit-release-c11-missions.mjs artifacts/ea/candidate-world.json
           node scripts/compare-release-c11-missions.mjs artifacts/ea/base-world.json artifacts/ea/candidate-world.json artifacts/ea/world-delta.json
+      - name: Attribute existing movement gate against exact base
+        run: |
+          set +e
+          (cd ea-base && node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --d329-cancellation-door-witness --progress --route-quality > ../artifacts/ea/base-movement.json)
+          base_audit=$?
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --d329-cancellation-door-witness --progress --route-quality > artifacts/ea/candidate-movement.json
+          candidate_audit=$?
+          node scripts/verify-d3-30-mainline.mjs artifacts/ea/base-movement.json
+          base_gate=$?
+          node scripts/verify-d3-30-mainline.mjs artifacts/ea/candidate-movement.json
+          candidate_gate=$?
+          echo "EA exact movement audit: base=$base_audit candidate=$candidate_audit; gate base=$base_gate candidate=$candidate_gate"
+          test "$base_audit" -eq 0 && test "$candidate_audit" -eq 0
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ea-foundation-comparison
-          path: artifacts/ea/*.json
+          path: artifacts/ea/*
           if-no-files-found: warn

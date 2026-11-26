@@ -1,7 +1,7 @@
 /** Isolated developer lab using ordinary live sessions and the fixed-step motor. */
 import {generateSite} from './breach-site.ts';
 import type {OperationKind} from './breach-operations.ts';
-import {newSession,stepSession,toggling,team,enemies,planMove,type Session,type TeamActor} from './breach-game.ts';
+import {newSession,stepSession,toggling,team,enemies,planMove,type Session} from './breach-game.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {aiSiteIndex} from './breach-ai-site-index.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
