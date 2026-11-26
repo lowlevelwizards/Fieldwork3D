@@ -95,7 +95,7 @@ export function contactAllowedByOwners(c:PhysicalContact,
  if(c.limb==='firing-hand')return owners.right==='free';
  return true;
 }
-const priority=(c:PhysicalContact)=>c.intent==='door'||c.intent==='tool'?0:
+const priority=(c:PhysicalContact)=>c.intent==='door'||c.intent==='tool'||c.intent==='covering'?0:
  c.intent==='brace'?1:2;
 const identity=(c:PhysicalContact)=>c.anchor.target+':'+c.anchor.id+
  ':'+c.limb;

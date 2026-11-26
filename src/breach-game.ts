@@ -1,3 +1,4 @@
+import {plannedControl} from './breach-tactical-control-commands.ts';
 import {coveringActorAvailable,coveringContactClear,desiredCovering,sameCovering,type CoveringAction} from './breach-window-covering-interaction.ts';
 import {normalizeWindowCovering} from './breach-window-coverings.ts';
 import {windowCoveringsBlockSight} from './breach-window-covering-optics.ts';

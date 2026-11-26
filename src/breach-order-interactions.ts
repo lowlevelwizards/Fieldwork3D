@@ -42,8 +42,11 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
  // references evaporate when a plan is edited, completed or replayed.
  const pushTargets=new WeakMap<PlanNode,{token:string;index:number}>();
  const {approach,notify,battleEvent,liveVisibility,movePhysicalProp,hear}=port;
- const failCurrentOrder=(s:Session,a:TeamActor,n:PlanNode,reason:string)=>
+ const failCurrentOrder=(s:Session,a:TeamActor,n:PlanNode,reason:string)=>{
+  if(a.plan[0]?.id===n.id&&isCoveringAction(n.interaction)&&a.physicalContact?.intent==='covering')
+   a.physicalContact=releasePhysicalContact(a.physicalContact,s.seconds);
   failOrder(s,a,n,reason,port.notify);
+ };
  /** Shared GO-only physical stance policy. Full-body contact and movement
   * remain controlled by the real Session geometry and the existing motor.
   * The target can be a person or the precise dropped world item.

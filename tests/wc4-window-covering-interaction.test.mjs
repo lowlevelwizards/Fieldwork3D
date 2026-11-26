@@ -60,3 +60,73 @@ test('covering actions append separately from glass actions',()=>{
  const actions=contextActionChoices({door:false,node:false,flashRemaining:0,posture:'stand',pace:'walk',firePolicy:'hold',reserve:0,magazine:0,nearWindow:true,coveringActions:[{id:'ctxCovering:close-covering:W',label:'CLOSE BLINDS',group:'advanced'}]});
  assert.ok(actions.some(a=>a.id==='ctxWindow'));assert.ok(actions.some(a=>a.id==='ctxCovering:close-covering:W'));
 });
+
+import {newSession,team,planWindowCovering} from '../src/breach-game.ts';
+import {activateSite} from '../src/breach-core.ts';
+import {createInteractionOrderHandler} from '../src/breach-order-interactions.ts';
+import {advanceContextualSupportContacts} from '../src/breach-contextual-support-contact.ts';
+import {windowCoveringsBlockSight} from '../src/breach-window-covering-optics.ts';
+import {dispatchTacticalContextCommand} from '../src/breach-tactical-context-command.ts';
+import {resolveTacticalIconId} from '../src/ui/tactical-icons.ts';
+const pt=(x,y)=>({x,y});
+function makeSession(){
+ const pane={...w,x:300,y:180,style:'standard'};
+ const site={seed:49004,name:'WC4 contact',layout:'corridor',
+  rooms:[{id:'floor',x:80,y:100,w:420,h:260,kind:'room',purpose:'floor',tone:1}],
+  roomCount:1,walls:[],cover:[],doors:[],windows:[pane],
+  enemies:[pt(450,300)],spawn:[pt(300,200),pt(340,230),pt(340,260),pt(340,290)],
+  entrance:pt(300,200),objective:pt(120,200),extract:pt(470,200),
+  bounds:{minX:0,minY:0,maxX:640,maxY:740}};
+ const s=newSession(0,49004,'full-view','small','hold',site),a=team(s)[0];
+ a.p=pt(300,200);a.priorP={...a.p};a.heading=-Math.PI/2;a.velocity=0;a.plan=[];
+ const events=[];
+ const run=createInteractionOrderHandler({notify:(_s,msg)=>events.push(msg),
+  battleEvent:(_s,_kind,_actor,_point,msg)=>events.push(msg),hear:()=>{},
+  approach:()=>true,inSight:()=>false,liveVisibility:()=>true,movePhysicalProp:()=>false});
+ return {s,a,events,run};
+}
+function tick(s,a,run,count=1){
+ for(let i=0;i<count&&a.plan.length;i++){s.seconds+=1/60;run(s,a,a.plan[0],1/60);}
+}
+test('palette dispatch queues a real target, GO timer commits once and changes sight only on completion',()=>{
+ const {s,a,events,run}=makeSession();
+ try{
+  const pane=s.windows.find(x=>x.id==='W');assert.ok(pane);
+  const prior=s.objectRevision;
+  const action='ctxCovering:close-covering:W';
+  assert.equal(resolveTacticalIconId(action),'windowOpen');
+  const outcome=dispatchTacticalContextCommand({state:s,selected:a.id,actor:a,node:undefined,door:undefined,action,selectedActiveWatch:false,medicalCandidate:()=>null});
+  assert.equal(outcome.outcome,'accepted');assert.equal(a.plan[0].objectId,'covering:W');
+  assert.equal(pane.covering.opening,1);assert.equal(s.objectRevision,prior);
+  tick(s,a,run,20);assert.equal(pane.covering.opening,1);assert.ok(a.actionTimer>0);
+  assert.equal(a.physicalContact.intent,'covering');
+  assert.equal(windowCoveringsBlockSight(s,pt(300,150),pt(300,210),32),false);
+  tick(s,a,run,75);
+  assert.equal(pane.covering.opening,0);assert.equal(s.objectRevision,prior+1);
+  assert.equal(a.plan.length,0);assert.ok(a.physicalContact.releasedAt!==null);
+  assert.equal(pane.shattered,false);assert.equal(pane.open,false);
+  assert.equal(windowCoveringsBlockSight(s,pt(300,150),pt(300,210),32),true);
+  assert.ok(events.some(x=>x.includes('CLOSE HORIZONTAL BLIND')));
+ }finally{activateSite(null);}
+});
+test('wrong face rejects planning; lost reach cancels without state mutation',()=>{
+ const {s,a,run}=makeSession();
+ try{
+  const pane=s.windows.find(x=>x.id==='W');
+  a.p=pt(300,160);assert.equal(planWindowCovering(s,a.id,'W','close-covering'),false);
+  a.p=pt(300,200);assert.equal(planWindowCovering(s,a.id,'W','close-covering'),true);
+  tick(s,a,run,20);assert.ok(a.actionTimer>0);
+  const prior=s.objectRevision;a.p=pt(300,230);tick(s,a,run,1);
+  assert.equal(a.plan.length,0);assert.equal(pane.covering.opening,1);assert.equal(s.objectRevision,prior);
+  assert.ok(a.physicalContact.releasedAt!==null);assert.ok(a.lastFailedOrder.reason.includes('CONTACT LOST'));
+ }finally{activateSite(null);}
+});
+test('deleting active covering order releases its support contact without committing',()=>{
+ const {s,a,run}=makeSession();
+ try{
+  assert.equal(planWindowCovering(s,a.id,'W','close-covering'),true);
+  tick(s,a,run,20);assert.equal(a.physicalContact.intent,'covering');
+  a.plan=[];a.actionTimer=0;s.seconds+=1/60;advanceContextualSupportContacts(s);
+  assert.ok(a.physicalContact?.releasedAt!==null);assert.equal(s.windows[0].covering.opening,1);
+ }finally{activateSite(null);}
+});
