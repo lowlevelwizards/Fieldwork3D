@@ -60,7 +60,7 @@ export const R60_INTERACTIONS=Object.freeze({
  * planning settings, while some emit authored interactions or other orders.
  * Dynamic ctxTreat/ctxPower/ctxTool parameters are NOT separate types. */
 export const R60_CONTEXT_COMMANDS=Object.freeze([
- 'ctxCarryCapture','ctxCarryCivilian','ctxChallengeSuspect','ctxClose',
+ 'ctxBreakGlass','ctxCarryCapture','ctxCarryCivilian','ctxChallengeSuspect','ctxClose',
  'ctxDelete','ctxDragCapture','ctxDragCivilian','ctxEscortSuspect',
  'ctxFire','ctxFollowCivilian','ctxFormationCycle','ctxKick','ctxOpen',
  'ctxPace','ctxPower','ctxReleaseCapture','ctxReleaseCivilian',
@@ -226,8 +226,8 @@ export function inspectR60(root=ROOT){
 export function verifyR60(report){
  if(!report.readOnly||report.problems.length)
   throw new Error('R6.0 audit failed: '+(report.problems.join('; ')||'not read-only'));
- if(report.orders.length!==15||report.interactions.length!==17||
-    report.contextActions.length!==35||report.methods.door.length!==4||
+ if(report.orders.length!==15||report.interactions.length!==18||
+    report.contextActions.length!==36||report.methods.door.length!==4||
     report.methods.tool.length!==6)
   throw new Error('R6.0 incomplete action census');
  return true;
