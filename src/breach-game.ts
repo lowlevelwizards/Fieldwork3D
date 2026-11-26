@@ -109,7 +109,7 @@ import {SUSPECT_CHALLENGE_RANGE,SUSPECT_ESCORT_VOICE_RANGE}
 import {activeCombatant,captureTargetResolved} from './breach-suspect-operational-state.ts';
 import {captureVitalStatus,livingCaptureStatus,CAPTURE_VITAL_CHECK_SECONDS,
  recordActualDown} from './breach-capture-vitals.ts';
-import {captureTargetTransportEligible,designatedDownedCaptureTarget}
+import {captureTargetTransportEligible}
  from './breach-capture-transport-policy.ts';
 
 
@@ -1421,7 +1421,7 @@ export function planMedicalTreatment(s:Session,id:string,patientId:string,
  afterNodeId?:number):boolean{
  const a=party(s,id),patient=s.operators.find(o=>o.id===patientId);
  const captive=!!a&&!!patient&&a.side==='blue'&&
-   designatedDownedCaptureTarget(s,patient)&&
+   patient.side==='red'&&patient.health<=0&&
    captureVitalStatus(patient)!=='deceased'&&
    liveVisibility(s,patient.p);
  if(!a||!patient||(!captive&&patient.side!==a.side)||
