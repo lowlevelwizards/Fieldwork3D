@@ -17,6 +17,7 @@ export const TACTICAL_ACTION_MODALITY:Readonly<Record<TacticalInteraction,Action
  'push':'object-contact',
  'open-window':'object-contact',
  'close-window':'object-contact',
+ 'break-window':'object-contact',
  'secure-civilian':'person-contact',
  'follow-civilian':'voice',
  'stop-following-civilian':'voice',
