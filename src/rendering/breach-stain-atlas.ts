@@ -20,7 +20,7 @@ export function damageVariant(surface:string|undefined,x:number,y:number):number
  return index<0?-1:BLOOD_STYLE_COUNT+index*2+stainVariant(x,y)%2;
 }
 export function damageRadius(surface:string|undefined,count=1):number{
- const base=surface==='stone'?5:surface==='wood'?4.8:surface==='metal'?3.8:surface==='glass'?5.4:4.6;
+ const base=surface==='stone'?5:surface==='wood'?4.8:surface==='metal'?3.8:surface==='glass'?4.2:4.6;
  return base*(1+.23*(Math.max(1,Math.min(4,count))-1));
 }
 export function damageTint(surface:string|undefined):number{
