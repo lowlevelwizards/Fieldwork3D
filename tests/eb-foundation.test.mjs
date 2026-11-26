@@ -224,3 +224,20 @@ test('EB15 uniform groups share palette and issue; civilian silhouettes remain d
   assert.equal(look.footwear,'sneakers');assert.equal(a.equipment.slots.armor,'armor-none');
  }
 });
+
+import {hostileWarningCue,liveAudioCuesForEvent} from '../src/breach-audio-event-cues.ts';
+import {ReplaySoundTimeline} from '../src/breach-replay-audio.ts';
+import {hostilePhysicalityAt} from '../src/breach-hostile-physicality.ts';
+test('EB16 actual warning events produce spatial live and replay cues; aim and custody retain priority',()=>{
+ const message='GUARD WARNED NEARBY DEFENDERS';
+ assert.equal(hostileWarningCue(message),'people.enemy_callout');
+ assert.ok(liveAudioCuesForEvent(message).some(c=>c.id==='people.enemy_callout'));
+ assert.equal(hostileWarningCue('GUARD LOOKING'),undefined);
+ const track=new ReplaySoundTimeline([], [{id:'w',t:1,kind:'intel',text:message,p:{x:4,y:5},actor:'guard'}]);
+ assert.equal(track.events[0].kind,'warning');assert.equal(track.between(0,2).length,1);
+ const a={side:'red',health:3,surrendered:false,alert:'idle',aim:0,reload:0,
+ velocity:0,suppression:0,lastNoiseAt:-100,lastReportAt:1,p:{x:0,y:0},heading:0,heard:null,contact:null};
+ assert.ok(hostilePhysicalityAt(a,1.425).headPitch>.12);
+ assert.equal(hostilePhysicalityAt({...a,aim:1},1.425).headPitch,0);
+ assert.equal(hostilePhysicalityAt({...a,surrendered:true},1.425).headPitch,0);
+});
