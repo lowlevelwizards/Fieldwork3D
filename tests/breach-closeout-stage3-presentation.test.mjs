@@ -1,3 +1,4 @@
+import {windowCoveringSightSegments} from '../src/breach-window-covering-optics.ts';
 /** Stage 3 closeout: same-session view parity, historic disclosure and
  * bounded Three.js resources. Real collision/LOS and replay evidence stay
  * outside the render-only policies being tested.
@@ -44,7 +45,7 @@ test('Stage 3: 2D fog polygons use this session, even when another map is active
   const original=first.points.map(p=>[...p]);
   const world=sessionWorldGeometry(a),actor=team(a)[0];
   const expected=visionPolygon(actor.p,actor.heading,sightRangeForSite(a.site),
-    world.walls,a.doors,actor.posture==='crouch',world.cover);
+    world.walls,a.doors,actor.posture==='crouch',world.cover,windowCoveringSightSegments(a,actor.posture==='crouch'));
   assert.deepEqual(original.slice(0,expected.length),expected.map(p=>[p.x,p.y]));
   const other=recordingContext();
   activateSite(b.site);paintFogVisibility(other.ctx,a);

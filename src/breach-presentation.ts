@@ -107,6 +107,14 @@ export function windowPresentationKnown(
  const coverIndex=windowCoverIndex(s.site,window.id);
  return coverIndex>=0&&s.intel.cover.has(coverIndex);
 }
+/** Covering state is furnishings knowledge, not architectural briefing.
+ * Static WC2 coverings stay remembered after observing the actual window. */
+export function windowCoveringPresentationKnown(s:Session,window:WindowOpening,omniscient=false):boolean{
+ if(omniscient||s.intel.mode==='full-view')return true;
+ if(!s.site)return false;
+ const index=windowCoverIndex(s.site,window.id);
+ return index>=0&&s.intel.cover.has(index);
+}
 /** A wide arch or service counter is architecture, but is NOT a wall
  * index or a discovered room. Hide it until it is physically observed,
  * remembered locally, or legitimately included in the briefing. */

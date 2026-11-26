@@ -1,3 +1,6 @@
+import {hardCoveringBlocksPaneContact} from './breach-window-covering-physical.ts';
+import {isCoveringAction} from './breach-window-covering-interaction.ts';
+import {planWindowCovering} from './breach-game.ts';
 import {assessTacticalAction} from './breach-action-assessment.ts';
 import {captureVitalStatus} from './breach-capture-vitals.ts';
 /** Authoritative contextual command mutations, independent of button DOM.
@@ -59,6 +62,11 @@ export function dispatchTacticalContextCommand(input:{
     .some(patient=>patient.id===patientId&&patient.canTreat);
   return finish(permitted&&planMedicalTreatment(state,selected,patientId,node?.id),
     'PATIENT STABLE, UNREACHABLE, OR TREATMENT SUPPLIES UNAVAILABLE');
+ }
+ if(action.startsWith('ctxCovering:')){
+  const [,method,...id]=action.split(':');
+  return finish(isCoveringAction(method)&&planWindowCovering(state,selected,id.join(':'),method,node?.id),
+    'COVERING LOCKED, UNKNOWN OR OUT OF REACH');
  }
  if(action.startsWith('ctxPower:')){
   const parts=action.split(':');
@@ -273,7 +281,7 @@ export function dispatchTacticalContextCommand(input:{
    let nearby:typeof state.windows[number]|undefined;
    let best=54*54;
    for(const w of state.windows){
-     if(!w.operable||w.shattered)continue;
+     if(!w.operable||w.shattered||hardCoveringBlocksPaneContact(w,at))continue;
      const dx=w.x-at.x,dy=w.y-at.y,dist=dx*dx+dy*dy;
      if(dist<best){best=dist;nearby=w;}
    }

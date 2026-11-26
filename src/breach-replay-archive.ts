@@ -1,3 +1,4 @@
+import {COVERING_FAMILIES,COVERING_POSITIONS} from './breach-window-coverings.ts';
 /** Replay R3: a complete, versioned, locally restorable playback film.
  * Not a playable mission checkpoint and not a small after-action JSON report.
  * IndexedDB's structured clone preserves internal Map/Set and frame sharing.
@@ -112,6 +113,11 @@ function validPersonalWindows(input:unknown,maxTime:number):boolean{
       typeof e.windowId!=='string'||!allowed(e.observerId)||
       !allowed(e.windowId)||typeof e.open!=='boolean'||
       typeof e.shattered!=='boolean')return false;
+    const c=e.covering;
+    if(c!==undefined&&(!c||!COVERING_FAMILIES.includes(c.family)||!COVERING_POSITIONS.includes(c.opening)||
+      (c.side!==-1&&c.side!==1)||!['linen','sand','sage','slate'].includes(c.palette)||
+      (c.integrity!==undefined&&(!Number.isFinite(c.integrity)||c.integrity<0||c.integrity>1))||
+      (c.tilted!==undefined&&typeof c.tilted!=='boolean')||(c.locked!==undefined&&typeof c.locked!=='boolean')))return false;
     last=e.at!;
   }
   return true;

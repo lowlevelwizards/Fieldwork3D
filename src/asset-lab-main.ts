@@ -10,6 +10,8 @@ import {newSession} from './breach-game.ts';
 import {activateSite,type Door,type Obstacle,type Segment,type Pt} from './breach-core.ts';
 import {synchronizeShowroomSession} from './asset-lab-preview.ts';
 import {showroomGrid,showroomSlot} from './asset-lab-layout.ts';
+import {windowCoveringSpecimens} from './breach-window-coverings.ts';
+const coveringSpecimens=new Map(windowCoveringSpecimens().map(s=>[s.id,s]));
 import {type Site,type WindowOpening} from './breach-site.ts';
 import {assetLibrary,assetLibraryCategories,type AssetLibraryEntry} from './worldgen/asset-library.ts';
 import {OPERATOR_REFERENCE_HEIGHT,WORLD_UNITS_PER_METRE,metres} from './worldgen/world-scale.ts';
@@ -248,6 +250,10 @@ function sampleSite(items:readonly AssetLibraryEntry[]):Site{
      openings.push({id:'service-hatch-'+index,
        a:{x:x-29,y},b:{x:x+29,y},kind:'serving'});
      cover.push({x,y,w:58,h:10,fixture:'window-sill',low:true});
+   }else if(coveringSpecimens.has(item.id)){
+     const specimen=coveringSpecimens.get(item.id)!;
+     windows.push({id:'window-'+index,x,y,width:52,vertical:specimen.vertical,
+       style:'standard',sillHeight:14,headHeight:43,covering:specimen.covering});
    }else if(item.id==='window'||item.id.startsWith('window:')){
      windows.push({id:'window-'+index,x,y,width:52,vertical:false,
        style:item.id==='window:interior'||item.id==='window:full-height'?'picture':item.id.startsWith('window:')?

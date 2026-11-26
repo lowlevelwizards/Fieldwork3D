@@ -33,8 +33,8 @@ export function illuminationAt(point:Pt,
 }
 /** Pre-build blockers when door/cover geometry changes, never per target. */
 export const buildIlluminationBlockers=(walls:readonly Segment[],
- doors:readonly Door[],cover:readonly Obstacle[])=>
- lightBeamBlockers(walls,doors,cover);
+ doors:readonly Door[],cover:readonly Obstacle[],coveringSegments:readonly Segment[]=[])=>
+ lightBeamBlockers(walls,doors,cover,coveringSegments);
 /** A bounded, spatially local sampling field for deterministic gameplay. */
 export function sampleIlluminationGrid(input:{
  origin:Pt;columns:number;rows:number;step:number;

@@ -1,3 +1,4 @@
+import {isCoveringAction} from './breach-window-covering-interaction.ts';
 /** A3.6–A3.7 fixed-tick physical support contacts.
  * World/actor geometry selects contacts. Existing pose IK renders them;
  * this module never modifies locomotion, inventory, weapon, shots or peers.
@@ -299,6 +300,15 @@ export function advanceContextualSupportContacts(s:Session):void{
   // The real TOOL order and physical keyway have precedence over ordinary
   // idle bracing and teammate support. Never acquire two support contacts.
   const order=a.plan[0];
+  if(current?.intent==='covering'){
+   if(current.releasedAt===null&&(!order||!isCoveringAction(order.interaction)||order.objectId!==current.anchor.id||a.actionTimer<=0||a.health<=0||a.surrendered))
+    a.physicalContact=releasePhysicalContact(current,s.seconds);
+   continue;
+  }
+  if(order?.kind==='interact'&&isCoveringAction(order.interaction)){
+   if(current?.releasedAt===null)a.physicalContact=releasePhysicalContact(current,s.seconds);
+   continue;
+  }
   if(order?.kind==='tool'&&order.toolMethod==='pick'&&
      a.actionTimer>0){
    const door=s.doors.find(d=>d.id===order.doorId);

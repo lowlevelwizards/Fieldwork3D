@@ -29,8 +29,8 @@ export function directOperatorPose(p:OperatorPose,context:PoseDirectorContext){
   // Real queued OPEN contact uses a raised, one-hand-supported firearm.
   // Actual shooting, clearance, injury and authored Lab poses keep priority.
   const queuedOpen=!!p.physicalContact&&
-    p.physicalContact.intent==='door'&&
-    p.physicalContact.anchor.id.endsWith(':pre-open')&&
+    (p.physicalContact.intent==='covering'||p.physicalContact.intent==='door'&&
+    p.physicalContact.anchor.id.endsWith(':pre-open'))&&
     p.physicalContact.releasedAt===null&&
     !p.down&&!p.surrender&&!p.firing&&!p.aiming&&
     p.reload<=0&&!p.treatmentActive&&!p.obstruction;

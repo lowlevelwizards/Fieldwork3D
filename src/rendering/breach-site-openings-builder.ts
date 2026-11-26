@@ -7,6 +7,7 @@ import {initDoor} from '../breach-door.ts';
 import {doorProportions,DOOR_PANEL_END_RECESS,DOOR_FRAME_INSET,
  WALL_VISUAL_HEIGHT,DOOR_CLEAR_VISUAL_HEIGHT,DOOR_LEAF_VISUAL_HEIGHT}
  from '../breach-door-proportions.ts';
+import {buildWindowCovering} from './window-covering-visual.ts';
 import {windowApertureSegment} from '../worldgen/window-geometry-contract.ts';
 import {windowVisualHeadHeight,SERVING_COUNTER_VISUAL_HEIGHT}
  from '../breach-opening-proportions.ts';
@@ -377,16 +378,7 @@ export function buildSiteWindows(site:Site,host:SiteOpeningsHost,
         for(const y of [baseTop+3,glassTop-3])
           host.box(group,0,y,2,opening.width-3,1.7,2.55,bars,false);
       }
-      if(opening.treatment==='open-curtains'){
-        const fabric=host.solid(0x8f8779,.95,'fabric');
-        for(const side of [-1,1]){
-          host.box(group,side*(opening.width/2-4),
-            baseTop+glassHeight/2,3,
-            6,glassHeight*.91,3,fabric,false);
-          host.box(group,side*(opening.width/2-4),
-            baseTop+glassHeight*.17,3.2,6,1.7,3.7,doorTrim,false);
-        }
-      }
+      buildWindowCovering(opening,group,host);
 
       for(const x of [-opening.width/2,opening.width/2])
         host.box(group,x,baseTop+glassHeight/2,0,3.5,

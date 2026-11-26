@@ -1,3 +1,9 @@
+import {hardCoveringBlocksPaneContact} from './breach-window-covering-physical.ts';
+import {coveringActionSeconds} from './breach-window-covering-interaction.ts';
+import {plannedControl} from './breach-tactical-control-commands.ts';
+import {coveringActorAvailable,coveringContactClear,desiredCovering,sameCovering,type CoveringAction} from './breach-window-covering-interaction.ts';
+import {normalizeWindowCovering} from './breach-window-coverings.ts';
+import {windowCoveringsBlockSight} from './breach-window-covering-optics.ts';
 import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
@@ -602,13 +608,27 @@ export function planNearbyInteraction(s:Session,id:string,
  }
  let target:typeof s.windows[number]|undefined,bestWindow=54*54;
  for(const w of s.windows){
-   if(!w.operable||w.shattered||w.open!==(action==='close-window'))
+   if(!w.operable||w.shattered||hardCoveringBlocksPaneContact(w,at)||w.open!==(action==='close-window'))
      continue;
    const dx=w.x-at.x,dy=w.y-at.y,dist=dx*dx+dy*dy;
    if(dist<bestWindow){bestWindow=dist;target=w;}
  }
  if(!target)return false;
  return queue('window:'+target.id);
+}
+/** Queue a stable explicit covering state without mutating the world during planning. */
+export function planWindowCovering(s:Session,id:string,windowId:string,action:CoveringAction,afterNodeId?:number):boolean{
+ const a=party(s,id),w=s.windows.find(w=>w.id===windowId);
+ if(!a||!w||!canEdit(s)||!coveringActorAvailable(a,s))return false;
+ const index=afterNodeId===undefined?-1:a.plan.findIndex(n=>n.id===afterNodeId);
+ if(afterNodeId!==undefined&&index<0)return false;
+ const at=index>=0?a.plan[index].p:finalPoint(a),c=normalizeWindowCovering(w);
+ if(!c||!liveVisibility(s,{x:w.x,y:w.y})||!coveringContactClear(s,w,c,at,plannedControl(s,id,afterNodeId).posture==='crouch'))return false;
+ const next=desiredCovering(c,action);if(!next||sameCovering(c,next))return false;
+ return edit(s,a,()=>{
+  const order:PlanNode={id:s.nextId++,kind:'interact',p:clone(at),objectId:'covering:'+w.id,interaction:action,duration:coveringActionSeconds(c)};
+  if(index>=0)a.plan.splice(index+1,0,order);else a.plan.push(order);
+ });
 }
 /** Author a single explicit power setting in the existing editable plan.
  * Player knowledge gates the action; execution later checks real reach/LOS.
@@ -1734,6 +1754,7 @@ function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
   const ray={a,b};
   if(sessionWorldGeometry(s).staticWallBlocksRay(ray))return false;
   if(doorBlocksSightRay(s.doors,ray))return false;
+  if(windowCoveringsBlockSight(s,a,b,lowBlocks?22:32))return false;
   // The broadphase only excludes distant static obstacles; the final
   // slab and optical tests remain authoritative at any framerate.
   return !sessionWorldGeometry(s).someCoverAlongRay(a,b,o=>coverBlocksOpticalSight(o,lowBlocks)&&
@@ -1755,6 +1776,7 @@ export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
   // crouching and cover damage. Neither fog nor awareness is cached.
   return cache.get(a,b,s.seconds,
     s.objectRevision+'/'+sessionWorldGeometry(s).revision,s.doors,()=>
+      !windowCoveringsBlockSight(s,a.p,b.p,effectiveEyeHeight(a),effectiveAimHeight(b))&&
       !exposure(a.p,b.p,s.doors,
         b.posture==='crouch',a.posture==='crouch',true,
         sessionWorldGeometry(s).walls,sessionWorldGeometry(s).cover,
@@ -1821,7 +1843,7 @@ function observe(s:Session){
       // Preserve the exact historical ordering of fine and micro samples,
       // and keep occlusion / memory mutation in authoritative simulation.
       forEachGroundSightCandidate(sight,bounds,20,(col,row,p)=>{
-        if(!unobstructed(blue.p,p,s,blue.posture==='crouch'))return;
+        if(!unobstructed(blue.p,p,s,blue.posture==='crouch'||effectiveEyeHeight(blue)<25))return;
         const fine='fine:'+col+','+row;
         s.seenGround.add(fine);
         notePersonalGround(s,blue.id,s.seconds,fine);
@@ -1830,7 +1852,7 @@ function observe(s:Session){
         notePersonalGround(s,blue.id,s.seconds,coarse);
       });
       forEachGroundSightCandidate(sight,bounds,10,(col,row,p)=>{
-        if(!unobstructed(blue.p,p,s,blue.posture==='crouch'))return;
+        if(!unobstructed(blue.p,p,s,blue.posture==='crouch'||effectiveEyeHeight(blue)<25))return;
         const micro=microKeyAt(col,row);
         s.seenGround.add(micro);
         notePersonalGround(s,blue.id,s.seconds,micro);
@@ -1853,7 +1875,7 @@ function observe(s:Session){
           if(dx*dx+dy*dy<=NEAR_FINE_SIGHT_RANGE**2)return;
           const fine='fine:'+col+','+row;
           if(viewed.has(fine))return;
-          if(!unobstructed(blue.p,p,s,blue.posture==='crouch'))return;
+          if(!unobstructed(blue.p,p,s,blue.posture==='crouch'||effectiveEyeHeight(blue)<25))return;
           viewed.add(fine);s.seenGround.add(fine);
           notePersonalGround(s,blue.id,s.seconds,fine);
           const coarse=Math.floor(p.x/40)+','+Math.floor(p.y/40);

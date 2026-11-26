@@ -1,0 +1,2 @@
+# WC2 placement
+Room-face probe uses the renderer's signed normal after orientation. Deterministic hash by site seed/window/room ID for presence, family, state and room palette; privacy-biased rooms, public glazing selectively uncovered. Existing boarding/bars selection remains, board obstacles rebuilt idempotently. Hard shutters stowed until WC5 collision/ballistics/traversal work. No new colliders. WC3 must integrate optical blocking before production release. No merge/deploy at this stage.
