@@ -4,7 +4,7 @@
  */
 import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
 import {length,targetAngle,angleDifference} from './breach-plan.ts';
-import {witnessShock,countNearbyEnemyAllies,countRecentlySeenThreats,moraleResponse} from './breach-ai-morale.ts';
+import {witnessShock,countNearbyEnemyAllies,countRecentlySeenThreats,moraleResponse,fallenAlliesByGroup} from './breach-ai-morale.ts';
 import {commitSuspectSurrender} from './breach-suspect-compliance.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
 import {attemptNpcWithdrawal} from './breach-ai-task-state.ts';
@@ -43,11 +43,8 @@ export function advanceSimulationActors(s:Session,h:number,
  // Keep source-actor ordering (and the recorded lastDownAt gate), because
  // sighting a casualty may alter resolve and decisions *this same tick*.
  // A casualty not yet witnessed stays eligible on every later tick.
- const fallenEnemyAllies:TeamActor[]=[];
- for(const actor of s.operators)if(actor.side==='red'&&
-    actor.health<=0&&!actor.surrendered){
-   fallenEnemyAllies.push(actor);
- }
+ const fallenEnemyAllies=fallenAlliesByGroup(s.operators);
+ const noFallen:readonly TeamActor[]=[];
  for(const a of s.operators){
     if(a.health<=0&&a.reload>0){a.reload=0;a.reloadMode=null;}
     a.fireCd=Math.max(0,a.fireCd-h);
@@ -55,7 +52,7 @@ export function advanceSimulationActors(s:Session,h:number,
       a.morale=Math.min(1,a.morale+h*.006-
         (a.suppression>.65?h*.075:0));
       // Only a visible nearby casualty affects this actor's resolve.
-      for(const fallen of fallenEnemyAllies){
+      for(const fallen of fallenEnemyAllies.get(a.encounterGroupId)??noFallen){
         if(fallen===a||fallen.encounterGroupId!==a.encounterGroupId||
           fallen.lastDownAt<=(a.witnessedCasualtyTimes?.[fallen.id]??-Infinity))continue;
         const distance=d(a.p,fallen.p);

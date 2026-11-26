@@ -153,3 +153,21 @@ test('EB11 loose groups share warnings without formal support; commitments remai
  assert.deepEqual(Object.values(organized),['investigate','watch','support']);
  assert.equal(groupResponse(listeners,{x:0,y:0},{c:'investigate'},'security').c,'investigate');
 });
+
+import {challengeCompliance,fallenAlliesByGroup} from '../src/breach-ai-morale.ts';
+import {challengeSuspectDecision} from '../src/breach-suspect-compliance.ts';
+test('EB12 challenge and morale use the same motivation offset; custody gates remain authoritative',()=>{
+ assert.equal(challengeCompliance(.37,0,0,'survive'),true);
+ assert.equal(challengeCompliance(.37,0,0,'protect-assignment'),false);
+ const target={health:3,surrendered:false,morale:.37,suppression:0,injuryStage:0,
+ encounterGroupId:'g',npcIdentity:{motivation:'survive'},lastChallengeAt:0};
+ assert.equal(challengeSuspectDecision(target,3),'cooldown');
+ assert.equal(challengeSuspectDecision(target,10),'surrender');
+ assert.equal(challengeSuspectDecision({...target,surrendered:true},10),'ineligible');
+});
+test('EB12 fallen ally index preserves actual membership and ordering',()=>{
+ const actor=(id,encounterGroupId,health,side='red',surrendered=false)=>({id,encounterGroupId,health,side,surrendered,p:{x:0,y:0}});
+ const a=actor('a','g',0),b=actor('b','h',0),c=actor('c','g',0);
+ const grouped=fallenAlliesByGroup([a,b,actor('live','g',2),actor('blue','g',0,'blue'),actor('captive','g',0,'red',true),c]);
+ assert.deepEqual(grouped.get('g'),[a,c]);assert.deepEqual(grouped.get('h'),[b]);
+});

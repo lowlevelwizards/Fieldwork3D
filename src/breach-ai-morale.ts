@@ -20,10 +20,7 @@ export function moraleResponse(morale:number,suppression:number,
  // Motivation changes willingness to remain in danger, not physical ability.
  // Support-group only benefits from actual nearby allies. No faction-wide
  // knowledge, and no resolve bonus can bypass custody/medical authority.
- const commitment=context.motivation==='protect-assignment'?.065:
-   context.motivation==='support-group'&&support>0?.055:
-   context.motivation==='survive'?-.065:
-   context.motivation==='avoid-capture'?-.045:0;
+ const commitment=motivationResolveOffset(context.motivation,support>0);
  const effectiveMorale=Math.max(0,Math.min(1,
    morale+support-outnumbered*.045+commitment));
  const endangered=suppression+Math.min(2,injury)*.12+
@@ -70,4 +67,30 @@ export function countRecentlySeenThreats(
      now>=belief.lastSeenAt&&now-belief.lastSeenAt<=horizon)count++;
  }
  return Math.min(5,count);
+}
+
+/** Shared human resolve policy, no new random roll or health modifier.
+ * A spoken challenge does not grant the caller knowledge of the subject. */
+export function motivationResolveOffset(motivation?:AiMotivation,supported=false):number{
+ return motivation==='protect-assignment'?.065:
+  motivation==='support-group'&&supported?.055:
+  motivation==='survive'?-.065:
+  motivation==='avoid-capture'?-.045:0;
+}
+export function challengeCompliance(morale:number,suppression:number,injury:number,motivation?:AiMotivation):boolean{
+ const resolve=Math.max(0,Math.min(1,morale+motivationResolveOffset(motivation)));
+ const pressure=suppression+Math.min(2,injury)*.11;
+ return resolve<=.34||resolve<=.62&&pressure>=.22;
+}
+/** Cheap group-scoped candidate index. It retains iteration order and
+ * references to live actors rather than caching changing health or positions. */
+export function fallenAlliesByGroup<T extends MoralePeer>(roster:readonly T[]):Map<string|undefined,T[]>{
+ const groups=new Map<string|undefined,T[]>();
+ for(const actor of roster){
+  if(actor.side!=='red'||actor.health>0||actor.surrendered)continue;
+  let members=groups.get(actor.encounterGroupId);
+  if(!members)groups.set(actor.encounterGroupId,members=[]);
+  members.push(actor);
+ }
+ return groups;
 }
