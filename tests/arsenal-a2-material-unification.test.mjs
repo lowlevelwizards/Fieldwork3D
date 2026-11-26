@@ -11,6 +11,7 @@ import {visualMaterialRole} from '../src/rendering/material-identity.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset,setWeaponAttachment}
  from '../src/equipment-weapon-assemblies.ts';
 import {buildWeaponAccessories} from '../src/breach-weapon-accessories.ts';
+import {ARSENAL_REFERENCES} from '../src/arsenal/catalog.ts';
 import {collectArsenalA1Manifest} from '../scripts/audit-arsenal-a1.mjs';
 
 test('A2 shared palette: each finish has a role, exact PBR substrate response and cached material',()=>{
@@ -101,12 +102,17 @@ test('A2 canonical accessories survive the actual attachment compatibility path'
  steel.dispose();polymer.dispose();
 });
 
-test('A2 complete factory inventory retains exact A1 geometry and saved identifiers',()=>{
+test('A2 complete current factory inventory retains catalog identifiers and FNC benchmark',()=>{
  const m=collectArsenalA1Manifest();
- assert.equal(m.totals.presets,35);
- assert.equal(m.totals.meshes,881,'A4 shared symmetric mark batching removes ten redundant factory meshes');
- assert.equal(m.totals.triangles,18298);
- assert.deepEqual(Object.values(m.totals.byPlatform).sort((a,b)=>a-b),[1,3,4,6,9,9,3].sort((a,b)=>a-b));
+ // The historical 35-reference A1 totals remain in its dated report.
+ // Current coverage is catalog-derived; WA3 exact geometry parity is checked
+ // independently against a pinned revision rather than freezing old totals.
+ assert.equal(m.totals.presets,ARSENAL_REFERENCES.length);
+ assert.deepEqual(m.presets.map(p=>p.id).sort(),ARSENAL_REFERENCES.map(p=>p.id).sort());
+ const expected={};for(const r of ARSENAL_REFERENCES)expected[r.platformId]=(expected[r.platformId]??0)+1;
+ assert.deepEqual(m.totals.byPlatform,expected);
+ assert.equal(m.totals.meshes,m.presets.reduce((n,p)=>n+p.meshes,0));
+ assert.equal(m.totals.triangles,m.presets.reduce((n,p)=>n+p.triangles,0));
  assert.equal(m.presets.find(p=>p.id==='fnc-service')?.meshes,23);
  assert.equal(m.presets.find(p=>p.id==='fnc-service')?.triangles,536);
 });
