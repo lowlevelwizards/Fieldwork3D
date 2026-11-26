@@ -7,7 +7,7 @@ import type {WeaponFamilyBuild,FamilyPartSlot}
  from '../../equipment-weapon-families.ts';
 import {buildFNCStage1Silhouette} from './fnc-stage1-blockout.ts';
 import {FNC_BLACK_METAL,FNC_DARK_POLYMER,HK_MUZZLE_METAL,AR_STANAG_METAL,AR_STANAG_RIB,AR_MUTED_FDE,
- FAL_LOWER_METAL,FAL_DARK_POLYMER,FAL_VENT_SHADOW}
+ FAL_FNC_CALIBRATED_LOWER_METAL,FAL_DARK_POLYMER,FAL_VENT_SHADOW}
  from './weapon-visual-palette.ts';
 const REQUIRED:Readonly<Record<FamilyPartSlot,string>>={
  receiver:'fnc-service-receiver',stock:'fnc-tube-folder',
@@ -22,7 +22,7 @@ export function addFNCFamily(root:THREE.Group,build:WeaponFamilyBuild,
    build.parts[slot as FamilyPartSlot]!==id))
   throw new Error('Unimplemented FNC factory appearance');
  const form=buildFNCStage1Silhouette(FNC_BLACK_METAL,{
-  steel:FNC_BLACK_METAL,lower:FAL_LOWER_METAL,
+  steel:FNC_BLACK_METAL,lower:FAL_FNC_CALIBRATED_LOWER_METAL,
   stock:FNC_BLACK_METAL,buttpad:FNC_DARK_POLYMER,grip:FNC_DARK_POLYMER,
   handguard:FAL_DARK_POLYMER,magazine:AR_STANAG_METAL,
   polymerToe:AR_MUTED_FDE,stamp:AR_STANAG_RIB,barrel:FNC_BLACK_METAL,

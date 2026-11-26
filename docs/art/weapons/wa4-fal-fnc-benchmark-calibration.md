@@ -8,3 +8,6 @@ Verify exact non-color render-input parity for all 101 cases and complete parity
 ## Existing unrelated CI
 WA3 dedicated run passed. At the same WA3 revision, older FNC/G36 specialist gates failed on historical magazine inventory, 870 mesh-budget and G36 visual-coordinate assertions. Ground Zero movement checkpoint failed. These predate WA4's intentional color-only changes; do not claim broad CI is green or loosen movement/other-family gates. Resolve before integration/release. No merge/deploy authorized in this stage.
 Status: candidate implementation committed; WA4 dedicated verification and visual review pending.
+
+## Scope correction
+Run 45755700346 passed typecheck and focused tests but exact delta gate identified unintended M9 color change through the historically shared lower-steel material. Downloaded delta artifact 15086674519 confirms 9 intended FAL/FNC cases, one unintended M9 case, all non-color hashes identical. Restore legacy lower-steel signature and use a calibrated lower alias only inside FAL/FNC builders. Re-run the gate; do not waive the unrelated-family assertion.

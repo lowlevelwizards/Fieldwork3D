@@ -43,6 +43,7 @@ export const G36_SMOKED_MAGAZINE=weaponFinish('g36-smoked-mag');
 export const FNC_BLACK_METAL=weaponFinish('fnc-steel');
 export const FNC_DARK_POLYMER=weaponFinish('fnc-polymer');
 export const FAL_BLACK_METAL=weaponFinish('fal-steel');
+export const FAL_FNC_CALIBRATED_LOWER_METAL=weaponFinish('fal-fnc-calibrated-lower-steel');
 export const FAL_LOWER_METAL=weaponFinish('fal-lower-steel');
 export const FAL_DARK_POLYMER=weaponFinish('fal-polymer');
 export const FAL_WOOD=HK_WOOD;

@@ -48,7 +48,7 @@ export const WEAPON_FINISH_SPECS={
  // Smoked magazine remains opaque; one quiet body-tone contrast, no alpha sort.
  'g36-smoked-mag':{color:0x525f59,roughness:.95,metalness:.008,role:'polymer'},
  'fal-steel':{color:0x495052,roughness:.82,metalness:.12,role:'steel'},
- 'fal-lower-steel':{color:0x3e4545,roughness:.87,metalness:.10,role:'steel'},
+ 'fal-lower-steel':{color:0x363d3a,roughness:.87,metalness:.10,role:'steel'},
  'fal-polymer':{color:0x343d32,roughness:.93,metalness:.015,role:'polymer'},
  'fal-vent-shadow':{color:0x232c28,roughness:.98,metalness:.015,role:'polymer'},
  'fal-mag-rib':{color:0x404847,roughness:.94,metalness:.10,role:'steel'},
@@ -56,6 +56,8 @@ export const WEAPON_FINISH_SPECS={
  'fal-muzzle-slot':{color:0x202624,roughness:.98,metalness:.06,role:'steel'},
  // WA4: scoped FNC artwork calibration. Preserve the shared HK finish
  // signatures; only the FNC borrows this reviewed WA3 cool/neutral study.
+ // The legacy lower finish is also used by the Beretta preview; isolate WA4.
+ 'fal-fnc-calibrated-lower-steel':{color:0x3e4545,roughness:.87,metalness:.10,role:'steel'},
  'fnc-steel':{color:0x474e50,roughness:.82,metalness:.12,role:'steel'},
  'fnc-polymer':{color:0x303831,roughness:.95,metalness:.015,role:'polymer'},
  // G2.7 miniature sidearms: dedicated shared signatures keep G19X steel
