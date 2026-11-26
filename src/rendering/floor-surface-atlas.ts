@@ -5,6 +5,7 @@ import type {Site,Room} from '../breach-site.ts';
 import {conditionFloorPixels} from '../worldgen/condition-visual.ts';
 import {indexFloorWear} from '../worldgen/floor-wear-plan.ts';
 import type {WearMark} from '../worldgen/environment-wear.ts';
+import {buildingTheme,roomFloor} from '../worldgen/building-palettes.ts';
 import {rasterFloorWear} from './floor-wear-raster.ts';
 import {mapBoxPixelUV} from './pixel-materials.ts';
 import {planSurfacePageCounts,uploadSurfacePages} from './surface-atlas-pages.ts';
@@ -19,7 +20,8 @@ export function planFloorMaskPages(count:number):number[]{
 export function writeFloorMaskSlot(site:Site,slot:FloorMaskSlot,level:number,marks:readonly WearMark[]=[],boost=1){
  const image=slot.texture.image as {data:Uint8Array};
  const bytes=conditionFloorPixels(site,slot.room,level,FLOOR_MASK_SIZE);
- if(level>0)rasterFloorWear(bytes,slot.room,site.programLocked?0:2,marks,FLOOR_MASK_SIZE,boost);
+ if(level>0){const theme=buildingTheme(site.archetype,site.seed),base=slot.room.kind==='hall'?theme.hall:roomFloor(theme,slot.room.purpose,slot.room.tone);
+  rasterFloorWear(bytes,slot.room,site.programLocked?0:2,marks,FLOOR_MASK_SIZE,boost,base);}
  image.data.set(bytes,slot.row*FLOOR_MASK_SIZE*4);
 }
 export function buildFloorMaskAtlas(site:Site,level:number,marks:readonly WearMark[]=[],boost=1):FloorMaskAtlas{
