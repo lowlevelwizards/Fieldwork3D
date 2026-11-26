@@ -84,3 +84,20 @@ test('EB5 live generated encounter stores identities and explicit profile reache
  const s=newSession(0,17,'floor-plan','small','capture',site);
  assert.ok(enemies(s).length);assert.ok(enemies(s).every(a=>a.npcIdentity?.groupKind==='regular-force'));
 });
+
+import {encounterReactionDelay} from '../src/breach-encounter-readiness.ts';
+import {investigationTempo} from '../src/breach-ai-investigation.ts';
+import {coordinationLeaseSeconds} from '../src/breach-ai-team-commitment.ts';
+test('EB6 experience separates assessment and task persistence without modifying physical stats',()=>{
+ const tiers=AI_COMPETENCE.map(t=>npcIdentity(5,'eb','organised','occupant','defensive','armed-irregulars',t));
+ const timings=tiers.map(t=>encounterReactionDelay('attentive','same',100,t.competence));
+ assert.ok(timings.every((v,i)=>i===0||v<timings[i-1]));
+ const sameTraits=tiers.map(t=>({...t,composure:.5,patience:.5,discipline:.5,loyalty:.5}));
+ const tempos=sameTraits.map(t=>investigationTempo('guard',65,t));
+ assert.ok(tempos[0].orientSeconds>tempos[3].orientSeconds);
+ assert.ok(tempos[0].inspectSeconds<tempos[3].inspectSeconds);
+ assert.ok(coordinationLeaseSeconds('watch',40,'organised',sameTraits[0])<
+  coordinationLeaseSeconds('watch',40,'organised',sameTraits[3]));
+ assert.equal(encounterReactionDelay('attentive','same',100),
+  encounterReactionDelay('attentive','same',100,undefined));
+});

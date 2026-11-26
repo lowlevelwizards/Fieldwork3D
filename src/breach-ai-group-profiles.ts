@@ -16,3 +16,12 @@ export const AI_GROUP_PROFILES:Readonly<Record<AiGroupKind,GroupProfile>>={
  specialists:{label:'Specialists',competenceCutoffs:[.01,.10,.60],motivation:'support-group',doctrine:'organised',loyalty:.68}
 };
 export const AI_GROUP_KINDS=Object.keys(AI_GROUP_PROFILES) as AiGroupKind[];
+
+/** Experience modifies existing assessment/commitment, never hit points,
+ * accuracy, visual reach, geometry or physical motor permissions. */
+export const AI_EXPERIENCE:Readonly<Record<AiCompetence,{reaction:number;orientation:number;inspection:number;assignment:number}>>={
+ untrained:{reaction:1.40,orientation:1.45,inspection:.80,assignment:.80},
+ experienced:{reaction:1.08,orientation:1.12,inspection:1,assignment:.95},
+ trained:{reaction:.88,orientation:.90,inspection:1.18,assignment:1.08},
+ specialist:{reaction:.72,orientation:.78,inspection:1.25,assignment:1.20}
+};

@@ -1,3 +1,4 @@
+import {AI_EXPERIENCE} from './breach-ai-group-profiles.ts';
 import type {GroupRole} from './breach-ai-coordination.ts';
 import type {EncounterDoctrine} from './breach-ai-doctrine.ts';
 import type {NpcIdentity} from './breach-ai-identity.ts';
@@ -29,7 +30,7 @@ export function coordinationLeaseSeconds(
   const discipline=doctrine==='organised'?1.5:
     doctrine==='security'?.75:0;
   const commitment=identity?(identity.discipline+identity.loyalty-1)*1.5:0;
-  return Math.min(12.5,Math.max(5,base+ambiguity*.017+discipline+commitment));
+  return Math.min(12.5,Math.max(4,(base+ambiguity*.017+discipline+commitment)*(identity?AI_EXPERIENCE[identity.competence].assignment:1)));
 }
 
 export function renewCoordinationUntil(

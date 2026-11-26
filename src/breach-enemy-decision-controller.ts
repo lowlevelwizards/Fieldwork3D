@@ -295,7 +295,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
      a.encounterReactionUntil===Number.POSITIVE_INFINITY){
     a.encounterReactionStartedAt=s.seconds;
     a.encounterReactionUntil=s.seconds+encounterReactionDelay(
-      a.encounterReadiness??'attentive',a.id);
+      a.encounterReadiness??'attentive',a.id,0,a.encounterGroupId?a.npcIdentity?.competence:undefined);
   }
   if(strongest&&!visible.length&&a.alert!=='retreat'&&
      (!(a.coordinationRole&&s.seconds<a.coordinationUntil)||noiseDisposition==='alarm')){

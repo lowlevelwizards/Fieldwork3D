@@ -22,11 +22,8 @@ export function selectEncounterGroupProfile(group:EncounterGroup,actors:readonly
    return roll<.18?'specialists':roll<.77?'regular-force':'armed-irregulars';
   return roll<.65?'armed-irregulars':'opportunists';
  }
- if(group.purpose==='security')return 'security';
+ if(group.purpose==='security')return premise==='guarded'&&context.risk===3&&roll<.18?'specialists':'security';
  if(group.purpose==='organised')return premise==='defensive'?'armed-irregulars':'organised-criminals';
- // Rare specialized nonmilitary groups only in a credible guarded operation;
- // ordinary police/civilian incidents never generate regular military units.
- if(premise==='guarded'&&context.risk===3&&roll<.18)return 'specialists';
  if(incidentId==='organizer-apprehension'||incidentId==='compromised-hideout'||
     incidentId==='shipment-security')return 'organised-criminals';
  return 'opportunists';
