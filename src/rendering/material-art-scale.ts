@@ -14,3 +14,9 @@ export function physicalMaskIndex(u:number,v:number,w:number,h:number,size=32){
  const y=Math.max(0,Math.min(size-1,Math.floor(artCenter(v*h)/h*size)));
  return (y*size+x)*4;
 }
+
+/** Both layouts preserve edge swatches and guarded independent faces. */
+export const LEGACY_WALL_LAYOUT={rows:64,faceRows:24,front:4,back:36} as const;
+export const METRIC_WALL_LAYOUT={rows:128,faceRows:56,front:4,back:68} as const;
+export const wallAtlasLayout=(metric=false)=>metric?METRIC_WALL_LAYOUT:LEGACY_WALL_LAYOUT;
+export const metricActiveWidth=(length:number,capacity:number)=>Math.max(1,Math.min(capacity,Math.ceil(length/ART_PIXEL)));

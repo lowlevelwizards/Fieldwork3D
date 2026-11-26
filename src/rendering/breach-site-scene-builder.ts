@@ -273,7 +273,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
     buildSiteMicroDebris(site,host);
     const decorativeRoomGroups=new Map<string,THREE.Group>();
     host.currentWear=host.floorWearCompiled?planCompiledFloorWear(site):planStaticFloorWear(site);
-    const floorAtlas=host.floorWearCompiled?buildFloorMaskAtlas(site,effectiveCondition(site),host.currentWear,host.wearBoost):undefined;
+    const floorAtlas=host.floorWearCompiled?buildFloorMaskAtlas(site,effectiveCondition(site),host.currentWear,host.wearBoost,host.wallAudition?.metric):undefined;
     if(floorAtlas)host.sitePatinaTextures.push(...floorAtlas.pages);
     const floorMaterials=new Map<string,THREE.MeshStandardMaterial>();
     for(const room of site.rooms){
@@ -446,7 +446,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         node.renderOrder=1002;
       });
     };
-    const atlas=host.wallAudition?.atlas?buildWallAtlas(site,WALL_VISUAL_HEIGHT,finishCondition,host.wallAudition.effect,!!host.solid(theme.wall,.94,wallPixelSurface(site.archetype)).map,host.wallStructureUnified?{trim:theme.trim,cap:theme.cap}:undefined,host.wallAudition.story):undefined;
+    const atlas=host.wallAudition?.atlas?buildWallAtlas(site,WALL_VISUAL_HEIGHT,finishCondition,host.wallAudition.effect,!!host.solid(theme.wall,.94,wallPixelSurface(site.archetype)).map,host.wallStructureUnified?{trim:theme.trim,cap:theme.cap}:undefined,host.wallAudition.story,host.wallAudition.metric):undefined;
     if(atlas)host.sitePatinaTextures.push(...atlas.pages);
     const capJoins=planWallCapJoins(site.walls);
     const unified=!!host.wallStructureUnified&&!!atlas;
@@ -619,6 +619,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       solid:(hex,roughness,surface)=>host.solid(age(hex,surface),roughness,surface),
     };
     const fixtureWearCache=new Map<string,THREE.MeshStandardMaterial>();
+    const fixtureWearTextures=new Map<WearKind,THREE.DataTexture>();
     host.pendingFixtureWear=[];host.retiredFixtureWearGeometry=new Set();
     site.cover.forEach((c,i)=>{
       const group=new THREE.Group();host.root.add(group);
@@ -692,7 +693,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
           if(originalChildren.some(child=>child.parent!==intact))return;
           projectFixtureWear(intact,mark,(mark.u-.5)*visual.w,
           Math.min(height-2,Math.max(3,mark.v*height)),visual.h/2+.8,fixturePixelSurface(c.fixture),{
-            textures:host.wearTextures,cache:fixtureWearCache,boost:host.fixtureWearStrength!,
+            textures:fixtureWearTextures,cache:fixtureWearCache,boost:host.fixtureWearStrength!,fixture:c.fixture,variantAtlas:true,trackTexture:t=>host.sitePatinaTextures.push(t),
             track:m=>host.siteMaterials.track(m),shared:host.sharedBoxGeometries,template:!!templateLease,
             retireGeometry:g=>host.retiredFixtureWearGeometry!.add(g)
           });

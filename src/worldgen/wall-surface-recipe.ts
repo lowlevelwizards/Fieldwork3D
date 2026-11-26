@@ -1,6 +1,6 @@
 /** W2 audition: static architecture is a material plus a sparse set of
  * anchored finish events. No tactical state, time or mutable RNG. */
-import {ART_MODULES} from '../rendering/material-art-scale.ts';
+import {ART_MODULES,wallAtlasLayout} from '../rendering/material-art-scale.ts';
 import {relativeArtColor,artLuma} from '../rendering/material-art-contrast.ts';
 import {prepareWallArt,eventArtSeed} from './wall-weathering-art.ts';
 import type {Site} from '../breach-site.ts';
@@ -12,11 +12,12 @@ import type {PixelSurface} from '../rendering/pixel-recipes.ts';
 export const WALL_EFFECTS=['fade','contact','chip','damp','runoff','crack','repair','moss','rust','grease','splash','workgrime'] as const;
 export type WallEffect=typeof WALL_EFFECTS[number];
 export type WallEffectFilter='all'|'none'|WallEffect;
-export type WallAudition={effect:WallEffectFilter;atlas?:boolean;story?:boolean};
+export type WallAudition={effect:WallEffectFilter;atlas?:boolean;story?:boolean;metric?:boolean};
 /** Production default: W6 fixture story plus eligible W3 effects. Explicit historical
  * comparison modes remain available for Map Lab and controlled A/B. */
 export function resolveWallSurfaceMode(mode:string|null):WallAudition|undefined{
  if(mode==='legacy')return undefined;
+ if(mode==='metric')return {effect:'all',atlas:true,story:true,metric:true};
  if(mode==='packed'||mode==='integrated')return {effect:'all'};
  if(mode==='atlas'||mode==='compiled'||mode==='separate'||mode==='unified')return {effect:'all',atlas:true};
  return {effect:'all',atlas:true,story:true};
@@ -191,11 +192,13 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
 // back-face coordinates and bottom-origin base tile vs top-origin finish.
 import {SRGB_BYTE_TO_LINEAR as srgbLinear,linearToSRGBByte as linearByte} from '../rendering/surface-color-space.ts';
 export function bakedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:number,height:number,filter:WallEffectFilter='all',patterned=true){
- const out=wallSurfacePixels(recipe,level,width,height,filter),base=rgb(recipe.color);
+ const out=wallSurfacePixels(patterned?recipe:{...recipe,band:undefined},level,width,height,filter),base=rgb(recipe.color);
  const accent=recipe.band?tint(base,rgb(recipe.band.color),.62):base;
  // Use large physical modules instead of downsampling fine repeated tiles.
  // Mortar and joints are at least one output texel wide at packed resolution.
  const texelX=recipe.length/width,texelY=recipe.height/height;
+ const brickBodies=[tint(base,[163,84,53],.38),tint(accent,[163,84,53],.38)],blockBodies=[tint(base,[126,144,143],.46),tint(accent,[126,144,143],.46)];
+ const panelBodies=[tint(base,[97,128,137],.23),tint(accent,[97,128,137],.23)],concreteBodies=[tint(base,[142,149,148],.30),tint(accent,[142,149,148],.30)];
  const mod=(n:number,d:number)=>((n%d)+d)%d;
   const cell=(ix:number,iy:number)=>hash(Math.imul(ix+41,374761393)^Math.imul(iy+17,668265263)^recipe.color);
   const seam=(p:number,spacing:number,thickness:number,texel:number)=>{
@@ -212,12 +215,12 @@ export function bakedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,wid
   // Quiet, coherent material modules instead of noise or identical flat grids.
   // Keep the old strip footprint; sample a physical seam at fractional coverage.
   let shade=1,color=paint;
-  const broad=cell(Math.floor((wx+Math.floor(physicalY/8)%3*3)/32),Math.floor((physicalY+Math.floor(wx/12)%3*2)/20));
+  const broad=surface==='plaster'||surface==='concrete'?cell(Math.floor((wx+Math.floor(physicalY/8)%3*3)/32),Math.floor((physicalY+Math.floor(wx/12)%3*2)/20)):.5;
   if(patterned){
    if(surface==='brick'||surface==='cinderblock'){
     const brick=surface==='brick',course=brick?ART_MODULES.brick[1]:ART_MODULES.cinderblock[1],block=course*2,row=Math.floor(physicalY/course),shift=(row%2)*block/2;
     const index=Math.floor((wx+shift)/block),v=cell(index,row);
-    const body=brick?tint(paint,[163,84,53],.38):tint(paint,[126,144,143],.46);
+    const body=(brick?brickBodies:blockBodies)[paint===accent?1:0];
     color=tint(body,v<.32?(brick?[125,64,44]:[108,121,120]):(brick?[195,120,81]:[189,195,188]),v<.32?.19:v>.76?.24:.07);
     const joint=Math.max(seam(physicalY,course,.9,texelY),seam(wx+shift,block,.8,texelX));
     color=tint(color,brick?[171,157,135]:[119,126,123],joint*.60);
@@ -229,7 +232,7 @@ export function bakedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,wid
     const joint=Math.max(seam(wx,ART_MODULES.tile[0],.55,texelX),seam(physicalY,ART_MODULES.tile[1],.55,texelY));
     color=tint(color,[134,146,143],joint*.39);
    }else if(surface==='panel'){
-    color=tint(paint,[97,128,137],.23);
+    color=panelBodies[paint===accent?1:0];
     const n=cell(Math.floor(wx/24),0);
     shade=1+(n-.5)*.09;
     shade-=.25*seam(wx,24,1.15,texelX);
@@ -241,7 +244,7 @@ export function bakedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,wid
     shade=1+(v-.5)*.10-.23*seam(physicalY,ART_MODULES.siding[1],1.1,texelY)+.07*seam(physicalY-2,ART_MODULES.siding[1],.65,texelY);
     if(row%3===0&&seam(wx+(row%3)*19,57,.65,texelX)>.6)shade*=.94;
    }else if(surface==='concrete'){
-    color=tint(paint,[142,149,148],.30);
+    color=concreteBodies[paint===accent?1:0];
     shade=1+(broad-.5)*.09-.19*seam(wx,48,.85,texelX);
     if(Math.abs(mod(wx+12,48)-24)<1.1&&Math.abs(mod(physicalY+9,28)-14)<texelY*.55)shade*=.84;
    }else if(surface==='plaster'){
@@ -287,14 +290,22 @@ export type WallFacePair=ReturnType<typeof planWallFaces>;
  * levels ordinary mip filtering necessarily averages whole strips. */
 export const ATLAS_FACE_ROWS=24;
 export const atlasFaceStart=(face:-1|1)=>face===1?4:36;
-export function atlasWallStrip(pair:WallFacePair,level:number,width:number,filter:WallEffectFilter='all',patterned=true){
- const out=new Uint8Array(width*64*4),base=rgb(pair.front.color),stride=width*4;
- for(let p=0;p<out.length;p+=4){out.set(base,p);out[p+3]=255;}
+export function atlasWallStrip(pair:WallFacePair,level:number,width:number,filter:WallEffectFilter='all',patterned=true,metricWidth?:number){
+ const layout=wallAtlasLayout(metricWidth!==undefined),active=metricWidth??width;
+ const out=new Uint8Array(width*layout.rows*4),base=rgb(pair.front.color),stride=width*4;
+ for(let p=0;p<out.length;p+=4){out[p]=base[0];out[p+1]=base[1];out[p+2]=base[2];out[p+3]=255;}
  for(const recipe of [pair.front,pair.back]){
-  const pixels=bakedWallSurfacePixels(recipe,level,width,ATLAS_FACE_ROWS,filter,patterned),start=atlasFaceStart(recipe.face);
-  out.set(pixels,start*stride);
-  for(let y=recipe.face===1?2:start-4;y<start;y++)out.set(pixels.subarray(0,stride),y*stride);
-  for(let y=start+ATLAS_FACE_ROWS;y<start+ATLAS_FACE_ROWS+4;y++)out.set(pixels.subarray(pixels.length-stride),y*stride);
+  const pixels=bakedWallSurfacePixels(recipe,level,active,layout.faceRows,filter,patterned),start=recipe.face===1?layout.front:layout.back;
+  if(active===width)out.set(pixels,start*stride);
+  else for(let y=0;y<layout.faceRows;y++){
+   const offset=(start+y)*stride,src=y*active*4;
+   out.set(pixels.subarray(src,src+active*4),offset);
+   const edge=pixels.subarray(src+(active-1)*4,src+active*4);
+   for(let x=active;x<width;x++)out.set(edge,offset+x*4);
+  }
+  const first=out.subarray(start*stride,(start+1)*stride),last=out.subarray((start+layout.faceRows-1)*stride,(start+layout.faceRows)*stride);
+  for(let y=recipe.face===1?2:start-4;y<start;y++)out.set(first,y*stride);
+  for(let y=start+layout.faceRows;y<start+layout.faceRows+4;y++)out.set(last,y*stride);
  }
  return out;
 }
