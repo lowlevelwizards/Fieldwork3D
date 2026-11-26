@@ -631,15 +631,18 @@ function fire(s:Session,a:TeamActor,dt:number){
        candidate.p,h)){
       civilianShotWithheld(s,a);return false;
     }
-    const lane=nearShotLane(from,clearance.muzzle.y,candidate.p,h,
+    let lane=nearShotLane(from,clearance.muzzle.y,candidate.p,h,
       world.cover,world.walls,s.doors,friends);
     if(lane.blocker==='friendly')return false;
-    if(lane.blocker==='clear'&&!hardWindowCoveringsBlockRay(s,from,candidate.p,clearance.muzzle.y,h))return true;
-    if(lane.blocker!=='clear'&&lane.blocker!=='cover')return false;
+    if(lane.blocker==='clear'){
+      if(!hardWindowCoveringsBlockRay(s,from,candidate.p,clearance.muzzle.y,h))return true;
+      lane={blocker:'cover'};
+    }
+    if(lane.blocker!=='cover')return false;
     const preview=strikeSurface(from,candidate.p,s,
       clearance.muzzle.y,h,
       (sidearm?GLOCK_9MM_WEAPON:WEAPONS[a.weapon]).penetration);
-    return fireLaneReachable(lane.blocker==='clear'?{blocker:'cover'}:lane,preview,candidate.p);
+    return fireLaneReachable(lane,preview,candidate.p);
   });
   if(!target){
     // The visible roster is already computed: losing the confirmed
