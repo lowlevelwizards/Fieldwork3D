@@ -5,7 +5,7 @@ import {conditionFloorPixels} from './worldgen/condition-visual.ts';
 import {rasterFloorWear} from './rendering/floor-wear-raster.ts';
 import {roomPixelSurface,fixturePixelSurface} from './worldgen/pixel-surface-selection.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
-import {pixelPattern,type PixelSurface} from './rendering/pixel-recipes.ts';
+import {productionPixelPattern,materialTileSize,type PixelSurface} from './rendering/pixel-recipes.ts';
 import {wearPixels,type WearTextureKind} from './rendering/pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
 import {wearFinish} from './rendering/wear-finish.ts';
@@ -30,10 +30,10 @@ export const FIXTURE_WITNESSES:readonly {name:string;fixture:string;kind:WearTex
  {name:'Corrugated cladding · paint peel',fixture:'shipping-container',kind:'paint-peel',color:0x6d8e93,surface:'corrugated-metal'}
 ];
 const baseBytes=(surface:PixelSurface,color:number,width:number,height:number,seed:number,physicalW:number,physicalH:number)=>{
- const pattern=pixelPattern(surface,seed),out=new Uint8Array(width*height*4);
+ const span=materialTileSize(surface),pattern=productionPixelPattern(surface,seed%4),out=new Uint8Array(width*height*4);
  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
-  const tx=Math.floor((x+.5)*physicalW/width)%32,ty=Math.floor((y+.5)*physicalH/height)%32;
-  const shade=linear[pattern[(ty*32+tx)*4]],p=(y*width+x)*4;
+  const tx=Math.floor((x+.5)*physicalW/width)%span,ty=Math.floor((y+.5)*physicalH/height)%span;
+  const shade=linear[pattern[(ty*span+tx)*4]],p=(y*width+x)*4;
   for(let k=0;k<3;k++)out[p+k]=encode(linear[(color>>((2-k)*8))&255]*shade);
   out[p+3]=255;
  }return out;
