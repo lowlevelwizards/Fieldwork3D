@@ -41,9 +41,9 @@ export function doorProportions(door:Pick<Door,'kind'|'style'>):DoorProportions{
  const sliding=door.kind==='sliding';
  return {
   jambWidth:door.kind==='shutter'?6:heavy?5.8:5.4,
-  jambDepth:door.kind==='shutter'?9:heavy?7.8:6.8,
+  jambDepth:door.kind==='shutter'?11.8:heavy?11.4:10.8,
   headerHeight:heavy?3.6:3.1,
-  headerDepth:heavy?8.4:7.4,
+  headerDepth:heavy?11.4:10.8,
   casingWidth:heavy?1.55:1.35,
   casingDepth:1.5,
   leafThickness:sliding?3:heavy?3.6:2.8,
