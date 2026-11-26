@@ -3175,7 +3175,7 @@ export class TacticalScene3D{
         !(this.smokePreviewEnabled&&puffSurface==='dust'&&!fixtureImpactAccent(shot.impactFixture))){
         const surface=shot.surface??'dust',sample=this.materialImpactScratch;
         for(let i=0;i<MATERIAL_IMPACT_PROFILES[surface].count;i++){
-          if(!sampleMaterialImpact(surface,shot.id,i,shot.age,end.x,end.y,end.z,sample,shot.impactFixture))continue;
+          if(!sampleMaterialImpact(surface,shot.id,i,shot.age,end.x,end.y,end.z,sample,shot.impactFixture,shot,shot.start.x-shot.end.x,shot.start.y-shot.end.y))continue;
           if(!omniscient&&!this.presentationSight.query(s,'effect',shot.id+':chip:'+i,{x:sample.x,y:sample.z}))continue;
           if(!this.dropletPreview){
             this.dropletPreview=makeBloodDropletBatch(this.tracerGeometry,MATERIAL_IMPACT_PARTICLE_LIMIT);
@@ -3222,7 +3222,7 @@ export class TacticalScene3D{
           const sample=this.materialImpactScratch;
           if(!(this.smokePreviewEnabled&&surface==='dust'&&!fixtureImpactAccent(cue.fixture)))
            for(let i=0;i<p.count;i++){
-            if(!sampleMaterialImpact(surface,cue.id,i,shot.age,cue.p.x,cue.height,cue.p.y,sample,cue.fixture))continue;
+            if(!sampleMaterialImpact(surface,cue.id,i,shot.age,cue.p.x,cue.height,cue.p.y,sample,cue.fixture,cue,shot.start.x-cue.p.x,shot.start.y-cue.p.y))continue;
             if(!omniscient&&!this.presentationSight.query(s,'effect','material:'+cue.id+':chip:'+i,{x:sample.x,y:sample.z}))continue;
             if(!this.dropletPreview){
               this.dropletPreview=makeBloodDropletBatch(this.tracerGeometry,MATERIAL_IMPACT_PARTICLE_LIMIT);
