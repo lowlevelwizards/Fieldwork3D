@@ -24,9 +24,9 @@ const bound=(g,slot)=>{
 const hits=(g,x,y)=>new THREE.Raycaster(
  new THREE.Vector3(x,y,25),new THREE.Vector3(0,0,-1))
  .intersectObjects(g.children.filter(x=>!x.userData.weaponPixelArt),true).length>0;
-test('R4.4 eight AR silhouettes keep joined pieces and authoritative muzzle tips',()=>{
+test('R4.4 nine AR silhouettes keep joined pieces and authoritative muzzle tips',()=>{
  const ar=FAMILY_PRESETS.filter(p=>p.family==='ar');
- assert.equal(ar.length,8);
+ assert.equal(ar.length,9);
  for(const p of ar){
   const {g,cfg}=model(p.id);
   assert.ok(g.children.length<=36,p.id+' geometry budget');

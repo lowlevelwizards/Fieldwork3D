@@ -19,7 +19,7 @@ try{
   const errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto(origin+'/arsenal.html',{waitUntil:'domcontentloaded'});
-  await page.locator('.arsenal-search').fill('FNC');
+  await page.getByRole('searchbox',{name:'Find weapon model',exact:true}).fill('FNC');
   const button=page.getByRole('button',{name:'Select FN FNC'});
   await button.waitFor({state:'visible'});
   await button.click();

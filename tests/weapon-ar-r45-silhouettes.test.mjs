@@ -30,8 +30,8 @@ const cast=(group,x,y)=>new THREE.Raycaster(new THREE.Vector3(x,y,25),
  new THREE.Vector3(0,0,-1)).intersectObjects(
  group.children.filter(o=>!o.userData.weaponPixelArt),true).length>0;
 
-test('R4.5 shared AR axis and hand contact stay aligned across all eight presets',()=>{
- assert.equal(FAMILY_PRESETS.filter(p=>p.family==='ar').length,8);
+test('R4.5 shared AR axis and hand contact stay aligned across all nine presets',()=>{
+ assert.equal(FAMILY_PRESETS.filter(p=>p.family==='ar').length,9);
  for(const p of FAMILY_PRESETS.filter(p=>p.family==='ar')){
   const {config,group}=model(p.id),a=resolveWeaponAssembly(config);
   assert.ok(close(a.muzzleY,AR_VISUAL_AXIS_Y));

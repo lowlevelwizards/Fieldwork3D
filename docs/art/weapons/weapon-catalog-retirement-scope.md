@@ -54,3 +54,6 @@ Latest R4.4d specialist logs identified assertions superseded by separately auth
 
 ## R4.5a — Quick Play named catalog selection
 Both preparation Outfitters use the same typed named-model choices, actual per-reference thumbnails and one pure direct catalog issue action. Main-menu and in-mission squad selectors no longer expose or select one of four generic categories; custom equipped builds remain visible. Existing pre-mission fresh-ammo semantics and equipment ownership boundaries retained. Historical roster category mutation remains for old test/internal callers pending R5. Focused tests enumerate all actual catalog models and verify independent roster ownership and thumbnails. Exact verification pending.
+
+## Release gate follow-through
+At 4bae888, 39 workflows passed, including G36, mobile Outfitter, and mounting. FAL/FNC mesh contracts passed but browser captures failed due to primary/secondary search selector ambiguity. Scope browser selectors to the exact primary search accessible name. Expand the historical AR tests from eight to nine actual references while retaining their geometry assertions. User explicitly directs movement issues to separate workstream; do not modify or weaken movement checks here. Dedicated catalog run cancelled externally; rerun on updated candidate.

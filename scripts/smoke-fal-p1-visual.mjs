@@ -72,7 +72,7 @@ try{
   // Render the three NEW real factory models in the shipped Arsenal, not
   // a synthetic lab-only builder; retain a review capture for each.
   await page.goto(origin+'/arsenal.html',{waitUntil:'domcontentloaded'});
-  await page.locator('.arsenal-search').fill('FAL');
+  await page.getByRole('searchbox',{name:'Find weapon model',exact:true}).fill('FAL');
   const variants=[
    ['FN FAL 50.00 · Wood','wood-5000'],
    ['FN FAL 50.61 Para','para-5061'],
