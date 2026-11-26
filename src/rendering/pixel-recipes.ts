@@ -8,10 +8,11 @@ export type PixelSurface =
  'painted-metal'|'industrial-steel'|'corrugated-metal'|'enamel-metal'|
  'scruffy-grass'|'worn-asphalt'|'packed-earth'|
  'woven-fabric'|'molded-plastic'|'tire-rubber';
-export const OPERATOR_REFERENCE_HEIGHT=40;
-export const TEXELS_PER_OPERATOR=40;
+import {ART_PIXEL,ART_OPERATOR_HEIGHT,ART_TILE_SIZE} from './material-art-scale.ts';
+export const OPERATOR_REFERENCE_HEIGHT=ART_OPERATOR_HEIGHT;
+export const TEXELS_PER_OPERATOR=ART_OPERATOR_HEIGHT/ART_PIXEL;
 export const PIXEL_WORLD_SIZE=OPERATOR_REFERENCE_HEIGHT/TEXELS_PER_OPERATOR;
-export const TILE_PIXELS=32;
+export const TILE_PIXELS=ART_TILE_SIZE;
 export const TILE_WORLD_SIZE=TILE_PIXELS*PIXEL_WORLD_SIZE;
 export const PIXEL_SURFACES:readonly PixelSurface[]=[
  'wood','plaster','brick','concrete','tile','carpet','metal',
