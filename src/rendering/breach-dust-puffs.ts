@@ -68,7 +68,7 @@ export class DustPuffBatch{
      vec2 axis=normalize(offset+vec2(.0001));
      vec2 across=vec2(-axis.y,axis.x);
      vec2 q=vec2(dot(p,axis),dot(p,across));
-     float body=1.0-smoothstep(.73,.81,length(q));
+     float body=1.0-smoothstep(.66,.74,length(q));
      float lobe=1.0-smoothstep(.46,.54,length(q-vec2(.36,.15)));
      float density=max(body,lobe*.88);
      float alpha=density*vAlphaOffset.x;
