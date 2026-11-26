@@ -4,7 +4,7 @@ import {bloodMarkRadius,bloodMarkTint} from './breach-blood-evidence.ts';
 import {damageRadius,damageTint} from './rendering/breach-stain-atlas.ts';
 import {isIntermediateMaterialCue,MAX_MATERIAL_CUES} from './breach-material-cues.ts';
 import {sampleBloodBurst,BLOOD_BURST_COUNT} from './rendering/breach-blood-burst.ts';
-import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose,isGroundImpactMark,type SurfaceMarkPose} from './breach-impact-surface.ts';
+import {wallMarkPose,doorMarkLocalPose,coverMarkLocalPose,windowMarkPose,isGroundImpactMark,surfaceMarkFacesCamera,type SurfaceMarkPose} from './breach-impact-surface.ts';
 import {hostileNpcTransitionKey,hostileCustodyWalkBlend}
  from './breach-hostile-pose-transition.ts';
 import {rebuildFrameIdIndex} from './breach-frame-lookup.ts';
@@ -3368,7 +3368,7 @@ export class TacticalScene3D{
           const vx=orthoBlood?this.bloodCameraDirection.x:bloodCamera.x-attached.x;
           const vy=orthoBlood?this.bloodCameraDirection.y:bloodCamera.y-attached.y;
           const vz=orthoBlood?this.bloodCameraDirection.z:bloodCamera.z-attached.z;
-          if(vx*attached.nx+vy*attached.ny+vz*attached.nz<=0)continue;
+          if(!surfaceMarkFacesCamera(mark.surface,ref,vx*attached.nx+vy*attached.ny+vz*attached.nz))continue;
         }
         if(orthoBlood?groundMarkOccludedFromCamera(markPoint,this.bloodCameraDirection,s.site?.walls??WALLS,WALL_VISUAL_HEIGHT,y):
           groundMarkHiddenByWallFromCamera(markPoint,bloodCamera,s.site?.walls??WALLS,WALL_VISUAL_HEIGHT,y))continue;
