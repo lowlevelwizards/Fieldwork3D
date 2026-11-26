@@ -14,7 +14,7 @@ import {treatmentSupplyForWound,treatmentDuration}
 import {stabilizeWound} from './breach-medical-wounds.ts';
 import {dropCivilianCustody,takeCivilianCustody,proposedCivilianTransportStep}
  from './breach-civilian-transport.ts';
-import {captureTargetTransportEligible,designatedDownedCaptureTarget}
+import {captureTargetTransportEligible}
  from './breach-capture-transport-policy.ts';
 import {captureVitalStatus} from './breach-capture-vitals.ts';
 
@@ -164,7 +164,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
   if(n.kind==='treat'){
     const patient=s.operators.find(o=>o.id===n.patientId&&
       (o.side===a.side||a.side==='blue'&&
-        designatedDownedCaptureTarget(s,o)));
+        o.side==='red'&&o.health<=0));
     const hostile=!!patient&&patient.side!==a.side;
     const wound=patient?.medical.wounds.find(w=>w.id===n.woundId);
     if(!patient||!wound||wound.stabilized||wound.bleeding<=0||
