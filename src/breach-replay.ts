@@ -604,6 +604,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       lastCivilianContactAt:copy.lastCivilianContactAt??-100,
       // Historical frames without a mode cannot inherit the future one.
       transportMode:copy.transportMode??null,
+      transportLatched:copy.transportLatched??false,
+      downWeaponsReleased:copy.downWeaponsReleased??false,
       downedAt:copy.downedAt??null,deathAt:copy.deathAt??null,
       lastDownById:copy.lastDownById??null,
       lastSurrenderAt:copy.lastSurrenderAt,
