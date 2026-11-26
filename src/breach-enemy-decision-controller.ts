@@ -44,6 +44,7 @@ import {sweptBodyClear} from './breach-navigation.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
 import {aiSiteIndex,connectedAreaCenters} from './breach-ai-site-index.ts';
 import {clearNpcSearch,clearNpcCoordination,commitNpcWithdrawal,canAcceptNpcAssignment} from './breach-ai-task-state.ts';
+import {recentlyChecked,rememberChecked} from './breach-ai-search-memory.ts';
 
 /** The authoritative simulation owns the motor, shot/geometry, visibility and
  * event ports. The AI owns observation response, tactical commitments and
@@ -628,13 +629,24 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       if(s.seconds<a.searchPauseUntil){
         a.velocity=0;rotate(a,angle(a.p,a.contact),dt,s);return;
       }
+      const checked=a.checkedSearchAreas??(a.checkedSearchAreas=[]);
+      if(rememberChecked(checked,a.p,s.seconds,a.suspicion.lastEvidenceAt,'personal')&&
+         a.encounterGroupId&&s.seconds-(a.lastSearchReportAt??-100)>2&&
+         enemies(s).some(peer=>peer!==a&&activeCombatant(peer)&&peer.encounterGroupId===a.encounterGroupId)){
+        s.reports.push({id:s.nextReportId++,senderId:a.id,at:s.seconds,
+          origin:clone(a.p),estimate:clone(a.p),uncertainty:8,deliveredTo:[],kind:'area-checked'});
+        if(s.reports.length>16)s.reports.shift();
+        a.lastSearchReportAt=s.seconds;
+      }
       if(!electiveAiWork(s,a,'search-expand')){
         a.velocity=0;return;
       }
       let next:Pt|null=null,nextRoute:Pt[]=[],checks=0;
       while(a.searchQueue.length&&!next&&checks++<2){
         const candidate=a.searchQueue[0];
-        if(d(candidate,a.p)<24){a.searchQueue.shift();continue;}
+        if(d(candidate,a.p)<24||recentlyChecked(checked,candidate,s.seconds,a.suspicion.lastEvidenceAt)){
+          a.searchQueue.shift();continue;
+        }
         const result=probeInvestigation(s,a,candidate,'expand');
         if(result.kind==='pending'){a.velocity=0;return;}
         a.searchQueue.shift();
@@ -684,8 +696,14 @@ function distributeReports(s:Session){
      s.doors,world.walls,s.seconds);
    if(!observation)continue;
    report.deliveredTo.push(recipient.id);
-   newlyInformed.push(recipient.id);
    addObservation(recipient.awareness,observation);
+   if(report.kind==='area-checked'){
+    if(observation.uncertainty<=30&&report.at>=recipient.suspicion.lastEvidenceAt)
+      rememberChecked(recipient.checkedSearchAreas??(recipient.checkedSearchAreas=[]),
+        observation.estimate,report.at,recipient.suspicion.lastEvidenceAt,'report');
+    continue;
+   }
+   newlyInformed.push(recipient.id);
    observeSuspicion(recipient.suspicion,{
      id:observation.id,at:s.seconds,kind:'report',
      cause:'heard-verbal-warning'

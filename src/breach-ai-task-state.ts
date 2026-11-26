@@ -23,4 +23,5 @@ export function clearNpcTasks(a:TeamActor):void{
  clearNpcSearch(a);clearNpcCoordination(a);
  a.contact=null;a.heard=null;a.contacted=false;a.watch=null;
  a.retreatPoint=null;a.defense=null;a.nav=[];a.alert='idle';
+ a.checkedSearchAreas=[];a.lastSearchReportAt=undefined;
 }

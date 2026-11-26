@@ -193,3 +193,33 @@ test('EA11 a recorded report causes a bounded presentation-only gesture; older f
  const legacy=snapshot(s);for(const f of legacy.actors)delete f.lastReportAt;
  applyReplayFrame(s,legacy);assert.equal(hostilePhysicalityAt(a,3.4).headPitch,0);
 });
+
+import {rememberChecked,recentlyChecked} from '../src/breach-ai-search-memory.ts';
+import {reportToListener} from '../src/breach-communication.ts';
+test('EA7 inspected-area memory is finite, expires, and yields to fresh evidence',()=>{
+ const checked=[];
+ assert.ok(rememberChecked(checked,point(10,10),2,1,'personal'));
+ assert.equal(rememberChecked(checked,point(12,12),3,1,'report'),false);
+ assert.equal(recentlyChecked(checked,point(12,12),3,1),true);
+ assert.equal(recentlyChecked(checked,point(12,12),4,3),false);
+ assert.equal(recentlyChecked(checked,point(12,12),30,1),false);
+ for(let i=0;i<30;i++)rememberChecked(checked,point(100+i*30,0),10+i,1,'personal');
+ assert.equal(checked.length,16);
+});
+test('EA7 received area-clear report records an inspection without creating a threat task',()=>{
+ const s=newSession(),sender=enemies(s)[0];s.seconds=10;sender.encounterGroupId='shared';
+ const recipient={...sender,id:'checked-peer',surrendered:false,health:2,awareness:newAwareness(),
+  suspicion:structuredClone(sender.suspicion),contact:null,alert:'idle',intent:null,
+  coordinationRole:null,coordinationUntil:0,checkedSearchAreas:[]};
+ const report={id:901,senderId:sender.id,at:10,origin:{...sender.p},estimate:{...sender.p},
+  uncertainty:8,deliveredTo:[],kind:'area-checked'};
+ s.reports=[report];
+ const controller=createEnemyDecisionController({
+  approach:()=>{},cachedEnemyRoute:()=>[],requestClearFireStep:()=>false,
+  inSight:()=>false,enemies:()=>[sender,recipient],hear:()=>{},notify:()=>{},battleEvent:()=>{}
+ });
+ controller.distributeReports(s);
+ assert.equal(recipient.awareness.observations[0].kind,'area-checked');
+ assert.equal(recipient.checkedSearchAreas.length,1);assert.equal(recipient.contact,null);
+ assert.equal(recipient.coordinationRole,null);assert.equal(recipient.alert,'idle');
+});

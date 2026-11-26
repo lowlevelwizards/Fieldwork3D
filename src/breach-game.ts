@@ -201,6 +201,9 @@ export type TeamActor=Operator & {
   withdrawRetryAt?:number;
   lastMoraleEventAt:number;
   searchOrigin:Pt|null;searchQueue:Pt[];searchPauseUntil:number;
+  checkedSearchAreas?:import('./breach-ai-search-memory.ts').CheckedArea[];
+  lastSearchReportAt?:number;
+  witnessedCasualtyTimes?:Record<string,number>;
   plan:PlanNode[];history:PlanHistory;nav:Pt[];activeNode:number;
   posture:Posture;pace:'walk'|'run';alert:Alert;velocity:number;turning:number;
   aim: number;targetId:string|null;suppression:number;stamina:number;
