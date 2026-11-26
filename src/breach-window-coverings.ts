@@ -23,9 +23,9 @@ export function normalizeWindowCovering(w:Pick<WindowOpening,'covering'|'treatme
 export type CoveringPiece={x:number;y:number;z:number;w:number;h:number;d:number;
  role:'body'|'fold'|'hardware';yaw?:number};
 /** X follows aperture; Y is height; signed Z selects face. Not a collision mesh. */
-export function windowCoveringPieces(w:WindowOpening,c:WindowCovering):CoveringPiece[]{
+export function windowCoveringPieces(w:WindowOpening,c:WindowCovering,opening:number=c.opening,tilt:number=Number(!!c.tilted)):CoveringPiece[]{
  const width=Math.max(1,w.width-4),bottom=w.sillHeight??14,top=w.headHeight??windowVisualHeadHeight(w.style);
- const h=top-bottom,y=bottom+h/2,z=c.side*8,shut=1-c.opening,p:CoveringPiece[]=[];
+ const h=top-bottom,y=bottom+h/2,z=c.side*8,shut=1-Math.max(0,Math.min(1,opening)),p:CoveringPiece[]=[];
  if(!Number.isFinite(width)||!Number.isFinite(h)||h<=0||c.integrity===0)return p;
  const add=(x:number,yy:number,zz:number,ww:number,hh:number,dd:number,role:CoveringPiece['role']='body',yaw?:number)=>{
   if(ww>0&&hh>0&&dd>0)p.push({x,y:yy,z:zz,w:ww,h:hh,d:dd,role,...(yaw===undefined?{}:{yaw})});
@@ -45,14 +45,13 @@ export function windowCoveringPieces(w:WindowOpening,c:WindowCovering):CoveringP
   rail(0,top+1,width+1,2.8,3.8);
   const span=Math.max(width*.12,width*shut),pitch=span/8,slat=width/8;
   for(let i=0;i<8;i++)add(-width/2+pitch*(i+.5),y,z,slat*.94,h-1,1.1,i%2?'fold':'body',
-   Math.max(c.tilted?Math.PI*.42:0,Math.acos(Math.min(1,pitch/slat)))); // compressed stack turns edge-on
+   Math.max(tilt*Math.PI*.42,Math.acos(Math.min(1,pitch/slat)))); // compressed stack turns edge-on
   break;
  }
  case 'horizontal-blind':{
   rail(0,top+1,width+1,2.7,3.8);
   const span=Math.max(h*.1,h*shut),pitch=span/7;
-  if(c.opening===1){add(0,top-span/2,z,width,span,3);break;}
-  for(let i=0;i<7;i++)add(0,top-pitch*(i+.5),z,width,pitch*(c.tilted?.35:.88),c.tilted?3:1.5,i%2?'fold':'body');
+  for(let i=0;i<7;i++)add(0,top-pitch*(i+.5),z,width,pitch*(.88-.53*tilt),1.5+1.5*tilt,i%2?'fold':'body');
   rail(0,top-span,width,1.1,3);break;
  }
  case 'roller-shade':{
@@ -60,7 +59,7 @@ export function windowCoveringPieces(w:WindowOpening,c:WindowCovering):CoveringP
   const span=h*shut;if(span>0){add(0,top-span/2,z,width,span,1.4);rail(0,top-span,width,1.6,2.5);}break;
  }
  case 'hinged-shutter':{
-  const leaf=width/2,angle=c.opening*Math.PI*.92;
+  const leaf=width/2,angle=opening*Math.PI*.92;
   for(const side of [-1,1]){
    const hinge=side*width/2,dir=-side,yaw=-dir*c.side*angle;
    const x=hinge+dir*leaf/2*Math.cos(angle),zz=z+c.side*leaf/2*Math.sin(angle);

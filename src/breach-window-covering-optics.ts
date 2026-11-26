@@ -61,7 +61,7 @@ export function windowCoveringSightSegments(s:Session,low=false):readonly Segmen
 /** Conservative receiver-light projection: any opaque part can stop a
  * height-spanning flash or point-light sphere. Shared cached geometry. */
 export function windowCoveringTransientSegments(s:Session):readonly Segment[]{return sessionCoveringOptics(s).all;}
-/** WC4 callers must also synchronize the visual group before exposing actions. */
+/** Immutable atomic state replacement; visual sampling remains independent. */
 export function setSessionWindowCovering(s:Session,id:string,covering:WindowCovering):boolean{
  const w=s.windows.find(w=>w.id===id);if(!w)return false;
  const next=normalizeWindowCovering({covering});

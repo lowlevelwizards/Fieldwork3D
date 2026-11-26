@@ -332,7 +332,7 @@ function architecture(){
       const personal=replaying&&replayKnowledge.observerId;
       const observed=personal?replayKnowledge.windowHistory?.at(replayPlayback.time,personal,opening.id):null;
       const covering=personal?observed?.covering:
-        windowCoveringPresentationKnown(state,opening,replaying&&replayKnowledge.omniscient)?opening.covering:undefined;
+        windowCoveringPresentationKnown(state,opening,replaying&&replayKnowledge.omniscient)?state.windows.find(w=>w.id===opening.id)?.covering:undefined;
       if(covering)for(const strip of windowCoveringOpticalStrips(opening,covering))
         line(strip.edge.a,strip.edge.b,'#b4a38d',3);
       const dx=pane.b.x-pane.a.x,dy=pane.b.y-pane.a.y;

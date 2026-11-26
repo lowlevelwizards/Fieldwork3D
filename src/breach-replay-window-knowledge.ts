@@ -19,7 +19,9 @@ export class ReplayWindowObservationRecorder {
   capture(s:Session,
     canObserve:(s:Session,actor:TeamActor,window:WindowState)=>boolean=
       (session,actor,window)=>
-        observerPointVisible(session,actor,{x:window.x,y:window.y})
+        observerPointVisible(session,actor,{x:window.x,y:window.y})||
+        (actor.physicalContact?.intent==='covering'&&actor.physicalContact.anchor.id==='covering:'+window.id&&
+          (actor.physicalContact.releasedAt===null||session.seconds-actor.physicalContact.releasedAt<.3))
   ):void{
     if(!Number.isFinite(s.seconds)||s.seconds<0||
       s.seconds<this.lastSampleAt+.12)return;
