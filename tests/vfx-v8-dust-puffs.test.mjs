@@ -34,3 +34,16 @@ test('V10 paused puffs skip uploads but rewind and compaction rewrite',()=>{
  samplePuff('dust',1,0,.1,3,4,5,p);assert.equal(frame(),first+2);
  b.reset();assert.equal(frame(),first+3);b.dispose();
 });
+
+test('V21 graphic puffs keep smaller scale, crisp feather and original budget',()=>{
+ const sizes={dust:13,wood:11,stone:13,flash:19,muzzle:8.5,collapse:18};
+ for(const [kind,size] of Object.entries(sizes)){
+  const p=scratch();assert.ok(samplePuff(kind,1,0,0,0,10,0,p));
+  assert.ok(Math.abs(p.size-size*.72*.88)<1e-9);
+ }
+ const b=new DustPuffBatch(),shader=b.mesh.material.fragmentShader;
+ assert.match(shader,/smoothstep\(\.66,\.74,length\(q\)\)/);
+ assert.match(shader,/smoothstep\(\.46,\.54,length\(q-vec2\(\.36,\.15\)\)\)/);
+ assert.match(shader,/float alpha=density\*vAlphaOffset\.x/);
+ assert.equal(PUFF_LIMIT,64);b.dispose();
+});
