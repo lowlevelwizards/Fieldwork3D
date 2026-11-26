@@ -18,7 +18,6 @@ const rules:Record<string,{kind:WearKind;source:ActivitySource;max:number}>={
  rack:{kind:'dust',source:'storage-dust',max:16},
 };
 export function planActivityWear(site:Site):WearMark[]{
- const rng=seeded(site.seed^0x9be715ad);
  const condition=site.condition??'occupied';
  const continuous=site.conditionLevel!==undefined,t=effectiveCondition(site)/100;
  if(continuous&&t<.04)return [];
@@ -30,6 +29,7 @@ export function planActivityWear(site:Site):WearMark[]{
   if(result.length>=budget)break;
   if(!item.fixture||item.destroyed||item.toppled)continue;
   const rule=rules[item.fixture];if(!rule)continue;
+  const rng=seeded(site.seed^0x9be715ad^Math.imul(i+1,7919));
   const room=site.rooms.find(r=>item.x>=r.x&&item.x<=r.x+r.w&&
     item.y>=r.y&&item.y<=r.y+r.h);
   if(!room)continue;
