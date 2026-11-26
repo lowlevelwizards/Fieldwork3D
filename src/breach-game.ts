@@ -85,6 +85,7 @@ import {relocateCover,canRelocateCover} from './breach-movable-cover.ts';
 
 
 import type {WindowState} from './breach-windows.ts';
+import {nearestBashableWindow} from './breach-window-bash.ts';
 import {type AIIntent} from './breach-ai-policy.ts';
 
 import {sessionWorldGeometry,publishSessionCoverToActiveSite} from './breach-world-context.ts';
@@ -533,7 +534,7 @@ function knownPortalGesture(s:Session,from:Pt,to:Pt,blocked:Pt):boolean{
  * Using the selected waypoint's world position avoids context buttons that
  * appear available but target the unrelated final route endpoint. */
 export function planNearbyInteraction(s:Session,id:string,
- action:'push'|'open-window'|'close-window',afterNodeId?:number,
+ action:'push'|'open-window'|'close-window'|'break-window',afterNodeId?:number,
  pushPoint?:Pt):boolean{
  const a=party(s,id);if(!a||!canEdit(s))return false;
  const insertion=afterNodeId===undefined?-1:
@@ -579,6 +580,10 @@ export function planNearbyInteraction(s:Session,id:string,
    const yaw=base+clamp(delta,-Math.PI*4/9,Math.PI*4/9);
    return queue('prop:'+coverTargetToken(item.o,item.index),
       {x:Math.cos(yaw),y:Math.sin(yaw)});
+ }
+ if(action==='break-window'){
+  const window=nearestBashableWindow(s,at,p=>liveVisibility(s,p));
+  return !!window&&queue('window:'+window.id);
  }
  let target:typeof s.windows[number]|undefined,bestWindow=54*54;
  for(const w of s.windows){
