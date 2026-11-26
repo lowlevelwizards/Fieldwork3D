@@ -297,7 +297,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     r.skinMaterial:sleeveMaterial;
   }
   for(const leg of r.feet){
-   const hem=p.wardrobe?.trouserHem??'bloused';
+   const hem=['jeans','civilian-cargo','track-pants'].includes(clothing.trousers)?'unbloused':p.wardrobe?.trouserHem??'bloused';
    const shortHem=hem==='bloused'||hem==='cuffed';
    setSegmentCut(leg.lower,clothing.trousers==='base-shorts'||hem==='unbloused'?'full':hem);
    const shaft=leg.lower.userData.garmentBootShaft as THREE.Mesh|undefined;
@@ -380,7 +380,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     else if(channel==='top'&&isCasualShirtCut(clothing.top)){
      const defaults={
       't-shirt':'charcoal','button-up-shirt':'khaki',
-      'polo-shirt':'navy','tank-top':'olive-drab'
+      'polo-shirt':'navy','tank-top':'olive-drab','hoodie':'charcoal','casual-jacket':'slate'
      } as const;
      r.colors.set(material,new THREE.Color(garmentSolidHex(defaults[clothing.top])));
     }

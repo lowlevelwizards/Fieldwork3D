@@ -191,3 +191,17 @@ test('EB13 generated group kit is deterministic, actual and independent of role'
   }
  }
 });
+
+import {wardrobeItem,readWardrobe} from '../src/operator-wardrobe-data.ts';
+import {selectWardrobeItem} from '../src/operator-wardrobe-unified.ts';
+import {initialEquipmentLoadout} from '../src/equipment-loadouts.ts';
+import {initialWardrobe} from '../src/operator-wardrobe-data.ts';
+test('EB14 civilian wardrobe selections survive save and actual loadout resolution',()=>{
+ let kit=initialEquipmentLoadout(),wardrobe=initialWardrobe();
+ for(const [slot,id] of [['top','hoodie'],['trousers','jeans'],['footwear','sneakers']]){
+  assert.ok(wardrobeItem(slot,id));
+  const next=selectWardrobeItem(kit,wardrobe,slot,id);kit=next.kit;wardrobe=next.wardrobe;
+  assert.equal(resolvedWardrobe(readWardrobe(JSON.parse(JSON.stringify(wardrobe))),kit)[slot],id);
+ }
+ assert.equal(kit.slots.top,'top-light');assert.equal(kit.slots.legs,'legs-light');assert.equal(kit.slots.feet,'feet-light');
+});

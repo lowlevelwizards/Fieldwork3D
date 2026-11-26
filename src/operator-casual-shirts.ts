@@ -7,7 +7,7 @@ import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import type {SleeveState} from './operator-wardrobe-data.ts';
 
-export const CASUAL_SHIRT_CUTS=['t-shirt','button-up-shirt','polo-shirt','tank-top'] as const;
+export const CASUAL_SHIRT_CUTS=['t-shirt','button-up-shirt','polo-shirt','tank-top','hoodie','casual-jacket'] as const;
 export type CasualShirtCut=typeof CASUAL_SHIRT_CUTS[number];
 export const isCasualShirtCut=(id:string):id is CasualShirtCut=>
  (CASUAL_SHIRT_CUTS as readonly string[]).includes(id);
@@ -52,6 +52,13 @@ export function createCasualShirts(chest:THREE.Group,arms:readonly Arm[],
    for(const y of [4.16,5.01])
     block(torso,trim,5.57,y,0,.23,.38,.40)
      .name='polo:button';
+  }else if(cut==='hoodie'){
+   // A single chunky folded hood, one front pouch. No tiny cords.
+   block(torso,cloth,-4.7,5.7,0,2.5,2.1,7.0).name='hoodie:folded-hood';
+   block(torso,cloth,5.32,-3.2,0,.52,2.9,8.3).name='hoodie:pouch';
+  }else if(cut==='casual-jacket'){
+   block(torso,cloth,0,6.0,0,10.3,1.0,8.0).name='jacket:stand-collar';
+   block(torso,trim,5.29,0,0,.32,10.8,.52).name='jacket:zip';
   }else if(button){
    // Exaggerated, recognizable shirt features; all share the existing
    // torso textile and never add another box-sized jacket shell.
@@ -89,6 +96,10 @@ export function createCasualShirts(chest:THREE.Group,arms:readonly Arm[],
      block(u,cloth,0,-.025,0,4.39,.095,4.51)
       .name='polo:sleeve-hem';
     }
+   }else if(cut==='hoodie'||cut==='casual-jacket'){
+    block(u,cloth,0,0,0,4.45,1.01,4.6).name=cut+':sleeve';
+    block(l,cloth,0,0,0,4.02,.98,4.13).name=cut+':forearm';
+    block(l,cloth,0,.39,0,4.16,.14,4.25).name=cut+':cuff';
    }else if(button){
     // A true tropical short sleeve, anchored to the animated upper arm;
     // unlike a rolled cuff it has one clean edge and a bare elbow.
@@ -121,8 +132,8 @@ export function updateCasualShirts(models:CasualShirts,top:string,sleeve:SleeveS
   const on=cut===top,m=models.cuts[cut],button=cut==='button-up-shirt';
   m.torso.visible=on;
   for(const g of m.upper)g.visible=on&&(cut==='t-shirt'||cut==='polo-shirt'||
-   (button&&sleeve==='short'));
-  for(const g of m.lower)g.visible=on&&button&&sleeve==='unrolled';
+   (button&&sleeve==='short')||cut==='hoodie'||cut==='casual-jacket');
+  for(const g of m.lower)g.visible=on&&(button&&sleeve==='unrolled'||cut==='hoodie'||cut==='casual-jacket');
   for(const g of m.cuffedLower)g.visible=on&&button&&sleeve==='cuffed';
   for(const g of m.rolledUpper)g.visible=on&&button&&sleeve==='rolled';
  }

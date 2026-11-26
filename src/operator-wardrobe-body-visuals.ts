@@ -36,8 +36,16 @@ export function createWardrobeBodyLayers(chest:THREE.Group,
  for(const item of wardrobeItemsForSlot('trousers')){
   legAccents[item.id]=legs.map(leg=>{
    const g=group(leg.upper);
-   if(item.id==='field-trousers')
-    part(g,trousersMaterial,0,.1,3.05,3.4,.35,1.7);
+   // Civilian cuts use the existing solid leg foundation, not a second
+   // military trouser shell. Only large silhouette-defining accents.
+   if(item.id==='civilian-cargo'){
+    part(g,trousersMaterial,2.65,-.05,0,.85,.48,3.1);
+    part(g,trousersMaterial,3.1,.17,0,.28,.14,3.25);
+   }else if(item.id==='jeans'){
+    part(g,trousersMaterial,2.4,-.34,0,.28,.26,2.6);
+   }else if(item.id==='track-pants'){
+    part(g,accent,2.44,0,0,.18,.92,.42);
+   }
    return g;
   });
  }
