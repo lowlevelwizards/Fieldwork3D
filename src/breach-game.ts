@@ -188,6 +188,7 @@ export type TeamActor=Operator & {
   lastTreatmentAt:number;lastTreatmentTargetId:string|null;
   treatmentActive:boolean;treatmentProgress:number;
   carryingId:string|null;carriedById:string|null;
+  transportLatched?:boolean;
   /** Physical downed-person drag/carry presentation, recorded for replay. */
   transportMode?:TransportMode|null;
   wedgeRemaining:number;restraintRemaining:number;
@@ -1375,6 +1376,20 @@ export function planCasualtyTransport(s:Session,id:string,patientId:string,
  return addNode(s,id,'evacuate',to,{patientId,transportMode:mode,
    transportPath:waypoints.map(p=>({...p}))});
 }
+/** Queue a physical pickup, without a destination. GO owns actual custody. */
+export function planCasualtyPickup(s:Session,id:string,patientId:string,
+ mode:TransportMode='drag'):boolean{
+ const a=party(s,id),subject=s.operators.find(o=>o.id===patientId),
+  civil=s.civilians.find(c=>c.id===patientId),patient=subject??civil;
+ if(!a||!patient||patient===a||!canEdit(s)||a.health<=0||a.carryingId||
+    a.plan.some(n=>n.kind==='evacuate')||patient.health>0||patient.carriedById||
+    subject&&captureVitalStatus(subject)==='deceased'||
+    subject&&subject.side!==a.side&&!liveVisibility(s,subject.p)||
+    civil&&!liveVisibility(s,civil.p))return false;
+ const at=finalPoint(a);
+ if(d(at,patient.p)>=34||!sweptBodyClear(at,patient.p,s.doors,5.5,sessionWorldGeometry(s)))return false;
+ return addNode(s,id,'evacuate',at,{patientId,transportMode:mode,transportPickup:true});
+}
 /** Authored emergency release supersedes only this patient's transport.
  * Other subsequent planned orders remain intact and the edit is undoable. */
 export function planCivilianRelease(s:Session,id:string):boolean{
@@ -1392,7 +1407,7 @@ export function planCaptureTransportRelease(s:Session,id:string):boolean{
   const a=party(s,id);
   const patient=s.operators.find(o=>o.id===a?.carryingId);
   if(!a||!patient||!canEdit(s)||
-     !designatedDownedCaptureTarget(s,patient)||
+     patient.health>0||
      patient.carriedById!==a.id)return false;
   return edit(s,a,()=>{
     a.plan=a.plan.filter(n=>n.kind!=='evacuate'||n.patientId!==patient.id);
@@ -1850,7 +1865,10 @@ const motorHooks:ActorMotorHooks={
 };
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1,
  profile?:((section:string,elapsedMs:number)=>void)){
- return advanceActorMotor(a,p,dt,s,motorHooks,speedScale,profile);
+ const patient=a.transportLatched&&a.carryingId?
+  s.operators.find(o=>o.id===a.carryingId)??s.civilians.find(c=>c.id===a.carryingId):null;
+ const scale=patient?Math.min(speedScale,patient.transportMode==='carry'?.38:.48):speedScale;
+ return advanceActorMotor(a,p,dt,s,motorHooks,scale,profile);
 }
 /** Authoritative 60 Hz session keeps the clock, gameplay side effects and
  * stable navigation/visibility services; order handlers own execution.
