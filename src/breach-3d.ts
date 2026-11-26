@@ -1,3 +1,4 @@
+import {windowCoveringSightSegments} from './breach-window-covering-optics.ts';
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {bloodMarkRadius,bloodMarkTint} from './breach-blood-evidence.ts';
@@ -552,7 +553,8 @@ export class TacticalScene3D{
         if(friendly.health<=0)continue;
         const world=sessionWorldGeometry(s);
         const polygon=visionPolygon(friendly.p,friendly.heading,sightRangeForSite(s.site),
-          world.walls,s.doors,friendly.posture==='crouch',world.cover);
+          world.walls,s.doors,friendly.posture==='crouch',world.cover,
+          windowCoveringSightSegments(s,friendly.posture==='crouch'));
         const projected:FocusPoint[]=[];
         for(const p of polygon){
           const xy=this.miniatureScreenPoint(camera,p.x,p.y,13);
@@ -2156,6 +2158,9 @@ export class TacticalScene3D{
       const seen=personalWindows&&replayDisclosurePolicy?.observerId?
         replayWindowHistory?.at(s.seconds,replayDisclosurePolicy.observerId,id):
         null;
+      // WC3 coverings are static until WC4; personal playback requires observation.
+      const covering=glass.parent?.getObjectByName('window-covering:'+id);
+      if(covering)covering.visible=!personalWindows||!!seen?.covering;
       const broken=personalWindows?!!seen?.shattered:!!current?.shattered;
       const opened=personalWindows?!!seen?.open:!!current?.open;
       glass.visible=!(broken||opened);
@@ -2782,7 +2787,7 @@ export class TacticalScene3D{
           this.beamBlockerRevision!==s.objectRevision||
           this.beamBlockerSignature!==signature){
         const geometry=sessionWorldGeometry(s);
-        this.beamBlockers=lightBeamBlockers(geometry.walls,s.doors,s.coverState);
+        this.beamBlockers=lightBeamBlockers(geometry.walls,s.doors,s.coverState,windowCoveringSightSegments(s));
         this.beamBlockerSignature=signature;
         // Same-tick replay/door updates must not reuse stale actor polygons.
         for(const visible of this.actors.values())visible.beamLast=null;

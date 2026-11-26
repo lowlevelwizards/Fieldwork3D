@@ -1,3 +1,4 @@
+import {normalizeWindowCovering} from './breach-window-coverings.ts';
 import {sessionWorldGeometry,invalidateSessionWorldGeometry,publishSessionCoverToActiveSite} from './breach-world-context.ts';
 /** Build 090–091: deterministic mission film, independent of the live motor.
  * We capture authoritative simulation outcomes at 20 Hz and never re-simulate
@@ -703,7 +704,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   s.sitePower=f.sitePower?copySitePowerState(f.sitePower):
    s.site?createSitePowerState(s.site,s.lightingMode):undefined;
   s.illuminationRevision=(s.illuminationRevision??0)+1;
-  s.windows=(f.windows??[]).map(w=>({...w}));
+  s.windows=(f.windows??[]).map(w=>({...w,...(w.covering?{covering:normalizeWindowCovering(w)}:{})}));
   if(f.coverState){
     s.coverState.splice(0,s.coverState.length,
       ...withCoverPropIds(f.coverState).map(c=>({...c})));

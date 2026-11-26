@@ -1,3 +1,4 @@
+import {windowCoveringSightSegments} from './breach-window-covering-optics.ts';
 /** One low-resolution, softly filtered fog mask shared by 2D and 3D.
  * The fog presentation never changes detection or player intelligence. */
 import {W,H,WALLS,COVER,type Pt} from './breach-core.ts';
@@ -176,8 +177,8 @@ export function paintFogVisibility(ctx:CanvasRenderingContext2D,s:Session){
   const cover=world?.cover??s.site?.cover??COVER;
   for(const a of team(s)){
     if(a.health<=0)continue;
-    const poly=visionPolygon(a.p,a.heading,range,walls,s.doors,
-      a.posture==='crouch'||effectiveEyeHeight(a)<25,cover);
+    const low=a.posture==='crouch'||effectiveEyeHeight(a)<25;
+    const poly=visionPolygon(a.p,a.heading,range,walls,s.doors,low,cover,windowCoveringSightSegments(s,low));
     if(poly.length<3)continue;
     if(canGrade&&range>NEAR_FINE_SIGHT_RANGE){
       // Fixed *presentation* distance, rather than stretching the gradient

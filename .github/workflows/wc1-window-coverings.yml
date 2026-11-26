@@ -1,11 +1,13 @@
-name: WC1 window coverings critical checks
+name: WC1–WC3 window coverings critical checks
 on:
   pull_request:
     paths:
       - 'src/breach-window-coverings.ts'
       - 'src/rendering/window-covering-visual.ts'
       - 'src/asset-lab-main.ts'
-      - 'tests/wc1-window-coverings.test.mjs'
+      - 'tests/wc*.test.mjs'
+      - 'src/breach-window-covering-optics.ts'
+      - 'src/worldgen/window-covering-placement.ts'
       - '.github/workflows/wc1-window-coverings.yml'
   workflow_dispatch:
 permissions:
@@ -20,5 +22,5 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - run: node --experimental-strip-types --test tests/wc1-window-coverings.test.mjs tests/map-14-window-security.test.mjs tests/map-11-window-styles.test.mjs tests/asset-lab-preview-alignment.test.mjs
+      - run: node --experimental-strip-types --test tests/wc1-window-coverings.test.mjs tests/wc2-window-covering-placement.test.mjs tests/wc3-window-covering-optics.test.mjs tests/map-14-window-security.test.mjs tests/map-11-window-styles.test.mjs tests/asset-lab-preview-alignment.test.mjs
       - run: npm run check

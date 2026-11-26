@@ -28,8 +28,8 @@ test('stable contextual placement, privacy bias, independent pane geometry',()=>
 test('boarding remains idempotent on neglected sites',()=>{
  let boarded=0;
  for(let seed=0;seed<100;seed++){
-  const a=dressWindowSecurity({...site,condition:'vacant'},seed);
-  assert.deepEqual(a,dressWindowSecurity(a,seed));
+  const a=dressWindowSecurity({...site,condition:'vacant'},seed*9973);
+  assert.deepEqual(a,dressWindowSecurity(a,seed*9973));
   if(a.windows[0].treatment==='boarded'){boarded++;assert.equal(a.cover.length,1);assert.equal(a.windows[0].covering,undefined);}
  }
  assert.ok(boarded>0);

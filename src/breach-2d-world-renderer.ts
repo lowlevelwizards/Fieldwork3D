@@ -1,3 +1,4 @@
+import {windowCoveringSightSegments,windowCoveringOpticalStrips} from './breach-window-covering-optics.ts';
 /** Owns floor, architecture, physical light and decal drawing.
  * Only reads live or historically disclosed presentation state.
  */
@@ -328,6 +329,11 @@ function architecture(){
       const pane=windowApertureSegment(opening);
       line(pane.a,pane.b,'#1f4d51',8);
       line(pane.a,pane.b,'#8bb6af',4);
+      const personal=replaying&&replayKnowledge.observerId;
+      const observed=personal?replayKnowledge.windowHistory?.at(replayPlayback.time,personal,opening.id):null;
+      const covering=personal?observed?.covering:opening.covering;
+      if(covering)for(const strip of windowCoveringOpticalStrips(opening,covering))
+        line(strip.edge.a,strip.edge.b,'#b4a38d',3);
       const dx=pane.b.x-pane.a.x,dy=pane.b.y-pane.a.y;
       const length=Math.hypot(dx,dy)||1;
       const normal={x:-dy/length*3,y:dx/length*3};
@@ -446,7 +452,7 @@ function renderWeaponLights2D(){
  }
  if(cached.tick!==tick||cached.revision!==revision||
     cached.doorSignature!==doorSignature){
-  cached.blockers=lightBeamBlockers(world.walls,state.doors,state.coverState);
+  cached.blockers=lightBeamBlockers(world.walls,state.doors,state.coverState,windowCoveringSightSegments(state));
   cached.tick=tick;cached.revision=revision;
   cached.doorSignature=doorSignature;
   cached.history.clear();

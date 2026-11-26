@@ -1,3 +1,4 @@
+import {windowCoveringsBlockSight} from './breach-window-covering-optics.ts';
 import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
@@ -1732,6 +1733,7 @@ function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
   const ray={a,b};
   if(sessionWorldGeometry(s).staticWallBlocksRay(ray))return false;
   if(doorBlocksSightRay(s.doors,ray))return false;
+  if(windowCoveringsBlockSight(s,a,b,lowBlocks?22:32))return false;
   // The broadphase only excludes distant static obstacles; the final
   // slab and optical tests remain authoritative at any framerate.
   return !sessionWorldGeometry(s).someCoverAlongRay(a,b,o=>coverBlocksOpticalSight(o,lowBlocks)&&
@@ -1753,6 +1755,7 @@ export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
   // crouching and cover damage. Neither fog nor awareness is cached.
   return cache.get(a,b,s.seconds,
     s.objectRevision+'/'+sessionWorldGeometry(s).revision,s.doors,()=>
+      !windowCoveringsBlockSight(s,a.p,b.p,effectiveEyeHeight(a),effectiveAimHeight(b))&&
       !exposure(a.p,b.p,s.doors,
         b.posture==='crouch',a.posture==='crouch',true,
         sessionWorldGeometry(s).walls,sessionWorldGeometry(s).cover,

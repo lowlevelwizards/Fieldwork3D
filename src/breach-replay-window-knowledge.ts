@@ -1,3 +1,4 @@
+import {normalizeWindowCovering,type WindowCovering} from './breach-window-coverings.ts';
 /** Replay R4.3b: individual observed window states, not global replay
  * hindsight. A missing observation means unknown, NOT current world truth.
  * Sparse changes are captured only from live authoritative sight, never
@@ -9,7 +10,7 @@ import type {WindowState} from './breach-windows.ts';
 
 export type ReplayWindowObservation={
   at:number;observerId:string;windowId:string;
-  open:boolean;shattered:boolean;
+  open:boolean;shattered:boolean;covering?:WindowCovering;
 };
 export class ReplayWindowObservationRecorder {
   readonly observations:ReplayWindowObservation[]=[];
@@ -28,11 +29,12 @@ export class ReplayWindowObservationRecorder {
       for(const window of s.windows){
         if(!canObserve(s,observer,window))continue;
         const key=observer.id+'\u0000'+window.id;
-        const signature=String(+window.open)+':'+String(+window.shattered);
+        const covering=normalizeWindowCovering(window);
+        const signature=String(+window.open)+':'+String(+window.shattered)+':'+JSON.stringify(covering??null);
         if(this.previous.get(key)===signature)continue;
         this.previous.set(key,signature);
         this.observations.push({at:s.seconds,observerId:observer.id,
-          windowId:window.id,open:window.open,shattered:window.shattered});
+          windowId:window.id,open:window.open,shattered:window.shattered,...(covering?{covering}:{})});
       }
     }
   }
