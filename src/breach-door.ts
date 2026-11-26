@@ -389,8 +389,14 @@ export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[],
  world?:SessionWorldGeometry){
   // A severed latch cannot make a closed, secured door again. The panel
   // remains governed by the same real hinge/world/actor sweep.
-  if(d.latchBroken){d.locked=false;d.open=true;
-    d.pushTarget=Math.max(1,d.pushTarget??1);}
+  if(d.latchBroken){
+    // A damaged latch cannot secure the opening, but the free leaf can
+    // physically swing back. Only an actual reverse body push sets this
+    // positive sub-normal target; stale CLOSE still restores normal open.
+    const reverse=d.open&&!d.locked&&(d.pushTarget??1)>=.08;
+    d.locked=false;d.open=true;
+    d.pushTarget=reverse?d.pushTarget??1:Math.max(1,d.pushTarget??1);
+   }
   else if(d.wedged)d.open=false;
   // Fixed internal substeps prevent a paused or coarse test tick from
   // overshooting a hinge and keep old half-second door timings intact.
@@ -408,9 +414,11 @@ export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[],
       (target-current)*64-v*12;
     const velocity=Math.max(-4.5,Math.min(kicked?15:5.5,
       v+acceleration*h));
-    const next=Math.max(0,Math.min(d.open?target:PUSHED_OPEN_LIMIT,current+velocity*h));
+    const reverse=d.open&&target<current;
+    const next=reverse?Math.max(target,Math.min(PUSHED_OPEN_LIMIT,current+velocity*h)):
+      Math.max(0,Math.min(d.open?target:PUSHED_OPEN_LIMIT,current+velocity*h));
     const blocked=Math.abs(next-current)>.0001&&
-      (d.open?next>.12:next<current)&&doorSwingBlocked(d,next,
+      (d.open?reverse||next>.12:next<current)&&doorSwingBlocked(d,next,
         // Use the SAME full operator capsule as movement. A reduced hinge
         // radius previously let the moving leaf rotate inside operators,
         // leaving them overlapping an otherwise solid collision panel.
@@ -418,7 +426,7 @@ export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[],
         // touched/overlapping body, but never deeper into its capsule.
         actors,OPERATOR_RADIUS,world);
     d.openFraction=blocked?current:next;
-    d.angularVelocity=blocked||next===0||(d.open&&next>=target)?0:velocity;
+    d.angularVelocity=blocked||next===0||(d.open&&(reverse?next<=target:next>=target))?0:velocity;
     if(blocked||next>=.98)d.kickImpulse=0;
     if(!d.open&&next<=.02)d.pushTarget=1;
     remaining-=h;
@@ -476,7 +484,7 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
       (policy.canHandAssist?.(door)??
        dist(from,handlePoint(door))<=DOOR_HAND_ACQUIRE_REACH);
     const closing=pressure<0&&!assist;
-    if(closing&&door.latchBroken)continue;
+    if(closing&&door.latchBroken&&(door.openFraction??0)<=.09)continue;
     if(crossing&&closing)continue;
     // Two friendlies can press opposite faces on consecutive motor ticks.
     // Refuse a *body-driven* CLOSE while another squad member is actively
@@ -518,8 +526,10 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
   if(contact.closing){
     // The opposite face can push the real leaf toward the frame.
     // Sustained pressure does not re-inject a new impulse every motor tick.
-    const alreadyClosing=!door.open&&(door.angularVelocity??0)<-1.2;
-    door.open=false;door.pushTarget=1;
+    const alreadyClosing=(!door.open||(door.pushTarget??1)<.1)&&(door.angularVelocity??0)<-1.2;
+    // A severed latch stays unsecured and slightly ajar, rather than
+    // snapping shut or refusing physical movement from the reverse face.
+    door.open=!!door.latchBroken;door.pushTarget=door.latchBroken?.09:1;
     if(!alreadyClosing)door.angularVelocity=Math.min(-.35,
       (door.angularVelocity??0)-(1.0+1.4*leverage));
   }else if(!alreadyOpening)pushDoor(door,1.3+2.1*leverage);
