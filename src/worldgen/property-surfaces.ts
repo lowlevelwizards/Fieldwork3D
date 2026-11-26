@@ -110,7 +110,14 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
      const reserved=reservedParkingBay(site,zone);
      if(reserved){
       const {x,y,bayWidth,short,side}=reserved;
-      if(broad){
+      if(reserved.transferCenter!==undefined&&reserved.transferWidth!==undefined){
+       const t=reserved.transferCenter,w=reserved.transferWidth;
+       if(broad){add(zone,'reserved-parking',x,y,bayWidth-4,short-6);
+        for(let n=-3;n<=3;n++)add(zone,'access-hatch',t+n*w/8,y,2,short-8);
+       }else{add(zone,'reserved-parking',x,y,short-6,bayWidth-4);
+        for(let n=-3;n<=3;n++)add(zone,'access-hatch',x,t+n*w/8,short-8,2);
+       }
+      }else if(broad){
        add(zone,'reserved-parking',x,y,bayWidth,short*.55);
        for(let n=-1;n<=1;n++)add(zone,'access-hatch',x+side*(bayWidth/2+5)+n*3.5,y,1.5,short*.48);
       }else{

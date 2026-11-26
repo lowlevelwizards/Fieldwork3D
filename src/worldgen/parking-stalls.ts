@@ -50,7 +50,7 @@ export function reservedParkingBay(
  site:Pick<Site,'entrySide'|'doors'|'entrance'>,
  zone:ExteriorZone
 ):{x:number;y:number;bayWidth:number;short:number;broad:boolean;
-   side:1|-1}|null{
+   side:1|-1;transferCenter?:number;transferWidth?:number}|null{
  if(zone.kind!=='parking')return null;
  const modern=zone.vehicleParking;
  if(modern){
@@ -59,11 +59,20 @@ export function reservedParkingBay(
   if(modern.role!=='public'||modern.mode!=='perpendicular'||modern.count<4)return null;
   const broad=modern.axis==='x',stride=modern.alongLength/modern.count;
   const lane=arrivalAccessLane(site,zone),transverse=broad?lane?.x:lane?.y;
-  const candidates=Array.from({length:modern.count},(_,i)=>modern.alongCenter+(i+.5-modern.count/2)*stride)
+  const centers=Array.from({length:modern.count},(_,i)=>modern.alongCenter+(i+.5-modern.count/2)*stride);
+  if(modern.version===1){
+   // Closest end of row to the pedestrian approach is a complete
+   // unoccupied transfer slot; the adjacent bay is reserved as well.
+   const low=Math.abs(centers[0]-(transverse??modern.alongCenter))<=Math.abs(centers.at(-1)!-(transverse??modern.alongCenter));
+   const transferCenter=low?centers[0]:centers.at(-1)!;
+   const pos=low?centers[1]:centers[centers.length-2];
+   return {x:broad?pos:modern.rowCenter,y:broad?modern.rowCenter:pos,bayWidth:stride,short:modern.rowDepth,broad,side:low?-1:1,transferCenter,transferWidth:stride};
+  }
+  const candidates=centers
    .filter(pos=>transverse===undefined||Math.abs(pos-transverse)>stride/2+22)
    .sort((a,b)=>Math.abs(a-(transverse??modern.alongCenter))-Math.abs(b-(transverse??modern.alongCenter)));
   const pos=candidates[0];if(pos===undefined)return null;
-  return {x:broad?pos:modern.rowCenter,y:broad?modern.rowCenter:pos,bayWidth:modern.version===1?stride:Math.min(42,stride*.65),short:modern.rowDepth,broad,side:pos<(transverse??modern.alongCenter)?1:-1};
+  return {x:broad?pos:modern.rowCenter,y:broad?modern.rowCenter:pos,bayWidth:Math.min(42,stride*.65),short:modern.rowDepth,broad,side:pos<(transverse??modern.alongCenter)?1:-1};
  }
  const broad=zone.w>=zone.h,slots=parkingStallCount(zone);
  const long=broad?zone.w:zone.h,short=broad?zone.h:zone.w;

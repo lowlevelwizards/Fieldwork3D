@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {proposeStreetInfrastructure} from '../src/worldgen/street-infrastructure.ts';
 import {proposeStreetParkingLayout} from '../src/worldgen/street-parking.ts';
-import {parkingStallCandidates} from '../src/worldgen/parking-stalls.ts';
+import {parkingStallCandidates,reservedParkingBay} from '../src/worldgen/parking-stalls.ts';
 import {STREET_DIMENSIONS as D} from '../src/worldgen/street-standards.ts';
 import {VEHICLE_DIMENSIONS} from '../src/worldgen/vehicle-catalog.ts';
 function site(side,depth,archetype='retail'){
@@ -10,7 +10,7 @@ function site(side,depth,archetype='retail'){
  const facade=sign===1?1150:450,entrance=horizontal?{x:800,y:facade}:{x:facade,y:800};
  const s={seed:4,archetype,entrySide:side,bounds,rooms,entrance,doors:[],cover:[],exteriorZones:[]};
  const p=proposeStreetInfrastructure(s,undefined,depth+20);
- const zone={id:'arrival-forecourt',kind:'parking',x:horizontal?800:facade+sign*(depth/2+7),y:horizontal?facade+sign*(depth/2+7):800,w:horizontal?680:depth,h:horizontal?depth:680};
+ const zone={id:'arrival-forecourt',kind:'parking',x:horizontal?800:facade+sign*(depth/2+7),y:horizontal?facade+sign*(depth/2+7):800,w:horizontal?720:depth,h:horizontal?depth:720};
  return [{...s,streetInfrastructure:p},zone];
 }
 test('dimension-driven parking has consistent fixed pitch, separate access and complete aisle',()=>{
@@ -27,4 +27,13 @@ test('dimension-driven parking has consistent fixed pitch, separate access and c
 });
 test('constrained lot is rejected instead of shrinking the circulation aisle',()=>{
  const [s,z]=site('south',90);assert.equal(proposeStreetParkingLayout(s,z),null);
+});
+
+test('accessible bay owns a complete adjacent transfer slot within the row',()=>{
+ const [s,z]=site('south',270),p=proposeStreetParkingLayout(s,z);
+ assert.ok(p&&p.count>=4);
+ const r=reservedParkingBay(s,{...z,vehicleParking:p});
+ assert.ok(r&&r.transferCenter!==undefined&&r.transferWidth===D.parking.width);
+ assert.equal(Math.abs(r.x-r.transferCenter),D.parking.width);
+ assert.ok(Math.abs(r.transferCenter-p.alongCenter)+r.transferWidth/2<=p.alongLength/2+.001);
 });

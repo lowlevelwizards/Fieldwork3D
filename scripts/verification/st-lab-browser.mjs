@@ -11,7 +11,7 @@ try{
   const page=await browser.newPage({viewport}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(url);await page.waitForFunction(()=>document.getElementById('diagnostics').textContent.includes('draws'));
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
-  for(const type of ['proposal','legacy']){
+  for(const type of ['proposal','pilot','legacy']){
    await page.locator('#layout').selectOption(type);
    for(const view of ['iso','top']){await page.locator('#view').selectOption(view);await page.screenshot({path:dir+'/'+viewport.width+'-'+type+'-'+view+'.png'});}
   }
