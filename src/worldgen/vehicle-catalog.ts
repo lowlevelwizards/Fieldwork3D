@@ -5,7 +5,8 @@ export const VEHICLE_DIMENSIONS:Readonly<Record<VehicleFamily,readonly [number,n
  sedan:[96,39,33],hatchback:[77,36,33],pickup:[110,43,39],
  suv:[101,43,42],van:[109,44,47],'light-truck':[128,48,59],
 };
-export const VEHICLE_PAINTS=[0xc5c3b8,0xa1a5a4,0x43494b,0x282d30,0xa4977d,0x77634b,0x657a8b,0x44596e,0x758575,0x77764f,0x9c514b,0xb7a064] as const;
+export const VEHICLE_PAINTS=[0xc5c3b8,0xa1a5a4,0x43494b,0x282d30,0xa4977d,0x77634b,0x657a8b,0x44596e,0x758575,0x77764f,0x9c514b,0xb7a064,0x648982,0x744b50,0xc1b77f,0xb08052] as const;
+export const VEHICLE_PAINT_NAMES=['White','Silver','Charcoal','Black','Beige','Brown','Faded blue','Navy','Sage','Olive','Faded red','Ochre','Faded teal','Maroon','Pale yellow','Dusty orange'] as const;
 export const VEHICLE_CONFIGURATIONS={
  sedan:['civilian','taxi','police','unmarked','fleet'],
  hatchback:['civilian','economy','municipal'],
@@ -19,11 +20,11 @@ export type VehicleRecipe=Readonly<{family:VehicleFamily;configuration:string;pa
 export function vehicleFamily(id:string):VehicleFamily|undefined{
  return id==='vehicle'?'sedan':VEHICLE_FAMILIES.find(f=>f===id);
 }
-export function vehicleRecipe(family:VehicleFamily,variant=0):VehicleRecipe{
+export function vehicleRecipe(family:VehicleFamily,variant=0,legacyPalette=false):VehicleRecipe{
  const variants=VEHICLE_CONFIGURATIONS[family];
  const n=Number.isFinite(variant)?Math.abs(Math.trunc(variant)):0;
- return {family,configuration:variants[n%variants.length],paint:VEHICLE_PAINTS[Math.floor(n/variants.length)%VEHICLE_PAINTS.length],condition:'clean'};
+ return {family,configuration:variants[n%variants.length],paint:VEHICLE_PAINTS[Math.floor(n/variants.length)%(legacyPalette?12:VEHICLE_PAINTS.length)],condition:'clean'};
 }
 export function vehicleRecipeKey(recipe:VehicleRecipe,width:number,depth:number,height:number):string{
- return ['vehicle:v3',recipe.family,recipe.configuration,recipe.paint,recipe.condition,width,depth,height].join(':');
+ return ['vehicle:v4',recipe.family,recipe.configuration,recipe.paint,recipe.condition,width,depth,height].join(':');
 }

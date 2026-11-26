@@ -1,4 +1,4 @@
-/** VEH11 coachwork: one opaque vertex-coloured mesh, real wheel openings,
+/** VEH12 coachwork: one opaque vertex-coloured mesh, real wheel openings,
  * tapered cabins and family-specific fascia. X front, Y up, Z width. */
 import * as THREE from 'three';
 import {VEHICLE_DIMENSIONS,type VehicleRecipe} from './vehicle-catalog.ts';
@@ -12,10 +12,8 @@ export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIM
  const pos:number[]=[],colors:number[]=[];
  const paint=new THREE.Color(recipe.paint);
  if(recipe.condition!=='clean')paint.lerp(new THREE.Color(0x8c8877),recipe.condition==='used'?.08:.22);
- if(recipe.configuration==='military')paint.lerp(new THREE.Color(0x747653),.7);
- if(recipe.configuration==='unmarked')paint.lerp(new THREE.Color(0x343c40),.7);
- if(recipe.configuration==='taxi')paint.lerp(new THREE.Color(0xbba055),.65);
- if(recipe.configuration==='economy')paint.lerp(new THREE.Color(0xaba69a),.24);
+ // The selected curated paint is the actual body paint, not a hidden tint.
+ // Condition remains a deliberate, subtle wear treatment.
  const body=paint.getHex(),seam=paint.clone().lerp(new THREE.Color(0x242a2b),.35).getHex();
  const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;
  function tri(a:P,b:P,c:P,hex:number,inside:P){
@@ -132,7 +130,7 @@ export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIM
  }
  // 8-sided wheels, visible tread and hub, no separate meshes. The
  // closed inner cap is visible below the recessed body at low angles.
- const thickness=d*(pickup||suv||truck?.17:.145);
+ const thickness=d*(pickup||suv||truck?.20:compact?.16:.15);
  for(const axle of wheels)for(const s of [-1,1]){
   const x=axle*w,outer=s*d*.492,inner=outer-s*thickness;
   const center:P=[x,r,(outer+inner)/2];
@@ -141,7 +139,7 @@ export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIM
    const point=(angle:number,z:number,rad=r):P=>[x+Math.cos(angle)*rad,r+Math.sin(angle)*rad,z];
    quad(point(a,inner),point(b,inner),point(b,outer),point(a,outer),rubber,center);
    tri([x,r,inner],point(a,inner),point(b,inner),rubber,center);
-   const aa=point(a,outer,r*(truck?.40:.48)),bb=point(b,outer,r*(truck?.40:.48));
+   const aa=point(a,outer,r*(truck||pickup||suv?.37:.45)),bb=point(b,outer,r*(truck||pickup||suv?.37:.45));
    quad(point(a,outer),point(b,outer),bb,aa,rubber,center);
    tri([x,r,outer],aa,bb,hub,center);
   }
@@ -160,9 +158,9 @@ export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIM
  else if(truck||pickup)end(.493,frontLow+frontSpan*.36,frontLow+frontSpan*.49,-grilleWidth*.84,grilleWidth*.84,hub);
  end(-.492,lower+.055,lower+.10,-.105,.105,hub);
  // Readable panel seams/handles, no separate mesh or micro bevels.
- const handleY=belt-.035;
+ const handleY=belt-.025;
  const handles=truck?[.18]:pickup?[.02]:van?[.18,-.08]:suv?[.03,-.25]:compact?[.01]:[.04,-.20];
- for(const x of handles)side(x-.035,x+.035,handleY-.024,handleY,.4315,trim);
+ for(const x of handles)side(x-.039,x+.039,handleY-.030,handleY,.4315,trim);
  const seams=truck?[.11]:pickup?[-.085]:van?[-.12,-.41]:suv?[-.13,-.35]:compact?[-.11]:[-.10,-.28];
  for(const x of seams){
   const near=Math.min(...wheels.map(a=>Math.abs(x-a)*w))-.004*w;
@@ -171,21 +169,44 @@ export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIM
   if(y<belt-.012)side(x-.0035,x+.0035,y,belt-.008,.431,seam);
  }
  if(recipe.condition!=='clean')side(-.12,.13,lower+.015,lower+.055,.431,paint.clone().lerp(new THREE.Color(0x77715f),recipe.condition==='used'?.13:.35).getHex());
- const stripe=config==='police'?0x39556e:config==='medical'?0xa6564a:config==='delivery'?0x648577:config==='municipal'?0xb19a55:config==='contractor'?0x696e5a:config==='fleet'?0x778585:config==='taxi'?0x544e3c:config==='aid'?0x4f7d83:undefined;
+ const lightPaint=paint.getHex()===0xc5c3b8||paint.getHex()===0xa1a5a4||recipe.paint===0xc5c3b8||recipe.paint===0xa1a5a4;
+ const stripe=config==='police'?(lightPaint?0x354b60:0x7294a7):config==='medical'?0xa6564a:config==='delivery'?0x648577:config==='municipal'?0xb19a55:config==='contractor'?0x696e5a:config==='fleet'?0x778585:config==='taxi'?0x544e3c:config==='aid'?0x4f7d83:undefined;
  if(stripe!==undefined){
   const y=Math.max(lower+.06,(r+archR)/h+.012);
-  if(y<belt-.035)side(-.37,.30,y,Math.min(belt-.035,y+.055),.431,stripe);
+  if(y<belt-.045)side(-.37,.30,y,Math.min(belt-.045,y+.085),.431,stripe);
+  // A bold white/black door panel on light police cars, sized to the
+  // central body rather than extending across wheel openings.
+  if(config==='police'&&lightPaint)side(-.15,.13,lower+.065,belt-.06,.4312,0x41494b);
  }
  if(van&&['delivery','medical','contractor'].includes(config)){
   pane(-.42,-.09,-.09,-.42,.20,.67,config==='medical'?0xd6d5c8:config==='delivery'?0x648577:0x696e5a);
   if(config==='medical'){
-   pane(-.27,-.20,-.20,-.27,.27,.60,0x466d79,.0025);
-   pane(-.34,-.13,-.13,-.34,.39,.48,0x466d79,.003);
+   // Match actual world-unit proportions, not normalized X/Y fractions.
+   // A nearly square, chunky cross stays legible from the gameplay angle.
+   pane(-.257,-.223,-.223,-.257,.22,.65,0x466d79,.0025);
+   pane(-.282,-.198,-.198,-.282,.365,.505,0x466d79,.003);
   }
  }
- if(truck&&config==='municipal')side(-.42,.025,.63,.71,.461,0xb19a55);
- if(suv&&(config==='military'||config==='aid'))box(-.32,.04,.96,.985,.31,trim);
- if(config==='police'||config==='medical'||config==='taxi')box(-.03,.10,roof,Math.min(1,roof+.04),.20,config==='taxi'?0xb7a05f:config==='medical'?0xa6564a:0x567c9e);
+ if(truck&&config==='municipal')side(-.42,.025,.61,.75,.461,0xb9a259);
+ if(suv&&(config==='military'||config==='aid'))box(-.32,.04,roof,Math.min(1,roof+.035),.31,trim);
+ // Roof equipment is boldly transverse. One low polygonal block with
+ // colour-separated lens faces; no transparent material or new draw.
+ if(config==='police'||config==='medical'){
+  const x0=-.035,x1=.055,y0=roof,y1=Math.min(1,roof+.065),z=.32;
+  box(x0-.008,x1+.008,y0,y0+.018,z+.012,trim);
+  const lens=config==='medical'?0xa54d45:0x648da8;
+  box(x0,x1,y0+.018,y1,z,lens);
+  // Large opaque end lenses and dark centre divider, readable from iso.
+  const other=config==='medical'?0xc0b7a0:0x36566f;
+  quad([x0*w,(y1+.0007)*h,0],[x1*w,(y1+.0007)*h,0],[x1*w,(y1+.0007)*h,z*d],[x0*w,(y1+.0007)*h,z*d],other,[0,0,0]);
+  for(const x of [x0-.0005,x1+.0005])end(x,y0+.02,y1,-.035,.035,trim);
+  end(x1+.0006,y0+.022,y1,.035,z,other);
+ }else if(config==='taxi'){
+  // Taller trapezoidal sign, dark foot, cream sign face on both ends.
+  const x0=-.045,x1=.075,y0=roof,y1=Math.min(1,roof+.077);
+  box(x0-.006,x1+.006,y0,y0+.016,.19,trim);
+  prism([[x0,y0+.016],[x1,y0+.016],[x1-.02,y1],[x0+.02,y1]],.16,0xe0ce8c,.135);
+ }
  const geometry=new THREE.BufferGeometry();
  geometry.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
  geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
