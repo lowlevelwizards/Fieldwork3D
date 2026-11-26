@@ -23,6 +23,7 @@ try{
    await page.goto(url);await page.locator('#diagnostics').waitFor();
    await page.waitForFunction(()=>document.getElementById('diagnostics').textContent.includes('vehicle triangles'));
    const controls=await page.locator('#family option').count();assert.equal(controls,6);
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'no horizontal overflow');
    for(let i=0;i<6;i++){
     await page.locator('#family').selectOption(String(i));
     await page.locator('#paint').selectOption('6');

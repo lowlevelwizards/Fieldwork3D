@@ -24,7 +24,7 @@ test('new default sites populate contextual private bays, never retired placehol
   if(cars.length)occupied++;
   for(const car of cars){
    found++;assert.notEqual(car.fixture,'vehicle');
-   assert.equal(car.low,false);assert.equal(car.vehicleProfile?.version,1);
+   assert.equal(car.low,false);assert.equal(car.vehicleProfile?.version,2);
    const [length,depth]=VEHICLE_DIMENSIONS[car.fixture];
    assert.deepEqual([car.w,car.h],car.orientation%2?[depth,length]:[length,depth]);
    assert.ok(site.exteriorZones.some(z=>z.vehicleParking&&Math.abs(car.x-z.x)+car.w/2<=z.w/2&&Math.abs(car.y-z.y)+car.h/2<=z.h/2));

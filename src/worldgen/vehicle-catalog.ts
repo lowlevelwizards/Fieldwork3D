@@ -25,5 +25,5 @@ export function vehicleRecipe(family:VehicleFamily,variant=0):VehicleRecipe{
  return {family,configuration:variants[n%variants.length],paint:VEHICLE_PAINTS[Math.floor(n/variants.length)%VEHICLE_PAINTS.length],condition:'clean'};
 }
 export function vehicleRecipeKey(recipe:VehicleRecipe,width:number,depth:number,height:number):string{
- return ['vehicle:v2',recipe.family,recipe.configuration,recipe.paint,recipe.condition,width,depth,height].join(':');
+ return ['vehicle:v3',recipe.family,recipe.configuration,recipe.paint,recipe.condition,width,depth,height].join(':');
 }
