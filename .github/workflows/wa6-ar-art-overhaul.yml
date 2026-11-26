@@ -6,6 +6,8 @@ on:
       - 'src/weapons/geometry/ar-handguard-profiles.ts'
       - 'src/weapons/geometry/ar-silhouettes.ts'
       - 'src/weapons/geometry/ar-rail-profiles.ts'
+      - 'src/weapons/geometry/ar-magazine-graphic.ts'
+      - 'tests/wa6-*.test.mjs'
       - 'scripts/*wa6*'
       - 'tests/weapon-ar-*.test.mjs'
       - '.github/workflows/wa6-ar-art-overhaul.yml'
@@ -28,7 +30,7 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - run: npm run check
-      - run: node --experimental-strip-types --test tests/weapon-ar-r46-silhouettes.test.mjs tests/weapon-ar-r47-silhouettes.test.mjs tests/weapon-ar-r48-silhouettes.test.mjs tests/weapon-ar-a1-face-vents.test.mjs tests/arsenal-a2-material-unification.test.mjs tests/wa0-weapon-art-geometry.test.mjs
+      - run: node --experimental-strip-types --test tests/wa6-ar-graphic-detail.test.mjs tests/weapon-ar-r46-silhouettes.test.mjs tests/weapon-ar-r47-silhouettes.test.mjs tests/weapon-ar-r48-silhouettes.test.mjs tests/weapon-ar-a1-face-vents.test.mjs tests/arsenal-a2-material-unification.test.mjs tests/wa0-weapon-art-geometry.test.mjs
       - name: Verify scoped art delta and real emitted-cost reduction against WA5
         run: |
           mkdir -p reports/wa6
@@ -38,6 +40,11 @@ jobs:
           node --experimental-strip-types scripts/audit-wa6-art-delta.mjs reports/wa6/candidate.json
           (cd /tmp/wa5-art && node --experimental-strip-types scripts/audit-wa6-art-delta.mjs "$GITHUB_WORKSPACE/reports/wa6/baseline.json")
           node scripts/verify-wa6-art-delta.mjs reports/wa6/baseline.json reports/wa6/candidate.json reports/wa6/delta.json
+          git worktree add --detach /tmp/wa61-art 75b3b2c012ebf15e9f3dfb4c4ec22d2fd5e3fb07
+          ln -s "$PWD/node_modules" /tmp/wa61-art/node_modules
+          cp scripts/audit-wa6-art-delta.mjs /tmp/wa61-art/scripts/
+          (cd /tmp/wa61-art && node --experimental-strip-types scripts/audit-wa6-art-delta.mjs "$GITHUB_WORKSPACE/reports/wa6/wa61.json")
+          node scripts/verify-wa6-incremental.mjs reports/wa6/wa61.json reports/wa6/candidate.json reports/wa6/incremental.json
       - run: |
           npm install --no-save --package-lock=false playwright@1.56.1
           npx playwright install --with-deps chromium
