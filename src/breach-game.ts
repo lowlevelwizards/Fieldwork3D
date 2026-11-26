@@ -1899,7 +1899,7 @@ function mission(s:Session,dt:number){
   for(const {patient,carrier} of commitTransportExtractions(s)){
     const message=patient.name+' EXTRACTED';
     notify(s,message);
-    battleEvent(s,'objective',carrier,patient.p,message,{
+    battleEvent(s,'objective',patient.side==='blue'?patient:carrier,patient.p,message,{
       action:patient.side==='blue'?'individual-extraction':'suspect-extracted',
       targetId:patient.id,contributorId:carrier.id});
   }
