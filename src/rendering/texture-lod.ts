@@ -19,8 +19,8 @@ export function readableMipChain(base:Uint8Array,size:number,
   // should vanish first, while real panel joints persist the longest.
   // Never force one-pixel detail into the 2x2 or 1x1 terminal mip.
   const scale=nextSize<=2?1:nextSize<=4?
-    (major?.48:directional?.63:.78):
-    nextSize<=8?(major?.20:directional?.33:.48):
+    (major?.35:directional?.52:.78):
+    nextSize<=8?(major?.13:directional?.23:.45):
     (major?.05:directional?.13:.22);
   for(let y=0;y<nextSize;y++)for(let x=0;x<nextSize;x++){
    const i=(y*nextSize+x)*4;
