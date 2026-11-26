@@ -26,7 +26,7 @@ import {observeSuspicion,exhaustSuspicionSearch} from './breach-ai-suspicion.ts'
 import {bestBelief,addObservation} from './breach-awareness.ts';
 import {reconcileEnemyIntent,reconcileEnemyPosture} from './breach-ai-reconciliation.ts';
 import {chooseCombatAction} from './breach-ai-combat.ts';
-import {contactTactic,shouldSeekHoldCover} from './breach-ai-tactical-response.ts';
+import {shouldSeekHoldCover} from './breach-ai-tactical-response.ts';
 import {reportToListener} from './breach-communication.ts';
 import {missionGroupResponse} from './breach-ai-coordination.ts';
 import {stableCoordination,renewCoordinationUntil} from './breach-ai-team-commitment.ts';
@@ -43,7 +43,7 @@ import {doctrineForPurpose,doctrineForGroup} from './breach-ai-doctrine.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
 import {aiSiteIndex,connectedAreaCenters,groupObservationProposals} from './breach-ai-site-index.ts';
-import {clearNpcSearch,clearNpcCoordination,commitNpcWithdrawal,canAcceptNpcAssignment} from './breach-ai-task-state.ts';
+import {clearNpcSearch,clearNpcCoordination,commitNpcWithdrawal,attemptNpcWithdrawal,canAcceptNpcAssignment} from './breach-ai-task-state.ts';
 import {recentlyChecked,rememberChecked} from './breach-ai-search-memory.ts';
 
 /** The authoritative simulation owns the motor, shot/geometry, visibility and
@@ -220,16 +220,8 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       laneClear:lane.blocker==='clear',ammunition:a.magazine,
       suppression:a.suppression,morale:a.morale,temperament:a.personality});
     if(a.combatChoice==='withdraw'&&a.alert!=='retreat'&&s.seconds>=(a.withdrawRetryAt??0)){
-      const safe=defensivePosition(a,b.p,s,'shelter');
-      const tactic=contactTactic(a.combatChoice,!!safe&&d(safe,a.p)>11);
-      if(tactic.withdraw&&safe){
+      if(attemptNpcWithdrawal(a,s.seconds,()=>defensivePosition(a,b.p,s,'shelter'),11,true)==='committed')
         pendingInvestigation.delete(a);
-        commitNpcWithdrawal(a,safe,s.seconds);
-      }else{
-        // No physically reachable retreat: stop advancing and keep
-        // watch instead of attempting an impossible escape.
-        a.alert='cover';a.nav=[];a.defense=null;a.withdrawRetryAt=s.seconds+1.5;
-      }
     }
     if(a.combatChoice==='hold'&&a.alert!=='retreat'){
       // HOLD is not permission to repeatedly cancel and replan movement.

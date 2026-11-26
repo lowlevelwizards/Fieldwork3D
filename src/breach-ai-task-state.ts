@@ -26,3 +26,17 @@ export function clearNpcTasks(a:TeamActor):void{
  a.retreatPoint=null;a.defense=null;a.nav=[];a.alert='idle';
  a.checkedSearchAreas=[];a.lastSearchReportAt=undefined;
 }
+
+/** Both injury-driven and contact-driven withdrawal use one attempt owner.
+ * The caller provides existing physical shelter lookup; retries are bounded.
+ * preserveContactFallback retains the earlier contact-only hold response. */
+export function attemptNpcWithdrawal(a:TeamActor,now:number,findShelter:()=>Pt|null,
+ minimumDistance=0,preserveContactFallback=false):'committed'|'unavailable'|'deferred'{
+ if(a.alert==='retreat'||now<(a.withdrawRetryAt??0))return 'deferred';
+ const point=findShelter();
+ if(point&&(minimumDistance===0||Math.hypot(point.x-a.p.x,point.y-a.p.y)>minimumDistance)){
+  commitNpcWithdrawal(a,point,now);return 'committed';
+ }
+ if(preserveContactFallback){a.alert='cover';a.nav=[];a.defense=null;}
+ a.withdrawRetryAt=now+1.5;return 'unavailable';
+}

@@ -1,13 +1,13 @@
 /** Psychological response to *experienced* danger, not a hidden global event. */
 export type Resolve='hold'|'withdraw'|'surrender';
-export type Temperament='guard'|'aggressor'|'cautious';
+import {npcPressurePolicy,type Temperament} from './breach-ai-pressure-policy.ts';
+export type {Temperament} from './breach-ai-pressure-policy.ts';
 export type MoraleContext={nearbyAllies?:number;
  recentlySeenThreats?:number;retreatBlocked?:boolean};
 export function moraleResponse(morale:number,suppression:number,
  injury:number,personality:Temperament,
  context:MoraleContext={}):Resolve{
- const courage=personality==='aggressor'?.12:
-  personality==='cautious'?-.09:0;
+ const {courage}=npcPressurePolicy(personality);
  // Only actual nearby friends supplied by the runtime provide reassurance.
  // This changes resolve, never who the opponent can see or shoot.
  const support=Math.min(.12,Math.max(0,context.nearbyAllies??0)*.04);

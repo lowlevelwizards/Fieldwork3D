@@ -17,3 +17,17 @@ test('EB1 catalog exhaustively defines all identities and valid competence distr
  assert.equal(npcGroupKind('organised','defensive'),'armed-irregulars');
  assert.equal(doctrineForGroup('regular-force'),'organised');
 });
+
+import {npcPressurePolicy} from '../src/breach-ai-pressure-policy.ts';
+import {attemptNpcWithdrawal} from '../src/breach-ai-task-state.ts';
+import {newSession,enemies} from '../src/breach-game.ts';
+test('EB2 shared withdrawal owner prevents duplicate shelter work and retains existing retries',()=>{
+ const a=enemies(newSession())[0];let calls=0;
+ const shelter=()=>{calls++;return null;};
+ assert.equal(attemptNpcWithdrawal(a,1,shelter,11,true),'unavailable');
+ assert.equal(a.alert,'cover');assert.equal(attemptNpcWithdrawal(a,1.2,shelter),'deferred');assert.equal(calls,1);
+ assert.equal(attemptNpcWithdrawal(a,3,()=>({x:a.p.x+30,y:a.p.y}),11,true),'committed');
+ assert.equal(a.alert,'retreat');assert.equal(attemptNpcWithdrawal(a,4,shelter),'deferred');
+ assert.equal(calls,1);
+ assert.ok(npcPressurePolicy('cautious').contactWithdraw<npcPressurePolicy('aggressor').contactWithdraw);
+});

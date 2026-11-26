@@ -7,7 +7,7 @@ import {length,targetAngle,angleDifference} from './breach-plan.ts';
 import {witnessShock,countNearbyEnemyAllies,countRecentlySeenThreats,moraleResponse} from './breach-ai-morale.ts';
 import {commitSuspectSurrender} from './breach-suspect-compliance.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
-import {commitNpcWithdrawal} from './breach-ai-task-state.ts';
+import {attemptNpcWithdrawal} from './breach-ai-task-state.ts';
 import {advanceSurrenderOpportunity,canAttemptSuspectEscape,
  suspectIsSupervised} from './breach-suspect-opportunity.ts';
 import {physicalFollowGoal,physicalFollowerSeparated}
@@ -84,9 +84,7 @@ export function advanceSimulationActors(s:Session,h:number,
       if(resolve==='withdraw'&&a.alert!=='retreat'&&s.seconds>=(a.withdrawRetryAt??0)){
         const threat=a.contact??a.heard??a.watch;
         if(threat){
-          const safe=port.defensivePosition(a,threat,s,'shelter');
-          if(safe)commitNpcWithdrawal(a,safe,s.seconds);
-          else a.withdrawRetryAt=s.seconds+1.5;
+          attemptNpcWithdrawal(a,s.seconds,()=>port.defensivePosition(a,threat,s,'shelter'));
         }
       }
       if(resolve==='surrender')
