@@ -39,7 +39,8 @@ test('R4.5 shared AR axis and hand contact stay aligned across all nine presets'
   assert.ok(a.supportY>-1.7,'support-hand contact rises with fore-end');
   const barrel=group.children.find(x=>x.name.startsWith('family-barrel-')&&
    x.name.endsWith('-0'));
-  assert.ok(barrel&&close(barrel.position.y,AR_VISUAL_AXIS_Y),
+  const barrelCenter=barrel?new THREE.Box3().setFromObject(barrel).getCenter(new THREE.Vector3()):null;
+  assert.ok(barrelCenter&&close(barrelCenter.y,AR_VISUAL_AXIS_Y),
    p.id+' barrel and muzzle use the same raised visual center');
   assert.ok(bounds(group,'barrel').intersectsBox(bounds(group,'handguard')));
   assert.ok(bounds(group,'grip').intersectsBox(bounds(group,'receiver')));
@@ -135,8 +136,7 @@ test('R4.5 attachments retain same raised muzzle position as visual body',()=>{
  const accessories=buildWeaponAccessories(suppressed,mat,mat);
  const box=new THREE.Box3().setFromObject(accessories);
  assert.ok(close(box.max.x,assembly.muzzleX));
- const suppressor=accessories.children.find(x=>x.geometry.type==='BoxGeometry'&&
-  x.geometry.parameters.width>5);
+ const suppressor=accessories.children.find(x=>x.name==='weapon-accessory-muzzle-suppressor');
  assert.ok(suppressor&&close(suppressor.position.y,assembly.muzzleY));
  clearWeaponSilhouette(group);clearWeaponSilhouette(accessories);
 });
