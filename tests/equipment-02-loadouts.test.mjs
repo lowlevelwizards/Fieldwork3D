@@ -36,11 +36,14 @@ test('weapon swaps preserve campaign ownership and synchronize catalog choice',(
  let c=newCampaign(9);
  assert.equal(equipCampaignGear(c,'rook','primary','primary-rifle'),c);
  c=buyWeapon(c,'rifle');
- const before=c.inventory.weapons.rifle;
+ const before=stockByPlatform(c).rifle;
  const swapped=equipCampaignWeapon(c,'rook','rifle');
- assert.equal(swapped.inventory.weapons.rifle,before-1);
+ assert.equal(stockByPlatform(swapped).rifle,before-1);
  assert.equal(swapped.operators[0].weapon,'rifle');
  assert.equal(swapped.operators[0].loadout.slots.primary,'primary-rifle');
  assert.equal(swapped.operators[0].magazine,0);
  assert.equal(swapped.operators[0].reserve,0);
 });
+
+import {catalogOwnedStock} from '../src/equipment-weapon-ownership.ts';
+const stockByPlatform=c=>Object.fromEntries(['carbine','smg','rifle','shotgun'].map(p=>[p,catalogOwnedStock(c).filter(w=>w.platform===p).length]));
