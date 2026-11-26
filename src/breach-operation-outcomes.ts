@@ -30,7 +30,7 @@ export function canConcludeWithdrawal(s:Pick<Session,
  'operators'|'scenario'|'withdrawalRequested'|'extractedOperators'>):boolean{
  if(s.withdrawalRequested!==true)return false;
  const mobile=s.operators.filter(a=>a.side==='blue'&&a.health>0);
- if(!mobile.length)return (s.extractedOperators?.length??0)>0;
+ if(!mobile.length)return s.extractedOperators?.some(a=>a.health>0)??false;
  return mobile.every(a=>inExtraction(s,a.p));
 }
 export function requestWithdrawal(s:Pick<Session,
