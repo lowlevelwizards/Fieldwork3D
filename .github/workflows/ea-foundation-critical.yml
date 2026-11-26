@@ -19,6 +19,8 @@ on:
       - 'scripts/compare-ea-baseline.mjs'
       - 'scripts/verification/ea-ai-lab-browser.mjs'
       - 'scripts/audit-ea0-enemy-baseline.mjs'
+      - 'scripts/audit-ea-stage1-contact.mjs'
+      - 'tests/breach-roadmap2-stage1-contracts.test.mjs'
       - '.github/workflows/ea-foundation-critical.yml'
   workflow_dispatch:
 permissions:
@@ -40,6 +42,8 @@ jobs:
         run: |
           npm run check
           node --experimental-strip-types --test tests/ea-foundation.test.mjs tests/awareness-ai-policy.test.mjs tests/breach-roadmap4-ai-reconciliation.test.mjs tests/breach-roadmap2-stage9-enemy-ai.test.mjs tests/breach-ai-work-scheduler-performance.test.mjs tests/breach-perception-cache-performance.test.mjs tests/performance-p2-8-cover-los.test.mjs tests/release6-doctrine.test.mjs tests/awareness-team-commitment-e2a.test.mjs tests/awareness-cover.test.mjs tests/eqa3-16-hostile-intent.test.mjs tests/eqa3-16g-defensive-gestures.test.mjs tests/dispatch-d15-suspect-restraint.test.mjs tests/performance-r3-r4-combat-morale.test.mjs tests/breach-141e.test.mjs tests/breach-roadmap2-acoustic-perception.test.mjs tests/dispatch-d15-opportunity-escape-rearm.test.mjs
+      - name: Production fixed-clock contract (all independent semantic and exact golden checks)
+        run: node --experimental-strip-types --test tests/breach-roadmap2-stage1-contracts.test.mjs
       - name: Build and verify lab entry
         run: |
           npm run build
@@ -66,6 +70,11 @@ jobs:
           echo "baseline exit=$base_status candidate exit=$candidate_status"
           test "$base_status" -eq 0 && test "$candidate_status" -eq 0
           node scripts/compare-ea-baseline.mjs artifacts/ea/base.json artifacts/ea/candidate.json artifacts/ea/paired-summary.json
+      - name: Pair exact production contact fingerprints and physical outcomes
+        run: |
+          cp scripts/audit-ea-stage1-contact.mjs ea-base/scripts/
+          (cd ea-base && node --experimental-strip-types scripts/audit-ea-stage1-contact.mjs f7f44ce49bfb9d70bd7df8bf464e781f947e36ef147e0d22d2db3446959df27b ../artifacts/ea/base-stage1-contact.json)
+          node --experimental-strip-types scripts/audit-ea-stage1-contact.mjs 58cc9811aa9dff4345bffad189abae7787714fc442368745e943bd4a0bb46810 artifacts/ea/candidate-stage1-contact.json
       - name: Verify generated scenario parity against exact EA base
         run: |
           (cd ea-base && node --experimental-strip-types scripts/audit-release-c11-missions.mjs ../artifacts/ea/base-world.json)
