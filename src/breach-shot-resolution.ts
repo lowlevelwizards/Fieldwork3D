@@ -1,3 +1,4 @@
+import {metalImpactNormal} from './breach-impact-surface.ts';
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Roadmap 2 / Stage 10: authoritative confirmed-target shot resolution.
@@ -317,6 +318,7 @@ export function createShotResolver(ports:ShotResolverPorts){
     healthBefore,healthAfter,
     down:(hit||!!civilianHit)&&healthAfter<=0,
     surface:impact.surface,
+    ...metalImpactNormal(impact.surface,!hit&&!civilianHit?strike.stoppedHit?.surfaceRef:undefined),
     ...(!hit&&!civilianHit&&strike.stoppedHit?.surfaceRef?.kind==='cover'?{impactFixture:s.coverState[strike.stoppedHit.surfaceRef.index]?.fixture}:{}),
     ...(materialImpacts?.length?{materialImpacts}:{}),
   });
