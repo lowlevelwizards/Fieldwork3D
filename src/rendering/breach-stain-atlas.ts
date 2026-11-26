@@ -20,14 +20,14 @@ export function damageVariant(surface:string|undefined,x:number,y:number):number
  return index<0?-1:BLOOD_STYLE_COUNT+index*2+stainVariant(x,y)%2;
 }
 export function damageRadius(surface:string|undefined,count=1):number{
- const base=surface==='stone'?5:surface==='wood'?4.8:surface==='metal'?3.8:surface==='glass'?4.2:4.6;
+ const base=surface==='stone'?5:surface==='wood'?4.8:surface==='metal'?3.8:surface==='glass'?5.4:4.6;
  return base*(1+.23*(Math.max(1,Math.min(4,count))-1));
 }
 export function damageTint(surface:string|undefined):number{
  // Tint represents the lighter exposed rim; mask luminance supplies the
  // dark pit. Keep large, distinct silhouettes rather than tiny linework.
  return surface==='wood'?0xc29b72:surface==='stone'?0xc6bba7:
- surface==='metal'?0xbac2c0:surface==='glass'?0xb8d6d7:0xb8ad98;
+ surface==='metal'?0xbac2c0:surface==='glass'?0xe1ece8:0xb8ad98;
 }
 const clamp=(v:number)=>Math.max(0,Math.min(1,v));
 /** A single grey+alpha texture represents both the dark core and chipped
@@ -45,7 +45,7 @@ function damagePixel(v:number,x:number,y:number):[number,number]{
  }else if(kind===2){ // compact dark impact and narrow bright rim
   d=Math.hypot(u*1.1,w*.93);edge=.65+.035*Math.cos(6*a);core=.48;
  }else if(kind===3){ // angular fracture star
-  d=r;edge=.38+.37*Math.pow(Math.abs(Math.cos(a*2.5)),6);core=.27;
+  d=r;edge=.46+.36*Math.pow(Math.abs(Math.cos(a*2.5)),4);core=.27;
  }else{ // torn or scuffed soft surface
   d=r;edge=.78+.065*Math.cos(3*a)+.055*Math.sin(5*a);core=.49;
  }
