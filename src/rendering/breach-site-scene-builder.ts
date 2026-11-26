@@ -273,7 +273,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
     buildSiteMicroDebris(site,host);
     const decorativeRoomGroups=new Map<string,THREE.Group>();
     host.currentWear=host.floorWearCompiled?planCompiledFloorWear(site):planStaticFloorWear(site);
-    const floorAtlas=host.floorWearCompiled?buildFloorMaskAtlas(site,effectiveCondition(site),host.currentWear,host.wearBoost):undefined;
+    const floorAtlas=host.floorWearCompiled?buildFloorMaskAtlas(site,effectiveCondition(site),host.currentWear,host.wearBoost,host.wallAudition?.metric):undefined;
     if(floorAtlas)host.sitePatinaTextures.push(...floorAtlas.pages);
     const floorMaterials=new Map<string,THREE.MeshStandardMaterial>();
     for(const room of site.rooms){
