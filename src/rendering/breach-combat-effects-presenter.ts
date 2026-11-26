@@ -133,7 +133,7 @@ export class BreachCombatEffectsPresenter{
     this.meshCreates++;this.materialCreates++;
     return new THREE.Mesh(this.flashGeometry,
       new THREE.MeshBasicMaterial({color:0xffffff,vertexColors:true,transparent:true,
-        opacity:.8,depthWrite:false,side:THREE.DoubleSide,toneMapped:false}));
+        opacity:.8,depthWrite:false,side:THREE.DoubleSide,forceSinglePass:true,toneMapped:false}));
   }
   update(s:Session,omniscient:boolean,personal:boolean,
     visibleAt:(p:Pt)=>boolean):void{
