@@ -388,13 +388,12 @@ function renderProjectedPlans(){
   if(!replaying){
     for(const item of state.optionalIntel??[]){
       if(!item.discovered||item.collectedBy)continue;
-      const at=worldToScreen(item.p,7);
+      const at=worldToScreen(item.surface?.p??item.p,(item.surface?.height??0)+7);
       draw.save();draw.fillStyle='#343f34';draw.strokeStyle='#e0cb94';
       draw.lineWidth=2;
-      draw.fillRect(at.x-10,at.y-7,20,14);
-      draw.strokeRect(at.x-10,at.y-7,20,14);
+      draw.beginPath();draw.arc(at.x,at.y,3,0,Math.PI*2);draw.stroke();
       draw.fillStyle='#f1dfb0';draw.font='700 11px "Saira Condensed",sans-serif';
-      draw.textAlign='center';draw.fillText('INTEL',at.x,at.y-14);
+      draw.textAlign='center';draw.fillText(item.model?.replace('-',' ').toUpperCase()??'INTEL',at.x,at.y-14);
       draw.restore();
     }
   }
