@@ -114,6 +114,7 @@ export function sessionDoorPressurePolicy(
     // Protect real crossing peers, not a lone operator deliberately
     // walking into the reverse face. Own authored crossing still wins.
     return !!claims&&(claims.size>(claims.has(actor.id)?1:0)||
+      frame.actorsOpening.has(actorKey(actor.id,door.id))||
       actor.plan.some(n=>n.kind==='move'&&n.entryDoorId===door.id));
   },
   claimContact:door=>{
