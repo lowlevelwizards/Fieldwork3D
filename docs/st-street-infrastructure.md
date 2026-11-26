@@ -13,3 +13,6 @@ Canonical dimensional standards and archetype section policy. No changes to live
 
 ## Acceptance
 Every orientation, three scales and varied archetypes; no new blocked routes, no changed mission semantics, no new overlaps with protected points; old snapshots unchanged. Surface/marking render plans share authority, bounded draw calls, no per-frame generation. Critical unit + browser checks, exact-base comparison and production verification.
+
+## ST2 — pure versioned frontage proposal
+New five-kind section planner handles all orientations, preserves nominal lane widths and explicitly records partial lanes, reserves a private approach, conditionally fits whole sidewalks/verges/shoulders and derives centerline location from the nominal section. Serialized optional frontage is authoritative to existing public-street consumers; absent field retains exact historical planner. Shadow conflict reporting identifies existing props requiring later relocation. No default generation changes or new collision. Junctions/side streets require subsequent topology pass; not claimed complete. Synthetic matrix covers 100 sections across types, orientations and setbacks.

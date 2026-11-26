@@ -9,7 +9,7 @@ import type {Site} from '../breach-site.ts';
 import type {Obstacle} from '../breach-core.ts';
 
 type StreetSite=Pick<Site,'entrySide'|'entrance'> &
- Partial<Pick<Site,'bounds'|'rooms'|'doors'|'exteriorZones'>>;
+ Partial<Pick<Site,'bounds'|'rooms'|'doors'|'exteriorZones'|'streetInfrastructure'>>;
 export type StreetRect={x:number;y:number;width:number;depth:number};
 export type PublicStreet={
  road:StreetRect;
@@ -27,6 +27,7 @@ const overlap=(a:StreetRect,b:StreetRect,pad=0)=>
 const clamp=(n:number,min:number,max:number)=>Math.min(max,Math.max(min,n));
 
 export function planPublicStreet(site:StreetSite):PublicStreet|null{
+ if(site.streetInfrastructure?.version===1)return site.streetInfrastructure.frontage;
  const bounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
  if(!site.rooms?.length)return null;
  const entry=site.entrySide??'south';

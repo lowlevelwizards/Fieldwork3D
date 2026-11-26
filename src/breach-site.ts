@@ -69,6 +69,8 @@ export type Site={
   wallDetails?:import('./worldgen/wall-dresser.ts').WallDetail[];
   openings?:WideOpening[];
   exteriorZones?:ExteriorZone[];
+  /** ST versioned public frontage; absent means historical street geometry. */
+  streetInfrastructure?:import('./worldgen/street-infrastructure.ts').StreetInfrastructure;
   structures?:{id:string;kind:string;x:number;y:number;w:number;h:number}[];
   cover:Obstacle[];entrance:Pt;spawn:Pt[];enemies:Pt[];
   objective:Pt;extract:Pt;roomCount:number;
