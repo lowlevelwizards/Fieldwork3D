@@ -50,7 +50,7 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
         if(patient?.carriedById===casualty.id){
           patient.carriedById=null;patient.transportMode=null;
         }
-        casualty.carryingId=null;
+        casualty.carryingId=null;casualty.transportLatched=false;
       }
     }
     if(casualty.health<=0){
