@@ -1,5 +1,5 @@
 import {WALL_EFFECTS,WALL_FINISHES,WALL_WITNESSES,wallSample,samplePixels,selectWallEvents} from './wall-material-lab-samples.ts';
-import {PIXEL_SURFACES,pixelPattern} from './rendering/pixel-recipes.ts';
+import {PIXEL_SURFACES,productionPixelPattern,materialTileSize} from './rendering/pixel-recipes.ts';
 import {FLOOR_WITNESSES,FIXTURE_WITNESSES,floorWitness,fixtureWitness} from './wall-material-lab-context.ts';
 import {wallDensity} from './rendering/material-art-scale.ts';
 import {createMaterialSpecimen} from './wall-material-lab-specimen.ts';
@@ -55,9 +55,9 @@ const swatchColor=(kind:string):number=>/wood/.test(kind)?0xa37a50:/grass|foliag
 function drawPatterns(){
  const n=Math.max(0,Math.min(99999,Math.round(Number(seed.value)||0)));
  if(!el('materials').closest<HTMLElement>('[data-panel]')?.hidden)for(const {kind,canvas} of materials){
-  const bytes=pixelPattern(kind,n),color=swatchColor(kind);
+  const size=materialTileSize(kind),bytes=productionPixelPattern(kind,n%4),color=swatchColor(kind);
   if(el<HTMLSelectElement>('material-view').value==='tinted')for(let i=0;i<bytes.length;i+=4)for(let j=0;j<3;j++)bytes[i+j]=linearToSRGBByte(SRGB_BYTE_TO_LINEAR[bytes[i+j]]*SRGB_BYTE_TO_LINEAR[(color>>((2-j)*8))&255]);
-  paint(canvas,bytes,32,32);
+  paint(canvas,bytes,size,size);
  }
  if(!el('masks').closest<HTMLElement>('[data-panel]')?.hidden)for(const {kind,canvases} of masks)for(const [variant,canvas] of canvases.entries()){
   const bytes=wearPixels(kind,variant);
