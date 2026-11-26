@@ -214,7 +214,7 @@ export function bakedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,wid
  const brickBodies=[tint(base,[163,84,53],.38),tint(accent,[163,84,53],.38)],blockBodies=[tint(base,[126,144,143],.46),tint(accent,[126,144,143],.46)];
  const panelBodies=[tint(base,[97,128,137],.23),tint(accent,[97,128,137],.23)],concreteBodies=[tint(base,[142,149,148],.30),tint(accent,[142,149,148],.30)];
  const mod=(n:number,d:number)=>((n%d)+d)%d;
-  const cell=(ix:number,iy:number)=>hash(Math.imul(ix+41,374761393)^Math.imul(iy+17,668265263)^recipe.color^(recipe.artSeed??0));
+  const cell=(ix:number,iy:number)=>hash(Math.imul(ix+41,374761393)^Math.imul(iy+17,668265263)^recipe.color);
   const seam=(p:number,spacing:number,thickness:number,texel:number)=>{
    const d=Math.min(mod(p,spacing),spacing-mod(p,spacing));
    return clamp((thickness/2+texel/2-d)/texel);
