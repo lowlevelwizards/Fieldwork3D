@@ -153,7 +153,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     frame.chest.position.x+=balance.chestForward;
   }
   const kickAge=p.seconds-p.lastDoorAt;
-  const kick=p.doorMethod==='kick'&&kickAge>=0&&kickAge<.76?
+  const kick=!p.down&&!p.surrender&&p.doorMethod==='kick'&&kickAge>=0&&kickAge<.76?
     kickMotion(kickAge):null;
   const {handling}=preparedDecision;
   // The existing transition sampler remains the ONLY rig-owned historical
