@@ -1,6 +1,6 @@
 /** Shared low-resolution material library: build textures once, then reuse. */
 import * as THREE from 'three';
-import {pixelPattern,pixelRepeats,TILE_PIXELS,TILE_WORLD_SIZE,MATERIAL_RECIPE_VERSION,
+import {productionPixelPattern,materialTileSize,pixelRepeats,TILE_PIXELS,TILE_WORLD_SIZE,MATERIAL_RECIPE_VERSION,
   type PixelSurface} from './pixel-recipes.ts';
 import {wallAtlasLayout} from './material-art-scale.ts';
 import {readableMipChain} from './texture-lod.ts';
@@ -16,12 +16,13 @@ export class PixelTextureLibrary {
   const key=MATERIAL_RECIPE_VERSION+':'+kind+':'+safeVariant;
   let texture=this.textures.get(key);
   if(texture)return texture;
-  const source=pixelPattern(kind,safeVariant,TILE_PIXELS);
+  const size=materialTileSize(kind),source=productionPixelPattern(kind,safeVariant);
   texture=new THREE.DataTexture(source,
-    TILE_PIXELS,TILE_PIXELS,THREE.RGBAFormat,THREE.UnsignedByteType);
-  texture.mipmaps=readableMipChain(source,TILE_PIXELS,materialProfile(kind).structure);
+    size,size,THREE.RGBAFormat,THREE.UnsignedByteType);
+  texture.mipmaps=readableMipChain(source,size,materialProfile(kind).structure);
   texture.colorSpace=THREE.SRGBColorSpace;
   texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
+  texture.repeat.set(TILE_PIXELS/size,TILE_PIXELS/size);
   texture.magFilter=THREE.NearestFilter;
   // Blend BETWEEN authored mip levels, not between source pixels. This
   // keeps pavers, wall panels and trim crisp at mobile zoom without the
