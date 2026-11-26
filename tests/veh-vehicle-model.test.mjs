@@ -118,3 +118,15 @@ test('version two cover follows tapered roof, while version one historical cover
  assert.equal(across(modern,14,30),null);
  assert.notEqual(across(modern,0,30),null);
 });
+
+test('VEH12 police and taxi modules are taller and wider than generic roof plates, within bounds',()=>{
+ for(const [family,config] of [['sedan','taxi'],['sedan','police'],['suv','police'],['van','medical']]){
+  const shape=vehicleShape(family),[w,d,h]=VEHICLE_DIMENSIONS[family],roof=shape.cabin[2][1];
+  const g=buildVehicleGeometry({...vehicleRecipe(family),configuration:config});
+  const p=g.getAttribute('position');let min=Infinity,max=-Infinity,highest=0;
+  for(let i=0;i<p.count;i++)if(p.getY(i)>roof*h+.025*h){min=Math.min(min,p.getZ(i));max=Math.max(max,p.getZ(i));highest=Math.max(highest,p.getY(i));}
+  assert.ok(highest>=roof*h+.055*h,family+':'+config);
+  assert.ok(max-min>=d*(config==='taxi'?.25:.60));
+  assert.ok(highest<=h+.01);g.dispose();
+ }
+});

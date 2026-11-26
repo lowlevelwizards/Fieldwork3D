@@ -19,7 +19,7 @@ export function legacyVehicleShape(f:VehicleFamily){
 /** Front +X. Distinct coachwork, axle positions, tire radius as fraction
  * of width, and roof taper. Side outlines remain convex for coarse cover;
  * visible wheel openings are cut only by the mesh builder. */
-export function vehicleShape(f:VehicleFamily){
+export function vehicleShapeV2(f:VehicleFamily){
  const profiles={
   sedan:{belt:.57,lower:.23,body:[[-.49,.23],[.49,.23],[.49,.49],[.34,.57],[-.32,.57],[-.49,.53]],cabin:[[-.29,.57],[.27,.57],[.10,.96],[-.15,.96]],cw:.405,roofWidth:.345,wheels:[-.315,.315],tire:.19,glassBottom:.20,glassTop:.84},
   hatchback:{belt:.56,lower:.24,body:[[-.49,.24],[.49,.24],[.49,.49],[.30,.56],[-.45,.56],[-.49,.52]],cabin:[[-.46,.56],[.25,.56],[.075,.96],[-.39,.96]],cw:.405,roofWidth:.345,wheels:[-.335,.30],tire:.19,glassBottom:.18,glassTop:.84},
@@ -27,6 +27,21 @@ export function vehicleShape(f:VehicleFamily){
   suv:{belt:.60,lower:.31,body:[[-.49,.31],[.49,.31],[.49,.55],[.30,.60],[-.49,.60]],cabin:[[-.46,.60],[.25,.60],[.13,.96],[-.42,.96]],cw:.405,roofWidth:.365,wheels:[-.32,.32],tire:.235,glassBottom:.20,glassTop:.84},
   van:{belt:.49,lower:.23,body:[[-.49,.23],[.49,.23],[.49,.44],[.40,.49],[-.49,.49]],cabin:[[-.49,.49],[.40,.49],[.24,.96],[-.48,.96]],cw:.43,roofWidth:.395,wheels:[-.32,.325],tire:.205,glassBottom:.24,glassTop:.83},
   'light-truck':{belt:.45,lower:.24,body:[[-.49,.24],[.49,.24],[.49,.45],[-.49,.45]],cabin:[[.09,.45],[.49,.45],[.465,.83],[.095,.83]],cw:.43,roofWidth:.40,wheels:[-.30,.34],tire:.225,glassBottom:.28,glassTop:.83}
+ } as const;
+ return profiles[f];
+}
+
+/** VEH12 hero silhouettes: same physical envelope, stronger three-box,
+ * compact upright hatch, work-truck stance and cab-over identity.
+ * Original V1/V2 profiles remain immutable for archived cover authority. */
+export function vehicleShape(f:VehicleFamily){
+ const profiles={
+  sedan:{belt:.56,lower:.23,body:[[-.49,.23],[.49,.23],[.49,.50],[.34,.56],[-.33,.56],[-.49,.52]],cabin:[[-.27,.56],[.25,.56],[.09,.92],[-.14,.92]],cw:.41,roofWidth:.35,wheels:[-.30,.30],tire:.195,glassBottom:.16,glassTop:.86},
+  hatchback:{belt:.56,lower:.235,body:[[-.49,.235],[.49,.235],[.49,.49],[.31,.56],[-.47,.56],[-.49,.53]],cabin:[[-.47,.56],[.27,.56],[.12,.98],[-.43,.98]],cw:.42,roofWidth:.365,wheels:[-.33,.30],tire:.197,glassBottom:.18,glassTop:.84},
+  pickup:{belt:.63,lower:.34,body:[[-.49,.34],[.49,.34],[.49,.60],[.33,.63],[-.49,.63]],cabin:[[-.09,.63],[.26,.63],[.16,.98],[-.09,.98]],cw:.42,roofWidth:.38,wheels:[-.30,.30],tire:.235,glassBottom:.19,glassTop:.84},
+  suv:{belt:.63,lower:.33,body:[[-.49,.33],[.49,.33],[.49,.59],[.31,.63],[-.49,.63]],cabin:[[-.47,.63],[.26,.63],[.17,.93],[-.45,.93]],cw:.42,roofWidth:.39,wheels:[-.30,.30],tire:.245,glassBottom:.17,glassTop:.86},
+  van:{belt:.50,lower:.24,body:[[-.49,.24],[.49,.24],[.49,.46],[.42,.50],[-.49,.50]],cabin:[[-.49,.50],[.42,.50],[.31,.93],[-.485,.93]],cw:.44,roofWidth:.414,wheels:[-.32,.32],tire:.21,glassBottom:.20,glassTop:.83},
+  'light-truck':{belt:.46,lower:.25,body:[[-.49,.25],[.49,.25],[.49,.46],[-.49,.46]],cabin:[[.09,.46],[.49,.46],[.48,.86],[.095,.86]],cw:.44,roofWidth:.418,wheels:[-.29,.33],tire:.235,glassBottom:.24,glassTop:.85}
  } as const;
  return profiles[f];
 }

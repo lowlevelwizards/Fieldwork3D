@@ -84,13 +84,13 @@ jobs:
           (cd c3-vfx-exact-base && node --experimental-strip-types scripts/audit-release-c11-missions.mjs ../c3-vfx-exact-base-missions.json)
           node scripts/compare-release-c11-missions.mjs c3-vfx-exact-base-missions.json c3-after-missions.json c3-vfx-exact-base-delta.json
       - name: Checkout exact production base for vehicle migration
-        if: ${{ (github.head_ref == 'feature/veh-vehicle-overhaul' || github.head_ref == 'feature/veh11-art-refinement') }}
+        if: ${{ (github.head_ref == 'feature/veh-vehicle-overhaul' || github.head_ref == 'feature/veh11-art-refinement' || github.head_ref == 'feature/veh12-identity-palette') }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           path: c3-veh-exact-base
       - name: Verify vehicle mission parity against exact base and attribute historical drift
-        if: ${{ (github.head_ref == 'feature/veh-vehicle-overhaul' || github.head_ref == 'feature/veh11-art-refinement') }}
+        if: ${{ (github.head_ref == 'feature/veh-vehicle-overhaul' || github.head_ref == 'feature/veh11-art-refinement' || github.head_ref == 'feature/veh12-identity-palette') }}
         run: |
           ln -s "$PWD/node_modules" c3-veh-exact-base/node_modules
           cp scripts/audit-release-c11-missions.mjs c3-veh-exact-base/scripts/audit-release-c11-missions.mjs
@@ -99,7 +99,7 @@ jobs:
       - name: Reject physical map regression
         run: node scripts/compare-release-c0.mjs c3-before-map.json c3-after-map.json c3-map-delta.json
       - name: Reject exact historic mission world regression (non-vehicle changes)
-        if: ${{ github.head_ref != 'feature/veh-vehicle-overhaul' && github.head_ref != 'feature/veh11-art-refinement' }}
+        if: ${{ github.head_ref != 'feature/veh-vehicle-overhaul' && github.head_ref != 'feature/veh11-art-refinement' && github.head_ref != 'feature/veh12-identity-palette' }}
         run: node scripts/compare-release-c11-missions.mjs c3-before-missions.json c3-after-missions.json c3-mission-delta.json
       - name: TypeScript and production Vite build
         run: npm run build

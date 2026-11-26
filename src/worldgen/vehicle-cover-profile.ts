@@ -3,18 +3,19 @@
  * changes to old archived vehicle records. */
 import type {Obstacle,Pt} from '../breach-core.ts';
 import {vehicleFamily,VEHICLE_DIMENSIONS,type VehicleFamily} from './vehicle-catalog.ts';
-import {legacyVehicleShape,vehicleShape,type VehicleSideProfile} from './vehicle-shape.ts';
+import {legacyVehicleShape,vehicleShapeV2,vehicleShape,type VehicleSideProfile} from './vehicle-shape.ts';
 type Volume={profile:VehicleSideProfile;halfWidth:number;roofWidth?:number};
 const rect=(a:number,b:number,lo:number,hi:number):VehicleSideProfile=>[[a,lo],[b,lo],[b,hi],[a,hi]];
 const cache=new Map<string,readonly Volume[]>();
-function volumes(family:VehicleFamily,configuration:string,version:1|2):readonly Volume[]{
+function volumes(family:VehicleFamily,configuration:string,version:1|2|3):readonly Volume[]{
  const key=version+':'+family+':'+configuration,known=cache.get(key);if(known)return known;
  const legacy=version===1;
- const {body,cabin,cw,belt}=legacy?legacyVehicleShape(family):vehicleShape(family);
+ const shape=version===3?vehicleShape(family):vehicleShapeV2(family);
+ const {body,cabin,cw,belt}=legacy?legacyVehicleShape(family):shape;
  // Ground-to-belt body is deliberately coarse: wheel wells are not
  // separate tactical apertures. The cabin follows the rendered roof rake.
  const base=body.map(([x,y],i)=>[x,i<2?0:y] as const);
- const out:Volume[]=[{profile:base,halfWidth:.43},{profile:cabin,halfWidth:cw,...(legacy?{}:{roofWidth:vehicleShape(family).roofWidth})}];
+ const out:Volume[]=[{profile:base,halfWidth:.43},{profile:cabin,halfWidth:cw,...(legacy?{}:{roofWidth:shape.roofWidth})}];
  if(family==='pickup'){
   if(configuration==='covered'||configuration==='cargo')out.push({profile:rect(legacy?-.43:-.445,legacy?-.12:-.105,belt,configuration==='covered'?(legacy?.89:.92):(legacy?.73:.79)),halfWidth:legacy?.32:.33});
   else out.push({profile:rect(legacy?-.47:-.48,legacy?-.435:-.445,belt,belt+(legacy?.13:.115)),halfWidth:.43});
@@ -43,7 +44,7 @@ function clip(p:readonly number[],q:readonly number[],v:Volume):number|null{
 }
 /** undefined = not eligible; null = clear trajectory; number = first hit. */
 export function vehicleCoverImpact(from:Pt,to:Pt,fromZ:number,toZ:number,c:Obstacle):number|null|undefined{
- if(!c.vehicleProfile||![1,2].includes(c.vehicleProfile.version)||c.destroyed||c.toppled||c.topHeight!==undefined)return undefined;
+ if(!c.vehicleProfile||![1,2,3].includes(c.vehicleProfile.version)||c.destroyed||c.toppled||c.topHeight!==undefined)return undefined;
  const family=vehicleFamily(c.fixture??'');if(!family||c.w<=0||c.h<=0)return undefined;
  const turn=c.orientation??0,co=[1,0,-1,0][turn],si=[0,1,0,-1][turn];
  const w=turn%2?c.h:c.w,d=turn%2?c.w:c.h,h=VEHICLE_DIMENSIONS[family][2];

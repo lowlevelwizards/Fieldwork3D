@@ -93,7 +93,7 @@ export function planVehiclePlacement(site:Site,seed=site.seed,modernOnly=false):
      if([...site.cover,...vehicles].some(o=>intersects(o,c,17))){reject('occupied');continue;}
      advanceLegacyArtStream(family,site,rng);
      c.artVariant=chooseVehicleArt(family,{archetype:site.archetype,condition:site.condition,role:zone.vehicleParking?.role},artRng);
-     c.vehicleProfile={version:2,configuration:vehicleRecipe(family,c.artVariant).configuration};
+     c.vehicleProfile={version:3,configuration:vehicleRecipe(family,c.artVariant).configuration};
      c.artCondition=site.condition==='vacant'?'vacant':site.condition==='neglected'?'neglected':site.condition==='busy'?'used':'clean';
      vehicles.push(c);usedSlots.add(slotKey);diag.accepted++;found=true;break;
     }
