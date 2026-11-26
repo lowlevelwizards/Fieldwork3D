@@ -65,7 +65,7 @@ test('Operations campaign purchases exact G36 models, exchanges serials and pers
  const carbine=c.operators.find(o=>o.weapon==='carbine');
  const rifle=c.operators.find(o=>o.weapon==='rifle');
  assert.ok(carbine&&rifle);
- let updated=c;
+ let updated={...c,funds:5000};
  for(const id of ['g36-k-dual','g36-c-classic','g36-ka4','g36-service'])updated=buyCatalogWeapon(updated,id);
  const total=updated.inventory.serializedWeapons.length;
  const stockBefore=JSON.stringify(stockByPlatform(updated));
