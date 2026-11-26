@@ -35,8 +35,10 @@ export function planStreetMarkings(site:Site):PropertySurface[]{
   const begin=j.mainEdge-sign*24,end=j.mainEdge-sign*(len-8);
   const alongCenter=(begin+end)/2;
   add('road-centerline',rect(r[axis],alongCenter,D.paintWidth,Math.abs(end-begin)));
-  const inbound=r[axis]+sign*j.laneWidth/2;
-  add('road-edge-line',rect(inbound,j.mainEdge-sign*13,j.laneWidth-8,3));
+  if(j.stopAt!==undefined){
+   const inbound=r[axis]+(axis==='x'?-sign:sign)*j.laneWidth/2;
+   add('road-edge-line',rect(inbound,j.stopAt,j.laneWidth-8,3));
+  }
  }
  return out;
 }

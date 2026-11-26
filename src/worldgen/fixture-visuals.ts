@@ -270,7 +270,7 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         // Stable crossed alpha-cutout cards. Geometry/collisions still come
         // exclusively from the existing physical Obstacle footprint.
       }else if(['mailbox','trash-bin','bollard','hydrant','utility-cabinet',
-        'parking-block','parking-sign','street-lamp','bike-rack',
+        'parking-block','parking-sign','traffic-stop-sign','street-lamp','bike-rack',
         'vending-machine','wayfinding-sign','screened-dumpster'].includes(fixture)){
         const enamel=ctx.solid(0x777f79,.72,'metal');
         const dark=ctx.solid(0x343c3b,.86);
@@ -446,6 +446,26 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           for(const sx of [-.36,.36])
             ctx.box(group,c.x+w*sx,6.9,c.y,
               w*.11,.7,d*.52,safety,false);
+        }else if(fixture==='traffic-stop-sign'){
+          // Chunky, recognizable octagonal traffic plate on a narrow pole.
+          // The board and white trim are separate shallow eight-sided faces.
+          const H=asset?.height??51;
+          const rim=visualCtx.solid(0xd9d6c7,.83,'painted-metal');
+          const red=visualCtx.solid(0xb44e43,.82,'painted-metal');
+          ctx.box(group,c.x,H*.45,c.y,2.3,H*.90,2.3,dark);
+          for(const [radius,z,mat] of [[w*.50,0,rim],[w*.44,1.0,red]] as const){
+            const plate=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,.9,8),mat);
+            plate.rotation.x=Math.PI/2;plate.rotateY(Math.PI/8);
+            plate.position.set(c.x,H-w*.5,c.y+z);plate.castShadow=false;group.add(plate);
+          }
+          // Graphic letter strokes kept larger than literal real-world text.
+          const yy=H-w*.50;
+          for(const [dx,dy,ww,hh] of [
+           [-4,2,2.4,0.8],[-4,0,2.4,0.8],[-4,-2,2.4,.8],[-5,1,.8,2],[-3,-1,.8,2],
+           [-1.1,2,2.7,.8],[-1.1,0,.8,4],
+           [1.8,2,2.4,.8],[1.8,-2,2.4,.8],[.6,0,.8,4],[3,0,.8,4],
+           [4.7,2,2.4,.8],[4.7,0,2.4,.8],[3.7,0,.8,4],[5.7,1,.8,2]
+          ])ctx.box(group,c.x+dx,yy+dy,c.y+1.6,ww,hh,.5,rim,false);
         }else if(fixture==='parking-sign'){
           // Bold recognizable parking 'P' on an enamel-blue reserve sign,
           // not a vague yellow dash or a billboard-sized icon.

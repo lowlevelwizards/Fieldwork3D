@@ -11,7 +11,7 @@ import {planVehiclePlacement} from './vehicle-placement.ts';
 import {intersectsVehicleParkingReserve} from './vehicle-parking-layout.ts';
 import {vehicleFamily} from './vehicle-catalog.ts';
 import {planStreetFurniture} from './street-furniture.ts';
-import {attachStreetJunction} from './street-junction.ts';
+import {attachStreetJunction,proposeJunctionStop} from './street-junction.ts';
 export function attachStreetInfrastructure(site:Site,vehicles=true):Site{
  const baseline=vehicles?attachPlannedVehicles(site):site;
  const oldCount=baseline.cover.filter(c=>vehicleFamily(c.fixture??'')).length;
@@ -34,12 +34,18 @@ export function attachStreetInfrastructure(site:Site,vehicles=true):Site{
   const candidate={...parkedSite,streetInfrastructure:attachStreetJunction(parkedSite)};
   if(streetConflicts(candidate,candidate.streetInfrastructure!).length)continue;
   if(validExteriorRetrofit(site,candidate)){
-   const hardware=planStreetFurniture(candidate);
-   if(hardware.length){
-    const furnished={...candidate,cover:[...candidate.cover,...hardware]};
-    if(validExteriorRetrofit(candidate,furnished))return furnished;
+   const control=proposeJunctionStop(candidate);
+   let accepted=candidate;
+   if(control){
+    const signed={...control.site,cover:[...candidate.cover,control.sign]};
+    if(!streetConflicts(signed,signed.streetInfrastructure!).length&&validExteriorRetrofit(candidate,signed))accepted=signed;
    }
-   return candidate;
+   const hardware=planStreetFurniture(accepted);
+   if(hardware.length){
+    const furnished={...accepted,cover:[...accepted.cover,...hardware]};
+    if(validExteriorRetrofit(accepted,furnished))return furnished;
+   }
+   return accepted;
   }
  }
  return baseline;

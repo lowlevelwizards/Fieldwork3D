@@ -83,7 +83,7 @@ export function fixturePixelSurface(fixture:string|undefined):PixelSurface{
  if(['tire-stack','tire','parking-block'].includes(id))return 'rubber';
  if(['cardboard-box','package','product-box','box'].includes(id))return 'paper';
  if(['fence','bollard','hydrant','utility-cabinet','street-lamp',
- 'mailbox','trash-bin','parking-sign','bike-rack','recycling-bin',
+ 'mailbox','trash-bin','parking-sign','traffic-stop-sign','bike-rack','recycling-bin',
  'tipped-trash-bin','fire-extinguisher','step-ladder','supply-cart',
  'linen-cart','tool-rack','dish-rack','ice-machine','chest-freezer',
  'upright-freezer','refrigerated-display','utility-sink'].includes(id))

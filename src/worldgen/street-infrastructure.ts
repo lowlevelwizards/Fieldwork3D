@@ -14,7 +14,7 @@ export type StreetInfrastructure=Readonly<{
  privateReserve:number;accessConnection:StreetRect|null;
  centerline:StreetRect|null;diagnostics:readonly string[];
  /** Real secondary road, accepted only after physical placement. */
- junction?:Readonly<{road:StreetRect;axis:'x'|'y';laneWidth:number;side:-1|1;mainEdge:number}>;
+ junction?:Readonly<{road:StreetRect;axis:'x'|'y';laneWidth:number;side:-1|1;mainEdge:number;stopAt?:number}>;
 }>;
 export function proposeStreetInfrastructure(site:Site,override?:StreetKind,privateReserve:number=D.propertyAccess):StreetInfrastructure|null{
  const b=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};

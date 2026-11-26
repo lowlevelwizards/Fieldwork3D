@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {proposeStreetInfrastructure,streetConflicts} from '../src/worldgen/street-infrastructure.ts';
-import {attachStreetJunction} from '../src/worldgen/street-junction.ts';
+import {attachStreetJunction,proposeJunctionStop} from '../src/worldgen/street-junction.ts';
 import {planStreetMarkings} from '../src/worldgen/street-markings.ts';
 import {planStreetFinishes} from '../src/worldgen/street-finish.ts';
 import {overlapsPublicStreetRoad} from '../src/worldgen/public-street-layout.ts';
@@ -22,6 +22,11 @@ test('clear side corridor makes a connected road with a real opening, never over
   assert.ok(overlapsPublicStreetRoad(final,{x:r.x,y:r.y,w:2,h:2}));
   assert.ok(planStreetFinishes(final).some(m=>m.kind==='street-side-road'));
   assert.ok(planStreetMarkings(final).length>planStreetMarkings(withPlan).length);
+  const control=proposeJunctionStop(final);
+  assert.ok(control,entrySide);
+  assert.equal(control.sign.fixture,'traffic-stop-sign');
+  assert.equal(control.site.streetInfrastructure.junction.stopAt,control.sign[axis==='x'?'y':'x']);
+  assert.equal(planStreetMarkings(control.site).length,planStreetMarkings(final).length+1);
   const blocked={...withPlan,cover:[{x:64,y:500,w:128,h:128},{x:936,y:500,w:128,h:128},{x:500,y:64,w:128,h:128},{x:500,y:936,w:128,h:128}]};
   assert.equal(attachStreetJunction(blocked).junction,undefined);
  }

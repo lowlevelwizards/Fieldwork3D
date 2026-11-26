@@ -46,3 +46,6 @@ Ordinary new-site generation now selects ST without an opt-in; a failed physical
 
 ## Connected side-road checkpoint
 Versioned secondary-road geometry joins a complete main street only where the entire unused map-edge corridor fits a nominal two-lane road and contains no existing rooms, zones, obstacles, protected points, or door reserves. Trim actual curb/sidewalk pieces at the opening; render the branch and bounded approach paint with existing static surface packets. No invented signalized junctions or traffic, no movement changes. Exact substrate assertions extended rather than removing earlier checks. Pending critical validation.
+
+## ST7 traffic control and new asset
+A separate chunky octagonal stop sign is registered in canonical scale and the Asset Lab. A side-road stopping bar appears only with a physically fitted right-hand approach sign; the sign and marking are accepted as one versioned layout after route/cover validation. If the map edge cannot fit a legal sign, omit the control instead of painting an unsupported stop. No simulated traffic or enforcement.
