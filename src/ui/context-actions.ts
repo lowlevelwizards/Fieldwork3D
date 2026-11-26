@@ -10,7 +10,7 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   secondaryReloadAvailable?:boolean;
   nodeKind?:string;nodeMoveMode?:string;aimLabel?:string;nodeFirePolicy?:string;
   watchActive?:boolean;
-  nearMovable?:boolean;nearWindow?:boolean;nearWindowOpen?:boolean;nearDoor?:boolean;
+  nearMovable?:boolean;nearBreakableGlass?:boolean;nearWindow?:boolean;nearWindowOpen?:boolean;nearDoor?:boolean;
   powerActions?:readonly ContextAction[];
   treatTargetName?:string;treatCaptureTarget?:boolean;
   nearCivilian?:boolean;escortableCivilian?:boolean;
@@ -144,6 +144,8 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     // Contextual fixtures append AFTER the stable primary order.
     ...(o.nearMovable?[{id:'ctxPush',label:'PUSH',group:'advanced' as const,
       title:'Queue a physical push of nearby light furniture'}]:[]),
+    ...(o.nearBreakableGlass?[{id:'ctxBreakGlass',label:'BREAK GLASS',
+      group:'advanced' as const,title:'Queue a physical strike against the intact pane'}]:[]),
     ...(o.nearWindow?[{id:'ctxWindow',
       label:o.nearWindowOpen?'CLOSE WINDOW':'OPEN WINDOW',
       group:'advanced' as const,
