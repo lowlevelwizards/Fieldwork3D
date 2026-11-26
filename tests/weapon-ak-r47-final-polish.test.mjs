@@ -83,8 +83,10 @@ test('R4.7 silver cover bands cross full top and smooth family remains clear',()
    assert.ok(r[0].geometry.parameters.depth>3,
     'physical ribs cross cover in Z, not side sticker');
    const matColor=r[0].material.color;
-   assert.ok(matColor.r>.12&&matColor.g>.18,
-    'A2 subdued stamped-steel response remains visible without bright bands');
+   assert.equal(matColor.getHex(),0x5c6562,'WA7 restrained accent finish');
+   const baseColor=new THREE.Color(0x4a5051);
+   assert.ok(matColor.r>baseColor.r&&matColor.g>baseColor.g&&matColor.b>baseColor.b,
+    'accent remains distinguishable from main steel without historical bright contrast');
   }
   dispose(a);
  }
