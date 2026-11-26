@@ -8,7 +8,7 @@ manifest = json.loads((root / "manifest.json").read_text())
 out = root / "wc2-comparison"
 out.mkdir(exist_ok=True)
 records = [r for report in manifest["reports"] for r in report["records"]
-           if r["status"] in ("primary-reference", "issued-sidearm-appearance", "preview-only")]
+           if r["platform"] != "accessory-samples" and r["status"] in ("primary-reference", "issued-sidearm-appearance", "preview-only")]
 ids = [r["id"] for r in records]
 if len(ids) != len(set(ids)) or not records:
     raise ValueError("Duplicate or empty factory comparison")
