@@ -108,15 +108,15 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     ]:[]),
     ...(o.nearDownedCaptureTarget?[
       {id:'ctxDragCapture',label:'DRAG TARGET',group:'primary' as const,
-       title:'Arm physical drag · tap a destination or draw a custom transport route'},
+       title:'Pick up and drag; use ordinary movement until SET DOWN'},
       {id:'ctxCarryCapture',label:'CARRY TARGET',group:'primary' as const,
-       title:'Arm physical carry · tap a destination or draw a custom transport route'}
+       title:'Pick up and carry; use ordinary movement until SET DOWN'}
     ]:[]),
     ...(o.nearCivilianCasualty?[
       {id:'ctxDragCivilian',label:'DRAG',group:'primary' as const,
-       title:'Physically drag an incapacitated civilian to extraction'},
+       title:'Pick up and drag; use ordinary movement until SET DOWN'},
       {id:'ctxCarryCivilian',label:'CARRY',group:'primary' as const,
-       title:'Physically carry an incapacitated civilian to extraction'}
+       title:'Pick up and carry; use ordinary movement until SET DOWN'}
     ]:[]),
     ...(o.secondaryIssued?[{id:'ctxSwitchWeapon',group:'advanced' as const,
       label:o.secondaryHand==='secondary'?'SWITCH TO PRIMARY':'DRAW SIDEARM',
