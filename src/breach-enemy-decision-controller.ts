@@ -39,7 +39,7 @@ import {captureTargetMayWithdraw,missionObjectiveResponse} from './breach-ai-mis
 import {retreatDoorClosureEligible,routineDoorClosureEligible} from './breach-ai-door-response.ts';
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
 import {localFixtureObservation} from './breach-ai-contextual-observation.ts';
-import {doctrineForPurpose} from './breach-ai-doctrine.ts';
+import {doctrineForPurpose,doctrineForGroup} from './breach-ai-doctrine.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
 import {aiSiteIndex,connectedAreaCenters,groupObservationProposals} from './breach-ai-site-index.ts';
@@ -752,7 +752,7 @@ function distributeReports(s:Session){
      g.id===a.encounterGroupId)?.purpose;
    a.coordinationUntil=renewCoordinationUntil(s.seconds,a.coordinationUntil,
      roles[a.id],heard?.uncertainty??report.uncertainty,
-     doctrineForPurpose(purpose),a.npcIdentity);
+     s.site?.encounter?.groups.find(g=>g.id===a.encounterGroupId)?.behaviorProfile&&a.npcIdentity?doctrineForGroup(a.npcIdentity.groupKind):doctrineForPurpose(purpose),a.npcIdentity);
    const covering=roles[a.id]==='watch'||roles[a.id]==='support';
    if(covering&&a.intent?.kind!=='engage'&&a.alert!=='retreat'&&
       !a.retreatPoint){

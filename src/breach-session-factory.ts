@@ -17,7 +17,7 @@ import {withActions} from './breach-actor-initial-state.ts';
 import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
 import {freshMagazineIssue} from './arsenal/live-magazine-capacity.ts';
 import {enemyKitForEncounter} from './breach-enemy-loadouts.ts';
-import {doctrineForPurpose,doctrinePersonality,doctrineInitialMorale} from './breach-ai-doctrine.ts';
+import {doctrineForPurpose,doctrineForGroup,doctrinePersonality,doctrineInitialMorale} from './breach-ai-doctrine.ts';
 import {npcIdentity} from './breach-ai-identity.ts';
 import {createCivilian} from './breach-civilian-types.ts';
 import {civilianRefugePoints} from './breach-civilian-refuge.ts';
@@ -123,7 +123,7 @@ export function assembleSession(index=0,siteSeed?:number,
       // no extra random draws or coupling between unrelated actors.
       const group=site.encounter?.groups.find(g=>g.id===spec?.groupId);
       const purpose=group?.purpose;
-      const doctrine=doctrineForPurpose(purpose);
+      const doctrine=group?.behaviorProfile?doctrineForGroup(group.behaviorProfile):doctrineForPurpose(purpose);
       a.npcIdentity=npcIdentity(site.seed,a.id,purpose,spec?.role,site.encounter?.premise,
         group?.behaviorProfile,group?.competenceOverride);
       a.routineExtensionAttempted=false;

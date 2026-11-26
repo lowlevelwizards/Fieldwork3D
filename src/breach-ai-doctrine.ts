@@ -1,7 +1,13 @@
 /** Encounter social group purpose, not appearance/faction skin, determines
  * trained-versus-irregular tendencies. No extra runtime decision scheduler. */
 import type {EncounterRole,EncounterGroup} from './worldgen/encounter-types.ts';
-export type EncounterDoctrine='irregular'|'security'|'organised';
+import {AI_GROUP_PROFILES,type AiGroupKind,type EncounterDoctrine} from './breach-ai-group-profiles.ts';
+export type {EncounterDoctrine} from './breach-ai-group-profiles.ts';
+/** Legacy group purposes remain a save migration fallback. Authored profiles
+ * are authoritative rather than silently inheriting the old category. */
+export function doctrineForGroup(groupKind:AiGroupKind):EncounterDoctrine{
+ return AI_GROUP_PROFILES[groupKind].doctrine;
+}
 export type Temperament='guard'|'aggressor'|'cautious';
 export function doctrineForPurpose(purpose:EncounterGroup['purpose']|undefined):
  EncounterDoctrine{
