@@ -5,13 +5,19 @@ on:
     paths:
       - 'weapon-art-baseline.html'
       - 'src/arsenal/wa0-capture.ts'
+      - 'src/arsenal/wa0-custom-reference-cases.ts'
+      - 'scripts/capture-wa0-operator-context.mjs'
+      - 'tests/wa0-custom-art-coverage.test.mjs'
       - 'scripts/capture-weapon-art-baseline.mjs'
       - '.github/workflows/wa0-visual-baseline.yml'
   workflow_dispatch:
+concurrency:
+  group: wa0-visual-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   capture:
     runs-on: ubuntu-24.04
-    timeout-minutes: 18
+    timeout-minutes: 25
     permissions:
       contents: read
     steps:
@@ -21,10 +27,12 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - run: npm run check
+      - run: node --experimental-strip-types --test tests/wa0-custom-art-coverage.test.mjs
       - run: |
           npm install --no-save --package-lock=false playwright@1.56.1
           npx playwright install --with-deps chromium
       - run: node --experimental-strip-types scripts/capture-weapon-art-baseline.mjs
+      - run: node --experimental-strip-types scripts/capture-wa0-operator-context.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

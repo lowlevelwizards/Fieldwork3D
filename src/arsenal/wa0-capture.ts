@@ -1,6 +1,7 @@
 /** WA0.3 isolated WebGL reference capture; no gameplay or persistence writes. */
 import * as THREE from 'three';
 import {ARSENAL_REFERENCES} from './catalog.ts';
+import {collectCustomArtCases,type CustomArtCase} from './wa0-custom-reference-cases.ts';
 import {SIDEARM_PREVIEW_REFERENCES,buildSidearmPreview,clearSidearmPreview} from '../weapons/geometry/sidearm-preview.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset,setWeaponAttachment} from '../equipment-weapon-assemblies.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../breach-weapon-geometry.ts';
@@ -12,7 +13,7 @@ import {configureGraphicRendererOutput} from '../rendering/graphic-lighting-prof
 
 type Primary=(typeof ARSENAL_REFERENCES)[number];
 type Sidearm=(typeof SIDEARM_PREVIEW_REFERENCES)[number];
-type Entry={id:string;name:string;platform:string;status:string;primary?:Primary;sidearm?:Sidearm;equipped?:boolean};
+type Entry={id:string;name:string;platform:string;status:string;primary?:Primary;sidearm?:Sidearm;equipped?:boolean;custom?:CustomArtCase};
 const refs:Entry[]=[
  ...ARSENAL_REFERENCES.map(primary=>({id:primary.id,name:primary.name,platform:primary.platformId,status:'primary-reference',primary})),
  ...SIDEARM_PREVIEW_REFERENCES.map(sidearm=>({id:sidearm.id,name:sidearm.name,platform:sidearm.family,status:sidearm.family==='beretta'?'preview-only':'issued-sidearm-appearance',sidearm})),
@@ -21,8 +22,10 @@ const refs:Entry[]=[
 // Representative accepted accessory choices; no claim of exhaustive coverage.
 const equippedIds=new Set(['ar-m4a1','ak-ak74m','hk-g3a3','hk-mp5a3','g36-ka4','fal-5000','fnc-service']);
 const equipped=refs.filter(r=>equippedIds.has(r.id)).map(r=>({...r,id:r.id+'-equipped',platform:'accessory-samples',equipped:true}));
+const customCoverage=collectCustomArtCases();
+const customEntries:Entry[]=customCoverage.cases.map(custom=>({id:custom.id,name:custom.name,platform:custom.platform,status:'custom-part-sample',custom}));
 const q=new URLSearchParams(location.search),platform=q.get('platform');
-const selected=(platform==='accessory-samples'?equipped:refs.filter(r=>!platform||r.platform===platform));
+const selected=(platform==='accessory-samples'?equipped:platform?.startsWith('custom-')?customEntries.filter(r=>r.platform===platform):refs.filter(r=>!platform||r.platform===platform));
 const holder=document.getElementById('sheet')!,status=document.getElementById('status')!;
 const scene=new THREE.Scene();addArsenalInspectionLighting(scene);
 const renderer=new THREE.WebGLRenderer({antialias:false,alpha:false,preserveDrawingBuffer:true});
@@ -41,7 +44,7 @@ function construct(entry:Entry){
   const id=entry.sidearm.id;
   return {model,accepted:[] as string[],cleanup:()=>clearSidearmPreview(id,model)};
  }
- let config=entry.primary?selectWeaponFamilyPreset(initialWeaponConfiguration(entry.primary.legacy.weapon),entry.primary.id):initialWeaponConfiguration('shotgun');
+ let config=entry.custom?entry.custom.config:entry.primary?selectWeaponFamilyPreset(initialWeaponConfiguration(entry.primary.legacy.weapon),entry.primary.id):initialWeaponConfiguration('shotgun');
  const accepted:string[]=[];
  if(entry.equipped){
   if(config.build?.family==='hk')config=setWeaponAttachment(config,'opticMount','optic-hk-claw');
@@ -79,8 +82,10 @@ function shot(b:THREE.Box3,def:typeof viewDefs[number],width:number,height:numbe
  const horizontal=span??Math.max(projected.x,projected.y*aspect)*1.16;
  camera.left=-horizontal/2;camera.right=horizontal/2;camera.top=horizontal/aspect/2;camera.bottom=-camera.top;
  camera.updateProjectionMatrix();renderer.setSize(width,height,false);
+ const hidden:THREE.Object3D[]=[];
+ if(def[0]==='silhouette')scene.traverseVisible(n=>{if(n instanceof THREE.Mesh&&(n.userData.weaponPixelArt||n.name.startsWith('family-art-'))){hidden.push(n);n.visible=false;}});
  scene.overrideMaterial=def[0]==='silhouette'?silhouette:null;
- renderer.render(scene,camera);
+ try{renderer.render(scene,camera);}finally{for(const n of hidden)n.visible=true;scene.overrideMaterial=null;}
  const calls=renderer.info.render.calls,triangles=renderer.info.render.triangles;
  const gl=renderer.getContext(),pixels=new Uint8Array(width*height*4);
  gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
@@ -123,12 +128,16 @@ async function generate(){
     const cap=document.createElement('figcaption');cap.textContent=name;
     fig.append(img,cap);views.append(fig);
    };
-   for(const v of viewDefs)add(v[0]+'-fit',shot(b,v,480,240));
-   if(!entry.equipped)add('side-shared',shot(b,viewDefs[0],480,240,spans[cohort]));
-   add('native-128',shot(b,viewDefs[0],128,64));
-   add('native-64',shot(b,viewDefs[0],64,32));
+   if(entry.custom){
+    for(const v of viewDefs.filter(v=>['side','reverse','three-quarter'].includes(v[0])))add(v[0]+'-fit',shot(b,v,480,240));
+   }else{
+    for(const v of viewDefs)add(v[0]+'-fit',shot(b,v,480,240));
+    if(!entry.equipped)add('side-shared',shot(b,viewDefs[0],480,240,spans[cohort]));
+    add('native-128',shot(b,viewDefs[0],128,64));
+    add('native-64',shot(b,viewDefs[0],64,32));
+   }
    holder.append(row);
-   records.push({id:entry.id,platform:entry.platform,status:entry.status,cohort,accepted:m.accepted,panels});
+   records.push({id:entry.id,platform:entry.platform,status:entry.status,cohort,accepted:m.accepted,custom:entry.custom?{partId:entry.custom.partId,hostId:entry.custom.hostId,parts:entry.custom.config.build?.parts}:null,panels});
   }finally{scene.remove(m.model);m.cleanup();}
   status.textContent='Captured '+records.length+' / '+selected.length;
   await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
