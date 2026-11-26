@@ -169,13 +169,19 @@ export function buildSiteDoors(site:Site,host:SiteOpeningsHost,
           DOOR_CLEAR_VISUAL_HEIGHT-3,
           profile.casingDepth,doorTrim,false);
       }
-      host.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight/2,0,
-        length+2*profile.jambWidth,
-        profile.headerHeight,profile.headerDepth,doorTrim);
-      host.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight+.5,1.50,
-        length+2*profile.jambWidth+1,
+      // Paired leaves own only their half of the header and outer casing.
+      // Extending both headers through the middle produces coplanar faces.
+      const outerSign=door.hinge==='b'?1:-1;
+      const headerX=door.pairedWith?outerSign*profile.jambWidth/2:0;
+      const headerWidth=door.pairedWith?length+profile.jambWidth-.1:
+        length+2*profile.jambWidth;
+      host.box(frame,headerX,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight/2,0,
+        headerWidth,profile.headerHeight,profile.headerDepth,doorTrim);
+      host.box(frame,headerX,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight+.5,1.50,
+        headerWidth+(door.pairedWith?0:1),
         1.1,profile.headerDepth+.8,doorTrim,false);
-      const threshold=host.box(frame,0,.275,0,length,
+      const threshold=host.box(frame,0,profile.thresholdHeight/2+.04,0,
+        length-(door.pairedWith?.12:0),
         profile.thresholdHeight,profile.thresholdDepth,doorTrim,false);
       const leaf=new THREE.Group();
       let glassPane:THREE.Mesh|undefined;
@@ -384,8 +390,13 @@ export function buildSiteWindows(site:Site,host:SiteOpeningsHost,
       }
 
       for(const x of [-opening.width/2,opening.width/2])
-        host.box(group,x,baseTop+glassHeight/2,0,3,
-          glassHeight+2,9,trim,false);
+        host.box(group,x,baseTop+glassHeight/2,0,3.5,
+          glassHeight+2,11.4,trim,false);
+      // Frame lips project beyond both wall faces; the aperture itself is
+      // unchanged. A low rail makes full-height glazing legible as glass.
+      const railWidth=Math.max(1,opening.width-3.5);
+      for(const y of [baseTop+1,glassTop-1])
+        host.box(group,0,y,0,railWidth,2,10.8,trim,false);
       // Architectural divisions remain thin mullions, never extra cover.
       if(style==='standard'||style==='bay')
         host.box(group,0,baseTop+glassHeight*.48,2.3,
