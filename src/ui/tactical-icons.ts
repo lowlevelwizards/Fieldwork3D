@@ -218,6 +218,7 @@ Object.assign(FIELDWORK_ICON_FAMILY,{
   removeWedge:commandGlyph('<path d="M6 40L36 40L36 22Z M40 29V7M33 14L40 7L45 14"/>'),
   breachTool:commandGlyph('<path d="M7 8H30V42H7Z M12 13L24 17V38L12 42Z M32 16L38 9 M34 25H45 M33 33L40 40"/>'),
   power:commandGlyph('<path d="M24 6V25 M13 12A18 18 0 1 0 35 12 M12 37H36"/>'),
+  windowBreak:commandGlyph('<path d="M7 7H39V41H7Z M23 7L20 19L28 23L16 30L23 41 M20 19L7 14 M28 23L39 17 M16 30L7 34"/>'),
   windowOpen:commandGlyph('<path d="M6 7H37V41H6Z M21 7V41 M6 23H37 M23 11L39 17V35L23 39Z M38 11L45 4M39 4H45V10"/>'),
   windowClose:commandGlyph('<path d="M7 7H39V41H7Z M23 7V41 M7 23H39 M43 24H33M38 19L33 24L38 29"/>'),
   inspect:commandGlyph('<path d="M8 5H29L37 13V38H8Z M28 5V14H37 M14 20H27 M14 27H22"/><circle cx="33" cy="32" r="9"/><path d="M39 38L45 44"/>')
@@ -246,6 +247,7 @@ const aliases:Record<string,string>={
   "ctxDelete": "deletePoint",
   "ctxPush": "push",
   "ctxWindow": "windowOpen",
+  "ctxBreakGlass": "windowBreak",
   "ctxWindowOpen": "windowOpen",
   "ctxWindowClose": "windowClose",
   "ctxTreat": "medical",
