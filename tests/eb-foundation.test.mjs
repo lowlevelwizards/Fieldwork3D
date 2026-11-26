@@ -43,3 +43,18 @@ test('EB3 cache ignores leaf motion but catches in-place threshold edits and new
  doors[0].a.y=35;const changed=aiSiteIndex(world,doors);assert.notEqual(changed,first);
  world.revision++;assert.notEqual(aiSiteIndex(world,doors),changed);
 });
+
+import {AiWorkScheduler} from '../src/breach-ai-work-scheduler.ts';
+test('EB4 a scheduled actor cannot chain elective jobs on the same tick, urgent work bypasses',()=>{
+ const ids=Array.from({length:32},(_,i)=>'eb'+i),work=new AiWorkScheduler(2,ids),seen=new Set();
+ for(let tick=0;tick<32;tick++){
+  let admitted=0;
+  for(const id of ids)if(work.allow(id,'investigation-route',tick)){
+   seen.add(id);admitted++;
+   assert.equal(work.allow(id,'idle-route',tick),false);
+   assert.equal(work.allow(id,'emergency',tick,true),true);
+  }
+  assert.ok(admitted<=2);
+ }
+ assert.equal(seen.size,32);assert.ok(work.maxUnitsObserved<=work.maxUnitsPerTick);
+});
