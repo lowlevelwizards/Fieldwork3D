@@ -4,6 +4,7 @@
  * Positions are weapon-local game-art coordinates, never physical dimensions.
  */
 import * as THREE from 'three';
+import {createIntegratedArtAtlas,integratedArtUV,createIntegratedArtMaterialCache} from './weapon-integrated-surface-atlas.ts';
 import {FNC_FRONT_P13 as F} from './fnc-front-layout.ts';
 
 export type FNCPixelRegion='receiver-upper'|'receiver-lower'|'polymer'|'gas';
@@ -66,46 +67,12 @@ function pixelValue(tile:Tile,x:number,y:number):number{
  }
  return 255;
 }
+const grid={tile:TILE,cols:COLS,rows:ROWS};
 let shared:THREE.DataTexture|undefined;
 export function fncPixelAtlas():THREE.DataTexture{
- if(shared)return shared;
- const width=TILE*COLS,height=TILE*ROWS,rgba=new Uint8Array(width*height*4);
- for(const [name,definition] of Object.entries(TILES) as [Tile,typeof TILES[Tile]][]){
-  const [x0,x1,y0,y1]=definition.bounds;
-  for(let j=0;j<TILE;j++)for(let i=0;i<TILE;i++){
-   const x=x0+(i+.5)/TILE*(x1-x0),y=y0+(j+.5)/TILE*(y1-y0);
-   const shade=pixelValue(name,x,y);
-   const n=((definition.row*TILE+j)*width+definition.col*TILE+i)*4;
-   rgba[n]=shade;rgba[n+1]=shade;rgba[n+2]=shade;rgba[n+3]=255;
-  }
- }
- const atlas=new THREE.DataTexture(rgba,width,height,
-  THREE.RGBAFormat,THREE.UnsignedByteType);
- atlas.name='FNC P21 authored pixel-surface atlas';
- atlas.colorSpace=THREE.SRGBColorSpace;
- atlas.wrapS=atlas.wrapT=THREE.ClampToEdgeWrapping;
- atlas.magFilter=atlas.minFilter=THREE.NearestFilter;
- atlas.generateMipmaps=false;
- atlas.flipY=false;
- atlas.needsUpdate=true;
- shared=atlas;
- return atlas;
+ return shared??=createIntegratedArtAtlas('FNC P21 authored pixel-surface atlas',grid,TILES,pixelValue);
 }
-const materials=new WeakMap<THREE.Material,THREE.Material>();
-function pixelMaterial(source:THREE.Material):THREE.Material{
- let material=materials.get(source);
- if(material)return material;
- // The production palette is standard PBR; isolated labs use Basic.
- // Preserve the original material type and all non-pixel finish settings.
- if(!(source instanceof THREE.MeshStandardMaterial) &&
-    !(source instanceof THREE.MeshBasicMaterial))return source;
- material=source.clone();
- (material as THREE.MeshStandardMaterial|THREE.MeshBasicMaterial).map=fncPixelAtlas();
- material.userData={...source.userData,fncPixelArt:true};
- material.needsUpdate=true;
- materials.set(source,material);
- return material;
-}
+const pixelMaterial=createIntegratedArtMaterialCache(fncPixelAtlas,'fncPixelArt',{allowBasic:true});
 function tileFor(region:FNCPixelRegion,n:THREE.Vector3):Tile{
  if(region==='gas'){
   if(n.y>.65)return 'gas-roof';
@@ -117,11 +84,7 @@ function tileFor(region:FNCPixelRegion,n:THREE.Vector3):Tile{
  return n.z>0?'slot':'blank';
 }
 function uvFor(tile:Tile,x:number,y:number):[number,number]{
- const {col,row,bounds}=TILES[tile];
- const [x0,x1,y0,y1]=bounds;
- const u=Math.max(.005,Math.min(.995,(x-x0)/(x1-x0)));
- const v=Math.max(.005,Math.min(.995,(y-y0)/(y1-y0)));
- return [(col+u)/COLS,(row+v)/ROWS];
+ return integratedArtUV(TILES[tile],grid,x,y,.005);
 }
 /** Assign atlas UVs triangle-by-triangle. Existing FNC meshes have
  * independent triangle vertices, so no extra triangles/vertices are added.
