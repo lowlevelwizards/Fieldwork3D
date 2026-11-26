@@ -198,9 +198,12 @@ export function buildSiteDoors(site:Site,host:SiteOpeningsHost,
         host.box(leaf,0,4,2.5,length*.37,2,1.4,doorTrim,false); // lower pull
       }else{
         if(door.kind==='sliding'){
-          host.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+2,1.6,
-            length*2.1,3,6,metal,false);
-          host.box(frame,0,1,1.6,length*2.1,1.3,4,metal,false);
+          // Paired tracks meet at the center rather than overlapping coplanar faces.
+          const railX=door.pairedWith?(door.slideDirection??1)*length/2:0;
+          const railWidth=door.pairedWith?length*2-.15:length*2.1;
+          host.box(frame,railX,DOOR_CLEAR_VISUAL_HEIGHT+2,1.6,
+            railWidth,3,6,metal,false);
+          host.box(frame,railX,1,1.6,railWidth,1.3,4,metal,false);
         }
         const style=door.style??'wood';
         const panel=style==='wood'?doorMat:style==='exit'?
