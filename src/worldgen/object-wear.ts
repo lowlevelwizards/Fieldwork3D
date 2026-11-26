@@ -59,7 +59,10 @@ export function planObjectWear(site:Site):ObjectWear[]{
  const candidates:{mark:ObjectWear;gate:number;order:number}[]=[];
  const candidate=(owner:ObjectWear['owner'],index:number,kind:WearKind,rng:()=>number,gate:number)=>{
   const base=(kind==='rust'||kind==='oil'||kind==='drip')?.68:kind==='fray'?.7:.25;
-  const u=.16+rng()*.68,v=base+rng()*(.97-base),size=6+rng()*11;
+  const edge=kind==='fray'||kind==='chip'||kind==='paint-peel';
+  const pick=rng(),vertical=rng(),scale=rng();
+  const u=edge?(pick<.5?.13:.87):.16+pick*.68,v=base+vertical*(.97-base);
+  const size=kind==='fray'?5+scale*6:kind==='rust'||kind==='chip'?5+scale*8:6+scale*11;
   candidates.push({gate,order:rng(),mark:{id:owner+':'+index,owner,index,kind,u,v,
    size:size*(continuous?.72+.28*t:1),opacity:continuous?.16+.40*t:site.condition==='neglected'?.34:.24}});
  };
