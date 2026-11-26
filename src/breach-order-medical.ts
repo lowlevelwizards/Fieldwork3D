@@ -95,8 +95,8 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
       }
       // Opposing downed capture targets need the same observed contact and
       // full-body swept reach as neutral rescue casualties. No remote pickup.
-      if((civil||friendly?.side==='red')&&
-         (!liveVisibility(s,patient.p)||
+      if(((civil||friendly?.side==='red')&&!liveVisibility(s,patient.p))||
+         ((n.transportPickup||civil||friendly?.side==='red')&&
           !sweptBodyClear(a.p,patient.p,s.doors,5.5,
              sessionWorldGeometry(s)))){
         failCurrentOrder(s,a,n,'CASUALTY NOT IN PHYSICAL REACH');return true;
