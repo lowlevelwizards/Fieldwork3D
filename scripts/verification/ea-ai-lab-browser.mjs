@@ -51,6 +51,10 @@ try{
    await page.locator('#sample').click();
    const comparison=await page.locator('#comparison').textContent();
    if(!comparison?.includes('regular-force / trained')||!comparison.includes('regular-force / untrained')||!comparison.includes('Matched scenario'))throw Error('Matched tier comparison not retained');
+   await page.locator('#kit-show').click();
+   await page.waitForFunction(()=>document.querySelector('#kit-status')?.textContent?.startsWith('Actual issued kit'),null,{timeout:60000});
+   const kitImage=await page.locator('#kit-preview').screenshot({path:'artifacts/ea/eb-kit-'+viewport.width+'.png'});
+   if(kitImage.length<1000||errors.length)throw Error('EB visual preview error '+errors.join(';'));
    console.log('EA/EB lab browser',viewport.width,'PASS');
   }finally{await page.close();}
  }
