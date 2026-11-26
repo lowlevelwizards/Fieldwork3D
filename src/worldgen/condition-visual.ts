@@ -31,9 +31,9 @@ function noise(x:number,y:number,scale:number,s:number){
  * Broad aging is always present at high condition levels, even without decals.
  * Coordinates and fixture locations determine accumulations, not symmetry.
  */
-export function conditionFloorPixels(site:Site,room:Room,level=effectiveCondition(site),size=64):Uint8Array{
+export function conditionFloorPixels(site:Site,room:Room,level=effectiveCondition(site),size=64,height=size,inset=0):Uint8Array{
  const surface=roomPixelSurface(site.archetype,room.purpose??room.kind);
- const out=new Uint8Array(size*size*4);
+ const out=new Uint8Array(size*height*4);
  const t=clamp(level/100),s=(site.seed^(room.x*113|0)^(room.y*271|0))>>>0;
  // Only intact, functionally relevant sources contribute broad buildup.
  // Local spills and mineral marks are separately anchored by W7.
@@ -59,8 +59,8 @@ export function conditionFloorPixels(site:Site,room:Room,level=effectiveConditio
  const drift=(hash(3,1,s)-.5)*.24;
  const fracture=[.23+drift,.29+drift,.27+drift,.39+drift,.35+drift,.46+drift];
  const joint=(p:number,spacing:number)=>Math.min(((p%spacing)+spacing)%spacing,spacing-((p%spacing)+spacing)%spacing);
- for(let y=0;y<size;y++)for(let x=0;x<size;x++){
-  const wx=artCenter((x+.5)*room.w/size),wy=artCenter((y+.5)*room.h/size);
+ for(let y=0;y<height;y++)for(let x=0;x<size;x++){
+  const wx=artCenter(inset/2+(x+.5)*(room.w-inset)/size),wy=artCenter(inset/2+(y+.5)*(room.h-inset)/height);
   const u=wx/room.w,v=wy/room.h;
   const broad=noise(wx/40,wy/40,1,s),medium=noise(wx/13,wy/13,1,s+17);
   const dEdge=Math.min(wx,room.w-wx,wy,room.h-wy);
