@@ -57,6 +57,15 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
     if(casualty.health<=0){
       releaseDownedSuspectWeapons(s,casualty);
       if(advanceDownedVitals(casualty,h,s.seconds)){
+        // A living extraction is no longer possible. Release reciprocal
+        // custody so a carrier cannot become stuck in transport mode.
+        if(casualty.carriedById){
+          const carrier=s.operators.find(o=>o.id===casualty.carriedById);
+          if(carrier?.carryingId===casualty.id&&carrier.transportLatched){
+            carrier.carryingId=null;carrier.transportLatched=false;
+            casualty.carriedById=null;casualty.transportMode=null;
+          }
+        }
         s.deaths++;
         if(casualty.lastDownById){
           const responsible=s.operators.find(o=>o.id===casualty.lastDownById);
