@@ -197,8 +197,14 @@ export type TeamActor=Operator & {
   suspicion:SuspicionMemory;lastVisualSuspicionId:string|null;
   intent:AIIntent|null;combatChoice:CombatAction|null;lastReportAt:number;
   coordinationRole:GroupRole|null;coordinationUntil:number;
+  coordinationReportId?:number;coordinationPending?:boolean;coordinationOwnsDefense?:boolean;
+  coordinationCandidates?:Pt[];
+  withdrawRetryAt?:number;
   lastMoraleEventAt:number;
   searchOrigin:Pt|null;searchQueue:Pt[];searchPauseUntil:number;
+  checkedSearchAreas?:import('./breach-ai-search-memory.ts').CheckedArea[];
+  lastSearchReportAt?:number;
+  witnessedCasualtyTimes?:Record<string,number>;
   plan:PlanNode[];history:PlanHistory;nav:Pt[];activeNode:number;
   posture:Posture;pace:'walk'|'run';alert:Alert;velocity:number;turning:number;
   aim: number;targetId:string|null;suppression:number;stamina:number;
@@ -271,6 +277,8 @@ export type TeamActor=Operator & {
   encounterActivity?:EncounterActivity;encounterReadiness?:EncounterReadiness;
   encounterRole?:EncounterRole;encounterGroupId?:string;
   encounterRoutine?:Pt[];routineIndex?:number;routinePauseUntil?:number;
+  npcIdentity?:import('./breach-ai-identity.ts').NpcIdentity;
+  routineExtensionAttempted?:boolean;
   encounterReactionUntil?:number;encounterReactionStartedAt?:number;
   lastNoiseExaminedAt:number;lastNoiseExaminedId:number;
   /** Render-only brief arm reach after actual GO-time civilian contact. */
@@ -2295,7 +2303,7 @@ export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
  * this facade only provides session-specific AI and order services. */
 const actorSimulationPhasePort:ActorSimulationPhasePort={
  notify,battleEvent,unobstructed,
- defensivePosition:(a,threat,s)=>runEnemyAi.defensivePosition(a,threat,s),
+ defensivePosition:(a,threat,s,purpose)=>runEnemyAi.defensivePosition(a,threat,s,purpose),
  decideEnemy:(s,a,h)=>runEnemyAi.decide(s,a,h),
  runCustody:(s,a,goal,h)=>{approach(a,goal,h,s,.80);},
  runFriendly:runOrders

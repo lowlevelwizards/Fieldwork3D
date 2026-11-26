@@ -1,0 +1,101 @@
+name: EA enemy AI foundation critical
+on:
+  push:
+    branches: [feature/ea-enemy-ai-consolidation-20261126]
+    paths:
+      - 'src/breach-ai-*.ts'
+      - 'src/breach-enemy-decision-controller.ts'
+      - 'src/breach-awareness.ts'
+      - 'src/breach-defense.ts'
+      - 'src/breach-game.ts'
+      - 'src/breach-session-factory.ts'
+      - 'src/breach-ai-site-index.ts'
+      - 'tests/ea-*.test.mjs'
+      - 'src/enemy-ai-lab-main.ts'
+      - 'enemy-ai-lab.html'
+      - 'src/breach-hostile-physicality.ts'
+      - 'src/breach-replay.ts'
+      - 'vite.config.ts'
+      - 'scripts/compare-ea-baseline.mjs'
+      - 'scripts/verification/ea-ai-lab-browser.mjs'
+      - 'scripts/audit-ea0-enemy-baseline.mjs'
+      - 'scripts/audit-ea-stage1-contact.mjs'
+      - 'tests/breach-roadmap2-stage1-contracts.test.mjs'
+      - '.github/workflows/ea-foundation-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ea-foundation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Foundation regressions
+        run: |
+          npm run check
+          node --experimental-strip-types --test tests/ea-foundation.test.mjs tests/awareness-ai-policy.test.mjs tests/breach-roadmap4-ai-reconciliation.test.mjs tests/breach-roadmap2-stage9-enemy-ai.test.mjs tests/breach-ai-work-scheduler-performance.test.mjs tests/breach-perception-cache-performance.test.mjs tests/performance-p2-8-cover-los.test.mjs tests/release6-doctrine.test.mjs tests/awareness-team-commitment-e2a.test.mjs tests/awareness-cover.test.mjs tests/eqa3-16-hostile-intent.test.mjs tests/eqa3-16g-defensive-gestures.test.mjs tests/dispatch-d15-suspect-restraint.test.mjs tests/performance-r3-r4-combat-morale.test.mjs tests/breach-141e.test.mjs tests/breach-roadmap2-acoustic-perception.test.mjs tests/dispatch-d15-opportunity-escape-rearm.test.mjs
+      - name: Production fixed-clock contract (all independent semantic and exact golden checks)
+        run: node --experimental-strip-types --test tests/breach-roadmap2-stage1-contracts.test.mjs
+      - name: Build and verify lab entry
+        run: |
+          npm run build
+          test -s dist/enemy-ai-lab.html
+      - name: Browser smoke of built Enemy AI Lab
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install chromium
+          node scripts/verification/ea-ai-lab-browser.mjs
+      - uses: actions/checkout@v4
+        with:
+          ref: d5b195275c7311ef72dc7fac3adcdd33133d3e4b
+          path: ea-base
+      - name: Capture frozen base and candidate with identical read-only harness
+        run: |
+          mkdir -p artifacts/ea
+          cp scripts/audit-ea0-enemy-baseline.mjs ea-base/scripts/
+          ln -s "$PWD/node_modules" ea-base/node_modules
+          set +e
+          (cd ea-base && EA_REVISION=d5b195275c7311ef72dc7fac3adcdd33133d3e4b EA_OUTPUT="$GITHUB_WORKSPACE/artifacts/ea/base.json" node --experimental-strip-types scripts/audit-ea0-enemy-baseline.mjs)
+          base_status=$?
+          EA_REVISION="$GITHUB_SHA" EA_OUTPUT=artifacts/ea/candidate.json node --experimental-strip-types scripts/audit-ea0-enemy-baseline.mjs
+          candidate_status=$?
+          echo "baseline exit=$base_status candidate exit=$candidate_status"
+          test "$base_status" -eq 0 && test "$candidate_status" -eq 0
+          node scripts/compare-ea-baseline.mjs artifacts/ea/base.json artifacts/ea/candidate.json artifacts/ea/paired-summary.json
+      - name: Pair exact production contact fingerprints and physical outcomes
+        run: |
+          cp scripts/audit-ea-stage1-contact.mjs ea-base/scripts/
+          (cd ea-base && node --experimental-strip-types scripts/audit-ea-stage1-contact.mjs f7f44ce49bfb9d70bd7df8bf464e781f947e36ef147e0d22d2db3446959df27b ../artifacts/ea/base-stage1-contact.json)
+          node --experimental-strip-types scripts/audit-ea-stage1-contact.mjs 58cc9811aa9dff4345bffad189abae7787714fc442368745e943bd4a0bb46810 artifacts/ea/candidate-stage1-contact.json
+      - name: Verify generated scenario parity against exact EA base
+        run: |
+          (cd ea-base && node --experimental-strip-types scripts/audit-release-c11-missions.mjs ../artifacts/ea/base-world.json)
+          node --experimental-strip-types scripts/audit-release-c11-missions.mjs artifacts/ea/candidate-world.json
+          node scripts/compare-release-c11-missions.mjs artifacts/ea/base-world.json artifacts/ea/candidate-world.json artifacts/ea/world-delta.json
+      - name: Attribute existing movement gate against exact base
+        run: |
+          set +e
+          (cd ea-base && node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --d329-cancellation-door-witness --progress --route-quality > ../artifacts/ea/base-movement.json)
+          base_audit=$?
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --d329-cancellation-door-witness --progress --route-quality > artifacts/ea/candidate-movement.json
+          candidate_audit=$?
+          node scripts/verify-d3-30-mainline.mjs artifacts/ea/base-movement.json
+          base_gate=$?
+          node scripts/verify-d3-30-mainline.mjs artifacts/ea/candidate-movement.json
+          candidate_gate=$?
+          echo "EA exact movement audit: base=$base_audit candidate=$candidate_audit; gate base=$base_gate candidate=$candidate_gate"
+          test "$base_audit" -eq 0 && test "$candidate_audit" -eq 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ea-foundation-comparison
+          path: artifacts/ea/*
+          if-no-files-found: warn

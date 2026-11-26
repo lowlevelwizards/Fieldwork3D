@@ -85,6 +85,8 @@ export type ReplayActorFrame=ActorFrame & {
  actionTimer?:number;
  /** EQA3.16: auditory estimate at this film time, never future AI memory. */
  heard?:Pt|null;contact?:Pt|null;lastNoiseAt?:number;
+ /** EA11: actual report timestamp for read-only presentation. */
+ lastReportAt?:number;
  /** F2: sparse historical field inventory locations for actual replayed depletion. */
  fieldInventory?:FieldInventory;
  /** EQA3.10: finite physical restraint quantity (older films default zero). */
@@ -201,6 +203,7 @@ export function snapshot(s:Session,seenGround?:string[],
       heard:a.heard?position(a.heard):null,
       contact:a.contact?position(a.contact):null,
       lastNoiseAt:a.lastNoiseAt,
+      lastReportAt:a.side==='red'?a.lastReportAt:undefined,
       magazine:a.magazine,reserve:a.reserve,reload:a.reload,
       secondarySwitch:a.secondarySwitch?{...a.secondarySwitch}:initialSecondarySwitch(),
       secondaryEquipment:a.equipment?.secondary?
@@ -627,6 +630,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       heard:copy.heard?position(copy.heard):null,
       contact:copy.contact?position(copy.contact):null,
       lastNoiseAt:copy.lastNoiseAt??-100,
+      lastReportAt:copy.lastReportAt??-100,
       restraintRemaining:copy.restraintRemaining??0,
       // Pre-A3.6 films have no anchor: do not leak one from a later seek.
       kickFoot:copy.kickFoot??null,
