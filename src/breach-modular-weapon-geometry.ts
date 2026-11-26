@@ -12,7 +12,7 @@ import {addFNCFamily} from './weapons/geometry/fnc-silhouettes.ts';
 import {addG36Family} from './weapons/geometry/g36-family-silhouettes.ts';
 import {addR870Family} from './weapons/geometry/r870-silhouettes.ts';
 
-import {AR_BLACK_METAL,AR_BLACK_POLYMER,AR_MUTED_FDE,
+import {AR_WA6_STEEL,AR_WA6_POLYMER,AR_MUTED_FDE,
  AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD,
  HK_BLACK_METAL,HK_DARK_POLYMER,HK_WOOD,
  FAL_BLACK_METAL,FAL_DARK_POLYMER}
@@ -25,7 +25,7 @@ export function buildModularWeaponSilhouette(build:WeaponFamilyBuild,
  void steel;void dark;
  const root=new THREE.Group();
  if(build.family==='ar')
-  addARFamily(root,build,AR_BLACK_METAL,AR_BLACK_POLYMER,
+  addARFamily(root,build,AR_WA6_STEEL,AR_WA6_POLYMER,
    AR_MUTED_FDE,showFactoryMuzzle);
  else if(build.family==='ak')
   addAKFamily(root,build,AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD);

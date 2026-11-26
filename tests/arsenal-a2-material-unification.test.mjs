@@ -64,7 +64,7 @@ test('A2 all existing finish swatches derive from the same approved material spe
   for(const option of group.options)assert.match(option.hex,/^[0-9a-f]{6}$/);
  }
  for(const [part,finish] of [
-  ['ar-grip-poly','ar-polymer'],['ar-grip-poly-fde','ar-fde'],
+  ['ar-grip-poly','ar-wa6-polymer'],['ar-grip-poly-fde','ar-fde'],
   ['ak-wood','ak-wood-dark'],['ak-wood-amber','ak-wood-amber'],
   ['ak-wood-red','ak-wood-red'],['ak-grip-bakelite','ak-resin'],
   ['ak-sidefold','ak-polymer'],['ak-sidefold-plum','ak-plum-polymer'],

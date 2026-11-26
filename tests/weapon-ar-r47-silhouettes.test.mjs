@@ -61,9 +61,9 @@ test('R4.7 forward assist is one continuous, shallow extruded face',()=>{
 test('R4.7 polymer seams never create bright horizontal crosshatches',()=>{
  for(const [id,expected] of [['ar-m16a2',7],['ar-car15',5],['ar-colt733',4]]){
   const {g}=model(id),rib=g.children.find(x=>x.userData.arPolymerRibs);
-  assert.ok(rib instanceof THREE.InstancedMesh,id+' real molded ring ribs');
+  assert.ok(rib instanceof THREE.Mesh&&rib.userData.arContinuousGraphicBands,id+' continuous artwork relief');
   assert.equal(rib.userData.arRibBandCount,expected);
-  assert.equal(rib.count,expected*8,'eight faceted band segments');
+  assert.equal(rib.geometry.index.count/3,expected*48,'three visible strips per facet, no hidden box faces');
   assert.ok(!art(g,'poly-ribs')&&!art(g,'car-ribs'),
    'old flat stripe overlays removed');
   clearWeaponSilhouette(g);

@@ -20,7 +20,7 @@ const group=(slot:FamilyPartSlot,name:string,items:readonly Entry[]):ArsenalFini
 });
 export const ARSENAL_FINISH_FAMILIES:readonly ArsenalFinishFamily[]=[
  group('grip','Polymer Grip',[
-  ['ar-grip-poly','Black','ar-polymer'],['ar-grip-poly-fde','FDE','ar-fde']]),
+  ['ar-grip-poly','Black','ar-wa6-polymer'],['ar-grip-poly-fde','FDE','ar-fde']]),
  group('stock','Wood Fixed',[
   ['ak-wood','Dark Wood','ak-wood-dark'],['ak-wood-amber','Honey Birch','ak-wood-amber'],
   ['ak-wood-red','Red Lacquer','ak-wood-red']]),
