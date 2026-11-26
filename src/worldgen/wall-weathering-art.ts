@@ -19,8 +19,8 @@ export type ArtInk={coverage:number;tone:0|1|2};
 const ink=(coverage:number,tone:0|1|2=1):ArtInk=>({coverage,tone});
 /** Geometry changes with wear progress, but the underlying shape identity
  * stays fixed. Dark core, midtone and pale edge are separate color roles. */
-export function prepareWallArt(kind:WallEffect,seed:number,progress:number,texelU:number,texelV:number){
- const flip=artHash(seed+2)<.5?-1:1;
+export function prepareWallArt(kind:WallEffect,seed:number,progress:number,texelU:number,texelV:number,edgeSide?:1|-1){
+ const flip=edgeSide??(artHash(seed+2)<.5?-1:1);
  const rand=(i:number)=>artHash(seed+Math.imul(i+1,0x9e3779b1));
  const edge=Array.from({length:9},(_,i)=>rand(i)*.32-.16);
  const contour=(u:number)=>edge[Math.min(8,Math.max(0,Math.floor((u+1)*4)))];
@@ -33,6 +33,7 @@ export function prepareWallArt(kind:WallEffect,seed:number,progress:number,texel
  // A continuous path even in the coarse 24-row atlas: use a conservative
  // raster footprint rather than a row-index zigzag or isolated dots.
  const stroke=Math.max(.075,.55*Math.hypot(texelU,texelV));
+ const repairAngular=rand(51)<.5;
  const path=(u:number,v:number,ps:Point[],thickness:number)=>{for(let i=1;i<ps.length;i++)if(lineDistance(u,v,ps[i-1],ps[i])<thickness)return true;return false;};
  return (rawU:number,rawV:number):ArtInk=>{
   const u=rawU*flip,v=rawV,jag=contour(u);
@@ -80,8 +81,7 @@ export function prepareWallArt(kind:WallEffect,seed:number,progress:number,texel
     return ink(0);
    }
    case 'repair':{
-    const angular=rand(51)<.5;
-    const region=angular?Math.max(Math.abs(x+.08)/.83,Math.abs(y)/.78):Math.max(Math.abs(x+.07)/.80,Math.abs(y+.08)/(.79+jag*.7));
+    const region=repairAngular?Math.max(Math.abs(x+.08)/.83,Math.abs(y)/.78):Math.max(Math.abs(x+.07)/.80,Math.abs(y+.08)/(.79+jag*.7));
     if(region>1+jag*.46)return ink(0);
     return ink(region>.80?.45:.73,region>.80?0:1);
    }
