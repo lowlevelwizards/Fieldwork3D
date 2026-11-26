@@ -198,8 +198,13 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  const pairedRoles:Partial<Record<BuildingArchetype,readonly string[]>>={
   office:['hallway|lobby','hallway|meeting','lobby|reception'],
   clinic:['hallway|reception','hallway|waiting','reception|waiting'],
-  retail:['checkout|sales'],
-  restaurant:['dining|reception','dining|service']
+  retail:['checkout|sales','sales|stockroom','sales|service'],
+   restaurant:['dining|reception','dining|service'],
+   house:['dining|living'],townhouse:['dining|living'],
+   warehouse:['aisle|loading','loading|packing','loading|storage','packing|storage'],
+   garage:['bay|workshop','bay|parts','bay|waiting'],
+   utility:['control|service','equipment|service','maintenance|service'],
+   motel:['hallway|lobby','lobby|reception']
  };
  for(const edge of internal){
   if(edge.free)continue;
@@ -210,7 +215,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
     rng()<loopChance(circulationStyle,a,b);
   if(edge.selected||optionalLoop){
    const pair=[a.role,b.role].sort().join('|');
-   const double=seed%3!==1&&!pairedPassage&&edge.selected&&
+   const double=!pairedPassage&&edge.selected&&
      edge.length>=146&&(pairedRoles[kind]??[]).includes(pair);
    if(double&&cutPaired(edge.wall,'INTER-DOUBLE',walls,doors))
      pairedPassage=true;
@@ -376,7 +381,10 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   const index=walls.indexOf(candidate.wall);
   if(index<0)continue;
   walls.splice(index,1);
-  cut(candidate.wall,'COURT-'+(++courtDoors),walls,doors);
+  const id='COURT-'+(++courtDoors);
+  const patio=['house','townhouse','restaurant','motel'].includes(kind);
+  if(!(patio&&seed%3!==1&&cutPaired(candidate.wall,id,walls,doors)))
+    cut(candidate.wall,id,walls,doors);
  }
  const apartmentUnits=new Map<string,string[]>();
  if(kind==='apartment')for(const c of cells){
