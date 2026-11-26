@@ -79,7 +79,8 @@ export function planObjectWear(site:Site):ObjectWear[]{
  });
  // Fixed rank plus monotone admission. Fixtures lead the decorative
  // budget, as before; no site geometry or simulation changes.
- candidates.sort((a,b)=>a.order-b.order||a.mark.id.localeCompare(b.mark.id));
+ const rank={fixture:0,door:1,wall:2};
+ candidates.sort((a,b)=>rank[a.mark.owner]-rank[b.mark.owner]||a.order-b.order||a.mark.id.localeCompare(b.mark.id));
  for(const {mark,gate} of candidates){
   if(marks.length>=max)break;
   const limit=mark.owner==='fixture'?(continuous?.9*t+.08:.42):
