@@ -41,6 +41,9 @@ export const WEAPON_FINISH_SPECS={
  'ak-cover-stamp':{color:0x728077,roughness:.85,metalness:.12,role:'steel'},
  'hk-steel':{color:0x3e4441,roughness:.82,metalness:.12,role:'steel'},
  'hk-polymer':{color:0x313735,roughness:.95,metalness:.015,role:'polymer'},
+ // WA8 rifle appearance only. Shared HK finishes remain unchanged for MP5 and other consumers.
+ 'hk-wa8-rifle-steel':{color:0x474e50,roughness:.82,metalness:.12,role:'steel'},
+ 'hk-wa8-rifle-polymer':{color:0x303831,roughness:.95,metalness:.015,role:'polymer'},
  'hk-olive-polymer':{color:0x60694e,roughness:.94,metalness:.015,role:'polymer'},
  'hk-wood':{color:0x896947,roughness:.95,metalness:0,role:'wood'},
  // R870 P13: groove cuts should read as shadowed walnut rather than gray inserts.

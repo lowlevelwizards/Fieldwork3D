@@ -41,6 +41,8 @@ test('A2 AR, AK, HK, FAL and FNC all receive authored material refinements',()=>
  assert.equal(palette.AK_COVER_STAMP_METAL.type,'MeshStandardMaterial');
  assert.equal(palette.AK_COVER_STAMP_METAL.color.getHex(),0x728077);
  assert.equal(palette.HK_BLACK_METAL.color.getHex(),0x3e4441);
+ assert.equal(palette.HK_WA8_RIFLE_STEEL.color.getHex(),0x474e50);
+ assert.equal(palette.HK_WA8_RIFLE_POLYMER.color.getHex(),0x303831);
  assert.equal(palette.FAL_BLACK_METAL.color.getHex(),0x495052,'WA4 reviewed cool-neutral steel');
  assert.equal(palette.FAL_DARK_POLYMER.color.getHex(),0x343d32);
  assert.equal(palette.FNC_BLACK_METAL.color.getHex(),0x474e50);
@@ -72,7 +74,7 @@ test('A2 all existing finish swatches derive from the same approved material spe
   ['ak-wood-red','ak-wood-red'],['ak-grip-bakelite','ak-resin'],
   ['ak-sidefold','ak-wa7-polymer'],['ak-sidefold-plum','ak-plum-polymer'],
   ['hk33-fixed-stock','hk-olive-polymer'],
-  ['hk33-fixed-stock-black','hk-polymer']
+  ['hk33-fixed-stock-black','hk-wa8-rifle-polymer']
  ]){
   const option=arsenalFinishOption(part);
   // Bakelite is a valid authored material but not a same-geometry swatch option.

@@ -53,11 +53,11 @@ export const ARSENAL_FINISH_FAMILIES:readonly ArsenalFinishFamily[]=[
  group('handguard','Compact Polymer',[
   ['ak-poly-short','Black Polymer','ak-wa7-polymer'],['ak-poly-plum-short','Plum Polymer','ak-plum-polymer']]),
  group('stock','HK33 Fixed',[
-  ['hk33-fixed-stock','OD Polymer','hk-olive-polymer'],['hk33-fixed-stock-black','Black Polymer','hk-polymer']]),
+  ['hk33-fixed-stock','OD Polymer','hk-olive-polymer'],['hk33-fixed-stock-black','Black Polymer','hk-wa8-rifle-polymer']]),
  group('handguard','HK33 Slim',[
-  ['hk33-poly-slim','OD Polymer','hk-olive-polymer'],['hk33-poly-slim-black','Black Polymer','hk-polymer']]),
+  ['hk33-poly-slim','OD Polymer','hk-olive-polymer'],['hk33-poly-slim-black','Black Polymer','hk-wa8-rifle-polymer']]),
  group('handguard','HK53 Compact',[
-  ['hk53-poly-short','OD Polymer','hk-olive-polymer'],['hk53-poly-short-black','Black Polymer','hk-polymer']]),
+  ['hk53-poly-short','OD Polymer','hk-olive-polymer'],['hk53-poly-short-black','Black Polymer','hk-wa8-rifle-polymer']]),
 ];
 const byPart=new Map<string,ArsenalFinishFamily>();
 for(const family of ARSENAL_FINISH_FAMILIES)
