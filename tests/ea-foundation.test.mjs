@@ -61,3 +61,35 @@ test('EA2 single-pass belief selection matches stable sorted reference',()=>{
  }
  assert.equal(bestBelief(newAwareness()),null);
 });
+
+import {probeInvestigationRoute,reachableInvestigation} from '../src/breach-defense.ts';
+test('EA1 exhausted evidence remains recorded but fresh lower-confidence evidence can reopen an investigation',()=>{
+ const s=newSession(),a=enemies(s)[0];s.seconds=10;
+ a.awareness=newAwareness();
+ addObservation(a.awareness,{id:'old',observerId:a.id,source:'visual',
+  subjectId:'old',kind:'contact',at:7,estimate:point(20,20),uncertainty:0});
+ a.suspicion.searchExhaustedAt=9;a.contact=null;a.heard=null;a.lastNoiseAt=8;
+ a.alert='cover';a.contacted=true;
+ reconcileEnemyIntent(s,a,0);
+ assert.equal(a.contact,null);assert.equal(bestBelief(a.awareness).id,'old');
+ addObservation(a.awareness,{id:'new',observerId:a.id,source:'reported',
+  subjectId:'new',kind:'contact',at:9.5,estimate:point(40,40),uncertainty:35});
+ reconcileEnemyIntent(s,a,0);
+ assert.deepEqual(a.contact,point(40,40));
+});
+test('EA2 resumed candidate search is deterministic, bounded and reuses the accepted route',()=>{
+ const origin=point(0,0),target=point(100,100),calls=[];
+ const route=(from,to)=>{calls.push({...to});return calls.length===13?[{...from},{...to}]:[];};
+ let cursor=0,result;
+ do{
+   const before=calls.length;
+   result=probeInvestigationRoute(origin,target,cursor,4,route,()=>true);
+   assert.ok(calls.length-before<=4);
+   if(result.kind==='pending')cursor=result.cursor;
+ }while(result.kind==='pending');
+ assert.equal(result.kind,'found');assert.equal(calls.length,13);
+ assert.deepEqual(result.route.at(-1),result.point);
+ let synchronous=0;
+ assert.deepEqual(reachableInvestigation(origin,target,(_a,b)=>++synchronous===13?[b]:[],()=>true),result.point);
+ assert.equal(probeInvestigationRoute(origin,target,0,4,()=>{throw Error('invalid point routed');},()=>false).kind,'exhausted');
+});

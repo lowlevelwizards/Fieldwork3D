@@ -46,6 +46,11 @@ jobs:
           candidate_status=$?
           echo "baseline exit=$base_status candidate exit=$candidate_status"
           test "$base_status" -eq 0 && test "$candidate_status" -eq 0
+      - name: Verify generated scenario parity against exact EA base
+        run: |
+          (cd ea-base && node --experimental-strip-types scripts/audit-release-c11-missions.mjs ../artifacts/ea/base-world.json)
+          node --experimental-strip-types scripts/audit-release-c11-missions.mjs artifacts/ea/candidate-world.json
+          node scripts/compare-release-c11-missions.mjs artifacts/ea/base-world.json artifacts/ea/candidate-world.json artifacts/ea/world-delta.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -18,7 +18,7 @@ import {doorInteraction} from './breach-interactions.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {effectiveAimHeight,effectiveEyeHeight} from './breach-cover-height.ts';
 import {assessFireLane} from './breach-fire-safety.ts';
-import {chooseDefense,chooseFiringDefense,watchPoint,reachableInvestigation} from './breach-defense.ts';
+import {chooseDefense,chooseFiringDefense,watchPoint,probeInvestigationRoute} from './breach-defense.ts';
 import {scanEnemyVisualEvidence} from './breach-ai-visual-evidence.ts';
 import {scanEnemySoundEvidence} from './breach-ai-acoustic-perception.ts';
 import {soundResponse} from './breach-sound-evidence.ts';
@@ -91,6 +91,25 @@ function firingPosition(a:TeamActor,target:TeamActor,s:Session):Pt|null{
   return chooseFiringDefense(a.p,target.p,s.doors,others,a.id,
     effectiveAimHeight(target),sessionWorldGeometry(s));
 }
+// Resume elective route probes across work slots, never a separate clock.
+ const pendingInvestigation=new WeakMap<TeamActor,{
+   origin:Pt;target:Pt;revision:number;mode:'approach'|'expand';cursor:number
+ }>();
+ function probeInvestigation(s:Session,a:TeamActor,target:Pt,
+   mode:'approach'|'expand'){
+   const world=sessionWorldGeometry(s),revision=world.revision;
+   const prior=pendingInvestigation.get(a);
+   const cursor=prior&&prior.mode===mode&&prior.revision===revision&&
+      prior.origin.x===a.p.x&&prior.origin.y===a.p.y&&
+      prior.target.x===target.x&&prior.target.y===target.y?prior.cursor:0;
+   const result=probeInvestigationRoute(a.p,target,cursor,4,
+      (from,to)=>cachedEnemyRoute(s,from,to),p=>world.passable(p));
+   if(result.kind==='pending')pendingInvestigation.set(a,{
+     origin:clone(a.p),target:clone(target),revision,mode,cursor:result.cursor
+   });
+   else pendingInvestigation.delete(a);
+   return result;
+ }
 function enemyDecisions(s:Session,a:TeamActor,dt:number){
  const world=sessionWorldGeometry(s);
   if(!activeCombatant(a))return;
@@ -148,6 +167,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   }
   reconcileEnemyIntent(s,a,visible.length);
   if(visible.length){
+    pendingInvestigation.delete(a);
     a.searchOrigin=null;a.searchQueue=[];a.searchPauseUntil=0;
     // Only the closest confirmed visible threat is consumed downstream.
     // Preserve first-in-order tie behavior without sorting every contact.
@@ -301,6 +321,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.lastNoiseAt=strongest.at;
     const heard=strongest.estimate;
     a.heard=heard;a.contact=heard;a.watch=clone(heard);
+    pendingInvestigation.delete(a);
     a.searchOrigin=null;a.searchQueue=[];a.searchPauseUntil=0;
     a.defense=null;
     a.alertUntil=s.seconds+(a.personality==='aggressor'?.5:1.4);
@@ -506,16 +527,28 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   }
   if(a.contact){
     rotate(a,angle(a.p,a.contact),dt,s);
-    if(a.alert==='investigating'&&d(a.p,a.contact)>40){
+    if(a.alert==='investigating'&&d(a.p,a.contact)>=35){
       // Noise gives a region to investigate, never a magic target.
       if(!a.nav.length){
         if(!electiveAiWork(s,a,'investigation-route')){
           a.velocity=0;return;
         }
-        const goal=reachableInvestigation(a.p,a.contact,
-          (from,to)=>cachedEnemyRoute(s,from,to),p=>world.passable(p));
-        if(goal)a.nav=cachedEnemyRoute(s,a.p,goal);
-        else{a.alert='cover';a.contact=null;a.defense=null;}
+        const result=probeInvestigation(s,a,a.contact,'approach');
+        if(result.kind==='pending'){a.velocity=0;return;}
+        if(result.kind==='found'){
+          a.nav=result.route;
+          if(d(result.point,a.contact)>0&&!a.searchOrigin){
+            a.searchOrigin=clone(a.contact);
+            a.searchQueue=searchCandidates(a.searchOrigin,
+              bestBelief(a.awareness)?.uncertainty??65,
+              s.site?.rooms??[],s.doors,world.cover);
+          }
+          a.contact=clone(result.point);
+        }else{
+          a.alert='cover';a.contact=null;a.defense=null;
+          a.searchOrigin=null;a.searchQueue=[];a.searchPauseUntil=0;
+          exhaustSuspicionSearch(a.suspicion,s.seconds);
+        }
       }
       if(a.nav.length&&a.contact)approach(a,a.nav.at(-1)??a.contact,dt,s,
         investigationTempo(a.personality,
@@ -540,14 +573,17 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       if(!electiveAiWork(s,a,'search-expand')){
         a.velocity=0;return;
       }
-      let next:Pt|null=null,checks=0;
+      let next:Pt|null=null,nextRoute:Pt[]=[],checks=0;
       while(a.searchQueue.length&&!next&&checks++<2){
-        const candidate=a.searchQueue.shift()!;
-        if(d(candidate,a.p)<24)continue;
-        next=reachableInvestigation(a.p,candidate,
-          (from,to)=>cachedEnemyRoute(s,from,to),p=>world.passable(p));
+        const candidate=a.searchQueue[0];
+        if(d(candidate,a.p)<24){a.searchQueue.shift();continue;}
+        const result=probeInvestigation(s,a,candidate,'expand');
+        if(result.kind==='pending'){a.velocity=0;return;}
+        a.searchQueue.shift();
+        if(result.kind==='found'){next=result.point;nextRoute=result.route;}
+        break;
       }
-      a.nav=[];
+      a.nav=nextRoute;
       if(next){
         a.contact=clone(next);
         // Inspect only after arriving at the next search point.
@@ -602,6 +638,7 @@ function distributeReports(s:Session){
     recipient.lastNoiseAt=s.seconds;
     recipient.contacted=true;
     recipient.alert='investigating';
+    pendingInvestigation.delete(recipient);
     recipient.searchOrigin=null;recipient.searchQueue=[];recipient.searchPauseUntil=0;
     recipient.nav=[];
    }

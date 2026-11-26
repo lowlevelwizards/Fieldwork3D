@@ -122,19 +122,34 @@ export function watchPoint(p:Pt,doors:Door[],world?:SessionWorldGeometry):Pt|nul
 }
 /** Search a few legal points around a noisy estimate, never omniscient
  * access to the hidden source. Avoid pursuing a location inside cover. */
+export type InvestigationProbeResult=
+  {kind:'pending';cursor:number}|{kind:'exhausted'}|
+  {kind:'found';point:Pt;route:Pt[]};
+/** Deterministic resumable candidate enumeration with a route-call budget. */
+export function probeInvestigationRoute(origin:Pt,target:Pt,cursor:number,
+  routeBudget:number,routeFor:(from:Pt,to:Pt)=>Pt[],
+  canStand:(p:Pt)=>boolean):InvestigationProbeResult{
+  let calls=0;
+  for(let i=Math.max(0,Math.floor(cursor));i<25;i++){
+    let point=target;
+    if(i>0){
+      const n=i-1,distance=[17,35,55][Math.floor(n/8)];
+      const angle=(n%8)*Math.PI/4;
+      point={x:target.x+Math.cos(angle)*distance,
+        y:target.y+Math.sin(angle)*distance};
+    }
+    if(!canStand(point))continue;
+    if(calls>=routeBudget)return {kind:'pending',cursor:i};
+    calls++;
+    const result=routeFor(origin,point);
+    if(result.length)return {kind:'found',point:{...point},route:result};
+  }
+  return {kind:'exhausted'};
+}
+/** Compatibility for existing synchronous callers. */
 export function reachableInvestigation(origin:Pt,target:Pt,
   routeFor:(from:Pt,to:Pt)=>Pt[]=route,
- canStand:(p:Pt)=>boolean=passable):Pt|null{
-  const options=[target];
-  for(const distance of [17,35,55])
-    for(let i=0;i<8;i++){
-      const angle=i*Math.PI/4;
-      options.push({x:target.x+Math.cos(angle)*distance,
-        y:target.y+Math.sin(angle)*distance});
-    }
-  for(const point of options){
-    if(!canStand(point))continue;
-    if(routeFor(origin,point).length)return point;
-  }
-  return null;
+  canStand:(p:Pt)=>boolean=passable):Pt|null{
+  const result=probeInvestigationRoute(origin,target,0,25,routeFor,canStand);
+  return result.kind==='found'?result.point:null;
 }

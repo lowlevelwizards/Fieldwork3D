@@ -61,10 +61,10 @@ export function clearObservedPosition(memory:ActorAwareness,id:string):void{
  belief.uncertainty=Math.max(belief.uncertainty,48);
  if(belief.confidence<.04)delete memory.contacts[id];
 }
-export function bestBelief(memory:ActorAwareness):ContactBelief|null{
+export function bestBelief(memory:ActorAwareness,newerThan=-Infinity):ContactBelief|null{
  let best:ContactBelief|null=null;
  for(const candidate of Object.values(memory.contacts)){
-  if(!(candidate.confidence>.1))continue;
+  if(!(candidate.confidence>.1)||!(candidate.lastAt>newerThan))continue;
   if(!best||candidate.confidence>best.confidence||
      candidate.confidence===best.confidence&&candidate.lastAt>best.lastAt)
    best=candidate;

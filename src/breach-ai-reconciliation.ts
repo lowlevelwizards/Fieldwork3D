@@ -11,11 +11,10 @@ import {settledEnemyPosture} from './breach-ai-posture.ts';
 import {assessFireLane} from './breach-fire-safety.ts';
 import {aimHeight} from './breach-cover-height.ts';
 export function reconcileEnemyIntent(s:Session,a:TeamActor,visibleCount:number):void{
- const remembered=bestBelief(a.awareness);
  // An inspected area is still remembered, but exhausted evidence cannot
  // restart the same task. A newer observation can legitimately reopen it.
  const exhaustedAt=a.suspicion.searchExhaustedAt;
- const belief=remembered&&remembered.lastAt>exhaustedAt?remembered:null;
+ const belief=bestBelief(a.awareness,exhaustedAt);
  const recentNoise=a.lastNoiseAt>exhaustedAt&&
    hasRecentSound(s.seconds,a.lastNoiseAt);
   if(visibleCount===0)a.combatChoice=chooseCombatAction({
