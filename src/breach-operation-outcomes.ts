@@ -65,7 +65,8 @@ export function commitTransportExtractions(s:Session):{patient:TeamActor;carrier
  }
  if(handedOff.length){
   const ids=new Set(handedOff.map(h=>h.patient.id));
-  s.operators=s.operators.filter(a=>!ids.has(a.id));
+  for(let i=s.operators.length-1;i>=0;i--)
+   if(ids.has(s.operators[i].id))s.operators.splice(i,1);
  }
  return handedOff;
 }
