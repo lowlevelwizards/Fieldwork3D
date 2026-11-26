@@ -179,3 +179,17 @@ test('EA9 bounded game area traversal does not invent window navigation links',(
  const index=buildAiSiteIndex({rooms,windows:[{id:'w',x:50,y:100,width:30,vertical:false}]},[],doors);
  assert.deepEqual(connectedAreaCenters(index,point(50,50),2),[point(150,50),point(250,50)]);
 });
+
+import {hostilePhysicalityAt} from '../src/breach-hostile-physicality.ts';
+import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
+test('EA11 a recorded report causes a bounded presentation-only gesture; older films clear it',()=>{
+ const s=newSession(),a=enemies(s)[0];a.alert='idle';a.aim=0;a.velocity=0;a.reload=0;
+ a.lastReportAt=3;s.seconds=3.4;
+ const recorded=snapshot(s);
+ assert.ok(hostilePhysicalityAt(a,3.4).headPitch>0);
+ assert.equal(hostilePhysicalityAt(a,2.9).headPitch,0);
+ a.aim=.5;assert.equal(hostilePhysicalityAt(a,3.4).headPitch,0);
+ applyReplayFrame(s,recorded);assert.ok(hostilePhysicalityAt(a,3.4).headPitch>0);
+ const legacy=snapshot(s);for(const f of legacy.actors)delete f.lastReportAt;
+ applyReplayFrame(s,legacy);assert.equal(hostilePhysicalityAt(a,3.4).headPitch,0);
+});

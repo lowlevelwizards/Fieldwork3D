@@ -20,6 +20,7 @@ export default defineConfig({
       operatorStudio: 'operator-studio.html',
       referencePlanning: 'reference-planning.html',
       mapLab: 'map-lab.html',
+      enemyAiLab: 'enemy-ai-lab.html',
       wallMaterialLab: 'wall-material-lab.html',
       physicalityLab: 'physicality-lab.html',
       a3PhysicalityLab: 'a3-physicality-lab.html',

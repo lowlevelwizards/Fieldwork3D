@@ -7,10 +7,12 @@ export function awarenessDebugLine(actor:TeamActor):string{
  const top=active[0];
  return [
   actor.name+' · '+actor.personality.toUpperCase(),
+  'IDENTITY '+(actor.npcIdentity?.competence??'legacy')+' · '+(actor.npcIdentity?.motivation??'unspecified'),
   'INTENT '+(actor.intent?.kind??'none')+
    (actor.intent?.reason?' · '+actor.intent.reason:''),
   'COMBAT '+(actor.combatChoice??'none')+
-   ' · ROLE '+(actor.coordinationRole??'none'),
+   ' · ROLE '+(actor.coordinationRole??'none')+
+   (actor.coordinationReportId!==undefined?' · REPORT '+actor.coordinationReportId:''),
   'ALERT '+actor.alert+' · MORALE '+actor.morale.toFixed(2),
   'SUSPICION '+actor.suspicion.stage.toUpperCase()+
    ' '+Math.round(actor.suspicion.pressure*100)+'%'+

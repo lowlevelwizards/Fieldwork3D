@@ -11,6 +11,11 @@ on:
       - 'src/breach-session-factory.ts'
       - 'src/breach-ai-site-index.ts'
       - 'tests/ea-*.test.mjs'
+      - 'src/enemy-ai-lab-main.ts'
+      - 'enemy-ai-lab.html'
+      - 'src/breach-hostile-physicality.ts'
+      - 'src/breach-replay.ts'
+      - 'vite.config.ts'
       - 'scripts/audit-ea0-enemy-baseline.mjs'
       - '.github/workflows/ea-foundation-critical.yml'
   workflow_dispatch:
@@ -32,7 +37,11 @@ jobs:
       - name: Foundation regressions
         run: |
           npm run check
-          node --experimental-strip-types --test tests/ea-foundation.test.mjs tests/awareness-ai-policy.test.mjs tests/breach-roadmap4-ai-reconciliation.test.mjs tests/breach-roadmap2-stage9-enemy-ai.test.mjs tests/breach-ai-work-scheduler-performance.test.mjs tests/breach-perception-cache-performance.test.mjs tests/performance-p2-8-cover-los.test.mjs
+          node --experimental-strip-types --test tests/ea-foundation.test.mjs tests/awareness-ai-policy.test.mjs tests/breach-roadmap4-ai-reconciliation.test.mjs tests/breach-roadmap2-stage9-enemy-ai.test.mjs tests/breach-ai-work-scheduler-performance.test.mjs tests/breach-perception-cache-performance.test.mjs tests/performance-p2-8-cover-los.test.mjs tests/release6-doctrine.test.mjs tests/awareness-team-commitment-e2a.test.mjs tests/awareness-cover.test.mjs tests/eqa3-16-hostile-intent.test.mjs tests/eqa3-16g-defensive-gestures.test.mjs tests/dispatch-d15-suspect-restraint.test.mjs
+      - name: Build and verify lab entry
+        run: |
+          npm run build
+          test -s dist/enemy-ai-lab.html
       - uses: actions/checkout@v4
         with:
           ref: d5b195275c7311ef72dc7fac3adcdd33133d3e4b
