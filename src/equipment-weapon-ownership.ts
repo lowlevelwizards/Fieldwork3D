@@ -3,8 +3,9 @@
  * No firearm assets are allocated by a renderer, replay or Quick Play.
  */
 import type {CampaignState,CampaignOperator} from './campaign-state.ts';
-import {newSerializedWeapon,readSerializedWeapons,MAX_OWNED_WEAPONS,
+import {newSerializedWeapon,readSerializedWeapons,readOwnedCatalogBody,MAX_OWNED_WEAPONS,
  type SerializedWeapon} from './equipment-weapon-identity.ts';
+import {type WeaponFamilyBuild} from './equipment-weapon-families.ts';
 const PLATFORMS=['carbine','smg','rifle','shotgun'] as const;
 type WeaponId=CampaignOperator['weapon'];
 const active=(o:CampaignOperator)=>o.status!=='retired'&&o.status!=='lost';
@@ -32,17 +33,17 @@ export function reconcileCampaignWeaponOwnership(c:CampaignState):CampaignState{
   while(used.has(id)||existing.some(w=>w.id===id));
   return id;
  };
- const take=(platform:WeaponId,preferred?:string|null)=>{
+ const take=(platform:WeaponId,preferred?:string|null,body?:WeaponFamilyBuild)=>{
   const match=existing.find(w=>w.platform===platform&&!used.has(w.id)&&
     w.id===preferred)??existing.find(w=>w.platform===platform&&!used.has(w.id)&&
     !claimed.has(w.id));
-  const weapon=match??newSerializedWeapon(nextId(),platform,c.day);
-  used.add(weapon.id);kept.push(weapon);
+  const weapon=match??newSerializedWeapon(nextId(),platform,c.day,body);
+  used.add(weapon.id);kept.push(body?{...weapon,catalogBody:readOwnedCatalogBody(body,platform)}:weapon);
   return weapon.id;
  };
  const operators=c.operators.map(o=>{
   if(!active(o))return {...o,weaponSerialId:null};
-  return {...o,weaponSerialId:take(o.weapon,reserved.get(o.id))};
+  return {...o,weaponSerialId:take(o.weapon,reserved.get(o.id),o.weaponConfiguration.build)};
  });
  const counts={carbine:0,smg:0,rifle:0,shotgun:0};
  for(const platform of PLATFORMS){
@@ -71,4 +72,21 @@ export function weaponOwnershipIssues(c:CampaignState):string[]{
    issues.push('stock:'+platform);
  }
  return issues;
+}
+
+/** Only issued bodies are mirrored here; unassigned objects keep their own
+ * catalog data. This is a transition from class-count reconciliation to
+ * individually identified armory stock, not another ownership ledger. */
+export function synchronizeIssuedCatalogBodies(c:CampaignState):CampaignState{
+ if(!c.inventory.serializedWeapons)return c;
+ const bySerial=new Map(c.operators.filter(active).map(o=>[o.weaponSerialId,o]));
+ let changed=false;
+ const serials=c.inventory.serializedWeapons.map(w=>{
+  const owner=bySerial.get(w.id);
+  if(!owner||owner.weapon!==w.platform||!owner.weaponConfiguration.build)return w;
+  const body=readOwnedCatalogBody(owner.weaponConfiguration.build,w.platform);
+  if(JSON.stringify(body)===JSON.stringify(w.catalogBody))return w;
+  changed=true;return {...w,catalogBody:body};
+ });
+ return changed?{...c,inventory:{...c.inventory,serializedWeapons:serials}}:c;
 }

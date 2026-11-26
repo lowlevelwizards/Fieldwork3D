@@ -61,7 +61,7 @@ import {resolveMountedAccessoryLayout}
 import {quoteAttachmentTransfer}
  from './equipment-weapon-transactions.ts';
 import {MAX_OWNED_WEAPONS,recordWeaponRounds,serviceSerializedWeapon,type SerializedWeapon} from './equipment-weapon-identity.ts';
-import {reconcileCampaignWeaponOwnership} from './equipment-weapon-ownership.ts';
+import {reconcileCampaignWeaponOwnership,synchronizeIssuedCatalogBodies} from './equipment-weapon-ownership.ts';
 import {kitMedicalSupplies,normalizedMedicalSupplies,medicalSupplyCount,
  type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
 
@@ -815,9 +815,9 @@ export function equipCampaignWeaponPreset(c:CampaignState,id:string,presetId:str
  const transfer=quoteAttachmentTransfer(c.inventory.attachments,
   o.weaponConfiguration,next,Math.max(0,c.funds),false);
  if(!transfer.canCommit||!transfer.stockAfter)return c;
- return {...c,inventory:{...c.inventory,attachments:transfer.stockAfter},
+ return synchronizeIssuedCatalogBodies({...c,inventory:{...c.inventory,attachments:transfer.stockAfter},
   operators:c.operators.map(m=>m.id===id?{...m,weaponConfiguration:next,
-   ...fitMagazineInventory(m.id,m.weapon,next,m.magazine,m.reserve,m.magazines)}:m)};
+   ...fitMagazineInventory(m.id,m.weapon,next,m.magazine,m.reserve,m.magazines)}:m)});
 }
 export function equipCampaignWeaponFamilyPart(c:CampaignState,id:string,
  slot:FamilyPartSlot,partId:string):CampaignState{
@@ -830,9 +830,9 @@ export function equipCampaignWeaponFamilyPart(c:CampaignState,id:string,
  const transfer=quoteAttachmentTransfer(c.inventory.attachments,
   o.weaponConfiguration,next,Math.max(0,c.funds),false);
  if(!transfer.canCommit||!transfer.stockAfter)return c;
- return {...c,inventory:{...c.inventory,attachments:transfer.stockAfter},
+ return synchronizeIssuedCatalogBodies({...c,inventory:{...c.inventory,attachments:transfer.stockAfter},
   operators:c.operators.map(m=>m.id===id?{...m,weaponConfiguration:next,
-   ...fitMagazineInventory(m.id,m.weapon,next,m.magazine,m.reserve,m.magazines)}:m)};
+   ...fitMagazineInventory(m.id,m.weapon,next,m.magazine,m.reserve,m.magazines)}:m)});
 }
 /** Player-authorized buy-and-equip is all-or-nothing. */
 export function purchaseAndEquipWeaponAttachment(c:CampaignState,id:string,
@@ -1077,7 +1077,7 @@ export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string
  const targetKit=readEquipmentLoadout(preset.kit,preset.weapon);
  const fieldStock=quoteCampaignFieldStockChange(swapped,member.loadout,targetKit);
  if(!fieldStock.ok)return c;
- return {...swapped,supplies:fieldStock.stock,
+ return synchronizeIssuedCatalogBodies({...swapped,supplies:fieldStock.stock,
   inventory:{...swapped.inventory,attachments},
   operators:swapped.operators.map(o=>o.id===id?{
    ...o,weaponConfiguration:desired,
@@ -1088,7 +1088,7 @@ export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string
     kitMedicalSupplies(readEquipmentLoadout(preset.kit,preset.weapon))),
    magazines:stageMagazines(fitMagazineInventory(o.id,o.weapon,desired,
     o.magazine,o.reserve,o.magazines).magazines,preset.kit),
-   armorCondition:clampArmorToKit(o.armorCondition,preset.kit)}:o)};
+   armorCondition:clampArmorToKit(o.armorCondition,preset.kit)}:o)});
 }
 export function deleteCampaignKitPreset(c:CampaignState,presetId:string):CampaignState{
  if(c.activeContractId||!c.kitPresets.some(p=>p.id===presetId))return c;
