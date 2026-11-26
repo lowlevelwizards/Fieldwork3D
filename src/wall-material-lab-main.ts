@@ -12,7 +12,7 @@ const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const condition=el<HTMLInputElement>('condition'),comparison=el<HTMLSelectElement>('comparison'),seed=el<HTMLInputElement>('seed');
 const node=<K extends keyof HTMLElementTagNameMap>(tag:K,text?:string)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
 function paint(canvas:HTMLCanvasElement,bytes:Uint8Array,width:number,height:number,physicalW=width,physicalH=height){
- canvas.style.setProperty('--metric-width',physicalW*2+'px');
+ canvas.style.setProperty('--metric-width',physicalW*2+'px');canvas.parentElement?.style.setProperty('--metric-width',physicalW*2+'px');
  canvas.parentElement?.style.setProperty('--grid-x',100*8/physicalW+'%');canvas.parentElement?.style.setProperty('--grid-y',100*8/physicalH+'%');
  canvas.width=width;canvas.height=height;
  const ctx=canvas.getContext('2d');if(!ctx)throw Error('Canvas unavailable');
@@ -85,6 +85,20 @@ function drawSpecimen(){
   specimen.draw(p.bytes,p.width,p.height,kind,el<HTMLSelectElement>('specimen-zoom').value==='close',el<HTMLSelectElement>('specimen-view').value==='front');
  }catch(error){el('specimen-error').textContent='3D unavailable: '+String(error);}
 }
+let tactical:ReturnType<typeof import('./wall-material-lab-tactical.ts').createTacticalMaterialPreview>|undefined;
+let tacticalBusy=false;
+el('render-tactical').addEventListener('click',async()=>{
+ if(tacticalBusy)return;tacticalBusy=true;
+ const status=el('tactical-status'),button=el<HTMLButtonElement>('render-tactical');
+ button.disabled=true;status.textContent='Building production scene…';
+ try{
+  tactical??=(await import('./wall-material-lab-tactical.ts')).createTacticalMaterialPreview(el('tactical-host'));
+  const building=el<HTMLSelectElement>('tactical-building').value as Parameters<typeof tactical.draw>[0],seed=Number(el<HTMLInputElement>('tactical-seed').value)||23;
+  tactical.draw(building,seed,Number(condition.value),el<HTMLSelectElement>('tactical-distance').value==='close');
+  status.textContent=building+' · seed '+seed+' · wear '+condition.value+'/100';
+ }catch(error){status.textContent='Scene unavailable: '+String(error);}
+ finally{tacticalBusy=false;button.disabled=false;}
+});
 function redraw(){
  const level=Number(condition.value),single=comparison.value==='single';
  el('condition-value').textContent=String(level);
