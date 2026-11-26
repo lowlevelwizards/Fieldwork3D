@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newSession,team,enemies,planCasualtyTransport,
-  stepSession,toggling,undoPlan,missionText} from '../src/breach-game.ts';
+  stepSession,toggling,undoPlan,missionText,planCasualtyPickup,planMove,planCaptureTransportRelease} from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
 import {dispatchTacticalContextCommand} from '../src/breach-tactical-context-command.ts';
 import {TRANSPORT_GAP,casualtyTrailingPosition}
@@ -118,4 +118,35 @@ test('D15.8 capture status makes conditional treatment discoverable, not mandato
   assert.match(missionText(s),/TREAT IF BLEEDING/);
   assert.match(missionText(s),/ESCORT\/DRAG\/CARRY/);
  }finally{activateSite(null);}
+});
+
+test('pickup latch survives ordinary movement and explicit release for friendly and suspect',()=>{
+ for(const friendly of [false,true])for(const mode of ['drag','carry']){
+  const {s,carrier,target}=make();
+  try{
+   const patient=friendly?team(s)[1]:target;
+   if(friendly){patient.p=p(155,200);patient.priorP={...patient.p};
+    patient.health=0;patient.downedAt=0;patient.injuryStage=3;
+    target.p=p(480,400);target.priorP={...target.p};}
+   assert.equal(planCasualtyPickup(s,carrier.id,patient.id,mode),true);
+   assert.equal(planMove(s,carrier.id,p(235,200)),true);
+   assert.equal(planMove(s,carrier.id,p(235,270)),true);
+   toggling(s);
+   for(let i=0;i<1800&&s.phase==='running';i++){
+    stepSession(s,1/60);
+    if(carrier.carryingId===patient.id&&carrier.p.y>245)break;
+   }
+   assert.equal(carrier.carryingId,patient.id);
+   assert.equal(patient.carriedById,carrier.id);
+   assert.equal(patient.transportMode,mode);
+   assert.ok(carrier.p.y>245,'ordinary MOVE must execute while holding casualty');
+   assert.ok(patient.p.y>215,'casualty follows through the bend');
+   toggling(s);
+   assert.equal(planCaptureTransportRelease(s,carrier.id),true);
+   toggling(s);
+   for(let i=0;i<180&&s.phase==='running'&&carrier.carryingId;i++)stepSession(s,1/60);
+   assert.equal(carrier.carryingId,null);
+   assert.equal(patient.carriedById,null);
+  }finally{activateSite(null);}
+ }
 });
