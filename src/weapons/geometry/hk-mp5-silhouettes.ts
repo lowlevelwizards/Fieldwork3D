@@ -4,7 +4,7 @@
  */
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
-import {addOutline,addCuboid,addFacetedTube,type Outline,type SlotName}
+import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type SlotName}
  from './profile-primitives.ts';
 import {HK_BARREL_ART} from './hk-barrel-profiles.ts';
 import {MP5_VISUAL_ANATOMY} from './weapon-receiver-anatomy.ts';
@@ -60,23 +60,19 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
  // Unique MP5 stock geometry, NOT a G3 stock scaled uniformly.
  if(isK){
   if(parts.stock==='hk-mp5k-pdw-stock'){
-   // Choate-style PDW side folder: coarse upper arm, angled open brace,
-   // pivot and deep buttplate, without tiny screws/bolts or rear rails.
+   // WC2.2 game-art candidate: one continuous carved frame, not two
+   // stacked sticks. Preserve the original shoulder datum and marked pad.
    const pivot=b('stock',-6.33,-.24,-.40,1.03,3.20,3.30,steel);
    pivot.userData.hkMP5PDWHinge=true;
-   const arm=p('stock',[
-    [-12.55,.80],[-6.42,.80],[-6.39,.16],
-    [-10.32,.12],[-12.55,-.43]
-   ],1.93,dark);
-   arm.userData.hkMP5PDWUpper=true;
-   const brace=p('stock',[
-    [-12.55,-1.90],[-12.09,-1.30],[-8.27,-.18],
-    [-7.32,-.18],[-10.89,-1.90]
-   ],1.68,dark);
-   brace.userData.hkMP5PDWBrace=true;
+   const frame=addProfileFrame(root,'stock',parts.stock,ids.stock++,
+    [[-12.72,1.02],[-6.32,.86],[-6.32,.05],[-8.02,-.30],
+     [-12.70,-2.48],[-12.83,-2.20]],
+    [[-11.92,.22],[-11.95,-1.16],[-8.81,.08]],
+    2.12,dark);
+   frame.userData.hkMP5PDWFrame=true;
    const butt=p('stock',[
-    [-13.05,1.02],[-12.53,1.02],[-12.53,-2.36],
-    [-12.82,-2.65],[-13.05,-2.65]
+    [-13.05,1.16],[-12.46,1.10],[-12.46,-2.34],
+    [-12.76,-2.70],[-13.05,-2.57]
    ],3.20,dark);
    butt.userData.hkMP5PDWButt=true;
   }else{
@@ -103,8 +99,9 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
    rail.userData.hkMP5RetractRail=true;
   }
   const plate=p('stock',[
-   [rear,1.18],[rear+.62,1.18],[rear+.62,-1.65],
-   [rear+.44,-2.38],[rear+.16,-2.67],[rear,-2.45]
+   [rear,1.18],[rear+.73,1.12],[rear+.70,-.72],
+   [rear+.99,-1.60],[rear+.67,-2.29],[rear+.23,-2.58],
+   [rear,-2.32]
   ],3.34,dark);
   plate.userData.hkMP5RetractButt=true;
   const junction=b('stock',-6.09,.34,0,.82,1.0,2.95,steel);
