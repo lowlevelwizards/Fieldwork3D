@@ -3,13 +3,14 @@
  */
 import type {Site,ExteriorZone} from '../breach-site.ts';
 import type {Obstacle} from '../breach-core.ts';
-import {VEHICLE_DIMENSIONS,VEHICLE_CONFIGURATIONS,VEHICLE_PAINTS,vehicleRecipe,type VehicleFamily} from './vehicle-catalog.ts';
+import {VEHICLE_DIMENSIONS,vehicleRecipe,type VehicleFamily} from './vehicle-catalog.ts';
 import {parkingStallCandidates,parkingStallCount,reservedParkingBay} from './parking-stalls.ts';
 import {arrivalAccessLane,overlapsArrivalLane} from './property-access-lane.ts';
 import {exteriorDoorReserves,intersectsExteriorDoorReserve} from './exterior-door-reserve.ts';
 import {planPublicStreet,overlapsPublicStreetRoad,type StreetRect} from './public-street-layout.ts';
 import {intersectsServiceAccess} from './service-clear-route.ts';
 import {seeded} from './seeded-rng.ts';
+import {chooseVehicleArt} from './vehicle-palette.ts';
 type Reject='bounds'|'room'|'road'|'sidewalk'|'arrival'|'door'|'encounter'|'occupied'|'reserved'|'service'|'stall-width'|'no-fit';
 export type VehiclePlacementResult={vehicles:Obstacle[];diagnostics:{zoneId:string;target:number;accepted:number;rejections:Partial<Record<Reject,number>>}[]};
 const intersects=(a:Pick<Obstacle,'x'|'y'|'w'|'h'>,b:Pick<Obstacle,'x'|'y'|'w'|'h'>,pad=0)=>
@@ -25,16 +26,12 @@ function fleet(site:Site,zone:ExteriorZone):readonly VehicleFamily[]{
   default:return civilian;
  }
 }
-function artVariant(family:VehicleFamily,site:Site,rng:()=>number):number{
- const variants=VEHICLE_CONFIGURATIONS[family];
- const config=site.archetype==='clinic'&&family==='van'&&rng()<.4?'medical':
-  ['warehouse','garage','utility'].includes(site.archetype??'')&&family==='van'?'delivery':
-  ['warehouse','garage','utility'].includes(site.archetype??'')&&family==='pickup'?'contractor':
-  family==='light-truck'?['box','flatbed','canvas'][Math.floor(rng()*3)]:
-  variants[0];
- const palette=site.condition==='vacant'?[2,4,5,8]:[0,0,1,1,2,3,4,5,6,7,8,10,11];
- const paint=palette[Math.floor(rng()*palette.length)]%VEHICLE_PAINTS.length;
- return Math.max(0,(variants as readonly string[]).indexOf(config))+paint*variants.length;
+// Preserve the old placement stream exactly: art choice now has its own
+// independent stream and can never alter which physical bay/family fits.
+function advanceLegacyArtStream(family:VehicleFamily,site:Site,rng:()=>number){
+ if(site.archetype==='clinic'&&family==='van')rng();
+ if(family==='light-truck')rng();
+ rng();
 }
 function targetFor(site:Site,zone:ExteriorZone):number{
  const slots=parkingStallCount(zone);
@@ -59,7 +56,7 @@ export function planVehiclePlacement(site:Site,seed=site.seed,modernOnly=false):
   const reject=(reason:Reject)=>{diag.rejections[reason]=(diag.rejections[reason]??0)+1;};
   let key=seed^0x4c971a3;
   for(const ch of zone.id)key=Math.imul(key^ch.charCodeAt(0),16777619);
-  const rng=seeded(key),roster=fleet(site,zone);
+  const rng=seeded(key),artRng=seeded(key^0x371e6a93),roster=fleet(site,zone);
   const reserved=reservedParkingBay(site,zone);
   const broad=zone.vehicleParking?zone.vehicleParking.axis==='x':zone.w>=zone.h;
   const stride=(zone.vehicleParking?.alongLength??(broad?zone.w:zone.h))/parkingStallCount(zone);
@@ -94,7 +91,8 @@ export function planVehiclePlacement(site:Site,seed=site.seed,modernOnly=false):
      if(intersectsExteriorDoorReserve(reserves,c)){reject('door');continue;}
      if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+32&&Math.abs(p.y-y)<h/2+32)){reject('encounter');continue;}
      if([...site.cover,...vehicles].some(o=>intersects(o,c,17))){reject('occupied');continue;}
-     c.artVariant=artVariant(family,site,rng);
+     advanceLegacyArtStream(family,site,rng);
+     c.artVariant=chooseVehicleArt(family,{archetype:site.archetype,condition:site.condition,role:zone.vehicleParking?.role},artRng);
      c.vehicleProfile={version:2,configuration:vehicleRecipe(family,c.artVariant).configuration};
      c.artCondition=site.condition==='vacant'?'vacant':site.condition==='neglected'?'neglected':site.condition==='busy'?'used':'clean';
      vehicles.push(c);usedSlots.add(slotKey);diag.accepted++;found=true;break;

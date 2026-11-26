@@ -13,7 +13,7 @@ function visualRecipe(c:Obstacle,index:number){
  if(!family)return null;
  // Ordinary legacy cars remain civilian/cargo/box by default.
  // Explicit art variants select configurations for preview/new authored vehicles.
- const recipe=vehicleRecipe(family,c.artVariant??Math.abs(index)*VEHICLE_CONFIGURATIONS[family].length);
+ const recipe=vehicleRecipe(family,c.artVariant??Math.abs(index)*VEHICLE_CONFIGURATIONS[family].length,!!c.vehicleProfile&&c.vehicleProfile.version<3);
  const condition=c.artCondition==='used'?'used':c.artCondition==='neglected'||c.artCondition==='vacant'?'weathered':'clean';
  const dimensions:[number,number,number]=[c.w,c.h,propDefinition(c.fixture??family)?.height??33];
  return {recipe:{...recipe,condition} as const,dimensions};
