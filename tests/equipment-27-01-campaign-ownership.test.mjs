@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {newCampaign,buyWeapon,equipCampaignWeapon,readCampaign,
+import {newCampaign,buyCatalogWeapon,equipCampaignOwnedPreset,readCampaign,
  migrateLegacyRoster} from '../src/campaign-state.ts';
 import {initialRoster} from '../src/breach-roster.ts';
 import {weaponOwnershipIssues} from '../src/equipment-weapon-ownership.ts';
@@ -13,14 +13,14 @@ test('27.01 new Campaign has four physical serials and no unowned guns',()=>{
 test('27.01 purchase, swap and return preserve the exact serial',()=>{
  const c=newCampaign(42),old=c.operators[0].weaponSerialId;
  const otherSerials=new Map(c.operators.slice(1).map(o=>[o.id,o.weaponSerialId]));
- const purchased=buyWeapon(c,'smg');
+ const purchased=buyCatalogWeapon(c,'hk-mp5a3');
  assert.equal(stockByPlatform(purchased).smg,1);
- const swapped=equipCampaignWeapon(purchased,'rook','smg');
+ const swapped=equipCampaignOwnedPreset(purchased,'rook','hk-mp5a3');
  assert.notEqual(swapped.operators[0].weaponSerialId,old);
  assert.equal(stockByPlatform(swapped).smg,0);
  assert.equal(stockByPlatform(swapped).carbine,1);
  assert.deepEqual(weaponOwnershipIssues(swapped),[]);
- const back=equipCampaignWeapon(swapped,'rook','carbine');
+ const back=equipCampaignOwnedPreset(swapped,'rook','ar-m4a1');
  assert.equal(back.operators[0].weaponSerialId,old);
  for(const operator of back.operators.slice(1))
   assert.equal(operator.weaponSerialId,otherSerials.get(operator.id),

@@ -1,19 +1,19 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {newCampaign,buyWeapon,equipCampaignWeapon,readCampaign} from '../src/campaign-state.ts';
+import {newCampaign,buyCatalogWeapon,equipCampaignOwnedPreset,readCampaign} from '../src/campaign-state.ts';
 test('armory purchases and equipment swaps conserve stock',()=>{
  let c=newCampaign(49);
  const bank=c.funds;
- c=buyWeapon(c,'rifle');
+ c=buyCatalogWeapon(c,'ar-m16a2');
  assert.equal(c.funds,bank-420);
  assert.equal(stockByPlatform(c).rifle,1);
  const old=c.operators[0];
- c=equipCampaignWeapon(c,'rook','rifle');
+ c=equipCampaignOwnedPreset(c,'rook','ar-m16a2');
  assert.equal(c.operators[0].weapon,'rifle');
  assert.equal(c.operators[0].magazine,0);
  assert.equal(c.operators[0].reserve,0);
  assert.equal(stockByPlatform(c).rifle,0);
  assert.equal(stockByPlatform(c)[old.weapon],1);
- assert.deepEqual(equipCampaignWeapon(c,'moss','rifle'),c);
+ assert.deepEqual(equipCampaignOwnedPreset(c,'moss','ar-m16a2'),c);
  assert.deepEqual(readCampaign(JSON.stringify(c)),c);
 });
 test('old campaign saves migrate to empty spare stock',()=>{

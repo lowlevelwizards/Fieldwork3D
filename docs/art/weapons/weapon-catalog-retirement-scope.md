@@ -78,3 +78,6 @@ WA4–9 delivered measurable refinements and paired visual evidence; AK, HK rifl
 
 ## R5b — remove class-level quote and access API
 The live procurement quote now evaluates the exact named model directly, using serial custody and the same named authorization projection as creation. Removed old category quote and access exports, migrated policy tests to named model IDs. Existing price coefficients and Dispatch equipment compatibility policy are preserved pending broader data migration. No changes to actual weapon balance or movement. Exact-head verification pending.
+
+## R5c — remove class-based campaign mutation and authorization bypass
+Deleted the generic class purchase, class issue and capacity-alias APIs from production. All campaign acquisitions now go through a named model; all issue goes through actual serials or a named-model selector that resolves an actual unassigned serial. Removed the internal legacy-class policy bypass. Historical save migration continues to accept old category counts without preserving them as live stock. Updated former class-operation tests to exercise exact named issue. Focused acceptance pending.

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {initialEquipmentLoadout,readEquipmentLoadout,setEquipmentChoice,
  syncPrimaryWeapon,totalEquipmentMass} from '../src/equipment-loadouts.ts';
-import {newCampaign,readCampaign,equipCampaignGear,buyWeapon,equipCampaignWeapon}
+import {newCampaign,readCampaign,equipCampaignGear,buyCatalogWeapon,equipCampaignOwnedPreset}
  from '../src/campaign-state.ts';
 
 test('loadout normalization rejects invalid and wrong-slot choices',()=>{
@@ -35,9 +35,9 @@ test('campaign loadouts remain independent and survive v1 save migration',()=>{
 test('weapon swaps preserve campaign ownership and synchronize catalog choice',()=>{
  let c=newCampaign(9);
  assert.equal(equipCampaignGear(c,'rook','primary','primary-rifle'),c);
- c=buyWeapon(c,'rifle');
+ c=buyCatalogWeapon(c,'ar-m16a2');
  const before=stockByPlatform(c).rifle;
- const swapped=equipCampaignWeapon(c,'rook','rifle');
+ const swapped=equipCampaignOwnedPreset(c,'rook','ar-m16a2');
  assert.equal(stockByPlatform(swapped).rifle,before-1);
  assert.equal(swapped.operators[0].weapon,'rifle');
  assert.equal(swapped.operators[0].loadout.slots.primary,'primary-rifle');

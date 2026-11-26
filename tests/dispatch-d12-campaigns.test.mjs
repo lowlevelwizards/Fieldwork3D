@@ -5,7 +5,7 @@ import {createDispatchSetup,dispatchPresetDraft,DISPATCH_PRESETS,
  effectiveDispatchSetup,currentDispatchReference,validDispatchSetup}
  from '../src/dispatch-campaign-setup.ts';
 import {newDispatchPilotCampaign} from '../src/dispatch-campaign-starter.ts';
-import {newCampaign,readCampaign,hireRecruit,buyWeapon,purchaseAmmo,setCampaignWardrobe}
+import {newCampaign,readCampaign,hireRecruit,buyCatalogWeapon,purchaseAmmo,setCampaignWardrobe}
  from '../src/campaign-state.ts';
 import {mayChooseCampaignContent} from '../src/dispatch-campaign-eligibility.ts';
 import {weaponOwnershipIssues} from '../src/equipment-weapon-ownership.ts';
@@ -75,11 +75,11 @@ test('D12 chapter progression changes newly issued kit but never rewrites existi
 });
 test('D12 open catalog retains paid ownership; creative has zero-cost economy',()=>{
  const open=newDispatchPilotCampaign(79,dispatchPresetDraft('open'));
- const bought=buyWeapon(open,'smg');
+ const bought=buyCatalogWeapon(open,'hk-mp5a3');
  assert.equal(bought.funds,open.funds-260);
  const creative=newDispatchPilotCampaign(79,dispatchPresetDraft('creative'));
  assert.equal(creative.funds,1000000);
- assert.equal(buyWeapon(creative,'smg').funds,creative.funds);
+ assert.equal(buyCatalogWeapon(creative,'hk-mp5a3').funds,creative.funds);
  assert.equal(purchaseAmmo(creative).funds,creative.funds);
  const p=creative.operators[0],w={...p.wardrobe,styles:{...p.wardrobe.styles,top:'polo-shirt'}};
  assert.notStrictEqual(setCampaignWardrobe(creative,p.id,w),creative);

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newCampaign,equipCampaignGear,equipCampaignWeapon,
- equipCampaignOwnedPreset,buyWeapon,hireRecruit,equipCampaignWeaponFamilyPart,
+import {newCampaign,equipCampaignGear,
+ equipCampaignOwnedPreset,buyCatalogWeapon,hireRecruit,equipCampaignWeaponFamilyPart,
  buyWeaponAttachment,equipCampaignWeaponAttachment,
  setCampaignWardrobe,applyCampaignKitPreset} from '../src/campaign-state.ts';
 import {newDispatchPilotCampaign} from '../src/dispatch-campaign-starter.ts';
@@ -36,9 +36,9 @@ test('D3.1 new Dispatch selections are guarded while existing saves survive',()=
  assert.equal(mayChooseCampaignContent(c,'equipment','backpack-field','backpack'),false);
  assert.equal(equipCampaignGear(c,id,'backpack','backpack-field'),c);
  assert.equal(equipCampaignGear(c,id,'armor','armor-carrier'),c);
- assert.equal(equipCampaignWeapon(c,id,'rifle'),c);
+ assert.equal(equipCampaignOwnedPreset(c,id,'ar-m16a2'),c);
  assert.equal(equipCampaignOwnedPreset(c,id,'ak-aks74u'),c);
- assert.equal(buyWeapon(c,'rifle'),c);
+ assert.equal(buyCatalogWeapon(c,'ar-m16a2'),c);
  const recruit=hireRecruit(c);
  assert.equal(recruit.operators.at(-1)?.background,'Tactical Police');
  assert.equal(recruit.operators.at(-1)?.weapon,'carbine');
@@ -55,5 +55,5 @@ test('D3.1 ordinary existing campaigns remain unrestricted by Dispatch policy',(
  assert.equal(isDispatchPilot(c),false);
  assert.equal(mayChooseCampaignContent(c,'equipment','backpack-field','backpack'),true);
  assert.notEqual(equipCampaignGear(c,c.operators[0].id,'backpack','backpack-field'),c);
- assert.notEqual(buyWeapon(c,'rifle'),c);
+ assert.notEqual(buyCatalogWeapon(c,'ar-m16a2'),c);
 });
