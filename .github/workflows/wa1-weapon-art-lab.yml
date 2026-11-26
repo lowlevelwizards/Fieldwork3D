@@ -1,0 +1,37 @@
+name: WA1 weapon art lab verification
+on:
+  push:
+    branches: [feature/wa0-wa2-weapon-art-foundation]
+    paths:
+      - 'weapon-art-lab.html'
+      - 'src/arsenal/wa-art-*.ts'
+      - 'scripts/smoke-wa1-weapon-art-lab.mjs'
+      - '.github/workflows/wa1-weapon-art-lab.yml'
+  workflow_dispatch:
+concurrency:
+  group: wa1-lab-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run check
+      - run: node --experimental-strip-types --test tests/wa0-weapon-art-inventory.test.mjs tests/wa0-weapon-art-geometry.test.mjs tests/wa0-custom-art-coverage.test.mjs
+      - run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - run: node --experimental-strip-types scripts/smoke-wa1-weapon-art-lab.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wa1-lab-smoke
+          path: reports/wa1-lab/
+          if-no-files-found: ignore

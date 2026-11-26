@@ -22,8 +22,8 @@ import {resolveOperation,tacticalSlotOperator,campaignSquadPresent,type Campaign
 import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
  purchaseFieldStock,
   resupplyOperator,resupplyMedicalOperator,treatOperator,hireRecruit,
-  assignOperatorToSlot,buyWeapon,equipCampaignWeapon,repairCampaignArmor,
-  serviceCampaignWeapon,equipCampaignGear,equipCampaignCarryGear,equipCampaignFieldInventory,equipCampaignPreGoFieldInventory,copyCampaignFieldInventory,equipCampaignWeaponPreset,
+  assignOperatorToSlot,buyCatalogWeapon,equipCampaignCatalogWeapon,repairCampaignArmor,
+  serviceCampaignWeapon,equipCampaignGear,equipCampaignCarryGear,equipCampaignFieldInventory,equipCampaignPreGoFieldInventory,copyCampaignFieldInventory,equipCampaignOwnedPreset,
   equipCampaignWeaponFamilyPart,equipCampaignWeaponAttachment,
   purchaseAndEquipWeaponAttachment,moveCampaignMagazine,saveCampaignKitPreset,
   applyCampaignKitPreset,deleteCampaignKitPreset,renameCampaignOperator,
@@ -368,10 +368,10 @@ const campaignScreen=new CampaignScreen({
  recruit:()=>applyVisibleCampaignAction(hireRecruit,'New operator joined the roster'),
  assignSlot:(slot,id)=>applyVisibleCampaignAction(
   c=>assignOperatorToSlot(c,slot,id),'Deployment squad updated'),
- buyWeapon:(weapon)=>applyVisibleCampaignAction(
-  c=>buyWeapon(c,weapon),weapon.toUpperCase()+' weapon added to armory'),
- equipWeapon:(id,weapon)=>applyVisibleCampaignAction(
-  c=>equipCampaignWeapon(c,id,weapon),'Operator primary weapon updated'),
+ buyCatalogWeapon:(presetId)=>applyVisibleCampaignAction(
+  c=>buyCatalogWeapon(c,presetId),(familyPreset(presetId)?.name??'Weapon')+' added to armory'),
+ equipCatalogWeapon:(id,serialId)=>applyVisibleCampaignAction(
+  c=>equipCampaignCatalogWeapon(c,id,serialId),'Owned weapon issued'),
  repairArmor:(id)=>applyVisibleCampaignAction(
   c=>repairCampaignArmor(c,id),'Operator armor repaired'),
  serviceWeapon:(id)=>applyVisibleCampaignAction(
@@ -388,19 +388,8 @@ const campaignScreen=new CampaignScreen({
   c=>equipCampaignCarryGear(c,id,slot,itemId),'Carrying equipment updated'),
  undoCarryGear:(id,expected,before)=>applyVisibleCampaignAction(
   c=>undoCampaignCarryGear(c,id,expected,before),'Physical carry change undone'),
- equipWeaponPreset:(id,presetId)=>applyVisibleCampaignAction(current=>{
-  if(current.activeContractId)return current;
-  const preset=familyPreset(presetId);
-  const member=current.operators.find(o=>o.id===id);
-  if(!preset||!member)return current;
-  let next=current;
-  if(member.weapon!==preset.weapon){
-   if((current.inventory.weapons[preset.weapon]??0)<1)return current;
-   next=equipCampaignWeapon(next,id,preset.weapon);
-   if(next===current)return current;
-  }
-  return equipCampaignWeaponPreset(next,id,presetId);
- },'Weapon family preset equipped'),
+ equipWeaponPreset:(id,presetId)=>applyVisibleCampaignAction(
+  c=>equipCampaignOwnedPreset(c,id,presetId),'Owned weapon model issued'),
  equipWeaponFamilyPart:(id,slot,partId)=>applyVisibleCampaignAction(
   c=>equipCampaignWeaponFamilyPart(c,id,slot,partId),'Weapon component updated'),
  equipAttachment:(id,slot,partId,acquire)=>applyVisibleCampaignAction(

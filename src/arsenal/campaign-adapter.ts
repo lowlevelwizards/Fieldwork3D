@@ -4,6 +4,7 @@
  * a smaller authored magazine conservatively repacks the current rounds.
  */
 import type {CampaignState} from '../campaign-state.ts';
+import {synchronizeIssuedCatalogBodies} from '../equipment-weapon-ownership.ts';
 import {isDispatchPilot,dispatchPilotUnclassifiedEditingEnabled}
  from '../dispatch-campaign-eligibility.ts';
 import {effectiveDispatchSetup} from '../dispatch-campaign-setup.ts';
@@ -37,7 +38,7 @@ export function quoteCampaignArsenalEdit(c:CampaignState,operatorId:string,
  if(!operator||operator.status==='lost'||operator.status==='retired')
   return denied('Operator is unavailable');
  if(recipe.weapon!==operator.weapon)
-  return denied('Switch weapon class in Campaign Armory first, then reopen Arsenal');
+  return denied('Issue a compatible owned weapon in Campaign Armory first, then reopen Arsenal');
  const next=arsenalRecipeToLegacy(recipe);
  if(!next)return denied('The assembled weapon is not valid');
  // An explicit saved location must fit on this actual equipped family.
@@ -64,11 +65,11 @@ export function commitCampaignArsenalEdit(c:CampaignState,operatorId:string,
  if(!operator)return {state:c,quote:denied('Operator is unavailable')};
  if(sameWeaponConfiguration(operator.weaponConfiguration,quote.nextConfiguration))
   return {state:c,quote};
- return {state:{...c,funds:c.funds-quote.cost,
+ return {state:synchronizeIssuedCatalogBodies({...c,funds:c.funds-quote.cost,
   inventory:{...c.inventory,attachments:{...quote.stockAfter}},
   operators:c.operators.map(o=>o.id===operatorId?
    {...o,weaponConfiguration:quote.nextConfiguration!,
     ...fitMagazineInventory(o.id,o.weapon,quote.nextConfiguration!,
-     o.magazine,o.reserve,o.magazines)}:o)},
+     o.magazine,o.reserve,o.magazines)}:o)}),
   quote};
 }

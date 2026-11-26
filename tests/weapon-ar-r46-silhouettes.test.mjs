@@ -66,19 +66,19 @@ test('R4.6 curved STANAG widths are normal to shared centerline',()=>{
  assert.ok(arMagazineCurve('30').sweep<1.0,'STANAG is milder than AKM');
  assert.equal(arMagazinePolyBaseplate(arMagazineCurve('poly')).length,4);
 });
-test('R4.6 metal magazines use two thick actual ribs; polymer no fake side panel',()=>{
- for(const [id,expected] of [['ar-m16a1',3],['ar-m4a1',3],['ar-mk18',2]]){
+test('R4.6 metal magazines use integrated graphic ribs; polymer no fake side panel',()=>{
+ for(const [id,expected] of [['ar-m16a1',1],['ar-m4a1',1],['ar-mk18',2]]){
   const {g}=model(id),mg=meshes(g,'magazine');
   assert.equal(mg.length,expected,id+' low-cost magazine geometry');
-  if(id!=='ar-mk18')assert.equal(mg[0].material,AR_STANAG_METAL,
-   id+' metal magazine body');
+  if(id!=='ar-mk18')assert.ok(mg[0].userData.arWA6IntegratedMagazineArt&&mg[0].material.map,
+   id+' opaque integrated metal artwork');
   assert.equal(g.children.filter(x=>x.name==='family-art-ar-poly-panel').length,0);
   if(id==='ar-mk18'){
    assert.ok(mg.some(x=>x.material===AR_MUTED_FDE),
     'heavy tan molded toe retained along with two restrained side facets');
   }else{
-   assert.ok(mg.slice(1).every(x=>x.material===AR_STANAG_RIB),
-    'contour-following matte ribs');
+   assert.ok(mg[0].material.userData.arWA6IntegratedMagazineArt);
+   assert.equal(mg[0].material.transparent,false);
   }
   clearWeaponSilhouette(g);
  }

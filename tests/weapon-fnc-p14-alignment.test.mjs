@@ -9,7 +9,7 @@ import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../src/equipment-weapon-assemblies.ts';
-import {FAL_DARK_POLYMER,HK_DARK_POLYMER,HK_BLACK_METAL}
+import {FAL_DARK_POLYMER,FNC_DARK_POLYMER,FNC_BLACK_METAL}
  from '../src/weapons/geometry/weapon-visual-palette.ts';
 
 const one=(g,k)=>g.children.find(c=>c.userData[k]);
@@ -88,9 +88,9 @@ test('P14 preserves metal/polymer material hierarchy and both muzzle variants',(
  assert.equal(one(live,'fncP14ReceiverSeatedPolymer')?.material.color.getHex(),FAL_DARK_POLYMER.color.getHex());
  assert.ok(one(live,'fncP14ReceiverSeatedPolymer')?.material.map,'polymer remains textured');
  assert.equal(one(live,'fncP14TaperedMoldedCollar')?.material,FAL_DARK_POLYMER);
- assert.equal(one(live,'fncP14LoweredGasCover')?.material.color.getHex(),HK_BLACK_METAL.color.getHex());
+ assert.equal(one(live,'fncP14LoweredGasCover')?.material.color.getHex(),FNC_BLACK_METAL.color.getHex());
  assert.ok(one(live,'fncP14LoweredGasCover')?.material.map,'gas retains 12 pixel vents');
- assert.equal(one(live,'fncGrip')?.material,HK_DARK_POLYMER);
+ assert.equal(one(live,'fncGrip')?.material,FNC_DARK_POLYMER);
  const plain=buildFNCStage1Silhouette(m,{},false);
  assert.ok(!one(plain,'fncMuzzle'));
  assert.ok(close(box(plain).max.x,FNC_P1.muzzleX));

@@ -105,7 +105,7 @@ test('P24 preserves the entire 12 vent mask, polymer grooves, muzzle, stock, and
  assert.equal(stats.meshes,23,'no draw call increase for gas casting/lines');
  assert.equal(stats.triangles,peers.find(x=>x.name==='FNC').triangles);
  assert.equal(peers.find(x=>x.name==='FAL').triangles,366);
- assert.equal(peers.find(x=>x.name==='M4A1').triangles,478);
+ assert.equal(peers.find(x=>x.name==='M4A1').triangles,422);
  const gas=one(gun,'fncP24RearwardLowerGasBlock'),
   poly=one(gun,'fncFacetedHandguard');
  assert.ok(gas&&poly);

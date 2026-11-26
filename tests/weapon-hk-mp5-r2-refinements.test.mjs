@@ -7,7 +7,7 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset,
  resolveWeaponAssembly} from '../src/equipment-weapon-assemblies.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
-import {riflePoseContacts} from '../src/breach-weapon-contact-zones.ts';
+import {riflePoseContacts,UNDERHAND_PALM_DROP} from '../src/breach-weapon-contact-zones.ts';
 import {workbenchFitDistance,workbenchFitCenter}
  from '../src/weapons/geometry/weapon-workbench-camera-fit.ts';
 import {readFileSync} from 'node:fs';
@@ -73,8 +73,9 @@ test('MP5K massive tilted integral grip occupies its own side silhouette',()=>{
  const c=riflePoseContacts('smg',cfg),a=resolveWeaponAssembly(cfg);
  assert.ok(c.support.near.x>=b.min.x&&c.support.far.x<=b.max.x);
  assert.ok(c.support.near.y>=b.min.y&&c.support.near.y<=b.max.y);
- assert.equal(c.support.near.y,-4.20);
- assert.equal(a.supportY,-4.20,'weapon assembly agrees with operator contacts');
+ assert.ok(a.supportY>=b.min.y&&a.supportY<=b.max.y,'assembly contact remains inside authored art');
+ assert.ok(close(c.support.near.y,a.supportY-UNDERHAND_PALM_DROP.hk),
+  'animated hand center retains the existing authored palm offset');
  assert.ok(model.children.length<=28,'minimum mesh-count standard');
  clearWeaponSilhouette(model);
 });

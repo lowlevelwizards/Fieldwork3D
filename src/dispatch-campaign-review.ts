@@ -5,7 +5,7 @@
 import {dispatchSetupDisplayLabel,validDispatchSetup,
  type DispatchCampaignDraft} from './dispatch-campaign-setup.ts';
 import {STARTING_DISPATCH_STANDING} from './dispatch-department.ts';
-import {dispatchWeaponAccess,DISPATCH_WEAPON_CLASSES}
+import {dispatchCatalogAccessReview}
  from './dispatch-weapon-access.ts';
 
 export type DispatchCreationReview=Readonly<{
@@ -35,16 +35,20 @@ export function dispatchCreationReview(draft:DispatchCampaignDraft):DispatchCrea
   draft.unlockMode==='both'?
   'Reference and career authorization in '+catalog:
   'All eligible choices immediately offered in '+catalog;
- const weaponStatus={offered:'OFFERED','standing-locked':'STANDING 70',
-  'reference-locked':'RESTRICTED','not-assessed':'NOT ASSESSED'} as const;
- const weaponAccess=DISPATCH_WEAPON_CLASSES.map(weapon=>
-  weapon.toUpperCase()+' · '+weaponStatus[dispatchWeaponAccess(draft,
-   draft.referenceId,STARTING_DISPATCH_STANDING,weapon)]).join('  /  ');
+ const choices=dispatchCatalogAccessReview(draft,draft.referenceId,STARTING_DISPATCH_STANDING);
+ const summarize=(status:'offered'|'standing-locked',label:string)=>{
+  const matches=choices.filter(p=>p.status===status);
+  return matches.length+' '+label+(matches.length?' · '+matches.slice(0,5).map(p=>p.name).join(', ')+(matches.length>5?' +'+(matches.length-5)+' more':''):'');
+ };
+ const restricted=choices.filter(p=>p.status==='reference-locked').length;
+ const unassessed=choices.filter(p=>p.status==='not-assessed').length;
+ const weaponAccess=[summarize('offered','OFFERED'),summarize('standing-locked','STANDING 70'),
+  restricted+' RESTRICTED',unassessed+' NOT ASSESSED'].join('  /  ');
  const procurement=draft.economy==='unlimited'?
   'No-charge procurement; ownership, compatibility and finite stock still apply':
   'Normal funds and purchases; equipment must still be acquired';
  const armory=draft.startingInventory==='all'?
-  'Expanded basic weapon-class stock; not unlimited inventory':
+  'One spare per authored catalog model within armory capacity; not unlimited inventory':
   'Starting squad issue; additional equipment requires procurement';
  const problem=draft.timeMode==='progressive'&&
   draft.referenceId!=='us-swat-mp5-1995'?

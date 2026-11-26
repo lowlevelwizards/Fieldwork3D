@@ -4,12 +4,12 @@ import {readFileSync} from 'node:fs';
 import {DISPATCH_PRESETS,dispatchPresetDraft,currentDispatchReference}
  from '../src/dispatch-campaign-setup.ts';
 import {dispatchCreationReview} from '../src/dispatch-campaign-review.ts';
-import {dispatchWeaponAccess,DISPATCH_WEAPON_CLASSES}
+import {dispatchWeaponAccess,DISPATCH_WEAPON_CLASSES,dispatchCatalogAccessReview,dispatchCatalogWeaponAccess}
  from '../src/dispatch-weapon-access.ts';
 import {mayChooseCampaignContent,mayChooseDispatchSetupContent}
  from '../src/dispatch-campaign-eligibility.ts';
 import {newDispatchPilotCampaign} from '../src/dispatch-campaign-starter.ts';
-import {campaignWeaponQuote} from '../src/campaign-weapon-procurement.ts';
+import {campaignWeaponQuote,catalogWeaponQuote} from '../src/campaign-weapon-procurement.ts';
 import {buyWeapon} from '../src/campaign-state.ts';
 const source=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 
@@ -18,7 +18,14 @@ test('D13.7 all five presets preview the exact same initial authorization as liv
   const draft=dispatchPresetDraft(preset),campaign=newDispatchPilotCampaign(1377,draft);
   const view=dispatchCreationReview(draft);
   assert.equal(view.valid,true);
-  assert.equal(view.weaponAccess.split('  /  ').length,4);
+  const named=dispatchCatalogAccessReview(draft,draft.referenceId,50);
+  assert.ok(named.length>4);
+  for(const model of named){
+   const expected=model.status==='offered'?'ready':model.status;
+   assert.equal(catalogWeaponQuote(campaign,model.id).status,expected,model.id);
+  }
+  assert.ok(view.weaponAccess.includes(named.filter(p=>p.status==='offered').length+' OFFERED'));
+  assert.ok(view.weaponAccess.includes(named.filter(p=>p.status==='standing-locked').length+' STANDING 70'));
   for(const weapon of DISPATCH_WEAPON_CLASSES){
    const projected=dispatchWeaponAccess(draft,draft.referenceId,50,weapon);
    const quote=campaignWeaponQuote(campaign,weapon);
@@ -26,10 +33,7 @@ test('D13.7 all five presets preview the exact same initial authorization as liv
    assert.equal(quote.status,expected,preset+' '+weapon);
    assert.equal(mayChooseCampaignContent(campaign,'equipment','primary-'+weapon,'primary'),
     projected==='offered',preset+' '+weapon);
-   const expectedLabel=projected==='offered'?'OFFERED':
-    projected==='standing-locked'?'STANDING 70':
-    projected==='reference-locked'?'RESTRICTED':'NOT ASSESSED';
-   assert.ok(view.weaponAccess.includes(weapon.toUpperCase()+' · '+expectedLabel));
+
   }
  }
 });
@@ -39,7 +43,8 @@ test('D13.7 custom OMON and standing changes project the same live authorization
  const c=newDispatchPilotCampaign(1378,draft);
  assert.equal(dispatchWeaponAccess(draft,draft.referenceId,50,'carbine'),'offered');
  assert.equal(dispatchWeaponAccess(draft,draft.referenceId,50,'smg'),'reference-locked');
- assert.match(dispatchCreationReview(draft).weaponAccess,/SMG · RESTRICTED/);
+ assert.equal(dispatchCatalogWeaponAccess(draft,draft.referenceId,50,'hk-mp5a3'),'reference-locked');
+ assert.match(dispatchCreationReview(draft).weaponAccess,/RESTRICTED/);
  const career=newDispatchPilotCampaign(1379,dispatchPresetDraft('career'));
  const at70={...career,dispatchDepartment:{...career.dispatchDepartment,standing:70}};
  assert.equal(dispatchWeaponAccess(career.dispatchSetup,currentDispatchReference(career),

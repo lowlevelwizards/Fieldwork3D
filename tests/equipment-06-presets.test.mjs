@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newCampaign,readCampaign,saveCampaignKitPreset,applyCampaignKitPreset,
  deleteCampaignKitPreset,renameCampaignOperator,setCampaignOperatorColor,
- SQUAD_IDENTIFICATION_COLORS,cycleCampaignAppearance,buyWeapon,
+ SQUAD_IDENTIFICATION_COLORS,cycleCampaignAppearance,buyCatalogWeapon,
  equipCampaignGear,equipCampaignWeapon} from '../src/campaign-state.ts';
 import {readKitPresets} from '../src/equipment-presets.ts';
 
@@ -13,17 +13,19 @@ test('loadout presets are durable recipes and never duplicate weapon stock',()=>
  assert.equal(c.kitPresets[0].kit.slots.armor,'armor-carrier');
  assert.equal(c.kitPresets[0].weapon,'carbine');
  assert.deepEqual(readCampaign(JSON.stringify(c)),c);
- const beforeStock=JSON.stringify(c.inventory.weapons);
+ const beforeStock=JSON.stringify(c.inventory.serializedWeapons);
  const next=applyCampaignKitPreset(c,'moss',c.kitPresets[0].id);
  assert.equal(next,c,'unavailable primary should atomically block recipe');
- assert.equal(JSON.stringify(next.inventory.weapons),beforeStock);
- c=buyWeapon(c,'carbine');
- const stock=c.inventory.weapons.carbine;
+ assert.equal(JSON.stringify(next.inventory.serializedWeapons),beforeStock);
+ const original=c.operators.find(o=>o.id==='moss').weaponSerialId;
+ c=buyCatalogWeapon(c,'ar-m4a1');
+ const spare=catalogOwnedStock(c).find(w=>w.id!==original);
  c=applyCampaignKitPreset(c,'moss',c.kitPresets[0].id);
  assert.equal(c.operators[1].weapon,'carbine');
  assert.equal(c.operators[1].loadout.slots.armor,'armor-carrier');
- assert.equal(c.inventory.weapons.carbine,stock-1);
- assert.equal(c.inventory.weapons.smg,1);
+ assert.equal(c.operators.find(o=>o.id==='moss').weaponSerialId,spare.id);
+ assert.equal(catalogOwnedStock(c).length,1);
+ assert.ok(catalogOwnedStock(c).some(w=>w.id===original));
  c=deleteCampaignKitPreset(c,'kit-1');
  assert.deepEqual(c.kitPresets,[]);
  assert.equal(c.operators[1].weapon,'carbine');
@@ -61,3 +63,5 @@ test('assigned squad color persists as a validated identity, not uniform paint',
  assert.notEqual(readCampaign(JSON.stringify(invalid)).operators[0].squadColor,
   '#BADBAD');
 });
+
+import {catalogOwnedStock} from '../src/equipment-weapon-ownership.ts';

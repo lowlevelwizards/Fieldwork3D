@@ -127,8 +127,14 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
   const result:Choice[]=[];
   for(const option of [...source.options]){
    const id=option.value,item=itemDefinition(id);
-   if(!id||!item)continue;
+   if(!id)continue;
    const current=id===source.value;
+   if(slot==='primary'&&option.dataset?.catalogName){
+    result.push({id,label:option.dataset.catalogName,mass:current?'EQUIPPED':option.dataset.catalogDetail??'OWNED',
+     kind:'gear',equipped:current,issued:current||(!options.locked&&!option.disabled),reason:option.dataset.catalogDetail??'NOT ISSUED / RESTRICTED'});
+    continue;
+   }
+   if(!item)continue;
    const carrier=slot==='rig'||slot==='belt'||slot==='backpack';
    const quote=carrier&&!current?quoteCarryGearChange(
     options.kit,options.magazines,slot as 'rig'|'belt'|'backpack',

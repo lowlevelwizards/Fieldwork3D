@@ -1,11 +1,111 @@
 # Fieldwork Breach — Universal Weapon Art & Production Standard
 
-**Status:** Canonical production policy for new weapon families, variants, and substantial revisions to existing weapon art.  
-**Version:** 1.0 · 2026-11-16  
+**Status:** Canonical production policy for new weapon families, variants, and substantial revisions to existing weapon art; WA2 adoption on the foundation branch, pending release.  
+**Version:** 2.0 · 2026-11-25 (WA2 art direction; retains v1 technical contract)  
 **Owner:** Arsenal / weapon appearance pipeline.  
 **Companion documents:** [R2 silhouette contract](geometry-r2-silhouette-contract.md), [Arsenal V2 baseline](../../arsenal-v2-baseline.md), and the historical AR / AK / FAL / FNC / HK case studies in this directory.
 
 > **Core rule:** Create a recognizable, authentic **miniature**, not a photorealistic weapon with fewer polygons. Build its identity from purposeful exterior masses, meaningful open space, clear proportions, and restrained materials. Optimize before ornamenting. **Actual game-scale visual approval, not passing code tests, determines whether art is done.**
+
+## WA2 — Art direction 2.0: Graphic Miniature Realism
+
+**Adoption:** Canonical art direction for WA3 onward, committed on the WA foundation branch. The technical requirements in sections 0–15 remain in force. This standard does not itself approve a weapon, change live artwork or authorize deployment. The WA0.4 initial assessment is not a final numerical rating.
+
+### A. The signature
+Authentic through interpretation, not replication. A Fieldwork weapon is a sculptural miniature: confident, compact, tactile, iconic and economical. Read the object as three or four dominant masses before noticing its individual marks. Its identity must survive the absence of labels, color, dramatic lighting and fine detail. Every extra form needs a visual reason.
+
+**MUST** prioritize silhouette and negative space over detail; **SHOULD** prefer an integrated shape, rectangular defaults and broad decisive facets; **MAY** exaggerate a characteristic exterior proportion when the paired native-scale view proves improved identity. Never exaggerate everything at once. Simplicity means better selection of shapes, not lower fidelity of intent.
+
+### B. Definitive calibration references
+The following are **approved teaching references for specific strengths**, not fully art-approved weapons or frozen geometry. Source: [verified WA0 visual baseline](https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/45750363645), revision `0f79ca66a2fe27eeabde9e304711892e5628142f`, artifact 15084818826. WA0.4 reviewed all 53 references; WA2 reviewed the selected multi-angle plate again. Paths below identify actual production renders in that archive. For each case, inspect the side-fit, three-quarter-fit, top-fit, front-fit, native-64 and native-128 PNGs. Do not silently substitute a different model or new render for the archived evidence.
+
+| Reference / archive directory | What to study | What not to copy blindly |
+|---|---|---|
+| `fal/fal-5000-classic/` | Broad angular receiver/furniture, warm vs dark blocks, clear tapered outline | Thin handle and sight features; exact wedge is family-specific |
+| `fnc/fnc-service/` | Integrated mass, sparse graphic marks, open rear outline | Reverse dark layers; atlas is optional, not a universal requirement |
+| `g36/g36-service/` | Purposeful openings, long continuous modern form, clear graphic void | Do not transfer its characteristic architecture into unrelated families |
+| `remington870/r870-police-wood/` | Continuous sculptural wood, bold separation of pump and receiver | Cylinder-dominant family shape is not a rifle template |
+| `glock/glock-g19x/` | Planar economy, compact proportion, true guard opening, strong color block | Tan does not automatically establish adequate substrate separation |
+| `ak/ak-akm/` | Strong sweeping silhouette, warmer material contrast, broad top facets | Do not require wood or the same color palette in modern variants |
+| `ar15/ar-m4a1/` | Compact family identity and modular character | Repeating rail/rib density, interrupted junctions; review at native scale |
+| `g3/hk-g3a4/` and `hk33/hk-hk53a3/` | Slender related family profiles | Thin rear forms and nearly identical dark masses can lose distinction |
+| `mp5/hk-mp5k-pdw/` | Compact, unmistakable family silhouette | Dark central mass can conceal form; preserve its particular character |
+| `beretta/beretta-m9a3/` | Distinct open-top and tan/dark exterior appearance | Busy rear/outline versus Glock; preview-only status remains |
+| `legacy/legacy-shotgun/` | Negative example: disconnected-looking stack of blocks | Do not retire until compatibility and fallback callsites are reviewed |
+
+A comparative example: the verified census shows AR mean 768 triangles, FAL 364, FNC 536, AK 360. The WA1 desktop smoke (run 45752149023) specifically shows FAL 50.00 at 366 triangles/26 meshes and M4A1 at 682 triangles/23 meshes in the same lab. These are different shapes with different needs; a smaller mesh count alone does not mean lower triangle cost or better art. The 53-reference aggregate is not a runtime scene budget.
+
+### C. Form and depth grammar
+
+| Rule | Decision and verification |
+|---|---|
+| C1 silhouette before ornament | Use monochrome fixed side and shared-scale peer comparisons. At 128px the family must be distinguishable; at 64px its defining mass relationships must survive. |
+| C2 dominant / subordinate / accent | One coherent dominant body, subordinate furniture and silhouette elements, few accents. At native size the eye should read the largest forms first. |
+| C3 rectangles until justified | Use clear rectangular and planar shapes first; introduce a broad facet only when it improves identity, depth or silhouette. No routine micro bevel/chamfer treatment. Verify top/front/three-quarter, not just side. |
+| C4 contiguous, not stacked | Junctions should visually belong to the same object. Remove accidental layered slabs and fake spacer plates rather than adding detail to mask them. Compare real three-quarter artwork. |
+| C5 purposeful negative space | Preserve real recognizable voids and meaningful outlines. Do not paint over a missing opening or turn an unrelated form into a universal box. |
+| C6 selective caricature | Emphasize the most distinctive relationship of a family rather than uniform enlargement. Compare peer silhouettes and all visible depths. No blanket scaling or external functional specification. |
+| C7 game-art scale | Primary and native sidearm comparison cohorts are distinct; cross-category calibration requires real operator context. Fitted thumbnails are not evidence of true relative size. WA15/16 resolve final in-game scale. |
+
+### D. Surface grammar: four levels
+
+| Tier | What belongs here | Treatment |
+|---|---|---|
+| 1 primary | Dominant exterior volumes and silhouette | Real geometry, economical coherent shape |
+| 2 identity | Distinctive silhouette-bearing features and recognizable voids | Real geometry only where outline/depth warrants it |
+| 3 graphic | Shallow seams, stamped/recessed graphic cues, sparse repeated marks | Prefer integrated UV artwork, simple opaque graphic regions, or genuinely justified batched detail |
+| 4 micro | Small fasteners, fine bevels, tiny repeated ridges, dense ornament | Default remove if indistinguishable in native-size or context render |
+
+For a mark, test the normal render against tagged-overlay-hidden and untextured diagnostic views. If removing it does not hurt identity or material perception at the target scale, remove it or use a more economical representation. Do not treat the no-texture view as an exact 'details only' toggle: it also removes other texture artwork; baked marks cannot always be independently hidden. Select line weight according to projected image size, not identical world-unit width across families. Favor a small number of readable dark shapes, even spacing with intentional asymmetry, no noise or outlines added solely for contrast. A pixel graphic must be face-correct, stable in minification, integrated with material lighting, and free of redundant overlays.
+
+### E. Material language
+
+Material is part of the silhouette hierarchy, not decoration applied at the end. The intended shared vocabulary below is **qualitative** until WA3 develops calibrated swatches in actual game lighting; no universal new hex values or shader tuning are authorized here.
+
+| Role | Intended appearance | Avoid |
+|---|---|---|
+| Steel / dark metal | Broad, cool-to-neutral dark planar masses, restrained response | All steel indistinguishable from dark polymer; excessive specular edges |
+| Polymer | Matte, tactile, somewhat distinct in value or hue from adjacent metal | Flat green-gray wash, tiny color variations for each part |
+| Wood | Warm, quiet blocks with recognizable broad plane changes | Grain noise, photo texture, heavy procedural mottling |
+| Resin / phenolic | Restrained warm, plum or dark hues where appropriate | Universal brown or saturated colors without variant evidence |
+| Rubber | Simple muted dark region where it reads as separate material | Every dark part assigned the same identity |
+| Paint / finish | Coherent intentional color blocks preserving substrate readability | Recoloring existing saved finishes without approval |
+| Lens / smoked appearance | Restrained, graphic optical impression; existing low-cost representation first | Gratuitous transparency, depth artifacts, glows |
+
+Evaluate neutral fill, shared studio, mirrored diagnostic and actual operator/live game contexts. Diagnostic fill can reveal geometry but cannot replace normal lighting acceptance. Distinguish substrate via value, hue and restrained response, not through arbitrary global brightening. WA14 controls condition/weathering; preserve clean/service appearance as a baseline. Existing palette remains authoritative until intentional, evidence-backed WA3+ changes.
+
+### F. Exceptions and variant identity
+- Long-gun visual trigger-guard convention: omission is the established default at Fieldwork scale. Keep only where already necessary to a distinctive exterior or presentation and documented; sidearms may retain simplified genuinely open guard shapes. This is an art convention, not a statement about real objects.
+- FAL/FNC/G36 are teaching references, not exempt from improvement. G3/HK33/MP5 retain slimmer family character; do not indiscriminately bulk them to match FAL. Compact variants retain intentional differences rather than global downscaling.
+- AR rail silhouettes, AK furniture and G36 apertures carry recognizable identity; a detail budget cannot override those defining forms. Their visual density is subject to the tier test.
+- Historical proxies retain proxy labels. Beretta remains preview-only. Legacy shotgun remains until WA10 demonstrates safe retirement/reconciliation. Existing approved saved finishes and IDs remain stable.
+- New exceptions record rule ID, affected reference IDs, visible benefit, evidence paths, cost and technical impact, approving reviewer and revisit stage. An exception to an art preference is not an exception to compatibility, state integrity or safety.
+
+### G. Evaluation rubric and evidence
+Score each category 0–5 only when its required evidence has actually been reviewed: 0 = fails, 1 = major work, 2 = substantial refinement, 3 = adequate, 4 = strong, 5 = benchmark-quality for that category. **Unknown is null, not 0 or a passing result.** Weighted total is sum(weight * score/5) only when all eight categories have evidence.
+
+| Category | Weight | Required evidence |
+|---|---:|---|
+| Silhouette and identity | 25 | Monochrome side/peer, 128px and 64px |
+| Cohesion / Fieldwork signature | 20 | Same-scale peers, integrated shapes, actual A/B |
+| Proportion and depth | 15 | Side, opposite, top, front, three-quarter, real operator framing |
+| Geometry economy | 10 | Actual geometry census, measured isolated submissions, justified cost deltas |
+| Material character | 10 | Normal, neutral/mirrored, actual lighting and role diagnostics |
+| Graphic detail | 10 | Native images, marked/hidden and untextured comparison with limitations |
+| Variant/accessory consistency | 5 | Representative valid factory/custom/attachment comparisons |
+| Cross-context readability | 5 | Arsenal, Operator Lab and actual relevant gameplay context |
+
+Thresholds are working review policy, not claims about existing model scores: 85+ candidate for sign-off, 70–84 targeted refinement, below 70 substantial revision. No candidate is approved if identity, cohesion or proportions score below 3, if any evidence is missing, or if independent hard gates fail. Technical regressions cannot be offset by a high visual score. Final human visual sign-off remains mandatory. WA0.4 qualitative dispositions remain valid input; weighted totals for existing models stay unassigned until full calibrated evidence review. Do not retroactively score from screenshots alone where a rubric category needs additional evidence.
+
+### H. WA3+ execution checklist
+1. Select the WA0.4 reference, disposition and affected families/parts. Preserve a revision-tagged baseline and specify what must improve.
+2. Compare the actual production silhouette against the relevant calibration reference, then make an isolated shape/material study with explicit scope. No new functional/internal modeling.
+3. Evaluate at fixed scale and fitted close-up, all required angles, 64/128px, ordinary material and actual operator context; report archive path and revision.
+4. Apply tier test and shared material semantics; capture before/after metrics and explain every increase, unchanged cost or reduction.
+5. Verify production-path parity, all applicable saved/variant/attachment/pose contracts, resource ownership and critical tests using sections 7–14. Keep gameplay unchanged.
+6. Record score evidence and unknowns, exceptions, remaining findings and sign-off. Stage commits by family, combine compatible batches, verify prior deployment before merge and verify production after deployment. Do not declare the release complete solely because CI passed.
+
+**WA handoff:** WA3 establishes the shared art vocabulary and calibrated swatches using actual render comparisons; WA4/5 calibrate benchmark families; WA6/8/9 prioritize AR and HK drift; WA7 retains AK identity; WA10 reconciles legacy shotgun safely; WA11 sidearms; WA12/13 accessory, custom and material coverage; WA14 condition; WA15/16 context; WA17 optimization; WA18 final audit. No new geometry, finish changes or live menu changes in WA2.
 
 ## 0. Applicability, precedence, and language
 

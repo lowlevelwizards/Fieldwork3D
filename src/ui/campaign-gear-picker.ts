@@ -9,7 +9,7 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string,
  trigger.type='button';trigger.className='campaign-kit-picker-trigger';
  const label=source.getAttribute('aria-label')?.replace(/^Select /,'Choose ')||
   'Choose '+slot+' equipment';
- const display=(value:string)=>itemDefinition(value)?.name||
+ const display=(value:string)=>source.querySelector<HTMLOptionElement>('option[value="'+CSS.escape(value)+'"]')?.dataset.catalogName||itemDefinition(value)?.name||
   source.querySelector<HTMLOptionElement>('option[value="'+CSS.escape(value)+'"]')
    ?.textContent?.split(' · ')[0]||value;
  trigger.textContent=display(source.value);
@@ -124,12 +124,12 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string,
    entry.type='button';entry.className='campaign-gear-picker-option';
    entry.disabled=option.disabled;
    entry.setAttribute('aria-current',chosen?'true':'false');
-   const name=document.createElement('strong');name.textContent=def?.name||display(option.value);
+   const name=document.createElement('strong');name.textContent=option.dataset.catalogName||def?.name||display(option.value);
    const detail=document.createElement('small');
    const difference=def&&originalItem?def.massKg-originalItem.massKg:null;
    const weightDelta=difference!==null&&!chosen&&Math.abs(difference)>.005?
     ' · '+(difference>0?'+':'')+difference.toFixed(2)+' KG ITEM MASS':'';
-   detail.textContent=(def?'ITEM '+def.massKg.toFixed(2)+' KG':'')+
+   detail.textContent=(option.dataset.catalogDetail??(def?'ITEM '+def.massKg.toFixed(2)+' KG':''))+
     weightDelta+(chosen?' · EQUIPPED':option.disabled?' · UNAVAILABLE':'');
    const description=document.createElement('span');
    description.className='campaign-gear-picker-description';

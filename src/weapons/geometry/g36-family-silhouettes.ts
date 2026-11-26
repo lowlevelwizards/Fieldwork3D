@@ -9,7 +9,7 @@ import {G36_E0_FACTORY} from './g36-family-contract.ts';
 import {applyG36FactoryMaterials} from './g36-silhouettes.ts';
 import {buildG36FamilyBlockout} from './g36-variant-parts.ts';
 import {applyG36PixelDetails} from './g36-pixel-details.ts';
-import {HK_BLACK_METAL,HK_MUZZLE_METAL,
+import {G36_CALIBRATED_STEEL,HK_MUZZLE_METAL,
  G36_DARK_POLYMER,G36_OPTIC_RIM,G36_LENS_BLACK,G36_RUBBER,
  G36_SMOKED_MAGAZINE} from './weapon-visual-palette.ts';
 export function addG36Family(root:THREE.Group,build:WeaponFamilyBuild,
@@ -20,7 +20,7 @@ export function addG36Family(root:THREE.Group,build:WeaponFamilyBuild,
   throw Error('Invalid G36 part combination');
  const form=buildG36FamilyBlockout(G36_DARK_POLYMER,build);
  applyG36FactoryMaterials(form,{
-  polymer:G36_DARK_POLYMER,steel:HK_BLACK_METAL,
+  polymer:G36_DARK_POLYMER,steel:G36_CALIBRATED_STEEL,
   magazine:G36_SMOKED_MAGAZINE,buttpad:G36_RUBBER,
   optic:G36_DARK_POLYMER,opticRim:G36_OPTIC_RIM,lens:G36_LENS_BLACK,
   muzzle:HK_MUZZLE_METAL

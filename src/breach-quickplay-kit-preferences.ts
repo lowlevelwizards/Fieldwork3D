@@ -5,6 +5,7 @@
 import {freshQuickPlayRoster,type RosterState} from './breach-roster.ts';
 import {readEquipmentLoadout} from './equipment-loadouts.ts';
 import {readWeaponConfiguration} from './equipment-weapon-assemblies.ts';
+import {resolveCatalogConfiguration,starterWeaponPreset} from './breach-weapon-issue.ts';
 import {freshMagazineIssue} from './arsenal/live-magazine-capacity.ts';
 import {stageMagazines,type MagazineLocation} from './equipment-magazine-placement.ts';
 import type {WeaponId} from './breach-combat.ts';
@@ -15,13 +16,13 @@ const locations:readonly MagazineLocation[]=['rig','belt','backpack','pocket','o
 const validLocation=(v:unknown):v is MagazineLocation=>
  typeof v==='string'&&locations.includes(v as MagazineLocation);
 export type QuickPlayKitPreference={
- id:string;weapon:WeaponId;loadout:unknown;weaponConfiguration:unknown;
+ id:string;loadout:unknown;weaponConfiguration:unknown;
  magazineLocations:(MagazineLocation|null)[];
 };
 export function serializeQuickPlayKitPreferences(roster:RosterState):string{
- return JSON.stringify({version:1,members:roster.members.map(m=>({
-  id:m.id,weapon:m.weapon,loadout:m.loadout,
-  weaponConfiguration:m.weaponConfiguration,
+ return JSON.stringify({version:2,members:roster.members.map(m=>({
+  id:m.id,loadout:m.loadout,
+  weaponConfiguration:resolveCatalogConfiguration(m.weaponConfiguration,m.weapon,starterWeaponPreset(m.id)),
   magazineLocations:m.magazines.map(m=>m.location??null)
  }))});
 }
@@ -30,21 +31,27 @@ export function applyQuickPlayKitPreferences(
  if(!raw)return roster;
  let parsed:unknown;
  try{parsed=JSON.parse(raw);}catch{return roster;}
- if(!parsed||typeof parsed!=='object'||(parsed as {version?:unknown}).version!==1)return roster;
+ if(!parsed||typeof parsed!=='object')return roster;
+ const version=(parsed as {version?:unknown}).version;
+ if(version!==1&&version!==2)return roster;
  const members=(parsed as {members?:unknown}).members;
  if(!Array.isArray(members)||members.length>16)return roster;
  return {...roster,members:roster.members.map(base=>{
   const input=members.find(x=>x&&typeof x==='object'&&x.id===base.id);
-  if(!input||!validWeapon(input.weapon))return base;
-  const config=readWeaponConfiguration(input.weaponConfiguration,input.weapon);
-  const loadout=readEquipmentLoadout(input.loadout,input.weapon,base.id);
-  const issue=freshMagazineIssue(base.id,input.weapon,config);
+  if(!input)return base;
+  const weapon=version===1?input.weapon:input.weaponConfiguration?.weapon;
+  if(!validWeapon(weapon))return base;
+  const decoded=readWeaponConfiguration(input.weaponConfiguration,weapon);
+  if(version===2&&!decoded.build)return base;
+  const config=resolveCatalogConfiguration(decoded,weapon,starterWeaponPreset(base.id));
+  const loadout=readEquipmentLoadout(input.loadout,weapon,base.id);
+  const issue=freshMagazineIssue(base.id,weapon,config);
   const placements=Array.isArray(input.magazineLocations)?
    input.magazineLocations.slice(0,32):[];
   const mags=issue.magazines.map((mag,i)=>({
    ...mag,location:validLocation(placements[i])?placements[i]:mag.location
   }));
-  return {...base,weapon:input.weapon,weaponConfiguration:config,
+  return {...base,weapon,weaponConfiguration:config,
    loadout,magazine:issue.magazine,reserve:issue.reserve,
    magazines:stageMagazines(mags,loadout),loadedMagazineId:issue.loadedMagazineId};
  })};

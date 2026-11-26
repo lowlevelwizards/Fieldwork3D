@@ -16,6 +16,16 @@ const prepare=(root:THREE.Group,slot:SlotName,id:string,n:number,
  mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
  return mesh;
 };
+/** Canonical exterior profile extrusion, with the existing winding/options. */
+function artContour<T extends THREE.Path>(path:T,points:Outline):T{
+ path.moveTo(points[0][0],points[0][1]);
+ for(const [x,y] of points.slice(1))path.lineTo(x,y);
+ path.closePath();return path;
+}
+function artExtrusion(shape:THREE.Shape,depth:number){
+ const geometry=new THREE.ExtrudeGeometry(shape,{depth,steps:1,bevelEnabled:false,curveSegments:1});
+ geometry.translate(0,0,-depth/2);return geometry;
+}
 /** A single thick wedge or curved stepped silhouette as ONE low-vertex mesh.
  * The polygon is deliberately exterior-only. 3D depth is symmetric about z=0.
  */
@@ -23,13 +33,7 @@ export function addOutline(root:THREE.Group,slot:SlotName,id:string,n:number,
  points:Outline,depth:number,material:THREE.Material){
  if(points.length<3||points.length>12||depth<=0)
   throw new Error('Weapon outline must have 3–12 points and positive depth');
- const [first,...rest]=points,shape=new THREE.Shape();
- shape.moveTo(first[0],first[1]);
- for(const point of rest)shape.lineTo(point[0],point[1]);
- shape.closePath();
- const geom=new THREE.ExtrudeGeometry(shape,{depth,steps:1,bevelEnabled:false,
-  curveSegments:1});
- geom.translate(0,0,-depth/2);
+ const geom=artExtrusion(artContour(new THREE.Shape(),points),depth);
  return prepare(root,slot,id,n,geom,material);
 }
 /** Cubes remain appropriate for parts that really ARE simple rectangular masses. */
@@ -72,18 +76,8 @@ export function addProfileFrame(root:THREE.Group,slot:SlotName,id:string,n:numbe
  outer:Outline,inner:Outline,depth:number,material:THREE.Material){
  if(outer.length<3||inner.length<3||depth<=0)
   throw new Error('Frame needs two valid contours and positive depth');
- const shape=new THREE.Shape();
- shape.moveTo(outer[0][0],outer[0][1]);
- for(const [x,y] of outer.slice(1))shape.lineTo(x,y);
- shape.closePath();
- const opening=new THREE.Path();
- opening.moveTo(inner[0][0],inner[0][1]);
- for(const [x,y] of inner.slice(1))opening.lineTo(x,y);
- opening.closePath();
- shape.holes.push(opening);
- const geom=new THREE.ExtrudeGeometry(shape,{
-  depth,steps:1,bevelEnabled:false,curveSegments:1
- });
- geom.translate(0,0,-depth/2);
+ const shape=artContour(new THREE.Shape(),outer);
+ shape.holes.push(artContour(new THREE.Path(),inner));
+ const geom=artExtrusion(shape,depth);
  return prepare(root,slot,id,n,geom,material);
 }

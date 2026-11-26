@@ -1,0 +1,42 @@
+name: WA0.3 weapon artwork WebGL baseline
+on:
+  push:
+    branches: [feature/wa0-wa2-weapon-art-foundation]
+    paths:
+      - 'weapon-art-baseline.html'
+      - 'src/arsenal/wa0-capture.ts'
+      - 'src/arsenal/wa0-custom-reference-cases.ts'
+      - 'scripts/capture-wa0-operator-context.mjs'
+      - 'tests/wa0-custom-art-coverage.test.mjs'
+      - 'scripts/capture-weapon-art-baseline.mjs'
+      - '.github/workflows/wa0-visual-baseline.yml'
+  workflow_dispatch:
+concurrency:
+  group: wa0-visual-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run check
+      - run: node --experimental-strip-types --test tests/wa0-custom-art-coverage.test.mjs
+      - run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - run: node --experimental-strip-types scripts/capture-weapon-art-baseline.mjs
+      - run: node --experimental-strip-types scripts/capture-wa0-operator-context.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wa0-visual-baseline
+          path: reports/wa0-visual/
+          if-no-files-found: error
+          retention-days: 90

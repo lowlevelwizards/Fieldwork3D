@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {FACTION_REFERENCES} from '../src/faction-reference-catalog.ts';
 import {REFERENCE_WEAPONS,referenceWeaponChoice} from '../src/faction-reference-weapons.ts';
 import {FAMILY_PRESETS} from '../src/equipment-weapon-families.ts';
-import {issueWeaponPreset,resolveIssuedOrLegacy,starterWeaponPreset}
+import {issueWeaponPreset,resolveCatalogConfiguration,starterWeaponPreset}
  from '../src/breach-weapon-issue.ts';
 import {enemyKitForEncounter} from '../src/breach-enemy-loadouts.ts';
 import {initialRoster,readRoster} from '../src/breach-roster.ts';
@@ -66,11 +66,11 @@ test('starter rosters and new campaigns always resolve to concrete weapon famili
   assert.equal(operator.weapon,operator.weaponConfiguration.weapon);
  }
  const retired=initialWeaponConfiguration('smg');
- const modern=resolveIssuedOrLegacy(retired,'smg','ar-m4a1');
+ const modern=resolveCatalogConfiguration(retired,'smg','ar-m4a1');
  assert.equal(modern.weapon,'smg');
  assert.equal(modern.build?.parts.receiver,'hk-mp5-standard');
  const saved=initialWeaponConfiguration('rifle');
- assert.ok(resolveIssuedOrLegacy(saved,'rifle','ar-m16a2').build);
+ assert.ok(resolveCatalogConfiguration(saved,'rifle','ar-m16a2').build);
 });
 test('Studio armed idle is stable, low ready, and reloads once per 60 seconds',()=>{
  assert.equal(STUDIO_IDLE_RELOAD_PERIOD,60);

@@ -23,8 +23,8 @@ import {readWeaponConfiguration,changeWeaponPlatform,
  setWeaponAttachment,selectWeaponFamilyPreset,setConfiguredFamilyPart,
  type WeaponConfiguration,type WeaponAttachmentSlot}
  from './equipment-weapon-assemblies.ts';
-import type {FamilyPartSlot} from './equipment-weapon-families.ts';
-import {issueWeaponPreset,starterWeaponPreset,resolveIssuedOrLegacy} from './breach-weapon-issue.ts';
+import {familyPreset,matchingFamilyPreset,type FamilyPartSlot} from './equipment-weapon-families.ts';
+import {issueWeaponPreset,starterWeaponPreset,resolveCatalogConfiguration} from './breach-weapon-issue.ts';
 import {initialEquipmentLoadout,readEquipmentLoadout,syncPrimaryWeapon,setEquipmentChoice,
  type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
 export type RosterMember={
@@ -74,7 +74,7 @@ export function readRoster(raw:string|null):RosterState{
    const f=found as Partial<RosterMember>;
    const weapon=weapons.includes(f.weapon as WeaponId)?
      f.weapon as WeaponId:base.weapon;
-   const config=resolveIssuedOrLegacy(
+   const config=resolveCatalogConfiguration(
     readWeaponConfiguration(f.weaponConfiguration,weapon),weapon,
     starterWeaponPreset(base.id));
    const reserve=finite(f.reserve,0,300,base.reserve);
@@ -188,7 +188,7 @@ export function resupplyRoster(roster:RosterState,id?:string):RosterState{
 export function equipRoster(roster:RosterState,id:string,weapon:WeaponId):RosterState{
  return {version:1,members:roster.members.map(m=>{
   if(m.id!==id)return {...m};
-  const config=resolveIssuedOrLegacy(
+  const config=resolveCatalogConfiguration(
    changeWeaponPlatform(m.weaponConfiguration,weapon),weapon,
    starterWeaponPreset(m.id));
   return {...m,weapon,loadout:syncPrimaryWeapon(m.loadout,weapon),
@@ -271,7 +271,19 @@ export function configureRosterWeapon(roster:RosterState,id:string,
  return {...roster,members:roster.members.map(member=>member.id===id?
   {...member,weaponConfiguration:next}:member)};
 }
-/** Quick Play family presets are appearance variants of the owned weapon class. */
+/** One named reference selection, independent of historical simulation category. */
+export function equipRosterCatalogPreset(roster:RosterState,id:string,presetId:string):RosterState{
+ const member=roster.members.find(m=>m.id===id),preset=familyPreset(presetId);
+ if(!member||!preset)return roster;
+ if(member.weaponConfiguration.build&&matchingFamilyPreset(member.weaponConfiguration.build)?.id===presetId)return roster;
+ const base=member.weapon===preset.weapon?member.weaponConfiguration:changeWeaponPlatform(member.weaponConfiguration,preset.weapon);
+ const config=selectWeaponFamilyPreset(base,presetId);
+ if(!config.build||matchingFamilyPreset(config.build)?.id!==presetId)return roster;
+ return {...roster,members:roster.members.map(m=>m.id===id?{...m,
+  weapon:preset.weapon,weaponConfiguration:config,loadout:syncPrimaryWeapon(m.loadout,preset.weapon),
+  ...freshMagazineIssue(m.id,preset.weapon,config)}:m)};
+}
+/** Historical same-category recipe edit API. */
 export function configureRosterWeaponPreset(roster:RosterState,id:string,
  presetId:string):RosterState{
  const m=roster.members.find(member=>member.id===id);

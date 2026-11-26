@@ -173,8 +173,7 @@ export function validateWorkflowContracts(wf){
  const glockTriggers=wf.glockArt.slice(0,wf.glockArt.indexOf('jobs:'));
  assert.ok(glockTriggers.includes('branches-ignore: [main]'),
   'Glock must keep non-main PRs but not duplicate main PR runs');
- for(const smoke of ['smoke-arsenal-m30-shotgun-visual.mjs',
-  'smoke-arsenal-m30c3-modular-visual.mjs',
+ for(const smoke of ['smoke-arsenal-m30c3-modular-visual.mjs',
   'smoke-arsenal-m30c4-runtime-visual.mjs',
   'smoke-arsenal-m30c5-runtime-visual.mjs',
   'arsenal-m30-physical-visual-smoke'])

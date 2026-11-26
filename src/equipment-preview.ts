@@ -23,6 +23,9 @@ import {frameArmoryObject,type ArmoryShotCategory}
 import {copyLinearRgbaToSrgbFlipped} from './equipment-thumbnail-color.ts';
 import {equipmentPreviewVisualKey} from './equipment-preview-visual-key.ts';
 
+/** Optional explicit authored configuration is for isolated thumbnail capture only. */
+export type EquipmentThumbnailTarget=EquipmentInspectionTarget|
+ {kind:'gear';slot:LoadoutSlot;itemId:string;weaponConfiguration?:WeaponConfiguration};
 export type EquipmentPreviewFocus='full'|'head'|'torso'|'weapon'|'carry'|'back'|'belt'|'legs';
 const PREVIEW_FOCUS_TARGETS:Record<EquipmentPreviewFocus,readonly [number,number,number]>={
  full:[34,84,22],head:[57,66,23],torso:[38,69,22],
@@ -267,13 +270,11 @@ export class CampaignKitPreview{
   * A missing/unmounted model returns null and is labeled accordingly.
   * Caller may request alternate gear options; the active operator pose is
   * restored in finally before any presentation draw. */
- renderModelThumbnail(target:EquipmentInspectionTarget|
-  {kind:'gear';slot:LoadoutSlot;itemId:string}):string|null{
+ renderModelThumbnail(target:EquipmentThumbnailTarget):string|null{
   // Older carry editors require synchronous images. They retain that API.
   return this.captureModelThumbnail(target,false) as string|null;
  }
- async renderModelThumbnailAsync(target:EquipmentInspectionTarget|
-  {kind:'gear';slot:LoadoutSlot;itemId:string}):Promise<string|null>{
+ async renderModelThumbnailAsync(target:EquipmentThumbnailTarget):Promise<string|null>{
   // Reserve a queue slot BEFORE the first await. Multiple category or
   // operator requests must not race the one reusable async GPU buffer.
   const previous=this.thumbnailReadbackTail;
@@ -285,8 +286,7 @@ export class CampaignKitPreview{
    return await this.captureModelThumbnail(target,true);
   }finally{release();}
  }
- private captureModelThumbnail(target:EquipmentInspectionTarget|
-  {kind:'gear';slot:LoadoutSlot;itemId:string},
+ private captureModelThumbnail(target:EquipmentThumbnailTarget,
   asynchronous:boolean):string|null|Promise<string|null>{
   if(!this.renderer||!this.rig||!this.visualSnapshot)return null;
   const key=JSON.stringify(target);
@@ -309,7 +309,8 @@ export class CampaignKitPreview{
     const weapon=target.slot==='primary'&&target.itemId.startsWith('primary-')?
      target.itemId.slice(8) as WeaponId:original.weapon;
     this.poseForThumb(weapon,original.appearanceSeed,previewKit,
-     weapon===original.weapon?original.weaponConfiguration:undefined,
+     target.slot==='primary'&&target.weaponConfiguration?.weapon===weapon?target.weaponConfiguration:
+      weapon===original.weapon?original.weaponConfiguration:undefined,
      original.magazines,previewWardrobe,target.slot==='primary');
    }
    const selected=target.kind==='gear'?

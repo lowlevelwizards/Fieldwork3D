@@ -44,10 +44,13 @@ test('A1 uses 4 dark vents on each genuine sloping face, never flat cards',()=>{
   assert.equal(vent.geometry.type,'BufferGeometry');
   assert.equal(vent.geometry.getIndex().count,24,'four rectangles, two triangles each');
   assert.equal(vent.geometry.getAttribute('position').count,16);
-  assert.equal(vent.material.type,'MeshBasicMaterial');
+  assert.equal(vent.material.type,'MeshStandardMaterial','existing A4 lit matte graphic treatment');
+  assert.equal(vent.material.roughness,.98);
+  assert.equal(vent.material.metalness,0);
+  assert.equal(vent.material.depthWrite,false);
   assert.equal(vent.material.map,null,'matte geometric openings, not painted sprites');
   assert.ok(vent.material.color.r<.02&&vent.material.color.g<.02,
-   'vents are extremely dark and unlit');
+   'vents remain restrained dark graphic marks');
   assert.ok(!vent.castShadow&&!vent.receiveShadow);
   const pos=vent.geometry.getAttribute('position');
   for(let i=0;i<pos.count;i++){

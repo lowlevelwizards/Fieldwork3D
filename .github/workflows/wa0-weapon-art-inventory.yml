@@ -1,0 +1,33 @@
+name: WA0 weapon art inventory
+on:
+  push:
+    branches: [feature/wa0-wa2-weapon-art-foundation]
+    paths:
+      - 'scripts/audit-weapon-art-inventory.mjs'
+      - 'tests/wa0-weapon-art-inventory.test.mjs'
+      - 'scripts/audit-weapon-art-geometry.mjs'
+      - 'tests/wa0-weapon-art-geometry.test.mjs'
+      - '.github/workflows/wa0-weapon-art-inventory.yml'
+  workflow_dispatch:
+jobs:
+  source-inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/wa0-weapon-art-inventory.test.mjs tests/wa0-weapon-art-geometry.test.mjs
+      - run: node --experimental-strip-types scripts/audit-weapon-art-inventory.mjs
+      - run: node --experimental-strip-types scripts/audit-weapon-art-geometry.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wa0-source-inventory
+          path: |
+            reports/wa0-source-inventory.json
+            reports/wa0-geometry-census.json
+          if-no-files-found: error

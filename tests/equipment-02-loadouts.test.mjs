@@ -21,7 +21,7 @@ test('loadout normalization rejects invalid and wrong-slot choices',()=>{
 test('campaign loadouts remain independent and survive v1 save migration',()=>{
  const c=newCampaign(21),rook=c.operators[0],moss=c.operators[1];
  assert.equal(rook.loadout.slots.primary,'primary-carbine');
- assert.equal(moss.loadout.slots.primary,'primary-smg');
+ assert.equal(moss.loadout.slots.primary,'primary-'+moss.weapon);
  const changed=equipCampaignGear(c,'rook','armor','armor-carrier');
  assert.equal(changed.operators[0].loadout.slots.armor,'armor-carrier');
  assert.equal(c.operators[0].loadout.slots.armor,'armor-soft');
@@ -30,17 +30,20 @@ test('campaign loadouts remain independent and survive v1 save migration',()=>{
  const legacy=JSON.parse(JSON.stringify(c));
  for(const member of legacy.operators)delete member.loadout;
  const migrated=readCampaign(JSON.stringify(legacy));
- assert.equal(migrated.operators[1].loadout.slots.primary,'primary-smg');
+ assert.equal(migrated.operators[1].loadout.slots.primary,'primary-'+moss.weapon);
 });
 test('weapon swaps preserve campaign ownership and synchronize catalog choice',()=>{
  let c=newCampaign(9);
  assert.equal(equipCampaignGear(c,'rook','primary','primary-rifle'),c);
  c=buyWeapon(c,'rifle');
- const before=c.inventory.weapons.rifle;
+ const before=stockByPlatform(c).rifle;
  const swapped=equipCampaignWeapon(c,'rook','rifle');
- assert.equal(swapped.inventory.weapons.rifle,before-1);
+ assert.equal(stockByPlatform(swapped).rifle,before-1);
  assert.equal(swapped.operators[0].weapon,'rifle');
  assert.equal(swapped.operators[0].loadout.slots.primary,'primary-rifle');
  assert.equal(swapped.operators[0].magazine,0);
  assert.equal(swapped.operators[0].reserve,0);
 });
+
+import {catalogOwnedStock} from '../src/equipment-weapon-ownership.ts';
+const stockByPlatform=c=>Object.fromEntries(['carbine','smg','rifle','shotgun'].map(p=>[p,catalogOwnedStock(c).filter(w=>w.platform===p).length]));

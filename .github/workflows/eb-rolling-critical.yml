@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
         if: always()
         with:
-          ref: 553b2f13e8906df9d0f86eb61a75e63e7b614590
+          ref: 385b18428bc1724c20fcac2f98ad53c6aa4c2f87
           path: eb-base
       - name: Pair exact real-session scale and encounter outcomes
         if: always()
@@ -47,12 +47,12 @@ jobs:
           (cd eb-base && node --experimental-strip-types scripts/audit-eb-rescue.mjs ../artifacts/eb/base-rescue.json)
           node --experimental-strip-types scripts/audit-eb-rescue.mjs artifacts/eb/candidate-rescue.json
           cp scripts/audit-eb0-scale.mjs eb-base/scripts/
-          (cd eb-base && GITHUB_SHA=553b2f13e8906df9d0f86eb61a75e63e7b614590 node --experimental-strip-types scripts/audit-eb0-scale.mjs ../artifacts/eb/base-scale.json)
+          (cd eb-base && GITHUB_SHA=385b18428bc1724c20fcac2f98ad53c6aa4c2f87 node --experimental-strip-types scripts/audit-eb0-scale.mjs ../artifacts/eb/base-scale.json)
           node --experimental-strip-types scripts/audit-eb0-scale.mjs artifacts/eb/candidate-scale.json
           node --experimental-strip-types scripts/audit-eb0-scale.mjs artifacts/eb/repeat-scale.json
           node scripts/compare-eb0-scale.mjs artifacts/eb/base-scale.json artifacts/eb/candidate-scale.json artifacts/eb/repeat-scale.json
           cp scripts/audit-ea0-enemy-baseline.mjs eb-base/scripts/
-          (cd eb-base && EA_REVISION=553b2f13e8906df9d0f86eb61a75e63e7b614590 EA_OUTPUT="$GITHUB_WORKSPACE/artifacts/eb/base-entry.json" node --experimental-strip-types scripts/audit-ea0-enemy-baseline.mjs --quick)
+          (cd eb-base && EA_REVISION=385b18428bc1724c20fcac2f98ad53c6aa4c2f87 EA_OUTPUT="$GITHUB_WORKSPACE/artifacts/eb/base-entry.json" node --experimental-strip-types scripts/audit-ea0-enemy-baseline.mjs --quick)
           EA_REVISION="$GITHUB_SHA" EA_OUTPUT=artifacts/eb/candidate-entry.json node --experimental-strip-types scripts/audit-ea0-enemy-baseline.mjs --quick
           node scripts/compare-ea-baseline.mjs artifacts/eb/base-entry.json artifacts/eb/candidate-entry.json artifacts/eb/entry-delta.json
           EA_REVISION="$GITHUB_SHA" EA_OUTPUT=artifacts/eb/repeat-entry.json node --experimental-strip-types scripts/audit-ea0-enemy-baseline.mjs --quick

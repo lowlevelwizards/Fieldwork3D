@@ -153,46 +153,51 @@ export function addARA1SurfaceVents(root:THREE.Group,from:number,to:number,
  return result;
 }
 
-/** One instanced mesh for all rib bands. Every band follows the octagonal
- * body in 3D; unlike flat pixel stripes it creates real face-to-face relief.
+/** WA6: one continuous faceted exterior artwork mesh for the decorative
+ * bands. Follow the already authored surface; do not build eight separate
+ * boxes for every stripe. Three visible strips per facet, no hidden backs
+ * or duplicate end faces. This is miniature-art relief, not physical data.
  */
 export function addARPolymerRibs(root:THREE.Group,slot:SlotName,id:string,
  index:number,start:number,end:number,axisY:number,
  retro:boolean,material:THREE.Material,explicitCount?:number){
- const count=explicitCount??(retro?5:7),depth=retro?1.54:1.88;
- const thickness=.12,width=.25;
- const mats:{x:number;y:number;z:number;rotation:number;span:number}[]=[];
+ const count=explicitCount??(retro?5:7);
+ const sections=forearmSections(start,end,'ribbed-round',retro);
+ const profileAt=(x:number)=>{
+  const a=x<=sections[1].x?sections[0]:sections[1];
+  const b=x<=sections[1].x?sections[1]:sections[2];
+  const t=THREE.MathUtils.clamp((x-a.x)/(b.x-a.x),0,1);
+  return {ry:THREE.MathUtils.lerp(a.ry,b.ry,t),rz:THREE.MathUtils.lerp(a.rz,b.rz,t)};
+ };
+ const positions:number[]=[],indices:number[]=[];
  for(let i=0;i<count;i++){
-  const x=start+.95+i*(end-start-1.90)/(count-1);
-  const ry=retro?1.46:1.68;
-  for(let j=0;j<rings;j++){
-   const t=j*Math.PI*2/rings,n=(j+1)*Math.PI*2/rings;
-   const y0=Math.cos(t)*ry,z0=Math.sin(t)*depth;
-   const y1=Math.cos(n)*ry,z1=Math.sin(n)*depth;
-   const dy=y1-y0,dz=z1-z0;
-   const angle=Math.atan2(dz,dy);
-   const cy=(y0+y1)/2,cz=(z0+z1)/2;
-   const norm=Math.hypot(cy/ry,cz/depth)||1;
-   mats.push({x,y:axisY+cy+.045*cy/ry/norm,
-    z:cz+.045*cz/depth/norm,rotation:angle,
-    span:Math.hypot(dy,dz)*.98});
+  const center=start+.95+i*(end-start-1.90)/(count-1);
+  // Broad, uninterrupted graphic relief follows the existing tapered
+  // exterior. The two inset edges meet the parent artwork, not empty space.
+  const halfWidth=.16,raised=.075,inset=-.015;
+  const offset=positions.length/3;
+  for(const [x,lift] of [[center-halfWidth,inset],[center-halfWidth,raised],
+    [center+halfWidth,raised],[center+halfWidth,inset]]){
+   const {ry,rz}=profileAt(x);
+   for(let j=0;j<rings;j++){
+    const [y,z]=yz(j*Math.PI*2/rings,'ribbed-round',ry+lift,rz+lift);
+    positions.push(x,axisY+y,z);
+   }
+  }
+  for(let k=0;k<3;k++)for(let j=0;j<rings;j++){
+   const a=offset+k*rings+j,b=offset+k*rings+(j+1)%rings;
+   const c=a+rings,d=b+rings;
+   indices.push(a,b,c,b,d,c);
   }
  }
- const mesh=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),
-  material,mats.length);
+ const geometry=new THREE.BufferGeometry();
+ geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+ geometry.setIndex(indices);geometry.computeVertexNormals();
+ geometry.computeBoundingBox();geometry.computeBoundingSphere();
+ const mesh=new THREE.Mesh(geometry,material);
  mesh.name='family-'+slot+'-'+id+'-'+index;
  mesh.userData.arPolymerRibs=true;mesh.userData.arRibBandCount=count;
- const p=new THREE.Vector3(),q=new THREE.Quaternion(),s=new THREE.Vector3();
- const m=new THREE.Matrix4();
- for(let i=0;i<mats.length;i++){
-  const a=mats[i];
-  p.set(a.x,a.y,a.z);
-  q.setFromAxisAngle(new THREE.Vector3(1,0,0),a.rotation);
-  s.set(width,a.span,thickness);
-  m.compose(p,q,s);mesh.setMatrixAt(i,m);
- }
- mesh.instanceMatrix.needsUpdate=true;
- mesh.computeBoundingBox();mesh.computeBoundingSphere();
+ mesh.userData.arContinuousGraphicBands=true;
  mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
  return mesh;
 }

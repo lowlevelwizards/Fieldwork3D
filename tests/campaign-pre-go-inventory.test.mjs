@@ -20,7 +20,7 @@ test('accepted-contract field preparation is assigned-only and stock-aware',()=>
  assert.notEqual(prepared,lightlyPacked);
  assert.equal(fieldQuantity(prepared.operators.find(o=>o.id===id).loadout.fieldInventory,'flashbang'),0);
  assert.equal(prepared.supplies.flash,lightlyPacked.supplies.flash);
- assert.equal(prepared.inventory.weapons.carbine,accepted.inventory.weapons.carbine);
+ assert.equal(stockByPlatform(prepared).carbine,stockByPlatform(accepted).carbine);
 });
 test('pre-GO API cannot alter an unaccepted contract or an unassigned operator',()=>{
  const initial=newCampaign(72);
@@ -42,3 +42,6 @@ test('pre-GO supply quotation rejects a squad over-allocation atomically',()=>{
  assert.equal(fieldQuantity(result.operators.find(o=>o.id===id).loadout.fieldInventory,'flashbang'),
   fieldQuantity(inventory,'flashbang'));
 });
+
+import {catalogOwnedStock} from '../src/equipment-weapon-ownership.ts';
+const stockByPlatform=c=>Object.fromEntries(['carbine','smg','rifle','shotgun'].map(p=>[p,catalogOwnedStock(c).filter(w=>w.platform===p).length]));

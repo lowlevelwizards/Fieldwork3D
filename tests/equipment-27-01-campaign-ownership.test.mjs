@@ -8,17 +8,17 @@ test('27.01 new Campaign has four physical serials and no unowned guns',()=>{
  assert.deepEqual(weaponOwnershipIssues(c),[]);
  assert.equal(c.inventory.serializedWeapons.length,4);
  assert.ok(c.operators.every(o=>o.weaponSerialId));
- assert.ok(Object.values(c.inventory.weapons).every(n=>n===0));
+ assert.ok(Object.values(stockByPlatform(c)).every(n=>n===0));
 });
 test('27.01 purchase, swap and return preserve the exact serial',()=>{
  const c=newCampaign(42),old=c.operators[0].weaponSerialId;
  const otherSerials=new Map(c.operators.slice(1).map(o=>[o.id,o.weaponSerialId]));
  const purchased=buyWeapon(c,'smg');
- assert.equal(purchased.inventory.weapons.smg,1);
+ assert.equal(stockByPlatform(purchased).smg,1);
  const swapped=equipCampaignWeapon(purchased,'rook','smg');
  assert.notEqual(swapped.operators[0].weaponSerialId,old);
- assert.equal(swapped.inventory.weapons.smg,0);
- assert.equal(swapped.inventory.weapons.carbine,1);
+ assert.equal(stockByPlatform(swapped).smg,0);
+ assert.equal(stockByPlatform(swapped).carbine,1);
  assert.deepEqual(weaponOwnershipIssues(swapped),[]);
  const back=equipCampaignWeapon(swapped,'rook','carbine');
  assert.equal(back.operators[0].weaponSerialId,old);
@@ -31,7 +31,7 @@ test('27.01 pre-serial Campaign migrations are repeatable and conserve stock',()
  const old=JSON.parse(JSON.stringify(newCampaign(13)));
  delete old.inventory.serializedWeapons;
  for(const o of old.operators)delete o.weaponSerialId;
- old.inventory.weapons.carbine=2;
+ old.inventory.weapons={carbine:2,smg:0,rifle:0,shotgun:0};
  const first=readCampaign(JSON.stringify(old)),again=readCampaign(JSON.stringify(old));
  assert.ok(first);
  assert.deepEqual(first,again);
@@ -47,3 +47,6 @@ test('27.01 duplicated saved serial claims do not duplicate assets',()=>{
  assert.deepEqual(weaponOwnershipIssues(migrated),[]);
  assert.equal(new Set(migrated.operators.map(o=>o.weaponSerialId)).size,4);
 });
+
+import {catalogOwnedStock} from '../src/equipment-weapon-ownership.ts';
+const stockByPlatform=c=>Object.fromEntries(['carbine','smg','rifle','shotgun'].map(p=>[p,catalogOwnedStock(c).filter(w=>w.platform===p).length]));

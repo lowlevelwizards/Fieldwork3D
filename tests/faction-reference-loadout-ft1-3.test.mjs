@@ -45,12 +45,16 @@ test('FT1.3 never promotes planned, trial, or tentative evidence by default',()=
 });
 test('FT1.3 research models distinguish actual families from visual proxies',()=>{
  const byId=new Map(HISTORICAL_EQUIPMENT.map(x=>[x.id,x]));
- for(const id of ['uk-sa80','de-g36','au-f88a2','fr-famas-f1']){
+ for(const id of ['uk-sa80','au-f88a2','fr-famas-f1']){
   const model=gameMappingForHistorical(byId.get(id));
   assert.ok(model);
   assert.equal(model.playable,false);
   assert.equal(model.fidelity,'proxy');
  }
+ const g36=gameMappingForHistorical(byId.get('de-g36'));
+ assert.equal(g36.playable,true);
+ assert.equal(g36.fidelity,'representative');
+ assert.equal(g36.value,'g36-service');
  assert.equal(gameMappingForHistorical(byId.get('us-m16a2')).playable,true);
  assert.equal(gameMappingForHistorical(byId.get('au-f88')).playable,false);
  assert.ok(auditHistoricalGameMappings(HISTORICAL_EQUIPMENT)
@@ -81,7 +85,7 @@ test('FT1.3 dated evidence does not fabricate neighboring years',()=>{
  assert.equal(make('canadian-field',2024).status,'no-evidence');
  const german=make('bundeswehr-field',1997);
  assert.ok(german.choices.some(x=>x.historicalId==='de-g36'));
- assert.ok(german.warnings.some(x=>x.includes('proxy')));
+ assert.ok(german.choices.some(x=>x.historicalId==='de-g36'&&x.mapping?.fidelity==='representative'&&x.mapping.playable));
  const aussie=make('australian-field',2010);
  assert.ok(aussie.choices.some(x=>x.historicalId==='au-f88a2'));
  assert.ok(aussie.unresolvedCategories.includes('weapon'));
@@ -172,4 +176,24 @@ test('FT1.3 historical equipment bridge is separate from cosmetic-only save flow
  assert.match(studio,/onApplyProposedEquipment:/);
  assert.match(studio,/fw-studio-apply-historical/);
  assert.match(host,/msg.type==='fw-studio-commit-batch'/);
+});
+
+import {buyCatalogWeapon} from '../src/campaign-state.ts';
+import {matchingFamilyPreset} from '../src/equipment-weapon-families.ts';
+test('named historical weapon application exchanges a real owned model rather than rebodying a serial',()=>{
+ const c=newCampaign(74232),op=c.operators[0];
+ const proposal={...make('us-army-infantry',2016),status:'partial',choices:[{
+  historicalId:'us-m16a2',name:'M16A2',mapping:{channel:'weapon',fidelity:'exact',playable:true,value:'ar-m16a2'},notes:[]
+ }]};
+ const qp=applyHistoricalQuickPlayProposal(initialRoster(),'rook',proposal);
+ assert.ok(qp);
+ assert.equal(matchingFamilyPreset(qp.members[0].weaponConfiguration.build).id,'ar-m16a2');
+ assert.equal(applyHistoricalCampaignProposal(c,op.id,proposal),null);
+ const purchased=buyCatalogWeapon(c,'ar-m16a2');
+ const owned=purchased.inventory.serializedWeapons.find(w=>matchingFamilyPreset(w.catalogBody)?.id==='ar-m16a2');
+ assert.ok(owned);
+ const next=applyHistoricalCampaignProposal(purchased,op.id,proposal);
+ assert.ok(next);
+ assert.equal(next.operators[0].weaponSerialId,owned.id);
+ assert.equal(next.inventory.serializedWeapons.length,purchased.inventory.serializedWeapons.length);
 });

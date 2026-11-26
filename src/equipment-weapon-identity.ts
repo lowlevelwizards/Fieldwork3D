@@ -3,10 +3,11 @@
  * attachment configuration. No runtime weapon handling changes in this stage.
  */
 import type {WeaponId} from './breach-combat.ts';
+import {defaultCatalogReference,initialWeaponFamilyBuild,readWeaponFamilyBuild,validFamilyBuild,type WeaponFamilyBuild} from './equipment-weapon-families.ts';
 export type WeaponServiceKind='acquired'|'issued'|'fired'|'serviced'|'retired';
 export type WeaponServiceEntry={id:string;day:number;kind:WeaponServiceKind;
  operatorId?:string;operationId?:string;rounds?:number};
-export type SerializedWeapon={id:string;platform:WeaponId;condition:number;
+export type SerializedWeapon={id:string;platform:WeaponId;catalogBody:WeaponFamilyBuild;condition:number;
  roundsFired:number;acquiredDay:number;lastServiceDay:number|null;
  history:WeaponServiceEntry[]};
 export const MAX_WEAPON_HISTORY=24;
@@ -20,10 +21,18 @@ const isPlatform=(x:unknown):x is WeaponId=>
  typeof x==='string'&&PLATFORMS.includes(x as WeaponId);
 const isKind=(x:unknown):x is WeaponServiceKind=>
  x==='acquired'||x==='issued'||x==='fired'||x==='serviced'||x==='retired';
-export function newSerializedWeapon(id:string,platform:WeaponId,day=0):SerializedWeapon{
+/** The serialized record keeps its authored appearance even when not issued. */
+export function readOwnedCatalogBody(raw:unknown,platform:WeaponId):WeaponFamilyBuild{
+ const build=readWeaponFamilyBuild(raw,platform);
+ if(build&&validFamilyBuild(build,platform))return build;
+ const fallback=initialWeaponFamilyBuild(defaultCatalogReference(platform).id);
+ if(!fallback)throw Error('Missing authored catalog migration reference');
+ return fallback;
+}
+export function newSerializedWeapon(id:string,platform:WeaponId,day=0,body?:WeaponFamilyBuild):SerializedWeapon{
  if(!safeId(id)||!isPlatform(platform))throw new Error('Invalid serialized weapon identity');
  const acquiredDay=clampInt(day,1000000);
- return {id,platform,condition:100,roundsFired:0,acquiredDay,
+ return {id,platform,catalogBody:readOwnedCatalogBody(body,platform),condition:100,roundsFired:0,acquiredDay,
   lastServiceDay:null,history:[{id:id+':acquired:'+acquiredDay,
    day:acquiredDay,kind:'acquired'}]};
 }
@@ -77,7 +86,7 @@ export function readSerializedWeapons(raw:unknown):SerializedWeapon[]{
     ...(typeof h.rounds==='number'&&h.kind==='fired'?{
       rounds:clampInt(h.rounds,100000)}:{})});
   }
-  result.push({id:item.id,platform:item.platform,
+  result.push({id:item.id,platform:item.platform,catalogBody:readOwnedCatalogBody(item.catalogBody,item.platform),
    condition:clampInt(item.condition,100,100),
    roundsFired:clampInt(item.roundsFired,1000000),
    acquiredDay:clampInt(item.acquiredDay,1000000),

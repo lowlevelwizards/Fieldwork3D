@@ -134,7 +134,7 @@ test('P22.5: established muzzle, magazine, stock, FAL/AR and compact geometry bu
  assert.ok(counts.meshes<=26,'avoid added spacer, decals or seat slabs');
  assert.equal(counts.triangles,peers.find(x=>x.name==='FNC').triangles);
  assert.equal(peers.find(x=>x.name==='FAL').triangles,366);
- assert.equal(peers.find(x=>x.name==='M4A1').triangles,478);
+ assert.equal(peers.find(x=>x.name==='M4A1').triangles,422);
  assert.ok(close(box(gun).min.x,FNC_P1.stockRearX));
  assert.ok(close(box(gun).max.x,FNC_P1.muzzleX));
  assert.equal(config.build.parts.magazine,'ar-mag30');

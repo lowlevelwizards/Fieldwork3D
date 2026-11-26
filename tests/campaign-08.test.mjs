@@ -5,19 +5,21 @@ test('armory purchases and equipment swaps conserve stock',()=>{
  const bank=c.funds;
  c=buyWeapon(c,'rifle');
  assert.equal(c.funds,bank-420);
- assert.equal(c.inventory.weapons.rifle,1);
+ assert.equal(stockByPlatform(c).rifle,1);
  const old=c.operators[0];
  c=equipCampaignWeapon(c,'rook','rifle');
  assert.equal(c.operators[0].weapon,'rifle');
  assert.equal(c.operators[0].magazine,0);
  assert.equal(c.operators[0].reserve,0);
- assert.equal(c.inventory.weapons.rifle,0);
- assert.equal(c.inventory.weapons[old.weapon],1);
+ assert.equal(stockByPlatform(c).rifle,0);
+ assert.equal(stockByPlatform(c)[old.weapon],1);
  assert.deepEqual(equipCampaignWeapon(c,'moss','rifle'),c);
  assert.deepEqual(readCampaign(JSON.stringify(c)),c);
 });
 test('old campaign saves migrate to empty spare stock',()=>{
  const c=newCampaign(47);const legacy={...c};delete legacy.inventory;
  const updated=readCampaign(JSON.stringify(legacy));
- assert.deepEqual(updated.inventory.weapons,{carbine:0,smg:0,rifle:0,shotgun:0});
+ assert.deepEqual(stockByPlatform(updated),{carbine:0,smg:0,rifle:0,shotgun:0});
 });
+import {catalogOwnedStock} from '../src/equipment-weapon-ownership.ts';
+const stockByPlatform=c=>Object.fromEntries(['carbine','smg','rifle','shotgun'].map(p=>[p,catalogOwnedStock(c).filter(w=>w.platform===p).length]));

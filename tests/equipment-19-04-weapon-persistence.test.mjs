@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newCampaign,readCampaign,equipCampaignWeapon} from '../src/campaign-state.ts';
+import {buyWeapon,newCampaign,readCampaign,equipCampaignWeapon} from '../src/campaign-state.ts';
 import {initialRoster,readRoster,equipRoster,configureRosterWeapon}
  from '../src/breach-roster.ts';
 
@@ -34,7 +34,7 @@ test('19.04 platform change preserves only compatible attachments',()=>{
  assert.equal(roster.members[0].weaponConfiguration.slots.optic,'optic-irons');
  assert.equal(roster.members[0].weaponConfiguration.slots.light,'light-compact');
  assert.equal(roster.members[0].weaponConfiguration.weapon,'smg');
- let c=newCampaign(5);c.inventory.weapons.smg=1;
+ let c=buyWeapon(newCampaign(5),'smg');
  c=equipCampaignWeapon(c,'rook','smg');
  assert.equal(c.operators[0].weaponConfiguration.weapon,'smg');
 });

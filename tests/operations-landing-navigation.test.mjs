@@ -201,7 +201,7 @@ test('Logistics has stock, replenish actions and armory in task-first DOM order'
  assert.match(logistics,/this\.handlers\.buyAmmo/);
  assert.match(logistics,/this\.handlers\.buyMedical/);
  assert.match(logistics,/this\.handlers\.buyFlash/);
- assert.match(logistics,/this\.handlers\.buyWeapon\(weapon\)/);
+ assert.match(logistics,/this\.handlers\.buyCatalogWeapon\(quote\.presetId\)/);
  assert.match(logistics,/buy\.disabled=!quote\.canPurchase/);
 });
 
@@ -341,7 +341,7 @@ test('C5 Logistics preserves purchases, shows truthful low stock and discloses w
  assert.match(logistics,/eligibility\.append\(status\)/);
  assert.match(logistics,/buy\.setAttribute\('aria-describedby',reasonId\)/);
  assert.match(logistics,/buy\.disabled=!quote\.canPurchase/);
- assert.match(logistics,/this\.handlers\.buyWeapon\(weapon\)/);
+ assert.match(logistics,/this\.handlers\.buyCatalogWeapon\(quote\.presetId\)/);
 });
 test('C5 Logistics compact rows respect phone and desktop layout',()=>{
  const css=source('campaign-style.css');
@@ -389,7 +389,7 @@ test('C7 disclosure labels identify their individual case, weapon and operation'
  const ui=source('campaign-ui.ts');
  assert.match(ui,/caseSummary\.setAttribute\('aria-label','Case information: '\+view\.title/);
  assert.match(ui,/eligibilitySummary\.setAttribute\('aria-label'/);
- assert.match(ui,/for '\+weapon\.toUpperCase\(\)\+' platform'/);
+ assert.match(ui,/for '\+quote\.name/);
  assert.match(ui,/recordSummary\.setAttribute\('aria-label'/);
  assert.match(ui,/\+' · DAY '\+report\.day/);
 });
@@ -410,7 +410,7 @@ test('C8 UI-only disclosure continuity survives in-place campaign refresh',()=>{
  ])assert.ok(home.includes("dataset.campaignDetail='"+key+"'"),
   'Disclosure missing persistence identity: '+key);
  assert.match(home,/recordDetail\.dataset\.campaignDetail='operation:'\+report\.id/);
- assert.match(home,/eligibility\.dataset\.campaignDetail='weapon:'\+weapon/);
+ assert.match(home,/eligibility\.dataset\.campaignDetail='weapon:'\+quote\.presetId/);
  assert.match(ui,/intelligence\.dataset\.campaignDetail='case:'\+c\.id/);
 });
 test('C8 browser smoke tests continuity after a real campaign purchase',()=>{
@@ -487,8 +487,8 @@ test('C11 campaign actions reuse save-aware feedback for squad, procurement and 
   flow.indexOf('equipWeaponPreset:(id,presetId)=>'));
  for(const [handler,mutator] of [
   ['assignSlot','assignOperatorToSlot'],
-  ['buyWeapon','buyWeapon'],
-  ['equipWeapon','equipCampaignWeapon'],
+  ['buyCatalogWeapon','buyCatalogWeapon'],
+  ['equipCatalogWeapon','equipCampaignCatalogWeapon'],
   ['repairArmor','repairCampaignArmor'],
   ['serviceWeapon','serviceCampaignWeapon'],
   ['equipGear','equipCampaignGear']
@@ -528,11 +528,9 @@ test('C12: remaining weapon-preset and retirement edits use save-aware feedback'
  const flow=source('breach-campaign-flow.ts');
  const preset=flow.slice(flow.indexOf(' equipWeaponPreset:(id,presetId)=>'),
   flow.indexOf(' equipWeaponFamilyPart:(id,slot,partId)=>'));
- assert.match(preset,/equipWeaponPreset:\(id,presetId\)=>applyVisibleCampaignAction\(current=>/);
- assert.match(preset,/if\(current\.activeContractId\)return current/);
- assert.match(preset,/if\(!preset\|\|!member\)return current/);
- assert.match(preset,/return equipCampaignWeaponPreset\(next,id,presetId\)/);
- assert.match(preset,/Weapon family preset equipped/);
+ assert.match(preset,/equipWeaponPreset:\(id,presetId\)=>applyVisibleCampaignAction\(/);
+ assert.match(preset,/equipCampaignOwnedPreset\(c,id,presetId\)/);
+ assert.match(preset,/Owned weapon model issued/);
  assert.doesNotMatch(preset,/config\.saveCampaign\(\)|model\.campaign=next/);
  const retire=flow.slice(flow.indexOf(' retire:(id)=>{'),
   flow.indexOf(' importSave:(raw,slot)=>'));

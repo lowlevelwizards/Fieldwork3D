@@ -12,9 +12,9 @@ import {addFNCFamily} from './weapons/geometry/fnc-silhouettes.ts';
 import {addG36Family} from './weapons/geometry/g36-family-silhouettes.ts';
 import {addR870Family} from './weapons/geometry/r870-silhouettes.ts';
 
-import {AR_BLACK_METAL,AR_BLACK_POLYMER,AR_MUTED_FDE,
- AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD,
- HK_BLACK_METAL,HK_DARK_POLYMER,HK_WOOD,
+import {AR_WA6_STEEL,AR_WA6_POLYMER,AR_MUTED_FDE,
+ AK_WA7_STEEL,AK_WA7_POLYMER,AK_DARK_WOOD,
+ HK_WA9_MP5_STEEL,HK_WA9_MP5_POLYMER,HK_WA8_RIFLE_STEEL,HK_WA8_RIFLE_POLYMER,HK_WOOD,
  FAL_BLACK_METAL,FAL_DARK_POLYMER}
  from './weapons/geometry/weapon-visual-palette.ts';
 export function buildModularWeaponSilhouette(build:WeaponFamilyBuild,
@@ -25,13 +25,16 @@ export function buildModularWeaponSilhouette(build:WeaponFamilyBuild,
  void steel;void dark;
  const root=new THREE.Group();
  if(build.family==='ar')
-  addARFamily(root,build,AR_BLACK_METAL,AR_BLACK_POLYMER,
+  addARFamily(root,build,AR_WA6_STEEL,AR_WA6_POLYMER,
    AR_MUTED_FDE,showFactoryMuzzle);
  else if(build.family==='ak')
-  addAKFamily(root,build,AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD);
- else if(build.family==='hk')
-  addHKFamily(root,build,HK_BLACK_METAL,HK_DARK_POLYMER,
-   HK_WOOD,showFactoryMuzzle);
+  addAKFamily(root,build,AK_WA7_STEEL,AK_WA7_POLYMER,AK_DARK_WOOD);
+ else if(build.family==='hk'){
+  // Scope the artwork palette to the rifle presentation; WA9 owns MP5.
+  const smg=build.parts.receiver.startsWith('hk-mp5');
+  addHKFamily(root,build,smg?HK_WA9_MP5_STEEL:HK_WA8_RIFLE_STEEL,
+   smg?HK_WA9_MP5_POLYMER:HK_WA8_RIFLE_POLYMER,HK_WOOD,showFactoryMuzzle);
+ }
  else if(build.family==='fal')
   addFALFamily(root,build,FAL_BLACK_METAL,FAL_DARK_POLYMER,showFactoryMuzzle);
  else if(build.family==='fnc')

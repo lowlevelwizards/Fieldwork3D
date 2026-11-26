@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newSession,team,planMove,planWatch,planLook,
-  stepSession,toggling,setStartPace,undoPlan} from '../src/breach-game.ts';
+  stepSession,toggling,setStartPace,undoPlan,redoPlan,planAim} from '../src/breach-game.ts';
+import {plannedAimHandle} from '../src/breach-plan.ts';
 import {contextActionChoices} from '../src/ui/context-actions.ts';
 
 const point={x:355,y:516};
@@ -76,4 +77,34 @@ test('UX2-22: nearby door has an explicit contextual entry',()=>{
    .some(a=>a.id==='ctxDoor'));
  assert.ok(!contextActionChoices({...context,nearDoor:true,door:true})
    .some(a=>a.id==='ctxDoor'));
+});
+
+test('EI8 repeated HERE commands replace rather than queue attention; undo restores mode and target',()=>{
+ const s=newSession(),a=team(s)[0],first={x:a.p.x+75,y:a.p.y+20},second={x:a.p.x+30,y:a.p.y-45};
+ assert.ok(planWatch(s,a.id,first,undefined,'here'));
+ const id=a.plan[0].id;
+ assert.ok(planAim(s,a.id,'free',second,undefined,'look','here'));
+ assert.equal(a.plan.length,1);assert.equal(a.plan[0].id,id);
+ const handle=plannedAimHandle(a.plan[0]);
+ assert.ok(Math.hypot(handle.x-second.x,handle.y-second.y)<1e-8);
+ assert.equal(a.plan[0].aimPoint,undefined);
+ assert.ok(undoPlan(s,a.id));assert.equal(a.plan[0].aimMode,'track');
+ assert.deepEqual(plannedAimHandle(a.plan[0]),first);
+ assert.ok(redoPlan(s,a.id));assert.equal(a.plan[0].aimMode,'free');
+ assert.ok(planWatch(s,a.id,first,undefined,'here'));
+ assert.equal(a.plan.length,1);assert.equal(a.plan[0].lookDistance,undefined);
+});
+test('EI8 implicit end and explicit waypoint retarget preserve node identity and route',()=>{
+ const s=newSession(),a=team(s)[0];
+ assert.ok(planMove(s,a.id,{x:302,y:491}));
+ const id=a.plan[0].id,origin={...a.plan[0].p};
+ assert.ok(planWatch(s,a.id,{x:355,y:516}));
+ assert.equal(a.plan.length,1);assert.equal(a.plan[0].id,id);
+ assert.ok(planLook(s,a.id,{x:350,y:480},id));
+ assert.ok(planLook(s,a.id,{x:365,y:520},id));
+ const handle=plannedAimHandle(a.plan[0]);
+ assert.ok(Math.hypot(handle.x-365,handle.y-520)<1e-8);
+ assert.deepEqual(a.plan[0].p,origin);assert.equal(a.plan[0].aimMode,'free');
+ assert.equal(a.plan.length,1);assert.ok(undoPlan(s,a.id));
+ const prior=plannedAimHandle(a.plan[0]);assert.ok(Math.hypot(prior.x-350,prior.y-480)<1e-8);
 });

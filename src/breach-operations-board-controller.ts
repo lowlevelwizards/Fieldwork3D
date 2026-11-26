@@ -3,8 +3,8 @@
  */
 import type {CampaignMode} from './breach-app-mode.ts';
 import type {Session} from './breach-game.ts';
-import {resupplyRoster,equipRoster,equipRosterGear,equipRosterCarryGear,undoRosterCarryGear,copyRosterCarryLayout,equipRosterFieldInventory,moveRosterMagazine,
- configureRosterWeapon,configureRosterWeaponPreset,configureRosterWeaponBodyPart,
+import {resupplyRoster,equipRosterCatalogPreset,equipRosterGear,equipRosterCarryGear,undoRosterCarryGear,copyRosterCarryLayout,equipRosterFieldInventory,moveRosterMagazine,
+ configureRosterWeapon,configureRosterWeaponBodyPart,
  renameRosterMember,type RosterState} from './breach-roster.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
  weaponAttachmentAllowed} from './equipment-weapon-assemblies.ts';
@@ -12,7 +12,7 @@ import {FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart
  familyPreset,proposeFamilyPartChange,type FamilyPartSlot}
  from './equipment-weapon-families.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
-import {catalogOutfitterSources} from './ui/outfitter-choice-sources.ts';
+import {catalogOutfitterSources,catalogOutfitterThumbnailTarget,rosterCatalogName} from './ui/outfitter-choice-sources.ts';
 import {createOutfitterZoneNav,previewFocusForOutfitterSlot} from './ui/outfitter-zone-nav.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {stageMagazines,magazineSpace,type MagazineLocation}
@@ -114,9 +114,9 @@ function renderOperationsBoard(){
   expandedQuickOperator=selected.id;
   config.board.append(createLoadoutSquadRail(members.map(m=>({
    id:m.id,name:m.callsign.toUpperCase(),
-   detail:m.weapon.toUpperCase(),
-   status:m.id===selected.id?'SELECTED · '+m.weapon.toUpperCase():
-    m.weapon.toUpperCase()
+   detail:rosterCatalogName(m.weaponConfiguration),
+   status:m.id===selected.id?'SELECTED · '+rosterCatalogName(m.weaponConfiguration):
+    rosterCatalogName(m.weaponConfiguration)
   })),selected.id,id=>{
    if(id===expandedQuickOperator)return;
    expandedQuickOperator=id;expandedQuickKit=id;quickKitView='equipment';
@@ -145,7 +145,7 @@ function renderOperationsBoard(){
   });
   const name=document.createElement('summary');
   const identity=document.createElement('strong');identity.textContent=member.callsign.toUpperCase();
-  const status=document.createElement('small');status.textContent=member.weapon.toUpperCase()+' · READY';
+  const status=document.createElement('small');status.textContent=rosterCatalogName(member.weaponConfiguration)+' · READY';
   name.append(identity,status);card.append(name);
   const details=document.createElement('p');
   details.className='fw-squad-summary';
@@ -198,7 +198,7 @@ function renderOperationsBoard(){
    if(kit.open)expandedQuickKit=member.id;
    else if(expandedQuickKit===member.id)expandedQuickKit=null;});
   const kitTitle=document.createElement('summary');
-  kitTitle.textContent='LOADOUT · '+member.weapon.toUpperCase();
+  kitTitle.textContent='LOADOUT · '+rosterCatalogName(member.weaponConfiguration);
   kitTitle.addEventListener('click',event=>{event.preventDefault();toggleKit();});
   kit.append(kitTitle);
   // Keep closed kit lightweight: only mount the shared editor on demand.
@@ -257,9 +257,7 @@ function renderOperationsBoard(){
    onSelect:presetId=>{
     if(config.getSession().phase!=='planning'||config.isReplaying())return;
     const preset=familyPreset(presetId);if(!preset)return;
-    let next=config.getRoster();
-    if(member.weapon!==preset.weapon)next=equipRoster(next,member.id,preset.weapon);
-    next=configureRosterWeaponPreset(next,member.id,presetId);
+    const next=equipRosterCatalogPreset(config.getRoster(),member.id,presetId);
     const selected=next.members.find(m=>m.id===member.id);
     if(!selected?.weaponConfiguration.build)return;
     config.setRoster(next);
@@ -652,7 +650,7 @@ function renderOperationsBoard(){
   const galleryHost=document.createElement('div');
   galleryHost.className='fw-quick-board-gallery';
   galleryHost.hidden=quickKitView!=='equipment';
-  const sources=catalogOutfitterSources(member.loadout);
+  const sources=catalogOutfitterSources(member.loadout,member.weaponConfiguration);
   let showGallery:(slot:LoadoutSlot)=>void=()=>{};
   const zones=createOutfitterZoneNav({
    navClass:'fw-quick-board-zones',
@@ -677,15 +675,13 @@ function renderOperationsBoard(){
    host:galleryHost,sources,kit:member.loadout,magazines:member.magazines,
    locked:!editable,
    renderModel:(slot,itemId)=>equipmentWorkspace.preview?.renderModelThumbnailAsync(
-    {kind:'gear',slot,itemId})??null,
+    catalogOutfitterThumbnailTarget(member.loadout,member.weaponConfiguration,slot,itemId))??null,
    onEquip:(slot,itemId)=>{
     if(config.getSession().phase!=='planning'||config.isReplaying())return;
     const before=config.getRoster();
     let after=before;
     if(slot==='primary'){
-     const weapon=itemId.startsWith('primary-')?itemId.slice(8):'';
-     if(weapon==='carbine'||weapon==='smg'||weapon==='rifle'||weapon==='shotgun')
-      after=equipRoster(before,member.id,weapon);
+     after=equipRosterCatalogPreset(before,member.id,itemId);
     }else if(slot==='rig'||slot==='belt'||slot==='backpack'){
      after=equipRosterCarryGear(before,member.id,slot,itemId);
      const old=before.members.find(m=>m.id===member.id);
@@ -706,7 +702,7 @@ function renderOperationsBoard(){
    arsenalDisabled:arsenalAction.disabled,
    onSelectCategory:selectZone,
    onInspect:(slot,itemId)=>equipmentWorkspace.preview?.selectItemDot(
-    itemId?{kind:'gear',slot,itemId}:null),
+    itemId?{kind:'gear',slot,itemId:slot==='primary'?member.loadout.slots.primary:itemId}:null),
    onAdvanced:()=>{
     quickKitView='carry';galleryHost.hidden=true;carryPanel.hidden=false;
     advancedPanel.open=false;

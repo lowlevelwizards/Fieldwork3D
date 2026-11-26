@@ -107,7 +107,7 @@ test('P23 production rifle keeps factory magazine variants, envelope and triangl
   'no new draw calls or high polygon details for structural corrections');
  assert.equal(audit.triangles,peers.find(x=>x.name==='FNC').triangles);
  assert.equal(peers.find(x=>x.name==='FAL').triangles,366);
- assert.equal(peers.find(x=>x.name==='M4A1').triangles,478);
+ assert.equal(peers.find(x=>x.name==='M4A1').triangles,422);
  assert.ok(near(bb(g).min.x,FNC_P1.stockRearX)&&near(bb(g).max.x,FNC_P1.muzzleX));
  assert.equal(c.build.parts.magazine,'ar-mag30');
  assert.ok(one(g,'fncSharedARStanag'));

@@ -54,16 +54,16 @@ import {readWeaponConfiguration,changeWeaponPlatform,
  selectWeaponFamilyPreset,setConfiguredFamilyPart,sameWeaponConfiguration,
  type WeaponConfiguration,type WeaponAttachmentSlot}
  from './equipment-weapon-assemblies.ts';
-import type {FamilyPartSlot} from './equipment-weapon-families.ts';
-import {issueWeaponPreset,starterWeaponPreset,resolveIssuedOrLegacy} from './breach-weapon-issue.ts';
+import {defaultCatalogReference,familyPreset,matchingFamilyPreset,type FamilyPartSlot} from './equipment-weapon-families.ts';
+import {issueWeaponPreset,starterWeaponPreset,resolveCatalogConfiguration} from './breach-weapon-issue.ts';
 import {attachmentPrice,readAttachmentStock,returnAttachments}
  from './equipment-weapon-inventory.ts';
 import {resolveMountedAccessoryLayout}
  from './weapons/geometry/mounted-accessory-layout.ts';
 import {quoteAttachmentTransfer}
  from './equipment-weapon-transactions.ts';
-import {MAX_OWNED_WEAPONS,recordWeaponRounds,serviceSerializedWeapon,type SerializedWeapon} from './equipment-weapon-identity.ts';
-import {reconcileCampaignWeaponOwnership} from './equipment-weapon-ownership.ts';
+import {MAX_OWNED_WEAPONS,recordWeaponRounds,serviceSerializedWeapon,newSerializedWeapon,type SerializedWeapon} from './equipment-weapon-identity.ts';
+import {reconcileCampaignWeaponOwnership,synchronizeIssuedCatalogBodies,catalogOwnedStock,nextCatalogWeaponSerial,projectCatalogInventory} from './equipment-weapon-ownership.ts';
 import {kitMedicalSupplies,normalizedMedicalSupplies,medicalSupplyCount,
  type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
 
@@ -145,8 +145,7 @@ export type CampaignState={
  operators:CampaignOperator[];squadIds:string[];contracts:Contract[];activeContractId:string|null;
  history:CampaignReport[];journal:CareerEvent[];appliedResults:string[];
  supplies:{medical:number;ammo:number;flash:number;wedges:number;cuffs:number};regionalPressure:Record<string,number>;
- inventory:{weapons:Record<CampaignOperator['weapon'],number>;
-  attachments:Record<string,number>;serializedWeapons?:SerializedWeapon[]};
+ inventory:{attachments:Record<string,number>;serializedWeapons?:SerializedWeapon[];catalogVersion?:1};
  kitPresets:EquipmentPreset[];
  /** Optional v0.1 rules; absent on legacy saves, preserving their semantics. */
  rules?:CampaignRules;
@@ -264,8 +263,7 @@ export function newCampaign(seed:number,rules?:CampaignRules,name?:string):Campa
   contracts:createContracts(normalized,1,[],{},parsedRules?.template==='dispatch'),activeContractId:null,
   history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240,flash:4,wedges:8,cuffs:12},
   regionalPressure:Object.fromEntries(REGIONS.map(r=>[r,0])),
-  inventory:{weapons:{carbine:0,smg:0,rifle:0,shotgun:0},
-    attachments:readAttachmentStock(null)},kitPresets:[],
+  inventory:{attachments:readAttachmentStock(null)},kitPresets:[],
   ...(parsedRules?{rules:parsedRules}:{}),
   ...(parsedRules?.template==='dispatch'?{
    dispatchDepartment:initialDispatchDepartment()}: {})});
@@ -280,7 +278,7 @@ export function migrateLegacyRoster(campaign:CampaignState,legacy:RosterState):C
    recoveryDays:old.recovery,weapon:old.weapon,
     loadout:initialEquipmentLoadout(old.weapon),
     medicalSupplies:kitMedicalSupplies(initialEquipmentLoadout(old.weapon)),
-    weaponConfiguration:resolveIssuedOrLegacy(
+    weaponConfiguration:resolveCatalogConfiguration(
       readWeaponConfiguration(old.weaponConfiguration,old.weapon),old.weapon,
       starterWeaponPreset(operator.id)),
     magazine:old.magazine,
@@ -354,11 +352,9 @@ export function readCampaign(raw:string|null):CampaignState|null{
    new Set(c.squadIds).size===4&&
    c.squadIds.every(id=>c.operators.some(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired'))?
    c.squadIds:fallback;
-  const weapons=Object.fromEntries(WEAPONS.map(weapon=>
-   [weapon,Number.isInteger(c.inventory?.weapons?.[weapon])&&
-    c.inventory.weapons[weapon]>=0?c.inventory.weapons[weapon]:0])) as Record<CampaignOperator['weapon'],number>;
+  const legacyStock=(c.inventory as unknown as {weapons?:Record<string,unknown>}|undefined)?.weapons;
   const operators=c.operators.map(o=>{
-   const config=resolveIssuedOrLegacy(readWeaponConfiguration(
+   const config=resolveCatalogConfiguration(readWeaponConfiguration(
     (o as {weaponConfiguration?:unknown}).weaponConfiguration,o.weapon),o.weapon,
     starterWeaponPreset(o.id));
    const reserve=Number.isFinite(o.reserve)?Math.max(0,Math.floor(o.reserve)):0;
@@ -394,8 +390,9 @@ export function readCampaign(raw:string|null):CampaignState|null{
    x>=0&&x<=FIELD_STOCK_LIMIT?x:null;
   const wedges=validStock(rawStock.wedges),cuffs=validStock(rawStock.cuffs);
   if(wedges===null||cuffs===null)return null;
-  return reconcileCampaignWeaponOwnership({...c,squadIds:chosen,operators,inventory:{weapons,
+  return reconcileCampaignWeaponOwnership({...c,squadIds:chosen,operators,inventory:{
       serializedWeapons:(c.inventory as {serializedWeapons?:unknown})?.serializedWeapons as SerializedWeapon[]|undefined,
+       ...(c.inventory?.catalogVersion===1?{catalogVersion:1 as const}:{}),
      attachments:readAttachmentStock((c.inventory as {attachments?:unknown})?.attachments)},
     supplies:{...c.supplies,wedges,cuffs,
      flash:Number.isFinite(c.supplies.flash)?
@@ -404,7 +401,7 @@ export function readCampaign(raw:string|null):CampaignState|null{
     ...(parsedRules?{rules:parsedRules}:{}),
    regionalPressure:Object.fromEntries(REGIONS.map(region=>
    [region,Math.max(-3,Math.min(3,Number.isFinite(c.regionalPressure?.[region])?
-    c.regionalPressure[region]:0))]))});
+    c.regionalPressure[region]:0))]))},legacyStock);
  }catch{return null;}
 }
 export function acceptContract(c:CampaignState,id:string):CampaignState{
@@ -754,7 +751,7 @@ export function assignOperatorToSlot(c:CampaignState,slot:number,id:string):Camp
 }
 const RECRUIT_NAMES=['KITE','PIPER','JUNO','EMBER','DOVE','LIN','BRAM','SABLE'];
 export function hireRecruit(c:CampaignState):CampaignState{
- if(!canSpend(c,450)||c.operators.length>=32||
+ if(!canSpend(c,450)||campaignCatalogStockAtCapacity(c)||c.operators.length>=32||
   c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').length>=8||c.activeContractId)return c;
  const i=c.operators.length;
  const id='recruit-'+i;
@@ -766,7 +763,9 @@ export function hireRecruit(c:CampaignState):CampaignState{
   currentDispatchReference(c)):fresh;
  const event:CareerEvent={id:'join-'+id+'-'+c.day,day:c.day,operatorId:id,
   kind:'joined',detail:'Joined the unit'};
- return reconcileCampaignWeaponOwnership({...c,funds:charge(c,450),operators:[...c.operators,member],
+ const serial=newSerializedWeapon(nextCatalogWeaponSerial(c),member.weapon,c.day,member.weaponConfiguration.build);
+ return projectCatalogInventory({...c,funds:charge(c,450),operators:[...c.operators,{...member,weaponSerialId:serial.id}],
+  inventory:{...c.inventory,serializedWeapons:[...(c.inventory.serializedWeapons??[]),serial]},
   journal:[...c.journal,event].slice(-1000)});
 }
 
@@ -777,12 +776,10 @@ export const canAffordCampaignPurchase=(c:CampaignState,cost:number)=>
  unlimitedDispatch(c)||c.funds>=cost;
 const canSpend=canAffordCampaignPurchase;
 /** Prevent deductions when reconciliation would discard a newly purchased gun. */
-export const campaignWeaponStockAtCapacity=(c:CampaignState):boolean=>{
- const serialized=c.inventory.serializedWeapons?.length;
- const accounted=c.operators.filter(o=>o.status!=='retired'&&o.status!=='lost').length+
-  Object.values(c.inventory.weapons).reduce((sum,count)=>sum+count,0);
- return Math.max(serialized??0,accounted)>=MAX_OWNED_WEAPONS;
-};
+export const campaignCatalogStockAtCapacity=(c:CampaignState):boolean=>
+ !c.inventory.serializedWeapons||c.inventory.serializedWeapons.length>=MAX_OWNED_WEAPONS;
+/** Historical API alias; no separate class-capacity ledger. */
+export const campaignWeaponStockAtCapacity=campaignCatalogStockAtCapacity;
 const charge=(c:CampaignState,cost:number)=>unlimitedDispatch(c)?c.funds:c.funds-cost;
 export const WEAPON_PRICES:Record<CampaignOperator['weapon'],number>={
  carbine:300,smg:260,rifle:420,shotgun:330
@@ -792,8 +789,27 @@ export function buyWeapon(c:CampaignState,weapon:CampaignOperator['weapon']):Cam
  const price=WEAPON_PRICES[weapon];
  if(!price||c.activeContractId||!canSpend(c,price)||
   campaignWeaponStockAtCapacity(c))return c;
- return reconcileCampaignWeaponOwnership({...c,funds:charge(c,price),
-  inventory:{...c.inventory,weapons:{...c.inventory.weapons,[weapon]:c.inventory.weapons[weapon]+1}}});
+ const preset=defaultCatalogReference(weapon);
+ const body=issueWeaponPreset(preset.id).weaponConfiguration.build;
+ if(!body||campaignCatalogStockAtCapacity(c))return c;
+ const acquired=newSerializedWeapon(nextCatalogWeaponSerial(c),weapon,c.day,body);
+ return projectCatalogInventory({...c,funds:charge(c,price),inventory:{...c.inventory,
+  serializedWeapons:[...(c.inventory.serializedWeapons??[]),acquired]}});
+}
+/** Purchase an actual catalog reference. Transitional prices/authorization use
+ * the existing campaign policy; the new owned object retains its own body. */
+export function buyCatalogWeapon(c:CampaignState,presetId:string):CampaignState{
+ const preset=familyPreset(presetId);
+ if(!preset||!mayChooseCampaignContent(c,'weapon-preset',presetId)||
+  !mayChooseCampaignContent(c,'equipment','primary-'+preset.weapon,'primary'))return c;
+ const price=WEAPON_PRICES[preset.weapon];
+ if(!price||c.activeContractId||!canSpend(c,price)||campaignCatalogStockAtCapacity(c)||
+  !c.inventory.serializedWeapons)return c;
+ const body=issueWeaponPreset(presetId).weaponConfiguration.build;
+ if(!body)return c;
+ const acquired=newSerializedWeapon(nextCatalogWeaponSerial(c),preset.weapon,c.day,body);
+ return projectCatalogInventory({...c,funds:charge(c,price),inventory:{...c.inventory,
+  serializedWeapons:[...c.inventory.serializedWeapons,acquired]}});
 }
 /** Buying an attachment adds one stock item without silently equipping it. */
 export function buyWeaponAttachment(c:CampaignState,partId:string):CampaignState{
@@ -838,9 +854,9 @@ export function equipCampaignWeaponPreset(c:CampaignState,id:string,presetId:str
  const transfer=quoteAttachmentTransfer(c.inventory.attachments,
   o.weaponConfiguration,next,Math.max(0,c.funds),false);
  if(!transfer.canCommit||!transfer.stockAfter)return c;
- return {...c,inventory:{...c.inventory,attachments:transfer.stockAfter},
+ return synchronizeIssuedCatalogBodies({...c,inventory:{...c.inventory,attachments:transfer.stockAfter},
   operators:c.operators.map(m=>m.id===id?{...m,weaponConfiguration:next,
-   ...fitMagazineInventory(m.id,m.weapon,next,m.magazine,m.reserve,m.magazines)}:m)};
+   ...fitMagazineInventory(m.id,m.weapon,next,m.magazine,m.reserve,m.magazines)}:m)});
 }
 export function equipCampaignWeaponFamilyPart(c:CampaignState,id:string,
  slot:FamilyPartSlot,partId:string):CampaignState{
@@ -853,9 +869,9 @@ export function equipCampaignWeaponFamilyPart(c:CampaignState,id:string,
  const transfer=quoteAttachmentTransfer(c.inventory.attachments,
   o.weaponConfiguration,next,Math.max(0,c.funds),false);
  if(!transfer.canCommit||!transfer.stockAfter)return c;
- return {...c,inventory:{...c.inventory,attachments:transfer.stockAfter},
+ return synchronizeIssuedCatalogBodies({...c,inventory:{...c.inventory,attachments:transfer.stockAfter},
   operators:c.operators.map(m=>m.id===id?{...m,weaponConfiguration:next,
-   ...fitMagazineInventory(m.id,m.weapon,next,m.magazine,m.reserve,m.magazines)}:m)};
+   ...fitMagazineInventory(m.id,m.weapon,next,m.magazine,m.reserve,m.magazines)}:m)});
 }
 /** Player-authorized buy-and-equip is all-or-nothing. */
 export function purchaseAndEquipWeaponAttachment(c:CampaignState,id:string,
@@ -874,31 +890,79 @@ export function purchaseAndEquipWeaponAttachment(c:CampaignState,id:string,
   inventory:{...c.inventory,attachments:quote.stockAfter},
   operators:c.operators.map(m=>m.id===id?{...m,weaponConfiguration:next}:m)};
 }
+/** Transitional API for historical callers only; exact serial exchange. */
 export function equipCampaignWeapon(c:CampaignState,id:string,
  weapon:CampaignOperator['weapon']):CampaignState{
  if(c.activeContractId||!WEAPONS.includes(weapon)||
   !mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'))return c;
- const m=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
- if(!m||m.weapon===weapon||c.inventory.weapons[weapon]<1)return c;
- const targetConfig=resolveIssuedOrLegacy(
-  changeWeaponPlatform(m.weaponConfiguration,weapon),weapon,
-  starterWeaponPreset(m.id));
- if(!hasValidPhysicalLayout(targetConfig))return c;
- const transfer=quoteAttachmentTransfer(c.inventory.attachments,
-  m.weaponConfiguration,targetConfig,Math.max(0,c.funds),false);
- if(!transfer.canCommit||!transfer.stockAfter)return c;
- return reconcileCampaignWeaponOwnership({...c,inventory:{...c.inventory,
-  attachments:transfer.stockAfter,weapons:{
-   ...c.inventory.weapons,
-   [weapon]:c.inventory.weapons[weapon]-1,
-   [m.weapon]:c.inventory.weapons[m.weapon]+1
-  }},
-  operators:c.operators.map(o=>o.id===id?{...o,weapon,magazine:0,reserve:0,
-    magazines:[],loadedMagazineId:o.id+'/'+weapon+'/loaded',
-    loadout:syncPrimaryWeapon(o.loadout,weapon),
-    weaponConfiguration:targetConfig}:o)});
+ const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ if(!member||member.weapon===weapon)return c;
+ const spare=catalogOwnedStock(c).find(w=>w.platform===weapon&&preflightCatalogIssue(c,id,w.id,true));
+ return spare?commitCatalogIssue(c,id,spare.id,true):c;
 }
 
+/** Issue one exact unassigned owned catalog object, including same-category
+ * exchanges. No appearance substitution, new asset or hidden purchase. */
+function preflightCatalogIssue(c:CampaignState,id:string,serialId:string,legacyClassPolicy=false){
+ if(c.activeContractId)return undefined;
+ const m=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ if(!m)return undefined;
+ const incoming=catalogOwnedStock(c).find(w=>w.id===serialId);
+ if(!incoming||!incoming.catalogBody)return undefined;
+ const weapon=incoming.platform;
+ if(!mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'))return undefined;
+ const preset=matchingFamilyPreset(incoming.catalogBody);
+ if(!legacyClassPolicy&&(preset?!mayChooseCampaignContent(c,'weapon-preset',preset.id):
+  !dispatchPilotUnclassifiedEditingEnabled(c)))return undefined;
+ const base=changeWeaponPlatform(m.weaponConfiguration,weapon);
+ const target=readWeaponConfiguration({...base,build:incoming.catalogBody,
+  mountSelections:undefined,stockPosition:undefined},weapon);
+ if(!target.build||JSON.stringify(target.build)!==JSON.stringify(incoming.catalogBody)||
+  !hasValidPhysicalLayout(target))return undefined;
+ const transfer=quoteAttachmentTransfer(c.inventory.attachments,m.weaponConfiguration,target,
+  Math.max(0,c.funds),false);
+ if(!transfer.canCommit||!transfer.stockAfter)return undefined;
+ return {m,weapon,target,stockAfter:transfer.stockAfter};
+}
+export function canEquipCampaignCatalogWeapon(c:CampaignState,id:string,serialId:string):boolean{
+ return !!preflightCatalogIssue(c,id,serialId);
+}
+export function equipCampaignCatalogWeapon(c:CampaignState,id:string,serialId:string):CampaignState{
+ return commitCatalogIssue(c,id,serialId);
+}
+function commitCatalogIssue(c:CampaignState,id:string,serialId:string,legacyClassPolicy=false):CampaignState{
+ const plan=preflightCatalogIssue(c,id,serialId,legacyClassPolicy);
+ if(!plan)return c;
+ const {weapon,target,stockAfter}=plan;
+ const normalized=synchronizeIssuedCatalogBodies(c);
+ const next=projectCatalogInventory({...normalized,inventory:{...normalized.inventory,
+  attachments:stockAfter},operators:normalized.operators.map(o=>o.id===id?
+   {...o,weapon,weaponSerialId:serialId,magazine:0,reserve:0,magazines:[],
+    loadedMagazineId:o.id+'/'+weapon+'/loaded',loadout:syncPrimaryWeapon(o.loadout,weapon),
+    weaponConfiguration:target}:o)});
+ // Fail closed if projection cannot preserve this exchange.
+ if(next.operators.find(o=>o.id===id)?.weaponSerialId!==serialId||
+  next.inventory.serializedWeapons?.length!==normalized.inventory.serializedWeapons?.length)return c;
+ return next;
+}
+
+/** Selecting a named factory weapon is issue, not a free rebody of a different serial. */
+export function campaignCatalogPresetIssueChoices(c:CampaignState,id:string):Map<string,string>{
+ const choices=new Map<string,string>();
+ for(const w of catalogOwnedStock(c)){
+  const preset=matchingFamilyPreset(w.catalogBody);
+  if(!preset||choices.has(preset.id)||!canEquipCampaignCatalogWeapon(c,id,w.id))continue;
+  choices.set(preset.id,w.id);
+ }
+ return choices;
+}
+export function equipCampaignOwnedPreset(c:CampaignState,id:string,presetId:string):CampaignState{
+ const o=c.operators.find(m=>m.id===id&&m.status!=='lost'&&m.status!=='retired');
+ if(!o||c.activeContractId||!familyPreset(presetId))return c;
+ if(o.weaponConfiguration.build&&matchingFamilyPreset(o.weaponConfiguration.build)?.id===presetId)return c;
+ const serial=campaignCatalogPresetIssueChoices(c,id).get(presetId);
+ return serial?equipCampaignCatalogWeapon(c,id,serial):c;
+}
 /** Retirement is player-directed, never inferred from an ambiguous downed state. */
 export function retireOperator(c:CampaignState,id:string):CampaignState{
  if(c.activeContractId||c.squadIds.includes(id))return c;
@@ -906,13 +970,13 @@ export function retireOperator(c:CampaignState,id:string):CampaignState{
  if(available.length<=4)return c;
  const o=available.find(m=>m.id===id);
  if(!o)return c;
- const weapons={...c.inventory.weapons,[o.weapon]:c.inventory.weapons[o.weapon]+1};
+ const normalized=synchronizeIssuedCatalogBodies(c);
  const event:CareerEvent={id:'retired-'+id+'-'+c.day,day:c.day,operatorId:id,
   kind:'retirement',detail:'Retired from active field service'};
- return reconcileCampaignWeaponOwnership({...c,inventory:{...c.inventory,weapons,
+ return projectCatalogInventory({...normalized,inventory:{...normalized.inventory,
   attachments:returnAttachments(c.inventory.attachments,o.weaponConfiguration)},
-  operators:c.operators.map(m=>
-  m.id===id?{...m,status:'retired' as const}:m),
+  operators:normalized.operators.map(m=>
+  m.id===id?{...m,status:'retired' as const,weaponSerialId:null}:m),
   journal:[...c.journal,event].slice(-1000)});
 }
 
@@ -1058,11 +1122,32 @@ export function saveCampaignKitPreset(c:CampaignState,id:string,name:string):Cam
  * Equipment slots and weapon build must remain within the authored pilot.
  * Legacy/Sandbox campaigns retain existing preset semantics.
  */
+/** Find an exact matching spare body for a cross-category recipe. A class
+ * count is not evidence that the named weapon is owned. */
+export function campaignKitWeaponAvailable(c:CampaignState,id:string,presetId:string):boolean{
+ const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ const preset=c.kitPresets.find(p=>p.id===presetId);
+ return !!member&&!!preset&&(sameKitBody(member.weaponConfiguration,preset.weaponConfiguration)||!!matchingKitSpare(c,id,preset.weaponConfiguration));
+}
+function sameKitBody(current:WeaponConfiguration,desired:WeaponConfiguration){
+ const a=current.build,b=desired.build;
+ return !!a&&!!b&&a.family===b.family&&Object.keys(a.parts).length===Object.keys(b.parts).length&&
+  Object.keys(a.parts).every(k=>a.parts[k as FamilyPartSlot]===b.parts[k as FamilyPartSlot]);
+}
+function matchingKitSpare(c:CampaignState,id:string,desired:WeaponConfiguration){
+ if(!desired.build)return undefined;
+ return catalogOwnedStock(c).find(w=>w.platform===desired.weapon&&
+  w.catalogBody.family===desired.build!.family&&
+  Object.keys(w.catalogBody.parts).every(k=>
+   w.catalogBody.parts[k as FamilyPartSlot]===desired.build!.parts[k as FamilyPartSlot])&&
+  Object.keys(w.catalogBody.parts).length===Object.keys(desired.build!.parts).length&&
+  canEquipCampaignCatalogWeapon(c,id,w.id));
+}
 export function canApplyCampaignKitPreset(c:CampaignState,id:string,presetId:string):boolean{
  if(c.activeContractId)return false;
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  const preset=c.kitPresets.find(p=>p.id===presetId);
- if(!member||!preset)return false;
+ if(!member||!preset||!campaignKitWeaponAvailable(c,id,presetId))return false;
  const proposed=readEquipmentLoadout(preset.kit,preset.weapon);
  const incoming=proposed.fieldInventory??initialFieldInventory(proposed);
  if(!fieldCarryReport(proposed,member.magazines,incoming).valid)return false;
@@ -1087,20 +1172,21 @@ export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string
  const preset=c.kitPresets.find(p=>p.id===presetId);
  if(!member||!preset)return c;
  // Entire recipe is atomic. Never silently skip a missing primary weapon.
- if(member.weapon!==preset.weapon&&c.inventory.weapons[preset.weapon]<1)return c;
- const desired=readWeaponConfiguration(preset.weaponConfiguration,preset.weapon);
+ const desired=resolveCatalogConfiguration(readWeaponConfiguration(preset.weaponConfiguration,preset.weapon),preset.weapon);
  if(!hasValidPhysicalLayout(desired))return c;
  // Apply one return-before-acquire transaction, independent of UI entry.
  const transfer=quoteAttachmentTransfer(c.inventory.attachments,
   member.weaponConfiguration,desired,Math.max(0,c.funds),false);
  if(!transfer.canCommit||!transfer.stockAfter)return c;
  const attachments=transfer.stockAfter;
- const swapped=member.weapon===preset.weapon?c:equipCampaignWeapon(c,id,preset.weapon);
- if(swapped===c&&member.weapon!==preset.weapon)return c;
+ const matching=sameKitBody(member.weaponConfiguration,desired);
+ const spare=matching?undefined:matchingKitSpare(c,id,desired);
+ const swapped=matching?c:spare?equipCampaignCatalogWeapon(c,id,spare.id):c;
+ if(swapped===c&&!matching)return c;
  const targetKit=readEquipmentLoadout(preset.kit,preset.weapon);
  const fieldStock=quoteCampaignFieldStockChange(swapped,member.loadout,targetKit);
  if(!fieldStock.ok)return c;
- return {...swapped,supplies:fieldStock.stock,
+ return synchronizeIssuedCatalogBodies({...swapped,supplies:fieldStock.stock,
   inventory:{...swapped.inventory,attachments},
   operators:swapped.operators.map(o=>o.id===id?{
    ...o,weaponConfiguration:desired,
@@ -1111,7 +1197,7 @@ export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string
     kitMedicalSupplies(readEquipmentLoadout(preset.kit,preset.weapon))),
    magazines:stageMagazines(fitMagazineInventory(o.id,o.weapon,desired,
     o.magazine,o.reserve,o.magazines).magazines,preset.kit),
-   armorCondition:clampArmorToKit(o.armorCondition,preset.kit)}:o)};
+   armorCondition:clampArmorToKit(o.armorCondition,preset.kit)}:o)});
 }
 export function deleteCampaignKitPreset(c:CampaignState,presetId:string):CampaignState{
  if(c.activeContractId||!c.kitPresets.some(p=>p.id===presetId))return c;

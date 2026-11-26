@@ -9,10 +9,9 @@ import {defaultQuickPlaySettings,QUICK_PLAY_BUILDINGS,
  type QuickPlayCivilians,type QuickPlayObjectiveIntel} from '../quick-play-settings.ts';
 import type {BuildingArchetype} from '../breach-site.ts';
 import type {RosterState} from '../breach-roster.ts';
-import {catalogOutfitterSources} from './outfitter-choice-sources.ts';
+import {catalogOutfitterSources,catalogOutfitterThumbnailTarget,rosterCatalogName} from './outfitter-choice-sources.ts';
 import {createOutfitterZoneNav,previewFocusForOutfitterSlot} from './outfitter-zone-nav.ts';
 import type {LoadoutSlot} from '../equipment-loadouts.ts';
-import type {WeaponId} from '../breach-combat.ts';
 import type {CarryGearSlot} from '../equipment-carry-gear-change.ts';
 import {createEquipmentWorkspace} from './equipment-workspace.ts';
 import './campaign-outfitter-gallery.css';
@@ -75,7 +74,7 @@ export function createQuickPlayConfigurator(options:{
  onMoveMagazine?:(id:string,magazineId:string,to:FieldCarryLocation)=>boolean;
  onEquipCarryGear?:(id:string,slot:CarryGearSlot,itemId:string)=>boolean;
  onEquipGear?:(id:string,slot:LoadoutSlot,itemId:string)=>boolean;
- onEquipWeapon?:(id:string,weapon:WeaponId)=>boolean;
+ onEquipWeaponPreset?:(id:string,presetId:string)=>boolean;
  onCopyCarryLayout?:(sourceId:string,targetId:string)=>boolean;
 }){
  let settings=readSettings();
@@ -207,7 +206,7 @@ export function createQuickPlayConfigurator(options:{
   if(!selected){equipmentWorkspace.dispose();return;}
   selectedSquadMember=selected.id;
   squadContent.append(createLoadoutSquadRail(members.map(m=>({
-   id:m.id,name:m.callsign.toUpperCase(),detail:m.weapon.toUpperCase()
+   id:m.id,name:m.callsign.toUpperCase(),detail:rosterCatalogName(m.weaponConfiguration)
   })),selected.id,id=>{selectedSquadMember=id;renderSquadPrep();}));
   const hint=node('p','fw-quick-config-intro',
    'Ready this squad before generating a mission. Changes apply to the next Quick Play operation.');
@@ -306,7 +305,7 @@ export function createQuickPlayConfigurator(options:{
    }));
   };
   // The gallery reads the catalog directly; there are no throwaway selects.
-  const sources=catalogOutfitterSources(selected.loadout);
+  const sources=catalogOutfitterSources(selected.loadout,selected.weaponConfiguration);
   let showGallery:(slot:LoadoutSlot)=>void=()=>{};
   const zones=createOutfitterZoneNav({
    navClass:'fw-quick-outfitter-zones',
@@ -325,11 +324,11 @@ export function createQuickPlayConfigurator(options:{
    host:galleryHost,sources,kit:selected.loadout,magazines:selected.magazines,
    locked:false,
    renderModel:(slot,itemId)=>equipmentWorkspace.preview?.renderModelThumbnailAsync(
-    {kind:'gear',slot,itemId})??null,
+    catalogOutfitterThumbnailTarget(selected.loadout,selected.weaponConfiguration,slot,itemId))??null,
    onEquip:(slot,itemId)=>{
     let changed=false;
     if(slot==='primary')
-     changed=options.onEquipWeapon?.(selected.id,itemId.replace(/^primary-/, '') as WeaponId)??false;
+     changed=options.onEquipWeaponPreset?.(selected.id,itemId)??false;
     else if(slot==='rig'||slot==='belt'||slot==='backpack')
      changed=options.onEquipCarryGear?.(selected.id,slot,itemId)??false;
     else changed=options.onEquipGear?.(selected.id,slot,itemId)??false;
@@ -342,7 +341,7 @@ export function createQuickPlayConfigurator(options:{
    },
    onArsenal:()=>{},arsenalDisabled:true,
    onInspect:(slot,itemId)=>equipmentWorkspace.preview?.selectItemDot(
-    itemId?{kind:'gear',slot,itemId}:null),
+    itemId?{kind:'gear',slot,itemId:slot==='primary'?selected.loadout.slots.primary:itemId}:null),
    onSelectCategory:chooseSlot,
    onAdvanced:()=>{
     galleryHost.hidden=true;carryPanel.hidden=false;

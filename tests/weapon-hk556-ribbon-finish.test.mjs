@@ -7,7 +7,7 @@ import {akMagazineCurve,akMagazineSample,akMagazineWidthPoints}
 import {hk556MagazineCurve,hk556MagazineOutline,hk556MagazineRibOutlines,
  hk556MagazineHeelOutline,HK556_MAG_CENTER_X,HK556_MAG_LENGTHS}
  from '../src/weapons/geometry/hk-556-magazine-profiles.ts';
-import {HK556_MAG_METAL,HK556_MAG_RIB,HK_DARK_POLYMER,
+import {HK556_MAG_METAL,HK556_MAG_RIB,HK_WA8_RIFLE_POLYMER,
  HK_OLIVE_POLYMER}
  from '../src/weapons/geometry/weapon-visual-palette.ts';
 import {FAMILY_PRESETS,FAMILY_PARTS,compatibleFamilyPart}
@@ -103,10 +103,10 @@ test('black factory models coexist with preserved OD green saved parts',()=>{
   assert.equal(config.build.parts.stock,stock);
   assert.equal(config.build.parts.handguard,guard);
   assert.equal(group.children.find(x=>x.name.startsWith('family-handguard-')).material,
-   HK_DARK_POLYMER);
+   HK_WA8_RIFLE_POLYMER);
   if(id==='hk-hk33a2')
    assert.equal(group.children.find(x=>x.name.startsWith('family-stock-')
-    &&x.name.endsWith('-0')).material,HK_DARK_POLYMER);
+    &&x.name.endsWith('-0')).material,HK_WA8_RIFLE_POLYMER);
   clearWeaponSilhouette(group);
  }
  const {config}=factory('hk-hk33a2');
