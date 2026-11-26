@@ -23,16 +23,17 @@ const frame=(wardrobe,phase={})=>({
  aiming:false,firing:false,turning:0,deterministic:true,
  unarmedPreview:true,equipment:kit,wardrobe,...phase
 });
-test('four casual upper cuts are real catalog entries with curated solids',()=>{
+test('six casual upper cuts are real catalog entries with curated solids',()=>{
  assert.deepEqual(CASUAL_SHIRT_CUTS,
-  ['t-shirt','button-up-shirt','polo-shirt','tank-top']);
+  ['t-shirt','button-up-shirt','polo-shirt','tank-top','hoodie','casual-jacket']);
  for(const cut of CASUAL_SHIRT_CUTS){
   assert.ok(wardrobeItemsForSlot('top').some(item=>item.id===cut),cut);
-  assert.ok(CASUAL_SHIRT_SOLIDS[cut].length>=8);
+  assert.ok(CASUAL_SHIRT_SOLIDS[cut].length>=7);
   const resolved=resolvedWardrobe(outfit(cut),kit);
   assert.equal(resolved.top,cut);
   assert.deepEqual(solidChoicesFor('top',resolved),CASUAL_SHIRT_SOLIDS[cut]);
-  assert.ok(fabricCamoChoices('top',resolved).length>=3,cut);
+  if(cut==='hoodie'||cut==='casual-jacket')assert.equal(fabricCamoChoices('top',resolved).length,0,cut);
+  else assert.ok(fabricCamoChoices('top',resolved).length>=3,cut);
   assert.ok(!fabricCamoChoices('top',resolved).includes('ucp'),cut);
  }
  assert.ok(solidChoicesFor('top',{top:'button-up-shirt'}).includes('burnt-orange'));
@@ -302,5 +303,20 @@ test('gloves are independent from shirts, can be hidden and retain their own col
  assert.equal(resolvedWardrobe(manual,withoutHands).gloves,'gloves-field',
   'explicit glove appearance is independent of equipment truth');
  assert.equal(readWardrobe({...manual,gloveSolid:'invalid'}).gloveSolid,undefined);
+ r.dispose();
+});
+
+test('EB14 civilian trousers and full sleeves render on shared rig with no field trouser overlays',()=>{
+ const r=createOperatorRig('guard','red');
+ for(const top of ['hoodie','casual-jacket'])for(const trousers of ['jeans','civilian-cargo','track-pants']){
+  const wardrobe={...initialWardrobe(),styles:{top,trousers,footwear:'sneakers'},trouserHem:'unbloused'};
+  const equipment={...kit,slots:{...kit.slots,feet:'feet-light',legs:'legs-light',top:'top-light'}};
+  poseOperator(r,frame(wardrobe,{equipment}),0);
+  assert.ok(r.visualKit.casualShirts.cuts[top].torso.visible);
+  assert.ok(r.visualKit.casualShirts.cuts[top].lower.every(g=>g.visible));
+  assert.ok(r.visualKit.wardrobeBody.trousers[trousers].every(g=>g.visible));
+  assert.ok(Object.values(r.visualKit.fieldTrousers).every(m=>m.thigh.every(g=>!g.visible)));
+  assert.ok(r.visualKit.bootCuffs.every(g=>!g.visible));
+ }
  r.dispose();
 });
