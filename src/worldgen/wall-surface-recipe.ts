@@ -1,6 +1,6 @@
 /** W2 audition: static architecture is a material plus a sparse set of
  * anchored finish events. No tactical state, time or mutable RNG. */
-import {ART_MODULES} from '../rendering/material-art-scale.ts';
+import {ART_MODULES,wallAtlasLayout} from '../rendering/material-art-scale.ts';
 import {relativeArtColor,artLuma} from '../rendering/material-art-contrast.ts';
 import {prepareWallArt,eventArtSeed} from './wall-weathering-art.ts';
 import type {Site} from '../breach-site.ts';
@@ -12,11 +12,12 @@ import type {PixelSurface} from '../rendering/pixel-recipes.ts';
 export const WALL_EFFECTS=['fade','contact','chip','damp','runoff','crack','repair','moss','rust','grease','splash','workgrime'] as const;
 export type WallEffect=typeof WALL_EFFECTS[number];
 export type WallEffectFilter='all'|'none'|WallEffect;
-export type WallAudition={effect:WallEffectFilter;atlas?:boolean;story?:boolean};
+export type WallAudition={effect:WallEffectFilter;atlas?:boolean;story?:boolean;metric?:boolean};
 /** Production default: W6 fixture story plus eligible W3 effects. Explicit historical
  * comparison modes remain available for Map Lab and controlled A/B. */
 export function resolveWallSurfaceMode(mode:string|null):WallAudition|undefined{
  if(mode==='legacy')return undefined;
+ if(mode==='metric')return {effect:'all',atlas:true,story:true,metric:true};
  if(mode==='packed'||mode==='integrated')return {effect:'all'};
  if(mode==='atlas'||mode==='compiled'||mode==='separate'||mode==='unified')return {effect:'all',atlas:true};
  return {effect:'all',atlas:true,story:true};
@@ -287,14 +288,22 @@ export type WallFacePair=ReturnType<typeof planWallFaces>;
  * levels ordinary mip filtering necessarily averages whole strips. */
 export const ATLAS_FACE_ROWS=24;
 export const atlasFaceStart=(face:-1|1)=>face===1?4:36;
-export function atlasWallStrip(pair:WallFacePair,level:number,width:number,filter:WallEffectFilter='all',patterned=true){
- const out=new Uint8Array(width*64*4),base=rgb(pair.front.color),stride=width*4;
- for(let p=0;p<out.length;p+=4){out.set(base,p);out[p+3]=255;}
+export function atlasWallStrip(pair:WallFacePair,level:number,width:number,filter:WallEffectFilter='all',patterned=true,metricWidth?:number){
+ const layout=wallAtlasLayout(metricWidth!==undefined),active=metricWidth??width;
+ const out=new Uint8Array(width*layout.rows*4),base=rgb(pair.front.color),stride=width*4;
+ for(let p=0;p<out.length;p+=4){out[p]=base[0];out[p+1]=base[1];out[p+2]=base[2];out[p+3]=255;}
  for(const recipe of [pair.front,pair.back]){
-  const pixels=bakedWallSurfacePixels(recipe,level,width,ATLAS_FACE_ROWS,filter,patterned),start=atlasFaceStart(recipe.face);
-  out.set(pixels,start*stride);
-  for(let y=recipe.face===1?2:start-4;y<start;y++)out.set(pixels.subarray(0,stride),y*stride);
-  for(let y=start+ATLAS_FACE_ROWS;y<start+ATLAS_FACE_ROWS+4;y++)out.set(pixels.subarray(pixels.length-stride),y*stride);
+  const pixels=bakedWallSurfacePixels(recipe,level,active,layout.faceRows,filter,patterned),start=recipe.face===1?layout.front:layout.back;
+  if(active===width)out.set(pixels,start*stride);
+  else for(let y=0;y<layout.faceRows;y++){
+   const offset=(start+y)*stride,src=y*active*4;
+   out.set(pixels.subarray(src,src+active*4),offset);
+   const edge=pixels.subarray(src+(active-1)*4,src+active*4);
+   for(let x=active;x<width;x++)out.set(edge,offset+x*4);
+  }
+  const first=out.subarray(start*stride,(start+1)*stride),last=out.subarray((start+layout.faceRows-1)*stride,(start+layout.faceRows)*stride);
+  for(let y=recipe.face===1?2:start-4;y<start;y++)out.set(first,y*stride);
+  for(let y=start+layout.faceRows;y<start+layout.faceRows+4;y++)out.set(last,y*stride);
  }
  return out;
 }
