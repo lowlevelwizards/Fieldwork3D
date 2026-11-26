@@ -8,6 +8,7 @@ import {initializeWindows} from '../src/breach-windows.ts';
 import {normalizeWindowCovering,windowCoveringPieces,COVERING_FAMILIES} from '../src/breach-window-coverings.ts';
 import {sessionCoveringOptics,windowCoveringsBlockSight,setSessionWindowCovering} from '../src/breach-window-covering-optics.ts';
 import {hardCoveringBlocksTraversal} from '../src/breach-window-covering-physical.ts';
+import {windowVisualHeadHeight} from '../src/breach-opening-proportions.ts';
 import {canClimbWindow} from '../src/breach-mantle.ts';
 const archetypes=['house','townhouse','apartment','retail','office','garage','warehouse','restaurant','motel','utility','clinic'];
 test('WC6 real generated maps across all archetypes and sizes retain structural aperture ownership',()=>{
@@ -33,7 +34,7 @@ test('WC6 real generated maps across all archetypes and sizes retain structural 
     assert.ok(faces.length);
     if(c.family.includes('shutter')){
      assert.equal(w.interior===true,false);assert.equal(c.side,-faces[0].side);
-     assert.equal(canClimbWindow({...w,shattered:true}),!hardCoveringBlocksTraversal(w)&&w.width>=25&&(w.sillHeight??14)<=30&&(w.headHeight??32)-(w.sillHeight??14)>=18);
+     assert.equal(canClimbWindow({...w,shattered:true}),!hardCoveringBlocksTraversal(w)&&w.width>=25&&(w.sillHeight??14)<=30&&(w.headHeight??windowVisualHeadHeight(w.style))-(w.sillHeight??14)>=18);
     }else assert.ok(faces.some(f=>f.side===c.side));
     const pieces=windowCoveringPieces(w,c);maxPieces=Math.max(maxPieces,pieces.length);
     assert.ok(pieces.length>0&&pieces.length<=14);

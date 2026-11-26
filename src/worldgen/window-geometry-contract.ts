@@ -54,7 +54,7 @@ export type WindowContractFinding={
  * A structural pane must have exactly ONE matching physical barrier.
  */
 export function auditWindowGeometryContract(
-  site:Pick<Site,'windows'|'cover'>
+  site:Pick<Site,'windows'|'cover'|'openings'>
 ):WindowContractFinding[]{
   const issues:WindowContractFinding[]=[],windows=site.windows??[];
   const ids=new Set<string>(),covered=new Set<number>();
@@ -80,8 +80,18 @@ export function auditWindowGeometryContract(
     if(matches.length>1)issues.push({kind:'duplicate-barrier',id:window.id,
       detail:matches.length+' barriers match the same opening'});
   }
+  // Serving counters share the historical window-sill fixture, but own a
+  // WideOpening rather than a WindowOpening. Check their exact footprint.
+  const serving=(o:Obstacle)=>o.fixture==='window-sill'&&o.low===true&&
+    (site.openings??[]).some(h=>{
+      if(h.kind!=='serving')return false;
+      const vertical=Math.abs(h.a.x-h.b.x)<1;
+      const width=Math.hypot(h.b.x-h.a.x,h.b.y-h.a.y);
+      return close(o.x,(h.a.x+h.b.x)/2)&&close(o.y,(h.a.y+h.b.y)/2)&&
+        close(o.w,vertical?10:width)&&close(o.h,vertical?width:10);
+    });
   site.cover.forEach((o,i)=>{
-    if(isBarrier(o)&&!covered.has(i))
+    if(isBarrier(o)&&!covered.has(i)&&!serving(o))
       issues.push({kind:'orphan-barrier',id:'cover:'+i,
         detail:'window sill/glass collider has no matching aperture'});
   });

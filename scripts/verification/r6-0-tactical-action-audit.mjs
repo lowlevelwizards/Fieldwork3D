@@ -54,13 +54,20 @@ export const R60_INTERACTIONS=Object.freeze({
  'escort-suspect':{class:'voice',planner:'planSuspectEscort'},
  'stop-escorting-suspect':{class:'voice',planner:'planSuspectEscort'},
  'power-on':{class:'object-contact',planner:'planSitePowerControl'},
- 'power-off':{class:'object-contact',planner:'planSitePowerControl'}
+ 'power-off':{class:'object-contact',planner:'planSitePowerControl'},
+ 'open-covering':{class:'object-contact',planner:'planWindowCovering',dispatch:'isCoveringAction'},
+ 'close-covering':{class:'object-contact',planner:'planWindowCovering',dispatch:'isCoveringAction'},
+ 'half-covering':{class:'object-contact',planner:'planWindowCovering',dispatch:'isCoveringAction'},
+ 'tilt-covering':{class:'object-contact',planner:'planWindowCovering',dispatch:'isCoveringAction'},
+ 'untilt-covering':{class:'object-contact',planner:'planWindowCovering',dispatch:'isCoveringAction'},
+ 'lock-covering':{class:'object-contact',planner:'planWindowCovering',dispatch:'isCoveringAction'},
+ 'unlock-covering':{class:'object-contact',planner:'planWindowCovering',dispatch:'isCoveringAction'},
 });
 /** Contextual command lexemes are separate from PlanKinds: some alter
  * planning settings, while some emit authored interactions or other orders.
  * Dynamic ctxTreat/ctxPower/ctxTool parameters are NOT separate types. */
 export const R60_CONTEXT_COMMANDS=Object.freeze([
- 'ctxBreakGlass','ctxCarryCapture','ctxCarryCivilian','ctxChallengeSuspect','ctxClose',
+ 'ctxBreakGlass','ctxCarryCapture','ctxCarryCivilian','ctxChallengeSuspect','ctxClose','ctxCovering',
  'ctxDelete','ctxDragCapture','ctxDragCivilian','ctxEscortSuspect',
  'ctxFire','ctxFollowCivilian','ctxFormationCycle','ctxKick','ctxOpen',
  'ctxPace','ctxPower','ctxReleaseCapture','ctxReleaseCivilian',
@@ -194,7 +201,10 @@ export function inspectR60(root=ROOT){
  const handler=source('src/breach-order-interactions.ts')??'';
  const interactions=Object.entries(R60_INTERACTIONS).map(([name,spec])=>{
   const planningEvidence=planner.includes(spec.planner);
-  const executionEvidence=handler.includes("'"+name+"'");
+  const executionEvidence=spec.dispatch?
+    handler.includes(spec.dispatch+'(')&&
+    (source('src/breach-window-covering-interaction.ts')??'').includes("'"+name+"'"):
+    handler.includes("'"+name+"'");
   if(!planningEvidence||!executionEvidence)
    problems.push('Missing planned/GO source evidence for '+name);
   return {name,class:spec.class,planner:spec.planner,
@@ -226,8 +236,8 @@ export function inspectR60(root=ROOT){
 export function verifyR60(report){
  if(!report.readOnly||report.problems.length)
   throw new Error('R6.0 audit failed: '+(report.problems.join('; ')||'not read-only'));
- if(report.orders.length!==15||report.interactions.length!==18||
-    report.contextActions.length!==36||report.methods.door.length!==4||
+ if(report.orders.length!==15||report.interactions.length!==25||
+    report.contextActions.length!==37||report.methods.door.length!==4||
     report.methods.tool.length!==6)
   throw new Error('R6.0 incomplete action census');
  return true;

@@ -210,3 +210,10 @@ test('C6 consumers share pane contract without moving simulation or replay',()=>
  assert.doesNotMatch(source('worldgen/window-geometry-contract.ts'),
   /stepSession\(|liveVisibility\(|document\.|window\.location|WebGLRenderer|newSession\(/);
 });
+
+test('C6 serving aperture owns its legacy sill without being a pane',()=>{
+ const sill={x:100,y:80,w:48,h:10,low:true,fixture:'window-sill'};
+ const opening={id:'H',a:{x:76,y:80},b:{x:124,y:80},kind:'serving'};
+ assert.deepEqual(auditWindowGeometryContract({windows:[],openings:[opening],cover:[sill]}),[]);
+ assert.equal(auditWindowGeometryContract({windows:[],openings:[opening],cover:[{...sill,w:50}]}).at(0).kind,'orphan-barrier');
+});

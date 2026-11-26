@@ -18,6 +18,8 @@ const oldRun=(await import(pathToFileURL(resolve(base,'tests/fixtures/breach-sta
 const cases=[...['clear','hold','intel','rescue','capture'].flatMap(mission=>[16,21,38].map(seed=>({seed,mission,scale:'small'}))),
  {seed:4,mission:'rescue',scale:'large'},{seed:7,mission:'intel',scale:'standard'},{seed:27,mission:'rescue',scale:'small'}];
 const rows=[];let modernWitness;
+const structuralWindows=windows=>windows?.map(({covering,...w})=>({...w,treatment:w.treatment==='open-curtains'?'none':w.treatment}));
+const structuralSite=site=>({...site,windows:structuralWindows(site.windows)});
 for(const {seed,mission,scale} of cases){
  const context={mission,premise:'routine'};
  const old=oldGenerate(seed,scale,undefined,context);
@@ -26,9 +28,9 @@ for(const {seed,mission,scale} of cases){
  const historicalStreet=generateSite(seed,scale,undefined,context,{expandedDoorFamilies:false});
  const next=generateSite(seed,scale,undefined,context);
  const sameArchitecture=generateSite(seed,scale,undefined,context,{streetInfrastructure:false});
- assert.deepEqual(legacy,oldLegacy,'exact base legacy layout '+seed+':'+mission+':'+scale);
+ assert.deepEqual(structuralSite(legacy),structuralSite(oldLegacy),'exact base legacy layout '+seed+':'+mission+':'+scale);
  for(const key of ['rooms','walls','doors','windows','spawn','enemies','objective','extract','encounter','identity','planFamily']){
-  assert.deepEqual(historicalStreet[key],old[key],'historical new-site mission contract '+seed+':'+mission+':'+key);
+  assert.deepEqual(key==='windows'?structuralWindows(historicalStreet[key]):historicalStreet[key],key==='windows'?structuralWindows(old[key]):old[key],'historical new-site mission contract '+seed+':'+mission+':'+key);
   assert.deepEqual(next[key],sameArchitecture[key],'street cannot alter selected architecture '+seed+':'+mission+':'+key);
  }
  if(next.streetInfrastructure){
