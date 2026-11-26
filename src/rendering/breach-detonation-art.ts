@@ -2,17 +2,29 @@
  * fading after-flash. Residual dust stays in the existing atmosphere owner.
  * No additional render pass or event state. */
 import * as THREE from 'three';
-import {createMuzzleFlashGeometry} from './breach-muzzle-flash-art.ts';
 export const DETONATION_ART_LIFETIME=.46;
 export type DetonationArtSample={scale:number;verticalScale:number;opacity:number};
 export function createDetonationGeometry():THREE.BufferGeometry{
- const geometry=createMuzzleFlashGeometry();
- geometry.scale(1/3.5,1/3.5,1/3.5);
- const color=geometry.getAttribute('color');
- const tip=new THREE.Color(0xffe1a5),core=new THREE.Color(0xfffdf5);
- for(let i=0;i<color.count;i++){
-  const c=i%3===2?core:tip;color.setXYZ(i,c.r,c.g,c.b);
+ // Three intersecting angular silhouettes, one mesh, no texture.
+ const positions:number[]=[],colors:number[]=[];
+ const tip=new THREE.Color(0xffdf91),inner=new THREE.Color(0xfff3cb),core=new THREE.Color(0xffffff);
+ for(let plane=0;plane<3;plane++){
+  const point=(i:number):number[]=>{
+   const angle=i*Math.PI/8;
+   const radius=i%2?.33:(i%4===0?1:.78);
+   const u=Math.cos(angle)*radius,v=Math.sin(angle)*radius;
+   return plane===0?[u,0,v]:plane===1?[u,v,0]:[0,u,v];
+  };
+  for(let i=0;i<16;i++){
+   positions.push(...point(i),...point(i+1),0,0,0);
+   const a=i%2?inner:tip,b=i%2?tip:inner;
+   colors.push(a.r,a.g,a.b,b.r,b.g,b.b,core.r,core.g,core.b);
+  }
  }
+ const geometry=new THREE.BufferGeometry();
+ geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+ geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+ geometry.computeBoundingSphere();
  return geometry;
 }
 export function sampleDetonationArt(age:number,out:DetonationArtSample):boolean{
@@ -21,12 +33,17 @@ export function sampleDetonationArt(age:number,out:DetonationArtSample):boolean{
  // a giant sphere. Exact age sampling is independent of frame rate.
  if(age<.12){
   const t=age/.12;
-  out.scale=5+6*t;out.verticalScale=out.scale*(1-.45*t);
-  out.opacity=.94-.24*t;
+  out.scale=14+6*t;out.verticalScale=out.scale*(.85-.25*t);
+  out.opacity=1-.12*t;
  }else{
   const t=(age-.12)/(DETONATION_ART_LIFETIME-.12);
-  out.scale=11+7*t;out.verticalScale=6.05*(1-t)*(.65+.35*(1-t));
-  out.opacity=.70*(1-t)*(1-t);
+  out.scale=20+5*t;out.verticalScale=12*(1-t)*(.65+.35*(1-t));
+  out.opacity=.88*(1-t)*(1-t)*(1-t);
  }
  return true;
+}
+
+/** Residue must not obscure the initial luminous graphic. */
+export function detonationSmokeWeight(age:number):number{
+ return Math.max(0,Math.min(1,(age-.09)/.23));
 }
