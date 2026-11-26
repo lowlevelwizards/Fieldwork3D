@@ -131,3 +131,23 @@ test('curated named shotgun migration preserves existing specialist access',()=>
  const career=newDispatchPilotCampaign(990,dispatchPresetDraft('career'));
  assert.equal(catalogWeaponQuote(career,'r870-police-wood').status,'standing-locked');
 });
+
+import {catalogOwnedStock,projectCatalogInventory} from '../src/equipment-weapon-ownership.ts';
+test('named acquisition and issue derive compatibility stock from serials without reallocating bodies',()=>{
+ const start=newCampaign(991),first=buyCatalogWeapon(start,'ar-colt733');
+ const damaged={...first,inventory:{...first.inventory,weapons:{carbine:0,rifle:0,smg:0,shotgun:0}}};
+ const exact=catalogOwnedStock(damaged).find(w=>matchingFamilyPreset(w.catalogBody).id==='ar-colt733');
+ assert.ok(exact);
+ const issued=equipCampaignCatalogWeapon(damaged,start.operators[0].id,exact.id);
+ assert.equal(issued.operators[0].weaponSerialId,exact.id);
+ assert.deepEqual(new Set(issued.inventory.serializedWeapons.map(w=>w.id)),new Set(first.inventory.serializedWeapons.map(w=>w.id)));
+ assert.deepEqual(weaponOwnershipIssues(issued),[]);
+ assert.deepEqual(readCampaign(JSON.stringify(issued)),issued);
+ assert.deepEqual(projectCatalogInventory(issued),issued);
+});
+test('a weapon attached to an unresolved missing operator is not armory stock',()=>{
+ const c=newCampaign(992),operator=c.operators[0];
+ const missing={...c,operators:c.operators.map(o=>o.id===operator.id?{...o,status:'lost'}:o)};
+ assert.ok(!catalogOwnedStock(missing).some(w=>w.id===operator.weaponSerialId));
+ assert.strictEqual(equipCampaignCatalogWeapon(missing,c.operators[1].id,operator.weaponSerialId),missing);
+});

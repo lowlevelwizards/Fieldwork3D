@@ -60,8 +60,8 @@ import {resolveMountedAccessoryLayout}
  from './weapons/geometry/mounted-accessory-layout.ts';
 import {quoteAttachmentTransfer}
  from './equipment-weapon-transactions.ts';
-import {MAX_OWNED_WEAPONS,recordWeaponRounds,serviceSerializedWeapon,readOwnedCatalogBody,type SerializedWeapon} from './equipment-weapon-identity.ts';
-import {reconcileCampaignWeaponOwnership,synchronizeIssuedCatalogBodies} from './equipment-weapon-ownership.ts';
+import {MAX_OWNED_WEAPONS,recordWeaponRounds,serviceSerializedWeapon,readOwnedCatalogBody,newSerializedWeapon,type SerializedWeapon} from './equipment-weapon-identity.ts';
+import {reconcileCampaignWeaponOwnership,synchronizeIssuedCatalogBodies,catalogOwnedStock,nextCatalogWeaponSerial,projectCatalogInventory} from './equipment-weapon-ownership.ts';
 import {kitMedicalSupplies,normalizedMedicalSupplies,medicalSupplyCount,
  type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
 
@@ -776,18 +776,16 @@ export function buyWeapon(c:CampaignState,weapon:CampaignOperator['weapon']):Cam
  * the existing campaign policy; the new owned object retains its own body. */
 export function buyCatalogWeapon(c:CampaignState,presetId:string):CampaignState{
  const preset=familyPreset(presetId);
- if(!preset||!mayChooseCampaignContent(c,'weapon-preset',presetId))return c;
- const normalized=reconcileCampaignWeaponOwnership(c);
- const before=new Set(normalized.inventory.serializedWeapons?.map(w=>w.id));
- const bought=buyWeapon(normalized,preset.weapon);
- if(bought===normalized)return c;
- const added=bought.inventory.serializedWeapons?.filter(w=>!before.has(w.id))??[];
- if(added.length!==1)return c;
+ if(!preset||!mayChooseCampaignContent(c,'weapon-preset',presetId)||
+  !mayChooseCampaignContent(c,'equipment','primary-'+preset.weapon,'primary'))return c;
+ const price=WEAPON_PRICES[preset.weapon];
+ if(!price||c.activeContractId||!canSpend(c,price)||campaignWeaponStockAtCapacity(c)||
+  !c.inventory.serializedWeapons)return c;
  const body=issueWeaponPreset(presetId).weaponConfiguration.build;
  if(!body)return c;
- return {...bought,inventory:{...bought.inventory,serializedWeapons:
-  bought.inventory.serializedWeapons!.map(w=>w.id===added[0].id?
-   {...w,catalogBody:readOwnedCatalogBody(body,preset.weapon)}:w)}};
+ const acquired=newSerializedWeapon(nextCatalogWeaponSerial(c),preset.weapon,c.day,body);
+ return projectCatalogInventory({...c,funds:charge(c,price),inventory:{...c.inventory,
+  serializedWeapons:[...c.inventory.serializedWeapons,acquired]}});
 }
 /** Buying an attachment adds one stock item without silently equipping it. */
 export function buyWeaponAttachment(c:CampaignState,partId:string):CampaignState{
@@ -898,9 +896,9 @@ export function equipCampaignWeapon(c:CampaignState,id:string,
 function preflightCatalogIssue(c:CampaignState,id:string,serialId:string){
  if(c.activeContractId)return undefined;
  const m=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
- if(!m||c.operators.some(o=>o.status!=='lost'&&o.status!=='retired'&&o.weaponSerialId===serialId))return undefined;
- const incoming=c.inventory.serializedWeapons?.find(w=>w.id===serialId);
- if(!incoming||!incoming.catalogBody||c.inventory.weapons[incoming.platform]<1)return undefined;
+ if(!m)return undefined;
+ const incoming=catalogOwnedStock(c).find(w=>w.id===serialId);
+ if(!incoming||!incoming.catalogBody)return undefined;
  const weapon=incoming.platform;
  if(!mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'))return undefined;
  const preset=matchingFamilyPreset(incoming.catalogBody);
@@ -924,14 +922,12 @@ export function equipCampaignCatalogWeapon(c:CampaignState,id:string,serialId:st
  if(!plan)return c;
  const {m,weapon,target,stockAfter}=plan;
  const normalized=synchronizeIssuedCatalogBodies(c);
- const counts={...normalized.inventory.weapons};
- counts[weapon]--;counts[m.weapon]++;
- const next=reconcileCampaignWeaponOwnership({...normalized,inventory:{...normalized.inventory,
-  weapons:counts,attachments:stockAfter},operators:normalized.operators.map(o=>o.id===id?
+ const next=projectCatalogInventory({...normalized,inventory:{...normalized.inventory,
+  attachments:stockAfter},operators:normalized.operators.map(o=>o.id===id?
    {...o,weapon,weaponSerialId:serialId,magazine:0,reserve:0,magazines:[],
     loadedMagazineId:o.id+'/'+weapon+'/loaded',loadout:syncPrimaryWeapon(o.loadout,weapon),
     weaponConfiguration:target}:o)});
- // Fail closed if compatibility reconciliation cannot preserve this exchange.
+ // Fail closed if projection cannot preserve this exchange.
  if(next.operators.find(o=>o.id===id)?.weaponSerialId!==serialId||
   next.inventory.serializedWeapons?.length!==normalized.inventory.serializedWeapons?.length)return c;
  return next;

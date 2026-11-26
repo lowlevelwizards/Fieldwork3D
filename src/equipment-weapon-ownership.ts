@@ -90,3 +90,32 @@ export function synchronizeIssuedCatalogBodies(c:CampaignState):CampaignState{
  });
  return changed?{...c,inventory:{...c.inventory,serializedWeapons:serials}}:c;
 }
+
+/** Exact named transaction helpers. The legacy stock map is a projection
+ * of actual spare serials after the operation, not a quantity to reconcile. */
+export function catalogOwnedStock(c:CampaignState){
+ const reserved=new Set(c.operators.filter(o=>o.status!=='retired').map(o=>o.weaponSerialId));
+ return (c.inventory.serializedWeapons??[]).filter(w=>!reserved.has(w.id));
+}
+export function nextCatalogWeaponSerial(c:CampaignState):string{
+ const taken=new Set((c.inventory.serializedWeapons??[]).map(w=>w.id));
+ for(const o of c.operators)if(o.weaponSerialId)taken.add(o.weaponSerialId);
+ let n=0,id='';
+ do{id=c.id.slice(0,50)+':weapon:'+n++;}while(taken.has(id));
+ return id;
+}
+/** Preserve the historic stable array ordering for save round-trip parity.
+ * No minting, reassignment, or discard of any existing serial. */
+export function projectCatalogInventory(c:CampaignState):CampaignState{
+ const all=c.inventory.serializedWeapons??[];
+ const issued=c.operators.filter(active).flatMap(o=>{
+  const w=all.find(x=>x.id===o.weaponSerialId);return w?[w]:[];
+ });
+ const assigned=new Set(issued.map(w=>w.id));
+ const spare=catalogOwnedStock(c);
+ const counts={carbine:0,smg:0,rifle:0,shotgun:0};
+ for(const w of spare)counts[w.platform]++;
+ const rest=all.filter(w=>!assigned.has(w.id));
+ return {...c,inventory:{...c.inventory,weapons:counts,
+  serializedWeapons:[...issued,...PLATFORMS.flatMap(p=>rest.filter(w=>w.platform===p))]}};
+}

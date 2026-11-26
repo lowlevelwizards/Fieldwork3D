@@ -64,7 +64,8 @@ export function catalogWeaponQuote(c:CampaignState,presetId:string):CatalogWeapo
  const base=campaignWeaponQuote(c,preset.weapon);
  const assigned=new Set(c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').map(o=>o.weaponSerialId));
  const matching=(c.inventory.serializedWeapons??[]).filter(w=>matchingFamilyPreset(w.catalogBody)?.id===presetId);
- const issued=matching.filter(w=>assigned.has(w.id)).length,stock=matching.length-issued;
+ const issued=matching.filter(w=>assigned.has(w.id)).length,
+  stock=catalogOwnedStock(c).filter(w=>matchingFamilyPreset(w.catalogBody)?.id===presetId).length;
  let status=base.status,authorization=base.authorization;
  if(!mayChooseCampaignContent(c,'weapon-preset',presetId)){
   const setup=effectiveDispatchSetup(c),reference=currentDispatchReference(c);
@@ -85,13 +86,13 @@ export function catalogWeaponOfferings(c:CampaignState):CatalogWeaponQuote[]{
 }
 
 import type {SerializedWeapon} from './equipment-weapon-identity.ts';
+import {catalogOwnedStock} from './equipment-weapon-ownership.ts';
 export function ownedCatalogWeaponName(w:SerializedWeapon):string{
  return matchingFamilyPreset(w.catalogBody)?.name??
   ((FAMILY_PARTS[w.catalogBody.parts.receiver]?.name??w.catalogBody.family.toUpperCase())+' · CUSTOM');
 }
 export function catalogWeaponIssueOptions(c:CampaignState,operatorId:string){
- const assigned=new Set(c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').map(o=>o.weaponSerialId));
- return (c.inventory.serializedWeapons??[]).filter(w=>!assigned.has(w.id)).map(w=>({
+ return catalogOwnedStock(c).map(w=>({
   serialId:w.id,name:ownedCatalogWeaponName(w),condition:w.condition,
   enabled:canEquipCampaignCatalogWeapon(c,operatorId,w.id)
  })).sort((a,b)=>Number(b.enabled)-Number(a.enabled)||a.name.localeCompare(b.name)||a.serialId.localeCompare(b.serialId));
