@@ -22,7 +22,7 @@ export const PIXEL_SURFACES:readonly PixelSurface[]=[
  'scruffy-grass','worn-asphalt','packed-earth',
  'woven-fabric','molded-plastic','tire-rubber'
 ];
-export const MATERIAL_RECIPE_VERSION=5;
+export const MATERIAL_RECIPE_VERSION=6;
 const hash=(x:number,y:number,s:number)=>{
  let n=Math.imul(x,374761393)^Math.imul(y,668265263)^Math.imul(s,1274126177);
  n=Math.imul(n^(n>>>13),1274126177);
@@ -38,13 +38,15 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
   let shade=255;
   switch(kind){
    case 'wood':{
-    const board=Math.floor(y/8),offset=(board%2)*11+seed%7;
-    const joint=mod(x+offset,size)===0;
-    if(y%8===0)shade=225;
-    else if(y%8===1)shade=249;
-    else if(joint)shade=236;
-    else if(y%8===5&&hash(Math.floor((x+offset)/12),board,seed)%11===0&&x%12<6)
-      shade=248; // a short directional grain mark, not whole-surface mottling
+    const board=Math.floor(y/8),offset=(board%2)*16+mod(seed,7);
+    const j=mod(x+offset,32),row=y%8;
+    const tone=hash(board,Math.floor((x+offset)/32),seed)%4;
+    shade=255-tone*3;
+    if(row===0)shade=225;
+    else if(row===1)shade=Math.min(shade,245);
+    else if(j===0)shade=236;
+    else if(row===4&&j>=4&&j<=12)shade=Math.min(shade,244);
+    else if(row===6&&j>=20&&j<=27)shade=Math.min(shade,249);
     break;
    }
    case 'door-wood':{
@@ -82,9 +84,13 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
       shade=kind==='cinderblock'?233:217;
     break;
    }
-   case 'tile':
-    if(x%8===0||y%8===0)shade=231;
+   case 'tile':{
+    const row=y%8,col=x%8,tone=hash(Math.floor(x/8),Math.floor(y/8),seed)%4;
+    shade=255-tone*3;
+    if(row===0||col===0)shade=233;
+    else if(row===1||col===1)shade=Math.min(shade,251);
     break;
+   }
    case 'metal':case 'panel':case 'painted-metal':case 'industrial-steel':
    case 'corrugated-metal':case 'enamel-metal':{
     if(kind==='corrugated-metal')
@@ -100,17 +106,23 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
    case 'siding':
     if(y%8===0)shade=241;
     break;
-   case 'concrete':case 'sealed-concrete':
-    // Structural joints, plus one broad mineral tone instead of grit.
-    if(x===0||y===0)shade=kind==='sealed-concrete'?245:239;
-    else if(kind==='concrete'&&x>=7+seed%3&&x<16+seed%3&&
-      y>=11&&y<=18)shade=252;
+   case 'concrete':case 'sealed-concrete':{
+    const sealed=kind==='sealed-concrete',row=y%32,col=x%32;
+    if(row===0||col===0)shade=sealed?245:239;
+    else if(row===1||col===1)shade=sealed?253:250;
+    else if(!sealed&&col>5&&col<19&&row>7&&row<19)shade=250;
+    else if(!sealed&&((col===6||col===25)&&(row===6||row===25)))shade=241;
+    else if(sealed&&row>15&&row<24&&col>17&&col<28)shade=253;
     break;
+   }
    case 'rubber':case 'tire-rubber':
     if(x%8===0&&y%8<2)shade=kind==='tire-rubber'?236:246;
     if(kind==='tire-rubber'&&x%8===5&&y%8===4)shade=243;
     break;
-   case 'fabric':case 'carpet':case 'woven-fabric':
+   case 'carpet':
+    if((y%8===3&&x%8>=2&&x%8<=4)||(y%8===5&&x%8>=5&&x%8<=6))shade=251;
+    break;
+   case 'fabric':case 'woven-fabric':
     if(manufacturedSpeck(x,y,seed,kind==='woven-fabric'?10:16))
       shade=kind==='woven-fabric'?247:251;
     if(kind==='woven-fabric'&&y%9===3&&x%11>=3&&x%11<=5)
@@ -143,7 +155,7 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
    }
    case 'linoleum':
     if(seed%4===1&&x===0)shade=252;
-    else if(manufacturedSpeck(x,y,seed,24))shade=253;
+    else if((x%16>=6&&x%16<=8&&y%16===7)||(x%16===12&&y%16>=11&&y%16<=12))shade=253;
     break;
    case 'plaster':
     if(manufacturedSpeck(x,y,seed,32))shade=252;
