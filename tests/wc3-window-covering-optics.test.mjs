@@ -73,3 +73,9 @@ test('transient point lights and receiver masks stop at covered apertures',()=>{
  assert.ok(transientReachAt(reach,Math.PI/2)<40);
  assert.equal(transientReachAt(reach,-Math.PI/2),100);
 });
+
+test('legacy presentation-only fog snapshots do not require physical world registration',()=>{
+ const s={objectRevision:0};
+ assert.equal(sessionCoveringOptics(s).strips.length,0);
+ assert.strictEqual(sessionCoveringOptics(s),sessionCoveringOptics(s));
+});

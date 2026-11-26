@@ -4,7 +4,6 @@ import type {WindowOpening} from './breach-site.ts';
 import type {Session} from './breach-game.ts';
 import {normalizeWindowCovering,type WindowCovering} from './breach-window-coverings.ts';
 import {windowVisualHeadHeight} from './breach-opening-proportions.ts';
-import {sessionWorldGeometry} from './breach-world-context.ts';
 export type CoveringOpticalStrip={edge:Segment;bottom:number;top:number;vertical:boolean;plane:number;lo:number;hi:number};
 /** Broad opaque portions, never individual slat rays. Tilted blinds transmit
  * sight in the tactical approximation. Legacy open curtains stay clear. */
@@ -42,15 +41,15 @@ export function coveringStripsBlockRay(strips:readonly CoveringOpticalStrip[],a:
   if(height>=s.bottom&&height<=s.top)return true;
  }return false;
 }
-type Optics={windows:Session['windows'];site:Session['site'];revision:number;worldRevision:number;strips:CoveringOpticalStrip[];standing:Segment[];low:Segment[];all:Segment[]};
+type Optics={windows:Session['windows'];site:Session['site'];revision:number;strips:CoveringOpticalStrip[];standing:Segment[];low:Segment[];all:Segment[]};
 const cache=new WeakMap<Session,Optics>(),empty:Session['windows']=[];
 export function sessionCoveringOptics(s:Session):Optics{
- const windows=s.windows??empty,revision=s.objectRevision,worldRevision=sessionWorldGeometry(s).revision;
+ const windows=s.windows??empty,revision=s.objectRevision;
  const old=cache.get(s);
- if(old&&old.windows===windows&&old.site===s.site&&old.revision===revision&&old.worldRevision===worldRevision)return old;
+ if(old&&old.windows===windows&&old.site===s.site&&old.revision===revision)return old;
  const strips=windows.flatMap(w=>windowCoveringOpticalStrips(w));
  const at=(height:number)=>strips.filter(p=>height>=p.bottom&&height<=p.top).map(p=>p.edge);
- const next={windows,site:s.site,revision,worldRevision,strips,standing:at(32),low:at(22),all:strips.map(p=>p.edge)};
+ const next={windows,site:s.site,revision,strips,standing:at(32),low:at(22),all:strips.map(p=>p.edge)};
  cache.set(s,next);return next;
 }
 export function windowCoveringsBlockSight(s:Session,a:Pt,b:Pt,fromHeight:number,toHeight=fromHeight):boolean{
