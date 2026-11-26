@@ -1,0 +1,30 @@
+name: Environment interaction critical checks
+on:
+  pull_request:
+    paths:
+      - 'src/breach-*'
+      - 'src/ui/**'
+      - 'src/worldgen/**'
+      - 'src/rendering/**'
+      - 'tests/ei*.test.mjs'
+      - '.github/workflows/ei-environment-interaction-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ei-critical-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - name: Critical interaction and geometry regressions
+        run: |
+          node --experimental-strip-types --test tests/hold-objective-area.test.mjs tests/oc-optional-intel.test.mjs tests/ei3-contextual-door-pairs.test.mjs tests/ei4-window-bash.test.mjs tests/contextual-actions-medical-window-20261108.test.mjs tests/r6-0-tactical-action-audit.test.mjs tests/a3-10-preopen-shoulder-cap.test.mjs tests/exterior-curb-service-20261108.test.mjs tests/physicality-12-door-proportions.test.mjs
+      - run: npm run build
