@@ -40,7 +40,7 @@ try{
  assert.equal(await lab.locator('#specimen-error').textContent(),'');
  await lab.locator('[data-tab="tactical"]').click();
  await lab.locator('#render-tactical').click();
- await lab.waitForFunction(()=>document.querySelector('#tactical-status')?.textContent?.includes('metric wall candidate'),{},{timeout:60000});
+ await lab.waitForFunction(()=>document.querySelector('#tactical-status')?.textContent?.includes('metric wall and floor candidate'),{},{timeout:60000});
  await lab.screenshot({path:dir+'/lab-metric-tactical.png'});
  assert.deepEqual(errors,[]);
  await lab.close();
