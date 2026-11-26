@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {newSession,enemies,team,planSecureDroppedFirearm,
  planSearchSuspect,toggling,stepSession} from '../src/breach-game.ts';
 import {releaseDownedSuspectWeapons} from '../src/breach-suspect-weapons.ts';
-import {releaseDownedSuspectWeapons} from '../src/breach-suspect-weapons.ts';
 import {commitSuspectSurrender} from '../src/breach-suspect-compliance.ts';
 import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
 import {contextActionChoices} from '../src/ui/context-actions.ts';
