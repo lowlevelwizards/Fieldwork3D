@@ -92,7 +92,7 @@ function cutPaired(wall:Segment,id:string,walls:Segment[],doors:Door[],fraction=
 }
 export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  scale:SiteScale='expanded',subtype='',mission?:OperationKind,
- expandedDoorFamilies=scale==='large'):Site{
+ expandedDoorFamilies=true):Site{
  const baseline=architecturalBlueprint(kind,seed);
  const selected:Blueprint=kind==='apartment'?apartmentUnitBlueprint(seed,scale):
    scale==='small'||scale==='large'?sizedBlueprint(kind,seed,scale,baseline):baseline;
@@ -407,7 +407,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   ({id,kind:'apartment',roomIds}));
  const west=xs[0],east=xs[xs.length-1],north=ys[0],south=ys[ys.length-1];
  return {seed,name:b.family.toUpperCase(),archetype:kind,scale,
-   ...(expandedDoorFamilies?{expandedDoorFamilies:true as const}:{}),
+   ...(expandedDoorFamilies&&(scale==='large'||doors.some(d=>d.pairedWith))?{expandedDoorFamilies:true as const}:{}),
    planFamily:b.family,programLocked:true,circulationStyle,
    rooms:cells.map(c=>c.room),walls,doors,openings,cover:[],units,
    entrance,spawn,enemies,

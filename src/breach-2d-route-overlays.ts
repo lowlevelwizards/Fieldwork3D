@@ -4,6 +4,7 @@ import {W,H,type Pt} from './breach-core.ts';
 import {type Session,type TeamActor,team,flashTrajectory} from './breach-game.ts';
 import type {MissionRecorder} from './breach-replay.ts';
 import type {DisplayRouteCache} from './breach-route-cache.ts';
+import {plannedAimHandle} from './breach-plan.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {paintPassageRanks} from './ui/passage-rank-badges.ts';
@@ -196,20 +197,21 @@ function paths(){
         draw.fillText(n.transportMode==='carry'?'CARRY ROUTE':'DRAG ROUTE',
           point.x+12,point.y-14);draw.restore();
       }
-      if(n.facing!==undefined){
+      const aimHandle=plannedAimHandle(n);
+      if(n.facing!==undefined&&!aimHandle){
         const end={x:point.x+Math.cos(n.facing)*40,
           y:point.y+Math.sin(n.facing)*40};
         line(point,end,c,2.1);circle(end.x,end.y,2.2,c);
       }
-      if(n.aimMode==='track'&&n.aimPoint){
+      if(aimHandle){
         const watched=selectedNow&&draggingWatchTarget&&draggingNode?
-          draggingNode:n.aimPoint;
+          draggingNode:aimHandle;
         line(point,watched,c,1.8);
         circle(watched.x,watched.y,selectedNow?9:7,c);
         circle(watched.x,watched.y,3,'#203732');
         draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';
-        draw.fillStyle='#e8cba2';
-        draw.fillText('WATCH',point.x+12,point.y-12);
+        draw.fillStyle=n.aimMode==='track'?'#e8cba2':'#d5e8de';
+        draw.fillText(n.aimMode==='track'?'WATCH':'LOOK',point.x+12,point.y-12);
       }else if(n.aimMode==='fixed'||(n.aimMode==='free'&&n.facing!==undefined)){
         draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillStyle='#d5e8de';
