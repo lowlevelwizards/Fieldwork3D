@@ -39,7 +39,7 @@ test('D15.8 real drag body has enough clearance, carry occupies elevated shoulde
  assert.equal(downedTransportPresentation(body,[lead])?.lift,18);
  assert.equal(downedTransportPresentation({...body,carriedById:null},[lead]),null);
 });
-test('D15.8 context CARRY/DRAG arms destination rather than silently beelining to exit',()=>{
+test('Context CARRY/DRAG queues pickup without a destination',()=>{
  for(const [action,mode] of [['ctxDragCapture','drag'],['ctxCarryCapture','carry']]){
   const {s,carrier,target}=make();
   try{
@@ -50,9 +50,11 @@ test('D15.8 context CARRY/DRAG arms destination rather than silently beelining t
    });
    assert.equal(result.handled,true);
    assert.equal(result.outcome,'accepted');
-   assert.deepEqual(result.armTransport,{patientId:target.id,mode});
-   assert.equal(carrier.plan.length,before,
-    'context selection must wait for an actual player-drawn path');
+   assert.equal(result.armTransport,undefined);
+   assert.equal(carrier.plan.length,before+1);
+   assert.equal(carrier.plan.at(-1).patientId,target.id);
+   assert.equal(carrier.plan.at(-1).transportMode,mode);
+   assert.equal(carrier.plan.at(-1).transportPickup,true);
   }finally{activateSite(null);}
  }
 });
