@@ -100,8 +100,8 @@ test('R6.0 reports all action layers while keeping unproven candidates explicit'
  assert.match(report.caveat,/Static source evidence only/);
  const markdown=renderR60(report);
  assert.match(markdown,/Read-only: yes/);
- assert.match(markdown,/17/);
- assert.match(markdown,/contextual command lexemes: 35/);
+ assert.match(markdown,/18/);
+ assert.match(markdown,/contextual command lexemes: 36/);
  assert.match(markdown,/door methods: 4/);
  assert.match(markdown,/Context actions/);
  assert.match(markdown,/Existing execution and feedback boundaries/);
