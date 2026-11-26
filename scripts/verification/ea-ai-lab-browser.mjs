@@ -29,8 +29,12 @@ try{
    if(!detail?.includes('IDENTITY')||!detail.includes('SUSPICION'))throw Error('Missing real NPC inspection');
    const png=await page.locator('#map').screenshot({path:'artifacts/ea/lab-'+viewport.width+'.png'});
    if(png.length<1000||errors.length)throw Error('EA browser smoke '+errors.join(';'));
+   await page.locator('#group').selectOption('regular-force');
+   await page.locator('#tier').selectOption('trained');
    await page.locator('#reset').click();
    await page.waitForFunction(()=>document.querySelector('#perf')?.textContent==='No samples');
+   const overridden=await page.locator('#details').textContent();
+   if(!overridden?.includes('GROUP regular-force')||!overridden.includes('IDENTITY trained'))throw Error('EA lab profile override not applied');
    console.log('EA lab browser',viewport.width,'PASS');
   }finally{await page.close();}
  }

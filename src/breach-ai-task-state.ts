@@ -3,12 +3,13 @@
 import type {TeamActor} from './breach-game.ts';
 import type {Pt} from './breach-core.ts';
 export function clearNpcSearch(a:TeamActor):void{
- a.searchOrigin=null;a.searchQueue=[];a.searchPauseUntil=0;
+ a.searchOrigin=null;if(a.searchQueue.length)a.searchQueue=[];a.searchPauseUntil=0;
 }
 export function clearNpcCoordination(a:TeamActor,releaseDestination=false):void{
  if(releaseDestination&&a.coordinationOwnsDefense){a.defense=null;a.nav=[];}
  a.coordinationRole=null;a.coordinationUntil=0;
  a.coordinationReportId=undefined;a.coordinationPending=false;a.coordinationOwnsDefense=false;
+ a.coordinationCandidates=undefined;
 }
 export function canAcceptNpcAssignment(a:TeamActor,now:number):boolean{
  return a.health>0&&!a.surrendered&&a.alert!=='retreat'&&!a.retreatPoint&&

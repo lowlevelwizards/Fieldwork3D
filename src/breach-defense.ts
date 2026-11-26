@@ -1,6 +1,6 @@
 import type {SessionWorldGeometry} from './breach-world-context.ts';
 /** Build 098: room defense positions, spacing and threat-oriented watches. */
-import {COVER,WALLS,activeSite,passable,route,doorCenter,type Door,type Pt} from './breach-core.ts';
+import {COVER,WALLS,activeSite,passable,route,doorCenter,segmentsCross,type Door,type Pt} from './breach-core.ts';
 import {assessFireLane} from './breach-fire-safety.ts';
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {directionalCoverFrom} from './breach-cover-direction.ts';
@@ -44,7 +44,9 @@ export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
   const originProtected=directionalCoverFrom(threat,origin,fixtures).crouched;
   for(const p of options){
     const occupancy=peers.some(a=>dist(p,a.defense??a.p)<35);
-    const protectedSpot=directionalCoverFrom(threat,p,fixtures).crouched;
+    const structureProtected=policy.purpose==='shelter'&&(world?
+      world.staticWallBlocksRay({a:threat,b:p}):walls.some(w=>segmentsCross({a:threat,b:p},w)));
+    const protectedSpot=structureProtected||directionalCoverFrom(threat,p,fixtures).crouched;
     const span=peers.reduce((n,a)=>{
       const separation=dist(p,a.p);
       return n+(separation>55&&separation<160?15:0);

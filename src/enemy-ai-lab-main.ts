@@ -91,6 +91,7 @@ function draw(){
   const index=aiSiteIndex(world,s.doors);
   for(const a of index.anchors){ctx.fillStyle='#b3c090';ctx.fillRect(a.p.x-1.5,a.p.y-1.5,3,3);}
   for(const p of index.portals){ctx.fillStyle=p.kind==='window'?'#77a6bd':'#d1bd7b';ctx.fillRect(p.center.x-3,p.center.y-3,6,6);}
+  for(const o of index.observations){ctx.strokeStyle=o.kind==='window'?'#77a6bd':'#b3c090';ctx.strokeRect(o.p.x-3,o.p.y-3,6,6);}
  }
  const selected=actorSelect.value;
  for(const a of s.operators){

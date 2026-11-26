@@ -241,3 +241,17 @@ test('EA2 clear-lane score is a safe upper bound for shelter and observe scoring
   assert.ok(coverScore(facts,purpose)>=coverScore({...facts,shotClear:false},purpose));
  }
 });
+
+import {groupObservationProposals} from '../src/breach-ai-site-index.ts';
+test('EA9 scene observation proposals require real connected game areas, not a window crossing',()=>{
+ const rooms=[{id:'a',kind:'room',x:0,y:0,w:100,h:100},{id:'b',kind:'room',x:100,y:0,w:100,h:100},{id:'c',kind:'room',x:0,y:100,w:100,h:100}];
+ const exteriorZones=[{id:'yard',kind:'yard',x:200,y:0,w:100,h:100}];
+ const doors=[{id:'ab',a:point(100,30),b:point(100,70)},{id:'by',a:point(200,30),b:point(200,70)}];
+ const index=buildAiSiteIndex({rooms,exteriorZones,windows:[{id:'ac',x:50,y:100,width:30,vertical:false},{id:'bw',x:200,y:75,width:30,vertical:true}]},[],doors);
+ const candidates=groupObservationProposals(index,point(40,40),point(230,60),[],3);
+ assert.ok(candidates.some(p=>p.x>200));
+ assert.ok(candidates.every(p=>p.y<=100));
+ assert.ok(candidates.length<=4);
+ const reserved=groupObservationProposals(index,point(40,40),point(230,60),[point(250,50)],3);
+ assert.ok(reserved.every(p=>Math.hypot(p.x-250,p.y-50)>50));
+});

@@ -198,6 +198,7 @@ export type TeamActor=Operator & {
   intent:AIIntent|null;combatChoice:CombatAction|null;lastReportAt:number;
   coordinationRole:GroupRole|null;coordinationUntil:number;
   coordinationReportId?:number;coordinationPending?:boolean;coordinationOwnsDefense?:boolean;
+  coordinationCandidates?:Pt[];
   withdrawRetryAt?:number;
   lastMoraleEventAt:number;
   searchOrigin:Pt|null;searchQueue:Pt[];searchPauseUntil:number;

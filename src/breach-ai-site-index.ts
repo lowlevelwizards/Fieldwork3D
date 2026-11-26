@@ -6,7 +6,8 @@ import type {SessionWorldGeometry} from './breach-world-context.ts';
 export type SceneAnchor={p:Pt;radius:number;kind:'fixture'|'room'|'door'};
 export type SceneArea={id:string;kind:'room'|'hall'|'exterior';x:number;y:number;w:number;h:number;center:Pt};
 export type ScenePortal={id:string;kind:'door'|'opening'|'window';center:Pt;areas:readonly string[]};
-export type AiSiteIndex={anchors:readonly SceneAnchor[];areas:readonly SceneArea[];portals:readonly ScenePortal[]};
+export type SceneObservation={p:Pt;areaId:string;kind:'window'|'area'};
+export type AiSiteIndex={anchors:readonly SceneAnchor[];areas:readonly SceneArea[];portals:readonly ScenePortal[];observations:readonly SceneObservation[]};
 const center=(a:Pt,b:Pt):Pt=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
 const contains=(a:SceneArea,p:Pt)=>p.x>=a.x&&p.x<=a.x+a.w&&p.y>=a.y&&p.y<=a.y+a.h;
 const area=(r:{id:string;x:number;y:number;w:number;h:number},kind:SceneArea['kind']):SceneArea=>
@@ -30,6 +31,7 @@ export function buildAiSiteIndex(site:Site|null,cover:readonly Obstacle[],doors:
  const areas:SceneArea[]=[...(site?.rooms??[]).map(r=>area(r,r.kind)),
   ...(site?.exteriorZones??[]).map(r=>area(r,'exterior'))];
  const portals:ScenePortal[]=[];
+ const observations:SceneObservation[]=areas.map(a=>({p:{...a.center},areaId:a.id,kind:'area'}));
  const portal=(id:string,kind:ScenePortal['kind'],a:Pt,b:Pt)=>{
   const p=center(a,b),len=Math.hypot(b.x-a.x,b.y-a.y);
   const adjacent:string[]=[];
@@ -37,7 +39,16 @@ export function buildAiSiteIndex(site:Site|null,cover:readonly Obstacle[],doors:
    for(const offset of [12,24,40]){
     const probe={x:p.x+sign*(b.y-a.y)/len*offset,y:p.y-sign*(b.x-a.x)/len*offset};
     const found=areas.find(r=>contains(r,probe));
-    if(found){if(!adjacent.includes(found.id))adjacent.push(found.id);break;}
+    if(found){
+     if(!adjacent.includes(found.id))adjacent.push(found.id);
+     if(kind==='window'){
+      // A window provides a possible observation location, never a
+      // movement edge. The live passability/route checks remain mandatory.
+      const point={x:p.x+sign*(b.y-a.y)/len*38,y:p.y-sign*(b.x-a.x)/len*38};
+      if(contains(found,point))observations.push({p:point,areaId:found.id,kind:'window'});
+     }
+     break;
+    }
    }
   }
   portals.push({id,kind,center:p,areas:adjacent});
@@ -52,7 +63,7 @@ export function buildAiSiteIndex(site:Site|null,cover:readonly Obstacle[],doors:
   const dx=w.vertical?0:w.width/2,dy=w.vertical?w.width/2:0;
   portal(w.id,'window',{x:w.x-dx,y:w.y-dy},{x:w.x+dx,y:w.y+dy});
  }
- return {anchors,areas,portals};
+ return {anchors,areas,portals,observations};
 }
 const indexes=new WeakMap<SessionWorldGeometry,{revision:number;doorKey:string;site:Site|null;index:AiSiteIndex}>();
 export function aiSiteIndex(world:SessionWorldGeometry,doors:readonly Door[]):AiSiteIndex{
@@ -66,19 +77,36 @@ export function aiSiteIndex(world:SessionWorldGeometry,doors:readonly Door[]):Ai
  return index;
 }
 /** Adjacent area proposals only; windows are never treated as walkable edges. */
-export function connectedAreaCenters(index:AiSiteIndex,from:Pt,maxHops=1):Pt[]{
+function connectedAreaIds(index:AiSiteIndex,from:Pt,maxHops:number):string[]{
  const current=index.areas.find(a=>contains(a,from));
  if(!current)return [];
- const visited=new Set([current.id]),result:Pt[]=[];
+ const visited=new Set([current.id]),result:string[]=[];
  let frontier=[current.id];
  for(let hop=0;hop<Math.min(3,Math.max(0,Math.floor(maxHops)))&&frontier.length;hop++){
   const next=new Set<string>();
   for(const p of index.portals)
    if(p.kind!=='window'&&p.areas.some(id=>frontier.includes(id)))
     for(const id of p.areas)if(!visited.has(id))next.add(id);
-  const layer=index.areas.filter(a=>next.has(a.id));
-  frontier=layer.map(a=>a.id);
-  for(const a of layer){visited.add(a.id);result.push({...a.center});}
+  frontier=index.areas.filter(a=>next.has(a.id)).map(a=>a.id);
+  for(const id of frontier){visited.add(id);result.push(id);}
  }
  return result;
+}
+export function connectedAreaCenters(index:AiSiteIndex,from:Pt,maxHops=1):Pt[]{
+ return connectedAreaIds(index,from,maxHops).map(id=>({...index.areas.find(a=>a.id===id)!.center}));
+}
+/** Bounded game-space observation proposals near personally known evidence.
+ * No live opponent query; no teleport; a window never supplies connectivity. */
+export function groupObservationProposals(index:AiSiteIndex,from:Pt,estimate:Pt,
+ reservations:readonly Pt[],maxHops=2):Pt[]{
+ const current=index.areas.find(a=>contains(a,from));
+ if(!current)return [];
+ const connected=new Set(connectedAreaIds(index,from,maxHops));
+ const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
+ return index.observations.filter(o=>
+   (connected.has(o.areaId)||o.areaId===current.id&&o.kind==='window')&&
+   distance(o.p,from)>45&&distance(o.p,from)<350&&
+   reservations.every(q=>distance(q,o.p)>50))
+  .map((o,i)=>({o,i,score:distance(o.p,estimate)+distance(o.p,from)*.25}))
+  .sort((a,b)=>a.score-b.score||a.i-b.i).slice(0,4).map(({o})=>({...o.p}));
 }

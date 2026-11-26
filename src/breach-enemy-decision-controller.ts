@@ -42,7 +42,7 @@ import {localFixtureObservation} from './breach-ai-contextual-observation.ts';
 import {doctrineForPurpose} from './breach-ai-doctrine.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
-import {aiSiteIndex,connectedAreaCenters} from './breach-ai-site-index.ts';
+import {aiSiteIndex,connectedAreaCenters,groupObservationProposals} from './breach-ai-site-index.ts';
 import {clearNpcSearch,clearNpcCoordination,commitNpcWithdrawal,canAcceptNpcAssignment} from './breach-ai-task-state.ts';
 import {recentlyChecked,rememberChecked} from './breach-ai-search-memory.ts';
 
@@ -284,7 +284,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       a.defense?d(a.p,a.defense):0,s.seconds,a.defenseUntil);
     if(a.alert!=='retreat'&&!maneuvering&&
        a.combatChoice!=='hold'&&a.combatChoice!=='withdraw'){
-      a.alert='engaging';a.nav=[];
+      a.alert='engaging';if(a.nav.length)a.nav=[];
     }
   }else if(s.seconds>a.alertUntil&&a.alert!=='idle'&&
     a.alert!=='retreat'&&a.alert!=='cover'){
@@ -306,7 +306,9 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.encounterReactionUntil=s.seconds+encounterReactionDelay(
       a.encounterReadiness??'attentive',a.id);
   }
-  if(strongest&&!visible.length&&a.alert!=='retreat'){
+  if(strongest&&!visible.length&&a.alert!=='retreat'&&
+     (!(a.coordinationRole&&s.seconds<a.coordinationUntil)||noiseDisposition==='alarm')){
+    if(a.coordinationRole)clearNpcCoordination(a,true);
     // Only genuinely heard alarms can produce an uncertain local warning.
     // One reported event per sound; speech is audible, not squad-wide magic.
     if(noiseDisposition==='alarm'&&a.encounterGroupId&&
@@ -532,27 +534,27 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.alert='cover';
     if(a.coordinationPending){
       if(!electiveAiWork(s,a,'group-position')){a.velocity=0;return;}
-      a.coordinationPending=false;
       const estimate=a.heard??a.contact??a.watch;
-      // Support is a game-space assignment rather than an independent
-      // destination writer. Use connected, unreserved areas, then let the
-      // existing motor check the actual route. No hidden player state.
-      if(a.coordinationRole==='support'&&a.npcIdentity&&
+      if(a.coordinationRole==='support'&&estimate&&a.npcIdentity&&
          a.npcIdentity.competence!=='untrained'){
-        const reservations=enemies(s).filter(peer=>peer!==a&&activeCombatant(peer)&&
-          peer.encounterGroupId===a.encounterGroupId&&
-          peer.coordinationReportId===a.coordinationReportId)
-          .map(peer=>peer.defense??peer.p);
-        const candidate=connectedAreaCenters(aiSiteIndex(world,s.doors),a.p,2)
-          .find(p=>world.passable(p)&&d(p,a.p)>45&&d(p,a.p)<300&&
-            reservations.every(q=>d(p,q)>50));
-        if(candidate){
-          const route=cachedEnemyRoute(s,a.p,candidate);
-          if(route.length){
-            a.defense=candidate;a.nav=route;
-          }
+        if(!a.coordinationCandidates){
+          const reservations=enemies(s).filter(peer=>peer!==a&&activeCombatant(peer)&&
+            peer.encounterGroupId===a.encounterGroupId&&
+            peer.coordinationReportId===a.coordinationReportId)
+            .map(peer=>peer.defense??peer.p);
+          a.coordinationCandidates=groupObservationProposals(aiSiteIndex(world,s.doors),a.p,
+            estimate,reservations,a.npcIdentity.competence==='experienced'?1:3);
         }
+        const candidate=a.coordinationCandidates.shift();
+        if(candidate&&world.passable(candidate)){
+          const route=cachedEnemyRoute(s,a.p,candidate);
+          if(route.length){a.defense=candidate;a.nav=route;}
+        }
+        // Failed alternatives are retried on later scheduled slots, never
+        // an unbounded route-search burst or invented relocation.
+        if(!a.defense&&a.coordinationCandidates.length){a.velocity=0;return;}
       }
+      a.coordinationPending=false;a.coordinationCandidates=undefined;
       if(!a.defense&&estimate)a.defense=defensivePosition(a,estimate,s);
       a.coordinationOwnsDefense=!!a.defense;
       a.defenseUntil=Math.min(a.coordinationUntil,s.seconds+9);
