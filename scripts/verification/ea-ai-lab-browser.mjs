@@ -35,7 +35,18 @@ try{
    await page.waitForFunction(()=>document.querySelector('#perf')?.textContent==='No samples');
    const overridden=await page.locator('#details').textContent();
    if(!overridden?.includes('GROUP regular-force')||!overridden.includes('IDENTITY trained'))throw Error('EA lab profile override not applied');
-   console.log('EA lab browser',viewport.width,'PASS');
+   await page.locator('#quality').selectOption('low');
+   const low=await page.locator('#dossier').textContent();
+   if(low?.includes('Regular forces'))throw Error('Low threat report leaked affiliation');
+   await page.locator('#quality').selectOption('high');
+   const high=await page.locator('#dossier').textContent();
+   if(!high?.includes('Regular forces')||!high.includes('reported weapons'))throw Error('High report missing issued profile');
+   await page.locator('#sample-ticks').fill('10');
+   await page.locator('#sample').click();
+   await page.locator('#pin').click();
+   if(!(await page.locator('#comparison').textContent())?.includes('Matched scenario'))throw Error('Comparison reference missing');
+   if(!(await page.locator('#details').textContent())?.includes('ISSUED WEAPON'))throw Error('Kit inspector missing');
+   console.log('EA/EB lab browser',viewport.width,'PASS');
   }finally{await page.close();}
  }
 }finally{await browser?.close();server.kill('SIGTERM');}
