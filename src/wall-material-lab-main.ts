@@ -1,5 +1,7 @@
 import {WALL_EFFECTS,WALL_FINISHES,WALL_WITNESSES,wallSample,samplePixels,selectWallEvents} from './wall-material-lab-samples.ts';
 import {PIXEL_SURFACES,pixelPattern} from './rendering/pixel-recipes.ts';
+import {referenceWallPixels} from './wall-material-lab-reference.ts';
+import {SRGB_BYTE_TO_LINEAR,linearToSRGBByte} from './rendering/surface-color-space.ts';
 import {wearPixels,type WearTextureKind} from './rendering/pixel-decals.ts';
 import type {WallSurfaceRecipe} from './worldgen/wall-surface-recipe.ts';
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
@@ -33,9 +35,14 @@ for(const [i,w] of WALL_FINISHES.entries())wallCard(el('finishes'),w.name,'96 ×
 const materials=PIXEL_SURFACES.map(kind=>{const f=figure(kind.replaceAll('-',' '));el('materials').append(f.root);return {kind,canvas:f.canvas};});
 const kinds=['dust','stain','scrape','scuff','oil','grease','rust','chip','crack','scratch','drip','mud','footprint','mineral','fade','soot','moss','paint-peel','fray','abrade'] as const satisfies readonly WearTextureKind[];
 const masks=kinds.map(kind=>{const f=figure(kind.replaceAll('-',' '));el('masks').append(f.root);return {kind,canvas:f.canvas};});
+const swatchColor=(kind:string):number=>/wood/.test(kind)?0xa37a50:/grass|foliage/.test(kind)?0x73925c:/asphalt/.test(kind)?0x62686c:/earth|gravel/.test(kind)?0x9a8166:/rubber/.test(kind)?0x454b4b:/brick/.test(kind)?0xab654e:/metal|steel|panel/.test(kind)?0x788e91:/fabric|carpet/.test(kind)?0x827e68:/tile|porcelain/.test(kind)?0xd5d8d0:/plastic/.test(kind)?0x758e80:/paper/.test(kind)?0xd6c8ad:0xb7b5a9;
 function drawPatterns(){
  const n=Math.max(0,Math.min(99999,Math.round(Number(seed.value)||0)));
- for(const {kind,canvas} of materials)paint(canvas,pixelPattern(kind,n),32,32);
+ for(const {kind,canvas} of materials){
+  const bytes=pixelPattern(kind,n),color=swatchColor(kind);
+  if(el<HTMLSelectElement>('material-view').value==='tinted')for(let i=0;i<bytes.length;i+=4)for(let j=0;j<3;j++)bytes[i+j]=linearToSRGBByte(SRGB_BYTE_TO_LINEAR[bytes[i+j]]*SRGB_BYTE_TO_LINEAR[(color>>((2-j)*8))&255]);
+  paint(canvas,bytes,32,32);
+ }
  for(const {kind,canvas} of masks){
   const bytes=wearPixels(kind,n);
   // Neutral swatch for alpha visibility; preserve the exact mask coverage.
@@ -48,6 +55,9 @@ function redraw(){
  el('condition-value').textContent=String(level);
  for(const {recipe,after,before,pair,status} of cards){
   const p=samplePixels(recipe,level);paint(after.canvas,p.bytes,p.width,p.height);
+  const previous=comparison.value==='reference';
+  paint(before.canvas,previous?referenceWallPixels(recipe,level,p.width,p.height):samplePixels(recipe,0).bytes,p.width,p.height);
+  before.caption.textContent=previous?'MA0 · wear '+level:'Clean';
   before.root.hidden=single;pair.className=single?'single':'pair';
   after.caption.textContent='Wear '+level+'/100';
   const active=selectWallEvents(recipe,level);
@@ -61,4 +71,9 @@ function schedule(){if(!pending)pending=requestAnimationFrame(()=>{pending=0;red
 condition.addEventListener('input',schedule);comparison.addEventListener('change',schedule);
 for(const b of document.querySelectorAll<HTMLButtonElement>('[data-level]'))b.addEventListener('click',()=>{condition.value=b.dataset.level!;schedule();});
 seed.addEventListener('change',drawPatterns);
+el<HTMLSelectElement>('material-view').addEventListener('change',drawPatterns);
+for(const tab of document.querySelectorAll<HTMLButtonElement>('[data-tab]'))tab.addEventListener('click',()=>{
+ for(const b of document.querySelectorAll<HTMLButtonElement>('[data-tab]'))b.setAttribute('aria-pressed',String(b===tab));
+ for(const panel of document.querySelectorAll<HTMLElement>('[data-panel]'))panel.hidden=panel.dataset.panel!==tab.dataset.tab;
+});
 drawPatterns();redraw();
