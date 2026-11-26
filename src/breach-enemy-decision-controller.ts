@@ -595,7 +595,8 @@ function distributeReports(s:Session){
      id:observation.id,at:s.seconds,kind:'report',
      cause:'heard-verbal-warning'
    });
-   if(recipient.intent?.kind!=='engage'){
+   if(recipient.intent?.kind!=='engage'&&recipient.alert!=='retreat'&&
+      !recipient.retreatPoint){
     recipient.heard=clone(observation.estimate);
     recipient.contact=clone(observation.estimate);
     recipient.lastNoiseAt=s.seconds;
@@ -637,7 +638,8 @@ function distributeReports(s:Session){
      roles[a.id],heard?.uncertainty??report.uncertainty,
      doctrineForPurpose(purpose));
    const covering=roles[a.id]==='watch'||roles[a.id]==='support';
-   if(covering&&a.intent?.kind!=='engage'){
+   if(covering&&a.intent?.kind!=='engage'&&a.alert!=='retreat'&&
+      !a.retreatPoint){
      a.watch=clone(report.estimate);
      // Existing cover selection considers friendly defender occupancy;
      // this avoids assigning everyone to the same local cover spot.
