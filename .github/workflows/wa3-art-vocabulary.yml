@@ -12,6 +12,8 @@ on:
       - 'weapon-art-material-study.html'
       - 'scripts/*wa3*'
       - 'tests/wa3-*'
+      - 'tests/arsenal-a2-material-unification.test.mjs'
+      - 'tests/arsenal-a4-surface-detail.test.mjs'
       - '.github/workflows/wa3-art-vocabulary.yml'
   workflow_dispatch:
 concurrency:
