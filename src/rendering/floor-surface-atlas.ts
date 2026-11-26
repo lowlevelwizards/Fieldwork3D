@@ -62,12 +62,13 @@ export function buildFloorMaskAtlas(site:Site,level:number,marks:readonly WearMa
 export function floorMaskGeometry(w:number,h:number,d:number,slot:FloorMaskSlot){
  const geometry=mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d);
  const pos=geometry.getAttribute('position'),normal=geometry.getAttribute('normal');
- const uv=new Float32Array(pos.count*3),height=slot.texture.image.height;
+ const uv=new Float32Array(pos.count*3),height=slot.texture.image.height,width=slot.texture.image.width;
+ const aw=slot.metricWidth??FLOOR_MASK_SIZE,ah=slot.metricHeight??FLOOR_MASK_SIZE;
  for(let i=0;i<pos.count;i++){
   // Exact physical slab dimensions; x/z grow with tactical world x/y.
   const x=pos.getX(i)/w+.5,z=pos.getZ(i)/d+.5;
-  uv[i*3]=(.5+x*(FLOOR_MASK_SIZE-1))/FLOOR_MASK_SIZE;
-  uv[i*3+1]=(slot.row+.5+z*(FLOOR_MASK_SIZE-1))/height;
+  uv[i*3]=(.5+x*(aw-1))/width;
+  uv[i*3+1]=(slot.row+.5+z*(ah-1))/height;
   uv[i*3+2]=normal.getY(i)>.5?1:0;
  }
  geometry.setAttribute('fwFloorMaskUV',new THREE.BufferAttribute(uv,3));
