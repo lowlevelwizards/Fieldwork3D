@@ -7,13 +7,16 @@ import {activateSite} from './breach-core.ts';
 import {proposeStreetInfrastructure,streetConflicts} from './worldgen/street-infrastructure.ts';
 import type {StreetKind} from './worldgen/street-standards.ts';
 import {planPublicStreet} from './worldgen/public-street-layout.ts';
+import {setSessionLightingMode} from './equipment-site-power.ts';
+import {planSiteLighting,type LightingMode} from './equipment-site-lighting.ts';
 const select=(id:string)=>document.getElementById(id) as HTMLSelectElement;
-const seed=document.getElementById('seed') as HTMLInputElement,scale=select('scale'),kind=select('kind'),layout=select('layout'),view=select('view');
+const seed=document.getElementById('seed') as HTMLInputElement,scale=select('scale'),kind=select('kind'),layout=select('layout'),view=select('view'),lighting=select('lighting');
 const viewport=document.getElementById('viewport')!,output=document.getElementById('diagnostics')!;
 const scene=new TacticalScene3D();viewport.append(scene.canvas);
 let base:Site,active:Site,session:ReturnType<typeof newSession>;
 function draw(){
  if(!session)return;
+ setSessionLightingMode(session,lighting.value as LightingMode);
  scene.resize(Math.max(1,viewport.clientWidth),Math.max(1,viewport.clientHeight));
  scene.setMode(view.value==='top'?'top':'iso');scene.resetCamera();scene.view.zoom=1;
  const selected=team(session)[0]?.id;if(!selected)return;
@@ -21,7 +24,8 @@ function draw(){
  const p=active.streetInfrastructure,r=planPublicStreet(active);
  const width=r?(r.entry==='north'||r.entry==='south'?r.road.depth:r.road.width):0;
  const stats=scene.performanceStats();
- output.textContent=(base.archetype??'site')+' · seed '+base.seed+' · '+(p?p.kind+' · '+(p.cropped?'cropped':'full')+' · '+p.completeLanes+'/'+p.nominalLanes+' complete lanes':'legacy')+' · road '+(width/20).toFixed(2)+'m · '+(p?streetConflicts(active,p).length+' fixture conflicts · ':layout.value==='pilot'?'safe legacy fallback · ':'')+(active.exteriorZones??[]).reduce((n,z)=>n+(z.vehicleParking?z.vehicleParking.count*(z.vehicleParking.secondRowCenter===undefined?1:2):0),0)+' marked bays · '+active.cover.filter(c=>['street-lamp','hydrant','bollard','public-bench','wayfinding-sign','parking-sign','traffic-stop-sign'].includes(c.fixture??'')).length+' street fixtures · '+stats.calls+' draws · '+stats.triangles+' triangles';
+ const lamps=planSiteLighting(active,session.lightingMode,session.sitePower).fixtures.filter(f=>f.kind==='street').length;
+ output.textContent=(base.archetype??'site')+' · seed '+base.seed+' · '+(p?p.kind+' · '+(p.cropped?'cropped':'full')+' · '+p.completeLanes+'/'+p.nominalLanes+' complete lanes':'legacy')+' · road '+(width/20).toFixed(2)+'m · '+(p?streetConflicts(active,p).length+' fixture conflicts · ':layout.value==='pilot'?'safe legacy fallback · ':'')+(active.exteriorZones??[]).reduce((n,z)=>n+(z.vehicleParking?z.vehicleParking.count*(z.vehicleParking.secondRowCenter===undefined?1:2):0),0)+' marked bays · '+active.cover.filter(c=>['street-lamp','hydrant','bollard','public-bench','wayfinding-sign','parking-sign','traffic-stop-sign','street-power-box'].includes(c.fixture??'')).length+' street fixtures · '+lamps+' powered lamps · '+stats.calls+' draws · '+stats.triangles+' triangles';
 }
 function rebuild(){
  const p=layout.value==='proposal'?proposeStreetInfrastructure(base,kind.value==='auto'?undefined:kind.value as StreetKind):null;
@@ -34,6 +38,6 @@ function generate(){
  base=generateSite(n,scale.value as SiteScale,undefined,{}, {streetInfrastructure:false});rebuild();
 }
 document.getElementById('generate')!.addEventListener('click',generate);
-scale.addEventListener('change',generate);layout.addEventListener('change',rebuild);kind.addEventListener('change',rebuild);view.addEventListener('change',draw);
+scale.addEventListener('change',generate);layout.addEventListener('change',rebuild);kind.addEventListener('change',rebuild);view.addEventListener('change',draw);lighting.addEventListener('change',draw);
 const resize=new ResizeObserver(draw);resize.observe(viewport);generate();
 window.addEventListener('pagehide',()=>resize.disconnect());

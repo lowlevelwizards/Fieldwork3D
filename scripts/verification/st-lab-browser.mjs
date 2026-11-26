@@ -15,7 +15,13 @@ try{
    await page.locator('#layout').selectOption(type);
    for(const view of ['iso','top']){await page.locator('#view').selectOption(view);await page.screenshot({path:dir+'/'+viewport.width+'-'+type+'-'+view+'.png'});}
   }
-  await page.locator('#layout').selectOption('proposal');await page.locator('#kind').selectOption('industrial');
+  await page.locator('#layout').selectOption('pilot');await page.locator('#lighting').selectOption('night');
+  assert.match(await page.locator('#diagnostics').textContent(),/\d+ powered lamps/);
+  await page.screenshot({path:dir+'/'+viewport.width+'-night.png'});
+  await page.locator('#lighting').selectOption('blackout');
+  assert.match(await page.locator('#diagnostics').textContent(),/0 powered lamps/);
+  await page.screenshot({path:dir+'/'+viewport.width+'-blackout.png'});
+  await page.locator('#lighting').selectOption('day');await page.locator('#layout').selectOption('proposal');await page.locator('#kind').selectOption('industrial');
   assert.deepEqual(errors,[]);await page.close();
  }
 }finally{await browser?.close();server.kill();}

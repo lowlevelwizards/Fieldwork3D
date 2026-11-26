@@ -61,3 +61,6 @@ Dedicated curbside parallel parking is attempted only with a complete main road,
 
 ## ST lamps and supply presentation
 Physical accepted street lamps now participate in the existing bounded L1 light topology, power circuit mains:1, day/evening/night/blackout presets, 2D/3D pooled fixtures and occluded footprints. No additional runtime lights or new circuit system. Low-profile exterior supply boxes are physical contextual scenery, not a new interactive breaker. Old sites without ST metadata keep historical light lists. Diagonal parking remains excluded because authoritative vehicle cover only supports cardinal turns. Pending exact-head CI.
+
+## ST Lab final controls
+Street Lab exposes the actual session lighting preset (day/evening/night/blackout/emergency), powered-lamp counts, existing seed/scale/type/layout/camera controls and explicit old-layout comparison. Browser acceptance captures night and blackout in both viewport sizes. Pending critical final CI.

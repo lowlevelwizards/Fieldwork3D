@@ -13,7 +13,8 @@ test('contextual street hardware stays physical, bounded and off pedestrian/publ
   const s={...site,streetInfrastructure:p,exteriorZones:[front]};
   const fixtures=planStreetFurniture(s);
   assert.ok(fixtures.length>0,entrySide);
-  assert.ok(fixtures.length<=5);
+  assert.ok(fixtures.length<=6);
+  if(fixtures.some(c=>c.fixture==='street-power-box'))assert.ok(fixtures.some(c=>c.fixture==='street-lamp'));
   assert.deepEqual(fixtures,planStreetFurniture(s));
   assert.deepEqual(streetConflicts({...s,cover:fixtures},p),[]);
   assert.ok(fixtures.every(c=>c.w>0&&c.h>0));

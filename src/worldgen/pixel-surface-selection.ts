@@ -42,6 +42,7 @@ export const FIXTURE_MATERIAL_OVERRIDES:Readonly<Record<string,Partial<Record<Fi
  'tool-chest':{body:'painted-metal',hardware:'metal'},
  generator:{body:'painted-metal',frame:'industrial-steel'},
  'utility-cabinet':{body:'painted-metal',frame:'industrial-steel'},
+ 'street-power-box':{body:'painted-metal',frame:'industrial-steel'},
 };
 export function fixtureComponentSurface(fixture:string,role:FixtureMaterialRole):PixelSurface{
  const override=FIXTURE_MATERIAL_OVERRIDES[fixture]?.[role];
