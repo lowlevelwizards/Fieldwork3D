@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {newSession,enemies,team,planSecureDroppedFirearm,
  planSearchSuspect,toggling,stepSession} from '../src/breach-game.ts';
 import {releaseDownedSuspectWeapons} from '../src/breach-suspect-weapons.ts';
+import {releaseDownedSuspectWeapons} from '../src/breach-suspect-weapons.ts';
 import {commitSuspectSurrender} from '../src/breach-suspect-compliance.ts';
 import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
 import {contextActionChoices} from '../src/ui/context-actions.ts';
@@ -97,5 +98,19 @@ test('a deceased suspect produces recoverable weapon evidence exactly once',()=>
   releaseDownedSuspectWeapons(s,suspect);
   assert.equal(weapons[0].status,'secured');
   assert.equal(s.droppedFirearms.filter(w=>w.ownerId===suspect.id).length,ids.length);
+ }finally{activateSite(null);}
+});
+
+test('deceased suspect publishes securable weapons only once',()=>{
+ const s=newSession(0,4);
+ try{
+  const suspect=enemies(s)[0];
+  suspect.health=0;suspect.downedAt=0;suspect.deathAt=1;
+  releaseDownedSuspectWeapons(s,suspect);
+  const items=s.droppedFirearms.filter(w=>w.ownerId===suspect.id);
+  assert.equal(items.filter(w=>!w.secondaryWeapon).length,1);
+  assert.ok(items.every(w=>w.status==='loose'));
+  releaseDownedSuspectWeapons(s,suspect);
+  assert.equal(s.droppedFirearms.filter(w=>w.ownerId===suspect.id).length,items.length);
  }finally{activateSite(null);}
 });
