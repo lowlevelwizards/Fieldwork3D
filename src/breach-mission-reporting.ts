@@ -89,12 +89,14 @@ export function debrief(s:Session){
   // Retrospective only: the reviewer never feeds AI, fog, or score rules.
   const forceReview=assessDispatchForce(s.civilianHarmEvents,s.battleEvents);
   // Count distinct physical evidence and current custody, not UI commands.
+  const allSuspects=[...enemies(s),...(s.extractedSuspects??[])];
   const interventionCounts={
     weaponsSecured:(s.droppedFirearms??[]).filter(w=>w.status==='secured').length,
-    suspectsRestrained:enemies(s).filter(e=>e.restrained&&captureVitalStatus(e)!=='deceased').length,
-    personsStabilized:[...own,...enemies(s)].filter(a=>
+    suspectsRestrained:allSuspects.filter(e=>e.restrained&&captureVitalStatus(e)!=='deceased').length,
+    personsStabilized:[...own,...allSuspects].filter(a=>
       captureVitalStatus(a)!=='deceased'&&a.medical.wounds.some(w=>w.stabilized)&&
       !a.medical.wounds.some(w=>w.bleeding>0&&!w.stabilized)).length,
+    suspectsExtracted:(s.extractedSuspects?.length??0)+(s.missionType==='capture'&&s.phase==='won'&&s.captureSecured?1:0),
     casualtiesEvacuated:evacuated.length,
     intelligenceRecovered:recoveredIntel.length
   };
@@ -105,6 +107,7 @@ export function debrief(s:Session){
     recoveredIntel:recoveredIntel.length,
     weaponsSecured:interventionCounts.weaponsSecured,
     suspectsRestrained:interventionCounts.suspectsRestrained,
+    suspectsExtracted:interventionCounts.suspectsExtracted,
     personsStabilized:interventionCounts.personsStabilized,
     kind:s.missionType as OperationKind,
     elapsed:Math.floor(s.seconds),casualties,teamSize:own.length,
