@@ -1,8 +1,9 @@
 /** Restrained light response for wear layers; no physically false glossy rust. */
+import {artRGB,artHex,artLuma,relativeArtColor} from './material-art-contrast.ts';
 import type {PixelSurface} from './pixel-recipes.ts';
 import type {WearEffect} from '../worldgen/material-properties.ts';
 import {materialProperties,wearSubstrateColor} from '../worldgen/material-properties.ts';
-export function wearFinish(surface:PixelSurface,effect:WearEffect){
+export function wearFinish(surface:PixelSurface,effect:WearEffect,baseColor?:number){
  const p=materialProperties(surface);
  const wet=['oil','grease','puddle'].includes(effect);
  const metallic=effect==='chip'&&p.substrate==='steel';
@@ -19,5 +20,10 @@ export function wearFinish(surface:PixelSurface,effect:WearEffect){
   effect==='fade'?0xd2ccba:effect==='dust'?0xb3a48a:
   effect==='drip'?0x77877a:effect==='mud'?0x78634c:
   effect==='scuff'?0x666b60:effect==='crack'?0x5c5a51:0x817963;
- return {roughness,metalness,color};
+ if(baseColor===undefined)return {roughness,metalness,color};
+ const base=artRGB(baseColor),light=artLuma(base)>180;
+ const direction=effect==='mineral'||effect==='scuff'||effect==='scratch'||effect==='abrade'||effect==='fray'?(light?'dark':'light'):
+  effect==='fade'?'light':effect==='oil'||effect==='soot'||effect==='grease'?'dark':'auto';
+ const strong=effect==='mineral'||effect==='oil'||effect==='paint-peel'||effect==='rust'||effect==='chip';
+ return {roughness,metalness,color:artHex(relativeArtColor(base,artRGB(color),.75,strong?46:25,strong?108:68,direction))};
 }

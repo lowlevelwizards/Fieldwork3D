@@ -30,19 +30,22 @@ export function wearPixels(kind:WearTextureKind,seed=0,size=32):Uint8Array{
  for(let y=0;y<size;y++)for(let x=0;x<size;x++){
   const u=((x+.5-size/2)/(size/2))*flip,v=(y+.5-size/2)/(size/2);
   const sector=Math.floor((Math.atan2(v,u)+Math.PI)/(Math.PI*2)*8)%8,jag=edge[sector];
-  const core=oval(u,v,shift,0,.70,.60);
-  const irregular=Math.min(core,oval(u,v,-.41,.20,.40,.33),oval(u,v,.34,-.30,.33,.34));
+  const block=(cx:number,cy:number,rx:number,ry:number)=>Math.max(Math.abs(u-cx)/rx,Math.abs(v-cy)/ry);
+  const drift=(variant-1.5)*.13;
   let a=0;
   switch(kind){
    case 'dust':{
-    const field=Math.min(oval(u,v,-.28,.14,.65,.48),oval(u,v,.40,-.27,.44,.39));
+    const field=Math.min(block(-.25,.12,.55,.26),block(.34,-.16,.36,.23),oval(u,v,-.05,.36,.64,.21));
     if(field<1+jag)a=field<.51?120:65;
     if(oval(u,v,.61,.46,.16,.12)<1)a=85;break;
    }
-   case 'stain':if(irregular<1+jag)a=irregular<.64?180:100;break;
+   case 'stain':{
+    const stain=Math.min(oval(u,v,-.20,.06,.68,.37),oval(u,v,.42,.17,.42,.29),oval(u,v,drift,-.31,.34,.26));
+    if(stain<1+jag)a=stain<.60?175:95;break;
+   }
    case 'oil':{
-    const pool=Math.min(oval(u,v,-.12,.12,.61,.49),oval(u,v,.38,-.20,.32,.40));
-    if(pool<1+jag)a=pool<.63?235:145;
+    const pool=Math.min(oval(u,v,-.21,.20,.64,.40),oval(u,v,.36,-.05,.42,.39),oval(u,v,.45+drift,-.47,.23,.24));
+    if(pool<1+jag)a=pool<.77?235:125;
     if(oval(u,v,-.71,-.37,.13,.10)<1)a=150;break;
    }
    case 'grease':{
@@ -50,15 +53,20 @@ export function wearPixels(kind:WearTextureKind,seed=0,size=32):Uint8Array{
     if(smear<1+jag)a=Math.abs(v+.18*u)<.18?210:110;
     if(Math.abs(v-.31+.18*u)<Math.max(px*.54,.055)&&u>-.65&&u<.62)a=160;break;
    }
-   case 'rust':if(irregular<1+jag)a=irregular<.55?230:145;else if(oval(u,v,.66,.51,.17,.13)<1)a=155;break;
+   case 'rust':{
+    const seam=Math.min(block(-.16,-.33,.29,.35),block(.11,.06,.32,.24),block(-.08,.42,.15,.38));
+    if(seam<1+jag)a=seam<.65?221:135;
+    if(block(.41,-.24,.12,.11)<1||block(-.45,.31,.11,.13)<1)a=170;break;
+   }
    case 'chip':{
-    const shape=Math.abs(u+.08)/.58+Math.abs(v-.04)/.66;
+    const shape=Math.min(block(-.15,.05,.44,.41),block(.20,.29,.29,.27),block(-.28,-.34,.21,.22));
     if(shape<1+jag)a=shape<.72?235:165;
     if(oval(u,v,.65,-.37,.12,.16)<1)a=190;break;
    }
    case 'paint-peel':{
-    const field=Math.min(oval(u,v,-.22,.10,.66,.72),oval(u,v,.37,-.27,.36,.44));
-    if(field<1+jag)a=field<.70?230:150;
+    const field=Math.min(block(-.24,.05,.42,.59),block(.26,-.22,.35,.38),block(.31,.40,.28,.23));
+    if(field<1+jag)a=field<.68?230:150;
+    if(block(-.10,-.40,.16,.20)<1||block(.40,.10,.12,.22)<1)a=0;
     if(Math.abs(v+.62+.18*u)<.10&&u>.26&&u<.72)a=170;break;
    }
    case 'scrape':{
@@ -79,10 +87,10 @@ export function wearPixels(kind:WearTextureKind,seed=0,size=32):Uint8Array{
    case 'drip':{
     const d=Math.abs(u-shift-.09*Math.sin(v*3));
     if(v>-.78&&v<.86&&d<Math.max(px*.55,.14*(1-(v+1)*.37)))a=v<-.38?210:160;
-    if(oval(u,v,shift,-.72,.24,.15)<1)a=220;break;
+    if(oval(u,v,shift,-.72,.15,.11)<1)a=190;break;
    }
    case 'mud':{
-    const splash=Math.min(oval(u,v,-.15,.14,.64,.56),oval(u,v,.44,-.17,.31,.32));
+    const splash=Math.min(block(-.30,.30,.42,.29),oval(u,v,.31,.37,.53,.28),block(.06,-.12,.25,.26));
     if(splash<1+jag)a=splash<.66?215:135;
     if(oval(u,v,-.67,-.48,.17,.11)<1||oval(u,v,.65,.53,.12,.16)<1)a=165;break;
    }
@@ -96,13 +104,13 @@ export function wearPixels(kind:WearTextureKind,seed=0,size=32):Uint8Array{
    }
    case 'mineral':{
     const d=oval(u,v,.02,.05,.72,.48);
-    if(d<1+jag&&d>.50+jag*.4)a=190;
+    if(d<1+jag&&d>.56+jag*.4&&!(u>.35&&v<-.06))a=215;
     else if(d<.48)a=72;
     if(oval(u,v,-.58,.50,.12,.08)<1)a=130;break;
    }
-   case 'fade':if(irregular<1+jag)a=irregular<.52?110:55;break;
+   case 'fade':if(v<.35+jag+drift&&v>-.9&&Math.abs(u)<.86)a=v<.05+jag?100:50;break;
    case 'soot':{
-    const plume=Math.min(oval(u,v,shift,-.10,.55,.76),oval(u,v,-.31,.39,.43,.40));
+    const plume=Math.min(oval(u,v,shift,-.38,.33,.49),oval(u,v,-.12,.26,.63,.47),oval(u,v,.28,.50,.43,.22));
     if(plume<1+jag)a=plume<.52?180:75;break;
    }
    case 'moss':{
@@ -110,9 +118,9 @@ export function wearPixels(kind:WearTextureKind,seed=0,size=32):Uint8Array{
     if(base<1+jag)a=base<.54?215:150;break;
    }
    case 'fray':{
-    const d=Math.abs(u),length=(.12+jag*.28);
-    if(d>.65&&d<.83+length&&Math.abs(v)<.85&&Math.floor((v+1)*8+variant)%3!==1)a=d<.77?205:125;
-    if(d>.56&&d<.69&&Math.abs(v)<.68)a=125;break;
+    const d=-u,length=(.12+jag*.28);
+    if(d>.53&&d<.70+length&&v>-.63&&v<.48&&Math.floor((v+1)*8+variant)%3!==1)a=d<.65?180:110;
+    if(d>.44&&d<.58&&v>-.53&&v<.43)a=110;break;
    }
    case 'abrade':{
     const d=oval(u,v,shift,.0,.82,.64);

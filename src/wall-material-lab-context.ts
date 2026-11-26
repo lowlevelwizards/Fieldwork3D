@@ -7,6 +7,7 @@ import {roomPixelSurface,fixturePixelSurface} from './worldgen/pixel-surface-sel
 import {buildingTheme} from './worldgen/building-palettes.ts';
 import {pixelPattern,type PixelSurface} from './rendering/pixel-recipes.ts';
 import {wearPixels,type WearTextureKind} from './rendering/pixel-decals.ts';
+import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
 import {wearFinish} from './rendering/wear-finish.ts';
 import {ageMaterialColor} from './rendering/condition-materials.ts';
 import {SRGB_BYTE_TO_LINEAR as linear,linearToSRGBByte as encode} from './rendering/surface-color-space.ts';
@@ -50,11 +51,11 @@ export function floorWitness(index:number,level:number,seed:number){
 export function fixtureWitness(index:number,level:number,seed:number){
  const w=FIXTURE_WITNESSES[index],surface=w.surface??fixturePixelSurface(w.fixture),size=64;
  const color=ageMaterialColor(w.color,surface,level,0),bytes=baseBytes(surface,color,size,size,seed,48,48),mask=wearPixels(w.kind,seed);
- const finish=wearFinish(surface,w.kind).color;
+ const finish=wearFinish(surface,w.kind,color).color;
  if(level>=20)for(let y=0;y<size;y++)for(let x=0;x<size;x++){
   const span=24+Math.round(level*.12),left=Math.floor((size-span)/2),top=Math.floor((size-span)/2);
   if(x<left||x>=left+span||y<top||y>=top+span)continue;
-  const i=(y*size+x)*4,alpha=mask[(Math.floor((y-top)*32/span)*32+Math.floor((x-left)*32/span))*4+3]/255*(.16+.40*level/100);
+  const i=(y*size+x)*4,alpha=mask[(Math.floor((y-top)*32/span)*32+Math.floor((x-left)*32/span))*4+3]/255*WEAR_ALPHA_BANDS[wearOpacityBucket(.16+.40*level/100)];
   for(let k=0;k<3;k++)bytes[i+k]=encode(linear[bytes[i+k]]*(1-alpha)+linear[(finish>>((2-k)*8))&255]*alpha);
  }
  return {width:size,height:size,bytes};

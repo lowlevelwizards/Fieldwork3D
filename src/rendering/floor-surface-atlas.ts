@@ -30,7 +30,7 @@ export function buildFloorMaskAtlas(site:Site,level:number,marks:readonly WearMa
   const height=count*FLOOR_MASK_SIZE;
   const texture=new THREE.DataTexture(new Uint8Array(FLOOR_MASK_SIZE*height*4),FLOOR_MASK_SIZE,height);
   texture.colorSpace=THREE.SRGBColorSpace;
-  texture.magFilter=texture.minFilter=THREE.LinearFilter;
+  texture.magFilter=THREE.NearestFilter;texture.minFilter=THREE.LinearFilter;
   texture.generateMipmaps=false;
   texture.name='w7-floor-mask:'+height;
   for(let i=0;i<count;i++){

@@ -24,7 +24,7 @@ export function ageMaterialColor(hex:number,surface:PixelSurface|undefined,
  level:number,variation=0):number{
  const role=surfaceVisualRole(surface??'metal');
  const condition=Math.pow(clamp(level/100),1.3);
- const t=clamp(condition*(.52+Math.max(-1,Math.min(1,variation))*.05)*weathering[role]);
+ const t=clamp(condition*(.32+Math.max(-1,Math.min(1,variation))*.05)*weathering[role]);
  if(t<=0)return hex;
  const rgb=targets[role];
  const a=(hex>>>16)&255,b=(hex>>>8)&255,c=hex&255;
@@ -36,6 +36,8 @@ export function ageMaterialColor(hex:number,surface:PixelSurface|undefined,
  const lift=surface==='painted-wood'?[15,11,5]:surface==='painted-metal'||surface==='enamel-metal'?[9,13,14]:
   role==='paint'?[12,12,11]:role==='ceramic'?[23,23,22]:role==='polymer'?[8,8,7]:
   role==='wood'||role==='fabric'?[5,4,3]:[0,0,0];
- const adjusted=original.map((value,i)=>Math.min(255,value+Math.round(lift[i]*condition)));
+ const adjusted=original.map((value,i)=>Math.min(255,value+Math.round(lift[i]*condition*.55)));
+ // Preserve more of the original pigment at high condition; equal prior
+ // color buckets remain equal within a given material role.
  return (adjusted[0]<<16)|(adjusted[1]<<8)|adjusted[2];
 }

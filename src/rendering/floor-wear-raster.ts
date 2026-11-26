@@ -2,6 +2,7 @@
 import type {Room} from '../breach-site.ts';
 import {FLOOR_WEAR_COLOR} from '../worldgen/floor-wear-plan.ts';
 import type {WearMark} from '../worldgen/environment-wear.ts';
+import {physicalMaskIndex} from './material-art-scale.ts';
 import {wearPixels,wearVariant} from './pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './wear-opacity.ts';
 import {SRGB_BYTE_TO_LINEAR as linear,linearToSRGBByte as encode} from './surface-color-space.ts';
@@ -23,7 +24,7 @@ export function rasterFloorWear(out:Uint8Array,room:Room,inset:number,marks:read
    const dx=left+(x+.5)*w/size-m.x,dz=top+(y+.5)*d/size-m.y;
    const u=(dx*c+dz*s)/m.width+.5,v=(-dx*s+dz*c)/m.depth+.5;
    if(u<0||u>=1||v<0||v>=1)continue;
-   const alpha=mask[(Math.floor(v*32)*32+Math.floor(u*32))*4+3]/255*opacity;
+   const alpha=mask[physicalMaskIndex(u,v,m.width,m.depth)+3]/255*opacity;
    if(alpha<=0)continue;
    const i=(y*size+x)*4,old=out[i+3]/255,combined=alpha+old*(1-alpha);
    for(let k=0;k<3;k++)out[i+k]=encode((rgb[k]*alpha+linear[out[i+k]]*old*(1-alpha))/combined);

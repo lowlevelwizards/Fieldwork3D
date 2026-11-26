@@ -1,5 +1,6 @@
 /** Continuous, deterministic material aging. Cosmetic only: no tactical geometry. */
 import type {Site,Room} from '../breach-site.ts';
+import {artCenter,ART_MODULES} from '../rendering/material-art-scale.ts';
 import {roomPixelSurface} from './pixel-surface-selection.ts';
 
 const clamp=(n:number)=>Math.max(0,Math.min(1,n));
@@ -51,41 +52,40 @@ export function conditionFloorPixels(site:Site,room:Room,level=effectiveConditio
   surface==='wood'?[79,67,50]:surface==='carpet'?[72,67,57]:
   (surface==='concrete'||surface==='sealed-concrete')?[71,73,68]:
   [72,70,60];
+ // Precompute physical anchors. No per-texel allocation or radial fog.
+ const sources=fixtures.map(f=>({x:f.x-room.x,y:f.y-room.y,rx:Math.max(8,Math.min(24,f.w*.65)),ry:Math.max(6,Math.min(16,f.h*.5))}));
+ const doors=(site.doors??[]).filter(d=>{const x=(d.a.x+d.b.x)/2,y=(d.a.y+d.b.y)/2;return x>=room.x-3&&x<=room.x+room.w+3&&y>=room.y-3&&y<=room.y+room.h+3;}).map(d=>({x:(d.a.x+d.b.x)/2-room.x,y:(d.a.y+d.b.y)/2-room.y}));
+ const steps=(value:number)=>value>.74?1:value>.42?.55:value>.20?.24:0;
+ const drift=(hash(3,1,s)-.5)*.24;
+ const fracture=[.23+drift,.29+drift,.27+drift,.39+drift,.35+drift,.46+drift];
+ const joint=(p:number,spacing:number)=>Math.min(((p%spacing)+spacing)%spacing,spacing-((p%spacing)+spacing)%spacing);
  for(let y=0;y<size;y++)for(let x=0;x<size;x++){
-  const u=(x+.5)/size,v=(y+.5)/size;
-  // Broad, nested regions with deliberate empty space; physical edge
-  // distance prevents a large warehouse from acquiring metre-wide borders.
-  const broad=noise(u,v,3,s),medium=noise(u,v,7,s+17);
-  const dEdge=Math.min(u*room.w,(1-u)*room.w,v*room.h,(1-v)*room.h);
-  const edgeReach=3+Math.min(room.w,room.h)*.13*t*(.55+.45*medium);
-  const edge=clamp(1-dEdge/Math.max(1,edgeReach));
-  const corner=edge*(.32+.68*noise(u,v,4,s+4));
+  const wx=artCenter((x+.5)*room.w/size),wy=artCenter((y+.5)*room.h/size);
+  const u=wx/room.w,v=wy/room.h;
+  const broad=noise(wx/40,wy/40,1,s),medium=noise(wx/13,wy/13,1,s+17);
+  const dEdge=Math.min(wx,room.w-wx,wy,room.h-wy);
+  const edgeReach=3+8*t;
+  const corner=medium>.54&&dEdge<edgeReach*(.4+.6*broad)?steps((edgeReach-dEdge)/edgeReach):0;
   let source=0;
-  for(const f of fixtures){
-   const fx=(f.x-room.x)/room.w,fy=(f.y-room.y)/room.h;
-   const distance=Math.hypot((u-fx)*room.w,(v-fy)*room.h);
-   const radius=(wet?46:industrial?64:29)*(.55+.45*t);
-   source=Math.max(source,clamp(1-distance/radius));
+  for(const f of sources){
+   const scale=.55+.45*t;
+   const distance=Math.max(Math.abs(wx-f.x)/(f.rx*scale),Math.abs(wy-f.y)/(f.ry*scale));
+   source=Math.max(source,steps(1-distance+medium*.12));
   }
-  // Wear grows spatially at fixed seed: no stipple, no time-dependent
-  // random changes, no whole-room opaque blanket.
-  const region=clamp((broad-(.72-.34*t))*3.2);
-  const patch=region*(.55+.45*medium);
-  let coverage=(industrial?.13:.075)+.29*patch+.29*corner+.23*source;
-  const wx=u*room.w,wy=v*room.h;
-  const joint=(p:number,spacing:number)=>Math.min(((p%spacing)+spacing)%spacing,spacing-((p%spacing)+spacing)%spacing);
-  // Pixel library repeats eight-world-unit courses; use local floor
-  // coordinates instead of drifting global-grid grout.
-  if(surface==='tile'&&Math.min(joint(wx,8),joint(wy,8))<.95)
-   coverage+=.13*(.5+.5*medium);
-  if(surface==='wood'&&joint(wy,8)<.8)
-   coverage+=.085*(.4+.6*broad);
-  if((surface==='concrete'||surface==='sealed-concrete')&&t>.55){
-   const drift=(hash(3,1,s)-.5)*.24;
-    const points=[.23+drift,.29+drift,.27+drift,.39+drift,.35+drift,.46+drift];
-   const f=v*(points.length-1),j=Math.min(points.length-2,Math.floor(f));
-   const crack=points[j]+(points[j+1]-points[j])*(f-j);
-   if(v<.30+.70*t&&Math.abs(u-crack)<Math.max(.009,.52/size))coverage+=.27*(t-.55)/.45;
+  let traffic=0;
+  for(const d of doors){
+   const dx=room.w/2-d.x,dy=room.h/2-d.y,len=Math.max(1,Math.hypot(dx,dy));
+   const along=((wx-d.x)*dx+(wy-d.y)*dy)/len,side=Math.abs((wx-d.x)*dy-(wy-d.y)*dx)/len;
+   if(along>=0&&along<=len*.85&&side<4+4*t&&medium>.32)traffic=Math.max(traffic,side<3?.85:.42);
+  }
+  const patch=steps((broad-(.82-.30*t))*3.1);
+  let coverage=(industrial?.05:.015)+.13*patch+.22*corner+.19*source+(surface==='carpet'||surface==='wood'?.18:.08)*traffic;
+  if(surface==='tile'&&Math.min(joint(wx,ART_MODULES.tile[0]),joint(wy,ART_MODULES.tile[1]))<.95&&medium>.48)coverage+=.12;
+  if(surface==='wood'&&joint(wy,8)<.8&&broad>.48)coverage+=.075;
+  if((surface==='concrete'||surface==='sealed-concrete')&&t>.65){
+   const f=v*(fracture.length-1),j=Math.min(fracture.length-2,Math.max(0,Math.floor(f)));
+   const crack=fracture[j]+(fracture[j+1]-fracture[j])*(f-j);
+   if(v<.30+.70*t&&Math.abs((u-crack)*room.w)<.9)coverage+=.23*(t-.65)/.35;
   }
   coverage=clamp(coverage);
   const opacity=Math.round(255*Math.pow(t,1.38)*coverage*(clinical?1.02:washable?1.24:1.55));
