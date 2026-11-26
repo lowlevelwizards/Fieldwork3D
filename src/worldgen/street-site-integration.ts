@@ -10,6 +10,7 @@ import {attachPlannedVehicles,validExteriorRetrofit} from './vehicle-site-integr
 import {planVehiclePlacement} from './vehicle-placement.ts';
 import {intersectsVehicleParkingReserve} from './vehicle-parking-layout.ts';
 import {vehicleFamily} from './vehicle-catalog.ts';
+import {planStreetFurniture} from './street-furniture.ts';
 export function attachStreetInfrastructure(site:Site,vehicles=true):Site{
  const baseline=vehicles?attachPlannedVehicles(site):site;
  const oldCount=baseline.cover.filter(c=>vehicleFamily(c.fixture??'')).length;
@@ -30,7 +31,14 @@ export function attachStreetInfrastructure(site:Site,vehicles=true):Site{
   if(parked.length<oldCount)continue;
   const candidate={...frontage,cover:[...frontage.cover,...parked]};
   if(streetConflicts(candidate,candidate.streetInfrastructure!).length)continue;
-  if(validExteriorRetrofit(site,candidate))return candidate;
+  if(validExteriorRetrofit(site,candidate)){
+   const hardware=planStreetFurniture(candidate);
+   if(hardware.length){
+    const furnished={...candidate,cover:[...candidate.cover,...hardware]};
+    if(validExteriorRetrofit(candidate,furnished))return furnished;
+   }
+   return candidate;
+  }
  }
  return baseline;
 }
