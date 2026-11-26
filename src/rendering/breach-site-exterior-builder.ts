@@ -197,10 +197,12 @@ export function buildSiteExterior(site:Site,host:SiteExteriorBuildHost):void{
         continue;
       }
       if(mark.kind==='curb-edge'){
-        const thickness=CURB_GROUND_LEVELS.sidewalk-
-          CURB_GROUND_LEVELS.road;
+        // A tiny visible lip also separates overlapping legacy curb/sidewalk
+        // surfaces without changing the ramp or movement elevation.
+        const curbTop=CURB_GROUND_LEVELS.sidewalk+.06;
+        const thickness=curbTop-CURB_GROUND_LEVELS.road;
         host.box(host.root,mark.x,
-          (CURB_GROUND_LEVELS.sidewalk+CURB_GROUND_LEVELS.road)/2,
+          (curbTop+CURB_GROUND_LEVELS.road)/2,
           mark.y,mark.width,thickness,mark.depth,curbMaterial,false);
         continue;
       }
