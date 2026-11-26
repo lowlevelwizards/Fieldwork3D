@@ -1,16 +1,16 @@
 /** FT1.3F: evaluate an explicit proposal against real gameplay equipment.
  * No save write here; campaign and Quick Play own all authorized equipment changes.
  */
-import {setEquipmentChoice,type EquipmentLoadout,type LoadoutSlot}
+import {setEquipmentChoice,syncPrimaryWeapon,type EquipmentLoadout,type LoadoutSlot}
  from './equipment-loadouts.ts';
 import {setWardrobeStyle,setWardrobeFabricCamo,resolvedWardrobe,readWardrobe,
  type WardrobeOptions} from './operator-wardrobe-data.ts';
-import {familyPreset} from './equipment-weapon-families.ts';
-import {selectWeaponFamilyPreset,type WeaponConfiguration}
+import {familyPreset,matchingFamilyPreset} from './equipment-weapon-families.ts';
+import {selectWeaponFamilyPreset,changeWeaponPlatform,type WeaponConfiguration}
  from './equipment-weapon-assemblies.ts';
-import {equipRosterGear,configureRosterWeaponPreset,setRosterWardrobe,
+import {equipRosterGear,equipRosterCatalogPreset,setRosterWardrobe,
  type RosterState} from './breach-roster.ts';
-import {equipCampaignGear,equipCampaignWeaponPreset,setCampaignWardrobe,
+import {equipCampaignGear,equipCampaignOwnedPreset,setCampaignWardrobe,
  type CampaignState} from './campaign-state.ts';
 import type {HistoricalLoadoutProposal} from './faction-reference-loadout-generator.ts';
 import {uniformCutCamoCompatible} from './operator-uniform-cut-eligibility.ts';
@@ -36,19 +36,16 @@ export function createHistoricalLoadoutDraft(proposal:HistoricalLoadoutProposal,
   }
   if(mapping.channel==='weapon'){
    const preset=familyPreset(mapping.value);
-   if(!preset||mapping.fidelity==='proxy'||preset.weapon!==config.weapon){
-    blocked.push(choice.name+': weapon class unavailable; no silent stock exchange');
-    continue;
+   if(!preset||mapping.fidelity==='proxy'){
+    blocked.push(choice.name+': named catalog model unavailable');continue;
    }
-   const selected=selectWeaponFamilyPreset(weaponConfiguration,mapping.value);
-   if(selected===weaponConfiguration||!selected.build){
-    if(weaponConfiguration.build?.family===preset.family){
-     appliedHistoricalIds.push(choice.historicalId);
-     continue;
-    }
+   const base=weaponConfiguration.weapon===preset.weapon?weaponConfiguration:changeWeaponPlatform(weaponConfiguration,preset.weapon);
+   const selected=selectWeaponFamilyPreset(base,preset.id);
+   if(!selected.build||matchingFamilyPreset(selected.build)?.id!==preset.id){
     blocked.push(choice.name+': incompatible weapon preset');continue;
    }
    weaponConfiguration=selected;
+   kit=syncPrimaryWeapon(kit,preset.weapon);
    appliedHistoricalIds.push(choice.historicalId);continue;
   }
   if(mapping.gameSlot&&mapping.gameItemId){
@@ -118,7 +115,7 @@ export function applyHistoricalQuickPlayProposal(roster:RosterState,id:string,
  if(JSON.stringify(draft.weaponConfiguration)!==JSON.stringify(member.weaponConfiguration)){
   const choice=proposal.choices.find(c=>c.mapping?.channel==='weapon');
   if(!choice)return null;
-  state=configureRosterWeaponPreset(state,id,choice.mapping!.value);
+  state=equipRosterCatalogPreset(state,id,choice.mapping!.value);
  }
  state=setRosterWardrobe(state,id,draft.wardrobe);
  const updated=state.members.find(x=>x.id===id);
@@ -145,13 +142,13 @@ export function applyHistoricalCampaignProposal(campaign:CampaignState,id:string
   const choice=proposal.choices.find(c=>c.mapping?.channel==='weapon');
   if(!choice)return null;
   const before=state;
-  state=equipCampaignWeaponPreset(state,id,choice.mapping!.value);
+  state=equipCampaignOwnedPreset(state,id,choice.mapping!.value);
   if(state===before)return null;
  }
  state=setCampaignWardrobe(state,id,draft.wardrobe);
  const updated=state.operators.find(x=>x.id===id);
  if(!updated||JSON.stringify(updated.loadout.slots)!==JSON.stringify(draft.kit.slots)||
-    JSON.stringify(updated.weaponConfiguration)!==JSON.stringify(draft.weaponConfiguration))
+    JSON.stringify(updated.weaponConfiguration.build)!==JSON.stringify(draft.weaponConfiguration.build))
   return null;
  return state;
 }

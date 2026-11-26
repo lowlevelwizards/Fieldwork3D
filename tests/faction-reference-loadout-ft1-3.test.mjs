@@ -173,3 +173,23 @@ test('FT1.3 historical equipment bridge is separate from cosmetic-only save flow
  assert.match(studio,/fw-studio-apply-historical/);
  assert.match(host,/msg.type==='fw-studio-commit-batch'/);
 });
+
+import {buyCatalogWeapon} from '../src/campaign-state.ts';
+import {matchingFamilyPreset} from '../src/equipment-weapon-families.ts';
+test('named historical weapon application exchanges a real owned model rather than rebodying a serial',()=>{
+ const c=newCampaign(74232),op=c.operators[0];
+ const proposal={...make('us-army-infantry',2016),status:'partial',choices:[{
+  historicalId:'us-m16a2',name:'M16A2',mapping:{channel:'weapon',fidelity:'exact',playable:true,value:'ar-m16a2'},notes:[]
+ }]};
+ const qp=applyHistoricalQuickPlayProposal(initialRoster(),'rook',proposal);
+ assert.ok(qp);
+ assert.equal(matchingFamilyPreset(qp.members[0].weaponConfiguration.build).id,'ar-m16a2');
+ assert.equal(applyHistoricalCampaignProposal(c,op.id,proposal),null);
+ const purchased=buyCatalogWeapon(c,'ar-m16a2');
+ const owned=purchased.inventory.serializedWeapons.find(w=>matchingFamilyPreset(w.catalogBody)?.id==='ar-m16a2');
+ assert.ok(owned);
+ const next=applyHistoricalCampaignProposal(purchased,op.id,proposal);
+ assert.ok(next);
+ assert.equal(next.operators[0].weaponSerialId,owned.id);
+ assert.equal(next.inventory.serializedWeapons.length,purchased.inventory.serializedWeapons.length);
+});

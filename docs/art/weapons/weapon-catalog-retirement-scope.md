@@ -63,3 +63,6 @@ One pure named-model authorization projection now drives the pre-creation review
 
 ## R4.5c — exact factory selection in Campaign
 Named factory selection is now distinct from compatible component editing. Selecting a different named model requires an actual owned spare regardless of historical category. Availability is projected once per editor render using the same exact issue guard; the mutation revalidates against current stock. Existing explicit Arsenal body customization is not changed by this stage. Added same-category serial conservation coverage; exact-head tests pending.
+
+## R4.5d — faction proposal named-model integration
+Historical loadout drafts resolve the authored catalog identity independent of former classes; Quick Play applies it directly, Campaign requires the exact owned spare and preserves serials. Unsupported proxies remain blocked. Existing attachment and appearance guards remain in force. Added a cross-category proposal conservation regression and expanded retirement workflow path coverage so relevant UI-only/test-only commits trigger verification. Exact-head verification pending.
