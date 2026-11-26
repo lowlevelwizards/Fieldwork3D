@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import {FAMILY_PRESETS} from '../src/equipment-weapon-families.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset,
  resolveWeaponAssembly} from '../src/equipment-weapon-assemblies.ts';
+import {buildModularWeaponSilhouette} from '../src/breach-modular-weapon-geometry.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
 import {AK_VISUAL_ANATOMY}
@@ -19,7 +20,13 @@ function build(id){
  const preset=FAMILY_PRESETS.find(x=>x.id===id);
  assert.ok(preset,id);
  const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration(preset.weapon),id);
- const group=buildWeaponSilhouette(cfg.weapon,mat,mat,cfg);
+ // Historical per-piece assertions inspect the original exterior art before
+ // the existing factory compiler combines opaque siblings. The WA7 all-case
+ // hash gate independently tests the actual live compiled appearance.
+ const live=buildWeaponSilhouette(cfg.weapon,mat,mat,cfg);
+ assert.ok(live.children.length<=28,id+' live mesh budget');
+ clearWeaponSilhouette(live);
+ const group=buildModularWeaponSilhouette(cfg.build,mat,mat);
  group.updateMatrixWorld(true);
  return {preset,cfg,group};
 }

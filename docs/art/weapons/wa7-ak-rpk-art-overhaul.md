@@ -8,3 +8,6 @@ Review nine factory cases, all 28 custom cases and representative equipped evide
 ## Acceptance
 Typecheck, focused AK appearance/variant tests, shared material tests, all-reference structural hash comparison; only AK artwork colors may differ and all other inputs must remain exact. Capture actual paired WebGL evidence and operator context, compare silhouette PNGs and isolated render cost. Final human sign-off and live mission validation remain separate. No merge or deployment.
 Status: first calibration candidate committed; verification and review pending.
+
+## Verification correction
+Initial run 45761878537 passed typecheck but historical per-piece tests failed on already compiled factory artwork and an obsolete global 93-part census. Maintain historical authored exterior checks on the source builder, live mesh budgets on the production builder, and the original AR/AK cohort count. Keep exact all-case compiled artwork delta gate intact. No acceptance waiver.

@@ -6,6 +6,7 @@ on:
       - 'src/weapons/geometry/ak-silhouettes.ts'
       - 'src/weapons/geometry/weapon-visual-palette.ts'
       - 'scripts/verify-wa7-art-delta.mjs'
+      - 'tests/weapon-ak-r46-silhouettes.test.mjs'
       - 'tests/weapon-ak-r47-final-polish.test.mjs'
       - '.github/workflows/wa7-ak-art-overhaul.yml'
   workflow_dispatch:
