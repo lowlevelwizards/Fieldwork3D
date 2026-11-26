@@ -10,11 +10,12 @@ const door=(style='wood')=>initDoor({
  id:'D',a:{x:100,y:100},b:{x:148,y:100},
  open:false,openedAt:-1,hinge:'a',swing:-1,kind:'hinged',style
 },0);
-test('symbolic proportions stay chunky without a deep frame or threshold',()=>{
+test('symbolic proportions keep visible frame lips beyond the wall and shallow thresholds',()=>{
  const wood=doorProportions({kind:'hinged',style:'wood'});
  const reinforced=doorProportions({kind:'hinged',style:'reinforced'});
  assert.ok(wood.jambWidth>=2.5&&wood.jambWidth<4);
- assert.ok(wood.jambDepth<8);
+ assert.ok(wood.jambDepth>9&&wood.jambDepth<13);
+ assert.ok(wood.headerDepth>9&&wood.headerDepth<13);
  assert.ok(wood.thresholdDepth<8);
  assert.ok(wood.thresholdHeight<1);
  assert.ok(wood.leafThickness<4);
