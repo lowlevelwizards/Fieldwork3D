@@ -20,7 +20,7 @@ export type PlanNode={
   method?:DoorMethod;duration?:number;syncCode?:string;holdOnContact?:boolean;
   postureState?:'stand'|'crouch';paceState?:'walk'|'run';
   moveMode?:MoveMode;pivot?:Pt;pieSide?:PieSide;pieDegrees?:number;arc?:Pt[];
-  aimMode?:AimMode;aimPoint?:Pt;aimLabel?:'look'|'watch'|'strafe'|'pie';
+  aimMode?:AimMode;aimPoint?:Pt;lookDistance?:number;aimLabel?:'look'|'watch'|'strafe'|'pie';
   toolMethod?:'pick'|'pry'|'cut'|'wedge'|'unwedge'|'breach';
   weaponHand?:'primary'|'secondary';
   patientId?:string;woundId?:number;
@@ -98,4 +98,12 @@ export function interruptsWatch(node:Pick<PlanNode,'kind'|'paceState'|'moveMode'
    node.moveMode==='sprint'||
    ['door','tool','interact','flash','reload','treat','recover-medical',
     'evacuate','switch-weapon'].includes(node.kind);
+}
+
+/** Shared projected/picking handle. LOOK keeps a heading, never a tracking point. */
+export function plannedAimHandle(node:PlanNode):Pt|null{
+ if(node.aimMode==='track'&&node.aimPoint)return node.aimPoint;
+ if(node.aimLabel!=='look'||node.facing===undefined||node.aimMode==='track')return null;
+ const distance=node.lookDistance??40;
+ return {x:node.p.x+Math.cos(node.facing)*distance,y:node.p.y+Math.sin(node.facing)*distance};
 }
