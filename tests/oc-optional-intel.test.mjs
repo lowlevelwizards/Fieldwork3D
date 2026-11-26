@@ -107,3 +107,31 @@ test('OC6 walk-over collection is immediate, visible-only and preserves courier 
  assert.equal(collectProximityOptionalIntel(s,visible)?.collectedBy,'moss',
   'another teammate can recover dropped evidence immediately');
 });
+
+test('EI2 prefers justified surfaces and exposes a separate reachable contact point',()=>{
+ const furnished={...site,rooms:rooms.map((r,i)=>({...r,purpose:i===0?'office':'living'})),
+  cover:rooms.map((r,i)=>({id:'fixture'+i,fixture:i===0?'desk':'coffee-table',
+   x:r.x+48,y:r.y+48,w:36,h:28}))};
+ const items=generateOptionalIntel(furnished);
+ assert.equal(items.length,3);
+ assert.equal(items[0].roomId,'room0');
+ assert.ok(items.every(i=>i.surface&&i.model));
+ for(const item of items){
+  const support=furnished.cover.find(o=>o.fixture===item.surface.fixture&&
+   Math.abs(item.surface.p.x-o.x)<o.w/2&&Math.abs(item.surface.p.y-o.y)<o.h/2);
+  assert.ok(support,'visual lies on actual fixture');
+  assert.ok(item.surface.height>0);
+  assert.ok(Math.abs(item.p.x-support.x)>support.w/2||
+   Math.abs(item.p.y-support.y)>support.h/2,'pickup anchor is outside furniture');
+ }
+ const item=items[0];item.discovered=true;item.collectedBy='rook';
+ const s={phase:'running',seconds:2,optionalIntel:[item],intelGather:null,
+  scenario:{extract:{x:610,y:0}},operators:[soldier('rook',10,10,0)]};
+ advanceOptionalIntel(s,.1,visible);
+ assert.equal(item.surface,undefined);
+ assert.deepEqual(item.p,{x:10,y:10});
+});
+test('EI2 furnished sites without compatible surfaces do not create arbitrary floor evidence',()=>{
+ const barren={...site,cover:[{fixture:'sofa',x:50,y:50,w:34,h:22}]};
+ assert.deepEqual(generateOptionalIntel(barren),[]);
+});
