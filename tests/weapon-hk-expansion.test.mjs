@@ -28,9 +28,11 @@ const create=id=>{
  group.updateMatrixWorld(true);
  return {config,group};
 };
-test('catalog: 8 AR, 9 AK and 12 distinct HK factory models',()=>{
- assert.equal(FAMILY_PRESETS.length,29);
- assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,12);
+test('catalog: twelve distinct HK factory models survive expansion of other families',()=>{
+ const expected=['hk-g3','hk-g3a3','hk-g3a4','hk-hk33a2','hk-hk33a3',
+  'hk-hk53a3','hk-mp5a3','hk-mp5sd3','hk-mp5k','hk-mp5k-pdw','hk-mp5a2','hk-mp5sd2'];
+ assert.equal(new Set(FAMILY_PRESETS.map(x=>x.id)).size,FAMILY_PRESETS.length);
+ assert.deepEqual(FAMILY_PRESETS.filter(x=>x.family==='hk').map(x=>x.id).sort(),expected.sort());
  for(const id of ids){
   const {config,group}=create(id);
   assert.equal(matchingFamilyPreset(config.build).id,id);

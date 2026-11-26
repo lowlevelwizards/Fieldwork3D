@@ -8,6 +8,7 @@ on:
       - 'src/weapons/geometry/hk-mp5-silhouettes.ts'
       - 'src/weapons/geometry/hk-retractable-stock.ts'
       - 'tests/weapon-hk-modular-r1.test.mjs'
+      - 'tests/weapon-hk-expansion.test.mjs'
   workflow_dispatch:
 jobs:
   capture:
