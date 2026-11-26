@@ -81,12 +81,12 @@ export function advanceSimulationActors(s:Session,h:number,
         a.injuryStage,a.personality,{nearbyAllies:peerSupport,
           recentlySeenThreats:recentThreats,
           retreatBlocked:a.alert==='retreat'&&a.blockedTime>=2.5});
-      if(resolve==='withdraw'&&a.alert!=='retreat'&&s.seconds>=a.defenseUntil){
+      if(resolve==='withdraw'&&a.alert!=='retreat'&&s.seconds>=(a.withdrawRetryAt??0)){
         const threat=a.contact??a.heard??a.watch;
         if(threat){
           const safe=port.defensivePosition(a,threat,s,'shelter');
           if(safe)commitNpcWithdrawal(a,safe,s.seconds);
-          else a.defenseUntil=s.seconds+1.5;
+          else a.withdrawRetryAt=s.seconds+1.5;
         }
       }
       if(resolve==='surrender')

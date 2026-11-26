@@ -23,7 +23,7 @@ export function searchCandidates(estimate:Pt,uncertainty:number,
  const eligible=rooms.filter(room=>{
   const center={x:room.x+room.w/2,y:room.y+room.h/2};
   return dist(center,estimate)<=radius+Math.max(room.w,room.h)/2;
- }).sort((a,b)=>dist({x:a.x+a.w/2,y:a.y+a.h/2},estimate)-dist({x:b.x+b.w/2,y:b.y+b.h/2},estimate)||a.id.localeCompare(b.id)).slice(0,14);
+ }).sort((a,b)=>dist({x:a.x+a.w/2,y:a.y+a.h/2},estimate)-dist({x:b.x+b.w/2,y:b.y+b.h/2},estimate)||(a.id??'').localeCompare(b.id??'')).slice(0,14);
  // Inspect real thresholds from a stand-off position INSIDE the known room,
  // not at the door-leaf center or across an invisible wall.
  const nearbyDoors=doors.map((door,i)=>({door,i,d:dist({x:(door.a.x+door.b.x)/2,y:(door.a.y+door.b.y)/2},estimate)}))

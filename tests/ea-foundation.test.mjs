@@ -157,3 +157,25 @@ test('EA1/EA10 withdrawal and surrender clear stale task ownership without erasi
  const peer={...a,id:'peer',p:{...a.p},health:3,surrendered:true};
  assert.equal(countNearbyEnemyAllies(a,[a,peer]),0);
 });
+
+import {canAcceptNpcAssignment,clearNpcCoordination} from '../src/breach-ai-task-state.ts';
+test('EA8 an active local task survives new reports until expiry or urgent interruption',()=>{
+ const a=enemies(newSession())[0];a.intent=null;a.alert='idle';
+ assert.equal(canAcceptNpcAssignment(a,2),true);
+ a.coordinationRole='support';a.coordinationUntil=8;a.coordinationReportId=17;
+ a.coordinationOwnsDefense=true;a.defense=point(30,40);a.nav=[point(30,40)];
+ assert.equal(canAcceptNpcAssignment(a,3),false);
+ assert.equal(canAcceptNpcAssignment(a,8),true);
+ clearNpcCoordination(a,true);
+ assert.equal(a.coordinationReportId,undefined);assert.equal(a.defense,null);assert.deepEqual(a.nav,[]);
+ a.alert='retreat';assert.equal(canAcceptNpcAssignment(a,10),false);
+});
+test('EA9 bounded game area traversal does not invent window navigation links',()=>{
+ const rooms=[{id:'a',kind:'room',x:0,y:0,w:100,h:100},
+ {id:'b',kind:'room',x:100,y:0,w:100,h:100},
+ {id:'c',kind:'room',x:200,y:0,w:100,h:100},
+ {id:'d',kind:'room',x:0,y:100,w:100,h:100}];
+ const doors=[{id:'ab',a:point(100,30),b:point(100,70)},{id:'bc',a:point(200,30),b:point(200,70)}];
+ const index=buildAiSiteIndex({rooms,windows:[{id:'w',x:50,y:100,width:30,vertical:false}]},[],doors);
+ assert.deepEqual(connectedAreaCenters(index,point(50,50),2),[point(150,50),point(250,50)]);
+});

@@ -66,12 +66,19 @@ export function aiSiteIndex(world:SessionWorldGeometry,doors:readonly Door[]):Ai
  return index;
 }
 /** Adjacent area proposals only; windows are never treated as walkable edges. */
-export function connectedAreaCenters(index:AiSiteIndex,from:Pt):Pt[]{
+export function connectedAreaCenters(index:AiSiteIndex,from:Pt,maxHops=1):Pt[]{
  const current=index.areas.find(a=>contains(a,from));
  if(!current)return [];
- const ids=new Set<string>();
- for(const p of index.portals)
-  if(p.kind!=='window'&&p.areas.includes(current.id))
-   for(const id of p.areas)if(id!==current.id)ids.add(id);
- return index.areas.filter(a=>ids.has(a.id)).map(a=>({...a.center}));
+ const visited=new Set([current.id]),result:Pt[]=[];
+ let frontier=[current.id];
+ for(let hop=0;hop<Math.min(3,Math.max(0,Math.floor(maxHops)))&&frontier.length;hop++){
+  const next=new Set<string>();
+  for(const p of index.portals)
+   if(p.kind!=='window'&&p.areas.some(id=>frontier.includes(id)))
+    for(const id of p.areas)if(!visited.has(id))next.add(id);
+  const layer=index.areas.filter(a=>next.has(a.id));
+  frontier=layer.map(a=>a.id);
+  for(const a of layer){visited.add(a.id);result.push({...a.center});}
+ }
+ return result;
 }

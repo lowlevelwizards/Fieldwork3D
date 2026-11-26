@@ -23,10 +23,10 @@ export function defenseCandidates(origin:Pt,threat:Pt,doors:Door[],world?:Sessio
     // Require a valid swept physical corridor instead. Pursuit/search still
     // use authoritative routed navigation when moving across rooms.
     if(!sweptBodyClear(origin,p,doors,8,world))return;
-    candidates.add(key);options.push(p);
+    candidates.add(key);options.push({...p});
   };
   const index=world?aiSiteIndex(world,doors):buildAiSiteIndex(activeSite()??null,COVER,doors);
-  for(const anchor of index.anchors)consider({...anchor.p},anchor.radius);
+  for(const anchor of index.anchors)consider(anchor.p,anchor.radius);
   if(world?world.passable(origin):passable(origin))consider(origin);
   return options;
 }
