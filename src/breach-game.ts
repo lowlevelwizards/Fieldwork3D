@@ -160,7 +160,7 @@ import {verifiedDeploymentChoices,type DeploymentChoice} from './breach-deployme
 import type {OperationKind} from './breach-operations.ts';
 
 import {initialIntel,bindIntelWorld,observeIntel,routeWithIntel,intelPassable,intelNudgeSegmentClear,doorKnown,type IntelMode,type IntelState} from './breach-intel.ts';
-import {discoverObjective,type ObjectiveKnowledge} from './breach-objective-intel.ts';
+import {discoverObjective,holdObjectiveBounds,inHoldObjectiveBounds,type ObjectiveKnowledge} from './breach-objective-intel.ts';
 
 import {stageMagazines,chooseReloadMagazine,reloadMagazineDelay} from './equipment-magazine-placement.ts';
 import {magazineKit,reloadDuration as reloadTiming,type MagazineItem,type ReloadMode} from './breach-magazines.ts';
@@ -2009,9 +2009,11 @@ function mission(s:Session,dt:number){
   const objectivePoint=rescuePerson?rescuePerson.p:
     s.missionType==='capture'&&capturePerson?capturePerson.p:
     s.scenario.objective;
+  const holdBounds=s.missionType==='hold'?holdObjectiveBounds(s.site,objectivePoint):null;
   const atObjective=team(s).filter(a=>a.health>0&&
-    near(a.p,objectivePoint,36)&&
-    sweptBodyClear(a.p,objectivePoint,s.doors,4,sessionWorldGeometry(s)));
+    (holdBounds?inHoldObjectiveBounds(a.p,holdBounds):
+      near(a.p,objectivePoint,36)&&
+      sweptBodyClear(a.p,objectivePoint,s.doors,4,sessionWorldGeometry(s))));
   const objectiveReached=atObjective.length>0;
   if(s.mission==='secure'&&objectiveReached&&
      (s.missionType!=='rescue'||!rescuePerson||
