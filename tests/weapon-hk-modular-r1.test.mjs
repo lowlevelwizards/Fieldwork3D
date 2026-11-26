@@ -47,8 +47,13 @@ test('MP5K-PDW side folder is a real shoulder stock, but K cap remains stockless
  assert.equal(resolveWeaponAssembly(k).stockX,-6.65);
  assert.equal(resolveWeaponAssembly(pdw).stockX,-13.05);
  const gun=model(pdw);
- assert.equal(gun.children.filter(x=>x.userData.hkMP5PDWUpper).length,1);
- assert.equal(gun.children.filter(x=>x.userData.hkMP5PDWBrace).length,1);
+ const frames=gun.children.filter(x=>x.userData.hkMP5PDWFrame);
+ assert.equal(frames.length,1,'one contiguous sculpted frame');
+ gun.updateMatrixWorld(true);
+ const through=new THREE.Raycaster(new THREE.Vector3(-10.8,-.1,10),new THREE.Vector3(0,0,-1));
+ const solid=new THREE.Raycaster(new THREE.Vector3(-10.8,.65,10),new THREE.Vector3(0,0,-1));
+ assert.equal(through.intersectObject(frames[0]).length,0,'negative space is genuinely open');
+ assert.ok(solid.intersectObject(frames[0]).length>0,'the upper silhouette remains solid');
  assert.equal(gun.children.filter(x=>x.userData.hkMP5PDWButt).length,1);
  assert.equal(gun.children.filter(x=>x.userData.hkMP5StocklessCap).length,0);
  assert.ok(Math.abs(new THREE.Box3().setFromObject(gun).min.x+13.05)<.01);
