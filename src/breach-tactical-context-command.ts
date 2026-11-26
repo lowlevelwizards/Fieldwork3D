@@ -265,6 +265,9 @@ export function dispatchTacticalContextCommand(input:{
      planMedicalTreatment(state,selected,patient.id,node?.id),
      'NO REACHABLE PATIENT WITH SUITABLE SUPPLIES');
   }
+  case 'ctxBreakGlass':
+   return finish(planNearbyInteraction(state,selected,'break-window',node?.id),
+     'NO INTACT GLASS IN REACH');
   case 'ctxWindow':{
    const at=node?.p??finalPoint(a);
    let nearby:typeof state.windows[number]|undefined;
