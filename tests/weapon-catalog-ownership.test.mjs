@@ -225,3 +225,18 @@ test('modern inventory omits historical numeric stock after save migration',()=>
  assert.equal(catalogOwnedStock(migrated).length,2);
  assert.deepEqual(readCampaign(JSON.stringify(migrated)),migrated);
 });
+
+import {equipCampaignOwnedPreset,campaignCatalogPresetIssueChoices} from '../src/campaign-state.ts';
+test('named factory selection requires the actual owned model even within a former class',()=>{
+ const c=newCampaign(1001),op=c.operators[0],old=op.weaponSerialId;
+ assert.strictEqual(equipCampaignOwnedPreset(c,op.id,'ar-colt733'),c);
+ const bought=buyCatalogWeapon(c,'ar-colt733');
+ const incoming=campaignCatalogPresetIssueChoices(bought,op.id).get('ar-colt733');
+ assert.ok(incoming);
+ const next=equipCampaignOwnedPreset(bought,op.id,'ar-colt733');
+ assert.equal(next.operators[0].weaponSerialId,incoming);
+ assert.equal(next.inventory.serializedWeapons.length,bought.inventory.serializedWeapons.length);
+ assert.deepEqual(catalogOwnedStock(next).find(w=>w.id===old),c.inventory.serializedWeapons.find(w=>w.id===old));
+ assert.deepEqual(weaponOwnershipIssues(next),[]);
+ assert.strictEqual(equipCampaignOwnedPreset(next,op.id,'ar-colt733'),next);
+});

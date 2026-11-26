@@ -23,15 +23,14 @@ import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
  purchaseFieldStock,
   resupplyOperator,resupplyMedicalOperator,treatOperator,hireRecruit,
   assignOperatorToSlot,buyCatalogWeapon,equipCampaignCatalogWeapon,repairCampaignArmor,
-  serviceCampaignWeapon,equipCampaignGear,equipCampaignCarryGear,equipCampaignFieldInventory,equipCampaignPreGoFieldInventory,copyCampaignFieldInventory,equipCampaignWeaponPreset,
+  serviceCampaignWeapon,equipCampaignGear,equipCampaignCarryGear,equipCampaignFieldInventory,equipCampaignPreGoFieldInventory,copyCampaignFieldInventory,equipCampaignOwnedPreset,
   equipCampaignWeaponFamilyPart,equipCampaignWeaponAttachment,
   purchaseAndEquipWeaponAttachment,moveCampaignMagazine,saveCampaignKitPreset,
   applyCampaignKitPreset,deleteCampaignKitPreset,renameCampaignOperator,
   setCampaignOperatorColor,cycleCampaignAppearance,setCampaignWardrobe,retireOperator,
   reconContract,contractObjectiveIntel,type CampaignState} from './campaign-state.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
-import {familyPreset,matchingFamilyPreset} from './equipment-weapon-families.ts';
-import {catalogWeaponIssueOptions} from './campaign-weapon-procurement.ts';
+import {familyPreset} from './equipment-weapon-families.ts';
 import {campaignDeploymentSettings} from './campaign-rules.ts';
 import {setObjectiveIntelLevel} from './breach-objective-intel.ts';
 import {newDispatchPilotCampaign} from './dispatch-campaign-starter.ts';
@@ -385,18 +384,8 @@ const campaignScreen=new CampaignScreen({
   c=>equipCampaignCarryGear(c,id,slot,itemId),'Carrying equipment updated'),
  undoCarryGear:(id,expected,before)=>applyVisibleCampaignAction(
   c=>undoCampaignCarryGear(c,id,expected,before),'Physical carry change undone'),
- equipWeaponPreset:(id,presetId)=>applyVisibleCampaignAction(current=>{
-  if(current.activeContractId)return current;
-  const preset=familyPreset(presetId);
-  const member=current.operators.find(o=>o.id===id);
-  if(!preset||!member)return current;
-  if(member.weapon!==preset.weapon){
-   const choice=catalogWeaponIssueOptions(current,id).find(o=>o.enabled&&
-    current.inventory.serializedWeapons?.some(w=>w.id===o.serialId&&matchingFamilyPreset(w.catalogBody)?.id===presetId));
-   return choice?equipCampaignCatalogWeapon(current,id,choice.serialId):current;
-  }
-  return equipCampaignWeaponPreset(current,id,presetId);
- },'Weapon family preset equipped'),
+ equipWeaponPreset:(id,presetId)=>applyVisibleCampaignAction(
+  c=>equipCampaignOwnedPreset(c,id,presetId),'Owned weapon model issued'),
  equipWeaponFamilyPart:(id,slot,partId)=>applyVisibleCampaignAction(
   c=>equipCampaignWeaponFamilyPart(c,id,slot,partId),'Weapon component updated'),
  equipAttachment:(id,slot,partId,acquire)=>applyVisibleCampaignAction(

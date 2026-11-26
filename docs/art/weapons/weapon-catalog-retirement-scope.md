@@ -60,3 +60,6 @@ At 4bae888, 39 workflows passed, including G36, mobile Outfitter, and mounting. 
 
 ## R4.5b — Dispatch creation and live named access
 One pure named-model authorization projection now drives the pre-creation review and live named procurement. The creation summary shows counts and up to five representative offered/specialist model names, plus restricted/unassessed counts, instead of four broad classes. Existing historical/time/standing/economy rules are preserved; no policy unlock bypass. Older class-only quote/access wrappers still exist for compatibility tests and other callers pending R5. Exact-head verification pending.
+
+## R4.5c — exact factory selection in Campaign
+Named factory selection is now distinct from compatible component editing. Selecting a different named model requires an actual owned spare regardless of historical category. Availability is projected once per editor render using the same exact issue guard; the mutation revalidates against current stock. Existing explicit Arsenal body customization is not changed by this stage. Added same-category serial conservation coverage; exact-head tests pending.

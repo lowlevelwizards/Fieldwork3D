@@ -923,6 +923,23 @@ function commitCatalogIssue(c:CampaignState,id:string,serialId:string,legacyClas
  return next;
 }
 
+/** Selecting a named factory weapon is issue, not a free rebody of a different serial. */
+export function campaignCatalogPresetIssueChoices(c:CampaignState,id:string):Map<string,string>{
+ const choices=new Map<string,string>();
+ for(const w of catalogOwnedStock(c)){
+  const preset=matchingFamilyPreset(w.catalogBody);
+  if(!preset||choices.has(preset.id)||!canEquipCampaignCatalogWeapon(c,id,w.id))continue;
+  choices.set(preset.id,w.id);
+ }
+ return choices;
+}
+export function equipCampaignOwnedPreset(c:CampaignState,id:string,presetId:string):CampaignState{
+ const o=c.operators.find(m=>m.id===id&&m.status!=='lost'&&m.status!=='retired');
+ if(!o||c.activeContractId||!familyPreset(presetId))return c;
+ if(o.weaponConfiguration.build&&matchingFamilyPreset(o.weaponConfiguration.build)?.id===presetId)return c;
+ const serial=campaignCatalogPresetIssueChoices(c,id).get(presetId);
+ return serial?equipCampaignCatalogWeapon(c,id,serial):c;
+}
 /** Retirement is player-directed, never inferred from an ambiguous downed state. */
 export function retireOperator(c:CampaignState,id:string):CampaignState{
  if(c.activeContractId||c.squadIds.includes(id))return c;

@@ -22,7 +22,7 @@ import {dispatchDepartmentView} from './dispatch-department-view.ts';
 import {catalogWeaponOfferings,catalogWeaponIssueOptions,ownedCatalogWeaponName}
  from './campaign-weapon-procurement.ts';
 import {SKILL_NAMES,canAffordCampaignPurchase,
- armorRepairCost,weaponServiceCost,canApplyCampaignKitPreset,campaignKitWeaponAvailable}
+ armorRepairCost,weaponServiceCost,canApplyCampaignKitPreset,campaignKitWeaponAvailable,campaignCatalogPresetIssueChoices}
  from './campaign-state.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {sharedService} from './campaign-history.ts';
@@ -2338,16 +2338,16 @@ export class CampaignScreen{
   familyEditor.open=true;
   familyEditor.append(node('summary','','WEAPON FAMILY / MODULAR FURNITURE'));
   familyEditor.append(node('p','campaign-note',
-   'Tap a weapon part to choose compatible replacements. Factory builds are starting points. Core changes keep what fits; incompatible pieces are shown before replacement. Your owned weapon and ammunition remain unchanged.'));
+   'Select a factory model from owned armory stock, or customize compatible parts on your current weapon. Model exchanges retain both serials and their service records.'));
   const selectedFamilyPreset=build?matchingFamilyPreset(build):undefined;
+  const factoryIssueChoices=campaignCatalogPresetIssueChoices(c,id);
   const factoryBrowser=createWeaponPresetBrowser({
    selectedId:selectedFamilyPreset?.id,selectedFamily:build?.family,
    availability:preset=>{
     if(locked)return 'Deployment locked';
     if(dispatchPilot&&!mayChooseCampaignContent(c,'weapon-preset',preset.id))
      return 'Not offered by Dispatch pilot';
-    if(preset.weapon!==person.weapon&&!catalogWeaponIssueOptions(c,id).some(o=>o.enabled&&
-      c.inventory.serializedWeapons?.some(w=>w.id===o.serialId&&matchingFamilyPreset(w.catalogBody)?.id===preset.id)))
+    if(preset.id!==selectedFamilyPreset?.id&&!factoryIssueChoices.has(preset.id))
       return 'No matching owned weapon in armory';
     return null;
    },

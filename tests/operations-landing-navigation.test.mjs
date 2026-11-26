@@ -531,8 +531,7 @@ test('C12: remaining weapon-preset and retirement edits use save-aware feedback'
  assert.match(preset,/equipWeaponPreset:\(id,presetId\)=>applyVisibleCampaignAction\(current=>/);
  assert.match(preset,/if\(current\.activeContractId\)return current/);
  assert.match(preset,/if\(!preset\|\|!member\)return current/);
- assert.match(preset,/return equipCampaignWeaponPreset\(current,id,presetId\)/);
- assert.match(preset,/equipCampaignCatalogWeapon\(current,id,choice\.serialId\)/);
+ assert.match(preset,/equipCampaignOwnedPreset\(c,id,presetId\)/);
  assert.match(preset,/Weapon family preset equipped/);
  assert.doesNotMatch(preset,/config\.saveCampaign\(\)|model\.campaign=next/);
  const retire=flow.slice(flow.indexOf(' retire:(id)=>{'),
