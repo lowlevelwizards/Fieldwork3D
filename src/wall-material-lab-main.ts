@@ -1,9 +1,10 @@
 import {WALL_EFFECTS,WALL_FINISHES,WALL_WITNESSES,wallSample,samplePixels,selectWallEvents} from './wall-material-lab-samples.ts';
 import {PIXEL_SURFACES,pixelPattern} from './rendering/pixel-recipes.ts';
+import {createMaterialSpecimen} from './wall-material-lab-specimen.ts';
 import {referenceWallPixels} from './wall-material-lab-reference.ts';
 import {SRGB_BYTE_TO_LINEAR,linearToSRGBByte} from './rendering/surface-color-space.ts';
 import {wearPixels,type WearTextureKind} from './rendering/pixel-decals.ts';
-import {bakedWallSurfacePixels,type WallSurfaceRecipe} from './worldgen/wall-surface-recipe.ts';
+import {bakedWallSurfacePixels,type WallSurfaceRecipe,type WallEffect} from './worldgen/wall-surface-recipe.ts';
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const condition=el<HTMLInputElement>('condition'),comparison=el<HTMLSelectElement>('comparison'),seed=el<HTMLInputElement>('seed');
 const node=<K extends keyof HTMLElementTagNameMap>(tag:K,text?:string)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
@@ -17,6 +18,7 @@ type Card={recipe:WallSurfaceRecipe;after:ReturnType<typeof figure>;before:Retur
 const cards:Card[]=[];
 const finishCards:{recipe:WallSurfaceRecipe;canvas:HTMLCanvasElement}[]=[];
 function audition(recipe:WallSurfaceRecipe,level:number){
+ recipe={...recipe,artSeed:Number(el<HTMLSelectElement>('variant').value)};
  const p=samplePixels(recipe,level);
  return el<HTMLSelectElement>('density').value==='56'?{width:96,height:56,bytes:bakedWallSurfacePixels(recipe,level,96,56)}:p;
 }
@@ -55,6 +57,17 @@ function drawPatterns(){
   paint(canvas,bytes,32,32);
  }
 }
+const specimenEffect=el<HTMLSelectElement>('specimen-effect');
+for(const kind of WALL_EFFECTS){const o=node('option',WALL_WITNESSES[kind].label);o.value=kind;specimenEffect.append(o);}
+let specimen:ReturnType<typeof createMaterialSpecimen>|undefined;
+function drawSpecimen(){
+ if(document.querySelector<HTMLElement>('[data-panel="specimen"]')?.hidden)return;
+ try{
+  specimen??=createMaterialSpecimen(el<HTMLCanvasElement>('specimen-canvas'));
+  const kind=specimenEffect.value as WallEffect,p=audition(wallSample(WALL_WITNESSES[kind].finish,[kind]),Number(condition.value));
+  specimen.draw(p.bytes,p.width,p.height,kind,el<HTMLSelectElement>('specimen-zoom').value==='close',el<HTMLSelectElement>('specimen-view').value==='front');
+ }catch(error){el('specimen-error').textContent='3D unavailable: '+String(error);}
+}
 function redraw(){
  const level=Number(condition.value),single=comparison.value==='single';
  el('condition-value').textContent=String(level);
@@ -70,16 +83,20 @@ function redraw(){
  }
  for(const {recipe,canvas} of finishCards){const p=audition(recipe,0);paint(canvas,p.bytes,p.width,p.height);}
  for(const b of document.querySelectorAll<HTMLButtonElement>('[data-level]'))b.setAttribute('aria-pressed',String(Number(b.dataset.level)===level));
+ drawSpecimen();
  el('status').textContent=WALL_EFFECTS.length+' wall effects · '+WALL_FINISHES.length+' wall finishes · '+materials.length+' pixel motifs · '+masks.length+' local wear masks';
 }
 let pending=0;
 function schedule(){if(!pending)pending=requestAnimationFrame(()=>{pending=0;redraw();});}
-condition.addEventListener('input',schedule);comparison.addEventListener('change',schedule);el<HTMLSelectElement>('density').addEventListener('change',schedule);
+condition.addEventListener('input',schedule);comparison.addEventListener('change',schedule);el<HTMLSelectElement>('density').addEventListener('change',schedule);el<HTMLSelectElement>('variant').addEventListener('change',schedule);
+for(const id of ['specimen-effect','specimen-zoom','specimen-view'])el(id).addEventListener('change',schedule);
+window.addEventListener('resize',schedule);window.addEventListener('pagehide',()=>{specimen?.dispose();specimen=undefined;});
 for(const b of document.querySelectorAll<HTMLButtonElement>('[data-level]'))b.addEventListener('click',()=>{condition.value=b.dataset.level!;schedule();});
 seed.addEventListener('change',drawPatterns);
 el<HTMLSelectElement>('material-view').addEventListener('change',drawPatterns);
 for(const tab of document.querySelectorAll<HTMLButtonElement>('[data-tab]'))tab.addEventListener('click',()=>{
  for(const b of document.querySelectorAll<HTMLButtonElement>('[data-tab]'))b.setAttribute('aria-pressed',String(b===tab));
  for(const panel of document.querySelectorAll<HTMLElement>('[data-panel]'))panel.hidden=panel.dataset.panel!==tab.dataset.tab;
+ schedule();
 });
 drawPatterns();redraw();
