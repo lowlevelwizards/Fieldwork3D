@@ -20,8 +20,8 @@ const cases=[...['clear','hold','intel','rescue','capture'].flatMap(mission=>[16
 const rows=[];let modernWitness;
 for(const {seed,mission,scale} of cases){
  const context={mission,premise:'routine'};
- const old=oldGenerate(seed,scale,undefined,context);
- const oldLegacy=oldGenerate(seed,scale,undefined,context,{streetInfrastructure:false});
+ const old=oldGenerate(seed,scale,undefined,context,{expandedDoorFamilies:false});
+ const oldLegacy=oldGenerate(seed,scale,undefined,context,{streetInfrastructure:false,expandedDoorFamilies:false});
  const legacy=generateSite(seed,scale,undefined,context,{streetInfrastructure:false,expandedDoorFamilies:false});
  const historicalStreet=generateSite(seed,scale,undefined,context,{expandedDoorFamilies:false});
  const next=generateSite(seed,scale,undefined,context);

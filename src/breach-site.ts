@@ -12,6 +12,7 @@ import {partitionMotelGuestUnits} from './worldgen/motel-suites.ts';
 import {orientArchitecturalSite,type EntrySide} from './worldgen/site-orientation.ts';
 import {buildingIdentity} from './worldgen/building-identity.ts';
 import {measureSiteCompleteness,shouldTryAnotherLayout,preferCompleteCandidate} from './worldgen/site-completeness.ts';
+import {auditTacticalMobility} from './worldgen/tactical-mobility-audit.ts';
 import {repairDoorwayClutter} from './worldgen/doorway-clutter-repair.ts';
 import {attachEncounterPlan} from './worldgen/encounter-director.ts';
 import {missionForSeed} from './breach-operations.ts';
@@ -70,7 +71,7 @@ export type Site={
   wallDetails?:import('./worldgen/wall-dresser.ts').WallDetail[];
   openings?:WideOpening[];
   exteriorZones?:ExteriorZone[];
-  /** EI large-site doorway grammar. Absent preserves historical layouts. */
+  /** EI contextual doorway grammar. Absent preserves historical layouts. */
   expandedDoorFamilies?:true;
   /** ST versioned public frontage; absent means historical street geometry. */
   streetInfrastructure?:import('./worldgen/street-infrastructure.ts').StreetInfrastructure;
@@ -123,17 +124,21 @@ export function generateSite(seed:number,scale:SiteScale='standard',
   if(firstSuccess>=0&&attempt>firstSuccess+1)break;
   try{
    onProgress?.('layout',attempt);
-   const geometry=partitionMotelGuestUnits(
-     compileArchitecturalSite(kind,seed+attempt*9973,scale,subtype,
-       mission,generationOptions.expandedDoorFamilies??scale==='large'));
-   geometry.seed=seed;
-   geometry.identity=buildingIdentity(kind,seed,scale,geometry.roomCount);
-   onProgress?.('furnishing',attempt);
-   // Unintentional loose furniture must not block the approach to a real
-   // door. Keep this deterministic, conservative and pre-spawn: essential
-   // fixtures are never deleted to manufacture a route.
-   const furnished=applyArchetype(orientArchitecturalSite(geometry,seed),seed);
-   const accessible=repairDoorwayClutter(furnished).site;
+   const build=(expanded:boolean)=>{
+     const geometry=partitionMotelGuestUnits(compileArchitecturalSite(kind,seed+attempt*9973,scale,subtype,mission,expanded));
+     geometry.seed=seed;
+     geometry.identity=buildingIdentity(kind,seed,scale,geometry.roomCount);
+     onProgress?.('furnishing',attempt);
+     return repairDoorwayClutter(applyArchetype(orientArchitecturalSite(geometry,seed),seed)).site;
+   };
+   let accessible=build(generationOptions.expandedDoorFamilies??true);
+   // Newly eligible scales must have physically clear furnished paired doors.
+   // A rejected pair falls back to the same authored variant, not a new seed.
+   if(scale!=='large'&&accessible.expandedDoorFamilies){
+     const pairs=accessible.doors.filter(d=>d.pairedWith);
+     if(pairs.length&&auditTacticalMobility({...accessible,doors:pairs},pairs.length).issues.length)
+       accessible=build(false);
+   }
    const candidate=attachEncounterPlan(accessible,contextWithIntent);
    onProgress?.('scoring',attempt);
    const grade=measureSiteCompleteness(candidate);
