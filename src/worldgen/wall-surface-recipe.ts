@@ -105,6 +105,17 @@ export function planWallSurface(site:Site,index:number,height:number,requestedFa
   const y=height-sill;
   add('runoff','sill:'+window.id,x,y+Math.min(sill/2,8),requestedFace===undefined?6:11,Math.min(sill,16),30,90);
  }
+ // A nearby sill and damp foundation tell one moisture story. Move
+ // only within the original footprint envelope; moss follows the same base.
+ const moisture=events.find(e=>e.kind==='damp');
+ if(moisture){
+  const source=events.filter(e=>e.kind==='runoff').sort((a,b)=>Math.abs(a.x-moisture.x)-Math.abs(b.x-moisture.x))[0];
+  if(source&&Math.abs(source.x-moisture.x)<moisture.width*.65){
+   const shift=clamp(source.x-moisture.x,-moisture.width*.24,moisture.width*.24);
+   moisture.x=clamp(moisture.x+shift,0,length);
+   const moss=events.find(e=>e.kind==='moss');if(moss)moss.x=moisture.x;
+  }
+ }
  if(['plaster','brick','cinderblock','concrete'].includes(surface)&&random(seed,8)<.32)
   add('crack','edge-stress',edge+(edge===0?1:-1)*5,height*.22,15,24,65,50);
  if(site.condition==='renovation'&&random(seed,9)<.45)
