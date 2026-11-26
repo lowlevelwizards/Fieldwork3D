@@ -5,6 +5,7 @@
 import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
 import {advanceMedicalCondition} from './breach-medical-wounds.ts';
 import {sampleBleedingEvidence} from './breach-blood-evidence.ts';
+import {releaseDownedSuspectWeapons} from './breach-suspect-weapons.ts';
 import {advanceDownedVitals,recordActualDown} from './breach-capture-vitals.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
@@ -54,6 +55,7 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
       }
     }
     if(casualty.health<=0){
+      releaseDownedSuspectWeapons(s,casualty);
       if(advanceDownedVitals(casualty,h,s.seconds)){
         s.deaths++;
         if(casualty.lastDownById){
@@ -72,6 +74,7 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
     casualty.health=Math.max(0,4-casualty.injuryStage);
     if(casualty.health<=0){
       recordActualDown(casualty,s.seconds);
+      releaseDownedSuspectWeapons(s,casualty);
       casualty.lastDownAt=s.seconds;
       const fall=wallSafeFall(casualty.p,casualty.heading,'slump',sessionWorldGeometry(s).walls);
       casualty.downPose=fall.pose;casualty.downClearance=fall.space;
