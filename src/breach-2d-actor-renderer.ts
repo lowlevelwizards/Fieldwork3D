@@ -76,14 +76,15 @@ function missionMarkers(){
   // map/plan rendering cannot reveal unobserved evidence.
   for(const item of state.optionalIntel??[]){
     if(!item.discovered||item.collectedBy)continue;
+    const at=item.surface?.p??item.p;
     draw.save();
     draw.fillStyle='#4b5141';draw.strokeStyle='#ddcc91';
     draw.lineWidth=2;
-    draw.fillRect(item.p.x-8,item.p.y-5,16,11);
-    draw.strokeRect(item.p.x-8,item.p.y-5,16,11);
-    draw.fillStyle='#e5d5a6';draw.fillRect(item.p.x-4,item.p.y-2,8,2);
+    draw.fillRect(at.x-8,at.y-5,16,11);
+    draw.strokeRect(at.x-8,at.y-5,16,11);
+    draw.fillStyle='#e5d5a6';draw.fillRect(at.x-4,at.y-2,8,2);
     draw.font='600 9px "Work Sans",sans-serif';draw.textAlign='center';
-    draw.fillText('INTEL',item.p.x,item.p.y-12);
+    draw.fillText(item.model?.replace('-',' ').toUpperCase()??'INTEL',at.x,at.y-12);
     draw.restore();
   }
   if(!replaying&&state.withdrawalRequested){
