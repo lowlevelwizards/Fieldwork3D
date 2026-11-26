@@ -33,7 +33,7 @@ import {stableCoordination,renewCoordinationUntil} from './breach-ai-team-commit
 import {coverMoveDeadline,coverMoveCommitted} from './breach-ai-position-commitment.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo,stalledInvestigationAction} from './breach-ai-investigation.ts';
-import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
+import {routineDwellSeconds,contextualRoutineDwell,ambientStationary} from './breach-ai-routine-dwell.ts';
 import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
 import {captureTargetMayWithdraw,missionObjectiveResponse} from './breach-ai-mission-response.ts';
 import {retreatDoorClosureEligible,routineDoorClosureEligible} from './breach-ai-door-response.ts';
@@ -440,7 +440,8 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         if(a.watch)rotate(a,angle(a.p,a.watch),dt,s);
       }
       a.routineIndex=visit+1;
-      a.routinePauseUntil=s.seconds+routineDwellSeconds(a.id,
+      const dwell=a.encounterGroupId?contextualRoutineDwell:routineDwellSeconds;
+      a.routinePauseUntil=s.seconds+dwell(a.id,
         a.encounterActivity??'idle',index,visit,a.npcIdentity?.patience);
       a.nav=[];a.velocity=0;
       return;
@@ -460,6 +461,17 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       a.routinePauseUntil=s.seconds+4;a.velocity=0;return;
     }
     approach(a,target,dt,s,.52);return;
+  }
+  // Generated stationary people retain their assigned post or quiet activity.
+  // Once evidence has faded they can settle without a gratuitous cover search.
+  // Existing authored routines above still take priority.
+  if(a.encounterGroupId&&!a.contacted&&!a.contact&&a.alert==='idle'&&
+     ambientStationary(a.encounterActivity,a.encounterRole)){
+    a.velocity=0;
+    if(a.nav.length)a.nav=[];
+    if(a.defense)a.defense=null;
+    if(a.watch)rotate(a,angle(a.p,a.watch),dt,s);
+    return;
   }
   // Unprepared occupants do not automatically run to combat positions.
   // Any credible sound or visual contact above interrupts this inactivity.

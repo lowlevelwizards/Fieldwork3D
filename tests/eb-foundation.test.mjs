@@ -118,3 +118,11 @@ test('EB7 motivations alter resolve and assigned duties, never fabricate contact
  assert.equal(captureTargetMayWithdraw({...evade,heardAlarm:true}),true);
  assert.equal(captureTargetMayWithdraw({...evade,heardAlarm:true,hasEstimate:false}),false);
 });
+
+import {ambientStationary,contextualRoutineDwell,routineDwellSeconds} from '../src/breach-ai-routine-dwell.ts';
+test('EB8 ambient pauses reflect actual activity; stationary duties do not invent patrols',()=>{
+ assert.ok(ambientStationary('watching','sentry'));assert.ok(ambientStationary('inspecting','occupant'));
+ assert.equal(ambientStationary('patrolling','patrol'),false);
+ assert.ok(contextualRoutineDwell('a','inspecting',1,2)>routineDwellSeconds('a','inspecting',1,2));
+ assert.equal(contextualRoutineDwell('a','patrolling',1,2),contextualRoutineDwell('a','patrolling',1,2));
+});
