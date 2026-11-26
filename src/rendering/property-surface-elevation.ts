@@ -32,7 +32,8 @@ export function propertySurfaceCenterHeight(kind:SurfaceKind):number{
  // Thin landscape/service details are flat finishes, not pretend curbs.
  // Explicit offsets keep them above the real zone plane and below all
  // actual obstacle meshes, without sharing a coplanar z-buffer with pads.
- if(kind==='street-side-road')return -1.35;
+ // Side-road paint can overlap the main carriageway at junctions.
+ if(kind==='street-side-road')return -1.30;
  if(kind==='street-verge'||kind==='street-shoulder')return -1.28;
  if(kind==='street-driveway-link')return -1.08;
  if(kind==='road-centerline'||kind==='road-edge-line')return -1.04;
