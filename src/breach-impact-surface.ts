@@ -19,6 +19,11 @@ export type SurfaceAttachment={
  coverW?:number;coverD?:number;coverTurn?:number;coverToppled?:boolean;
 };
 export type SurfaceMarkPose={x:number;y:number;z:number;nx:number;ny:number;nz:number;radius:number};
+/** Glass is transparent: a fracture is visible through the opposite face.
+ * Solid surface marks still require the struck face to face the camera. */
+export function surfaceMarkFacesCamera(surface:string|undefined,ref:SurfaceAttachment|undefined,dot:number):boolean{
+ return dot>0||(surface==='glass'&&(ref?.kind==='window'||ref?.kind==='door'));
+}
 export function segmentAttachment(kind:'wall'|'door'|'window',index:number,
  ownerId:string|undefined,segment:Segment,from:Pt,to:Pt,fraction:number,height:number,
  door?:Door):SurfaceAttachment|undefined{
