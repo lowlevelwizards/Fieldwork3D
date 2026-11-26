@@ -54,7 +54,7 @@ export function conditionFloorPixels(site:Site,room:Room,level=effectiveConditio
   [72,70,60];
  // Precompute physical anchors. No per-texel allocation or radial fog.
  const sources=fixtures.map(f=>({x:f.x-room.x,y:f.y-room.y,rx:Math.max(8,Math.min(24,f.w*.65)),ry:Math.max(6,Math.min(16,f.h*.5))}));
- const doors=site.doors.filter(d=>{const x=(d.a.x+d.b.x)/2,y=(d.a.y+d.b.y)/2;return x>=room.x-3&&x<=room.x+room.w+3&&y>=room.y-3&&y<=room.y+room.h+3;}).map(d=>({x:(d.a.x+d.b.x)/2-room.x,y:(d.a.y+d.b.y)/2-room.y}));
+ const doors=(site.doors??[]).filter(d=>{const x=(d.a.x+d.b.x)/2,y=(d.a.y+d.b.y)/2;return x>=room.x-3&&x<=room.x+room.w+3&&y>=room.y-3&&y<=room.y+room.h+3;}).map(d=>({x:(d.a.x+d.b.x)/2-room.x,y:(d.a.y+d.b.y)/2-room.y}));
  const steps=(value:number)=>value>.74?1:value>.42?.55:value>.20?.24:0;
  const drift=(hash(3,1,s)-.5)*.24;
  const fracture=[.23+drift,.29+drift,.27+drift,.39+drift,.35+drift,.46+drift];
