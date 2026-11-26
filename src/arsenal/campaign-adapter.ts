@@ -38,7 +38,7 @@ export function quoteCampaignArsenalEdit(c:CampaignState,operatorId:string,
  if(!operator||operator.status==='lost'||operator.status==='retired')
   return denied('Operator is unavailable');
  if(recipe.weapon!==operator.weapon)
-  return denied('Switch weapon class in Campaign Armory first, then reopen Arsenal');
+  return denied('Issue a compatible owned weapon in Campaign Armory first, then reopen Arsenal');
  const next=arsenalRecipeToLegacy(recipe);
  if(!next)return denied('The assembled weapon is not valid');
  // An explicit saved location must fit on this actual equipped family.

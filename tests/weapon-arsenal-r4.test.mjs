@@ -100,7 +100,7 @@ test('R4 shared browser and game-specific switching are wired without phantom ca
  assert.match(browser,/options\.availability\?\.\(p\)/);
  assert.match(quick,/next=equipRoster\(next,member\.id,preset\.weapon\)/);
  assert.match(quick,/next=configureRosterWeaponPreset\(next,member\.id,presetId\)/);
- assert.match(flow,/next=equipCampaignWeapon\(next,id,preset\.weapon\)/);
- assert.match(flow,/next=equipCampaignWeaponPreset\(next,id,presetId\)/);
- assert.match(campaign,/c\.inventory\.weapons\[preset\.weapon\]/);
+ assert.match(flow,/equipCampaignCatalogWeapon\(current,id,choice\.serialId\)/);
+ assert.match(flow,/equipCampaignWeaponPreset\(current,id,presetId\)/);
+ assert.match(campaign,/catalogWeaponIssueOptions\(c,id\)/);
 });

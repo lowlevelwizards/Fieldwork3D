@@ -30,7 +30,8 @@ import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
   setCampaignOperatorColor,cycleCampaignAppearance,setCampaignWardrobe,retireOperator,
   reconContract,contractObjectiveIntel,type CampaignState} from './campaign-state.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
-import {familyPreset} from './equipment-weapon-families.ts';
+import {familyPreset,matchingFamilyPreset} from './equipment-weapon-families.ts';
+import {catalogWeaponIssueOptions} from './campaign-weapon-procurement.ts';
 import {campaignDeploymentSettings} from './campaign-rules.ts';
 import {setObjectiveIntelLevel} from './breach-objective-intel.ts';
 import {newDispatchPilotCampaign} from './dispatch-campaign-starter.ts';
@@ -391,13 +392,12 @@ const campaignScreen=new CampaignScreen({
   const preset=familyPreset(presetId);
   const member=current.operators.find(o=>o.id===id);
   if(!preset||!member)return current;
-  let next=current;
   if(member.weapon!==preset.weapon){
-   if((current.inventory.weapons[preset.weapon]??0)<1)return current;
-   next=equipCampaignWeapon(next,id,preset.weapon);
-   if(next===current)return current;
+   const choice=catalogWeaponIssueOptions(current,id).find(o=>o.enabled&&
+    current.inventory.serializedWeapons?.some(w=>w.id===o.serialId&&matchingFamilyPreset(w.catalogBody)?.id===presetId));
+   return choice?equipCampaignCatalogWeapon(current,id,choice.serialId):current;
   }
-  return equipCampaignWeaponPreset(next,id,presetId);
+  return equipCampaignWeaponPreset(current,id,presetId);
  },'Weapon family preset equipped'),
  equipWeaponFamilyPart:(id,slot,partId)=>applyVisibleCampaignAction(
   c=>equipCampaignWeaponFamilyPart(c,id,slot,partId),'Weapon component updated'),

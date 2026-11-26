@@ -30,3 +30,6 @@ Squad Equipment & Care displays the actual equipped body plus individual unassig
 
 ## R4.3 verification repairs
 Exact R4.3b retirement run 45841067301 passed typecheck and the named procurement/issue cases, but failed on two stale UI identity assertions and a Dispatch starter save round trip (missing field inventory and secondary defaults). Canonicalize starter loadout at issue, and update disclosure assertions to model identity. Further art and physical gates remain red; no merge authorization from this checkpoint alone.
+
+## R4.3c — Outfitter serial selection
+Both desktop picker and mobile gallery expose equipped and exact spare serials rather than class counts. Equipped thumbnail uses actual operator geometry; alternate owned serials use accurate text pending exact-recipe thumbnails. Cross-category preset selection requires an owned matching named body and uses exact issue, rather than swapping any same-class gun and overwriting it. Same-category recipe edits retain existing behavior. Focused tests pending.

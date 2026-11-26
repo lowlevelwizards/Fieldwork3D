@@ -8,7 +8,7 @@
 import {itemsForSlot,LOADOUT_SLOTS} from '../equipment-catalog.ts';
 import type {EquipmentLoadout,LoadoutSlot} from '../equipment-loadouts.ts';
 
-export type OutfitterChoiceOption=Readonly<{value:string;disabled:boolean}>;
+export type OutfitterChoiceOption=Readonly<{value:string;disabled:boolean;dataset?:{catalogName?:string;catalogDetail?:string}}>;
 export type OutfitterChoiceSource=Readonly<{
  value:string;
  options:Iterable<OutfitterChoiceOption>;
