@@ -3,7 +3,6 @@ import {selectWallEvents,type WallSurfaceRecipe,type WallEffect,type WallEffectF
 const clamp=(n:number,a=0,b=1)=>Math.max(a,Math.min(b,n));
 type RGB=[number,number,number];
 const rgb=(hex:number):RGB=>[(hex>>>16)&255,(hex>>>8)&255,hex&255];
-function mixWallColor(a:number,b:number,t:number){const c=tint(rgb(a),rgb(b),t);return (c[0]<<16)|(c[1]<<8)|c[2];}
 const tint=(base:RGB,target:RGB,amount:number):RGB=>base.map((c,i)=>Math.round(c+(target[i]-c)*amount)) as RGB;
 /** Sparse pixel stamps precomposed at build/slider time. Alpha is COLOR
  * coverage, never structural transparency. Row zero is the wall top. */
