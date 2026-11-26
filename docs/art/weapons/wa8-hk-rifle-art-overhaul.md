@@ -11,3 +11,6 @@ Run focused appearance tests and all-case hashes against the pinned previous rev
 ## WA8.1 — scoped material calibration
 WA7 verified and reviewed. Apply the reviewed cool-neutral steel and muted polymer colors only to G3/HK33/HK53 exterior artwork. The shared legacy HK palette stays intact for MP5 and other consumers. The black HK33/HK53 finish swatches point to the same calibrated presentation finish; preserve olive, wood and all existing accent finishes. Keep geometry, graphics and non-color inputs unchanged. The contrast change is a candidate, not an artistic signoff. No merge/deploy.
 Status: first implementation committed; dedicated verification and visual review pending.
+
+## Verified WA8.1–3 checkpoint
+Run 45834283057 at 4ab746c0097676a0c18d49aa5ff11fa2993d61c6 passed all dedicated gates; artifact 15125155022. Ten calibrated cases, 91 unrelated exact, all 101 non-color inputs exact, 119 matched panels and 13 identical silhouette PNGs. Reviewed actual paired three-quarter images of all six factory and three custom cases. Cooler steel reads more clearly against dark, olive and wood furniture. The stock remains deliberately slim; no new geometry justified by this comparison. Technical acceptance and author comparison review complete. Human signoff and live mission material review remain outstanding. No merge/deploy.

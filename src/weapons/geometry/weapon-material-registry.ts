@@ -44,6 +44,10 @@ export const WEAPON_FINISH_SPECS={
  // WA8 rifle appearance only. Shared HK finishes remain unchanged for MP5 and other consumers.
  'hk-wa8-rifle-steel':{color:0x474e50,roughness:.82,metalness:.12,role:'steel'},
  'hk-wa8-rifle-polymer':{color:0x303831,roughness:.95,metalness:.015,role:'polymer'},
+ // WA9: scoped compact-family artwork finishes; keep historical shared aliases.
+ 'hk-wa9-mp5-steel':{color:0x474e50,roughness:.82,metalness:.12,role:'steel'},
+ 'hk-wa9-mp5-polymer':{color:0x303831,roughness:.95,metalness:.015,role:'polymer'},
+ 'hk-wa9-sd-accent':{color:0x414749,roughness:.80,metalness:.16,role:'steel'},
  'hk-olive-polymer':{color:0x60694e,roughness:.94,metalness:.015,role:'polymer'},
  'hk-wood':{color:0x896947,roughness:.95,metalness:0,role:'wood'},
  // R870 P13: groove cuts should read as shadowed walnut rather than gray inserts.

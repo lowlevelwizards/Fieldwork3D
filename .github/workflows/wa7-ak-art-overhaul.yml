@@ -1,14 +1,6 @@
 name: WA7 AK artwork overhaul
+# Historical acceptance gate pinned to the verified stage.
 on:
-  push:
-    branches: [feature/wa0-wa2-weapon-art-foundation]
-    paths:
-      - 'src/weapons/geometry/ak-silhouettes.ts'
-      - 'src/weapons/geometry/weapon-visual-palette.ts'
-      - 'scripts/verify-wa7-art-delta.mjs'
-      - 'tests/weapon-ak-r46-silhouettes.test.mjs'
-      - 'tests/weapon-ak-r47-final-polish.test.mjs'
-      - '.github/workflows/wa7-ak-art-overhaul.yml'
   workflow_dispatch:
 concurrency:
   group: wa7-ak-${{ github.ref }}
@@ -23,6 +15,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: 3216b1df650c75e42d76b1f3a64a643e0e46b5a5
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

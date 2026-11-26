@@ -8,7 +8,7 @@ import {addOutline,addCuboid,addFacetedTube,type Outline,type SlotName}
  from './profile-primitives.ts';
 import {HK_BARREL_ART} from './hk-barrel-profiles.ts';
 import {MP5_VISUAL_ANATOMY} from './weapon-receiver-anatomy.ts';
-import {HK_DARK_POLYMER,HK9_MAG_METAL,HK_SD_SUPPRESSOR_METAL,
+import {HK9_MAG_METAL,HK_WA9_SD_ACCENT,
  HK_MUZZLE_METAL} from './weapon-visual-palette.ts';
 import {mp5MagazineOutline,mp5MagazineHeelOutline,MP5_MAG_DEPTH}
  from './hk-mp5-magazine-profiles.ts';
@@ -67,12 +67,12 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
    const arm=p('stock',[
     [-12.55,.80],[-6.42,.80],[-6.39,.16],
     [-10.32,.12],[-12.55,-.43]
-   ],1.93,HK_DARK_POLYMER);
+   ],1.93,dark);
    arm.userData.hkMP5PDWUpper=true;
    const brace=p('stock',[
     [-12.55,-1.90],[-12.09,-1.30],[-8.27,-.18],
     [-7.32,-.18],[-10.89,-1.90]
-   ],1.68,HK_DARK_POLYMER);
+   ],1.68,dark);
    brace.userData.hkMP5PDWBrace=true;
    const butt=p('stock',[
     [-13.05,1.02],[-12.53,1.02],[-12.53,-2.36],
@@ -91,7 +91,7 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
    [start,1.07],[-11.39,1.19],[-10.79,1.14],
    [-6.08,.80],[-6.01,-1.35],[-9.35,-2.37],
    [start,-2.68]
-  ],3.18,HK_DARK_POLYMER);
+  ],3.18,dark);
   fixed.userData.hkMP5FixedStock=true;
   const pad=b('stock',rear+.27,-.80,0,.54,3.99,3.54,dark);
   pad.userData.hkMP5FixedButtpad=true;
@@ -122,16 +122,16 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
  if(isSD){
   // Massive cylindrical fore-end; coarse symbolic bands only.
   addMP5SDShroud(root,parts.handguard,ids.handguard++,
-   art.handguardStartX,art.handguardEndX,HK_DARK_POLYMER);
+   art.handguardStartX,art.handguardEndX,dark);
  }else if(parts.handguard==='hk-mp5-trirail'){
   addMP5TriRail(root,parts.handguard,ids.handguard++,
-   art.handguardStartX,art.handguardEndX,HK_DARK_POLYMER);
+   art.handguardStartX,art.handguardEndX,dark);
  }else if(parts.handguard==='hk-mp5-slim'){
   addMP5SlimForearm(root,parts.handguard,ids.handguard++,
-   art.handguardStartX,art.handguardEndX,HK_DARK_POLYMER);
+   art.handguardStartX,art.handguardEndX,dark);
  }else{
   addMP5TropicalForearm(root,parts.handguard,ids.handguard++,
-   art.handguardStartX,art.handguardEndX,isK,HK_DARK_POLYMER);
+   art.handguardStartX,art.handguardEndX,isK,dark);
  }
  // One thick shoulder joining the polymer to the stamped receiver.
  b('handguard',3.24,-.17,0,.42,2.52,2.81,steel);
@@ -143,7 +143,7 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
    [3.54,-1.19],[4.78,-1.19],[4.94,-2.52],
    [5.14,-5.51],[4.85,-5.92],[3.83,-5.92],
    [3.61,-5.50],[3.61,-2.44]
-  ],2.20,HK_DARK_POLYMER);
+  ],2.20,dark);
   vertical.userData.hkMP5KVerticalForegrip=true;
  }
  // Short cocking tube still exists on the K; never scale the lever away.
@@ -164,7 +164,7 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
   const length=art.muzzleX-9.48;
   const geometry=new THREE.CylinderGeometry(1.15,1.15,length,8,1);
   geometry.rotateZ(-Math.PI/2);
-  const suppressor=new THREE.Mesh(geometry,HK_SD_SUPPRESSOR_METAL);
+  const suppressor=new THREE.Mesh(geometry,HK_WA9_SD_ACCENT);
   suppressor.position.x=(art.muzzleX+9.48)/2;
   suppressor.name='family-barrel-'+parts.barrel+'-'+ids.barrel++;
   suppressor.castShadow=true;suppressor.receiveShadow=true;
