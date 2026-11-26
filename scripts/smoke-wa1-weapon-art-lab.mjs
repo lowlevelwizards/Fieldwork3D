@@ -26,7 +26,7 @@ try{
  async function changed(action){const draws=Number(await page.locator('body').getAttribute('data-draws'));await action();await page.waitForFunction(n=>Number(document.body.dataset.draws)>n,draws);}
  async function filter(id){await page.locator('#search').fill(id);await page.waitForFunction(id=>[...document.querySelectorAll('#catalog button')].some(b=>b.dataset.id===id),id);}
  async function choose(id){await filter(id);await changed(()=>page.locator('#catalog button[data-id="'+id+'"]').click());}
- await page.locator('#target-b').click();await choose('beretta-m9');assert.match(await page.locator('#title-b').textContent(),/preview-only/);
+ await page.locator('#target-b').click();await choose('beretta-m9');assert.match(await page.locator('#title-b').textContent(),/preview-only/);assert.match(await page.locator('#operator-link').getAttribute('href'),/artReference=beretta-m9/);
  for(const mode of ['silhouette','wire','roles','no-texture','material'])await changed(()=>page.locator('#display').selectOption(mode));
  for(const light of ['mirror','neutral','game','baseline'])await changed(()=>page.locator('#lighting').selectOption(light));
  for(const view of ['reverse','top','front','rear','three-quarter','side'])await changed(()=>page.locator('#views [data-view="'+view+'"]').click());
@@ -36,7 +36,7 @@ try{
  await page.locator('#search').fill('');await page.locator('#family').selectOption('ak');assert.ok(Number(await page.locator('body').getAttribute('data-catalog-count'))>9);await page.locator('#family').selectOption('');
  await page.locator('#status-filter').selectOption('preview-only');assert.equal(await page.locator('#catalog button').count(),2);await page.locator('#status-filter').selectOption('');
  await page.locator('#category').selectOption('Custom part');assert.equal(await page.locator('#catalog button').count(),custom.cases.length);await page.locator('#category').selectOption('');
- await page.locator('#disposition').selectOption('High priority');assert.ok(await page.locator('#catalog button').count());await page.locator('#disposition').selectOption('');
+ await page.locator('#disposition').selectOption('simplify');assert.ok(await page.locator('#catalog button').count());await page.locator('#disposition').selectOption('');await page.locator('#priority').selectOption('H');assert.ok(await page.locator('#catalog button').count());await page.locator('#priority').selectOption('');
  await page.locator('#target-b').click();await choose('ar-m4a1');await changed(()=>page.locator('#reset').click());
  await page.screenshot({path:out+'/desktop.png'});
  // Import a test archive with a revision marker and an independently frozen
@@ -63,6 +63,7 @@ try{
  await page.locator('#search').fill('ar-m4a1');await page.waitForTimeout(300);const idle=await page.locator('body').getAttribute('data-draws');await page.waitForTimeout(450);assert.equal(await page.locator('body').getAttribute('data-draws'),idle);
  assert.deepEqual(errors,[]);
  await page.setViewportSize({width:390,height:844});await page.screenshot({path:out+'/mobile.png',fullPage:true});
+ const contextPage=await browser.newPage({viewport:{width:1280,height:800}});try{await contextPage.goto(origin+'/operator-lab.html?tab=poses&artReference=beretta-m9');await contextPage.waitForFunction(()=>{const d=document.getElementById('preview')?.dataset;return d?.ready==='true'&&d?.poseSidearm==='beretta-m9'&&d?.poseSidearmArtOnly==='true'&&d?.poseSidearmMesh==='true';},null,{timeout:45000});await contextPage.locator('#preview').screenshot({path:out+'/operator-context.png'});}finally{await contextPage.close();}
  console.log('WA1 verified '+ids.length+' catalog cases; all diagnostic modes, archived import, filter and export, repeated selection and idle draw gate; geometry '+first+' -> '+last);
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');await rm(tmp,{recursive:true,force:true});}

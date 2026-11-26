@@ -2419,6 +2419,14 @@ function tick(now:number){
 }
 try{
   build();resize();fit();chooseTrack(startingPoseTab?'low-ready':'idle');
+  // Read-only deep link from Weapon Art Lab; accept only actual picker IDs.
+  const artReference=startingPoseTab?poseFlags.get('artReference'):null;
+  if(artReference&&Array.from(poseWeaponSelect.options).some(o=>o.value===artReference)){
+    poseWeaponSelect.value=artReference;
+    poseWeaponSelect.dispatchEvent(new Event('change',{bubbles:true}));
+    chooseTrack(poseSidearm(artReference)?'pistol-low-ready':'low-ready');
+    timeline.value='0';timeline.dispatchEvent(new Event('input',{bubbles:true}));
+  }
   // Render immediately rather than depending on a delayed first
   // requestAnimationFrame callback on a newly navigated mobile tab.
   draw();requestAnimationFrame(tick);

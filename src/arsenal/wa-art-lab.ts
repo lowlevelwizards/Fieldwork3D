@@ -4,15 +4,17 @@ import * as THREE from 'three';
 import {refs,equipped,customEntries,construct,bounds,type Entry} from './wa-art-models.ts';
 import {addArsenalInspectionLighting} from './inspection-lighting.ts';
 import {configureGraphicRendererOutput,GRAPHIC_LIGHT_PROFILE} from '../rendering/graphic-lighting-profile.ts';
+import {WA0_REVIEW_RECORDS} from './wa-art-review-records.ts';
 import {visualMaterialRole} from '../rendering/material-identity.ts';
 const get=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const select=(id:string)=>get<HTMLSelectElement>(id);
 const entries=[...refs,...equipped,...customEntries];
 const category=(e:Entry)=>e.sidearm?'Sidearm':e.custom?'Custom part':e.equipped?'Equipped sample':e.primary?.legacy.weapon??'shotgun';
-const family=(e:Entry)=>e.platform.replace(/^custom-/,'');
-const disposition=(e:Entry)=>{const f=family(e);return ['ar15','g3','hk33','mp5','legacy'].includes(f)?'High priority': ['ak','beretta'].includes(f)?'Medium priority':['fal','fnc','g36','remington870','glock'].includes(f)?'Benchmark / refine':'Supplementary';};
+const family=(e:Entry)=>e.primary?.platformId??e.platform.replace(/^custom-/,'');
+const review=(e:Entry)=>WA0_REVIEW_RECORDS[e.id];
+const disposition=(e:Entry)=>review(e)?.disposition??'Supplementary';
 const opts=(id:string,values:string[])=>{const s=select(id);s.append(new Option('All',''));for(const v of [...new Set(values)].sort())s.append(new Option(v,v));};
-opts('family',entries.map(family));opts('category',entries.map(category));opts('status-filter',entries.map(e=>e.status));opts('disposition',entries.map(disposition));
+opts('family',entries.map(family));opts('category',entries.map(category));opts('status-filter',entries.map(e=>e.status));opts('disposition',entries.map(disposition));opts('priority',entries.map(e=>review(e)?.severity??'Unassigned'));
 const renderer=new THREE.WebGLRenderer({antialias:false,alpha:false,preserveDrawingBuffer:true,powerPreference:'low-power'});
 configureGraphicRendererOutput(renderer);renderer.setPixelRatio(1);
 const scene=new THREE.Scene(),camera=new THREE.OrthographicCamera(-1,1,1,-1,.1,1000);
@@ -49,7 +51,8 @@ function meshStats(root:THREE.Group){
  const roles:Record<string,number>={};
  root.traverseVisible(n=>{if(!(n instanceof THREE.Mesh))return;meshes++;const p=n.geometry.getAttribute('position');if(p)triangles+=(n.geometry.index?.count??p.count)/3*(n instanceof THREE.InstancedMesh?n.count:1);geometries.add(n.geometry);if(isMark(n))marked++;
  for(const m of Array.isArray(n.material)?n.material:[n.material]){if(!materials.has(m)){materials.add(m);const role=visualMaterialRole(m);roles[role]=(roles[role]??0)+1;}for(const value of Object.values(m))if(value instanceof THREE.Texture)textures.add(value);}});
- return {meshes,triangles,geometries:geometries.size,materials:materials.size,textures:textures.size,marked,roles};
+ const textureDetails=[...textures].map(t=>({name:t.name||null,width:t.image?.width??null,height:t.image?.height??null,cpuBytes:ArrayBuffer.isView(t.image?.data)?t.image.data.byteLength:null}));
+ return {meshes,triangles,geometries:geometries.size,materials:materials.size,textures:textures.size,marked,roles,textureDetails,knownCpuTextureBytes:textureDetails.reduce((n,t)=>n+(t.cpuBytes??0),0),unknownCpuTextures:textureDetails.filter(t=>t.cpuBytes===null).length};
 }
 const isMark=(n:THREE.Mesh)=>Boolean(n.userData.weaponPixelArt||n.name.startsWith('family-art-'));
 function render(e:Entry,m:Model,box:THREE.Box3,canvas:HTMLCanvasElement,opts:{view:string;mode:string;lighting:string;scale:string;zoom:number;yaw:number;pitch:number;marks:boolean;span?:number;width?:number;height?:number}){
@@ -86,12 +89,12 @@ function showArchived(e:Entry){
  const file=record&&panel?fileFor(record.platform+'/'+record.id+'/'+panel.name+'.png'):undefined;
  img.hidden=!file;canvas.hidden=true;img.removeAttribute('src');
  if(file){urlA=URL.createObjectURL(file);img.src=urlA;}
- get('title-a').textContent='A · Archived '+e.name;
+ get('title-a').textContent='A · Archived '+e.name;get('review-a').textContent='Revision-tagged baseline, not a live model.';
  get('metrics-a').textContent=file?'WA0 '+String(baseline.revision).slice(0,12)+' · '+panel.name:'No matching archived image for this setting.';
  return file?panel.metrics:undefined;
 }
 function context(e:Entry){
- const host=get('context');host.replaceChildren();if(contextUrl){URL.revokeObjectURL(contextUrl);contextUrl='';}
+ const host=get('context');host.replaceChildren();const link=get<HTMLAnchorElement>('operator-link');const hostId=e.custom?.hostId??e.primary?.id??(e.status==='fallback'?'shotgun':e.id);link.href='operator-lab.html?tab=poses&artReference='+encodeURIComponent(hostId);link.textContent='Open '+(e.custom||e.equipped?'base host':'selected reference')+' in live Operator Lab ↗';if(contextUrl){URL.revokeObjectURL(contextUrl);contextUrl='';}
  const file=fileFor('operator-context/'+e.id+'-game.png');if(!file){host.textContent='No archived operator frame for this reference. Use Operator Lab for live context.';return;}
  const img=document.createElement('img');contextUrl=URL.createObjectURL(file);img.src=contextUrl;img.alt=e.name+' in actual archived Operator Lab';host.append(img);
 }
@@ -109,7 +112,8 @@ function draw(){
  const result=render(e,m.model,m.box,get<HTMLCanvasElement>('canvas-'+slot),options);
  metrics.set(slot,{id:e.id,...result,buildMs:m.buildMs,accepted:m.model.accepted});
  get('title-'+slot).textContent=slot.toUpperCase()+' · '+e.name+' · '+e.status;
- get('metrics-'+slot).textContent=result.meshes+' meshes · '+result.triangles+' triangles · '+result.calls+' isolated calls\n'+result.materials+' materials · '+result.textures+' textures · '+result.marked+' tagged marks\n'+Object.entries(result.roles).map(([k,v])=>k+': '+v).join(' · ');
+ get('review-'+slot).textContent=review(e)?review(e).disposition+' · '+review(e).severity+' — '+review(e).focus:'Supplementary artwork; not individually graded.';
+ get('metrics-'+slot).textContent=result.meshes+' meshes · '+result.triangles+' triangles · '+result.calls+' isolated calls\n'+result.materials+' materials · '+result.textures+' textures · '+result.marked+' tagged marks\n'+Object.entries(result.roles).map(([k,v])=>k+': '+v).join(' · ')+'\n'+result.knownCpuTextureBytes+' known CPU texture bytes · '+result.unknownCpuTextures+' unknown';
  }
  context(b);
  get('message').textContent=historical?(matched?'Matched historical camera, scale and WA0 lighting. Live candidate shown at exact archived span.':'Historical image unavailable — candidate only.'):(scale==='shared'&&Boolean(a.sidearm)!==Boolean(b.sidearm)?'Separate native scale cohorts; not a direct size comparison.':'Live references · synchronized orientation and zoom.');
@@ -130,13 +134,13 @@ const catalog=get('catalog');let observer:IntersectionObserver|null=null;let cat
 function rebuild(){
  observer?.disconnect();catalog.replaceChildren();const gen=++catalogGeneration;
  const query=get<HTMLInputElement>('search').value.toLowerCase().trim();
- const filtered=entries.filter(e=>(e.name+' '+e.id).toLowerCase().includes(query)&&(!select('family').value||family(e)===select('family').value)&&(!select('category').value||category(e)===select('category').value)&&(!select('status-filter').value||e.status===select('status-filter').value)&&(!select('disposition').value||disposition(e)===select('disposition').value));
+ const filtered=entries.filter(e=>(e.name+' '+e.id).toLowerCase().includes(query)&&(!select('family').value||family(e)===select('family').value)&&(!select('category').value||category(e)===select('category').value)&&(!select('status-filter').value||e.status===select('status-filter').value)&&(!select('disposition').value||disposition(e)===select('disposition').value)&&(!select('priority').value||(review(e)?.severity??'Unassigned')===select('priority').value));
  get('count').textContent=filtered.length+' / '+entries.length+' references';document.body.dataset.catalogCount=String(filtered.length);
  const lookup=new Map(filtered.map(e=>[e.id,e]));
  observer=new IntersectionObserver(items=>{for(const item of items){if(!item.isIntersecting||gen!==catalogGeneration||disposed)continue;observer?.unobserve(item.target);const button=item.target as HTMLButtonElement,e=lookup.get(button.dataset.id!)!,canvas=button.querySelector('canvas')!;const m=construct(e);try{render(e,m,bounds(m.model),canvas,{view:'side',mode:'material',lighting:'baseline',scale:'fit',zoom:1,yaw:0,pitch:0,marks:true,width:160,height:80});thumbs++;document.body.dataset.thumbnails=String(thumbs);}finally{m.cleanup();}}},{root:catalog});
- for(const e of filtered){const button=document.createElement('button');button.className='entry';button.dataset.id=e.id;const canvas=document.createElement('canvas');canvas.width=160;canvas.height=80;const label=document.createElement('span');label.textContent=e.name+' · '+e.status;button.append(canvas,label);button.addEventListener('click',()=>{if(target==='a'&&currentMode()!=='baseline')a=e;else b=e;schedule();});catalog.append(button);observer.observe(button);}
+ for(const e of filtered){const button=document.createElement('button');button.className='entry';button.dataset.id=e.id;const canvas=document.createElement('canvas');canvas.width=160;canvas.height=80;const label=document.createElement('span');label.textContent=e.name+' · '+(review(e)?.disposition??e.status);button.title=review(e)?.focus??e.status;button.append(canvas,label);button.addEventListener('click',()=>{if(target==='a'&&currentMode()!=='baseline')a=e;else b=e;schedule();});catalog.append(button);observer.observe(button);}
 }
-for(const id of ['family','category','status-filter','disposition'])select(id).addEventListener('change',rebuild);get('search').addEventListener('input',rebuild);
+for(const id of ['family','category','status-filter','disposition','priority'])select(id).addEventListener('change',rebuild);get('search').addEventListener('input',rebuild);
 get<HTMLInputElement>('baseline-input').addEventListener('change',async e=>{
  const gen=++importVersion,files=[...(e.target as HTMLInputElement).files??[]];const manifest=files.find(f=>f.name==='manifest.json'&&!f.webkitRelativePath.includes('operator-context/'));
  if(!manifest){get('baseline-status').textContent='Missing WA0 manifest.json';return;}
