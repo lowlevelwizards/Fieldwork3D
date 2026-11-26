@@ -7,7 +7,7 @@ export const STREET_DIMENSIONS={
  lane:{min:60,preferred:64,max:70},serviceLane:{min:50,preferred:56,max:60},
  sidewalk:{min:24,preferred:28,max:36},commercialSidewalk:{min:40,preferred:44,max:60},
  curb:3,verge:24,shoulder:20,propertyAccess:34,
- parallel:{width:52,length:120},parking:{width:56,length:114},
+ parallel:{width:52,length:120},parking:{width:56,length:120},
  loading:{width:66,length:144},aisle:{oneWay:90,twoWay:116},
  driveway:{single:64,double:112},industrialAccess:96,
  pedestrianClear:24,parkingEdge:6,paintWidth:2,curbCutMin:60

@@ -63,7 +63,7 @@ export function reservedParkingBay(
    .filter(pos=>transverse===undefined||Math.abs(pos-transverse)>stride/2+22)
    .sort((a,b)=>Math.abs(a-(transverse??modern.alongCenter))-Math.abs(b-(transverse??modern.alongCenter)));
   const pos=candidates[0];if(pos===undefined)return null;
-  return {x:broad?pos:modern.rowCenter,y:broad?modern.rowCenter:pos,bayWidth:Math.min(42,stride*.65),short:modern.rowDepth,broad,side:pos<(transverse??modern.alongCenter)?1:-1};
+  return {x:broad?pos:modern.rowCenter,y:broad?modern.rowCenter:pos,bayWidth:modern.version===1?stride:Math.min(42,stride*.65),short:modern.rowDepth,broad,side:pos<(transverse??modern.alongCenter)?1:-1};
  }
  const broad=zone.w>=zone.h,slots=parkingStallCount(zone);
  const long=broad?zone.w:zone.h,short=broad?zone.h:zone.w;

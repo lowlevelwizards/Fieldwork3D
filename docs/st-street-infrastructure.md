@@ -25,3 +25,6 @@ Batched muted dashed centerlines, continuous industrial centerline and selected 
 
 ## Early ST11 — Street Lab and first validation batch
 Actual tactical renderer, generated site with existing vehicles and operators, seed/scale/type selectors, iso/overhead and legacy/proposal comparison. Reports cropped lanes, fixture conflicts and actual render counts. Shadow proposals may overlap old props, explicitly shown as diagnostics; they are not playable migrations. Dedicated focused tests plus 44-site corpus and browser screenshots at desktop/mobile. Corrected octagonal manhole UV path to avoid rectangular UV remapping. No default enablement yet.
+
+## ST5 — fixed-pitch parking proposal
+Versioned private lot single-row perpendicular/parallel/loading plans with fixed 56/120/66-unit pitch respectively, real 90/116-unit circulation aisle, separate vehicle access, no stretching to fill a lot, geometry-driven capacity capped at 14 bays and 8 vehicles. Whole-lot reservations include access lanes. Old parking behavior stays unchanged without ST metadata. Parking is still a shadow proposal until the integration/route audit. Angled/double-row and curbside parking remain planned extensions, not implemented yet.

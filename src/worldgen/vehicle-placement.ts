@@ -39,7 +39,7 @@ function targetFor(site:Site,zone:ExteriorZone):number{
  if(zone.vehicleParking?.role==='loading')return site.condition==='vacant'?0:Math.min(3,Math.max(1,slots-1));
  const ratio=site.condition==='busy'?.8:site.condition==='vacant'?.15:
   site.condition==='neglected'?.35:.6;
- return Math.max(0,Math.min(4,slots-1,Math.round(slots*ratio)));
+ return Math.max(0,Math.min(zone.vehicleParking?.version===1?8:4,slots-1,Math.round(slots*ratio)));
 }
 export function planVehiclePlacement(site:Site,seed=site.seed,modernOnly=false):VehiclePlacementResult{
  const vehicles:Obstacle[]=[],diagnostics:VehiclePlacementResult['diagnostics']=[];
@@ -90,7 +90,7 @@ export function planVehiclePlacement(site:Site,seed=site.seed,modernOnly=false):
      }
      if(intersectsExteriorDoorReserve(reserves,c)){reject('door');continue;}
      if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+32&&Math.abs(p.y-y)<h/2+32)){reject('encounter');continue;}
-     if([...site.cover,...vehicles].some(o=>intersects(o,c,17))){reject('occupied');continue;}
+     if(site.cover.some(o=>intersects(o,c,17))||vehicles.some(o=>intersects(o,c,zone.vehicleParking?.version===1?8:17))){reject('occupied');continue;}
      advanceLegacyArtStream(family,site,rng);
      c.artVariant=chooseVehicleArt(family,{archetype:site.archetype,condition:site.condition,role:zone.vehicleParking?.role},artRng);
      c.vehicleProfile={version:3,configuration:vehicleRecipe(family,c.artVariant).configuration};

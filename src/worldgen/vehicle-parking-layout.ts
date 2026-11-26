@@ -6,15 +6,20 @@ import type {Site,ExteriorZone} from '../breach-site.ts';
 import type {Obstacle} from '../breach-core.ts';
 import {planPublicStreet} from './public-street-layout.ts';
 import {arrivalAccessLane} from './property-access-lane.ts';
+import {proposeStreetParkingLayout} from './street-parking.ts';
 export type VehicleParkingLayout=Readonly<{
+ version?:1;
  mode:'parallel'|'perpendicular';
  role?:'public'|'residential'|'loading';
  axis:'x'|'y';
  rowCenter:number;rowDepth:number;aisleCenter:number;aisleDepth:number;
  alongCenter:number;alongLength:number;count:number;
+ /** Dedicated vehicle entrance, separate from the pedestrian route. */
+ access?:Readonly<{alongCenter:number;width:number;acrossCenter:number;depth:number}>;
 }>;
 const MIN_AISLE=48,EDGE=6;
 export function proposeVehicleParkingLayout(site:Site,zone:ExteriorZone):VehicleParkingLayout|null{
+ if(site.streetInfrastructure)return proposeStreetParkingLayout(site,zone);
  if(zone.id!=='arrival-forecourt'||!['parking','driveway'].includes(zone.kind))return null;
  const side=site.entrySide??'south',axis=side==='north'||side==='south'?'x':'y';
  const sign=side==='south'||side==='east'?1:-1;
@@ -57,6 +62,9 @@ export function proposedVehicleParkingSite(site:Site):Site{
  */
 export function intersectsVehicleParkingReserve(zone:ExteriorZone,c:Pick<Obstacle,'x'|'y'|'w'|'h'>):boolean{
  const p=zone.vehicleParking;if(!p)return false;
+ if(p.access){const a=p.access,broad=p.axis==='x';
+  if(Math.abs((broad?c.x:c.y)-a.alongCenter)<((broad?c.w:c.h)+a.width)/2+4&&Math.abs((broad?c.y:c.x)-a.acrossCenter)<((broad?c.h:c.w)+a.depth)/2+4)return true;
+ }
  const along=p.axis==='x'?c.x:c.y,across=p.axis==='x'?c.y:c.x;
  const alongHalf=(p.axis==='x'?c.w:c.h)/2,acrossHalf=(p.axis==='x'?c.h:c.w)/2;
  if(Math.abs(along-p.alongCenter)>=p.alongLength/2+alongHalf+4)return false;

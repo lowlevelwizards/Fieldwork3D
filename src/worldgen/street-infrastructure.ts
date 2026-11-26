@@ -13,7 +13,7 @@ export type StreetInfrastructure=Readonly<{
  verge:StreetRect|null;shoulder:StreetRect|null;privateEdge:number;
  centerline:StreetRect|null;diagnostics:readonly string[];
 }>;
-export function proposeStreetInfrastructure(site:Site,override?:StreetKind):StreetInfrastructure|null{
+export function proposeStreetInfrastructure(site:Site,override?:StreetKind,privateReserve:number=D.propertyAccess):StreetInfrastructure|null{
  const b=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
  if(!site.rooms.length)return null;
  const entry=site.entrySide??'south',axis=entry==='north'||entry==='south'?'x':'y';
@@ -22,12 +22,13 @@ export function proposeStreetInfrastructure(site:Site,override?:StreetKind):Stre
  const border=entry==='south'?b.maxY:entry==='north'?b.minY:entry==='east'?b.maxX:b.minX;
  const start=axis==='x'?b.minX:b.minY,end=axis==='x'?b.maxX:b.maxY,span=end-start;
  const gap=(border-facade)*sign;
- if(span<60||gap<D.propertyAccess+18)return null;
+ const reserve=Math.max(D.propertyAccess,privateReserve);
+ if(span<60||gap<reserve+18)return null;
  const kind=override??streetKindFor(site.archetype,site.seed),spec=STREET_SECTIONS[kind];
  const nominal=spec.lanes*spec.laneWidth;
  // Protect a real private approach. Sidewalk first, then visible road,
  // optional furnishing verge only if a whole useful strip fits.
- const available=gap-D.propertyAccess;
+ const available=gap-reserve;
  const sidewalkWidth=spec.sidewalkWidth&&available>=D.sidewalk.min+D.curb+18?
   Math.min(spec.sidewalkWidth,available-D.curb-18):0;
  const curbWidth=sidewalkWidth?D.curb:0;
@@ -56,8 +57,8 @@ export function proposeStreetInfrastructure(site:Site,override?:StreetKind):Stre
  let curbRamp:StreetRect|null=null;
  const domestic=site.exteriorZones?.find(z=>z.vehicleParking?.role==='residential')?.vehicleParking;
  const parking=site.exteriorZones?.find(z=>z.id==='arrival-forecourt')?.vehicleParking;
- const cutWidth=domestic?D.driveway.single:parking?.role==='loading'?D.industrialAccess:parking?D.curbCutMin:0;
- const cutAt=domestic?.alongCenter??alongAt;
+ const cutWidth=domestic?D.driveway.single:parking?.access?.width??(parking?.role==='loading'?D.industrialAccess:parking?D.curbCutMin:0);
+ const cutAt=domestic?.alongCenter??parking?.access?.alongCenter??alongAt;
  const left=cutAt-cutWidth/2-start,right=end-(cutAt+cutWidth/2);
  if(sidewalk){
   if(cutWidth&&left>=12&&right>=12){
