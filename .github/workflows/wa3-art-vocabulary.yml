@@ -42,6 +42,10 @@ jobs:
           cp scripts/audit-wa3-art-parity.mjs /tmp/wa2-art/scripts/
           (cd /tmp/wa2-art && node --experimental-strip-types scripts/audit-wa3-art-parity.mjs "$GITHUB_WORKSPACE/reports/wa3/baseline.json")
           diff -u reports/wa3/baseline.json reports/wa3/candidate.json
+      - run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - run: node --experimental-strip-types scripts/capture-wa3-material-study.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
