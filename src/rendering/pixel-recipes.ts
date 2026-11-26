@@ -50,38 +50,35 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
     break;
    }
    case 'door-wood':{
-    // Factory-finished panels: subtle *vertical* grain, no horizontal planks.
-    const rib=(x+seed%3)%15;
-    if(rib===0&&y>2&&y<29)shade=249;
-    if(rib===7&&y>=9&&y<=19)shade=252;
+    const rib=mod(x+seed,16);
+    if((rib===3&&y%32>3&&y%32<27)||(rib===9&&y%32>12&&y%32<22))shade=249;
+    else if(rib===4&&y%32>8&&y%32<24)shade=252;
     break;
    }
    case 'painted-wood':
-    // Painted baseboards and casings are intentionally almost smooth.
-    if(x===0&&seed%3===1)shade=252;
+    if(x%32===0&&seed%3===1)shade=252;
     break;
    case 'furniture-wood':{
-    // Fine, short directional grain interrupted by broad plain surfaces.
-    const line=(y+seed%5)%11;
-    if(line===4&&x>4&&x<21)shade=248;
-    if(line===7&&x>23&&x<30)shade=251;
-    if(grainStroke(x,y,seed))shade=246;
-    // Quiet directional second tone, not high-frequency noise.
-    // Preserve broad clean tabletop surfaces between subtle grain runs.
-    if(y%11===3&&x>=4&&x<=13)shade=Math.min(shade,250);
+    const row=y%32,col=x%32;
+    if((row===4&&col>3&&col<21)||(row===17&&col>14&&col<29))shade=248;
+    if((row===5&&col>6&&col<15)||(row===18&&col>18&&col<26))shade=251;
+    if(grainStroke(x,y,seed))shade=Math.min(shade,247);
     break;
    }
    case 'rough-wood':{
-    const board=Math.floor(y/6),seam=y%6===0;
-    if(seam)shade=226;
-    else if((x+seed+board*7)%23===0&&y%6<4)shade=242;
+    const board=Math.floor(y/8),row=y%8,col=mod(x+board*11,32);
+    shade=255-(hash(board,0,seed)%4)*4;
+    if(row===0)shade=226;
+    else if(row===1)shade=Math.min(shade,244);
+    else if((row===4&&col>=3&&col<=16)||(row===6&&col>=19&&col<=28))shade=Math.min(shade,240);
     break;
    }
    case 'brick':case 'cinderblock':{
-    const row=Math.floor(y/(kind==='cinderblock'?16:8));
-    if(y%(kind==='cinderblock'?16:8)===0||
-       mod(x+(row%2)*8+seed%2,kind==='cinderblock'?32:16)===0)
-      shade=kind==='cinderblock'?233:217;
+    const block=kind==='cinderblock',course=block?16:8,row=Math.floor(y/course),span=block?32:16;
+    const col=mod(x+(row%2)*span/2,span),h=y%course;
+    shade=255-(hash(Math.floor((x+(row%2)*span/2)/span),row,seed)%4)*(block?3:5);
+    if(h===0||col===0)shade=block?233:217;
+    else if(h===1||col===1)shade=Math.min(shade,block?248:240);
     break;
    }
    case 'tile':{
@@ -93,19 +90,28 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
    }
    case 'metal':case 'panel':case 'painted-metal':case 'industrial-steel':
    case 'corrugated-metal':case 'enamel-metal':{
-    if(kind==='corrugated-metal')
-      shade=x%8===0?231:x%8===1?248:x%8===7?252:255;
-    else if(kind==='industrial-steel')
-      shade=x%16===0?239:x%16===1?251:255;
-    else if(kind==='painted-metal')
-      shade=x%16===0?246:x%16===1?253:255;
-    else if(kind==='enamel-metal')shade=x%16===0?251:255;
-    else if(x%16===0)shade=kind==='panel'?237:249;
+    const col=x%16,row=y%32;
+    if(kind==='corrugated-metal'){
+     const p=x%8;shade=p===0?230:p===1?238:p===2?248:p===6?252:p===7?255:254;
+    }else if(kind==='industrial-steel'){
+     shade=col===0?238:col===1?247:255;
+     if(col===3&&(row===5||row===25))shade=242;
+    }else if(kind==='painted-metal'){
+     shade=col===0?244:col===1?252:255;
+     if(col===3&&row===5)shade=247;
+    }else if(kind==='enamel-metal')shade=col===0?251:255;
+    else if(kind==='panel')shade=col===0?237:col===1?249:255;
+    else if(col===0)shade=249;
     break;
    }
-   case 'siding':
-    if(y%8===0)shade=241;
+   case 'siding':{
+    const row=y%8,board=Math.floor(y/8);
+    shade=255-(hash(0,board,seed)%3)*2;
+    if(row===0)shade=241;
+    else if(row===1)shade=249;
+    if(mod(x+board*11,32)===0)shade=Math.min(shade,248);
     break;
+   }
    case 'concrete':case 'sealed-concrete':{
     const sealed=kind==='sealed-concrete',row=y%32,col=x%32;
     if(row===0||col===0)shade=sealed?245:239;
@@ -115,10 +121,16 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
     else if(sealed&&row>15&&row<24&&col>17&&col<28)shade=253;
     break;
    }
-   case 'rubber':case 'tire-rubber':
-    if(x%8===0&&y%8<2)shade=kind==='tire-rubber'?236:246;
-    if(kind==='tire-rubber'&&x%8===5&&y%8===4)shade=243;
+   case 'rubber':
+    if(x%16===0)shade=245;
+    else if(x%16===1)shade=251;
     break;
+   case 'tire-rubber':{
+    const p=x%8,q=mod(y+Math.abs(p-4),8);
+    if(q===0||q===1)shade=236;
+    else if(p===0||p===7)shade=Math.min(shade,244);
+    break;
+   }
    case 'carpet':
     if((y%8===3&&x%8>=2&&x%8<=4)||(y%8===5&&x%8>=5&&x%8<=6))shade=251;
     break;
@@ -129,28 +141,32 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
       shade=249; // tiny directional stitches: fade before silhouette scale
     break;
    case 'grass':case 'scruffy-grass':{
-    // Four small, coherent blade clusters; intentionally empty between them.
-    const cx=(5+seed%3),cy=7;
-    const sparse=(x===cx&&y===cy)||(x===cx+1&&y===cy-2)||
-      (x===24&&y===22)||(x===22&&y===23);
-    if(sparse)shade=kind==='scruffy-grass'?227:236;
-    else if((x===cx-1&&y===cy-1)||(x===23&&y===21))shade=246;
-    if(kind==='scruffy-grass'&&x>=14&&x<=16&&y>=12&&y<=14)shade=239;
+    const scrub=kind==='scruffy-grass',col=x%32,row=y%32;
+    const groups=[[6+mod(seed,3),9],[23,23],[19,5],[7,24]];
+    for(const [cx,cy] of groups){
+     const dx=col-cx,dy=row-cy;
+     if((dx===0&&dy>=-3&&dy<=1)||(dx===-1&&dy>=-1&&dy<=1)||(dx===1&&dy===-2))shade=Math.min(shade,scrub?227:236);
+     else if(Math.abs(dx)<=2&&dy>=0&&dy<=2)shade=Math.min(shade,246);
+    }
+    if(scrub&&col>=12&&col<=18&&row>=13&&row<=17)shade=Math.min(shade,240);
     break;
    }
-   case 'earth':case 'packed-earth':
-    if((x===6&&y===9)||(x===25&&y===21))shade=kind==='packed-earth'?237:245;
-    if(kind==='packed-earth'&&y===16&&x>=8&&x<=14)shade=247;
+   case 'earth':case 'packed-earth':{
+    const col=x%32,row=y%32,packed=kind==='packed-earth';
+    if((col>=3&&col<=9&&row>=5&&row<=8)||(col>=20&&col<=25&&row>=22&&row<=25))shade=packed?237:245;
+    else if((col>=13&&col<=21&&row>=14&&row<=16)||(col>=23&&col<=27&&row===8))shade=packed?246:250;
     break;
+   }
    case 'gravel':{
-    const stone=(x>=7&&x<=9&&y>=8&&y<=9)||
-      (x>=23&&x<=25&&y>=21&&y<=22);
-    if(stone)shade=226;
+    const col=x%16,row=y%16;
+    if((col>=2&&col<=5&&row>=3&&row<=5)||(col>=10&&col<=12&&row>=10&&row<=12))shade=226;
+    else if((col>=3&&col<=4&&row===6)||(col===11&&row===13))shade=240;
     break;
    }
    case 'foliage':{
-    // Sparse leaf facets instead of dense camouflage-like noise.
-    if((x===9&&y===8)||(x===10&&y===8)||(x===24&&y===23))shade=243;
+    const col=x%16,row=y%16;
+    if((col>=4&&col<=7&&row>=4&&row<=6)||(col>=10&&col<=12&&row>=10&&row<=12))shade=240;
+    else if((col===3&&row===5)||(col===8&&row===5)||(col===11&&row===13))shade=249;
     break;
    }
    case 'linoleum':
@@ -164,10 +180,12 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
     if(x===0&&y>3&&y<29)shade=247;
     else if(x===1&&y>3&&y<29)shade=252;
     break;
-   case 'asphalt':case 'worn-asphalt':
-    if(manufacturedSpeck(x,y,seed,16))shade=kind==='worn-asphalt'?243:252;
-    if(kind==='worn-asphalt'&&y===19&&x>=10&&x<=15)shade=241;
+   case 'asphalt':case 'worn-asphalt':{
+    const worn=kind==='worn-asphalt',col=x%32,row=y%32;
+    if((col>=4&&col<=7&&row>=7&&row<=9)||(col>=23&&col<=26&&row>=21&&row<=23))shade=worn?242:252;
+    if(worn&&((row===17&&col>=10&&col<=16)||(row===18&&col>=16&&col<=21)||(row===19&&col>=21&&col<=25)))shade=240;
     break;
+   }
    case 'paper':case 'plastic':case 'porcelain':break;
   }
   const i=(y*size+x)*4;
