@@ -48,7 +48,7 @@ export type ActorFrame=Pick<TeamActor,
   'reloadFromRounds'|'reloadTargetRounds'|'reloadSelectedMagazineId'|
   'lastHitAt'|'lastDownAt'|'lastHitRegion'|'lastHitYaw'|
   'lastHitSeverity'|'downPose'|'downClearance'|'flashUntil'|'suppression'|
-  'wedgeRemaining'|'carryingId'|'carriedById'|'transportMode'|'transportLatched'|
+  'wedgeRemaining'|'carryingId'|'carriedById'|'transportMode'|'transportLatched'|'downWeaponsReleased'|
   'lastTreatmentAt'|'lastTreatmentTargetId'|'treatmentActive'|'treatmentProgress'|
   'medical'|'medicalSupplies'|'weapon'|'weaponConfiguration'|'weaponLightOn'|'nvgDeployed'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|'aimInstruction'|
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'lastDoorMethod'|'stride'|
@@ -235,6 +235,7 @@ export function snapshot(s:Session,seenGround?:string[],
        treatmentActive:a.treatmentActive,treatmentProgress:a.treatmentProgress,
        carryingId:a.carryingId,carriedById:a.carriedById,
        transportLatched:a.transportLatched??false,
+       downWeaponsReleased:a.downWeaponsReleased??false,
        transportMode:a.transportMode??null,
        wedgeRemaining:a.wedgeRemaining,
        restraintRemaining:a.restraintRemaining,
