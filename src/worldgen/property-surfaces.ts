@@ -20,7 +20,7 @@ export type SurfaceKind='path'|'driveway-stripe'|'parking-divider'|
  'waste-bay-line'|'utility-bay-line'|'loading-bay-line'|
  'amenity-apron'|'work-wear'|'pavement-joint'|
  'street-verge'|'street-shoulder'|'road-patch'|'road-manhole'|'street-drain'|'sidewalk-joint'|
- 'road-centerline'|'road-edge-line'|'street-driveway-link';
+ 'road-centerline'|'road-edge-line'|'street-driveway-link'|'street-side-road';
 export type PropertySurface={
  id:string;zoneId:string;kind:SurfaceKind;
  x:number;y:number;width:number;depth:number;

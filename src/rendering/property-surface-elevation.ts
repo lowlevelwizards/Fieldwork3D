@@ -16,7 +16,7 @@ const layers:Record<SurfaceKind,number>={
  'waste-bay-line':1,'utility-bay-line':1,'loading-bay-line':1,
  'amenity-apron':0,'work-wear':1,'pavement-joint':1,
  'street-verge':0,'street-shoulder':0,'road-patch':1,'road-manhole':2,'street-drain':2,'sidewalk-joint':2,
- 'road-centerline':3,'road-edge-line':3,'street-driveway-link':2,
+ 'road-centerline':3,'road-edge-line':3,'street-driveway-link':2,'street-side-road':0,
 };
 /** Finishes which intentionally overlap a base use a fixed precedence.
  * Baseline site finishes keep their historical heights; details rise where
@@ -32,6 +32,7 @@ export function propertySurfaceCenterHeight(kind:SurfaceKind):number{
  // Thin landscape/service details are flat finishes, not pretend curbs.
  // Explicit offsets keep them above the real zone plane and below all
  // actual obstacle meshes, without sharing a coplanar z-buffer with pads.
+ if(kind==='street-side-road')return -1.35;
  if(kind==='street-verge'||kind==='street-shoulder')return -1.28;
  if(kind==='street-driveway-link')return -1.08;
  if(kind==='road-centerline'||kind==='road-edge-line')return -1.04;

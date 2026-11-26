@@ -11,6 +11,7 @@ export function planStreetFinishes(site:Site):PropertySurface[]{
  if(p.verge)add('street-verge',p.verge);
  if(p.shoulder)add('street-shoulder',p.shoulder);
  if(p.accessConnection)add('street-driveway-link',p.accessConnection);
+ if(p.junction)add('street-side-road',p.junction.road);
  const road=p.frontage.road,along=p.axis,across=along==='x'?'y':'x';
  const len=along==='x'?road.width:road.depth,depth=p.visibleRoadWidth;
  const rect=(at:number,other:number,w:number,h:number):StreetRect=>along==='x'?

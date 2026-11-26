@@ -124,6 +124,7 @@ export function overlapsPublicStreetRoad(
  // Only the OFFLINE exterior placement pass supplies this precomputed plan.
  planned?:PublicStreet|null):boolean{
  const plan=planned===undefined?planPublicStreet(site):planned;
- return !!plan&&overlap(plan.road,{x:obstacle.x,y:obstacle.y,
-   width:obstacle.w,depth:obstacle.h},1);
+ const box={x:obstacle.x,y:obstacle.y,width:obstacle.w,depth:obstacle.h};
+ return (!!plan&&overlap(plan.road,box,1))||
+  (!!site.streetInfrastructure?.junction&&overlap(site.streetInfrastructure.junction.road,box,1));
 }

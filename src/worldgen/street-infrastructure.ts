@@ -13,6 +13,8 @@ export type StreetInfrastructure=Readonly<{
  verge:StreetRect|null;shoulder:StreetRect|null;privateEdge:number;
  privateReserve:number;accessConnection:StreetRect|null;
  centerline:StreetRect|null;diagnostics:readonly string[];
+ /** Real secondary road, accepted only after physical placement. */
+ junction?:Readonly<{road:StreetRect;axis:'x'|'y';laneWidth:number;side:-1|1;mainEdge:number}>;
 }>;
 export function proposeStreetInfrastructure(site:Site,override?:StreetKind,privateReserve:number=D.propertyAccess):StreetInfrastructure|null{
  const b=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
@@ -93,7 +95,7 @@ export function proposeStreetInfrastructure(site:Site,override?:StreetKind,priva
 }
 /** Existing physical props are never deleted by the shadow planner. */
 export function streetConflicts(site:Site,plan:StreetInfrastructure):string[]{
- const regions=[plan.frontage.road,plan.frontage.sidewalk,plan.shoulder,plan.verge].filter((r):r is StreetRect=>!!r);
+ const regions=[plan.frontage.road,plan.frontage.sidewalk,plan.shoulder,plan.verge,plan.junction?.road].filter((r):r is StreetRect=>!!r);
  const intersects=(r:StreetRect,c:{x:number;y:number;w:number;h:number})=>
   Math.abs(r.x-c.x)<(r.width+c.w)/2&&Math.abs(r.y-c.y)<(r.depth+c.h)/2;
  return site.cover.filter(c=>regions.some(r=>intersects(r,c))).map((c,i)=>c.id??(c.fixture??'cover')+':'+i);

@@ -43,3 +43,6 @@ For sufficiently deep non-industrial lots, two full perpendicular rows share one
 
 ## ST12 candidate default integration (not released)
 Ordinary new-site generation now selects ST without an opt-in; a failed physical retrofit retains the safe historical layout. Explicit historical witnesses and no-vehicle fixtures can still request legacy. Street Lab defaults to the real generation path, retaining legacy and shadow comparison, and reports marked capacity and street furniture counts. Expanded the default-vs-legacy audit to all three scales (66 sites). Exact-head validation pending; default is not live until the full release gate clears.
+
+## Connected side-road checkpoint
+Versioned secondary-road geometry joins a complete main street only where the entire unused map-edge corridor fits a nominal two-lane road and contains no existing rooms, zones, obstacles, protected points, or door reserves. Trim actual curb/sidewalk pieces at the opening; render the branch and bounded approach paint with existing static surface packets. No invented signalized junctions or traffic, no movement changes. Exact substrate assertions extended rather than removing earlier checks. Pending critical validation.

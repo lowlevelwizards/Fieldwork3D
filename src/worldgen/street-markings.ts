@@ -27,5 +27,16 @@ export function planStreetMarkings(site:Site):PropertySurface[]{
   stripe('road-edge-line',road[across]-sign*(wide/2-4),from+4,to-4);
   if(!p.cropped)stripe('road-edge-line',road[across]+sign*(wide/2-4),from+4,to-4);
  }
+ if(p.junction){
+  const j=p.junction,r=j.road,sign=p.entry==='south'||p.entry==='east'?1:-1;
+  const len=j.axis==='x'?r.width:r.depth;
+  // Center divider ends before the junction throat; a short white waiting
+  // bar belongs on the incoming half only (right-hand traffic convention).
+  const begin=j.mainEdge-sign*24,end=j.mainEdge-sign*(len-8);
+  const alongCenter=(begin+end)/2;
+  add('road-centerline',rect(r[axis],alongCenter,D.paintWidth,Math.abs(end-begin)));
+  const inbound=r[axis]+sign*j.laneWidth/2;
+  add('road-edge-line',rect(inbound,j.mainEdge-sign*13,j.laneWidth-8,3));
+ }
  return out;
 }

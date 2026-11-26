@@ -194,7 +194,7 @@ export function buildSiteExterior(site:Site,host:SiteExteriorBuildHost):void{
         let material=finishMaterials.get(mark.kind);
         if(!material){
           const surface=mark.kind==='street-verge'?'grass':mark.kind==='street-shoulder'?'gravel':
-            mark.kind==='road-patch'?'asphalt':mark.kind==='road-manhole'||mark.kind==='street-drain'?'industrial-steel':
+            mark.kind==='road-patch'||mark.kind==='street-side-road'?'asphalt':mark.kind==='road-manhole'||mark.kind==='street-drain'?'industrial-steel':
             mark.kind==='work-wear'?'packed-earth':'concrete';
           material=host.solid(age(surfaceColor[mark.kind],surface),.91,surface);
           finishMaterials.set(mark.kind,material);
