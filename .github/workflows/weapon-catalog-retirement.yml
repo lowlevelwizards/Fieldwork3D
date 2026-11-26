@@ -11,6 +11,7 @@ on:
       - 'tests/weapon-catalog-ownership.test.mjs'
       - 'src/equipment-weapon-identity.ts'
       - 'src/equipment-weapon-ownership.ts'
+      - 'src/campaign-state.ts'
       - 'src/arsenal/wa-art-models.ts'
       - 'scripts/verify-catalog-retirement.mjs'
       - '.github/workflows/weapon-catalog-retirement.yml'

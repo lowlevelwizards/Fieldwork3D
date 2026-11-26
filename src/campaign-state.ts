@@ -52,7 +52,7 @@ import {readWeaponConfiguration,changeWeaponPlatform,
  selectWeaponFamilyPreset,setConfiguredFamilyPart,sameWeaponConfiguration,
  type WeaponConfiguration,type WeaponAttachmentSlot}
  from './equipment-weapon-assemblies.ts';
-import type {FamilyPartSlot} from './equipment-weapon-families.ts';
+import {familyPreset,matchingFamilyPreset,type FamilyPartSlot} from './equipment-weapon-families.ts';
 import {issueWeaponPreset,starterWeaponPreset,resolveCatalogConfiguration} from './breach-weapon-issue.ts';
 import {attachmentPrice,readAttachmentStock,returnAttachments}
  from './equipment-weapon-inventory.ts';
@@ -60,7 +60,7 @@ import {resolveMountedAccessoryLayout}
  from './weapons/geometry/mounted-accessory-layout.ts';
 import {quoteAttachmentTransfer}
  from './equipment-weapon-transactions.ts';
-import {MAX_OWNED_WEAPONS,recordWeaponRounds,serviceSerializedWeapon,type SerializedWeapon} from './equipment-weapon-identity.ts';
+import {MAX_OWNED_WEAPONS,recordWeaponRounds,serviceSerializedWeapon,readOwnedCatalogBody,type SerializedWeapon} from './equipment-weapon-identity.ts';
 import {reconcileCampaignWeaponOwnership,synchronizeIssuedCatalogBodies} from './equipment-weapon-ownership.ts';
 import {kitMedicalSupplies,normalizedMedicalSupplies,medicalSupplyCount,
  type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
@@ -772,6 +772,23 @@ export function buyWeapon(c:CampaignState,weapon:CampaignOperator['weapon']):Cam
  return reconcileCampaignWeaponOwnership({...c,funds:charge(c,price),
   inventory:{...c.inventory,weapons:{...c.inventory.weapons,[weapon]:c.inventory.weapons[weapon]+1}}});
 }
+/** Purchase an actual catalog reference. Transitional prices/authorization use
+ * the existing campaign policy; the new owned object retains its own body. */
+export function buyCatalogWeapon(c:CampaignState,presetId:string):CampaignState{
+ const preset=familyPreset(presetId);
+ if(!preset||!mayChooseCampaignContent(c,'weapon-preset',presetId))return c;
+ const normalized=reconcileCampaignWeaponOwnership(c);
+ const before=new Set(normalized.inventory.serializedWeapons?.map(w=>w.id));
+ const bought=buyWeapon(normalized,preset.weapon);
+ if(bought===normalized)return c;
+ const added=bought.inventory.serializedWeapons?.filter(w=>!before.has(w.id))??[];
+ if(added.length!==1)return c;
+ const body=issueWeaponPreset(presetId).weaponConfiguration.build;
+ if(!body)return c;
+ return {...bought,inventory:{...bought.inventory,serializedWeapons:
+  bought.inventory.serializedWeapons!.map(w=>w.id===added[0].id?
+   {...w,catalogBody:readOwnedCatalogBody(body,preset.weapon)}:w)}};
+}
 /** Buying an attachment adds one stock item without silently equipping it. */
 export function buyWeaponAttachment(c:CampaignState,partId:string):CampaignState{
  if(!dispatchPilotUnclassifiedEditingEnabled(c))return c;
@@ -874,6 +891,41 @@ export function equipCampaignWeapon(c:CampaignState,id:string,
     magazines:[],loadedMagazineId:o.id+'/'+weapon+'/loaded',
     loadout:syncPrimaryWeapon(o.loadout,weapon),
     weaponConfiguration:targetConfig}:o)});
+}
+
+/** Issue one exact unassigned owned catalog object, including same-category
+ * exchanges. No appearance substitution, new asset or hidden purchase. */
+export function equipCampaignCatalogWeapon(c:CampaignState,id:string,serialId:string):CampaignState{
+ if(c.activeContractId)return c;
+ const m=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ if(!m||c.operators.some(o=>o.status!=='lost'&&o.status!=='retired'&&o.weaponSerialId===serialId))return c;
+ const incoming=c.inventory.serializedWeapons?.find(w=>w.id===serialId);
+ if(!incoming||!incoming.catalogBody||c.inventory.weapons[incoming.platform]<1)return c;
+ const weapon=incoming.platform;
+ if(!mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'))return c;
+ const preset=matchingFamilyPreset(incoming.catalogBody);
+ if(preset?!mayChooseCampaignContent(c,'weapon-preset',preset.id):
+  !dispatchPilotUnclassifiedEditingEnabled(c))return c;
+ const base=changeWeaponPlatform(m.weaponConfiguration,weapon);
+ const target=readWeaponConfiguration({...base,build:incoming.catalogBody,
+  mountSelections:undefined,stockPosition:undefined},weapon);
+ if(!target.build||JSON.stringify(target.build)!==JSON.stringify(incoming.catalogBody)||
+  !hasValidPhysicalLayout(target))return c;
+ const transfer=quoteAttachmentTransfer(c.inventory.attachments,m.weaponConfiguration,target,
+  Math.max(0,c.funds),false);
+ if(!transfer.canCommit||!transfer.stockAfter)return c;
+ const normalized=synchronizeIssuedCatalogBodies(c);
+ const counts={...normalized.inventory.weapons};
+ counts[weapon]--;counts[m.weapon]++;
+ const next=reconcileCampaignWeaponOwnership({...normalized,inventory:{...normalized.inventory,
+  weapons:counts,attachments:transfer.stockAfter},operators:normalized.operators.map(o=>o.id===id?
+   {...o,weapon,weaponSerialId:serialId,magazine:0,reserve:0,magazines:[],
+    loadedMagazineId:o.id+'/'+weapon+'/loaded',loadout:syncPrimaryWeapon(o.loadout,weapon),
+    weaponConfiguration:target}:o)});
+ // Fail closed if compatibility reconciliation cannot preserve this exchange.
+ if(next.operators.find(o=>o.id===id)?.weaponSerialId!==serialId||
+  next.inventory.serializedWeapons?.length!==normalized.inventory.serializedWeapons?.length)return c;
+ return next;
 }
 
 /** Retirement is player-directed, never inferred from an ambiguous downed state. */

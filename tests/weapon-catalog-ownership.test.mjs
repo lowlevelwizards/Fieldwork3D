@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newCampaign,readCampaign,buyWeapon,equipCampaignWeapon,equipCampaignWeaponPreset} from '../src/campaign-state.ts';
+import {newCampaign,readCampaign,buyWeapon,equipCampaignWeapon,equipCampaignWeaponPreset,buyCatalogWeapon,equipCampaignCatalogWeapon} from '../src/campaign-state.ts';
 import {readSerializedWeapons,recordWeaponRounds} from '../src/equipment-weapon-identity.ts';
 import {reconcileCampaignWeaponOwnership,weaponOwnershipIssues} from '../src/equipment-weapon-ownership.ts';
 import {matchingFamilyPreset,validFamilyBuild} from '../src/equipment-weapon-families.ts';
@@ -54,4 +54,29 @@ test('class-only spare records recover existing catalog data without changing se
  assert.deepEqual(migrated,spare);
  assert.ok(validFamilyBuild(migrated.catalogBody,migrated.platform));
  assert.deepEqual(reconcileCampaignWeaponOwnership(c),c);
+});
+
+test('named acquisition and exact serial exchange retain model identity and service records',()=>{
+ const c=newCampaign(986),op=c.operators[0];
+ const beforeIds=new Set(c.inventory.serializedWeapons.map(w=>w.id));
+ const bought=buyCatalogWeapon(c,'ar-colt733');
+ assert.notStrictEqual(bought,c);
+ const spare=bought.inventory.serializedWeapons.find(w=>!beforeIds.has(w.id));
+ assert.equal(matchingFamilyPreset(spare.catalogBody).id,'ar-colt733');
+ assert.equal(bought.inventory.serializedWeapons.length,c.inventory.serializedWeapons.length+1);
+ const next=equipCampaignCatalogWeapon(bought,op.id,spare.id);
+ assert.notStrictEqual(next,bought);
+ const issued=next.operators.find(o=>o.id===op.id);
+ assert.equal(issued.weaponSerialId,spare.id);
+ assert.deepEqual(issued.weaponConfiguration.build,spare.catalogBody);
+ const returned=next.inventory.serializedWeapons.find(w=>w.id===op.weaponSerialId);
+ assert.deepEqual(returned,c.inventory.serializedWeapons.find(w=>w.id===op.weaponSerialId));
+ assert.equal(next.inventory.weapons.carbine,bought.inventory.weapons.carbine);
+ assert.equal(next.funds,bought.funds);
+ assert.deepEqual(weaponOwnershipIssues(next),[]);
+ assert.deepEqual(readCampaign(JSON.stringify(next)),next);
+ assert.strictEqual(equipCampaignCatalogWeapon(next,op.id,spare.id),next);
+ assert.strictEqual(equipCampaignCatalogWeapon(next,next.operators[1].id,spare.id),next);
+ assert.strictEqual(buyCatalogWeapon(next,'missing-reference'),next);
+ assert.strictEqual(buyCatalogWeapon({...next,activeContractId:'live'},'ar-m4a1').inventory.serializedWeapons,next.inventory.serializedWeapons);
 });
