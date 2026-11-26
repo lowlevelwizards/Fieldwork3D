@@ -6,6 +6,8 @@ import type {SurfaceAttachment} from '../breach-impact-surface.ts';
 import {WALL_VISUAL_HEIGHT} from '../breach-door-proportions.ts';
 import {planWallSurface} from '../worldgen/wall-surface-recipe.ts';
 export const PLASTER_IMPACT_SCALE=.85;
+export const METAL_IMPACT_SCALE=.85;
+export const impactMaterialScale=(surface:string|undefined)=>surface==='metal'?METAL_IMPACT_SCALE:1;
 const cache=new WeakMap<Site,Map<number,number>>();
 export function impactFinishScale(site:Site|null|undefined,ref:SurfaceAttachment|undefined):number{
  if(!site||ref?.kind!=='wall'||!site.walls[ref.index]||
