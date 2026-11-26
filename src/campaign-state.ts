@@ -60,7 +60,7 @@ import {resolveMountedAccessoryLayout}
  from './weapons/geometry/mounted-accessory-layout.ts';
 import {quoteAttachmentTransfer}
  from './equipment-weapon-transactions.ts';
-import {MAX_OWNED_WEAPONS,recordWeaponRounds,serviceSerializedWeapon,readOwnedCatalogBody,newSerializedWeapon,type SerializedWeapon} from './equipment-weapon-identity.ts';
+import {MAX_OWNED_WEAPONS,recordWeaponRounds,serviceSerializedWeapon,newSerializedWeapon,type SerializedWeapon} from './equipment-weapon-identity.ts';
 import {reconcileCampaignWeaponOwnership,synchronizeIssuedCatalogBodies,catalogOwnedStock,nextCatalogWeaponSerial,projectCatalogInventory} from './equipment-weapon-ownership.ts';
 import {kitMedicalSupplies,normalizedMedicalSupplies,medicalSupplyCount,
  type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
@@ -920,7 +920,7 @@ export function canEquipCampaignCatalogWeapon(c:CampaignState,id:string,serialId
 export function equipCampaignCatalogWeapon(c:CampaignState,id:string,serialId:string):CampaignState{
  const plan=preflightCatalogIssue(c,id,serialId);
  if(!plan)return c;
- const {m,weapon,target,stockAfter}=plan;
+ const {weapon,target,stockAfter}=plan;
  const normalized=synchronizeIssuedCatalogBodies(c);
  const next=projectCatalogInventory({...normalized,inventory:{...normalized.inventory,
   attachments:stockAfter},operators:normalized.operators.map(o=>o.id===id?
