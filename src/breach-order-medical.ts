@@ -14,7 +14,7 @@ import {treatmentSupplyForWound,treatmentDuration}
 import {stabilizeWound} from './breach-medical-wounds.ts';
 import {dropCivilianCustody,takeCivilianCustody,proposedCivilianTransportStep}
  from './breach-civilian-transport.ts';
-import {captureTargetTransportEligible,designatedDownedCaptureTarget}
+import {captureTargetTransportEligible}
  from './breach-capture-transport-policy.ts';
 import {captureVitalStatus} from './breach-capture-vitals.ts';
 
@@ -69,6 +69,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
     const civil=s.civilians.find(c=>c.id===n.patientId);
     const friendly=s.operators.find(o=>o.id===n.patientId&&
       (o.side===a.side||captureTargetTransportEligible(s,o,a)||
+       (n.transportPickup&&a.side==='blue'&&o.side==='red'&&o.health<=0)||
        (a.carryingId===o.id&&o.carriedById===a.id)));
     const patient=friendly??civil;
     if(!patient||patient===a||patient.health>0||
@@ -78,8 +79,13 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
       else if(friendly?.carriedById===a.id){
         friendly.carriedById=null;friendly.transportMode=null;
       }
-      if(a.carryingId===n.patientId)a.carryingId=null;
+      if(a.carryingId===n.patientId){a.carryingId=null;a.transportLatched=false;}
       pop(a);return true;
+    }
+    // A stale queued pickup must never overwrite a different reciprocal
+    // custody link acquired by an earlier order or restored from replay.
+    if(a.carryingId&&a.carryingId!==patient.id){
+      failCurrentOrder(s,a,n,'ALREADY TRANSPORTING A CASUALTY');return true;
     }
     if(patient.carriedById&&patient.carriedById!==a.id){
       failCurrentOrder(s,a,n,'CASUALTY ALREADY IN TRANSPORT');return true;
@@ -94,8 +100,8 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
       }
       // Opposing downed capture targets need the same observed contact and
       // full-body swept reach as neutral rescue casualties. No remote pickup.
-      if((civil||friendly?.side==='red')&&
-         (!liveVisibility(s,patient.p)||
+      if(((civil||friendly?.side==='red')&&!liveVisibility(s,patient.p))||
+         ((n.transportPickup||civil||friendly?.side==='red')&&
           !sweptBodyClear(a.p,patient.p,s.doors,5.5,
              sessionWorldGeometry(s)))){
         failCurrentOrder(s,a,n,'CASUALTY NOT IN PHYSICAL REACH');return true;
@@ -116,9 +122,11 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
         a.actionTimer=0;clearCurrentOrderIssue(a);
         notify(s,a.name+' '+(mode==='drag'?'DRAGGING':'CARRYING')+' '+
           ('name' in patient?patient.name:'CIVILIAN'));
+        if(n.transportPickup){a.transportLatched=true;pop(a);}
       }
       return true;
     }
+    if(n.transportPickup){a.transportLatched=true;pop(a);return true;}
     // Follow each user-drawn bend while maintaining this exact reciprocal
     // casualty attachment. No intermediate MOVE order may release the body.
     const destination=n.transportPath?.[0]??n.p;
@@ -161,7 +169,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
   if(n.kind==='treat'){
     const patient=s.operators.find(o=>o.id===n.patientId&&
       (o.side===a.side||a.side==='blue'&&
-        designatedDownedCaptureTarget(s,o)));
+        o.side==='red'&&o.health<=0));
     const hostile=!!patient&&patient.side!==a.side;
     const wound=patient?.medical.wounds.find(w=>w.id===n.woundId);
     if(!patient||!wound||wound.stabilized||wound.bleeding<=0||

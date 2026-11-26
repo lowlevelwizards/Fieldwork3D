@@ -8,7 +8,7 @@ import {doorCenter,type Door,type Pt} from './breach-core.ts';
 import {type Session,type TeamActor,plannedControl,finalPoint,
  setFirePolicy,planCivilianInteraction,planCivilianRelease,planSuspectChallenge,planSuspectRestraint,planSearchSuspect,planSecureDroppedFirearm,planSuspectEscort,
  inSight,team,enemies,
- planCasualtyTransport,planCaptureTransportRelease,planWaitAt,setWaitDuration,setNodeControl,
+ planCasualtyPickup,planCaptureTransportRelease,planWaitAt,setWaitDuration,setNodeControl,
  posture,setStartPace,planReloadAt,planSwitchWeaponAt,planMedicalTreatment,
  planNearbyInteraction,planSitePowerControl,removeActiveWatch,deletePlanNode,
  doorAtNode,planEntryTool,planStackTeam,planSquadEntry,canEdit,
@@ -211,14 +211,14 @@ export function dispatchTacticalContextCommand(input:{
    case 'ctxDragCapture':
   case 'ctxCarryCapture':{
    const at=finalPoint(a);
-   const prisoner=focusedEnemies.find(e=>e.id===state.captureTarget&&
-      e.health<=0&&captureVitalStatus(e)!=='deceased'&&
-       (!e.carriedById||e.carriedById===a.id)&&
-      distance(at,e.p)<34&&liveVisibility(state,e.p)&&
-      sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)));
-   if(!prisoner)return finish(false,'CAPTURE TARGET NOT IN PHYSICAL REACH');
-   return {handled:true,outcome:'accepted',armTransport:{
-     patientId:prisoner.id,mode:action==='ctxCarryCapture'?'carry':'drag'}};
+   const prisoner=state.operators.filter(e=>e!==a&&
+      (!input.personFocusId||e.id===input.personFocusId)&&
+      e.health<=0&&captureVitalStatus(e)!=='deceased'&&!e.carriedById&&
+      distance(at,e.p)<34&&(e.side===a.side||liveVisibility(state,e.p))&&
+      sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)))
+      .sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0];
+   return finish(!!prisoner&&planCasualtyPickup(state,selected,prisoner.id,
+      action==='ctxCarryCapture'?'carry':'drag'),'CASUALTY NOT IN PHYSICAL REACH');
 
   }
   case 'ctxDragCivilian':
@@ -228,8 +228,8 @@ export function dispatchTacticalContextCommand(input:{
     liveVisibility(state,c.p)&&distance(finalPoint(a),c.p)<34)
     .sort((x,y)=>distance(finalPoint(a),x.p)-
       distance(finalPoint(a),y.p))[0];
-   return finish(!!civ&&planCasualtyTransport(state,selected,civ.id,
-     state.scenario.extract,action==='ctxCarryCivilian'?'carry':'drag'),
+   return finish(!!civ&&planCasualtyPickup(state,selected,civ.id,
+     action==='ctxCarryCivilian'?'carry':'drag'),
      'CIVILIAN TRANSPORT ROUTE NOT AVAILABLE');
   }
   case 'ctxWait':

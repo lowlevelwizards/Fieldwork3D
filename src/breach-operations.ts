@@ -55,6 +55,10 @@ export type OperationAssessment={
   disposition?:import('./breach-operation-outcomes.ts').OperationDisposition;
   evacuatedCasualties?:number;
   recoveredIntel?:number;
+  weaponsSecured?:number;
+  suspectsRestrained?:number;
+  suspectsExtracted?:number;
+  personsStabilized?:number;
   casualties:number;teamSize:number;shots:number;hits:number;
   objective:boolean;targetSurrendered?:boolean;extracted:number;
   /** Retrospective actual captive condition, never inferred from zero HP. */
@@ -90,6 +94,10 @@ export function assessOperation(data:OperationAssessment,explain=false){
    Math.min(12,Math.max(0,data.evacuatedCasualties)*4));
  if(data.recoveredIntel)award('OPTIONAL INTELLIGENCE RECOVERED',
    Math.min(20,Math.max(0,data.recoveredIntel)*5));
+ if(data.weaponsSecured)award('WEAPONS SECURED ('+data.weaponsSecured+')',Math.min(12,data.weaponsSecured*2));
+ if(data.suspectsRestrained)award('SUSPECTS RESTRAINED ('+data.suspectsRestrained+')',Math.min(16,data.suspectsRestrained*4));
+ if(data.suspectsExtracted)award('SUSPECTS EXTRACTED ('+data.suspectsExtracted+')',Math.min(20,data.suspectsExtracted*6));
+ if(data.personsStabilized)award('PERSONS STABILIZED ('+data.personsStabilized+')',Math.min(12,data.personsStabilized*3));
  if(data.elapsed>180)
   award('TIME MODIFIER',-Math.min(12,Math.floor((data.elapsed-180)/30)));
  if(data.kind==='capture'&&data.targetSurrendered)

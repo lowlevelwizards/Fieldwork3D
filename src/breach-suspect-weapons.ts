@@ -38,6 +38,35 @@ export function droppedWeaponPosition(s:Session,a:TeamActor):Pt{
  }
  return {...a.p};
 }
+/** Publish recoverable evidence once for a real downed suspect. Previously
+ * only surrender produced a world firearm; downed actors had a decorative
+ * dropped rifle that could never be secured. Existing surrendered evidence
+ * is retained, and a retrieved gun is eligible to be dropped again. */
+export function releaseDownedSuspectWeapons(s:Session,a:TeamActor):void{
+ if(a.side!=='red'||a.health>0||a.downedAt==null||a.downWeaponsReleased)return;
+ a.downWeaponsReleased=true;
+ const released=s.droppedFirearms.filter(w=>w.ownerId===a.id&&w.status!=='retrieved');
+ if(!released.some(w=>!w.secondaryWeapon)){
+  const item:DroppedFirearm={
+   id:s.nextEffectId++,ownerId:a.id,p:droppedWeaponPosition(s,a),
+   heading:a.heading,at:s.seconds,weapon:a.weapon,
+   weaponConfiguration:a.weaponConfiguration?structuredClone(a.weaponConfiguration):undefined,
+   loadedRounds:a.magazine,reserveRounds:a.reserve,magazineId:a.insertedMagazineId,
+   status:'loose'
+  };
+  s.droppedFirearms.push(item);a.releasedWeaponId=item.id;
+ }
+ const pistol=a.equipment?.secondary;
+ if(pistol?.weapon){
+  s.droppedFirearms.push({
+   id:s.nextEffectId++,ownerId:a.id,p:{...a.p},heading:a.heading,
+   at:s.seconds,weapon:a.weapon,loadedRounds:pistol.loadedRounds,reserveRounds:0,
+   magazineId:'secondary:'+a.id,secondaryWeapon:pistol.weapon,
+   secondaryEquipment:structuredClone(pistol),status:'loose'
+  });
+  a.equipment={...a.equipment!,secondary:undefined};
+ }
+}
 /** A unique world object receives actual held-firearm identity exactly once. */
 export function releaseSuspectHeldFirearm(s:Session,a:TeamActor):DroppedFirearm{
  const pistol=a.secondarySwitch?.active==='secondary'&&

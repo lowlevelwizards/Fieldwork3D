@@ -153,7 +153,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     frame.chest.position.x+=balance.chestForward;
   }
   const kickAge=p.seconds-p.lastDoorAt;
-  const kick=p.doorMethod==='kick'&&kickAge>=0&&kickAge<.76?
+  const kick=!p.down&&!p.surrender&&p.doorMethod==='kick'&&kickAge>=0&&kickAge<.76?
     kickMotion(kickAge):null;
   const {handling}=preparedDecision;
   // The existing transition sampler remains the ONLY rig-owned historical
@@ -818,7 +818,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   heldWeapon.visible=((!p.down&&!p.surrender)||downProgress<.30)&&
     (p.secondarySwitch?.fraction??0)<.50;
   droppedWeapon.visible=(p.down||p.surrender)&&downProgress>=.30&&
-    !(p.surrender&&p.worldWeaponReleased);
+    !p.worldWeaponReleased;
   if(droppedWeapon.visible&&r.droppedWeaponBody.children.length===0){
     const buildStart=profilePose?performance.now():0;
     // Build the same real silhouette (including accessories) at the exact
@@ -1194,7 +1194,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }else if(i===0&&contactReach>.001){
       desired.lerp(shoulder.clone().add(P(11,-3,-2)),contactReach);
     }
-    if(carryTransitionActive&&carryTransitionHands)
+    if(carryTransitionActive&&carryTransitionHands&&!(i===0&&reaching))
       desired.copy(carryTransitionHands[i]).lerp(
         desired,carryTransitionAlpha);
     // At phase zero reproduce the *exact* displayed source anatomy.
@@ -1215,7 +1215,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // No second IK pass may undo a validated elbow/armor solution.
     const destinationArms=coupled?.arms??coordinatedDynamic?.arms??null;
     const pairedArms=!carryTransitionActive&&!authoredBridge&&
-      !p.unarmedPreview&&contactReach<.001&&!equipmentActive?destinationArms:null;
+      !reaching&&!p.unarmedPreview&&contactReach<.001&&!equipmentActive?destinationArms:null;
     if(pairedArms){
       const limb=pairedArms[i];
       r.elbowSpread[i]=Math.max(0,sign*(limb.joint.z-shoulder.z));
