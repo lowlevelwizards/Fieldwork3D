@@ -384,7 +384,7 @@ function renderFixtureLighting2D(){
  const evidence=observer?
   replayKnowledge.personalGround?.at(replayPlayback.time,observer)??null:null;
  for(const f of view.fixtures){
-  if(spatialSurfaceState(state,'room',f.roomId,
+  if(f.kind!=='street'&&spatialSurfaceState(state,'room',f.roomId,
      replaying&&replayKnowledge.omniscient)==='unknown')continue;
   const micro='micro:'+Math.floor(f.p.x/10)+','+Math.floor(f.p.y/10);
   const fine='fine:'+Math.floor(f.p.x/20)+','+Math.floor(f.p.y/20);

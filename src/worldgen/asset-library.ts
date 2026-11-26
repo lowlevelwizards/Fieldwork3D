@@ -43,7 +43,7 @@ const bespoke = new Set([
   'tire-stack','vehicle-lift','hedge','bush','tree','tree-broadleaf','tree-conifer','tree-scrub','shrub-round','shrub-tall','plant','fence','pallet',
   'mailbox','trash-bin','bollard','hydrant','utility-cabinet',
   'public-bench','vending-machine','wayfinding-sign','screened-dumpster',
-  'parking-block','parking-sign','traffic-stop-sign','street-lamp','bike-rack','window-boards',
+  'parking-block','parking-sign','traffic-stop-sign','street-power-box','street-lamp','bike-rack','window-boards',
 ]);
 const dressings = ['mug','books','papers','tools','plant','lamp','floor-lamp','packages','rug','bedside-rug','bath-mat','welcome-mat','runner'] as const;
 const architecture:readonly AssetLibraryEntry[] = [

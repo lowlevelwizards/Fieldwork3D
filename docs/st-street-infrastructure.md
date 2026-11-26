@@ -58,3 +58,6 @@ Exact current-main comparison passed all 18 cases including historical playback 
 
 ## ST final parking/access checkpoint
 Dedicated curbside parallel parking is attempted only with a complete main road, full sidewalk and independent 52-unit lane; no travel lane is sacrificed. Fit/occupancy share existing cardinal vehicle contract. Added approach/transfer connection collision validation. Pending critical CI. The current engine has cardinal-only authoritative vehicle orientation, so diagonal parking is not faked with mismatched collision.
+
+## ST lamps and supply presentation
+Physical accepted street lamps now participate in the existing bounded L1 light topology, power circuit mains:1, day/evening/night/blackout presets, 2D/3D pooled fixtures and occluded footprints. No additional runtime lights or new circuit system. Low-profile exterior supply boxes are physical contextual scenery, not a new interactive breaker. Old sites without ST metadata keep historical light lists. Diagonal parking remains excluded because authoritative vehicle cover only supports cardinal turns. Pending exact-head CI.

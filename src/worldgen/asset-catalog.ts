@@ -45,6 +45,8 @@ definitions.push(
   solid:true,cover:'high',rooms:['service-yard','parking']},
  {id:'parking-block',category:'exterior',width:38,depth:9,height:8,
   solid:true,cover:'low',rooms:['parking','driveway']},
+ {id:'street-power-box',category:'exterior',width:16,depth:12,height:24,
+  solid:true,cover:'low',rooms:['parking','driveway','yard']},
  {id:'traffic-stop-sign',category:'exterior',width:15,depth:9,height:51,
   solid:true,cover:'low',rooms:['parking','driveway','yard']},
  {id:'parking-sign',category:'exterior',width:9,depth:9,height:44,

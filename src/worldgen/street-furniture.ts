@@ -24,13 +24,14 @@ export function planStreetFurniture(site:Site):Obstacle[]{
   ...(site.encounter?.neutrals??[]).flatMap(a=>[a.position,...(a.routine??[])])];
  const doors=exteriorDoorReserves(site.doors),out:Obstacle[]=[];
  const roles=p.kind==='rural'?['wayfinding-sign']:
-  p.kind==='industrial'?['street-lamp','street-lamp','hydrant','bollard']:
-  p.kind==='commercial'||p.kind==='suburban'?['street-lamp','street-lamp','hydrant','wayfinding-sign','public-bench']:
+  p.kind==='industrial'?['street-lamp','street-lamp','hydrant','bollard','street-power-box']:
+  p.kind==='commercial'||p.kind==='suburban'?['street-lamp','street-lamp','hydrant','wayfinding-sign','public-bench','street-power-box']:
   ['street-lamp','hydrant'];
  const blocked=[p.frontage.road,p.frontage.sidewalk,p.frontage.approach,p.frontage.curbRamp,p.verge,p.shoulder,p.accessConnection,...p.frontage.curb]
   .filter(r=>r!==null).map(r=>({x:r.x,y:r.y,w:r.width,h:r.depth}));
  for(const fixture of roles){
   const asset=propDefinition(fixture);if(!asset)continue;
+  if(fixture==='street-power-box'&&![...site.cover,...out].some(c=>c.fixture==='street-lamp'))continue;
   const w=orientation%2?asset.depth:asset.width,h=orientation%2?asset.width:asset.depth;
   const depth=axis==='x'?h:w,alongSize=axis==='x'?w:h;
   const n=site.cover.filter(c=>c.fixture===fixture&&Math.abs(c[across]-p.privateEdge)<100).length+out.filter(c=>c.fixture===fixture).length;

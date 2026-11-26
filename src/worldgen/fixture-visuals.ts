@@ -270,7 +270,7 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         // Stable crossed alpha-cutout cards. Geometry/collisions still come
         // exclusively from the existing physical Obstacle footprint.
       }else if(['mailbox','trash-bin','bollard','hydrant','utility-cabinet',
-        'parking-block','parking-sign','traffic-stop-sign','street-lamp','bike-rack',
+        'parking-block','parking-sign','traffic-stop-sign','street-power-box','street-lamp','bike-rack',
         'vending-machine','wayfinding-sign','screened-dumpster'].includes(fixture)){
         const enamel=ctx.solid(0x777f79,.72,'metal');
         const dark=ctx.solid(0x343c3b,.86);
@@ -446,6 +446,15 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           for(const sx of [-.36,.36])
             ctx.box(group,c.x+w*sx,6.9,c.y,
               w*.11,.7,d*.52,safety,false);
+        }else if(fixture==='street-power-box'){
+          const shell=visualCtx.solid(0x7c8981,.88,'painted-metal');
+          const top=visualCtx.solid(0x56665d,.92,'industrial-steel');
+          ctx.box(group,c.x,2,c.y,w,4,d,dark);
+          ctx.box(group,c.x,12,c.y,w*.89,20,d*.87,shell);
+          ctx.box(group,c.x,23,c.y,w,2,d,top,false);
+          ctx.box(group,c.x,12,c.y+d*.46,w*.72,15,1,shell,false);
+          ctx.box(group,c.x+w*.24,13,c.y+d*.53,1.4,3,1,dark,false);
+          ctx.box(group,c.x-w*.10,17,c.y+d*.53,5,4,.7,safety,false);
         }else if(fixture==='traffic-stop-sign'){
           // Chunky, recognizable octagonal traffic plate on a narrow pole.
           // The board and white trim are separate shallow eight-sided faces.

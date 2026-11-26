@@ -7,7 +7,7 @@ import type {IlluminationSource} from './equipment-light-field.ts';
 import type {SitePowerState,SitePowerCircuit} from './equipment-site-power.ts';
 export type LightingMode='day'|'evening'|'night'|'blackout'|'emergency';
 export type SiteLight={id:string;roomId:string;p:{x:number;y:number};
- kind:'ceiling'|'fluorescent'|'worklight'|'emergency';
+ kind:'ceiling'|'fluorescent'|'worklight'|'emergency'|'street';
  power:'mains'|'backup';intensity:number;range:number};
 export type SiteLightingProgram={
  mode:LightingMode;ambient:number;fixtures:SiteLight[];
@@ -22,6 +22,8 @@ const mod=(v:number,n:number)=>((v%n)+n)%n;
 export type SiteLightTopology={
  id:string;roomId:string;p:{x:number;y:number};
  kind:SiteLight['kind'];mainCircuit:SitePowerCircuit;
+ /** Physical lamp head height for the pooled renderer. */
+ height?:number;
  backupEligible:boolean;failed:boolean;intensity:number;range:number;
 };
 export function siteLightingTopology(site:Site):SiteLightTopology[]{
@@ -46,6 +48,18 @@ export function siteLightingTopology(site:Site):SiteLightTopology[]{
    range:Math.max(55,Math.min(160,Math.max(room.w,room.h)*.62))
   });
  }
+ if(site.streetInfrastructure){
+  const lamps=site.cover.filter(c=>c.fixture==='street-lamp'&&!c.destroyed&&!c.toppled).slice(0,3);
+  for(const [index,c] of lamps.entries()){
+   if(result.length>=LIGHT_CAP)break;
+   const turn=c.orientation??0,dir=[{x:0,y:1},{x:1,y:0},{x:0,y:-1},{x:-1,y:0}][turn];
+   const depth=turn%2?c.w:c.h;
+   result.push({id:'street-light:'+(c.id??c.x+':'+c.y),roomId:'public-street',
+    p:{x:c.x+dir.x*depth*1.23,y:c.y+dir.y*depth*1.23},height:97*.954,
+    kind:'street',mainCircuit:'mains:1',backupEligible:false,
+    failed:neglected&&mod(site.seed+index*23,7)<3,intensity:.62,range:145});
+  }
+ }
  return result;
 }
 function poweredSiteLighting(site:Site,mode:LightingMode,
@@ -54,7 +68,7 @@ function poweredSiteLighting(site:Site,mode:LightingMode,
   mode==='night'?.10:mode==='blackout'?.035:.055;
  const fixtures:SiteLight[]=[];
  for(const f of siteLightingTopology(site)){
-  if(state.switches[f.id]===false)continue;
+  if(state.switches[f.id]===false||(f.kind==='street'&&mode==='day'))continue;
   const mains=state.circuits[f.mainCircuit]&&!f.failed;
   const backup=!mains&&f.backupEligible&&state.circuits['backup:emergency'];
   if(!mains&&!backup)continue;
@@ -100,6 +114,11 @@ export function planSiteLighting(site:Site,mode:LightingMode='day',
    intensity:backupOn?.35:work?.66:.56,
    range:Math.max(55,Math.min(160,Math.max(room.w,room.h)*.62))
   });
+ }
+ // Legacy snapshots without ST metadata retain their exact old light list.
+ if(site.streetInfrastructure&&mode!=='day'&&mode!=='blackout'&&mode!=='emergency'){
+  for(const f of siteLightingTopology(site))if(f.kind==='street'&&!f.failed)
+   fixtures.push({id:f.id,roomId:f.roomId,p:f.p,kind:f.kind,power:'mains',intensity:f.intensity,range:f.range});
  }
  const sources:IlluminationSource[]=fixtures.map(f=>({
   id:f.id,p:f.p,range:f.range,intensity:f.intensity,enabled:true}));
