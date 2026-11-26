@@ -28,9 +28,9 @@ test('M3.0A counts instance-buffer rails as one submission, not one per tooth',(
  teeth.dispose();geometry.dispose();hidden.geometry.dispose();material.dispose();
 });
 
-test('M3.0A audits every real factory and the legacy shotgun, non-destructively',()=>{
+test('M3.0A audits every authored factory, non-destructively',()=>{
  const reports=auditAllFactoryWeapons();
- assert.equal(reports.length,ARSENAL_REFERENCES.length+1);
+ assert.equal(reports.length,ARSENAL_REFERENCES.length);
  assert.equal(new Set(reports.map(r=>r.id)).size,reports.length);
  assert.ok(reports.some(r=>r.body.instancedMeshes>0),
   'must cover actual instanced rail models');
@@ -40,7 +40,7 @@ test('M3.0A audits every real factory and the legacy shotgun, non-destructively'
   assert.equal(record.totalSubmissions,
    record.body.submissions+record.accessories.submissions);
   assert.ok(Number.isFinite(record.body.triangles)&&record.body.triangles>0);
-  if(record.family!=='legacy')assert.ok(record.body.protectedComponents>0,
+  assert.ok(record.body.protectedComponents>0,
    'modular part identity must remain visible to Workbench picking');
   for(const k of ['min','max'])for(const n of record.bounds[k])
    assert.ok(Number.isFinite(n),record.id+' invalid bounds');

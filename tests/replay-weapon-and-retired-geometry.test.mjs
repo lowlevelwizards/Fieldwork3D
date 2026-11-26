@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {newSession} from '../src/breach-game.ts';
 import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
 import {issueWeaponPreset} from '../src/breach-weapon-issue.ts';
-import {buildWeaponSilhouette,weaponSilhouetteParts} from '../src/breach-weapon-geometry.ts';
+import {buildWeaponSilhouette,clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
 import * as THREE from 'three';
 
 test('replay records full modular weapon build, including edits and seeks',()=>{
@@ -22,14 +22,13 @@ test('replay records full modular weapon build, including edits and seeks',()=>{
 
 test('no retired class-only weapons can appear even without saved builds',()=>{
  const steel=new THREE.MeshStandardMaterial(),dark=new THREE.MeshStandardMaterial();
- for(const id of ['smg','carbine','rifle']){
-  assert.equal(weaponSilhouetteParts(id).length,0,id+' legacy mesh removed');
+ for(const id of ['smg','carbine','rifle','shotgun']){
   const model=buildWeaponSilhouette(id,steel,dark);
   assert.ok(model.children.length>0,id+' receives authored family');
   let authored=false;
   model.traverse(child=>{if(child.name.startsWith('family-'))authored=true;});
   assert.ok(authored,id+' must render genuine named family geometry');
-  model.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
+  clearWeaponSilhouette(model);
  }
  steel.dispose();dark.dispose();
 });
