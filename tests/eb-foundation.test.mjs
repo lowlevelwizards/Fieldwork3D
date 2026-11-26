@@ -252,3 +252,12 @@ test('EB21 one doctrine owner and a persistent inspection recovery flag',()=>{
  assert.equal(canRecordInspection(actor.searchRecoveryPending,0,9,8),false);
  clearNpcSearch(actor);assert.equal(actor.searchRecoveryPending,false);assert.equal(actor.searchPauseUntil,0);
 });
+
+import {enemyPeersByGroup,countNearbyEnemyAllies} from '../src/breach-ai-morale.ts';
+test('EB21 grouped peers preserve exact live morale counts including later surrender',()=>{
+ const roster=Array.from({length:32},(_,i)=>({side:'red',health:3,p:{x:i*10,y:0},encounterGroupId:'g'+i%4}));
+ const index=enemyPeersByGroup(roster);
+ for(const a of roster)assert.equal(countNearbyEnemyAllies(a,index.get(a.encounterGroupId)),countNearbyEnemyAllies(a,roster));
+ roster[4].surrendered=true;roster[8].health=0;
+ for(const a of roster)assert.equal(countNearbyEnemyAllies(a,index.get(a.encounterGroupId)),countNearbyEnemyAllies(a,roster));
+});

@@ -39,6 +39,7 @@ import {captureTargetMayWithdraw,missionObjectiveResponse} from './breach-ai-mis
 import {retreatDoorClosureEligible,routineDoorClosureEligible} from './breach-ai-door-response.ts';
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
 import {localFixtureObservation} from './breach-ai-contextual-observation.ts';
+import {enemyPeersByGroup} from './breach-ai-morale.ts';
 import {encounterDoctrine} from './breach-ai-doctrine.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
@@ -706,15 +707,18 @@ function distributeReports(s:Session){
  const world=sessionWorldGeometry(s);
  if(!s.reports.some(report=>s.seconds-report.at<=1.5))return;
  const roster=enemies(s);
+ const byId=new Map(roster.map(a=>[a.id,a]));
+ const byGroup=enemyPeersByGroup(roster);
  for(const report of s.reports){
   if(s.seconds-report.at>1.5)continue;
-  const sender=roster.find(a=>a.id===report.senderId);
+  const sender=byId.get(report.senderId);
   if(!sender)continue;
   const eligible=(a:TeamActor)=>activeCombatant(a)&&
     a.encounterGroupId===sender.encounterGroupId;
+  const peers=byGroup.get(sender.encounterGroupId)??[];
   const newlyInformed=new Set<string>();
   const delivered=new Set(report.deliveredTo);
-  for(const recipient of roster){
+  for(const recipient of peers){
    if(!eligible(recipient)||delivered.has(recipient.id))continue;
    const observation=reportToListener(report,recipient.id,recipient.p,
      s.doors,world.walls,s.seconds);
@@ -747,7 +751,7 @@ function distributeReports(s:Session){
   // investigator keeps their role; only newcomers receive fresh orders.
   // Never coordinate an actor who did not actually hear the report.
   if(!newlyInformed.size)continue;
-  const listeners=roster.filter(a=>eligible(a)&&
+  const listeners=peers.filter(a=>eligible(a)&&
     delivered.has(a.id)&&a.alert!=='retreat'&&!a.retreatPoint&&a.intent?.kind!=='engage');
   const prior=stableCoordination(listeners,s.seconds);
   // For a sound warning, the person who heard and raised it is already

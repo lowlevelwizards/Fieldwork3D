@@ -4,7 +4,7 @@
  */
 import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
 import {length,targetAngle,angleDifference} from './breach-plan.ts';
-import {witnessShock,countNearbyEnemyAllies,countRecentlySeenThreats,moraleResponse,fallenAlliesByGroup} from './breach-ai-morale.ts';
+import {witnessShock,countNearbyEnemyAllies,countRecentlySeenThreats,moraleResponse,fallenAlliesByGroup,enemyPeersByGroup} from './breach-ai-morale.ts';
 import {commitSuspectSurrender} from './breach-suspect-compliance.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
 import {attemptNpcWithdrawal} from './breach-ai-task-state.ts';
@@ -45,6 +45,7 @@ export function advanceSimulationActors(s:Session,h:number,
  // A casualty not yet witnessed stays eligible on every later tick.
  const fallenEnemyAllies=fallenAlliesByGroup(s.operators);
  const noFallen:readonly TeamActor[]=[];
+ let groupPeers:ReturnType<typeof enemyPeersByGroup<TeamActor>>|undefined;
  for(const a of s.operators){
     if(a.health<=0&&a.reload>0){a.reload=0;a.reloadMode=null;}
     a.fireCd=Math.max(0,a.fireCd-h);
@@ -69,7 +70,7 @@ export function advanceSimulationActors(s:Session,h:number,
       // Nearby members of the same encounter group can steady resolve.
       // Do not pay an extra ally scan every tick for calm defenders.
       const peerSupport=(a.suppression>.25||a.morale<.65)?
-        countNearbyEnemyAllies(a,s.operators):0;
+        countNearbyEnemyAllies(a,(groupPeers??=enemyPeersByGroup(s.operators)).get(a.encounterGroupId)??noFallen):0;
       const threatened=a.suppression>.25||a.morale<.65||
         (a.alert==='retreat'&&a.blockedTime>=2.5);
       const recentThreats=threatened?

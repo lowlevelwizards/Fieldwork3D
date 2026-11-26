@@ -94,3 +94,16 @@ export function fallenAlliesByGroup<T extends MoralePeer>(roster:readonly T[]):M
  }
  return groups;
 }
+
+/** Index stable membership once for a decision phase. Read changing health,
+ * surrender, heading and position directly from live actors at use time. */
+export function enemyPeersByGroup<T extends MoralePeer>(roster:readonly T[]):Map<string|undefined,T[]>{
+ const groups=new Map<string|undefined,T[]>();
+ for(const actor of roster){
+  if(actor.side!=='red')continue;
+  let members=groups.get(actor.encounterGroupId);
+  if(!members)groups.set(actor.encounterGroupId,members=[]);
+  members.push(actor);
+ }
+ return groups;
+}
