@@ -24,7 +24,7 @@ import {readWeaponConfiguration,changeWeaponPlatform,
  type WeaponConfiguration,type WeaponAttachmentSlot}
  from './equipment-weapon-assemblies.ts';
 import type {FamilyPartSlot} from './equipment-weapon-families.ts';
-import {issueWeaponPreset,starterWeaponPreset,resolveIssuedOrLegacy} from './breach-weapon-issue.ts';
+import {issueWeaponPreset,starterWeaponPreset,resolveCatalogConfiguration} from './breach-weapon-issue.ts';
 import {initialEquipmentLoadout,readEquipmentLoadout,syncPrimaryWeapon,setEquipmentChoice,
  type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
 export type RosterMember={
@@ -74,7 +74,7 @@ export function readRoster(raw:string|null):RosterState{
    const f=found as Partial<RosterMember>;
    const weapon=weapons.includes(f.weapon as WeaponId)?
      f.weapon as WeaponId:base.weapon;
-   const config=resolveIssuedOrLegacy(
+   const config=resolveCatalogConfiguration(
     readWeaponConfiguration(f.weaponConfiguration,weapon),weapon,
     starterWeaponPreset(base.id));
    const reserve=finite(f.reserve,0,300,base.reserve);
@@ -188,7 +188,7 @@ export function resupplyRoster(roster:RosterState,id?:string):RosterState{
 export function equipRoster(roster:RosterState,id:string,weapon:WeaponId):RosterState{
  return {version:1,members:roster.members.map(m=>{
   if(m.id!==id)return {...m};
-  const config=resolveIssuedOrLegacy(
+  const config=resolveCatalogConfiguration(
    changeWeaponPlatform(m.weaponConfiguration,weapon),weapon,
    starterWeaponPreset(m.id));
   return {...m,weapon,loadout:syncPrimaryWeapon(m.loadout,weapon),

@@ -15,6 +15,7 @@ import {kitMedicalSupplies,normalizedMedicalSupplies,
  type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
 import {issuedWedges} from './equipment-entry-tools.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
+import {resolveCatalogConfiguration,starterWeaponPreset} from './breach-weapon-issue.ts';
 
 export type DeploymentInventorySource={
  id:string;weapon:WeaponId;loadout:EquipmentLoadout;
@@ -41,7 +42,7 @@ export type DeploymentInventorySnapshot={
 export function captureDeploymentInventory(
  source:DeploymentInventorySource):DeploymentInventorySnapshot{
  const equipment=readEquipmentLoadout(source.loadout,source.weapon,source.id);
- const config=structuredClone(source.weaponConfiguration);
+ const config=structuredClone(resolveCatalogConfiguration(source.weaponConfiguration,source.weapon,starterWeaponPreset(source.id)));
  const fitted=fitMagazineInventory(source.id,source.weapon,config,
   source.magazine,source.reserve,source.magazines);
  const spareMagazines=source.weapon==='shotgun'?[]:

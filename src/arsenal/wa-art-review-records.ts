@@ -259,10 +259,5 @@ export const WA0_REVIEW_RECORDS:Readonly<Record<string,{disposition:string;sever
     "disposition": "refine/rebalance",
     "severity": "M",
     "focus": "tan material hierarchy and finer outline / WA11"
-  },
-  "legacy-shotgun": {
-    "disposition": "consolidate/retire candidate",
-    "severity": "H",
-    "focus": "replace legacy visual fallback only after usage/compat audit / WA10"
   }
 };

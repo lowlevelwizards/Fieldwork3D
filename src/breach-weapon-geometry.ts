@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import type {WeaponId} from './breach-combat.ts';
 import {type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
-import {readWeaponFamilyBuild,initialWeaponFamilyBuild} from './equipment-weapon-families.ts';
+import {readWeaponFamilyBuild,initialWeaponFamilyBuild,defaultCatalogReference} from './equipment-weapon-families.ts';
 import {buildModularWeaponSilhouette} from './breach-modular-weapon-geometry.ts';
 import {poseConfiguredStock} from './weapon-stock-geometry.ts';
 import {measureVisibleStockContact}
@@ -26,8 +26,7 @@ export function buildWeaponSilhouette(id:WeaponId,
  options:WeaponGeometryOptions={}):THREE.Group{
  // No class-only placeholder silhouette may appear in live play or replay.
  // Keep the category as a ballistics tier, never an obsolete 3D model.
- const fallback=id==='smg'?'hk-mp5a3':
-  id==='rifle'?'ar-m16a2':id==='carbine'?'ar-m4a1':'r870-police-wood';
+ const fallback=defaultCatalogReference(id).id;
  const familyBuild=(config?.weapon===id?
   readWeaponFamilyBuild(config.build,id):undefined) ??
   initialWeaponFamilyBuild(fallback);

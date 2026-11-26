@@ -341,6 +341,15 @@ export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
 export function familyPreset(id:string):WeaponFamilyPreset|undefined{
  return FAMILY_PRESETS.find(preset=>preset.id===id);
 }
+/** Historical save input only: choose an existing catalog reference deterministically.
+ * A valid authored configuration always takes precedence. */
+export function defaultCatalogReference(weapon:WeaponId,preferred?:string):WeaponFamilyPreset{
+ const defaultIds:Record<WeaponId,string>={carbine:'ar-m4a1',smg:'hk-mp5a3',rifle:'ar-m16a2',shotgun:'r870-police-wood'};
+ const requested=preferred?familyPreset(preferred):undefined;
+ const resolved=requested?.weapon===weapon?requested:familyPreset(defaultIds[weapon]);
+ if(!resolved||resolved.weapon!==weapon)throw Error('Missing catalog migration reference');
+ return resolved;
+}
 export function initialWeaponFamilyBuild(presetId:string):WeaponFamilyBuild|undefined{
  const preset=familyPreset(presetId);
  return preset?{family:preset.family,parts:{...preset.parts}}:undefined;

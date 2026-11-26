@@ -53,7 +53,7 @@ import {readWeaponConfiguration,changeWeaponPlatform,
  type WeaponConfiguration,type WeaponAttachmentSlot}
  from './equipment-weapon-assemblies.ts';
 import type {FamilyPartSlot} from './equipment-weapon-families.ts';
-import {issueWeaponPreset,starterWeaponPreset,resolveIssuedOrLegacy} from './breach-weapon-issue.ts';
+import {issueWeaponPreset,starterWeaponPreset,resolveCatalogConfiguration} from './breach-weapon-issue.ts';
 import {attachmentPrice,readAttachmentStock,returnAttachments}
  from './equipment-weapon-inventory.ts';
 import {resolveMountedAccessoryLayout}
@@ -262,7 +262,7 @@ export function migrateLegacyRoster(campaign:CampaignState,legacy:RosterState):C
    recoveryDays:old.recovery,weapon:old.weapon,
     loadout:initialEquipmentLoadout(old.weapon),
     medicalSupplies:kitMedicalSupplies(initialEquipmentLoadout(old.weapon)),
-    weaponConfiguration:resolveIssuedOrLegacy(
+    weaponConfiguration:resolveCatalogConfiguration(
       readWeaponConfiguration(old.weaponConfiguration,old.weapon),old.weapon,
       starterWeaponPreset(operator.id)),
     magazine:old.magazine,
@@ -336,7 +336,7 @@ export function readCampaign(raw:string|null):CampaignState|null{
    [weapon,Number.isInteger(c.inventory?.weapons?.[weapon])&&
     c.inventory.weapons[weapon]>=0?c.inventory.weapons[weapon]:0])) as Record<CampaignOperator['weapon'],number>;
   const operators=c.operators.map(o=>{
-   const config=resolveIssuedOrLegacy(readWeaponConfiguration(
+   const config=resolveCatalogConfiguration(readWeaponConfiguration(
     (o as {weaponConfiguration?:unknown}).weaponConfiguration,o.weapon),o.weapon,
     starterWeaponPreset(o.id));
    const reserve=Number.isFinite(o.reserve)?Math.max(0,Math.floor(o.reserve)):0;
@@ -857,7 +857,7 @@ export function equipCampaignWeapon(c:CampaignState,id:string,
   !mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'))return c;
  const m=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!m||m.weapon===weapon||c.inventory.weapons[weapon]<1)return c;
- const targetConfig=resolveIssuedOrLegacy(
+ const targetConfig=resolveCatalogConfiguration(
   changeWeaponPlatform(m.weaponConfiguration,weapon),weapon,
   starterWeaponPreset(m.id));
  if(!hasValidPhysicalLayout(targetConfig))return c;

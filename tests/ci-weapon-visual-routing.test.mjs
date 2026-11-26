@@ -17,8 +17,6 @@ test('A4 all original M30 production PR trigger families remain covered',()=>{
  const oldPaths=[
   'src/breach-weapon-geometry.ts','src/weapons/geometry/beretta-m9-silhouettes.ts',
   'src/arsenal/gallery-main.ts','scripts/audit-weapon-production-m30.mjs',
-  'scripts/smoke-arsenal-m30-shotgun-visual.mjs',
-  'arsenal-m30-shotgun-capture.html','src/arsenal-m30-shotgun-capture.ts',
   'src/arsenal-m30c3-modular-capture.ts','arsenal-m30c3-modular-capture.html',
   'scripts/smoke-arsenal-m30c3-modular-visual.mjs',
   'scripts/smoke-arsenal-m30c4-runtime-visual.mjs',
@@ -92,7 +90,6 @@ test('A4 production geometry, real WebGL and evidence capture are retained uncha
  for(const file of [
   'tests/arsenal-m30-weapon-quality-audit.test.mjs',
   'scripts/audit-weapon-production-m30.mjs',
-  'smoke-arsenal-m30-shotgun-visual.mjs',
   'smoke-arsenal-m30c3-modular-visual.mjs',
   'smoke-arsenal-m30c4-runtime-visual.mjs',
   'smoke-arsenal-m30c5-candidate-visual.mjs',
