@@ -44,7 +44,7 @@ try{
  await lab.screenshot({path:dir+'/lab-metric-tactical.png'});
  assert.deepEqual(errors,[]);
  await lab.close();
- const cases=[{seed:23,archetype:'house',viewport:{width:390,height:844}},{seed:97,archetype:'garage',viewport:{width:1280,height:800}},{seed:61,archetype:'clinic',viewport:{width:390,height:844}},{seed:45,archetype:'office',viewport:{width:1280,height:800}}];
+ const cases=[{seed:101,archetype:'apartment',viewport:{width:390,height:844}},{seed:109,archetype:'clinic',viewport:{width:390,height:844}},{seed:119,archetype:'utility',viewport:{width:390,height:844}}];
  for(const scenario of cases){
   const results=[];
   for(const [label,url] of [['reference',reference],['candidate',candidate]]){
@@ -72,12 +72,14 @@ try{
     const saved=textures.map(t=>t.image.data.slice()),ids=textures.map(t=>t.uuid);
     scene.previewConditionMasks(site,0);draw();scene.previewConditionMasks(site,100);draw();
     if(textures.some((t,i)=>t.uuid!==ids[i]||t.image.data.some((v,j)=>v!==saved[i][j])))throw Error('Wall atlas condition roundtrip changed identity or artwork');
-    window.maScene=scene;window.maDraw=draw;
+    window.maScene=scene;window.maDraw=draw;window.maSite=site;
     return {walls:site.walls.length,rooms:site.rooms.length,atlasBytes,atlasTextures:textures.length,buildMs,frames,gpuTextures:renderer.info.memory.textures,geometries:renderer.info.memory.geometries,programs:renderer.info.programs?.length};
    },scenario);
    await page.screenshot({path:dir+'/'+scenario.archetype+'-'+label+'-tactical.png'});
    await page.evaluate(()=>{window.maScene.view.zoom=2.5;window.maDraw();});
    await page.screenshot({path:dir+'/'+scenario.archetype+'-'+label+'-close.png'});
+   await page.evaluate(()=>{window.maScene.previewConditionMasks(window.maSite,0);window.maDraw();});
+   await page.screenshot({path:dir+'/'+scenario.archetype+'-'+label+'-clean-masks.png'});
    await page.close();
    assert.deepEqual(errors,[],label+' '+scenario.archetype);
    results.push({label,...data});

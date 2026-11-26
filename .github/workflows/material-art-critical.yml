@@ -35,22 +35,22 @@ jobs:
           npm run build
           test -s dist/wall-material-lab.html
       - name: Install browser harness
-        if: github.head_ref == 'feature/ma-r-acceptance'
+        if: github.head_ref == 'feature/ma-r12-repetition-decay'
         run: npm install --no-save --package-lock=false playwright@1.56.1
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
       - name: Pin pre-refinement visual reference
-        if: github.head_ref == 'feature/ma-r-acceptance'
+        if: github.head_ref == 'feature/ma-r12-repetition-decay'
         run: |
-          git fetch --no-tags --depth=1 origin 323088e0b8d327279907f4f0d00fc642d95dfd16
-          git worktree add --detach "$RUNNER_TEMP/ma-reference" 323088e0b8d327279907f4f0d00fc642d95dfd16
+          git fetch --no-tags --depth=1 origin 7bc12b336e88827a4183ee352039691e6bb7b393
+          git worktree add --detach "$RUNNER_TEMP/ma-reference" 7bc12b336e88827a4183ee352039691e6bb7b393
           ln -s "$PWD/node_modules" "$RUNNER_TEMP/ma-reference/node_modules"
           echo "MA_REFERENCE_ROOT=$RUNNER_TEMP/ma-reference" >> "$GITHUB_ENV"
       - name: Real-renderer art comparison
-        if: github.head_ref == 'feature/ma-r-acceptance'
+        if: github.head_ref == 'feature/ma-r12-repetition-decay'
         run: node scripts/verification/ma-material-art-browser.mjs
       - uses: actions/upload-artifact@v4
-        if: always() && github.head_ref == 'feature/ma-r-acceptance'
+        if: always() && github.head_ref == 'feature/ma-r12-repetition-decay'
         with:
           name: ma-material-art-comparison
           path: artifacts/ma-art/

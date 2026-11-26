@@ -63,7 +63,7 @@ export function planWallSurface(site:Site,index:number,height:number,requestedFa
  const ends=[0,length];
  const nearest=(x:number)=>ends.reduce((a,b)=>Math.abs(a-x)<Math.abs(b-x)?a:b);
  const edge=random(seed,2)<.5?0:length;
- if(exposed&&random(seed,3)<.65)add('fade','exposed-coating',length*.5,height*.21,length*.85,height*.4,20,20);
+ if(exposed&&random(seed,3)<.65)add('fade','exposed-coating',length*(.30+.40*random(seed,31)),height*.21,length*(.52+.44*random(seed,32)),height*(.30+.25*random(seed,33)),20,20);
  for(const door of site.doors){
   // Door gaps are real. A mark must lie on the adjacent solid segment, not across it.
   for(const p of [door.a,door.b]){
@@ -119,10 +119,22 @@ export function planWallSurface(site:Site,index:number,height:number,requestedFa
    const moss=events.find(e=>e.kind==='moss');if(moss)moss.x=moisture.x;
   }
  }
- if(['plaster','brick','cinderblock','concrete'].includes(surface)&&random(seed,8)<.32)
-  add('crack','edge-stress',edge+(edge===0?1:-1)*5,height*.22,15,24,65,50);
- if(site.condition==='renovation'&&random(seed,9)<.45)
-  add('repair','renovation',length*(.22+.56*random(seed,10)),height*.45,17,18,22,95);
+ // Select a physical junction, not every short doorway segment. Both
+ // faces refer to the same stress location, with independent finish contrast.
+ if(length>=16&&['plaster','brick','cinderblock','concrete'].includes(surface)){
+  const endpoint=edge===0?w.a:w.b;
+  const jointSeed=site.seed^Math.imul(Math.round(endpoint.x),19349663)^Math.imul(Math.round(endpoint.y),83492791);
+  const industrial=['utility','garage','warehouse'].includes(site.archetype??'');
+  if(random(jointSeed,8)<(industrial?.42:.24)&&random(seed,81)<.75){
+   const major=random(jointSeed,82)<.36,span=major?24+random(seed,83)*16:11+random(seed,83)*12;
+   const vertical=major?height*(.72+.25*random(seed,84)):height*(.34+.28*random(seed,84));
+   const bottom=random(jointSeed,85)<.35;
+   add('crack','edge-stress:'+endpoint.x+':'+endpoint.y,edge+(edge===0?1:-1)*Math.min(length*.42,span*.35),
+    bottom?height-vertical/2:vertical/2,span,vertical,major?72:65,major?91:50);
+  }
+ }
+ if((site.condition==='renovation'||requestedFace!==undefined&&surface==='plaster'&&random(seed,91)<.24)&&random(seed,9)<.45)
+  add('repair','renovation',length*(.22+.56*random(seed,10)),height*.45,17,18,site.condition==='renovation'?22:79,site.condition==='renovation'?95:54);
  if(requestedFace!==undefined&&story)for(const event of story.get(index)?.get(face)??[])add(event.kind,event.cause,event.x,event.y,event.width,event.height,event.threshold,event.priority);
  return {length,height,face,color,surface,band,directional:requestedFace!==undefined,artSeed:seed^face,events:events.sort((a,b)=>b.priority-a.priority||a.cause.localeCompare(b.cause))};
 }
@@ -156,12 +168,14 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
  const out=new Uint8Array(width*height*4),base=rgb(recipe.color);
  for(const event of selectWallEvents(recipe,level,filter).reverse()){
   const progress=clamp((level-event.threshold+10)/(110-event.threshold),.18,1);
+  const severe=Math.pow(clamp((level-60)/40),1.4);
   const strength=.38+.62*progress;
   const strengthProfile=WALL_CONTRAST[event.kind];
+  const gain=event.kind==='repair'||event.kind==='fade'?1+.15*severe:1+.52*severe;
   const colorsFor=(substrate:RGB)=>WALL_INK_PALETTE[event.kind].map((p,i)=>{
    const light=artLuma(substrate)>185;
    const direction=event.kind==='fade'?'light':event.kind==='repair'?'auto':event.kind==='splash'?(light?'dark':'light'):event.kind==='contact'?(light?'dark':'light'):'auto';
-   return relativeArtColor(substrate,p,.67,i===1?strengthProfile[0]:strengthProfile[0]*.65,strengthProfile[1]*(i===2?1:.8),direction);
+   return relativeArtColor(substrate,p,.67+.16*severe,(i===1?strengthProfile[0]:strengthProfile[0]*.65)*gain,strengthProfile[1]*(i===2?1:.8)*gain,direction);
   });
   const colors=colorsFor(base),bandColors=recipe.band?colorsFor(tint(base,rgb(recipe.band.color),.62)):colors;
   const shape=prepareWallArt(event.kind,eventArtSeed(event,recipe.artSeed),progress,recipe.length/width/Math.max(1,event.width/2),recipe.height/height/Math.max(1,event.height/2),event.kind==='chip'?(event.x<recipe.length/2?1:-1):undefined);
@@ -179,7 +193,7 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
    const {coverage,tone}=shape(u,v);
    let a=coverage;const color=(recipe.band&&wy>=recipe.band.top?bandColors:colors)[tone];
    if(!a)continue;
-   a*=strength;const p=(py*width+px)*4,old=out[p+3]/255,next=a+old*(1-a);
+   a=Math.min(1,a*strength*(1+.23*severe));const p=(py*width+px)*4,old=out[p+3]/255,next=a+old*(1-a);
    for(let i=0;i<3;i++)out[p+i]=Math.round((color[i]*a+out[p+i]*old*(1-a))/next);
    out[p+3]=Math.round(next*255);
   }

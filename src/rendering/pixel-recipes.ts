@@ -23,7 +23,10 @@ export const PIXEL_SURFACES:readonly PixelSurface[]=[
  'scruffy-grass','worn-asphalt','packed-earth',
  'woven-fabric','molded-plastic','tire-rubber'
 ];
-export const MATERIAL_RECIPE_VERSION=7;
+export const MATERIAL_RECIPE_VERSION=8;
+import {materialTileSize,macroMaterialPixels} from './material-art-macro.ts';
+export {materialTileSize} from './material-art-macro.ts';
+export function productionPixelPattern(kind:PixelSurface,seed=0){const size=materialTileSize(kind);return size===32?pixelPattern(kind,seed):macroMaterialPixels(kind,seed,size);}
 const hash=(x:number,y:number,s:number)=>{
  let n=Math.imul(x,374761393)^Math.imul(y,668265263)^Math.imul(s,1274126177);
  n=Math.imul(n^(n>>>13),1274126177);

@@ -255,6 +255,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       solid:(...args)=>host.solid(...args),
       overlay:kind=>host.groundOverlayMaterial(kind),
       track:material=>host.siteMaterials.track(material),
+      trackTexture:texture=>host.sitePatinaTextures.push(texture),
       age:(hex,surface)=>age(hex,surface)
     });
     host.objectWear=[...planObjectWear(site),...planExposureWear(site)];
