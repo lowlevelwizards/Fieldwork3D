@@ -82,11 +82,11 @@ export function proposeResidentialDriveway(site:Site,front:ExteriorZone):{drivew
  const street=planPublicStreet(site);if(!street)return null;
  const strip=street.sidewalk??street.road,stripSize=axis==='x'?strip.depth:strip.width;
  const inner=sign*front[across]-depth/2+4;
- const outer=sign*strip[across]-stripSize/2;
+ const outer=site.streetInfrastructure?sign*site.streetInfrastructure.privateEdge:sign*strip[across]-stripSize/2;
  const available=outer-inner;
  const bayDepth=Math.min(136,available-8);
  if(long<166||bayDepth<87)return null;
- const bayWidth=62,frontDoor=site.doors.find(d=>d.id==='FRONT');
+ const bayWidth=site.streetInfrastructure?64:62,frontDoor=site.doors.find(d=>d.id==='FRONT');
  const entrance=frontDoor?(frontDoor.a[axis]+frontDoor.b[axis])/2:site.entrance[axis];
  const edges=[-1,1].map(s=>({s,at:front[axis]+s*(long/2-bayWidth/2)}))
   .sort((a,b)=>Math.abs(b.at-entrance)-Math.abs(a.at-entrance));
@@ -95,7 +95,7 @@ export function proposeResidentialDriveway(site:Site,front:ExteriorZone):{drivew
  const along=selected.at,center=sign*(inner+available/2);
  const driveway:ExteriorZone={id:'residential-driveway',kind:'driveway',x:axis==='x'?along:center,y:axis==='x'?center:along,
   w:axis==='x'?bayWidth:available,h:axis==='x'?available:bayWidth,
-  vehicleParking:{role:'residential',mode:'perpendicular',axis,rowCenter:sign*(inner+4+bayDepth/2),rowDepth:bayDepth,
+  vehicleParking:{...(site.streetInfrastructure?{version:1 as const}:{}),role:'residential',mode:'perpendicular',axis,rowCenter:sign*(inner+4+bayDepth/2),rowDepth:bayDepth,
    aisleCenter:sign*(outer-2),aisleDepth:0,alongCenter:along,alongLength:bayWidth-8,count:1}};
  const remainingCenter=front[axis]-selected.s*bayWidth/2;
  const yard={...front,[axis]:remainingCenter,...(axis==='x'?{w:long-bayWidth}:{h:long-bayWidth})};

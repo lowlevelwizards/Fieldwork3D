@@ -11,6 +11,7 @@ export type StreetInfrastructure=Readonly<{
  nominalLaneWidth:number;nominalLanes:1|2;visibleRoadWidth:number;
  cropped:boolean;completeLanes:number;frontage:PublicStreet;
  verge:StreetRect|null;shoulder:StreetRect|null;privateEdge:number;
+ privateReserve:number;accessConnection:StreetRect|null;
  centerline:StreetRect|null;diagnostics:readonly string[];
 }>;
 export function proposeStreetInfrastructure(site:Site,override?:StreetKind,privateReserve:number=D.propertyAccess):StreetInfrastructure|null{
@@ -51,10 +52,13 @@ export function proposeStreetInfrastructure(site:Site,override?:StreetKind,priva
  const entrance=front?(front.a[axis]+front.b[axis])/2:site.entrance[axis];
  const alongAt=Math.min(end-16,Math.max(start+16,entrance));
  const privateDepth=vergeAt+vergeWidth;
- const approachDepth=gap-privateDepth-4;
- const approach=approachDepth>0?rect(alongAt,D.pedestrianClear,privateDepth,approachDepth):null;
+ // Connect the actual sidewalk inner edge to the facade, crossing any
+ // grass verge rather than ending the walkway in grass.
+ const walkStart=sidewalk?vergeAt:privateDepth;
+ const approachDepth=gap-walkStart-4;
+ const approach=approachDepth>0?rect(alongAt,D.pedestrianClear,walkStart,approachDepth):null;
  const curb:StreetRect[]=[],sidewalkPieces:StreetRect[]=[];
- let curbRamp:StreetRect|null=null;
+ let curbRamp:StreetRect|null=null,accessConnection:StreetRect|null=null;
  const domestic=site.exteriorZones?.find(z=>z.vehicleParking?.role==='residential')?.vehicleParking;
  const parking=site.exteriorZones?.find(z=>z.id==='arrival-forecourt')?.vehicleParking;
  const cutWidth=domestic?D.driveway.single:parking?.access?.width??(parking?.role==='loading'?D.industrialAccess:parking?D.curbCutMin:0);
@@ -77,10 +81,15 @@ export function proposeStreetInfrastructure(site:Site,override?:StreetKind,priva
  if(!sidewalk&&spec.sidewalkWidth)diagnostics.push('no-space-for-sidewalk');
  if(vergeWidth<spec.vergeWidth)diagnostics.push('verge-omitted');
  if(cutWidth&&!curbRamp&&sidewalk)diagnostics.push('curb-cut-omitted');
+ if(cutWidth&&left>=12&&right>=12&&(curbRamp||!sidewalk)){
+  const begin=sidewalk?vergeAt:roadWidth;
+  const depth=privateDepth-begin+6;
+  if(depth>0)accessConnection=rect(cutAt,cutWidth,begin,depth);
+ }
  return {version:1,kind,entry,axis,nominalLaneWidth:spec.laneWidth,nominalLanes:spec.lanes,
   visibleRoadWidth:roadWidth,cropped,completeLanes:Math.floor(roadWidth/spec.laneWidth),
   frontage:{road,sidewalk,sidewalkPieces,approach,curb,curbRamp,entry},
-  verge,shoulder,privateEdge:border-sign*privateDepth,centerline,diagnostics};
+  verge,shoulder,privateEdge:border-sign*privateDepth,privateReserve:reserve,accessConnection,centerline,diagnostics};
 }
 /** Existing physical props are never deleted by the shadow planner. */
 export function streetConflicts(site:Site,plan:StreetInfrastructure):string[]{

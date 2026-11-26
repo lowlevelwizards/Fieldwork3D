@@ -8,7 +8,7 @@ import {propertySurfaceCenterHeight,PROPERTY_SURFACE_THICKNESS} from './property
 const flatKinds=new Set(['amenity-apron','work-wear','pavement-joint','parking-divider',
  'driveway-stripe','stall-end-line','access-hatch','crosswalk-stripe','garden-border',
  'waste-bay-line','utility-bay-line','loading-bay-line','clear-route',
- 'street-verge','street-shoulder','road-patch','road-manhole','street-drain','sidewalk-joint','road-centerline','road-edge-line']);
+ 'street-verge','street-shoulder','road-patch','road-manhole','street-drain','sidewalk-joint','road-centerline','road-edge-line','street-driveway-link']);
 export const isFlatExteriorFinish=(kind:PropertySurface['kind'])=>flatKinds.has(kind);
 export class ExteriorFinishPackets{
  private readonly buckets=new Map<THREE.Material,Map<string,THREE.BufferGeometry[]>>();

@@ -19,6 +19,7 @@ import {landscapeEdgeCandidates} from './landscape-edge-program.ts';
 /** Temporarily retire exterior shrub cover before placement, not after rendering. */
 const retiredShrub=(id:string)=>['shrub-round','shrub-tall','bush','hedge'].includes(id);
 import {serviceFixtureInRoad} from './road-service-fixtures.ts';
+import {proposeStreetInfrastructure,streetConflicts} from './street-infrastructure.ts';
 import {planPublicStreet,overlapsPublicStreetRoad} from './public-street-layout.ts';
 import {landscapePhysicalFootprint,TREE_FIXTURES} from './landscape-footprint.ts';
 import {outdoorFixtureAllowed,frontageEdgeCandidates,expandFrontageCandidates}
@@ -54,7 +55,10 @@ export function addExteriorProperty(site:Site,seed:number,vehiclePlacement=false
     side==='south'?bounds.maxY-maxY:
     side==='west'?minX-bounds.minX:bounds.maxX-maxX;
   if(gap<32)return;
-  const thickness=Math.min(maxLength,Math.max(24,gap-18));
+  const privateGap=id==='arrival-forecourt'&&site.streetInfrastructure?
+   (side==='south'?site.streetInfrastructure.privateEdge-maxY:side==='north'?minY-site.streetInfrastructure.privateEdge:side==='east'?site.streetInfrastructure.privateEdge-maxX:minX-site.streetInfrastructure.privateEdge):undefined;
+  const thickness=privateGap===undefined?Math.min(maxLength,Math.max(24,gap-18)):Math.min(maxLength,privateGap-7);
+  if(thickness<24)return;
   // Arrival pavement starts at the facade, not floating halfway across
   // a deep setback; the actual public door must meet its outside approach.
   // Industrial rear service yards must touch the rear facade, not float
@@ -78,7 +82,7 @@ export function addExteriorProperty(site:Site,seed:number,vehiclePlacement=false
   const original=zones[0];
   if(original?.id==='arrival-forecourt'){
    zones.shift();
-   edgeZone(entry,'arrival-forecourt',industrial?'driveway':'parking',220);
+   edgeZone(entry,'arrival-forecourt',industrial?'driveway':'parking',site.streetInfrastructure?320:220);
    const candidate=zones[0];
    const layout=candidate&&proposeVehicleParkingLayout({...site,exteriorZones:zones},candidate);
    if(layout)zones[0]={...candidate,vehicleParking:layout};
@@ -129,11 +133,13 @@ export function addExteriorProperty(site:Site,seed:number,vehiclePlacement=false
  const originalFront=site.exteriorZones?.find(z=>z.id==='arrival-forecourt');
  const modernFront=zones.filter(z=>z.id==='arrival-forecourt'||z.id==='residential-driveway');
  if(arrivalRetrofit){
-  if(!originalFront||!modernFront.some(z=>z.vehicleParking))return site;
+  if(!originalFront||!modernFront.length||(!site.streetInfrastructure&&!modernFront.some(z=>z.vehicleParking)))return site;
   const existing=site.exteriorZones??[];
   zones.splice(0,zones.length,...existing.flatMap(z=>z.id==='arrival-forecourt'?modernFront:[z]));
  }
- const streetPlan=planPublicStreet({...site,exteriorZones:zones});
+ const refreshed=site.streetInfrastructure?proposeStreetInfrastructure({...site,exteriorZones:zones},site.streetInfrastructure.kind,site.streetInfrastructure.privateReserve):null;
+ const streetSite=refreshed?{...site,streetInfrastructure:refreshed,exteriorZones:zones}:{...site,exteriorZones:zones};
+ const streetPlan=planPublicStreet(streetSite);
  const doorCenters=site.doors.map(d=>({
    x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2}));
  const doorReserves=exteriorDoorReserves(site.doors);
@@ -148,7 +154,8 @@ export function addExteriorProperty(site:Site,seed:number,vehiclePlacement=false
  // Re-author only ordinary frontage amenities that physically conflict
  // with the new row/aisle; never delete structural or indoor obstacles.
  const cover=site.cover.filter(o=>!arrivalRetrofit||!isFrontAmenity(o)||
-   !(o.fixture==='parking-block'||o.fixture==='parking-sign'||modernFront.some(z=>intersectsVehicleParkingReserve(z,o))));
+   !(o.fixture==='parking-block'||o.fixture==='parking-sign'||modernFront.some(z=>intersectsVehicleParkingReserve(z,o))||
+    (refreshed&&streetConflicts({...site,cover:[o]},refreshed).length>0)));
  const initialCount=cover.length;
  const protectedPoints=[...site.spawn,...site.enemies,site.objective,site.extract,site.entrance,
   ...(arrivalRetrofit?(site.encounter?.actors??[]).flatMap(a=>[a.position,...(a.routine??[])]):[]),
@@ -314,5 +321,5 @@ export function addExteriorProperty(site:Site,seed:number,vehiclePlacement=false
      cover.push(candidate);
    }
  }
- return {...site,exteriorZones:zones,cover};
+ return {...streetSite,exteriorZones:zones,cover};
 }

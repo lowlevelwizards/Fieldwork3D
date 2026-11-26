@@ -6,6 +6,7 @@ import {type Pt,type Segment,type Door,type Obstacle} from './breach-core.ts';
 import {applyArchetype} from './breach-archetypes.ts';
 import {withSitePropIds} from './worldgen/site-object-identity.ts';
 import {attachPlannedVehicles} from './worldgen/vehicle-site-integration.ts';
+import {attachStreetInfrastructure} from './worldgen/street-site-integration.ts';
 import {compileArchitecturalSite} from './worldgen/architectural-compiler.ts';
 import {partitionMotelGuestUnits} from './worldgen/motel-suites.ts';
 import {orientArchitecturalSite,type EntrySide} from './worldgen/site-orientation.ts';
@@ -84,7 +85,7 @@ export {seeded} from './worldgen/seeded-rng.ts';
 export function generateSite(seed:number,scale:SiteScale='standard',
  onProgress?:(phase:'layout'|'furnishing'|'scoring',attempt:number)=>void,
  encounterContext:EncounterContext={},
- generationOptions:{archetype?:BuildingArchetype;vehiclePlacement?:boolean}={}):Site{
+ generationOptions:{archetype?:BuildingArchetype;vehiclePlacement?:boolean;streetInfrastructure?:boolean}={}):Site{
  const kind=generationOptions.archetype??
    (['house','townhouse','apartment','retail','office',
   'garage','warehouse','restaurant','motel','utility','clinic'] as const)
@@ -109,7 +110,8 @@ export function generateSite(seed:number,scale:SiteScale='standard',
  // Select the same canonical architecture and encounter as the existing
  // generator, then retrofit its finished frontage. Parking may not change
  // mission selection, room programs, enemy/civilian positions or retries.
- const finish=(site:Site)=>withSitePropIds(generationOptions.vehiclePlacement!==false?attachPlannedVehicles(site):site);
+ const finish=(site:Site)=>withSitePropIds(generationOptions.streetInfrastructure===true?
+  attachStreetInfrastructure(site,generationOptions.vehiclePlacement!==false):generationOptions.vehiclePlacement!==false?attachPlannedVehicles(site):site);
  for(let attempt=0;attempt<6;attempt++){
   // One optional alternate after the first navigable map; do not multiply
   // full scene generation on every mobile load.

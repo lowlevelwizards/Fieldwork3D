@@ -21,11 +21,11 @@ function draw(){
  const p=active.streetInfrastructure,r=planPublicStreet(active);
  const width=r?(r.entry==='north'||r.entry==='south'?r.road.depth:r.road.width):0;
  const stats=scene.performanceStats();
- output.textContent=(base.archetype??'site')+' · seed '+base.seed+' · '+(p?p.kind+' · '+(p.cropped?'cropped':'full')+' · '+p.completeLanes+'/'+p.nominalLanes+' complete lanes':'legacy')+' · road '+(width/20).toFixed(2)+'m · '+(p?streetConflicts(base,p).length+' existing fixture conflicts · ':'')+stats.calls+' draws · '+stats.triangles+' triangles';
+ output.textContent=(base.archetype??'site')+' · seed '+base.seed+' · '+(p?p.kind+' · '+(p.cropped?'cropped':'full')+' · '+p.completeLanes+'/'+p.nominalLanes+' complete lanes':'legacy')+' · road '+(width/20).toFixed(2)+'m · '+(p?streetConflicts(active,p).length+' fixture conflicts · ':layout.value==='pilot'?'pilot fallback · ':'')+stats.calls+' draws · '+stats.triangles+' triangles';
 }
 function rebuild(){
  const p=layout.value==='proposal'?proposeStreetInfrastructure(base,kind.value==='auto'?undefined:kind.value as StreetKind):null;
- active=p?{...base,streetInfrastructure:p}:base;
+ active=layout.value==='pilot'?generateSite(base.seed,scale.value as SiteScale,undefined,{}, {streetInfrastructure:true}):p?{...base,streetInfrastructure:p}:base;
  activateSite(active);session=newSession(0,active.seed,'exterior-known',scale.value as SiteScale,undefined,active);
  scene.applySite(active);draw();
 }

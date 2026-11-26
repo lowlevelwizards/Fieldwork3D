@@ -10,6 +10,7 @@ export function planStreetFinishes(site:Site):PropertySurface[]{
  const add=(kind:SurfaceKind,r:StreetRect)=>marks.push({id:'street:'+kind+':'+marks.length,zoneId,kind,...r});
  if(p.verge)add('street-verge',p.verge);
  if(p.shoulder)add('street-shoulder',p.shoulder);
+ if(p.accessConnection)add('street-driveway-link',p.accessConnection);
  const road=p.frontage.road,along=p.axis,across=along==='x'?'y':'x';
  const len=along==='x'?road.width:road.depth,depth=p.visibleRoadWidth;
  const rect=(at:number,other:number,w:number,h:number):StreetRect=>along==='x'?
