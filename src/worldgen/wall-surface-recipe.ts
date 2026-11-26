@@ -187,23 +187,53 @@ export function bakedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,wid
   const wx=(x+.5)/width*recipe.length,wy=(y+.5)/height*recipe.height;
   const physicalY=recipe.height-wy;
   const surface=recipe.surface;
-  let shade=1;
+  const paint=patterned&&recipe.band&&wy>=recipe.band.top?accent:base;
+  // Quiet, coherent material modules instead of noise or identical flat grids.
+  // Keep the old strip footprint; sample a physical seam at fractional coverage.
+  let shade=1,color=paint;
+  const cell=(ix:number,iy:number)=>hash(Math.imul(ix+41,374761393)^Math.imul(iy+17,668265263)^recipe.color);
+  const seam=(p:number,spacing:number,thickness:number,texel:number)=>{
+   const d=Math.min(mod(p,spacing),spacing-mod(p,spacing));
+   return clamp((thickness/2+texel/2-d)/texel);
+  };
+  const broad=cell(Math.floor(wx/32),Math.floor(physicalY/20));
   if(patterned){
-   if(surface==='cinderblock'||surface==='brick'){
-    const course=surface==='brick'?7:12,block=course*2,row=Math.floor(physicalY/course);
-    if(mod(physicalY,course)<Math.max(texelY,1)||mod(wx+(row%2)*block/2,block)<Math.max(texelX,1))shade=.74;
-    else if((Math.floor((wx+(row%2)*block/2)/block)+row*3)%5===0)shade=.92;
+   if(surface==='brick'||surface==='cinderblock'){
+    const brick=surface==='brick',course=brick?7:12,block=course*2,row=Math.floor(physicalY/course),shift=(row%2)*block/2;
+    const index=Math.floor((wx+shift)/block),v=cell(index,row);
+    const body=brick?tint(paint,[163,84,53],.38):tint(paint,[137,148,146],.38);
+    color=tint(body,v<.32?(brick?[125,64,44]:[108,121,120]):(brick?[195,120,81]:[189,195,188]),v<.32?.19:v>.76?.24:.07);
+    const joint=Math.max(seam(physicalY,course,.9,texelY),seam(wx+shift,block,.8,texelX));
+    color=tint(color,brick?[171,157,135]:[119,126,123],joint*.75);
+    // Lower edge gives the block one readable course shadow, not a double outline.
+    shade=1-.09*seam(physicalY-1.35,course,.7,texelY);
    }else if(surface==='tile'){
-    if(mod(wx,10)<Math.max(1,texelX)||mod(physicalY,10)<Math.max(1,texelY))shade=.78;
+    const v=cell(Math.floor(wx/10),Math.floor(physicalY/10));
+    color=tint(paint,[227,235,228],.12+v*.12);
+    const joint=Math.max(seam(wx,10,.55,texelX),seam(physicalY,10,.55,texelY));
+    color=tint(color,[134,146,143],joint*.47);
    }else if(surface==='panel'){
-    if(mod(wx,24)<Math.max(1,texelX))shade=.70;
+    color=tint(paint,[97,128,137],.23);
+    const n=cell(Math.floor(wx/24),0);
+    shade=1+(n-.5)*.09;
+    shade-=.25*seam(wx,24,1.15,texelX);
+    shade+=.11*seam(wx-1.6,24,.8,texelX);
+    // Sparse fasteners only at panel edges; no pervasive speckle.
+    if(mod(wx+2,24)<1.2&&Math.min(Math.abs(physicalY-5),Math.abs(physicalY-(recipe.height-5)))<texelY*.55)shade*=.78;
    }else if(surface==='siding'){
-    if(mod(physicalY,9)<Math.max(1,texelY))shade=.76;
+    const row=Math.floor(physicalY/9),v=cell(0,row);
+    shade=1+(v-.5)*.10-.23*seam(physicalY,9,1.1,texelY)+.07*seam(physicalY-2,9,.65,texelY);
+    if(seam(wx+(row%3)*19,57,.65,texelX)>.6)shade*=.91;
    }else if(surface==='concrete'){
-    if(mod(wx,48)<Math.max(1,texelX))shade=.83;
+    color=tint(paint,[142,149,148],.30);
+    shade=1+(broad-.5)*.09-.19*seam(wx,48,.85,texelX);
+    if(Math.abs(mod(wx+12,48)-24)<1.1&&Math.abs(mod(physicalY+9,28)-14)<texelY*.55)shade*=.84;
+   }else if(surface==='plaster'){
+    // Restrained large paint fields. Keep clinically clean finishes calm.
+    shade=1+(broad-.5)*.035;
+    if(recipe.band&&Math.abs(wy-recipe.band.top)<texelY*.35)shade*=.98;
    }
   }
-  const color=patterned&&recipe.band&&wy>=recipe.band.top?accent:base;
   for(let i=0;i<3;i++)out[p+i]=linearByte((srgbLinear[color[i]]*(1-a)+srgbLinear[out[p+i]]*a)*shade);
   out[p+3]=255;
  }
