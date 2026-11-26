@@ -16,7 +16,7 @@ export type PlanNode={
   id:number;kind:PlanKind;p:Pt;facing?:number;doorId?:string;
   objectId?:string;pushDirection?:Pt;interaction?:'push'|'open-window'|'close-window'|'break-window'|
     'secure-civilian'|'follow-civilian'|'stop-following-civilian'|'restrain-civilian'|'release-civilian'|'release-capture-target'|'challenge-suspect'|'restrain-suspect'|'search-suspect'|'secure-firearm'|'escort-suspect'|'stop-escorting-suspect'|
-    'power-on'|'power-off';
+    'power-on'|'power-off'|'open-covering'|'close-covering'|'half-covering'|'tilt-covering'|'untilt-covering';
   method?:DoorMethod;duration?:number;syncCode?:string;holdOnContact?:boolean;
   postureState?:'stand'|'crouch';paceState?:'walk'|'run';
   moveMode?:MoveMode;pivot?:Pt;pieSide?:PieSide;pieDegrees?:number;arc?:Pt[];

@@ -31,6 +31,8 @@ export const TACTICAL_ACTION_MODALITY:Readonly<Record<TacticalInteraction,Action
  'escort-suspect':'voice',
  'stop-escorting-suspect':'voice',
  'power-on':'object-contact',
+ 'open-covering':'object-contact','close-covering':'object-contact','half-covering':'object-contact',
+ 'tilt-covering':'object-contact','untilt-covering':'object-contact',
  'power-off':'object-contact'
 };
 

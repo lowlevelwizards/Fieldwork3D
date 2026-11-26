@@ -1,3 +1,7 @@
+import {isCoveringAction,coveringActorAvailable,coveringContactClear,coveringHandContact,desiredCovering,sameCovering,COVERING_ACTION_SECONDS,COVERING_ACTION_LABELS} from './breach-window-covering-interaction.ts';
+import {normalizeWindowCovering} from './breach-window-coverings.ts';
+import {setSessionWindowCovering} from './breach-window-covering-optics.ts';
+import {releasePhysicalContact} from './breach-physical-contact-anchor.ts';
 import {assessTacticalAction} from './breach-action-assessment.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {PERSON_CONTACT_REACH} from './breach-person-contact-standpoint.ts';
@@ -85,9 +89,9 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
     if(!contactCommand&&!near(a.p,n.p,7)){
       // Once an electrical action has begun, losing the contact position
       // cancels it rather than letting an absent hand finish remotely.
-      if((n.interaction==='power-on'||n.interaction==='power-off')&&
+      if((n.interaction==='power-on'||n.interaction==='power-off'||isCoveringAction(n.interaction))&&
          a.actionTimer>0){
-        failCurrentOrder(s,a,n,'POWER CONTROL CONTACT LOST');return true;
+        failCurrentOrder(s,a,n,isCoveringAction(n.interaction)?'COVERING CONTACT LOST':'POWER CONTROL CONTACT LOST');return true;
       }
       approach(a,n.p,dt,s,.65);return true;
     }
@@ -474,6 +478,29 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         (control.kind==='breaker'?control.circuit!:control.roomId+' LIGHT'));
       battleEvent(s,'interaction',a,a.p,
         a.name+' '+(desired?'RESTORED':'CUT')+' POWER');
+      clearCurrentOrderIssue(a);pop(a);return true;
+    }
+    if(isCoveringAction(n.interaction)){
+      const w=n.objectId.startsWith('covering:')?s.windows.find(w=>w.id===n.objectId!.slice(9)):undefined;
+      const c=w?normalizeWindowCovering(w):undefined,next=c?desiredCovering(c,n.interaction):null;
+      if(!w||!c||!next||!coveringActorAvailable(a,s)||!coveringContactClear(s,w,c,a.p,a.posture==='crouch')){
+        failCurrentOrder(s,a,n,'COVERING LOCKED OR OUT OF REACH');return true;
+      }
+      if(sameCovering(c,next)){clearCurrentOrderIssue(a);pop(a);return true;}
+      const point=coveringHandContact(w,c,a,s.seconds,a.physicalContact);
+      a.velocity=0;
+      if(!rotate(a,Math.atan2(point.anchor.point.z-a.p.y,point.anchor.point.x-a.p.x),dt,s))return true;
+      if(s.operators.some(o=>o!==a&&o.health>0&&o.actionTimer>0&&o.plan[0]?.objectId===n.objectId&&isCoveringAction(o.plan[0]?.interaction))){
+        failCurrentOrder(s,a,n,'COVERING IN USE');return true;
+      }
+      a.aim=0;a.fireCd=Math.max(a.fireCd,.25);a.physicalContact=point;a.actionTimer+=dt;
+      if(a.actionTimer<COVERING_ACTION_SECONDS)return true;
+      if(!setSessionWindowCovering(s,w.id,next)){
+        failCurrentOrder(s,a,n,'COVERING UNAVAILABLE');return true;
+      }
+      a.physicalContact=releasePhysicalContact(point,s.seconds);
+      const message=a.name+' '+COVERING_ACTION_LABELS[n.interaction]+' '+c.family.replaceAll('-',' ').toUpperCase();
+      notify(s,message);battleEvent(s,'interaction',a,{x:w.x,y:w.y},message);
       clearCurrentOrderIssue(a);pop(a);return true;
     }
     const [kind,id]=n.objectId.split(':');

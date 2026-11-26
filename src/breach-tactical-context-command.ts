@@ -1,3 +1,5 @@
+import {isCoveringAction} from './breach-window-covering-interaction.ts';
+import {planWindowCovering} from './breach-game.ts';
 import {assessTacticalAction} from './breach-action-assessment.ts';
 import {captureVitalStatus} from './breach-capture-vitals.ts';
 /** Authoritative contextual command mutations, independent of button DOM.
@@ -59,6 +61,11 @@ export function dispatchTacticalContextCommand(input:{
     .some(patient=>patient.id===patientId&&patient.canTreat);
   return finish(permitted&&planMedicalTreatment(state,selected,patientId,node?.id),
     'PATIENT STABLE, UNREACHABLE, OR TREATMENT SUPPLIES UNAVAILABLE');
+ }
+ if(action.startsWith('ctxCovering:')){
+  const [,method,...id]=action.split(':');
+  return finish(isCoveringAction(method)&&planWindowCovering(state,selected,id.join(':'),method,node?.id),
+    'COVERING LOCKED, UNKNOWN OR OUT OF REACH');
  }
  if(action.startsWith('ctxPower:')){
   const parts=action.split(':');

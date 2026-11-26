@@ -1,3 +1,5 @@
+import {coveringActorAvailable,coveringContactClear,desiredCovering,sameCovering,type CoveringAction} from './breach-window-covering-interaction.ts';
+import {normalizeWindowCovering} from './breach-window-coverings.ts';
 import {windowCoveringsBlockSight} from './breach-window-covering-optics.ts';
 import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
@@ -608,6 +610,20 @@ export function planNearbyInteraction(s:Session,id:string,
  }
  if(!target)return false;
  return queue('window:'+target.id);
+}
+/** Queue a stable explicit covering state without mutating the world during planning. */
+export function planWindowCovering(s:Session,id:string,windowId:string,action:CoveringAction,afterNodeId?:number):boolean{
+ const a=party(s,id),w=s.windows.find(w=>w.id===windowId);
+ if(!a||!w||!canEdit(s)||!coveringActorAvailable(a,s))return false;
+ const index=afterNodeId===undefined?-1:a.plan.findIndex(n=>n.id===afterNodeId);
+ if(afterNodeId!==undefined&&index<0)return false;
+ const at=index>=0?a.plan[index].p:finalPoint(a),c=normalizeWindowCovering(w);
+ if(!c||!liveVisibility(s,{x:w.x,y:w.y})||!coveringContactClear(s,w,c,at,plannedControl(s,id,afterNodeId).posture==='crouch'))return false;
+ const next=desiredCovering(c,action);if(!next||sameCovering(c,next))return false;
+ return edit(s,a,()=>{
+  const order:PlanNode={id:s.nextId++,kind:'interact',p:clone(at),objectId:'covering:'+w.id,interaction:action};
+  if(index>=0)a.plan.splice(index+1,0,order);else a.plan.push(order);
+ });
 }
 /** Author a single explicit power setting in the existing editable plan.
  * Player knowledge gates the action; execution later checks real reach/LOS.

@@ -8,7 +8,7 @@ import {doorGripWeight} from './breach-pose-door-hand.ts';
 
 export type ContactPoint3={x:number;y:number;z:number};
 export type ContactTarget='door'|'surface'|'teammate';
-export type ContactIntent='door'|'tool'|'brace'|'teammate';
+export type ContactIntent='door'|'tool'|'brace'|'teammate'|'covering';
 export type ContactLimb='support-hand'|'firing-hand'|'support-forearm'|'shoulder';
 export type ContactAnchor={
  readonly target:ContactTarget;
@@ -56,12 +56,12 @@ export function validPhysicalContact(c:PhysicalContact,now:number):boolean{
  if(!c||!finite(now)||!finite(c.startedAt)||c.startedAt>now||
     (c.releasedAt!==null&&(!finite(c.releasedAt)||
       c.releasedAt<c.startedAt))||
-    !['door','tool','brace','teammate'].includes(c.intent)||
+    !['door','tool','brace','teammate','covering'].includes(c.intent)||
     !['support-hand','firing-hand','support-forearm','shoulder'].includes(c.limb)||
     !validContactAnchor(c.anchor))return false;
  return (c.intent==='door'&&c.anchor.target==='door')||
         (c.intent==='tool'&&c.anchor.target==='door')||
-        (c.intent==='brace'&&c.anchor.target==='surface')||
+        ((c.intent==='brace'||c.intent==='covering')&&c.anchor.target==='surface')||
         (c.intent==='teammate'&&c.anchor.target==='teammate');
 }
 export function sameContact(a:PhysicalContact,b:PhysicalContact):boolean{
@@ -87,7 +87,7 @@ export function contactWithinReach(c:PhysicalContact,
 export function contactAllowedByOwners(c:PhysicalContact,
  owners:ContactOwners):boolean{
  if(!owners)return false;
- if(c.intent==='door'||c.intent==='tool')return owners.action==='door'&&
+ if(c.intent==='door'||c.intent==='tool'||c.intent==='covering')return owners.action==='door'&&
    c.limb==='support-hand'&&owners.left==='door';
  if(owners.action!=='hold')return false;
  if(c.limb==='support-hand')return owners.left==='weapon'||
