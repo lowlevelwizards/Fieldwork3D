@@ -30,6 +30,8 @@ on:
       - 'tests/faction-reference-loadout-ft1-3.test.mjs'
       - 'src/arsenal/wa-art-models.ts'
       - 'scripts/verify-catalog-retirement.mjs'
+      - 'scripts/smoke-fal-p1-visual.mjs'
+      - 'scripts/smoke-fnc-arsenal.mjs'
       - '.github/workflows/weapon-catalog-retirement.yml'
   workflow_dispatch:
 jobs:
