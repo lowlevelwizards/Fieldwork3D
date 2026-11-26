@@ -163,7 +163,7 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
    return relativeArtColor(substrate,p,.67,i===1?strengthProfile[0]:strengthProfile[0]*.65,strengthProfile[1]*(i===2?1:.8),direction);
   });
   const colors=colorsFor(base),bandColors=recipe.band?colorsFor(tint(base,rgb(recipe.band.color),.62)):colors;
-  const shape=prepareWallArt(event.kind,eventArtSeed(event,recipe.artSeed),progress,recipe.length/width/Math.max(1,event.width/2),recipe.height/height/Math.max(1,event.height/2));
+  const shape=prepareWallArt(event.kind,eventArtSeed(event,recipe.artSeed),progress,recipe.length/width/Math.max(1,event.width/2),recipe.height/height/Math.max(1,event.height/2),event.kind==='chip'?(event.x<recipe.length/2?1:-1):undefined);
   // Visit only the physical stamp rectangle, rather than every texel
   // in every strip for each sparse event.
   const rx=Math.max(1,event.width/2),ry=Math.max(1,event.height/2);
