@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {styleArchitecturalDoors} from '../src/worldgen/door-families.ts';
 import {doorLeafSegment} from '../src/breach-core.ts';
 import {primaryEntranceSpan} from '../src/worldgen/primary-entrance.ts';
+import {compileArchitecturalSite} from '../src/worldgen/architectural-compiler.ts';
 const paired=[
  {id:'PAIR-L',a:{x:52,y:0},b:{x:100,y:0},hinge:'a',kind:'hinged',
   open:false,openedAt:-1,pairedWith:'PAIR-R'},
@@ -10,7 +11,7 @@ const paired=[
   open:false,openedAt:-1,pairedWith:'PAIR-L'}
 ];
 const walls=[{a:{x:0,y:0},b:{x:52,y:0}},{a:{x:148,y:0},b:{x:200,y:0}}];
-const make=archetype=>({archetype,rooms:[],doors:paired,walls});
+const make=archetype=>({archetype,expandedDoorFamilies:true,rooms:[],doors:paired,walls});
 test('EI3 pair styles match architecture and preserve reciprocal identity',()=>{
  for(const [type,style] of [['warehouse','steel'],['utility','reinforced'],
   ['house','french'],['clinic','glazed'],['apartment','wood']]){
@@ -37,4 +38,20 @@ test('EI3 public entrance keeps a stable FRONT identity but spans both leaves',(
  assert.deepEqual(primaryEntranceSpan(doors),{a:{x:52,y:0},b:{x:148,y:0}});
  assert.deepEqual(primaryEntranceSpan([doors[0]]),{a:doors[0].a,b:doors[0].b});
  assert.equal(primaryEntranceSpan(undefined),undefined);
+});
+
+test('EI3 large public entrances use full 48-unit leaves and compact generation stays on proven grammar',()=>{
+ let pairs=0;
+ for(const kind of ['retail','clinic','office','restaurant','motel'])for(const seed of [0,2,3,5,6,8,9,11,12,14]){
+  const compact=compileArchitecturalSite(kind,seed,'small');
+  assert.equal(compact.doors.find(d=>d.id==='FRONT')?.pairedWith,undefined);
+  const large=compileArchitecturalSite(kind,seed,'large');
+  const front=large.doors.find(d=>d.id==='FRONT');
+  if(!front?.pairedWith)continue;
+  pairs++;
+  const span=primaryEntranceSpan(large.doors);
+  assert.ok(Math.abs(Math.hypot(span.b.x-span.a.x,span.b.y-span.a.y)-96)<1e-6);
+  assert.ok(large.doors.filter(d=>d.id==='FRONT'||d.id===front.pairedWith).every(d=>Math.abs(Math.hypot(d.b.x-d.a.x,d.b.y-d.a.y)-48)<1e-6));
+ }
+ assert.ok(pairs>0,'large sites must actually generate paired public doors');
 });

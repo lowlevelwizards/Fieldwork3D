@@ -74,7 +74,7 @@ function cut(wall:Segment,id:string,walls:Segment[],doors:Door[],fraction=.5){
 }
 /** A genuinely wide passage with two independent, operable 48-unit leaves. */
 function cutPaired(wall:Segment,id:string,walls:Segment[],doors:Door[],fraction=.5):boolean{
- const length=span(wall),half=id==='FRONT'?42:48;
+ const length=span(wall),half=48;
  if(length<2*half+50)return false;
  const ux=(wall.b.x-wall.a.x)/length,uy=(wall.b.y-wall.a.y)/length;
  const margin=(half+25)/length;
@@ -91,7 +91,8 @@ function cutPaired(wall:Segment,id:string,walls:Segment[],doors:Door[],fraction=
  return true;
 }
 export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
- scale:SiteScale='expanded',subtype='',mission?:OperationKind):Site{
+ scale:SiteScale='expanded',subtype='',mission?:OperationKind,
+ expandedDoorFamilies=scale==='large'):Site{
  const baseline=architecturalBlueprint(kind,seed);
  const selected:Blueprint=kind==='apartment'?apartmentUnitBlueprint(seed,scale):
    scale==='small'||scale==='large'?sizedBlueprint(kind,seed,scale,baseline):baseline;
@@ -163,7 +164,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   const south=side(x,yy,xx,yy);
   if(!adj(c,c.row+1,c.col,south,'horizontal')){
    if(c.col===frontage.col&&c.row===frontage.row){
-    const publicPair=['retail','restaurant','office','clinic','motel'].includes(kind)&&
+    const publicPair=expandedDoorFamilies&&['retail','restaurant','office','clinic','motel'].includes(kind)&&
       seed%3!==1;
     if(!(publicPair&&cutPaired(south,'FRONT',walls,doors,frontage.fraction)))
       cut(south,'FRONT',walls,doors,frontage.fraction);
@@ -223,8 +224,11 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
     rng()<loopChance(circulationStyle,a,b);
   if(edge.selected||optionalLoop){
    const pair=[a.role,b.role].sort().join('|');
-   const double=!pairedPassage&&edge.selected&&
-     edge.length>=146&&(pairedRoles[kind]??[]).includes(pair);
+   const legacyPairs=['office','clinic','restaurant'].includes(kind)||
+     kind==='retail'&&pair==='checkout|sales';
+   const double=(expandedDoorFamilies||seed%3!==1)&&!pairedPassage&&edge.selected&&
+     edge.length>=146&&(pairedRoles[kind]??[]).includes(pair)&&
+     (expandedDoorFamilies||legacyPairs);
    if(double&&cutPaired(edge.wall,'INTER-DOUBLE',walls,doors))
      pairedPassage=true;
    else cut(edge.wall,'D'+id++,walls,doors);
@@ -390,7 +394,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   if(index<0)continue;
   walls.splice(index,1);
   const id='COURT-'+(++courtDoors);
-  const patio=['house','townhouse','restaurant','motel'].includes(kind);
+  const patio=expandedDoorFamilies&&['house','townhouse','restaurant','motel'].includes(kind);
   if(!(patio&&seed%3!==1&&cutPaired(candidate.wall,id,walls,doors)))
     cut(candidate.wall,id,walls,doors);
  }
@@ -403,6 +407,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   ({id,kind:'apartment',roomIds}));
  const west=xs[0],east=xs[xs.length-1],north=ys[0],south=ys[ys.length-1];
  return {seed,name:b.family.toUpperCase(),archetype:kind,scale,
+   ...(expandedDoorFamilies?{expandedDoorFamilies:true as const}:{}),
    planFamily:b.family,programLocked:true,circulationStyle,
    rooms:cells.map(c=>c.room),walls,doors,openings,cover:[],units,
    entrance,spawn,enemies,

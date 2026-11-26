@@ -13,7 +13,8 @@ const door=(style='wood')=>initDoor({
 test('symbolic proportions keep visible frame lips beyond the wall and shallow thresholds',()=>{
  const wood=doorProportions({kind:'hinged',style:'wood'});
  const reinforced=doorProportions({kind:'hinged',style:'reinforced'});
- assert.ok(wood.jambWidth>=2.5&&wood.jambWidth<4);
+ assert.ok(wood.jambWidth>=5&&wood.jambWidth<=6);
+ assert.ok(wood.jambWidth<wood.jambDepth);
  assert.ok(wood.jambDepth>9&&wood.jambDepth<13);
  assert.ok(wood.headerDepth>9&&wood.headerDepth<13);
  assert.ok(wood.thresholdDepth<8);
@@ -50,10 +51,11 @@ test('full structural aperture stays walkable while the open leaf swings',()=>{
   assert.ok(d.openFraction>.95,'slimmed styling must preserve pressure overswing');
  }finally{activateSite(null);}
 });
-test('both the active and legacy renderers use the same frame proportions',()=>{
- const source=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
- assert.ok(source.split('doorProportions(door)').length>=3);
- assert.ok(source.includes('const jambX=length/2+profile.jambWidth/2-.25'));
- assert.ok(source.includes('const jambX=width/2+profile.jambWidth/2-.25'));
+test('the shared opening builder owns frame proportions and real paired seam separation',()=>{
+ const source=readFileSync(new URL('../src/rendering/breach-site-openings-builder.ts',import.meta.url),'utf8');
+ assert.ok(source.includes('const profile=doorProportions(door)'));
+ assert.ok(source.includes('const jambX=length/2+profile.jambWidth/2-DOOR_FRAME_INSET'));
+ assert.ok(source.includes('headerExtension=door.pairedWith?profile.jambWidth-.1'));
+ assert.ok(source.includes('jambSides=door.pairedWith?'));
  assert.ok(!source.includes('width+7,4,12,doorTrim'));
 });

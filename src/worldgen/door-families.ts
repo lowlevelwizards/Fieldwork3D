@@ -58,7 +58,9 @@ export function styleArchitecturalDoors(site:Site,seed:number):Site{
   const isService=door.id==='SERVICE';
   let finish:DoorStyle='wood';
   let mode:Door['kind']=door.kind;
-  if(door.pairedWith){
+  if(door.pairedWith&&!site.expandedDoorFamilies){
+   finish=['retail','restaurant','office'].includes(kind)?'glazed':'wood';
+  }else if(door.pairedWith){
    // Both leaves of a double opening must agree on construction.
    const partner=site.doors.find(d=>d.id===door.pairedWith);
    const residential=['house','townhouse'].includes(kind);
