@@ -81,17 +81,17 @@ try{
   for(const [name,file] of variants){
    await page.getByRole('button',{name:'Select '+name}).click();
    await page.waitForFunction(expected=>
-    document.querySelector('.arsenal-hero-copy h2')?.textContent===expected&&
-    document.querySelector('.arsenal-hero-media img')?.naturalWidth>=400,
+    document.querySelector('section[aria-label="Selected weapon"] .arsenal-hero-copy h2')?.textContent===expected&&
+    document.querySelector('section[aria-label="Selected weapon"] .arsenal-hero-media img')?.naturalWidth>=400,
     name,{timeout:30000});
-   const photo=await page.locator('.arsenal-hero').screenshot({
+   const photo=await page.getByRole('region',{name:'Selected weapon',exact:true}).screenshot({
     path:'fal-p1-captures/arsenal-'+file+'.png'});
    if(photo.length<7000)throw Error('Blank Arsenal '+name+' hero');
   }
   // The short Para must also open in the actual mobile Workbench without
   // an unsupported-parts exception.
   await page.setViewportSize({width:430,height:920});
-  await page.locator('.arsenal-hero-open').click();
+  await page.getByRole('region',{name:'Selected weapon',exact:true}).locator('.arsenal-hero-open').click();
   await page.waitForFunction(()=>document.body.textContent?.includes('FN FAL 50.63 Para')&&
    !!document.querySelector('canvas'),null,{timeout:30000});
   const paraWorkbench=await page.screenshot({path:'fal-p1-captures/arsenal-para-5063-mobile-workbench.png'});
