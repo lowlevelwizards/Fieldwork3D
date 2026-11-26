@@ -1,5 +1,6 @@
 /** W2 audition: static architecture is a material plus a sparse set of
  * anchored finish events. No tactical state, time or mutable RNG. */
+import {prepareWallArt,eventArtSeed} from './wall-weathering-art.ts';
 import type {Site} from '../breach-site.ts';
 import type {FixtureWallResidue} from './wall-story-residue.ts';
 import {wallExposure} from './wear-exposure.ts';
@@ -19,7 +20,7 @@ export function resolveWallSurfaceMode(mode:string|null):WallAudition|undefined{
  return {effect:'all',atlas:true,story:true};
 }
 export type SurfaceEvent={kind:WallEffect;cause:string;x:number;y:number;width:number;height:number;threshold:number;priority:number};
-export type WallSurfaceRecipe={length:number;height:number;face:-1|1;color:number;surface:PixelSurface;band?:{color:number;top:number};directional?:boolean;events:SurfaceEvent[]};
+export type WallSurfaceRecipe={length:number;height:number;face:-1|1;color:number;surface:PixelSurface;band?:{color:number;top:number};directional?:boolean;artSeed?:number;events:SurfaceEvent[]};
 const clamp=(n:number,a=0,b=1)=>Math.max(a,Math.min(b,n));
 const hash=(n:number)=>((Math.imul(n^(n>>>16),0x45d9f3b)>>>0)/4294967295);
 const random=(seed:number,salt:number)=>hash(Math.imul(seed+salt,0x9e3779b1));
@@ -109,7 +110,7 @@ export function planWallSurface(site:Site,index:number,height:number,requestedFa
  if(site.condition==='renovation'&&random(seed,9)<.45)
   add('repair','renovation',length*(.22+.56*random(seed,10)),height*.45,17,18,22,95);
  if(requestedFace!==undefined&&story)for(const event of story.get(index)?.get(face)??[])add(event.kind,event.cause,event.x,event.y,event.width,event.height,event.threshold,event.priority);
- return {length,height,face,color,surface,band,directional:requestedFace!==undefined,events:events.sort((a,b)=>b.priority-a.priority||a.cause.localeCompare(b.cause))};
+ return {length,height,face,color,surface,band,directional:requestedFace!==undefined,artSeed:seed^face,events:events.sort((a,b)=>b.priority-a.priority||a.cause.localeCompare(b.cause))};
 }
 export function selectWallEvents(recipe:WallSurfaceRecipe,level:number,filter:WallEffectFilter='all'){
  const cap=level<=0?0:level<=25?1:level<=50?2:level<=75?3:4;
@@ -125,16 +126,24 @@ const tint=(base:RGB,target:RGB,amount:number):RGB=>base.map((c,i)=>Math.round(c
 export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:number,height:number,filter:WallEffectFilter='all'){
  const out=new Uint8Array(width*height*4),base=rgb(recipe.color);
  for(const event of selectWallEvents(recipe,level,filter).reverse()){
-  const strength=clamp((level-event.threshold+10)/35,.18,1);
-  const bold=recipe.directional===true;
-  const palette:Record<WallEffect,RGB>={
-   fade:tint(base,[235,232,217],bold?.39:.26),contact:tint(base,[72,76,70],bold?.71:.5),
-   chip:tint(base,[178,171,155],.75),damp:tint(base,[60,78,60],.74),
-   runoff:tint(base,[63,82,68],.68),crack:tint(base,[65,67,61],.74),
-   repair:tint(base,[231,222,199],.4),moss:tint(base,[65,89,52],.79),rust:tint(base,[139,71,37],.77),
-   grease:tint(base,[112,89,50],.65),splash:tint(base,[87,109,105],.53),workgrime:tint(base,[67,65,61],.72)
+  const progress=clamp((level-event.threshold+10)/(110-event.threshold),.18,1);
+  const strength=.38+.62*progress;
+  const palette:Record<WallEffect,readonly [RGB,RGB,RGB]>={
+   fade:[[225,222,202],[238,232,210],[247,241,220]],
+   contact:[[158,151,132],[105,102,87],[67,69,61]],
+   chip:[[224,213,188],[173,158,134],[113,104,88]],
+   damp:[[201,195,164],[96,112,88],[60,80,63]],
+   runoff:[[158,160,128],[86,108,91],[53,78,68]],
+   crack:[[220,208,184],[108,104,91],[61,59,51]],
+   repair:[[217,211,195],[238,226,205],[175,166,146]],
+   moss:[[128,146,79],[87,116,62],[50,76,43]],
+   rust:[[190,123,75],[148,78,39],[90,52,35]],
+   grease:[[175,151,91],[132,105,60],[88,69,42]],
+   splash:[[225,229,209],[125,155,148],[91,115,110]],
+   workgrime:[[177,164,140],[100,96,79],[62,61,55]]
   };
-  const c=palette[event.kind];
+  const colors=palette[event.kind].map((p,i)=>tint(base,p,i===2?.84:i===0?.69:.77));
+  const shape=prepareWallArt(event.kind,eventArtSeed(event,recipe.artSeed),progress,recipe.length/width/Math.max(1,event.width/2),recipe.height/height/Math.max(1,event.height/2));
   // Visit only the physical stamp rectangle, rather than every texel
   // in every strip for each sparse event.
   const rx=Math.max(1,event.width/2),ry=Math.max(1,event.height/2);
@@ -146,25 +155,11 @@ export function wallSurfacePixels(recipe:WallSurfaceRecipe,level:number,width:nu
    const wx=(px+.5)/width*recipe.length,wy=(py+.5)/height*recipe.height;
    const u=(wx-event.x)/Math.max(1,event.width/2),v=(wy-event.y)/Math.max(1,event.height/2);
    if(Math.abs(u)>1||Math.abs(v)>1)continue;
-   const step=Math.floor(u*5),edge=.12*(Math.abs(step)%3);
-   let a=0;
-   switch(event.kind){
-    case 'fade':a=v<.68-edge?(bold?.39:.23):0;break;
-    case 'contact':a=(Math.abs(v+.35)<(bold?.27:.18)&&Math.abs(u)<.84||Math.abs(v-.35)<(bold?.22:.13)&&u>-.45)?(bold?.82:.58):0;break;
-    case 'chip':a=Math.abs(u)<.74-edge&&Math.abs(v)<.76&&(v>.05||Math.abs(u)<.32)?.85:0;break;
-    case 'damp':a=v>-.48+edge&&Math.abs(u)<.95?(v>.48?.84:.60):0;break;
-    case 'runoff':a=v>-.93&&((Math.abs(u+.42)<.24*(1.25-v*.45)&&v<.85)||(Math.abs(u-.38)<.20&&v<.32))?(bold?.87:.67):0;break;
-    case 'crack':a=Math.abs(u-(Math.floor((v+1)*5)%3-1)*.23)<.14&&Math.abs(v)<.91?.86:0;break;
-    case 'repair':a=Math.abs(u)<.82&&Math.abs(v)<.79?(bold?.80:.62):0;break;
-    case 'moss':a=v>-.48+edge*2&&Math.abs(u)<.9&&(Math.abs(step)%3!==1||v>.45)?.85:0;break;
-    case 'rust':a=v>-.85&&Math.abs(u)<(v<-.2?.64:.25+.15*(1-v))?.84:0;break;
-    case 'grease':a=Math.abs(u)<.86-edge&&v>-.76+edge?(v>.25?.65:.39):0;break;
-    case 'splash':a=(v>.1&&Math.abs(u)<.87-edge||v>-.72&&Math.abs(u+.44)<.13||v>-.5&&Math.abs(u-.31)<.15)?.54:0;break;
-    case 'workgrime':a=Math.abs(u)<.88&&Math.abs(v)<.66-edge&&(Math.abs(v+.2)<.24||Math.abs(v-.35)<.21)?.76:0;break;
-   }
+   const {coverage,tone}=shape(u,v);
+   let a=coverage;const color=colors[tone];
    if(!a)continue;
    a*=strength;const p=(py*width+px)*4,old=out[p+3]/255,next=a+old*(1-a);
-   for(let i=0;i<3;i++)out[p+i]=Math.round((c[i]*a+out[p+i]*old*(1-a))/next);
+   for(let i=0;i<3;i++)out[p+i]=Math.round((color[i]*a+out[p+i]*old*(1-a))/next);
    out[p+3]=Math.round(next*255);
   }
  }
@@ -182,6 +177,12 @@ export function bakedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,wid
  // Mortar and joints are at least one output texel wide at packed resolution.
  const texelX=recipe.length/width,texelY=recipe.height/height;
  const mod=(n:number,d:number)=>((n%d)+d)%d;
+  const cell=(ix:number,iy:number)=>hash(Math.imul(ix+41,374761393)^Math.imul(iy+17,668265263)^recipe.color);
+  const seam=(p:number,spacing:number,thickness:number,texel:number)=>{
+   const d=Math.min(mod(p,spacing),spacing-mod(p,spacing));
+   return clamp((thickness/2+texel/2-d)/texel);
+  };
+
  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
   const p=(y*width+x)*4,a=out[p+3]/255;
   const wx=(x+.5)/width*recipe.length,wy=(y+.5)/height*recipe.height;
@@ -191,11 +192,6 @@ export function bakedWallSurfacePixels(recipe:WallSurfaceRecipe,level:number,wid
   // Quiet, coherent material modules instead of noise or identical flat grids.
   // Keep the old strip footprint; sample a physical seam at fractional coverage.
   let shade=1,color=paint;
-  const cell=(ix:number,iy:number)=>hash(Math.imul(ix+41,374761393)^Math.imul(iy+17,668265263)^recipe.color);
-  const seam=(p:number,spacing:number,thickness:number,texel:number)=>{
-   const d=Math.min(mod(p,spacing),spacing-mod(p,spacing));
-   return clamp((thickness/2+texel/2-d)/texel);
-  };
   const broad=cell(Math.floor(wx/32),Math.floor(physicalY/20));
   if(patterned){
    if(surface==='brick'||surface==='cinderblock'){
