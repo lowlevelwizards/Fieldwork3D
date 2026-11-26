@@ -27,7 +27,7 @@ let a=entries.find(e=>e.id==='fal-5000')??entries[0],b=entries.find(e=>e.id==='a
 type Model=ReturnType<typeof construct>;
 const active=new Map<string,{entry:Entry;model:Model;box:THREE.Box3;buildMs:number}>();
 const spans={primary:0,sidearm:0};
-for(const e of refs){const m=construct(e);try{const size=bounds(m.model).getSize(new THREE.Vector3()),c=e.sidearm?'sidearm':'primary';spans[c]=Math.max(spans[c],Math.max(size.x,size.y*2)*1.16);}finally{m.cleanup();}}
+for(const e of refs){const m=construct(e);try{const size=bounds(m.model).getSize(new THREE.Vector3()),c=e.sidearm?'sidearm':'primary';spans[c]=Math.max(spans[c],size.length()*2*1.16);}finally{m.cleanup();}}
 const metrics=new Map<string,object>();
 const baselineFiles=new Map<string,File>();let baseline: any=null;let urlA='',contextUrl='';let importVersion=0;
 const currentMode=()=>select('compare').value;
@@ -61,7 +61,7 @@ function render(e:Entry,m:Model,box:THREE.Box3,canvas:HTMLCanvasElement,opts:{vi
  const projected=new THREE.Box3();for(const x of [box.min.x,box.max.x])for(const y of [box.min.y,box.max.y])for(const z of [box.min.z,box.max.z])projected.expandByPoint(new THREE.Vector3(x,y,z).applyMatrix4(camera.matrixWorldInverse));
  const size=projected.getSize(new THREE.Vector3()),aspect=w/h;
  const cohort=e.sidearm?'sidearm':'primary';
- const span=(opts.span??(opts.scale==='shared'?Math.max(spans[cohort],size.x*1.16,size.y*aspect*1.16):Math.max(size.x,size.y*aspect)*1.16))/opts.zoom;
+ const span=(opts.span??(opts.scale==='shared'?spans[cohort]:Math.max(size.x,size.y*aspect)*1.16))/opts.zoom;
  camera.left=-span/2;camera.right=span/2;camera.top=span/aspect/2;camera.bottom=-camera.top;camera.updateProjectionMatrix();
  scene.add(m.model);
  const stats=meshStats(m.model),hidden:THREE.Mesh[]=[],restore:{mesh:THREE.Mesh;material:THREE.Material|THREE.Material[]}[]=[],owned=new Map<THREE.Material,THREE.Material>();
@@ -79,7 +79,7 @@ function render(e:Entry,m:Model,box:THREE.Box3,canvas:HTMLCanvasElement,opts:{vi
 }
 function fileFor(path:string){return baselineFiles.get(path);}
 function baselineRecord(e:Entry){return baseline?.reports?.flatMap((r:any)=>r.records).find((r:any)=>r.id===e.id);}
-function baselinePanel(e:Entry){const record=baselineRecord(e);const key=view==='rear'?null:select('scale').value==='shared'?'side-shared':select('scale').value==='native64'?'native-64':select('scale').value==='native128'?'native-128':select('display').value==='silhouette'?'silhouette-fit':view+'-fit';return {record,panel:record?.panels?.find((p:any)=>p.name===key)};}
+function baselinePanel(e:Entry){const record=baselineRecord(e);const scale=select('scale').value,mode=select('display').value;const key=mode==='silhouette'?(scale==='fit'&&view==='side'?'silhouette-fit':null):scale==='fit'?(view==='rear'?null:view+'-fit'):view!=='side'?null:scale==='shared'?'side-shared':scale==='native64'?'native-64':'native-128';return {record,panel:record?.panels?.find((p:any)=>p.name===key)};}
 function showArchived(e:Entry){
  const img=get<HTMLImageElement>('image-a'),canvas=get<HTMLCanvasElement>('canvas-a'),{record,panel}=baselinePanel(e);
  if(urlA){URL.revokeObjectURL(urlA);urlA='';}
@@ -101,7 +101,7 @@ function draw(){
  const baseOpts={view,mode,lighting,scale,zoom,yaw,pitch,marks:get<HTMLInputElement>('marks').checked};
  const chosen=historical?[['b',b] as const]:[['a',a] as const,['b',b] as const];
  let matched:any=null;
- if(historical){matched=showArchived(b);if(active.has('a')){active.get('a')!.model.cleanup();active.delete('a');}}else{get<HTMLCanvasElement>('canvas-a').hidden=false;get<HTMLImageElement>('image-a').hidden=true;}
+ if(historical){matched=showArchived(b);if(active.has('a')){active.get('a')!.model.cleanup();active.delete('a');}metrics.delete('a');}else{get<HTMLCanvasElement>('canvas-a').hidden=false;get<HTMLImageElement>('image-a').hidden=true;}
  for(const [slot,e] of chosen){
  const m=getModel(slot,e);
  let options=baseOpts;
@@ -113,7 +113,7 @@ function draw(){
  }
  context(b);
  get('message').textContent=historical?(matched?'Matched historical camera, scale and WA0 lighting. Live candidate shown at exact archived span.':'Historical image unavailable — candidate only.'):(scale==='shared'&&Boolean(a.sidearm)!==Boolean(b.sidearm)?'Separate native scale cohorts; not a direct size comparison.':'Live references · synchronized orientation and zoom.');
- document.body.dataset.draws=String(draws);document.body.dataset.ready='true';document.body.dataset.activeModels=String(active.size);
+ document.body.dataset.draws=String(draws);document.body.dataset.ready='true';document.body.dataset.activeModels=String(active.size);document.body.dataset.geometryResources=String(renderer.info.memory.geometries);document.body.dataset.textureResources=String(renderer.info.memory.textures);
 }
 function schedule(){if(!frame&&!disposed)frame=requestAnimationFrame(()=>{try{draw();}catch(e){get('message').textContent=String(e);document.body.dataset.failed=String(e);console.error(e);}});}
 const settings=['compare','scale','display','lighting','marks'];
