@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {windowBashPoint,windowCanBash,WINDOW_BASH_REACH} from '../src/breach-window-bash.ts';
 import {contextActionChoices} from '../src/ui/context-actions.ts';
+import {contactReaction,glassBashMotion,GLASS_BASH_IMPACT,GLASS_BASH_DURATION} from '../src/breach-contact-reactions.ts';
 const pane={id:'fixed',x:100,y:100,width:48,vertical:true,
  open:false,integrity:2,shattered:false,operable:false,sillHeight:0,headHeight:48};
 test('fixed full-height glass is a breakable target independently of operability',()=>{
@@ -19,4 +20,13 @@ test('glass break command is separate from opening an operable sash',()=>{
  const choices=contextActionChoices({...o,nearBreakableGlass:true});
  assert.equal(choices.find(c=>c.id==='ctxBreakGlass')?.label,'BREAK GLASS');
  assert.equal(choices.some(c=>c.id==='ctxWindow'),false);
+});
+
+test('EI4 glass strike has separate preparation, exact impact and recovery',()=>{
+ assert.ok(glassBashMotion(.14).windup>.95);
+ assert.ok(contactReaction(.14,'glass').lean>0);
+ assert.equal(glassBashMotion(GLASS_BASH_IMPACT).strike,1);
+ assert.ok(contactReaction(GLASS_BASH_IMPACT,'glass').lean<0);
+ assert.equal(glassBashMotion(GLASS_BASH_DURATION).strike,0);
+ assert.equal(contactReaction(GLASS_BASH_DURATION,'glass').active,false);
 });

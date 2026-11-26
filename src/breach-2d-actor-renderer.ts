@@ -74,7 +74,9 @@ function missionMarkers(){
   if(replaying&&!replayObjectiveMarkers)return;
   // Small chunky dossier silhouette. Discovery is authoritative and sticky;
   // map/plan rendering cannot reveal unobserved evidence.
-  for(const item of state.optionalIntel??[]){
+  const evidence=state.optionalIntel??[];
+  if(!replaying)for(let i=0;i<evidence.length+(state.primaryIntel?1:0);i++){
+    const item=i<evidence.length?evidence[i]:state.primaryIntel!;
     if(!item.discovered||item.collectedBy)continue;
     const at=item.surface?.p??item.p;
     draw.save();

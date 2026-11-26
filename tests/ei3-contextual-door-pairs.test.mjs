@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {styleArchitecturalDoors} from '../src/worldgen/door-families.ts';
 import {doorLeafSegment} from '../src/breach-core.ts';
+import {primaryEntranceSpan} from '../src/worldgen/primary-entrance.ts';
 const paired=[
  {id:'PAIR-L',a:{x:52,y:0},b:{x:100,y:0},hinge:'a',kind:'hinged',
   open:false,openedAt:-1,pairedWith:'PAIR-R'},
@@ -28,4 +29,12 @@ test('EI3 double sliding panels travel apart into separate adequate pockets',()=
  const narrow=styleArchitecturalDoors({...make('retail'),
   walls:[{a:{x:30,y:0},b:{x:52,y:0}},walls[1]]},2);
  assert.ok(narrow.doors.every(d=>d.kind==='hinged'));
+});
+
+test('EI3 public entrance keeps a stable FRONT identity but spans both leaves',()=>{
+ const doors=[{...paired[0],id:'FRONT',pairedWith:'FRONT-R'},
+  {...paired[1],id:'FRONT-R',pairedWith:'FRONT'}];
+ assert.deepEqual(primaryEntranceSpan(doors),{a:{x:52,y:0},b:{x:148,y:0}});
+ assert.deepEqual(primaryEntranceSpan([doors[0]]),{a:doors[0].a,b:doors[0].b});
+ assert.equal(primaryEntranceSpan(undefined),undefined);
 });

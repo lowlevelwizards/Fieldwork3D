@@ -36,8 +36,7 @@ export function missionText(s:Session){
   if(s.mission==='secure')return s.missionType==='hold'?
     'HOLD OBJECTIVE • '+Math.floor(s.holdTime)+'/7 SECONDS':
     s.missionType==='rescue'?'REACH PERSON IN TARGET ROOM':
-    s.missionType==='intel'?'RECOVER INTELLIGENCE • '+
-      s.holdTime.toFixed(1)+'/1.2s':
+    s.missionType==='intel'?'REACH AND RECOVER INTELLIGENCE':
     s.missionType==='capture'?
       'SECURE TARGET · CHECK VITALS · TREAT IF BLEEDING':
     'SECURE OBJECTIVE';

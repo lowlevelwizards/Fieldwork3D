@@ -386,7 +386,9 @@ function renderProjectedPlans(){
     draw.strokeStyle='#f0cd96';draw.lineWidth=3;draw.stroke();
   }
   if(!replaying){
-    for(const item of state.optionalIntel??[]){
+    const evidence=state.optionalIntel??[];
+    for(let i=0;i<evidence.length+(state.primaryIntel?1:0);i++){
+      const item=i<evidence.length?evidence[i]:state.primaryIntel!;
       if(!item.discovered||item.collectedBy)continue;
       const at=worldToScreen(item.surface?.p??item.p,(item.surface?.height??0)+7);
       draw.save();draw.fillStyle='#343f34';draw.strokeStyle='#e0cb94';
