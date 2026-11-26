@@ -90,7 +90,6 @@ export type CampaignHandlers={
  recruit:()=>void;assignSlot:(slot:number,id:string)=>void;
  buyCatalogWeapon:(presetId:string)=>void;
  equipCatalogWeapon:(id:string,serialId:string)=>void;
- equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
  equipCarryGear:(id:string,slot:CarryGearSlot,itemId:string)=>void;
  undoCarryGear:(id:string,expected:CarryUndoSnapshot,before:CarryUndoSnapshot)=>void;

@@ -44,7 +44,7 @@ export function dispatchCreationReview(draft:DispatchCampaignDraft):DispatchCrea
   'No-charge procurement; ownership, compatibility and finite stock still apply':
   'Normal funds and purchases; equipment must still be acquired';
  const armory=draft.startingInventory==='all'?
-  'Expanded basic weapon-class stock; not unlimited inventory':
+  'One spare per authored catalog model within armory capacity; not unlimited inventory':
   'Starting squad issue; additional equipment requires procurement';
  const problem=draft.timeMode==='progressive'&&
   draft.referenceId!=='us-swat-mp5-1995'?

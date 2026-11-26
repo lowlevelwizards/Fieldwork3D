@@ -11,7 +11,7 @@ type WeaponId=CampaignOperator['weapon'];
 const active=(o:CampaignOperator)=>o.status!=='retired'&&o.status!=='lost';
 const stockCount=(n:unknown)=>typeof n==='number'&&Number.isInteger(n)&&n>0?
  Math.min(MAX_OWNED_WEAPONS,n):0;
-export function reconcileCampaignWeaponOwnership(c:CampaignState):CampaignState{
+export function reconcileCampaignWeaponOwnership(c:CampaignState,legacyStock?:Record<string,unknown>):CampaignState{
  const existing=readSerializedWeapons(c.inventory.serializedWeapons);
  const serialAuthority=c.inventory.catalogVersion===1&&Array.isArray(c.inventory.serializedWeapons);
  const used=new Set<string>();
@@ -58,17 +58,14 @@ export function reconcileCampaignWeaponOwnership(c:CampaignState):CampaignState{
   if(!active(o))return {...o,weaponSerialId:null};
   return {...o,weaponSerialId:take(o.weapon,reserved.get(o.id),o.weaponConfiguration.build)};
  });
- const counts={carbine:0,smg:0,rifle:0,shotgun:0};
  if(serialAuthority){
   for(const w of existing)if(!used.has(w.id)&&kept.length<MAX_OWNED_WEAPONS){kept.push(w);used.add(w.id);}
  }else for(const platform of PLATFORMS){
   const remaining=Math.max(0,MAX_OWNED_WEAPONS-kept.length);
-  const count=Math.min(stockCount(c.inventory.weapons[platform]),remaining);
+  const count=Math.min(stockCount(legacyStock?.[platform]),remaining);
   for(let i=0;i<count;i++)take(platform);
-  counts[platform]=count;
  }
- return projectCatalogInventory({...c,operators,inventory:{...c.inventory,
-  weapons:counts,serializedWeapons:kept}});
+ return projectCatalogInventory({...c,operators,inventory:{attachments:c.inventory.attachments,serializedWeapons:kept}});
 }
 /** Check the invariants without editing a Campaign. */
 export function weaponOwnershipIssues(c:CampaignState):string[]{
@@ -86,11 +83,8 @@ export function weaponOwnershipIssues(c:CampaignState):string[]{
   if(!weapons.some(w=>w.id===o.weaponSerialId&&w.platform===o.weapon))issues.push('missing:'+o.id);
   assigned.add(o.weaponSerialId!);
  }
- for(const platform of PLATFORMS){
-  const stocked=weapons.filter(w=>w.platform===platform&&!assigned.has(w.id)).length;
-  if(stocked!==stockCount(c.inventory.weapons[platform]))
-   issues.push('stock:'+platform);
- }
+ if(weapons.length!==(c.inventory.serializedWeapons??[]).length)issues.push('invalid-or-duplicate-serial');
+ if(weapons.length>MAX_OWNED_WEAPONS)issues.push('capacity');
  return issues;
 }
 
@@ -111,8 +105,7 @@ export function synchronizeIssuedCatalogBodies(c:CampaignState):CampaignState{
  return changed?{...c,inventory:{...c.inventory,serializedWeapons:serials}}:c;
 }
 
-/** Exact named transaction helpers. The legacy stock map is a projection
- * of actual spare serials after the operation, not a quantity to reconcile. */
+/** Exact named transaction helpers. Spare stock is a view over serial custody. */
 export function catalogOwnedStock(c:CampaignState){
  const reserved=new Set(c.operators.filter(o=>o.status!=='retired').map(o=>o.weaponSerialId));
  return (c.inventory.serializedWeapons??[]).filter(w=>!reserved.has(w.id));
@@ -132,10 +125,7 @@ export function projectCatalogInventory(c:CampaignState):CampaignState{
   const w=all.find(x=>x.id===o.weaponSerialId);return w?[w]:[];
  });
  const assigned=new Set(issued.map(w=>w.id));
- const spare=catalogOwnedStock(c);
- const counts={carbine:0,smg:0,rifle:0,shotgun:0};
- for(const w of spare)counts[w.platform]++;
  const rest=all.filter(w=>!assigned.has(w.id));
- return {...c,inventory:{...c.inventory,catalogVersion:1,weapons:counts,
+ return {...c,inventory:{attachments:c.inventory.attachments,catalogVersion:1,
   serializedWeapons:[...issued,...PLATFORMS.flatMap(p=>rest.filter(w=>w.platform===p))]}};
 }

@@ -139,8 +139,7 @@ export type CampaignState={
  operators:CampaignOperator[];squadIds:string[];contracts:Contract[];activeContractId:string|null;
  history:CampaignReport[];journal:CareerEvent[];appliedResults:string[];
  supplies:{medical:number;ammo:number;flash:number;wedges:number;cuffs:number};regionalPressure:Record<string,number>;
- inventory:{weapons:Record<CampaignOperator['weapon'],number>;
-  attachments:Record<string,number>;serializedWeapons?:SerializedWeapon[];catalogVersion?:1};
+ inventory:{attachments:Record<string,number>;serializedWeapons?:SerializedWeapon[];catalogVersion?:1};
  kitPresets:EquipmentPreset[];
  /** Optional v0.1 rules; absent on legacy saves, preserving their semantics. */
  rules?:CampaignRules;
@@ -246,8 +245,7 @@ export function newCampaign(seed:number,rules?:CampaignRules,name?:string):Campa
   contracts:createContracts(normalized,1,[],{},parsedRules?.template==='dispatch'),activeContractId:null,
   history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240,flash:4,wedges:8,cuffs:12},
   regionalPressure:Object.fromEntries(REGIONS.map(r=>[r,0])),
-  inventory:{weapons:{carbine:0,smg:0,rifle:0,shotgun:0},
-    attachments:readAttachmentStock(null)},kitPresets:[],
+  inventory:{attachments:readAttachmentStock(null)},kitPresets:[],
   ...(parsedRules?{rules:parsedRules}:{}),
   ...(parsedRules?.template==='dispatch'?{
    dispatchDepartment:initialDispatchDepartment()}: {})});
@@ -332,9 +330,7 @@ export function readCampaign(raw:string|null):CampaignState|null{
    new Set(c.squadIds).size===4&&
    c.squadIds.every(id=>c.operators.some(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired'))?
    c.squadIds:fallback;
-  const weapons=Object.fromEntries(WEAPONS.map(weapon=>
-   [weapon,Number.isInteger(c.inventory?.weapons?.[weapon])&&
-    c.inventory.weapons[weapon]>=0?c.inventory.weapons[weapon]:0])) as Record<CampaignOperator['weapon'],number>;
+  const legacyStock=(c.inventory as unknown as {weapons?:Record<string,unknown>}|undefined)?.weapons;
   const operators=c.operators.map(o=>{
    const config=resolveCatalogConfiguration(readWeaponConfiguration(
     (o as {weaponConfiguration?:unknown}).weaponConfiguration,o.weapon),o.weapon,
@@ -372,7 +368,7 @@ export function readCampaign(raw:string|null):CampaignState|null{
    x>=0&&x<=FIELD_STOCK_LIMIT?x:null;
   const wedges=validStock(rawStock.wedges),cuffs=validStock(rawStock.cuffs);
   if(wedges===null||cuffs===null)return null;
-  return reconcileCampaignWeaponOwnership({...c,squadIds:chosen,operators,inventory:{weapons,
+  return reconcileCampaignWeaponOwnership({...c,squadIds:chosen,operators,inventory:{
       serializedWeapons:(c.inventory as {serializedWeapons?:unknown})?.serializedWeapons as SerializedWeapon[]|undefined,
        ...(c.inventory?.catalogVersion===1?{catalogVersion:1 as const}:{}),
      attachments:readAttachmentStock((c.inventory as {attachments?:unknown})?.attachments)},
@@ -383,7 +379,7 @@ export function readCampaign(raw:string|null):CampaignState|null{
     ...(parsedRules?{rules:parsedRules}:{}),
    regionalPressure:Object.fromEntries(REGIONS.map(region=>
    [region,Math.max(-3,Math.min(3,Number.isFinite(c.regionalPressure?.[region])?
-    c.regionalPressure[region]:0))]))});
+    c.regionalPressure[region]:0))]))},legacyStock);
  }catch{return null;}
 }
 export function acceptContract(c:CampaignState,id:string):CampaignState{
@@ -757,15 +753,10 @@ export const canAffordCampaignPurchase=(c:CampaignState,cost:number)=>
  unlimitedDispatch(c)||c.funds>=cost;
 const canSpend=canAffordCampaignPurchase;
 /** Prevent deductions when reconciliation would discard a newly purchased gun. */
-export const campaignWeaponStockAtCapacity=(c:CampaignState):boolean=>{
- const serialized=c.inventory.serializedWeapons?.length;
- const accounted=c.operators.filter(o=>o.status!=='retired'&&o.status!=='lost').length+
-  Object.values(c.inventory.weapons).reduce((sum,count)=>sum+count,0);
- return Math.max(serialized??0,accounted)>=MAX_OWNED_WEAPONS;
-};
-/** Catalog mutations use actual owned serials, including quarantined custody. */
 export const campaignCatalogStockAtCapacity=(c:CampaignState):boolean=>
  !c.inventory.serializedWeapons||c.inventory.serializedWeapons.length>=MAX_OWNED_WEAPONS;
+/** Historical API alias; no separate class-capacity ledger. */
+export const campaignWeaponStockAtCapacity=campaignCatalogStockAtCapacity;
 const charge=(c:CampaignState,cost:number)=>unlimitedDispatch(c)?c.funds:c.funds-cost;
 export const WEAPON_PRICES:Record<CampaignOperator['weapon'],number>={
  carbine:300,smg:260,rifle:420,shotgun:330
@@ -1096,7 +1087,12 @@ export function saveCampaignKitPreset(c:CampaignState,id:string,name:string):Cam
 export function campaignKitWeaponAvailable(c:CampaignState,id:string,presetId:string):boolean{
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  const preset=c.kitPresets.find(p=>p.id===presetId);
- return !!member&&!!preset&&(member.weapon===preset.weapon||!!matchingKitSpare(c,id,preset.weaponConfiguration));
+ return !!member&&!!preset&&(sameKitBody(member.weaponConfiguration,preset.weaponConfiguration)||!!matchingKitSpare(c,id,preset.weaponConfiguration));
+}
+function sameKitBody(current:WeaponConfiguration,desired:WeaponConfiguration){
+ const a=current.build,b=desired.build;
+ return !!a&&!!b&&a.family===b.family&&Object.keys(a.parts).length===Object.keys(b.parts).length&&
+  Object.keys(a.parts).every(k=>a.parts[k as FamilyPartSlot]===b.parts[k as FamilyPartSlot]);
 }
 function matchingKitSpare(c:CampaignState,id:string,desired:WeaponConfiguration){
  if(!desired.build)return undefined;
@@ -1143,9 +1139,10 @@ export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string
   member.weaponConfiguration,desired,Math.max(0,c.funds),false);
  if(!transfer.canCommit||!transfer.stockAfter)return c;
  const attachments=transfer.stockAfter;
- const spare=member.weapon===preset.weapon?undefined:matchingKitSpare(c,id,desired);
- const swapped=member.weapon===preset.weapon?c:spare?equipCampaignCatalogWeapon(c,id,spare.id):c;
- if(swapped===c&&member.weapon!==preset.weapon)return c;
+ const matching=sameKitBody(member.weaponConfiguration,desired);
+ const spare=matching?undefined:matchingKitSpare(c,id,desired);
+ const swapped=matching?c:spare?equipCampaignCatalogWeapon(c,id,spare.id):c;
+ if(swapped===c&&!matching)return c;
  const targetKit=readEquipmentLoadout(preset.kit,preset.weapon);
  const fieldStock=quoteCampaignFieldStockChange(swapped,member.loadout,targetKit);
  if(!fieldStock.ok)return c;

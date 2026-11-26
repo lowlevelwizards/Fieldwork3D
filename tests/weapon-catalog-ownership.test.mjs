@@ -71,7 +71,7 @@ test('named acquisition and exact serial exchange retain model identity and serv
  assert.deepEqual(issued.weaponConfiguration.build,spare.catalogBody);
  const returned=next.inventory.serializedWeapons.find(w=>w.id===op.weaponSerialId);
  assert.deepEqual(returned,c.inventory.serializedWeapons.find(w=>w.id===op.weaponSerialId));
- assert.equal(next.inventory.weapons.carbine,bought.inventory.weapons.carbine);
+ assert.equal(catalogOwnedStock(next).length,catalogOwnedStock(bought).length);
  assert.equal(next.funds,bought.funds);
  assert.deepEqual(weaponOwnershipIssues(next),[]);
  assert.deepEqual(readCampaign(JSON.stringify(next)),next);
@@ -194,7 +194,7 @@ test('named procurement capacity ignores a stale compatibility class count',()=>
  const next=buyCatalogWeapon(stale,'ar-m4a1');
  assert.notStrictEqual(next,stale);
  assert.equal(next.inventory.serializedWeapons.length,c.inventory.serializedWeapons.length+1);
- assert.equal(next.inventory.weapons.carbine,1);
+ assert.equal(catalogOwnedStock(next).filter(w=>w.platform==='carbine').length,1);
  assert.deepEqual(weaponOwnershipIssues(next),[]);
 });
 
@@ -209,10 +209,19 @@ test('modern serial-authoritative saves ignore obsolete count fields on read',()
 test('historical pre-serial saves materialize explicitly recorded spare counts',()=>{
  const raw=structuredClone(newCampaign(998));
  delete raw.inventory.catalogVersion;delete raw.inventory.serializedWeapons;
- raw.inventory.weapons.carbine=2;
+ raw.inventory.weapons={carbine:2,smg:0,rifle:0,shotgun:0};
  const loaded=readCampaign(JSON.stringify(raw));
  assert.equal(loaded.inventory.serializedWeapons.length,6);
  assert.equal(catalogOwnedStock(loaded).length,2);
  assert.equal(loaded.inventory.catalogVersion,1);
  assert.deepEqual(readCampaign(JSON.stringify(loaded)),loaded);
+});
+
+test('modern inventory omits historical numeric stock after save migration',()=>{
+ const raw=structuredClone(newCampaign(999));delete raw.inventory.serializedWeapons;delete raw.inventory.catalogVersion;
+ raw.inventory.weapons={carbine:2,smg:0,rifle:0,shotgun:0};
+ const migrated=readCampaign(JSON.stringify(raw));
+ assert.equal(Object.hasOwn(migrated.inventory,'weapons'),false);
+ assert.equal(catalogOwnedStock(migrated).length,2);
+ assert.deepEqual(readCampaign(JSON.stringify(migrated)),migrated);
 });
