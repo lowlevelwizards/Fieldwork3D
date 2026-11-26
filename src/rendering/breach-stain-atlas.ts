@@ -3,6 +3,8 @@
  * Pure alpha generation: no Canvas, no random state, no simulation changes.
  * Every nonzero texel lies inside the existing confined mark radius.
  */
+export const METAL_IMPACT_SCALE=.85;
+export const impactMaterialScale=(surface:string|undefined)=>surface==='metal'?METAL_IMPACT_SCALE:1;
 export const STAIN_CELL=32,STAIN_VARIANTS=4,BLOOD_STYLE_COUNT=8;
 const MATERIAL_STYLES=['wood','stone','metal','glass','dust'] as const;
 export const STAIN_STYLE_COUNT=BLOOD_STYLE_COUNT+MATERIAL_STYLES.length*2;
@@ -21,7 +23,7 @@ export function damageVariant(surface:string|undefined,x:number,y:number):number
 }
 export function damageRadius(surface:string|undefined,count=1):number{
  const base=surface==='stone'?5:surface==='wood'?4.8:surface==='metal'?3.8:surface==='glass'?4.2:4.6;
- return base*(1+.23*(Math.max(1,Math.min(4,count))-1));
+ return base*impactMaterialScale(surface)*(1+.23*(Math.max(1,Math.min(4,count))-1));
 }
 export function damageTint(surface:string|undefined):number{
  // Tint represents the lighter exposed rim; mask luminance supplies the
