@@ -8,7 +8,7 @@ import {sweptPairMayTouch,type MotionProposal,type MotionDecision}
 import {casualtyTrailingPosition,transportIsClear,type TransportMode}
  from './breach-casualty-transport.ts';
 
-export type CivilianCarrier={id:string;health:number;carryingId:string|null};
+export type CivilianCarrier={id:string;health:number;carryingId:string|null;transportLatched?:boolean};
 export function civilianTransportEligible(c:CivilianActor,
  carrier:CivilianCarrier):boolean{
  return carrier.health>0&&c.health<=0&&
@@ -28,6 +28,7 @@ export function dropCivilianCustody(c:CivilianActor,
  carrier:CivilianCarrier):boolean{
  if(c.carriedById!==carrier.id||carrier.carryingId!==c.id)return false;
  c.carriedById=null;c.transportMode=null;carrier.carryingId=null;
+ carrier.transportLatched=false;
  return true;
 }
 /** Bound each body displacement to the carrier's own fixed-tick step.
