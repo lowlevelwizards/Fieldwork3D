@@ -3305,7 +3305,7 @@ export class TacticalScene3D{
         !recordedEffectAllows(s,replayDisclosurePolicy.observerId,groundEffectRow(mark))))continue;
       let attached:SurfaceMarkPose|null=null;
       const ref=mark.surfaceRef;
-      const artRadius=damageRadius(mark.surface,mark.damageCount);
+      const artRadius=damageRadius(mark.surface,mark.damageCount)*(mark.surface==='glass'?1.28:1);
       if(mark.surface!=='blood'&&ref){
         if(ref.kind==='wall'){
           if(!markWallOwnerKnown(s,ref,omniscient))continue;
