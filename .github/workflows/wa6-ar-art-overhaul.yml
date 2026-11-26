@@ -7,6 +7,7 @@ on:
       - 'src/weapons/geometry/ar-silhouettes.ts'
       - 'src/weapons/geometry/ar-rail-profiles.ts'
       - 'scripts/*wa6*'
+      - 'tests/weapon-ar-*.test.mjs'
       - '.github/workflows/wa6-ar-art-overhaul.yml'
   workflow_dispatch:
 concurrency:
