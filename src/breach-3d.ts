@@ -2894,7 +2894,7 @@ export class TacticalScene3D{
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
          doorGrip:previewPreOpen?undefined:doorGrip,physicalContact,
         down:actor.health<=0,surrender:actor.surrendered,
-        worldWeaponReleased:actor.surrendered&&actor.releasedWeaponId!=null,
+        worldWeaponReleased:!!actor.downWeaponsReleased||actor.surrendered&&actor.releasedWeaponId!=null,
         restrained:actor.restrained===true,
         // Gameplay and replay use the same named NPC transition contract as
         // the Lab. In particular surrender -> cuffed must not snap wrists.
