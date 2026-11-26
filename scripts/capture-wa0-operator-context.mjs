@@ -3,7 +3,7 @@ import {spawn,execFileSync} from 'node:child_process';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
 import {collectWeaponArtInventory} from './audit-weapon-art-inventory.mjs';
-const dir='reports/wa0-visual/operator-context',port=4262,origin='http://127.0.0.1:'+port;
+const dir=process.env.WA0_OPERATOR_OUTPUT??'reports/wa0-visual/operator-context',port=4262,origin='http://127.0.0.1:'+port;
 const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port',String(port),'--strictPort'],{stdio:'ignore'});
 try{
  let live=false;for(let i=0;i<100;i++){try{if((await fetch(origin+'/operator-lab.html')).ok){live=true;break;}}catch{}await new Promise(r=>setTimeout(r,150));}
@@ -19,7 +19,9 @@ try{
   await page.locator('#poseArmor').selectOption('plate-slick');
   await page.locator('#poseRig').selectOption('full-chest');
   await page.locator('#poseUniform').selectOption('combat-shirt');
-  for(const ref of collectWeaponArtInventory().references){
+  const all=collectWeaponArtInventory().references,ids=process.env.WA0_OPERATOR_IDS?.split(',');
+  if(ids?.some(id=>!all.some(r=>r.id===id)))throw Error('Unknown operator reference');
+  for(const ref of all.filter(r=>!ids||ids.includes(r.id))){
    const sidearm=ref.status==='issued-sidearm-appearance'||ref.status==='preview-only';
    const id=ref.status==='fallback'?'shotgun':ref.id;
    const track=sidearm?'pistol-low-ready':'low-ready';
