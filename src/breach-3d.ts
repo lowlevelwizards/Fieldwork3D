@@ -1181,7 +1181,9 @@ export class TacticalScene3D{
    * Entirely observational: neither raycast targets nor collection state
    * is stored on the scene graph. Do not animate in the main game loop. */
   private syncOptionalEvidenceMeshes(s:Session,replaying:boolean):void{
-    for(const item of s.optionalIntel??[]){
+    const items=s.optionalIntel??[];
+    for(let i=0;i<items.length+(s.primaryIntel?1:0);i++){
+      const item=i<items.length?items[i]:s.primaryIntel!;
       let group=this.optionalEvidenceMeshes.get(item.id);
       const exposed=!replaying&&item.discovered&&item.collectedBy===null;
       if(!group&&exposed){
