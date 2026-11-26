@@ -53,14 +53,15 @@ export function advanceSimulationMotion(s:Session,h:number,
   for(const carrier of s.operators){
     if(!carrier.carryingId)continue;
     const civil=s.civilians.find(c=>c.id===carrier.carryingId&&
-      c.carriedById===carrier.id);
+      c.carriedById===carrier.id)??(carrier.transportLatched?
+      s.operators.find(o=>o.id===carrier.carryingId&&o.carriedById===carrier.id):undefined);
     if(!civil)continue;
     const from=motionStart.get(carrier.id)??carrier.p;
     const bodyFrom=motionStart.get(civil.id)??civil.p;
     // A single ordered roster replaces four filtering/mapping arrays;
     // keep live positions and operator-before-civilian contact semantics.
     const others:Pt[]=[];
-    for(const o of s.operators)if(o!==carrier&&o.health>0)
+    for(const o of s.operators)if(o!==carrier&&o!==civil&&o.health>0)
       others.push(o.p);
     for(const c of s.civilians)if(c!==civil)others.push(c.p);
     const next=proposedCivilianTransportStep(bodyFrom,from,carrier.p,
@@ -215,7 +216,7 @@ export function advanceSimulationMotion(s:Session,h:number,
     const start=coupledBodyStarts?.get(a.id);
     if(start&&a.carryingId){
       const body=civilianById?.get(a.carryingId)??
-        s.civilians.find(c=>c.id===a.carryingId);
+        s.civilians.find(c=>c.id===a.carryingId)??s.operators.find(o=>o.id===a.carryingId);
       if(body&&body.carriedById===a.id){
         body.p=clone(start);body.priorP=clone(start);
       }
