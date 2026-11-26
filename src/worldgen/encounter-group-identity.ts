@@ -1,0 +1,37 @@
+/** EB5: classify already placed groups without changing physical population,
+ * routes, objectives, or the existing seeded generation streams. */
+import type {AiGroupKind} from '../breach-ai-group-profiles.ts';
+import type {EncounterActorSpec,EncounterContext,EncounterGroup,EncounterPremise} from './encounter-types.ts';
+import {encounterRng} from './encounter-rng.ts';
+export type GroupIdentityContext=Pick<EncounterContext,'risk'|'mission'|'archetype'|'groupProfile'|'forceContext'>;
+export function selectEncounterGroupProfile(group:EncounterGroup,actors:readonly EncounterActorSpec[],
+ premise:EncounterPremise,seed:number,context:GroupIdentityContext={},incidentId?:string|null):AiGroupKind{
+ if(group.behaviorProfile)return group.behaviorProfile;
+ if(context.groupProfile)return context.groupProfile;
+ const members=new Set(group.members);
+ const target=actors.some(a=>members.has(a.id)&&a.role==='target');
+ const roll=encounterRng(seed,71+Number(group.id.match(/\d+$/)?.[0]??0))();
+ // A fugitive is an encounter circumstance; avoid recasting an established
+ // organized group or a security detail as civilian merely for containing a target.
+ if(group.purpose==='target'||target&&group.purpose==='occupants'&&
+   (incidentId==='fugitive-lead'||context.mission==='capture'&&roll<.65))return 'fugitives';
+ if(group.purpose==='response')return 'specialists';
+ if(context.forceContext==='military'){
+  if(group.purpose==='security')return 'security';
+  if(premise==='defensive'||premise==='guarded'||group.purpose==='organised')
+   return roll<.18?'specialists':roll<.77?'regular-force':'armed-irregulars';
+  return roll<.65?'armed-irregulars':'opportunists';
+ }
+ if(group.purpose==='security')return 'security';
+ if(group.purpose==='organised')return premise==='defensive'?'armed-irregulars':'organised-criminals';
+ // Rare specialized nonmilitary groups only in a credible guarded operation;
+ // ordinary police/civilian incidents never generate regular military units.
+ if(premise==='guarded'&&context.risk===3&&roll<.18)return 'specialists';
+ if(incidentId==='organizer-apprehension'||incidentId==='compromised-hideout'||
+    incidentId==='shipment-security')return 'organised-criminals';
+ return 'opportunists';
+}
+export function attachGroupProfiles(groups:readonly EncounterGroup[],actors:readonly EncounterActorSpec[],
+ premise:EncounterPremise,seed:number,context:GroupIdentityContext={},incidentId?:string|null):EncounterGroup[]{
+ return groups.map(group=>({...group,behaviorProfile:selectEncounterGroupProfile(group,actors,premise,seed,context,incidentId)}));
+}

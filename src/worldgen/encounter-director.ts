@@ -9,6 +9,7 @@ import {chooseEncounterProfile} from './encounter-profiles.ts';
 import {chooseHostileBudget} from './encounter-population.ts';
 import {planCivilians,civilianBudget,type CivilianPlacementDiagnostics} from './encounter-civilians.ts';
 import {hostileMinimumForContract} from './encounter-population-contract.ts';
+import {attachGroupProfiles} from './encounter-group-identity.ts';
 import {composeEncounterGroups} from './encounter-groups.ts';
 import {placeEncounterActors} from './encounter-placement.ts';
 import {assignEncounterActivities} from './encounter-activities.ts';
@@ -79,9 +80,9 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
   incidentIntentId:incidentIntentId??undefined,
   risk:context.risk??1,
   expectedOccupancy:site.identity?.capacity??actors.length,hostileBudget:target,
-  groups:placement.groups.map(g=>({...g,
+  groups:attachGroupProfiles(placement.groups.map(g=>({...g,
     members:g.members.filter(id=>actors.some(a=>a.id===id))}))
-    .filter(g=>g.members.length>0),actors,neutrals,
+    .filter(g=>g.members.length>0),actors,premise,seed,resolved,incidentIntentId),actors,neutrals,
   diagnostics:{targetHostiles:target,placedHostiles:actors.length,
    rejected:placement.rejected,fallbacks:placement.fallbacks+spatial.rehomed,
    occupiedZones,emptyZones:Math.max(0,zones.size-occupiedZones),

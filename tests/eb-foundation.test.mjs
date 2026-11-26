@@ -58,3 +58,29 @@ test('EB4 a scheduled actor cannot chain elective jobs on the same tick, urgent 
  }
  assert.equal(seen.size,32);assert.ok(work.maxUnitsObserved<=work.maxUnitsPerTick);
 });
+
+import {attachGroupProfiles,selectEncounterGroupProfile} from '../src/worldgen/encounter-group-identity.ts';
+import {generateSite} from '../src/breach-site.ts';
+test('EB5 context-aware group resolution is deterministic and does not mutate physical memberships',()=>{
+ const group={id:'group-0',purpose:'occupants',members:['a']};
+ const actors=[{id:'a',role:'target'}];
+ assert.equal(selectEncounterGroupProfile(group,actors,'hideout',7,{mission:'capture'},'fugitive-lead'),'fugitives');
+ assert.equal(selectEncounterGroupProfile({...group,purpose:'organised'},actors,'hideout',7,{mission:'capture'},'fugitive-lead'),'organised-criminals');
+ const military=new Set(),civilian=new Set();
+ for(let seed=0;seed<128;seed++){
+  military.add(selectEncounterGroupProfile({...group,purpose:'organised'},[],'defensive',seed,{forceContext:'military'}));
+  civilian.add(selectEncounterGroupProfile({...group,purpose:'organised'},[],'defensive',seed,{}));
+ }
+ assert.deepEqual([...civilian],['armed-irregulars']);
+ for(const kind of ['specialists','regular-force','armed-irregulars'])assert.ok(military.has(kind),kind);
+ const attached=attachGroupProfiles([group],actors,'hideout',7,{groupProfile:'security'});
+ assert.equal(attached[0].behaviorProfile,'security');assert.deepEqual(attached[0].members,group.members);
+ assert.equal(group.behaviorProfile,undefined);
+});
+test('EB5 live generated encounter stores identities and explicit profile reaches actual actors',()=>{
+ const site=generateSite(17,'small',undefined,{mission:'capture',groupProfile:'regular-force'});
+ assert.ok(site.encounter.groups.length);
+ assert.ok(site.encounter.groups.every(g=>g.behaviorProfile==='regular-force'));
+ const s=newSession(0,17,'floor-plan','small','capture',site);
+ assert.ok(enemies(s).length);assert.ok(enemies(s).every(a=>a.npcIdentity?.groupKind==='regular-force'));
+});
