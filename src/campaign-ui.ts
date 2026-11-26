@@ -2163,6 +2163,15 @@ export class CampaignScreen{
      option.dataset.catalogName=choice.name;option.dataset.catalogDetail='#'+serial+' · '+choice.condition+'%';
      select.append(option);
     }
+    const shownPresets=new Set([current?.catalogBody,...catalogWeaponIssueOptions(c,id).map(choice=>ownedById.get(choice.serialId)?.catalogBody)]
+     .flatMap(body=>body?[matchingFamilyPreset(body)?.id]:[]));
+    for(const quote of catalogWeaponOfferings(c)){
+     if(shownPresets.has(quote.presetId))continue;
+     const option=node('option','',quote.name+' · NOT ISSUED');
+     option.value='catalog:'+quote.presetId;option.disabled=true;
+     option.dataset.catalogName=quote.name;option.dataset.catalogDetail=quote.canPurchase?'NOT OWNED':quote.authorization;
+     select.append(option);
+    }
     select.value=equipped.value;
     select.addEventListener('change',()=>{
      if(select.value!==equipped.value)this.handlers.equipCatalogWeapon(id,select.value);

@@ -42,3 +42,6 @@ Cross-category saved kits require an exact matching owned serial body, then issu
 
 ## R4.4c — quarantine missing serials and catalog capacity
 Save reconciliation now reserves a valid existing lost-operator serial across reloads, with active claims first for corrupt duplicates. It neither mints a missing serial nor exposes that serial as spare stock. Named procurement capacity now checks actual serialized objects, not stale numeric class counts; the class quote remains legacy-compatible. The class-count migration reader and old class transaction APIs still remain. Exact-head tests pending.
+
+## R4.4d — modern serial-authoritative saves
+Modern inventory carries a catalogVersion marker; read reconciliation preserves actual spare bodies and ignores obsolete stock counts when the marker and serial array are present. Historical unmarked/count-only saves retain deterministic migration. Recruitment appends an actual issued object; historical transaction wrappers operate on exact serials instead of allocating from class stock. Dispatch setup retains its starter stock policy at creation. Unowned named options are visible disabled in Outfitter, restoring the mobile smoke contract. Numeric projection and historical wrappers remain pending removal. Exact-head verification pending.

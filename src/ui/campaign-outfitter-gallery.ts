@@ -131,7 +131,7 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
    const current=id===source.value;
    if(slot==='primary'&&option.dataset?.catalogName){
     result.push({id,label:option.dataset.catalogName,mass:current?'EQUIPPED':option.dataset.catalogDetail??'OWNED',
-     kind:'gear',equipped:current,issued:current||(!options.locked&&!option.disabled),reason:'NOT ISSUED / RESTRICTED'});
+     kind:'gear',equipped:current,issued:current||(!options.locked&&!option.disabled),reason:option.dataset.catalogDetail??'NOT ISSUED / RESTRICTED'});
     continue;
    }
    if(!item)continue;

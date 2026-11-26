@@ -13,6 +13,7 @@ const stockCount=(n:unknown)=>typeof n==='number'&&Number.isInteger(n)&&n>0?
  Math.min(MAX_OWNED_WEAPONS,n):0;
 export function reconcileCampaignWeaponOwnership(c:CampaignState):CampaignState{
  const existing=readSerializedWeapons(c.inventory.serializedWeapons);
+ const serialAuthority=c.inventory.catalogVersion===1&&Array.isArray(c.inventory.serializedWeapons);
  const used=new Set<string>();
  // Existing active operators have first claim on their own matching serials.
  // Reserve those claims before assigning any operator without a valid preferred
@@ -42,8 +43,8 @@ export function reconcileCampaignWeaponOwnership(c:CampaignState):CampaignState{
  };
  const take=(platform:WeaponId,preferred?:string|null,body?:WeaponFamilyBuild)=>{
   const match=existing.find(w=>w.platform===platform&&!used.has(w.id)&&
-    w.id===preferred)??existing.find(w=>w.platform===platform&&!used.has(w.id)&&
-    !claimed.has(w.id));
+    w.id===preferred)??(!serialAuthority?existing.find(w=>w.platform===platform&&!used.has(w.id)&&
+    !claimed.has(w.id)):undefined);
   const weapon=match??newSerializedWeapon(nextId(),platform,c.day,body);
   used.add(weapon.id);kept.push(body?{...weapon,catalogBody:readOwnedCatalogBody(body,platform)}:weapon);
   return weapon.id;
@@ -58,7 +59,9 @@ export function reconcileCampaignWeaponOwnership(c:CampaignState):CampaignState{
   return {...o,weaponSerialId:take(o.weapon,reserved.get(o.id),o.weaponConfiguration.build)};
  });
  const counts={carbine:0,smg:0,rifle:0,shotgun:0};
- for(const platform of PLATFORMS){
+ if(serialAuthority){
+  for(const w of existing)if(!used.has(w.id)&&kept.length<MAX_OWNED_WEAPONS){kept.push(w);used.add(w.id);}
+ }else for(const platform of PLATFORMS){
   const remaining=Math.max(0,MAX_OWNED_WEAPONS-kept.length);
   const count=Math.min(stockCount(c.inventory.weapons[platform]),remaining);
   for(let i=0;i<count;i++)take(platform);
@@ -133,6 +136,6 @@ export function projectCatalogInventory(c:CampaignState):CampaignState{
  const counts={carbine:0,smg:0,rifle:0,shotgun:0};
  for(const w of spare)counts[w.platform]++;
  const rest=all.filter(w=>!assigned.has(w.id));
- return {...c,inventory:{...c.inventory,weapons:counts,
+ return {...c,inventory:{...c.inventory,catalogVersion:1,weapons:counts,
   serializedWeapons:[...issued,...PLATFORMS.flatMap(p=>rest.filter(w=>w.platform===p))]}};
 }

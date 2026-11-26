@@ -197,3 +197,22 @@ test('named procurement capacity ignores a stale compatibility class count',()=>
  assert.equal(next.inventory.weapons.carbine,1);
  assert.deepEqual(weaponOwnershipIssues(next),[]);
 });
+
+test('modern serial-authoritative saves ignore obsolete count fields on read',()=>{
+ const c=buyCatalogWeapon(newCampaign(997),'ar-colt733');
+ const raw=structuredClone(c);
+ raw.inventory.weapons={carbine:0,rifle:70,smg:9,shotgun:12};
+ const loaded=readCampaign(JSON.stringify(raw));
+ assert.deepEqual(loaded,c);
+ assert.equal(loaded.inventory.catalogVersion,1);
+});
+test('historical pre-serial saves materialize explicitly recorded spare counts',()=>{
+ const raw=structuredClone(newCampaign(998));
+ delete raw.inventory.catalogVersion;delete raw.inventory.serializedWeapons;
+ raw.inventory.weapons.carbine=2;
+ const loaded=readCampaign(JSON.stringify(raw));
+ assert.equal(loaded.inventory.serializedWeapons.length,6);
+ assert.equal(catalogOwnedStock(loaded).length,2);
+ assert.equal(loaded.inventory.catalogVersion,1);
+ assert.deepEqual(readCampaign(JSON.stringify(loaded)),loaded);
+});

@@ -23,11 +23,12 @@ export function newDispatchPilotCampaign(seed:number,draft?:DispatchCampaignDraf
  const active=effectiveDispatchSetup({dispatchSetup:setup});
  const operators=base.operators.map(o=>issueDispatchPilotOperator(o,active.referenceId));
  return reconcileCampaignWeaponOwnership({...base,dispatchSetup:setup,operators,
+  inventory:{...base.inventory,catalogVersion:undefined,serializedWeapons:undefined},
   ...(setup.economy==='unlimited'?{
    funds:1000000,supplies:{medical:999,ammo:9999,flash:999,
     wedges:999,cuffs:999}
   }:{}),
-  ...(setup.startingInventory==='all'?{inventory:{...base.inventory,
+  ...(setup.startingInventory==='all'?{inventory:{...base.inventory,catalogVersion:undefined,serializedWeapons:undefined,
    weapons:{carbine:8,smg:8,rifle:8,shotgun:8}}}:{})
  });
 }
