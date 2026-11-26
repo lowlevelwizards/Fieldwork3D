@@ -7,6 +7,7 @@ import {length,targetAngle,angleDifference} from './breach-plan.ts';
 import {witnessShock,countNearbyEnemyAllies,countRecentlySeenThreats,moraleResponse} from './breach-ai-morale.ts';
 import {commitSuspectSurrender} from './breach-suspect-compliance.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
+import {commitNpcWithdrawal} from './breach-ai-task-state.ts';
 import {advanceSurrenderOpportunity,canAttemptSuspectEscape,
  suspectIsSupervised} from './breach-suspect-opportunity.ts';
 import {physicalFollowGoal,physicalFollowerSeparated}
@@ -27,7 +28,7 @@ export type ActorSimulationPhasePort={
  battleEvent:(s:Session,kind:BattleEvent['kind'],actor:TeamActor|null,
    p:Pt,text:string,meta?:BattleEvent['meta'])=>void;
  unobstructed:(from:Pt,to:Pt,s:Session,lowBlocks:boolean)=>boolean;
- defensivePosition:(a:TeamActor,threat:Pt,s:Session)=>Pt|null;
+ defensivePosition:(a:TeamActor,threat:Pt,s:Session,purpose?:'observe'|'shelter')=>Pt|null;
  decideEnemy:(s:Session,a:TeamActor,h:number)=>void;
  /** Existing actor motor is the ONLY physical executor for surrendered followers. */
  runCustody:(s:Session,a:TeamActor,goal:Pt,h:number)=>void;
@@ -80,11 +81,12 @@ export function advanceSimulationActors(s:Session,h:number,
         a.injuryStage,a.personality,{nearbyAllies:peerSupport,
           recentlySeenThreats:recentThreats,
           retreatBlocked:a.alert==='retreat'&&a.blockedTime>=2.5});
-      if(resolve==='withdraw'&&a.alert!=='retreat'){
+      if(resolve==='withdraw'&&a.alert!=='retreat'&&s.seconds>=a.defenseUntil){
         const threat=a.contact??a.heard??a.watch;
         if(threat){
-          a.retreatPoint=port.defensivePosition(a,threat,s);
-          if(a.retreatPoint){a.alert='retreat';a.nav=[];}
+          const safe=port.defensivePosition(a,threat,s,'shelter');
+          if(safe)commitNpcWithdrawal(a,safe,s.seconds);
+          else a.defenseUntil=s.seconds+1.5;
         }
       }
       if(resolve==='surrender')

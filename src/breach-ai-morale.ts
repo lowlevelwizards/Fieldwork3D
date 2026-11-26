@@ -35,7 +35,7 @@ export function witnessShock(distance:number,unobstructed:boolean):number{
  * Iterate the roster directly; no per-enemy filtered array at 60 Hz.
  */
 export type MoralePeer={
-  side:'blue'|'red';health:number;encounterGroupId?:string;
+  side:'blue'|'red';health:number;encounterGroupId?:string;surrendered?:boolean;
   p:{x:number;y:number}
 };
 export function countNearbyEnemyAllies(
@@ -43,7 +43,7 @@ export function countNearbyEnemyAllies(
 ):number{
  let nearby=0;
  for(const other of roster){
-   if(other===actor||other.side!=='red'||other.health<=0||
+   if(other===actor||other.side!=='red'||other.health<=0||other.surrendered||
       other.encounterGroupId!==actor.encounterGroupId)continue;
    if(Math.hypot(other.p.x-actor.p.x,other.p.y-actor.p.y)<130)nearby++;
  }

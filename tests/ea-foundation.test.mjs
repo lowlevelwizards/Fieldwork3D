@@ -138,3 +138,22 @@ test('EA5 personality changes ambient assessment and dwell without changing awar
  assert.ok(investigationTempo('guard',65,quick).orientSeconds<investigationTempo('guard',65,slow).orientSeconds);
  assert.ok(routineDwellSeconds('a','patrolling',0,0,0)<routineDwellSeconds('a','patrolling',0,0,1));
 });
+
+import {commitNpcWithdrawal,clearNpcTasks} from '../src/breach-ai-task-state.ts';
+import {coverScore} from '../src/breach-defense-scoring.ts';
+import {countNearbyEnemyAllies} from '../src/breach-ai-morale.ts';
+test('EA4 a shelter goal values protection even if the NPC cannot fire from it',()=>{
+ const q={protected:true,shotClear:false,travel:30,range:80,allyConflict:false,nearDoor:false,approachExposed:false};
+ assert.ok(coverScore(q,'shelter')>coverScore({...q,protected:false,shotClear:true},'shelter'));
+});
+test('EA1/EA10 withdrawal and surrender clear stale task ownership without erasing evidence',()=>{
+ const s=newSession(),a=enemies(s)[0],memory=a.awareness;
+ a.searchOrigin=point(5,5);a.searchQueue=[point(7,7)];a.coordinationRole='support';a.coordinationUntil=99;
+ a.defense=point(20,20);a.nav=[point(20,20)];
+ commitNpcWithdrawal(a,point(10,10),5);
+ assert.equal(a.alert,'retreat');assert.equal(a.defense,null);assert.equal(a.coordinationRole,null);
+ assert.equal(a.searchOrigin,null);assert.deepEqual(a.retreatPoint,point(10,10));assert.equal(a.awareness,memory);
+ clearNpcTasks(a);assert.equal(a.retreatPoint,null);assert.equal(a.alert,'idle');assert.equal(a.awareness,memory);
+ const peer={...a,id:'peer',p:{...a.p},health:3,surrendered:true};
+ assert.equal(countNearbyEnemyAllies(a,[a,peer]),0);
+});

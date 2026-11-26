@@ -2297,7 +2297,7 @@ export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
  * this facade only provides session-specific AI and order services. */
 const actorSimulationPhasePort:ActorSimulationPhasePort={
  notify,battleEvent,unobstructed,
- defensivePosition:(a,threat,s)=>runEnemyAi.defensivePosition(a,threat,s),
+ defensivePosition:(a,threat,s,purpose)=>runEnemyAi.defensivePosition(a,threat,s,purpose),
  decideEnemy:(s,a,h)=>runEnemyAi.decide(s,a,h),
  runCustody:(s,a,goal,h)=>{approach(a,goal,h,s,.80);},
  runFriendly:runOrders

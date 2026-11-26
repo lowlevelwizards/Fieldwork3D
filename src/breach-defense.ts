@@ -30,7 +30,7 @@ export function defenseCandidates(origin:Pt,threat:Pt,doors:Door[],world?:Sessio
   if(world?world.passable(origin):passable(origin))consider(origin);
   return options;
 }
-export type DefenseOptions={requireFiringLane?:boolean;targetHeight?:number};
+export type DefenseOptions={requireFiringLane?:boolean;targetHeight?:number;purpose?:'observe'|'shelter'};
 export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
   others:Defender[],selfId:string,policy:DefenseOptions={},
  world?:SessionWorldGeometry):Pt|null{
@@ -67,7 +67,7 @@ export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
       nearDoor:doorHazard>25,
       approachExposed:!originProtected&&
         dist(origin,p)>85
-    })+span+facing;
+    },policy.purpose)+span+facing;
     if(value>score){score=value;best=p;}
   }
   return best;
