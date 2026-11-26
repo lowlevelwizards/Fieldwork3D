@@ -1,3 +1,4 @@
+import {windowCoveringSightSegments,windowCoveringOpticalStrips,sessionCoveringOptics} from './breach-window-covering-optics.ts';
 /** Owns floor, architecture, physical light and decal drawing.
  * Only reads live or historically disclosed presentation state.
  */
@@ -12,7 +13,7 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {team,type Session,type TeamActor,liveVisibility,isSeen} from './breach-game.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 import {previewKnownDoorSwing} from './breach-door-swing-preview.ts';
-import {spatialSurfaceKnown,spatialSurfaceState,windowPresentationKnown} from './breach-presentation.ts';
+import {spatialSurfaceKnown,spatialSurfaceState,windowPresentationKnown,windowCoveringPresentationKnown} from './breach-presentation.ts';
 import {windowApertureSegment} from './worldgen/window-geometry-contract.ts';
 import {doorKnown} from './breach-intel.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
@@ -322,12 +323,18 @@ function architecture(){
   // Generated windows use the same real aperture as physical shots and 3D.
   // Unknown interior glass must not be outlined through historical fog.
   if(state.site){
+    const coveringOptics=sessionCoveringOptics(state);
     for(const opening of state.site.windows??[]){
       if(!windowPresentationKnown(state,opening,
           replaying&&replayKnowledge.omniscient))continue;
       const pane=windowApertureSegment(opening);
       line(pane.a,pane.b,'#1f4d51',8);
       line(pane.a,pane.b,'#8bb6af',4);
+      const personal=replaying&&replayKnowledge.observerId;
+      const observed=personal?replayKnowledge.windowHistory?.at(replayPlayback.time,personal,opening.id):null;
+      const strips=personal?(observed?.covering?windowCoveringOpticalStrips(opening,observed.covering):undefined):
+        windowCoveringPresentationKnown(state,opening,replaying&&replayKnowledge.omniscient)?coveringOptics.byWindow.get(opening.id):undefined;
+      if(strips)for(const strip of strips)line(strip.edge.a,strip.edge.b,'#b4a38d',3);
       const dx=pane.b.x-pane.a.x,dy=pane.b.y-pane.a.y;
       const length=Math.hypot(dx,dy)||1;
       const normal={x:-dy/length*3,y:dx/length*3};
@@ -446,7 +453,7 @@ function renderWeaponLights2D(){
  }
  if(cached.tick!==tick||cached.revision!==revision||
     cached.doorSignature!==doorSignature){
-  cached.blockers=lightBeamBlockers(world.walls,state.doors,state.coverState);
+  cached.blockers=lightBeamBlockers(world.walls,state.doors,state.coverState,windowCoveringSightSegments(state));
   cached.tick=tick;cached.revision=revision;
   cached.doorSignature=doorSignature;
   cached.history.clear();

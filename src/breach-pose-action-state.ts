@@ -26,7 +26,7 @@ export function resolveOperatorActionState(
  const throwActive=throwAge>=0&&throwAge<.70;
  const doorAge=p.seconds-p.lastDoorAt;
  const anchorWeight=p.physicalContact?.intent==='door'||
-   p.physicalContact?.intent==='tool'?
+   p.physicalContact?.intent==='tool'||p.physicalContact?.intent==='covering'?
    physicalContactWeight(p.physicalContact,p.seconds):0;
  const gripWeight=anchorWeight>0?anchorWeight:
    doorGripWeight(p.doorGrip,p.seconds);

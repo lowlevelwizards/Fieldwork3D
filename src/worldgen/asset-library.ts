@@ -1,6 +1,7 @@
 /** MAP 01: Discoverable registry for every environmental asset used by maps.
  * Tactical rules continue to own collision; the library is metadata only.
  */
+import {windowCoveringSpecimens} from '../breach-window-coverings.ts';
 import {propCatalog, type PropDefinition} from './asset-catalog.ts';
 import {CANONICAL_ASSET_DIMENSIONS} from './world-scale.ts';
 import {DETAILED_FIXTURE_IDS} from './detailed-fixture-visuals.ts';
@@ -112,7 +113,10 @@ export function assetLibrary():readonly AssetLibraryEntry[]{
     origin:'dressing',width:12,depth:12,height:12,cover:'none',
     solid:false,rooms:[],presentation:'bespoke',
   }));
-  return [...architecture,...props,...details];
+  const coverings:AssetLibraryEntry[]=windowCoveringSpecimens().map(s=>({id:s.id,label:s.label,
+    category:'Window Coverings',origin:'structure',width:52,depth:12,height:56,
+    cover:'none',solid:false,rooms:[],presentation:'architectural'}));
+  return [...architecture,...coverings,...props,...details];
 }
 export function assetLibraryCategories():readonly string[]{
   return [...new Set(assetLibrary().map(item=>item.category))];

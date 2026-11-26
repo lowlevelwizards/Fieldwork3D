@@ -1,3 +1,4 @@
+import {isCoveringAction,COVERING_ACTION_SECONDS,COVERING_ACTION_LABELS} from './breach-window-covering-interaction.ts';
 /** Read-only, player-safe interpretation of existing authoritative order/motor state.
  * This module NEVER mutates plans, chooses tactics, or reads enemy/world intel.
  * Keep mobile HUD, path markers and future replay on this same vocabulary.
@@ -158,6 +159,8 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
      id,'door',n.method==='open'||n.method==='close'?
        a.actionTimer/(n.method==='close'?.75:.78):undefined);
  }
+ if(n.kind==='interact'&&isCoveringAction(n.interaction))
+   return result('working','COVERING',COVERING_ACTION_LABELS[n.interaction],id,'interact',a.actionTimer/(n.duration??COVERING_ACTION_SECONDS));
  if(n.kind==='tool'||n.kind==='interact'||
     n.kind==='flash'||n.kind==='reload'||n.kind==='treat'||
     n.kind==='recover-medical'||n.kind==='evacuate')

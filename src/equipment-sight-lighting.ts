@@ -1,3 +1,4 @@
+import {windowCoveringSightSegments} from './breach-window-covering-optics.ts';
 /** Build 26.03: bounded, fixed-step light-sensitive visual acquisition.
  * Illumination can only scale acquisition once physical sight is already valid.
  * It NEVER creates a contact, shares enemy truth, or reveals fog by itself.
@@ -59,7 +60,7 @@ export function actorLightingLevels(session:Session):ReadonlyMap<string,number>{
  }
  // Doors and movable tall cover block a light just as they block the beam.
  const blockers=buildIlluminationBlockers(site.walls,session.doors,
-  session.coverState);
+  session.coverState,windowCoveringSightSegments(session));
  const sources=[...program.sources,
   ...activeWeaponLightSources(session.operators,session.doors,
    {cover:session.coverState,walls:site.walls})];

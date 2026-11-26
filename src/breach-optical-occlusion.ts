@@ -8,8 +8,8 @@ export function coverBlocksOpticalSight(o:Obstacle,lowObstructs=false):boolean{
 }
 export function opticalBlockerSegments(
  walls:readonly Segment[],doors:readonly Door[],cover:readonly Obstacle[],
- lowObstructs=false):Segment[]{
- const segments:Segment[]=[...walls];
+ lowObstructs=false,coveringSegments:readonly Segment[]=[]):Segment[]{
+ const segments:Segment[]=[...walls,...coveringSegments];
  for(const door of doors){
   if(doorTransmitsSightAndLight(door))continue;
   const leaf=doorOpticalSegment(door);

@@ -1,3 +1,4 @@
+import {hardWindowCoveringsBlockRay} from './breach-window-covering-optics.ts';
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {advanceInterruptedSecondarySwitch} from './secondary-switching.ts';
 import {GLOCK_9MM_WEAPON,GLOCK_9MM_BALLISTICS} from './secondary-ballistics.ts';
@@ -91,7 +92,7 @@ function random(s:Session){
 /** Shared post-ignition impact authority. Aim and LOS never call these. */
  const shotEnvironment=createShotEnvironmentCommitter({enemies,hear,battleEvent});
  const {emitMaterialEvents,damageStruckCover,
-  shatterStruckDoorGlass,shatterStruckWindows}=shotEnvironment;
+  shatterStruckDoorGlass,shatterStruckWindows,damageStruckCoverings}=shotEnvironment;
 /** One physically authoritative shot resolver for this game session. */
  const {commitShot}=createShotResolver({
   team,enemies,isSeen,liveVisibility,hear,notify,battleEvent,random,
@@ -244,6 +245,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   const muzzle=clearance.muzzle;
   const yaw=muzzle.yaw;
   const from={x:muzzle.x,y:muzzle.z};
+  if(hardWindowCoveringsBlockRay(s,a.p,from,muzzle.y))return;
   const far=muzzleEndpoint(from,yaw,Math.max(40,d(from,point)));
   const friends=team(s).filter(o=>o!==a&&o.health>0).map(safetyBodyFor);
   if(observedCivilianFireLane(s,a,from,muzzle.y,far,14)){
@@ -264,6 +266,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     return at!==null&&at<=fraction+.0001;
   });
   const glassDamage=glassImpactDamage(a.weapon);
+  damageStruckCoverings(s,impact.coveringHits,glassDamage,fraction);
   shatterStruckWindows(s,reachedPanes,glassDamage);
   shatterStruckDoorGlass(s,impact.glassDoorHits,fraction,glassDamage);
   damageStruckCover(s,impact.coverHits,WEAPONS[a.weapon].damage*.36,fraction,a.id);
@@ -623,14 +626,18 @@ function fire(s:Session,a:TeamActor,dt:number){
     if(clearance.blocked)return false;
     const from={x:clearance.muzzle.x,y:clearance.muzzle.z};
     const h=aimHeight(candidate.posture==='crouch');
+    if(hardWindowCoveringsBlockRay(s,a.p,from,clearance.muzzle.y))return false;
     if(observedCivilianFireLane(s,a,from,clearance.muzzle.y,
        candidate.p,h)){
       civilianShotWithheld(s,a);return false;
     }
-    const lane=nearShotLane(from,clearance.muzzle.y,candidate.p,h,
+    let lane=nearShotLane(from,clearance.muzzle.y,candidate.p,h,
       world.cover,world.walls,s.doors,friends);
     if(lane.blocker==='friendly')return false;
-    if(lane.blocker==='clear')return true;
+    if(lane.blocker==='clear'){
+      if(!hardWindowCoveringsBlockRay(s,from,candidate.p,clearance.muzzle.y,h))return true;
+      lane={blocker:'cover'};
+    }
     if(lane.blocker!=='cover')return false;
     const preview=strikeSurface(from,candidate.p,s,
       clearance.muzzle.y,h,

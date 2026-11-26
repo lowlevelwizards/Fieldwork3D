@@ -1,3 +1,4 @@
+import {hardCoveringBlocksTraversal} from './breach-window-covering-physical.ts';
 /** Traversal Stage 3a: deterministic, collision-truth crossing contract.
  * A vault is a timed physical transition over ONE explicitly eligible
  * obstacle, not permission to ignore all cover or slide through a wall.
@@ -312,7 +313,7 @@ export function probeWindowPortalRoute(from:Pt,to:Pt,world:CrossingWorld,
 export function hasClimbableWindowOpening(window:WindowState):boolean{
  if(window.treatment==='bars'||window.treatment==='boarded'||
     window.style==='wire'||window.style==='clerestory')return false;
- if(window.width<25)return false;
+ if(window.width<25||hardCoveringBlocksTraversal(window))return false;
  const sill=window.sillHeight??14,
    head=window.headHeight??windowVisualHeadHeight(window.style);
  return sill<=30&&head-sill>=18;

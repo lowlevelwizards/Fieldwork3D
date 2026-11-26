@@ -1,10 +1,10 @@
 /** MAP 14: external security boards are real, damageable cover.
- * Curtains are held open; metal bars are narrow rail details that do not
+ * WC2 adds room-motivated coverings; metal bars remain rail details that do not
  * falsely add continuous ballistic/LOS obstruction.
  */
 import {type Site,type WindowTreatment} from '../breach-site.ts';
 import {type Obstacle} from '../breach-core.ts';
-const residential=new Set(['house','townhouse','apartment','motel']);
+import {chooseWindowCovering} from './window-covering-placement.ts';
 export function dressWindowSecurity(site:Site,seed:number):Site{
  let n=(seed^0x55e1ad70)>>>0;
  const rand=()=>{n=(Math.imul(n,1664525)+1013904223)>>>0;
@@ -15,11 +15,13 @@ export function dressWindowSecurity(site:Site,seed:number):Site{
    const secure=['utility','warehouse','garage'].includes(site.archetype??'');
    const neglected=condition==='vacant'||condition==='neglected';
    const treatment:WindowTreatment=neglected&&roll<.34?'boarded':
-     secure&&roll<.51?'bars':
-     residential.has(site.archetype??'')&&roll<.73?'open-curtains':'none';
-   return {...opening,treatment,id:opening.id||'W'+index};
+     secure&&roll<.51?'bars':'none';
+   const {covering:previous,...rest}=opening;
+   const authored={...rest,treatment,id:opening.id||'W'+index};
+   const covering=chooseWindowCovering(site,authored,seed);
+   return covering?{...authored,covering}:authored;
  });
- const cover:Obstacle[]=site.cover.slice();
+ const cover:Obstacle[]=site.cover.filter(o=>o.fixture!=='window-boards');
  for(const window of windows)if(window.treatment==='boarded'){
    cover.push({x:window.x,y:window.y,
      w:window.vertical?10:window.width,

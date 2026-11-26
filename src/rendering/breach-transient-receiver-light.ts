@@ -4,7 +4,7 @@
  * No geometry, light, shadow-map, per-event program, or global shader edit.
  */
 import * as THREE from 'three';
-import type {Door,Pt} from '../breach-core.ts';
+import type {Door,Pt,Segment} from '../breach-core.ts';
 import {fillTransientLightReach,TRANSIENT_LIGHT_SECTORS,type TransientLightWorld}
  from './breach-transient-light-geometry.ts';
 
@@ -22,9 +22,9 @@ export class TransientReceiverLight{
   this.texture.generateMipmaps=false;this.texture.needsUpdate=true;
  }
  begin(){for(const strength of this.strengths)strength.set(0,0);}
- offer(channel:0|1,world:TransientLightWorld,doors:readonly Door[],p:Pt,height:number,range:number,safe:number,strength:number){
+ offer(channel:0|1,world:TransientLightWorld,doors:readonly Door[],p:Pt,height:number,range:number,safe:number,strength:number,coveringSegments:readonly Segment[]=[]){
   if(!Number.isFinite(height)||!Number.isFinite(safe)||!Number.isFinite(strength)||strength<=0||safe>=range)return;
-  if(!fillTransientLightReach(world,doors,p,range,this.scratch))return;
+  if(!fillTransientLightReach(world,doors,p,range,this.scratch,coveringSegments))return;
   let extendsRange=false;
   const offset=channel*TRANSIENT_LIGHT_SECTORS;
   for(let i=0;i<TRANSIENT_LIGHT_SECTORS;i++){

@@ -29,6 +29,7 @@ export type WideOpening={id:string;a:Pt;b:Pt;kind:'arch'|'wide'|'serving'};
 export type EnvironmentCondition='occupied'|'busy'|'neglected'|'vacant'|'renovation'|'disturbed';
 export type WindowStyle='standard'|'tall'|'picture'|'bay'|'industrial'|
   'clerestory'|'awning'|'wire'|'storefront';
+import type {WindowCovering} from './breach-window-coverings.ts';
 export type WindowTreatment='none'|'open-curtains'|'bars'|'boarded';
 export type WindowOpening={
  id:string;x:number;y:number;width:number;vertical:boolean;
@@ -36,6 +37,8 @@ export type WindowOpening={
  style?:WindowStyle;
  interior?:boolean;sillHeight?:number;headHeight?:number;
  treatment?:WindowTreatment;
+ /** WC1 independent immutable covering; replace rather than mutate. */
+ covering?:WindowCovering;
 };
 export type WorldBounds={minX:number;minY:number;maxX:number;maxY:number};
 export type SiteScale='standard'|'expanded'|'small'|'medium'|'large';

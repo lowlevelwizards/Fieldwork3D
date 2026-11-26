@@ -5,7 +5,7 @@
  */
 import * as THREE from 'three';
 import {safeTransientLightRange,type TransientLightWorld} from './breach-transient-light-geometry.ts';
-import type {Door} from '../breach-core.ts';
+import type {Door,Segment} from '../breach-core.ts';
 import {TransientReceiverLight,registerTransientReceiverLight} from './breach-transient-receiver-light.ts';
 export const TRANSIENT_LIGHT_LIMIT=2;
 type Channel='muzzle'|'flash';
@@ -48,14 +48,14 @@ export class TransientLightPreview{
  /** Call once after selecting eligible events, never once per candidate.
   * Fail closed instead of allowing the Three.js distance=0 infinite range.
   */
- confine(world:TransientLightWorld,doors:readonly Door[]){
+ confine(world:TransientLightWorld,doors:readonly Door[],coveringSegments:readonly Segment[]=[]){
   for(const channel of ['muzzle','flash'] as const){
    const light=this[channel];if(light.intensity<=0)continue;
    const source=this.source,profile=settings[channel];
    source.x=light.position.x;source.y=light.position.z;
-   const distance=safeTransientLightRange(world,doors,source,profile.range);
+   const distance=safeTransientLightRange(world,doors,source,profile.range,coveringSegments);
    this.receiver?.offer(channel==='muzzle'?0:1,world,doors,source,
-    light.position.y,profile.range,distance,light.intensity/profile.peak);
+    light.position.y,profile.range,distance,light.intensity/profile.peak,coveringSegments);
    light.distance=Math.max(.001,distance);
    if(distance<=.001)light.intensity=0;
   }

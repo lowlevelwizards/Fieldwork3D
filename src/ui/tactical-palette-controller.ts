@@ -1,3 +1,5 @@
+import {hardCoveringBlocksPaneContact} from '../breach-window-covering-physical.ts';
+import {nearestCoveringInteraction,coveringActorAvailable,COVERING_ACTION_LABELS} from '../breach-window-covering-interaction.ts';
 import {captureVitalStatus} from '../breach-capture-vitals.ts';
 import {medicalTreatmentChoices,medicalPatientStatus,
  type MedicalPatientChoice} from '../breach-medical-target-choices.ts';
@@ -401,13 +403,19 @@ export function createTacticalPaletteController(config:{
   // an unrevealed room/window cannot advertise its operability in the menu.
   // Match the command dispatcher's nearest actionable pane exactly.
   // Never reveal the nearer pane's open state unless it is visible.
-  const nearestWindow=state.windows.filter(w=>w.operable&&!w.shattered&&
+  const nearestWindow=state.windows.filter(w=>w.operable&&!w.shattered&&!hardCoveringBlocksPaneContact(w,at)&&
     paletteDistance(at,{x:w.x,y:w.y})<54)
     .sort((a,b)=>paletteDistance(at,{x:a.x,y:a.y})-
       paletteDistance(at,{x:b.x,y:b.y}))[0];
   const nearWindow=nearestWindow&&
     liveVisibility(state,{x:nearestWindow.x,y:nearestWindow.y})?
     nearestWindow:undefined;
+  const nearCovering=coveringActorAvailable(a,state)?nearestCoveringInteraction(state,at,p=>liveVisibility(state,p),current.posture==='crouch'):undefined;
+  const coveringActions:ContextAction[]=nearCovering?nearCovering.actions.map(method=>({
+    id:'ctxCovering:'+method+':'+nearCovering.window.id,
+    label:COVERING_ACTION_LABELS[method]+' '+(nearCovering.covering.family.includes('blind')?'BLINDS':nearCovering.covering.family==='curtain'?'CURTAINS':nearCovering.covering.family.includes('shutter')?'SHUTTER':'SHADE'),
+    group:'advanced',title:'Queue a physical covering adjustment; glazing remains independent'
+  })):[];
   const powerActions:ContextAction[]=[];
   if(state.site&&state.sitePower&&state.sitePower.mode===state.lightingMode){
     const power=state.sitePower;
@@ -512,7 +520,7 @@ export function createTacticalPaletteController(config:{
     stackFormation:door?selectedDoorStackFormation(state,door.id):'auto',
     nearMovable,nearBreakableGlass:!!nearestBashableWindow(state,at,p=>liveVisibility(state,p)),
     nearWindow:!!nearWindow,nearWindowOpen:nearWindow?.open,
-    powerActions,treatTargetName:treatmentCandidates.length?
+    powerActions,coveringActions,treatTargetName:treatmentCandidates.length?
       'CHOOSE PATIENT':undefined,
      treatCaptureTarget:false,
     nearDoor:!door&&!!nearbyDoor,

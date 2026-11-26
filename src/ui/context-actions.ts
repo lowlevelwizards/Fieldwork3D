@@ -12,6 +12,7 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   watchActive?:boolean;
   nearMovable?:boolean;nearBreakableGlass?:boolean;nearWindow?:boolean;nearWindowOpen?:boolean;nearDoor?:boolean;
   powerActions?:readonly ContextAction[];
+  coveringActions?:readonly ContextAction[];
   treatTargetName?:string;treatCaptureTarget?:boolean;
   nearCivilian?:boolean;escortableCivilian?:boolean;
   stopFollowingCivilian?:boolean;
@@ -142,6 +143,7 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
         'No accessible pistol magazine with more rounds':
         o.reserve<=0?'No reserve ammunition':'Queue a reload'},
     // Contextual fixtures append AFTER the stable primary order.
+    ...(o.coveringActions??[]),
     ...(o.nearMovable?[{id:'ctxPush',label:'PUSH',group:'advanced' as const,
       title:'Queue a physical push of nearby light furniture'}]:[]),
     ...(o.nearBreakableGlass?[{id:'ctxBreakGlass',label:'BREAK GLASS',

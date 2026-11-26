@@ -44,8 +44,8 @@ export function lightRayDistance(from:Pt,angle:number,maximum:number,
 }
 /** Build once when door/cover geometry changes; renderer may cache on revision. */
 export function lightBeamBlockers(walls:readonly Segment[],doors:readonly Door[],
- cover:readonly Obstacle[]=[]):Segment[]{
- return opticalBlockerSegments(walls,doors,cover,false);
+ cover:readonly Obstacle[]=[],coveringSegments:readonly Segment[]=[]):Segment[]{
+ return opticalBlockerSegments(walls,doors,cover,false,coveringSegments);
 }
 /** Constant sample count enables reuse of a single BufferGeometry per light. */
 export function lightBeamFootprint(from:Pt,yaw:number,

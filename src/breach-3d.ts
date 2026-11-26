@@ -1,3 +1,7 @@
+import {syncWindowCoveringVisual,windowCoveringVisualForParent} from './rendering/window-covering-visual.ts';
+import {coveringMotion,isCoveringAction} from './breach-window-covering-interaction.ts';
+import {normalizeWindowCovering} from './breach-window-coverings.ts';
+import {windowCoveringSightSegments,windowCoveringTransientSegments} from './breach-window-covering-optics.ts';
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {bloodMarkRadius,bloodMarkTint} from './breach-blood-evidence.ts';
@@ -128,7 +132,7 @@ import {readEquipmentInteraction} from './breach-equipment-interaction-pose.ts';
 import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
 import {downedTransportPresentation} from './breach-capture-transport-presentation.ts';
 import {SurrenderedFirearmsPresenter} from './rendering/breach-surrendered-firearms-presenter.ts';
-import {spatialSurfaceKnown,shotVisibility,windowPresentationKnown} from './breach-presentation.ts';
+import {spatialSurfaceKnown,shotVisibility,windowPresentationKnown,windowCoveringPresentationKnown} from './breach-presentation.ts';
 import {markWindowOwner,markWallOwnerKnown,markCoverOwnerKnown} from './rendering/breach-evidence-owner.ts';
 import {ShotFrameDisclosure} from './rendering/breach-shot-disclosure.ts';
 import {recordedEffectAllows,groundEffectRow,shotEffectRow} from './breach-replay-effect-evidence.ts';
@@ -552,7 +556,8 @@ export class TacticalScene3D{
         if(friendly.health<=0)continue;
         const world=sessionWorldGeometry(s);
         const polygon=visionPolygon(friendly.p,friendly.heading,sightRangeForSite(s.site),
-          world.walls,s.doors,friendly.posture==='crouch',world.cover);
+          world.walls,s.doors,friendly.posture==='crouch',world.cover,
+          windowCoveringSightSegments(s,friendly.posture==='crouch'));
         const projected:FocusPoint[]=[];
         for(const p of polygon){
           const xy=this.miniatureScreenPoint(camera,p.x,p.y,13);
@@ -946,6 +951,7 @@ export class TacticalScene3D{
   /** Scratch index rebuilt from current session data; never hold prior
    * replay snapshots or a site's mutable window array across frames. */
   private readonly frameWindowsById=new Map<string,Session['windows'][number]>();
+  private readonly frameCoveringActors=new Map<string,TeamActor>();
   private windowShards:THREE.InstancedMesh|null=null;
   private readonly shardMatrix=new THREE.Object3D();
   private transientLights:TransientLightPreview|null=null;
@@ -1383,7 +1389,7 @@ export class TacticalScene3D{
     this.wallMaterials.clear();
     this.walls.length=0;this.wallOwners=[];
     this.doors.clear();this.windowGlass.clear();
-    this.frameWindowsById.clear();
+    this.frameWindowsById.clear();this.frameCoveringActors.clear();
     if(this.windowShards)this.windowShards.count=0;
     this.shardSlots.reset();this.shardColors.fill(-1);this.settledPanes.length=0;this.fractureSources.reset();
     this.transientLights?.reset();
@@ -2150,12 +2156,29 @@ export class TacticalScene3D{
     this.frameWindowsById.clear();
     if(indexWindows)for(const pane of s.windows)
       this.frameWindowsById.set(pane.id,pane);
+    const coveringActors=this.frameCoveringActors;coveringActors.clear();
+    for(const actor of s.operators){
+      if(personalWindows&&actor.id!==replayDisclosurePolicy?.observerId)continue;
+      const order=actor.plan[0];
+      if(actor.actionTimer>0&&order?.objectId?.startsWith('covering:')&&isCoveringAction(order.interaction))
+        coveringActors.set(order.objectId.slice(9),actor);
+    }
     for(const [id,glass] of this.windowGlass){
       const current=indexWindows?this.frameWindowsById.get(id):
         s.windows.find(w=>w.id===id);
       const seen=personalWindows&&replayDisclosurePolicy?.observerId?
         replayWindowHistory?.at(s.seconds,replayDisclosurePolicy.observerId,id):
         null;
+      const covering=windowCoveringVisualForParent(glass.parent);
+      if(covering){
+        covering.visible=personalWindows?!!seen?.covering:
+          !!current&&windowCoveringPresentationKnown(s,current,omniscient);
+        if(covering.visible){
+          const descriptor=personalWindows?seen?.covering:current?.covering??(current?normalizeWindowCovering(current):undefined);
+          const mover=coveringActors.get(id);
+          syncWindowCoveringVisual(covering,descriptor,mover&&descriptor?coveringMotion(mover,descriptor):null);
+        }
+      }
       const broken=personalWindows?!!seen?.shattered:!!current?.shattered;
       const opened=personalWindows?!!seen?.open:!!current?.open;
       glass.visible=!(broken||opened);
@@ -2782,7 +2805,7 @@ export class TacticalScene3D{
           this.beamBlockerRevision!==s.objectRevision||
           this.beamBlockerSignature!==signature){
         const geometry=sessionWorldGeometry(s);
-        this.beamBlockers=lightBeamBlockers(geometry.walls,s.doors,s.coverState);
+        this.beamBlockers=lightBeamBlockers(geometry.walls,s.doors,s.coverState,windowCoveringSightSegments(s));
         this.beamBlockerSignature=signature;
         // Same-tick replay/door updates must not reuse stale actor polygons.
         for(const visible of this.actors.values())visible.beamLast=null;
@@ -3057,7 +3080,7 @@ export class TacticalScene3D{
         if(!omniscient&&!this.presentationSight.query(s,'effect','flash-light:'+burst.id,burst.p))continue;
         this.transientLights.offer('flash',burst.id,burst.p.x,13,burst.p.y,burst.age);
       }
-    this.transientLights?.confine(sessionWorldGeometry(s),s.doors);
+    this.transientLights?.confine(sessionWorldGeometry(s),s.doors,windowCoveringTransientSegments(s));
     this.combatEffects.update(s,omniscient,
       personalDisclosure,p=>this.presentationSight.query(
         s,'effect',p.x+','+p.y,p));
