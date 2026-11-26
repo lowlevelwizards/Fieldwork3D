@@ -11,7 +11,7 @@ import {buildWeaponSilhouette,clearWeaponSilhouette} from '../src/breach-weapon-
 import {weaponVisualLayout} from '../src/weapons/geometry/weapon-visual-layout.ts';
 import {FAMILY_PRESETS,FAMILY_PARTS,validFamilyBuild,readWeaponFamilyBuild} from '../src/equipment-weapon-families.ts';
 import {ARSENAL_PLATFORMS,arsenalReferencesForPlatform,arsenalCatalogIssues} from '../src/arsenal/catalog.ts';
-import {riflePoseContacts} from '../src/breach-weapon-contact-zones.ts';
+import {riflePoseContacts,UNDERHAND_PALM_DROP} from '../src/breach-weapon-contact-zones.ts';
 import {buildWeaponAccessories} from '../src/breach-weapon-accessories.ts';
 import {carriedMagazineProfile,carriedMagazineGeometry} from '../src/operator-carried-magazines.ts';
 import {reloadMechanismFor} from '../src/breach-reload-performance.ts';
@@ -325,7 +325,8 @@ test('G36 E1: same master geometry builds in the real Arsenal/operator/replay ro
  assert.equal(contacts.family,'g36');
  assert.equal(contacts.support.near.x,G36_E0_FACTORY.supportNearX);
  assert.equal(contacts.support.far.x,G36_E0_FACTORY.supportFarX);
- assert.equal(contacts.support.near.y,G36_E0_FACTORY.supportY);
+ assert.equal(contacts.support.near.y,G36_E0_FACTORY.supportY-UNDERHAND_PALM_DROP.g36);
+ assert.equal(contacts.support.far.y,G36_E0_FACTORY.supportY-UNDERHAND_PALM_DROP.g36);
  assert.equal(assembly.primaryX,G36_E0_FACTORY.primaryX);
  assert.equal(assembly.primaryY,G36_E0_FACTORY.primaryY);
  assert.equal(assembly.sightHeight,G36_E0_FACTORY.lowerSightY);

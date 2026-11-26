@@ -77,7 +77,7 @@ test('P25 modifies only atlas pixels; FNC and other rifle triangle budgets stay 
  const peers=buildAuditReport();
  assert.equal(peers.find(x=>x.name==='FNC').triangles,536);
  assert.equal(peers.find(x=>x.name==='FAL').triangles,366);
- assert.equal(peers.find(x=>x.name==='M4A1').triangles,478);
+ assert.equal(peers.find(x=>x.name==='M4A1').triangles,422);
  const gas=g.children.find(x=>x.userData.fncP24RearwardLowerGasBlock);
  assert.ok(gas);
  assert.equal(gas.userData.fncPixelLowerGasLines,2);

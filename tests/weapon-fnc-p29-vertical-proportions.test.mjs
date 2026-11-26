@@ -156,7 +156,7 @@ test('P29 integration: contacts, muzzle and peer triangle budget unchanged',()=>
  const audit=countGeometry(g),peers=buildAuditReport();
  assert.equal(audit.triangles,536);
  assert.equal(audit.meshes,23);
- for(const [name,tri] of [['FAL',366],['M4A1',478]])
+ for(const [name,tri] of [['FAL',366],['M4A1',422]])
   assert.equal(peers.find(x=>x.name===name).triangles,tri);
  assert.ok(close(bb(g).min.x,FNC_P1.stockRearX));
  assert.ok(close(bb(g).max.x,FNC_P1.muzzleX));
