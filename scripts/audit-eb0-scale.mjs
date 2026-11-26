@@ -18,6 +18,7 @@ for(const count of counts){
  try{
   const foes=enemies(s);assert.equal(foes.length,count);
   const identity=foes.map(a=>[a.id,a.npcIdentity?.groupKind,a.npcIdentity?.competence,a.weapon]);
+  const initial=foes.map(a=>[a.id,a.p.x,a.p.y,a.health]);
   const times=[],phase=new Map(),trace=[];
   toggling(s);
   for(let i=0;i<ticks&&s.phase==='running';i++){
@@ -30,7 +31,7 @@ for(const count of counts){
   assert.ok(foes.every(a=>Number.isFinite(a.p.x)&&Number.isFinite(a.p.y)&&Number.isFinite(a.health)));
   times.sort((a,b)=>a-b);
   const stats=a=>{a.sort((x,y)=>x-y);return {p50:q(a,.5),p95:q(a,.95),p99:q(a,.99),max:a.at(-1)};};
-  rows.push({count,ticks:times.length,tickMs:stats(times),phase:s.phase,shots:s.nextShotId-1,identity,fingerprint:digest(trace),
+  rows.push({count,ticks:times.length,tickMs:stats(times),phase:s.phase,shots:s.nextShotId-1,identity,initial,final:foes.map(a=>[a.id,a.p.x,a.p.y,a.health,a.surrendered]),fingerprint:digest(trace),
    phases:Object.fromEntries([...phase].map(([key,values])=>[key,stats(values)]))});
  }finally{activateSite(null);}
 }

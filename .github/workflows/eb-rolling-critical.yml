@@ -21,7 +21,7 @@ jobs:
       - name: Critical identity, AI, geometry, combat and production contracts
         run: |
           npm run check
-          node --experimental-strip-types --test tests/eb-foundation.test.mjs tests/ea-foundation.test.mjs tests/awareness-ai-policy.test.mjs tests/breach-roadmap4-ai-reconciliation.test.mjs tests/breach-roadmap2-stage9-enemy-ai.test.mjs tests/release6-doctrine.test.mjs tests/awareness-team-commitment-e2a.test.mjs tests/breach-ai-work-scheduler-performance.test.mjs tests/breach-roadmap2-stage1-contracts.test.mjs tests/breach-encounter-readiness.test.mjs tests/worldgen-encounter-groups.test.mjs tests/worldgen-encounter-roles.test.mjs tests/worldgen-encounter-integration.test.mjs
+          node --experimental-strip-types --test tests/eb-foundation.test.mjs tests/ea-foundation.test.mjs tests/awareness-ai-policy.test.mjs tests/breach-roadmap4-ai-reconciliation.test.mjs tests/breach-roadmap2-stage9-enemy-ai.test.mjs tests/release6-doctrine.test.mjs tests/awareness-team-commitment-e2a.test.mjs tests/breach-ai-work-scheduler-performance.test.mjs tests/breach-roadmap2-stage1-contracts.test.mjs tests/breach-encounter-readiness.test.mjs tests/worldgen-encounter-groups.test.mjs tests/worldgen-encounter-roles.test.mjs tests/worldgen-encounter-integration.test.mjs tests/dispatch-d15-suspect-restraint.test.mjs tests/dispatch-d15-opportunity-escape-rearm.test.mjs tests/performance-r3-r4-combat-morale.test.mjs tests/awareness-cover.test.mjs tests/breach-roadmap2-acoustic-perception.test.mjs
       - name: Build
         run: npm run build
       - uses: actions/checkout@v4
@@ -35,7 +35,8 @@ jobs:
           ln -s "$PWD/node_modules" eb-base/node_modules
           (cd eb-base && GITHUB_SHA=553b2f13e8906df9d0f86eb61a75e63e7b614590 node --experimental-strip-types scripts/audit-eb0-scale.mjs ../artifacts/eb/base-scale.json)
           node --experimental-strip-types scripts/audit-eb0-scale.mjs artifacts/eb/candidate-scale.json
-          node scripts/compare-eb0-scale.mjs artifacts/eb/base-scale.json artifacts/eb/candidate-scale.json
+          node --experimental-strip-types scripts/audit-eb0-scale.mjs artifacts/eb/repeat-scale.json
+          node scripts/compare-eb0-scale.mjs artifacts/eb/base-scale.json artifacts/eb/candidate-scale.json artifacts/eb/repeat-scale.json
           cp scripts/audit-ea0-enemy-baseline.mjs eb-base/scripts/
           (cd eb-base && EA_REVISION=553b2f13e8906df9d0f86eb61a75e63e7b614590 EA_OUTPUT="$GITHUB_WORKSPACE/artifacts/eb/base-entry.json" node --experimental-strip-types scripts/audit-ea0-enemy-baseline.mjs --quick)
           EA_REVISION="$GITHUB_SHA" EA_OUTPUT=artifacts/eb/candidate-entry.json node --experimental-strip-types scripts/audit-ea0-enemy-baseline.mjs --quick
