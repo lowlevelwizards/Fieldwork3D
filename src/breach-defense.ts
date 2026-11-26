@@ -61,22 +61,25 @@ export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
  world?:SessionWorldGeometry):Pt|null{
   const options=defenseCandidates(origin,threat,doors,world);
   let best:Pt|null=null,score=-Infinity;
+  // The roster and origin cover are unchanged during this pure selection.
+  // Prepare once rather than allocating and rescanning per candidate.
+  const peers=others.filter(a=>a.id!==selfId&&a.health>0);
+  const bodies=peers.map(safetyBodyFor);
+  const fixtures=world?.cover??COVER,walls=world?.walls??WALLS;
+  const originProtected=directionalCoverFrom(threat,origin,fixtures).crouched;
   for(const p of options){
-    const occupancy=others.filter(a=>a.id!==selfId&&a.health>0)
-      .reduce((n,a)=>n+(dist(p,a.defense??a.p)<35?190:0),0);
-    const protectedSpot=directionalCoverFrom(threat,p,world?.cover??COVER).crouched;
+    const occupancy=peers.some(a=>dist(p,a.defense??a.p)<35);
+    const protectedSpot=directionalCoverFrom(threat,p,fixtures).crouched;
     // Cover is only useful if the defender can still bring the muzzle
     // above or around it. Eye-level sight does not guarantee a firing lane.
     const lane=assessFireLane(p,26,threat,
-      policy.targetHeight??32,world?.cover??COVER,world?.walls??WALLS,doors,
-      others.filter(o=>o.id!==selfId&&o.health>0).map(safetyBodyFor));
+      policy.targetHeight??32,fixtures,walls,doors,bodies);
     const firingValue=lane.blocker==='clear';
     // When actually repositioning to shoot a visible opponent, a point
     // with no real muzzle lane is not a valid destination, even if it
     // scores well as passive cover. Defensive holds still accept cover.
     if(policy.requireFiringLane&&!firingValue)continue;
-    const span=others.filter(a=>a.id!==selfId&&a.health>0)
-      .reduce((n,a)=>n+(dist(p,a.p)>55&&dist(p,a.p)<160?15:0),0);
+    const span=peers.reduce((n,a)=>n+(dist(p,a.p)>55&&dist(p,a.p)<160?15:0),0);
     const doorHazard=doors.reduce((penalty,door)=>{
       const distance=dist(p,doorCenter(door));
       return penalty+(distance<24?45:distance<45?10:0);
@@ -85,9 +88,9 @@ export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
     const facing=dist(p,threat)>15?8:0;
     const value=coverScore({
       protected:protectedSpot,shotClear:firingValue,travel:dist(origin,p),
-      range:dist(p,threat),allyConflict:occupancy>0,
+      range:dist(p,threat),allyConflict:occupancy,
       nearDoor:doorHazard>25,
-      approachExposed:!directionalCoverFrom(threat,origin,world?.cover??COVER).crouched&&
+      approachExposed:!originProtected&&
         dist(origin,p)>85
     })+span+facing;
     if(value>score){score=value;best=p;}
