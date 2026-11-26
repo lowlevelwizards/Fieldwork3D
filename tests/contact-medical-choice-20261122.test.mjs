@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {contactStandpointAtRadius,PERSON_CONTACT_REACH,
  PERSON_CONTACT_STANDOFF,PERSON_CONTACT_OFFSETS}
  from '../src/breach-person-contact-standpoint.ts';
-import {newSession,team,enemies,planSuspectRestraint,toggling,stepSession}
+import {newSession,team,enemies,planSuspectRestraint,planMedicalTreatment,toggling,stepSession}
  from '../src/breach-game.ts';
 import {commitSuspectSurrender} from '../src/breach-suspect-compliance.ts';
 import {registerWound} from '../src/breach-medical-wounds.ts';
@@ -180,4 +180,20 @@ test('TREAT toolbar and context both open the same explicit patient chooser',()=
  assert.match(palette,/medicalChoices:treatmentCandidates/);
  assert.match(main,/openTreatment:\(\)=>\{/);
  assert.match(main,/paletteController\.toggleTreatment\(\)/);
+});
+
+test('a nearby non-objective downed suspect can receive medical care',()=>{
+ const s=newSession(0,4,'full-view','small','hold');
+ try{
+  const actor=team(s)[0],suspect=enemies(s)[0];
+  actor.medicalSupplies={'tourniquet':2,'field-dressing':2,'trauma-dressing':2};
+  suspect.p={x:actor.p.x+20,y:actor.p.y};
+  suspect.priorP={...suspect.p};suspect.health=0;suspect.downedAt=0;
+  registerWound(suspect.medical,628,'leg',2,0);
+  assert.equal(medicalTreatmentChoices(s,actor,actor.p).find(p=>p.id===suspect.id)?.canTreat,true);
+  assert.equal(planMedicalTreatment(s,actor.id,suspect.id),true);
+  suspect.deathAt=2;
+  assert.equal(medicalTreatmentChoices(s,actor,actor.p).some(p=>p.id===suspect.id),false);
+  assert.equal(planMedicalTreatment(s,actor.id,suspect.id),false);
+ }finally{activateSite(null);}
 });
