@@ -4,76 +4,43 @@
 import type {CampaignState,CampaignOperator} from './campaign-state.ts';
 import {WEAPON_PRICES,canAffordCampaignPurchase,
  campaignCatalogStockAtCapacity,canEquipCampaignCatalogWeapon} from './campaign-state.ts';
-import {isDispatchPilot,mayChooseCampaignContent}
+import {isDispatchPilot}
  from './dispatch-campaign-eligibility.ts';
 import {effectiveDispatchSetup,currentDispatchReference}
  from './dispatch-campaign-setup.ts';
-import {dispatchWeaponAccess,dispatchCatalogWeaponAccess} from './dispatch-weapon-access.ts';
+import {dispatchCatalogWeaponAccess} from './dispatch-weapon-access.ts';
 import {initialDispatchDepartment} from './dispatch-department.ts';
 
-export const CAMPAIGN_WEAPON_PLATFORMS=[
- 'carbine','smg','rifle','shotgun'
-] as const satisfies readonly CampaignOperator['weapon'][];
+import {FAMILY_PRESETS,FAMILY_PARTS,familyPreset,matchingFamilyPreset} from './equipment-weapon-families.ts';
 export type CampaignWeaponProcurementStatus='ready'|'reference-locked'|'not-assessed'|
  'standing-locked'|'deployment-locked'|'funds-locked'|'armory-full';
-export type CampaignWeaponQuote=Readonly<{
- weapon:CampaignOperator['weapon'];price:number;stock:number;issued:number;
- status:CampaignWeaponProcurementStatus;canPurchase:boolean;
- authorization:string;priceLabel:string;
+export type CatalogWeaponQuote=Readonly<{
+ presetId:string;name:string;weapon:CampaignOperator['weapon'];price:number;stock:number;issued:number;
+ status:CampaignWeaponProcurementStatus;canPurchase:boolean;authorization:string;priceLabel:string;
 }>;
-export function campaignWeaponQuote(c:CampaignState,
- weapon:CampaignOperator['weapon']):CampaignWeaponQuote{
- const price=WEAPON_PRICES[weapon],stock=catalogOwnedStock(c).filter(w=>w.platform===weapon).length;
- const issued=c.operators.filter(x=>x.status!=='retired'&&x.status!=='lost'&&
-  x.weapon===weapon).length;
- const dispatch=isDispatchPilot(c);
- const unlimited=dispatch&&effectiveDispatchSetup(c).economy==='unlimited';
- const offered=mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary');
- const department=c.dispatchDepartment??initialDispatchDepartment();
- // Ask the existing policy whether standing is the *only* missing condition.
- // This is a quote, never a bypass of the mutation-time authorization check.
- const access=dispatch?dispatchWeaponAccess(effectiveDispatchSetup(c),
-  currentDispatchReference(c),department.standing,weapon):'offered';
- const status:CampaignWeaponProcurementStatus=!offered?
-  access==='offered'?'reference-locked':access:
-  c.activeContractId?'deployment-locked':
-  campaignCatalogStockAtCapacity(c)?'armory-full':
+export function catalogWeaponQuote(c:CampaignState,presetId:string):CatalogWeaponQuote|undefined{
+ const preset=familyPreset(presetId);
+ if(!preset)return undefined;
+ const price=WEAPON_PRICES[preset.weapon];
+ const assigned=new Set(c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').map(o=>o.weaponSerialId));
+ const matching=(c.inventory.serializedWeapons??[]).filter(w=>matchingFamilyPreset(w.catalogBody)?.id===presetId);
+ const issued=matching.filter(w=>assigned.has(w.id)).length;
+ const stock=catalogOwnedStock(c).filter(w=>matchingFamilyPreset(w.catalogBody)?.id===presetId).length;
+ const dispatch=isDispatchPilot(c),setup=effectiveDispatchSetup(c);
+ const standing=(c.dispatchDepartment??initialDispatchDepartment()).standing;
+ const access=dispatch?dispatchCatalogWeaponAccess(setup,currentDispatchReference(c),standing,presetId):'offered';
+ const status:CampaignWeaponProcurementStatus=access!=='offered'?access:
+  c.activeContractId?'deployment-locked':campaignCatalogStockAtCapacity(c)?'armory-full':
   !canAffordCampaignPurchase(c,price)?'funds-locked':'ready';
- const authorization=status==='reference-locked'?
-  'NOT OFFERED · Current reference, time or access policy':
-  status==='not-assessed'?
-  'NOT ASSESSED · No playable Dispatch reference evaluates this weapon class':
-  status==='standing-locked'?
-  'CAREER RESTRICTED · Standing 70 / 100 required (current '+department.standing+')':
+ const authorization=status==='standing-locked'?'CAREER RESTRICTED · Standing 70 / 100 required (current '+standing+')':
+  status==='reference-locked'?'NOT OFFERED · Current reference, time or access policy':
+  status==='not-assessed'?'NOT ASSESSED · No playable Dispatch reference evaluates this named model':
   status==='deployment-locked'?'DEPLOYMENT ACTIVE · Armory frozen':
   status==='armory-full'?'ARMORY FULL · Serialized weapon capacity reached':
   status==='funds-locked'?'INSUFFICIENT FUNDS · '+price+' CR needed':
   'ELIGIBLE · '+(stock>0?'Armory copies available':'No spare copies yet');
- return {weapon,price,stock,issued,status,canPurchase:status==='ready',
-  authorization,priceLabel:unlimited?'NO CHARGE':price+' CR'};
-}
-
-import {FAMILY_PRESETS,FAMILY_PARTS,familyPreset,matchingFamilyPreset} from './equipment-weapon-families.ts';
-/** Named quote uses real owned bodies and both existing authorization guards. */
-export type CatalogWeaponQuote=CampaignWeaponQuote & Readonly<{presetId:string;name:string}>;
-export function catalogWeaponQuote(c:CampaignState,presetId:string):CatalogWeaponQuote|undefined{
- const preset=familyPreset(presetId);
- if(!preset)return undefined;
- const base=campaignWeaponQuote(c,preset.weapon);
- const assigned=new Set(c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').map(o=>o.weaponSerialId));
- const matching=(c.inventory.serializedWeapons??[]).filter(w=>matchingFamilyPreset(w.catalogBody)?.id===presetId);
- const issued=matching.filter(w=>assigned.has(w.id)).length,
-  stock=catalogOwnedStock(c).filter(w=>matchingFamilyPreset(w.catalogBody)?.id===presetId).length;
- let status=base.status,authorization=base.authorization;
- const standing=(c.dispatchDepartment??initialDispatchDepartment()).standing;
- const access=isDispatchPilot(c)?dispatchCatalogWeaponAccess(effectiveDispatchSetup(c),currentDispatchReference(c),standing,presetId):'offered';
- if(access!=='offered'){
-  status=access;
-  authorization=access==='standing-locked'?'CAREER RESTRICTED · Standing 70 / 100 required (current '+standing+')':
-   access==='reference-locked'?'NOT OFFERED · Current reference, time or access policy':
-   'NOT ASSESSED · No playable Dispatch reference evaluates this named model';
- }else if(status==='ready')authorization='ELIGIBLE · '+(stock>0?'Armory copies available':'No spare copies yet');
- return {...base,presetId,name:preset.name,stock,issued,status,authorization,canPurchase:status==='ready'};
+ return {presetId,name:preset.name,weapon:preset.weapon,price,stock,issued,status,authorization,
+  canPurchase:status==='ready',priceLabel:dispatch&&setup.economy==='unlimited'?'NO CHARGE':price+' CR'};
 }
 export function catalogWeaponOfferings(c:CampaignState):CatalogWeaponQuote[]{
  return FAMILY_PRESETS.map(p=>catalogWeaponQuote(c,p.id)!)

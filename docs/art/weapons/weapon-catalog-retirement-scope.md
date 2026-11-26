@@ -75,3 +75,6 @@ Removed unused Campaign factory-preset mutation that rewrote an existing serial,
 
 ## Visual direction follow-through
 WA4–9 delivered measurable refinements and paired visual evidence; AK, HK rifle and MP5 passes were chiefly material calibration, not broad silhouette restyling. WA10–11 shotgun and sidearm calibration, WA12–16 accessory, finish, scale and live-context review, WA17 optimization and WA18 final acceptance remain distinct from the completed catalog release. A cross-family same-world-scale gameplay contact sheet and human review should drive an assertive second pass on silhouette, mass, negative space, line weight and visible detail rather than generic recoloring or arbitrary mesh targets.
+
+## R5b — remove class-level quote and access API
+The live procurement quote now evaluates the exact named model directly, using serial custody and the same named authorization projection as creation. Removed old category quote and access exports, migrated policy tests to named model IDs. Existing price coefficients and Dispatch equipment compatibility policy are preserved pending broader data migration. No changes to actual weapon balance or movement. Exact-head verification pending.
