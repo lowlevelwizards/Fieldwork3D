@@ -8,8 +8,8 @@ test('six canonical families and at least twenty deterministic configurations',(
  for(const family of VEHICLE_FAMILIES)assert.deepEqual(vehicleRecipe(family,17),vehicleRecipe(family,17));
 });
 test('all compiled models have one opaque geometry, finite attributes and bounded dimensions',()=>{
- for(const family of VEHICLE_FAMILIES)for(const configuration of VEHICLE_CONFIGURATIONS[family]){
-  const recipe={...vehicleRecipe(family),configuration};
+ for(const family of VEHICLE_FAMILIES)for(const configuration of VEHICLE_CONFIGURATIONS[family])for(const condition of ['clean','weathered']){
+  const recipe={...vehicleRecipe(family),configuration,condition};
   const dimensions=VEHICLE_DIMENSIONS[family];
   const geo=buildVehicleGeometry(recipe);
   try{

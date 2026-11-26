@@ -66,9 +66,12 @@ export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIM
  }
  contour.push(...bodyProfile.slice(1).map(([x,y])=>[x,y] as [number,number]));
  prism(contour,.43,body);
- // Separate short front/rear bumpers, no full-length black base strip.
- // Flat end faces retain the exact footprint and cost four triangles.
- for(const x of [-.497,.497])end(x,lower-.025,lower+.045,-.455,.455,trim);
+ // Short substantial end bumpers; the recessed chassis and axles
+ // physically connect the wheels without filling the visible arch openings.
+ box(-.498,-.473,lower-.025,lower+.045,.455,trim);
+ box(.473,.498,lower-.025,lower+.045,.455,trim);
+ box(-.37,.37,lower-.075,lower+.015,.28,trim);
+ for(const axle of wheels)box(axle-.014,axle+.014,r/h-.022,r/h+.022,.36,trim);
  prism(cabin,cw,body,roofWidth);
  const [rear,front,frontTop,rearTop]=cabin;
  const roof=frontTop[1];
@@ -127,9 +130,8 @@ export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIM
   if(config==='canvas'||config==='military')prism([[-.47,belt+.035],[.075,belt+.035],[.075,.91],[.045,.98],[-.44,.98],[-.47,.91]],.46,0x777b5b);
   else if(config!=='flatbed')box(-.47,.075,belt+.035,.98,.46,body);
  }
- // 8-sided wheels, visible tread and hub, no separate meshes. The inner
- // cap is unnecessary inside the opaque coachwork; the outside ring
- // and hub share vertices geometrically in a single colour buffer.
+ // 8-sided wheels, visible tread and hub, no separate meshes. The
+ // closed inner cap is visible below the recessed body at low angles.
  const thickness=d*(pickup||suv||truck?.17:.145);
  for(const axle of wheels)for(const s of [-1,1]){
   const x=axle*w,outer=s*d*.492,inner=outer-s*thickness;
@@ -138,6 +140,7 @@ export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIM
    const a=i*Math.PI/4,b=(i+1)*Math.PI/4;
    const point=(angle:number,z:number,rad=r):P=>[x+Math.cos(angle)*rad,r+Math.sin(angle)*rad,z];
    quad(point(a,inner),point(b,inner),point(b,outer),point(a,outer),rubber,center);
+   tri([x,r,inner],point(a,inner),point(b,inner),rubber,center);
    const aa=point(a,outer,r*(truck?.40:.48)),bb=point(b,outer,r*(truck?.40:.48));
    quad(point(a,outer),point(b,outer),bb,aa,rubber,center);
    tri([x,r,outer],aa,bb,hub,center);
@@ -153,14 +156,20 @@ export function buildVehicleGeometry(recipe:VehicleRecipe,dimensions=VEHICLE_DIM
  }
  const grilleWidth=truck?.235:suv?.225:pickup?.19:van?.16:compact?.13:.19;
  end(.492,frontLow,frontHigh-.016,-grilleWidth,grilleWidth,trim);
- if(suv||truck||pickup)end(.493,frontLow+frontSpan*.36,frontLow+frontSpan*.49,-grilleWidth*.84,grilleWidth*.84,hub);
+ if(suv){for(const x of [-.12,0,.12])end(.493,frontLow+.012,frontHigh-.025,x-.012,x+.012,hub);}
+ else if(truck||pickup)end(.493,frontLow+frontSpan*.36,frontLow+frontSpan*.49,-grilleWidth*.84,grilleWidth*.84,hub);
  end(-.492,lower+.055,lower+.10,-.105,.105,hub);
  // Readable panel seams/handles, no separate mesh or micro bevels.
  const handleY=belt-.035;
  const handles=truck?[.18]:pickup?[.02]:van?[.18,-.08]:suv?[.03,-.25]:compact?[.01]:[.04,-.20];
  for(const x of handles)side(x-.035,x+.035,handleY-.024,handleY,.4315,trim);
  const seams=truck?[.11]:pickup?[-.085]:van?[-.12,-.41]:suv?[-.13,-.35]:compact?[-.11]:[-.10,-.28];
- for(const x of seams)side(x-.0035,x+.0035,Math.max(lower+.025,(r+archR)/h+.006),belt-.008,.431,seam);
+ for(const x of seams){
+  const near=Math.min(...wheels.map(a=>Math.abs(x-a)*w))-.004*w;
+  const archY=near<archR?(r+Math.sqrt(Math.max(0,archR*archR-near*near)))/h:lower;
+  const y=Math.max(lower+.025,archY+.008);
+  if(y<belt-.012)side(x-.0035,x+.0035,y,belt-.008,.431,seam);
+ }
  if(recipe.condition!=='clean')side(-.12,.13,lower+.015,lower+.055,.431,paint.clone().lerp(new THREE.Color(0x77715f),recipe.condition==='used'?.13:.35).getHex());
  const stripe=config==='police'?0x39556e:config==='medical'?0xa6564a:config==='delivery'?0x648577:config==='municipal'?0xb19a55:config==='contractor'?0x696e5a:config==='fleet'?0x778585:config==='taxi'?0x544e3c:config==='aid'?0x4f7d83:undefined;
  if(stripe!==undefined){
