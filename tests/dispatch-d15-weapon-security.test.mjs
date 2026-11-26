@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newSession,enemies,team,planSecureDroppedFirearm,
  planSearchSuspect,toggling,stepSession} from '../src/breach-game.ts';
+import {releaseDownedSuspectWeapons} from '../src/breach-suspect-weapons.ts';
 import {commitSuspectSurrender} from '../src/breach-suspect-compliance.ts';
 import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
 import {contextActionChoices} from '../src/ui/context-actions.ts';
@@ -78,5 +79,23 @@ test('D15.8 a surrendered suspect does not physically pin their dropped weapon',
    stepSession(s,1/60);
   assert.equal(gun.status,'secured','operator secures the actual dropped object');
   assert.equal(gun.securedById,a.id);
+ }finally{activateSite(null);}
+});
+
+test('a deceased suspect produces recoverable weapon evidence exactly once',()=>{
+ const s=newSession(0,4);
+ try{
+  const suspect=enemies(s)[0];
+  suspect.health=0;suspect.downedAt=1;suspect.deathAt=2;
+  releaseDownedSuspectWeapons(s,suspect);
+  const weapons=s.droppedFirearms.filter(w=>w.ownerId===suspect.id);
+  assert.ok(weapons.some(w=>!w.secondaryWeapon&&w.status==='loose'));
+  const ids=weapons.map(w=>w.id);
+  releaseDownedSuspectWeapons(s,suspect);
+  assert.deepEqual(s.droppedFirearms.filter(w=>w.ownerId===suspect.id).map(w=>w.id),ids);
+  weapons[0].status='secured';weapons[0].securedById='rook';
+  releaseDownedSuspectWeapons(s,suspect);
+  assert.equal(weapons[0].status,'secured');
+  assert.equal(s.droppedFirearms.filter(w=>w.ownerId===suspect.id).length,ids.length);
  }finally{activateSite(null);}
 });
