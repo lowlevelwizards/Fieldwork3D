@@ -2,6 +2,7 @@
 import {selectWallEvents,type WallSurfaceRecipe,type WallEffect,type WallEffectFilter} from './worldgen/wall-surface-recipe.ts';
 import {prepareWallArt,eventArtSeed} from './wall-material-lab-ma-art.ts';
 const clamp=(n:number,a=0,b=1)=>Math.max(a,Math.min(b,n));
+const hash=(n:number)=>((Math.imul(n^(n>>>16),0x45d9f3b)>>>0)/4294967295);
 type RGB=[number,number,number];
 const rgb=(hex:number):RGB=>[(hex>>>16)&255,(hex>>>8)&255,hex&255];
 const tint=(base:RGB,target:RGB,amount:number):RGB=>base.map((c,i)=>Math.round(c+(target[i]-c)*amount)) as RGB;
