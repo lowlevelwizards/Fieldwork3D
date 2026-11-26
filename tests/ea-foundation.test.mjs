@@ -93,3 +93,28 @@ test('EA2 resumed candidate search is deterministic, bounded and reuses the acce
  assert.deepEqual(reachableInvestigation(origin,target,(_a,b)=>++synchronous===13?[b]:[],()=>true),result.point);
  assert.equal(probeInvestigationRoute(origin,target,0,4,()=>{throw Error('invalid point routed');},()=>false).kind,'exhausted');
 });
+
+import {buildAiSiteIndex,aiSiteIndex,connectedAreaCenters} from '../src/breach-ai-site-index.ts';
+import {sessionWorldGeometry} from '../src/breach-world-context.ts';
+import {searchCandidates} from '../src/breach-ai-search.ts';
+test('EA3 semantic anchors are session/revision scoped; window is not a walkable edge',()=>{
+ const rooms=[{id:'a',kind:'room',x:0,y:0,w:100,h:100},{id:'b',kind:'room',x:100,y:0,w:100,h:100},{id:'c',kind:'room',x:0,y:100,w:100,h:100}];
+ const door={id:'d',a:point(100,30),b:point(100,70)};
+ const index=buildAiSiteIndex({rooms,windows:[{id:'w',x:50,y:100,width:30,vertical:false}]},[],[door]);
+ assert.deepEqual(connectedAreaCenters(index,point(50,50)),[point(150,50)]);
+ assert.equal(index.portals.find(x=>x.id==='w').kind,'window');
+ const s=newSession(),world=sessionWorldGeometry(s);
+ const before=aiSiteIndex(world,s.doors);
+ assert.equal(aiSiteIndex(world,s.doors),before);
+ world.invalidate();
+ assert.notEqual(aiSiteIndex(world,s.doors),before);
+ assert.notEqual(aiSiteIndex(sessionWorldGeometry(newSession()),s.doors),before);
+});
+test('EA7 local search is not starved by distant earlier fixtures or doors',()=>{
+ const room={id:'local',kind:'room',x:0,y:0,w:200,h:200};
+ const far=Array.from({length:60},(_,i)=>({x:1000+i*10,y:1000,w:20,h:20}));
+ const near={x:100,y:100,w:20,h:20};
+ const result=searchCandidates(point(100,100),45,[room],[],[...far,near]);
+ assert.ok(result.some(p=>Math.abs(p.x-100)===29||Math.abs(p.y-100)===29));
+ assert.deepEqual(result,searchCandidates(point(100,100),45,[room],[],[near,...far]));
+});

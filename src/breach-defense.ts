@@ -6,6 +6,7 @@ import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {directionalCoverFrom} from './breach-cover-direction.ts';
 import {coverScore} from './breach-defense-scoring.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
+import {aiSiteIndex,buildAiSiteIndex} from './breach-ai-site-index.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type Defender={id:string;p:Pt;health:number;defense:Pt|null;
  posture?:'stand'|'crouch'};
@@ -24,34 +25,8 @@ export function defenseCandidates(origin:Pt,threat:Pt,doors:Door[],world?:Sessio
     if(!sweptBodyClear(origin,p,doors,8,world))return;
     candidates.add(key);options.push(p);
   };
-  for(const c of (world?.cover??COVER)){
-    for(const q of [{x:c.x-c.w/2-19,y:c.y},{x:c.x+c.w/2+19,y:c.y},
-      {x:c.x,y:c.y-c.h/2-19},{x:c.x,y:c.y+c.h/2+19}]){
-      consider(q);
-    }
-  }
-  // Derive actual room corners rather than assuming a fixed 640x740
-  // floor-plan. This also works with corridor and archetype sites.
-  const site=world?world.site:activeSite();
-  const rooms=site?.rooms??[{x:112,y:100,w:478,h:432}];
-  for(const room of rooms){
-    const margin=29;
-    for(const x of [room.x+margin,room.x+room.w-margin])
-      for(const y of [room.y+margin,room.y+room.h-margin])
-        consider({x,y},240);
-    // Slightly offset wall overlooks create alternative watched approaches.
-    for(const x of [room.x+margin,room.x+room.w-margin])
-      consider({x,y:room.y+room.h/2},215);
-    for(const y of [room.y+margin,room.y+room.h-margin])
-      consider({x:room.x+room.w/2,y},215);
-  }
-  for(const door of doors){
-    const p=doorCenter(door);
-    for(const x of [-38,38])for(const y of [-38,38]){
-      const q={x:p.x+x,y:p.y+y};
-      consider(q,195);
-    }
-  }
+  const index=world?aiSiteIndex(world,doors):buildAiSiteIndex(activeSite()??null,COVER,doors);
+  for(const anchor of index.anchors)consider({...anchor.p},anchor.radius);
   if(world?world.passable(origin):passable(origin))consider(origin);
   return options;
 }
