@@ -42,6 +42,34 @@ export function requestWithdrawal(s:Pick<Session,
  return true;
 }
 
+/** Real transport handoff at the extraction boundary. The primary capture
+ * target retains its dedicated mission resolution and clinical gate. */
+export function commitTransportExtractions(s:Session):{patient:TeamActor;carrier:TeamActor}[]{
+ if(s.phase!=='running'||s.site?.training)return [];
+ const handedOff:{patient:TeamActor;carrier:TeamActor}[]=[];
+ for(const carrier of s.operators){
+  if(carrier.side!=='blue'||carrier.health<=0||!carrier.transportLatched||
+    !carrier.carryingId||!inExtraction(s,carrier.p))continue;
+  const patient=s.operators.find(p=>p.id===carrier.carryingId&&
+   p.carriedById===carrier.id&&p.health<=0&&inExtraction(s,p.p));
+  if(!patient||patient.deathAt!=null||
+    s.missionType==='capture'&&patient.id===s.captureTarget)continue;
+  patient.carriedById=null;patient.transportMode=null;
+  carrier.carryingId=null;carrier.transportLatched=false;
+  patient.plan=[];patient.nav=[];patient.path=[];patient.velocity=0;
+  if(s.passageLeases)delete s.passageLeases[patient.id];
+  const archive=patient.side==='blue'?
+   (s.extractedOperators??(s.extractedOperators=[])):
+   (s.extractedSuspects??(s.extractedSuspects=[]));
+  archive.push(patient);handedOff.push({patient,carrier});
+ }
+ if(handedOff.length){
+  const ids=new Set(handedOff.map(h=>h.patient.id));
+  s.operators=s.operators.filter(a=>!ids.has(a.id));
+ }
+ return handedOff;
+}
+
 /** A player may commit a single person only after they physically reach the
  * live extraction zone. The click queues intent; the next fixed GO tick
  * verifies the position again before retiring the actor from combat. */
@@ -89,7 +117,8 @@ export function deriveOperationOutcome(s:Pick<Session,
  const archived=s.extractedOperators??[];
  const extracted=[...archived.filter(a=>a.health>0),
   ...active.filter(a=>a.health>0&&inExtraction(s,a.p))];
- const evacuated=active.filter(a=>a.health<=0&&inExtraction(s,a.p));
+ const evacuated=[...archived.filter(a=>a.health<=0),
+  ...active.filter(a=>a.health<=0&&inExtraction(s,a.p))];
  const accounted=new Set([...extracted,...evacuated].map(a=>a.id));
  const disposition:OperationDisposition=s.phase==='won'?'completed':
   s.withdrawalCompleted===true&&s.phase==='lost'?'withdrawn':
