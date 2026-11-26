@@ -1,0 +1,29 @@
+name: Material art critical checks
+on:
+  pull_request:
+    paths:
+      - 'src/worldgen/wall-surface-recipe.ts'
+      - 'src/worldgen/wall-weathering-art.ts'
+      - 'src/wall-material-lab*'
+      - 'wall-material-lab.html'
+      - 'src/rendering/pixel-decals.ts'
+      - 'src/rendering/pixel-recipes.ts'
+      - 'src/worldgen/condition-visual.ts'
+      - 'src/rendering/floor-wear-raster.ts'
+      - 'tests/ma-*.test.mjs'
+      - '.github/workflows/material-art-critical.yml'
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Targeted art and atlas contracts
+        run: node --experimental-strip-types --test tests/ma-*.test.mjs tests/wall-material-lab.test.mjs tests/w3-wall-surface-atlas.test.mjs tests/w7-floor-surface-atlas.test.mjs
+      - name: Production build
+        run: |
+          npm run build
+          test -s dist/wall-material-lab.html
