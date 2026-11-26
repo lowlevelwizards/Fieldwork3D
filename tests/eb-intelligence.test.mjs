@@ -64,3 +64,18 @@ test('EB20 generated profile, issued kit and briefing remain stable after resolv
  assert.deepEqual(compileMissionFacts(first).threatGroups,compileMissionFacts(again).threatGroups);
  assert.deepEqual(createOperationDossier(compileMissionFacts(first),{quality:'high'}),createOperationDossier(compileMissionFacts(again),{quality:'high'}));
 });
+
+import {attachIntelEvidence,validRecoveredIntelReceipt,evidenceDescription} from '../src/breach-optional-intel.ts';
+test('EB20 linked evidence content is resolved from starting affiliation and only extracted receipts enter archive',()=>{
+ const site=generateSite(17,'small',undefined,{mission:'capture',groupProfile:'security'});
+ const s=newSession(0,17,'true-blind','small','capture',site);
+ const group=compileMissionFacts(s).threatGroups;
+ const items=[{id:'x',kind:'digital',model:'laptop',collectedBy:'rook',collectedAt:2},{id:'y',kind:'documents',model:'papers',collectedBy:null,collectedAt:null}];
+ attachIntelEvidence(items,group);
+ assert.equal(items[0].evidence.topic,'equipment');assert.equal(items[1].evidence.topic,'personnel');
+ assert.equal(items[0].evidence.group,'security');
+ const result=recoveredIntelReceipts(items,['x']);
+ assert.equal(result.length,1);assert.ok(validRecoveredIntelReceipt(result[0]));
+ assert.match(evidenceDescription(result[0].evidence),/Security personnel/);
+ assert.ok(!JSON.stringify(result).includes('"p":'));
+});
