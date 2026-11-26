@@ -23,7 +23,7 @@ export const BRIEFS:Record<OperationKind,OperationBrief>={
   intel:{
     code:'DOCUMENT RECOVERY',name:'Recover Intelligence',
     objective:'Search for the intelligence cache and secure its contents.',
-    condition:'Hold the cache briefly to finish evidence collection.',
+    condition:'Reach and collect the physical evidence cache.',
     extraction:'Withdraw a surviving operator with the recovered intelligence.',
     notes:'Avoid unnecessary engagement. Intel location may be approximate.',
   },

@@ -21,11 +21,16 @@ const rows=[];let modernWitness;
 for(const {seed,mission,scale} of cases){
  const context={mission,premise:'routine'};
  const old=oldGenerate(seed,scale,undefined,context);
- const legacy=generateSite(seed,scale,undefined,context,{streetInfrastructure:false});
+ const oldLegacy=oldGenerate(seed,scale,undefined,context,{streetInfrastructure:false});
+ const legacy=generateSite(seed,scale,undefined,context,{streetInfrastructure:false,expandedDoorFamilies:false});
+ const historicalStreet=generateSite(seed,scale,undefined,context,{expandedDoorFamilies:false});
  const next=generateSite(seed,scale,undefined,context);
- assert.deepEqual(legacy,old,'exact base legacy layout '+seed+':'+mission+':'+scale);
- for(const key of ['rooms','walls','doors','windows','spawn','enemies','objective','extract','encounter','identity','planFamily'])
-  assert.deepEqual(next[key],old[key],'new-site mission contract '+seed+':'+mission+':'+key);
+ const sameArchitecture=generateSite(seed,scale,undefined,context,{streetInfrastructure:false});
+ assert.deepEqual(legacy,oldLegacy,'exact base legacy layout '+seed+':'+mission+':'+scale);
+ for(const key of ['rooms','walls','doors','windows','spawn','enemies','objective','extract','encounter','identity','planFamily']){
+  assert.deepEqual(historicalStreet[key],old[key],'historical new-site mission contract '+seed+':'+mission+':'+key);
+  assert.deepEqual(next[key],sameArchitecture[key],'street cannot alter selected architecture '+seed+':'+mission+':'+key);
+ }
  if(next.streetInfrastructure){
   assert.deepEqual(streetConflicts(next,next.streetInfrastructure),[]);
   modernWitness??={site:next,mission,scale};

@@ -49,7 +49,7 @@ import {npcLocomotionSupport} from './breach-npc-locomotion-support.ts';
 import {packInertia} from './breach-gear-inertia.ts';
 import {LEG_HIP_HEIGHT,legRestRise} from './breach-leg-geometry.ts';
 import {turnHierarchy} from './breach-turn-hierarchy.ts';
-import {contactReaction} from './breach-contact-reactions.ts';
+import {contactReaction,glassBashMotion} from './breach-contact-reactions.ts';
 import {kickMotion} from './breach-door-actions.ts';
 import {reloadPhase} from './breach-magazines.ts';
 import {reloadHandKey,reloadHandChestTarget} from './breach-reload-motion.ts';
@@ -125,7 +125,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.bashRole??null,!!p.blocked);
   const preparedDecision=prepareOperatorPoseDecision(p,{
     previousPose:r.lastPose,downProgress,
-    pushActive:bash.active&&p.bashRole==='push',
+    pushActive:bash.active&&(p.bashRole==='push'||p.bashRole==='glass'),
     receivingBash:bash.active&&p.bashRole==='receive',
     previousHandling:r.lastHandling??undefined,
     previousHandlingAt:r.lastHandlingAt
@@ -939,6 +939,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       leftGrip.set(-1,3+15*raised,-6);
       rightGrip.set(-1,3+15*raised,6);
     }
+  }else if(bash.active&&p.bashRole==='glass'&&p.glassBashContact){
+    // Capture the real pane before fracture; bounded IK owns the limb.
+    reaching=true;
+    const motion=glassBashMotion(p.seconds-(p.lastBashAt??-100));
+    const target=p.glassBashContact;
+    const local=P(target.x-p.x,target.height-frame.chest.position.y,target.y-p.z);
+    local.applyAxisAngle(P(0,1,0),-r.legacyYaw);
+    local.applyAxisAngle(P(0,1,0),-frame.chest.rotation.y);
+    local.sub(frame.chest.position.clone().setY(0));
+    leftGrip.copy(fit.support).lerp(P(3,7,-7),motion.windup).lerp(local,motion.strike);
   }else if(bash.active&&p.bashRole==='push'){
     // A short forearm/shoulder extension separates the opponent, while
     // the primary hand keeps the gun from flailing through the torso.
@@ -1247,7 +1257,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // arm from the weapon must not hide an unreachable world interaction.
     const contactDistance=i===0&&fullDoorContact?
       fullDoorContact.distanceTo(shoulder):0;
-    if(i===0&&reaching&&!physicalContact&&
+    if(i===0&&reaching&&!physicalContact&&p.bashRole!=='glass'&&
        (!reachable||contactDistance>19.92))
       r.reachRequest={kind:'door',distance:Math.max(
         desired.distanceTo(shoulder),contactDistance)};

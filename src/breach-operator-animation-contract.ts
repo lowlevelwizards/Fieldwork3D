@@ -18,7 +18,7 @@ import type {LabPistolContacts} from './secondary-upper-body-pose.ts';
 import type {ReplayFeet} from './breach-replay-motion.ts';
 import type {MomentumEnvelope} from './breach-motion-transitions.ts';
 import type {ReloadMode} from './breach-magazines.ts';
-import type {BashRole} from './breach-contact-reactions.ts';
+import type {BashRole,GlassBashContact} from './breach-contact-reactions.ts';
 import type {Handling,HandlingIntent} from './breach-weapon-pose.ts';
 import type {HandlingTransition} from './breach-handling-transition.ts';
 import type {WoundRegion,FallPose} from './breach-wounds.ts';
@@ -77,7 +77,7 @@ export type OperatorPose={
   /** Fixed at kick windup, never recomputed from a rotating door leaf. */
   kickImpactPoint?:{x:number;y:number}|null;
   doorMethod?:'open'|'close'|'kick'|'hold';down:boolean;
-  lastBashAt?:number;bashRole?:BashRole;
+  lastBashAt?:number;bashRole?:BashRole;glassBashContact?:GlassBashContact|null;
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
   /** A separate Session-owned visual now represents this released firearm. */
   worldWeaponReleased?:boolean;

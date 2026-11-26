@@ -14,14 +14,16 @@ const base=(action,overrides={})=>({
  distance:42,maximumRange:42,unobstructed:true,...overrides
 });
 
-test('R6.1 registry exhaustively classifies 17 current interaction subtypes',()=>{
+test('R6.1 registry exhaustively classifies 18 current interaction subtypes',()=>{
  const {interactions}=declaredActionTypes(schema);
  assert.deepEqual(Object.keys(TACTICAL_ACTION_MODALITY).sort(),interactions.sort());
  const categories=Object.values(TACTICAL_ACTION_MODALITY);
  assert.equal(categories.filter(x=>x==='voice').length,5);
  assert.equal(categories.filter(x=>x==='person-contact').length,4);
- assert.equal(categories.filter(x=>x==='object-contact').length,6);
+ assert.equal(categories.filter(x=>x==='object-contact').length,7);
  assert.equal(categories.filter(x=>x==='release').length,2);
+ assert.equal(TACTICAL_ACTION_MODALITY['break-window'],'object-contact');
+ assert.equal(assessTacticalAction(base('break-window')).needsContact,true);
  for(const action of ['follow-civilian','stop-following-civilian',
    'challenge-suspect','escort-suspect','stop-escorting-suspect']){
   assert.equal(TACTICAL_ACTION_MODALITY[action],'voice');

@@ -19,6 +19,7 @@ import {type Site,type Room,type BuildingArchetype,type SiteScale} from '../brea
 import {seeded} from './seeded-rng.ts';
 import {type Pt,type Door,type Segment} from '../breach-core.ts';
 import {ordinaryDoorOpeningWidth} from '../breach-door-proportions.ts';
+import {primaryEntranceSpan} from './primary-entrance.ts';
 import {chooseMissionObjective} from './mission-objective-placement.ts';
 import {chooseTopologyAwareObjective} from './objective-entry-topology.ts';
 import type {OperationKind} from '../breach-operations.ts';
@@ -72,22 +73,26 @@ function cut(wall:Segment,id:string,walls:Segment[],doors:Door[],fraction=.5){
  doors.push({id,a,b,open:false,openedAt:-1});
 }
 /** A genuinely wide passage with two independent, operable 48-unit leaves. */
-function cutPaired(wall:Segment,id:string,walls:Segment[],doors:Door[]):boolean{
- const length=span(wall);
- if(length<146)return false;
+function cutPaired(wall:Segment,id:string,walls:Segment[],doors:Door[],fraction=.5):boolean{
+ const length=span(wall),half=48;
+ if(length<2*half+50)return false;
  const ux=(wall.b.x-wall.a.x)/length,uy=(wall.b.y-wall.a.y)/length;
- const mid={x:(wall.a.x+wall.b.x)/2,y:(wall.a.y+wall.b.y)/2};
- const a={x:mid.x-ux*48,y:mid.y-uy*48};
- const b={x:mid.x+ux*48,y:mid.y+uy*48};
+ const margin=(half+25)/length;
+ const t=Math.max(margin,Math.min(1-margin,fraction));
+ const mid={x:wall.a.x+ux*length*t,y:wall.a.y+uy*length*t};
+ const a={x:mid.x-ux*half,y:mid.y-uy*half};
+ const b={x:mid.x+ux*half,y:mid.y+uy*half};
  walls.push({a:wall.a,b:a},{a:b,b:wall.b});
- doors.push({id:id+'-L',a,b:mid,kind:'hinged',hinge:'a',swing:-1,
-   pairedWith:id+'-R',open:false,openedAt:-1});
- doors.push({id:id+'-R',a:mid,b,kind:'hinged',hinge:'b',swing:1,
-   pairedWith:id+'-L',open:false,openedAt:-1});
+ const left=id==='FRONT'?id:id+'-L',right=id+'-R';
+ doors.push({id:left,a,b:mid,kind:'hinged',hinge:'a',swing:-1,
+   pairedWith:right,open:false,openedAt:-1});
+ doors.push({id:right,a:mid,b,kind:'hinged',hinge:'b',swing:1,
+   pairedWith:left,open:false,openedAt:-1});
  return true;
 }
 export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
- scale:SiteScale='expanded',subtype='',mission?:OperationKind):Site{
+ scale:SiteScale='expanded',subtype='',mission?:OperationKind,
+ expandedDoorFamilies=scale==='large'):Site{
  const baseline=architecturalBlueprint(kind,seed);
  const selected:Blueprint=kind==='apartment'?apartmentUnitBlueprint(seed,scale):
    scale==='small'||scale==='large'?sizedBlueprint(kind,seed,scale,baseline):baseline;
@@ -159,7 +164,11 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   const south=side(x,yy,xx,yy);
   if(!adj(c,c.row+1,c.col,south,'horizontal')){
    if(c.col===frontage.col&&c.row===frontage.row){
-    cut(south,'FRONT',walls,doors,frontage.fraction);frontFound=true;
+    const publicPair=expandedDoorFamilies&&['retail','restaurant','office','clinic','motel'].includes(kind)&&
+      seed%3!==1;
+    if(!(publicPair&&cutPaired(south,'FRONT',walls,doors,frontage.fraction)))
+      cut(south,'FRONT',walls,doors,frontage.fraction);
+    frontFound=true;
    }else walls.push(south);
   }
  }
@@ -198,8 +207,13 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  const pairedRoles:Partial<Record<BuildingArchetype,readonly string[]>>={
   office:['hallway|lobby','hallway|meeting','lobby|reception'],
   clinic:['hallway|reception','hallway|waiting','reception|waiting'],
-  retail:['checkout|sales'],
-  restaurant:['dining|reception','dining|service']
+  retail:['checkout|sales','sales|stockroom','sales|service'],
+   restaurant:['dining|reception','dining|service'],
+   house:['dining|living'],townhouse:['dining|living'],
+   warehouse:['aisle|loading','loading|packing','loading|storage','packing|storage'],
+   garage:['bay|workshop','bay|parts','bay|waiting'],
+   utility:['control|service','equipment|service','maintenance|service'],
+   motel:['hallway|lobby','lobby|reception']
  };
  for(const edge of internal){
   if(edge.free)continue;
@@ -210,14 +224,17 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
     rng()<loopChance(circulationStyle,a,b);
   if(edge.selected||optionalLoop){
    const pair=[a.role,b.role].sort().join('|');
-   const double=seed%3!==1&&!pairedPassage&&edge.selected&&
-     edge.length>=146&&(pairedRoles[kind]??[]).includes(pair);
+   const legacyPairs=['office','clinic','restaurant'].includes(kind)||
+     kind==='retail'&&pair==='checkout|sales';
+   const double=(expandedDoorFamilies||seed%3!==1)&&!pairedPassage&&edge.selected&&
+     edge.length>=146&&(pairedRoles[kind]??[]).includes(pair)&&
+     (expandedDoorFamilies||legacyPairs);
    if(double&&cutPaired(edge.wall,'INTER-DOUBLE',walls,doors))
      pairedPassage=true;
    else cut(edge.wall,'D'+id++,walls,doors);
   }else walls.push(edge.wall);
  }
- const actualFront=doors.find(d=>d.id==='FRONT')!;
+ const actualFront=primaryEntranceSpan(doors)!;
  const frontX=(actualFront.a.x+actualFront.b.x)/2;
  const frontY=(actualFront.a.y+actualFront.b.y)/2;
  const entrance=point(frontX,frontY+53);
@@ -262,7 +279,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   clinic:['staff','supply']
  };
  const preferred=accessRoles[kind]??[];
- const front=doors.find(d=>d.id==='FRONT')!;
+ const front=primaryEntranceSpan(doors)!;
  const frontMid={x:(front.a.x+front.b.x)/2,y:(front.a.y+front.b.y)/2};
  const interior=(p:Pt)=>cells.find(c=>p.x>c.room.x+1&&
    p.x<c.room.x+c.room.w-1&&p.y>c.room.y+1&&
@@ -376,7 +393,10 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   const index=walls.indexOf(candidate.wall);
   if(index<0)continue;
   walls.splice(index,1);
-  cut(candidate.wall,'COURT-'+(++courtDoors),walls,doors);
+  const id='COURT-'+(++courtDoors);
+  const patio=expandedDoorFamilies&&['house','townhouse','restaurant','motel'].includes(kind);
+  if(!(patio&&seed%3!==1&&cutPaired(candidate.wall,id,walls,doors)))
+    cut(candidate.wall,id,walls,doors);
  }
  const apartmentUnits=new Map<string,string[]>();
  if(kind==='apartment')for(const c of cells){
@@ -387,6 +407,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   ({id,kind:'apartment',roomIds}));
  const west=xs[0],east=xs[xs.length-1],north=ys[0],south=ys[ys.length-1];
  return {seed,name:b.family.toUpperCase(),archetype:kind,scale,
+   ...(expandedDoorFamilies?{expandedDoorFamilies:true as const}:{}),
    planFamily:b.family,programLocked:true,circulationStyle,
    rooms:cells.map(c=>c.room),walls,doors,openings,cover:[],units,
    entrance,spawn,enemies,

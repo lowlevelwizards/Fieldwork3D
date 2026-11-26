@@ -163,7 +163,7 @@ export function buildSiteDoors(site:Site,host:SiteOpeningsHost,
       // both wall faces, not exactly onto them (shutter jambs were coplanar).
       const jambDepth=Math.max(9.6,profile.jambDepth);
       const headerDepth=Math.max(9.8,profile.headerDepth);
-      const headerExtension=door.pairedWith?profile.jambWidth:2*profile.jambWidth;
+      const headerExtension=door.pairedWith?profile.jambWidth-.1:2*profile.jambWidth;
       const headerX=door.pairedWith?(door.hinge==='b'?1:-1)*profile.jambWidth/2:0;
       for(const side of jambSides){
         host.box(frame,side*jambX,DOOR_CLEAR_VISUAL_HEIGHT/2,0,
@@ -181,7 +181,7 @@ export function buildSiteDoors(site:Site,host:SiteOpeningsHost,
       host.box(frame,headerX,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight+.58,1.50,
         length+headerExtension+(door.pairedWith?0:1),
         1.1,headerDepth+.8,doorTrim,false);
-      const threshold=host.box(frame,0,.275,0,length,
+      const threshold=host.box(frame,0,profile.thresholdHeight/2+.04,0,length-(door.pairedWith?.12:0),
         profile.thresholdHeight,profile.thresholdDepth,doorTrim,false);
       const leaf=new THREE.Group();
       let glassPane:THREE.Mesh|undefined;
@@ -204,9 +204,11 @@ export function buildSiteDoors(site:Site,host:SiteOpeningsHost,
         host.box(leaf,0,4,2.5,length*.37,2,1.4,doorTrim,false); // lower pull
       }else{
         if(door.kind==='sliding'){
-          host.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+2,1.6,
-            length*2.1,3,6,metal,false);
-          host.box(frame,0,1,1.6,length*2.1,1.3,4,metal,false);
+          const railX=door.pairedWith?(door.slideDirection??1)*length/2:0;
+          const railWidth=door.pairedWith?length*2-.15:length*2.1;
+          host.box(frame,railX,DOOR_CLEAR_VISUAL_HEIGHT+2,1.6,
+            railWidth,3,6,metal,false);
+          host.box(frame,railX,1,1.6,railWidth,1.3,4,metal,false);
         }
         const style=door.style??'wood';
         const panel=style==='wood'?doorMat:style==='exit'?
@@ -387,8 +389,11 @@ export function buildSiteWindows(site:Site,host:SiteOpeningsHost,
       }
 
       for(const x of [-opening.width/2,opening.width/2])
-        host.box(group,x,baseTop+glassHeight/2,0,3,
-          glassHeight+2,9.65,trim,false);
+        host.box(group,x,baseTop+glassHeight/2,0,3.5,
+          glassHeight+2,11.4,trim,false);
+      const railWidth=Math.max(1,opening.width-3.5);
+      for(const y of [baseTop+1,glassTop-1])
+        host.box(group,0,y,0,railWidth,2,10.8,trim,false);
       // Architectural divisions remain thin mullions, never extra cover.
       if(style==='standard'||style==='bay')
         host.box(group,0,baseTop+glassHeight*.48,2.3,

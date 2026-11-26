@@ -70,6 +70,8 @@ export type Site={
   wallDetails?:import('./worldgen/wall-dresser.ts').WallDetail[];
   openings?:WideOpening[];
   exteriorZones?:ExteriorZone[];
+  /** EI large-site doorway grammar. Absent preserves historical layouts. */
+  expandedDoorFamilies?:true;
   /** ST versioned public frontage; absent means historical street geometry. */
   streetInfrastructure?:import('./worldgen/street-infrastructure.ts').StreetInfrastructure;
   structures?:{id:string;kind:string;x:number;y:number;w:number;h:number}[];
@@ -85,7 +87,7 @@ export {seeded} from './worldgen/seeded-rng.ts';
 export function generateSite(seed:number,scale:SiteScale='standard',
  onProgress?:(phase:'layout'|'furnishing'|'scoring',attempt:number)=>void,
  encounterContext:EncounterContext={},
- generationOptions:{archetype?:BuildingArchetype;vehiclePlacement?:boolean;streetInfrastructure?:boolean}={}):Site{
+ generationOptions:{archetype?:BuildingArchetype;vehiclePlacement?:boolean;streetInfrastructure?:boolean;expandedDoorFamilies?:boolean}={}):Site{
  const kind=generationOptions.archetype??
    (['house','townhouse','apartment','retail','office',
   'garage','warehouse','restaurant','motel','utility','clinic'] as const)
@@ -123,7 +125,7 @@ export function generateSite(seed:number,scale:SiteScale='standard',
    onProgress?.('layout',attempt);
    const geometry=partitionMotelGuestUnits(
      compileArchitecturalSite(kind,seed+attempt*9973,scale,subtype,
-       mission));
+       mission,generationOptions.expandedDoorFamilies??scale==='large'));
    geometry.seed=seed;
    geometry.identity=buildingIdentity(kind,seed,scale,geometry.roomCount);
    onProgress?.('furnishing',attempt);

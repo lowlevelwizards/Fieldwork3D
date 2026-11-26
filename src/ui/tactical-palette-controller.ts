@@ -8,6 +8,7 @@ import {medicalTreatmentChoices,medicalPatientStatus,
 import {doorCenter,type Door,type Pt} from '../breach-core.ts';
 const paletteDistance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 import {canRelocateCover} from '../breach-movable-cover.ts';
+import {nearestBashableWindow} from '../breach-window-bash.ts';
 import {sitePowerControls,controlPosition,POWER_CONTROL_REACH,
  currentControlState} from '../equipment-site-power-controls.ts';
 import {interruptsWatch} from '../breach-plan.ts';
@@ -509,7 +510,8 @@ export function createTacticalPaletteController(config:{
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
     formationEditable:!!door&&canEdit(state),
     stackFormation:door?selectedDoorStackFormation(state,door.id):'auto',
-    nearMovable,nearWindow:!!nearWindow,nearWindowOpen:nearWindow?.open,
+    nearMovable,nearBreakableGlass:!!nearestBashableWindow(state,at,p=>liveVisibility(state,p)),
+    nearWindow:!!nearWindow,nearWindowOpen:nearWindow?.open,
     powerActions,treatTargetName:treatmentCandidates.length?
       'CHOOSE PATIENT':undefined,
      treatCaptureTarget:false,

@@ -3,6 +3,7 @@
  * All rectangles use actual world coordinates; nominal lanes never shrink.
  */
 import type {Site} from '../breach-site.ts';
+import {primaryEntranceSpan} from './primary-entrance.ts';
 import type {PublicStreet,StreetRect} from './public-street-layout.ts';
 import {STREET_DIMENSIONS as D,STREET_SECTIONS,streetKindFor,type StreetKind} from './street-standards.ts';
 type Entry='north'|'south'|'east'|'west';
@@ -55,7 +56,7 @@ export function proposeStreetInfrastructure(site:Site,override?:StreetKind,priva
  const sidewalk=sidewalkWidth?rect(mid,span,sidewalkAt,sidewalkWidth):null;
  const vergeAt=sidewalkAt+sidewalkWidth;
  const verge=vergeWidth?rect(mid,span,vergeAt,vergeWidth):null;
- const front=site.doors.find(d=>d.id==='FRONT');
+ const front=primaryEntranceSpan(site.doors);
  const entrance=front?(front.a[axis]+front.b[axis])/2:site.entrance[axis];
  const alongAt=Math.min(end-16,Math.max(start+16,entrance));
  const privateDepth=vergeAt+vergeWidth;

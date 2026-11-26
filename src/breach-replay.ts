@@ -97,6 +97,8 @@ export type ReplayActorFrame=ActorFrame & {
  doorHandContact?:DoorHandContact|null;
  kickFoot?:0|1|null;
  kickImpactPoint?:Pt|null;
+ lastBashAt?:number;lastBashRole?:TeamActor['lastBashRole'];
+ glassBashContact?:TeamActor['glassBashContact'];
  coverStanceDrop?:number;
  /** A3.6–7 optional for backwards-compatible historical films. */
  physicalContact?:PhysicalContact|null;
@@ -258,6 +260,8 @@ export function snapshot(s:Session,seenGround?:string[],
       lastDoorId:a.lastDoorId,lastDoorMethod:a.lastDoorMethod,
       kickFoot:a.kickFoot??null,
       kickImpactPoint:a.kickImpactPoint?position(a.kickImpactPoint):null,
+      lastBashAt:a.lastBashAt,lastBashRole:a.lastBashRole,
+      glassBashContact:a.glassBashContact?{...a.glassBashContact}:null,
       coverStanceDrop:a.coverStanceDrop??0,
       doorHandContact:a.doorHandContact?{
         ...a.doorHandContact,point:{...a.doorHandContact.point}
@@ -636,6 +640,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       kickFoot:copy.kickFoot??null,
       kickImpactPoint:copy.kickImpactPoint?
         position(copy.kickImpactPoint):null,
+      lastBashAt:copy.lastBashAt??-100,lastBashRole:copy.lastBashRole??null,
+      glassBashContact:copy.glassBashContact?{...copy.glassBashContact}:null,
       coverStanceDrop:copy.coverStanceDrop??0,
       coverStanceSource:null,
       pivotEpisode:null,

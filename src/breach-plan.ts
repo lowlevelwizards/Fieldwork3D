@@ -14,7 +14,7 @@ export type PieSide='cw'|'ccw';
 export type DoorMethod='open'|'close'|'kick'|'hold';
 export type PlanNode={
   id:number;kind:PlanKind;p:Pt;facing?:number;doorId?:string;
-  objectId?:string;pushDirection?:Pt;interaction?:'push'|'open-window'|'close-window'|
+  objectId?:string;pushDirection?:Pt;interaction?:'push'|'open-window'|'close-window'|'break-window'|
     'secure-civilian'|'follow-civilian'|'stop-following-civilian'|'restrain-civilian'|'release-civilian'|'release-capture-target'|'challenge-suspect'|'restrain-suspect'|'search-suspect'|'secure-firearm'|'escort-suspect'|'stop-escorting-suspect'|
     'power-on'|'power-off';
   method?:DoorMethod;duration?:number;syncCode?:string;holdOnContact?:boolean;

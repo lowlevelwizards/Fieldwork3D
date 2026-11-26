@@ -3,11 +3,15 @@
  * extraction accountability. No renderer, save or AI owns these records.
  */
 import type {Site} from './breach-site.ts';
-import type {Pt} from './breach-core.ts';
+import {pointToSegment,type Pt,type Obstacle} from './breach-core.ts';
+import {visibleSurfaceHeight} from './worldgen/decoration-anchors.ts';
 
 export type OptionalIntelKind='documents'|'communications'|'digital';
+export type OptionalIntelModel='folder'|'papers'|'laptop'|'flash-drive'|'phone'|'notebook';
 export type OptionalIntelItem={
  id:string;kind:OptionalIntelKind;p:Pt;roomId:string;
+ /** p is the accessible contact/observation anchor, surface is the visual prop. */
+ model?:OptionalIntelModel;surface?:{p:Pt;height:number;yaw:number;fixture:string;supportIndex?:number;supportOrigin?:Pt};
  discovered:boolean;collectedBy:string|null;collectedAt:number|null;
 };
 export type OptionalIntelGather={itemId:string;operatorId:string;elapsed:number};
@@ -30,34 +34,115 @@ function mix(seed:number):number{
  n=Math.imul(n^(n>>>15),0x846ca68b);
  return (n^(n>>>16))>>>0;
 }
-export function generateOptionalIntel(site:Site|undefined):OptionalIntelItem[]{
+const surfaceModels:Record<string,readonly OptionalIntelModel[]>={
+ desk:['folder','papers','laptop','flash-drive','notebook'],
+ 'meeting-table':['folder','papers','laptop','notebook'],
+ 'workbench':['papers','flash-drive','notebook'],
+ 'dining-table':['papers','laptop','phone','notebook'],
+ 'coffee-table':['papers','phone','notebook'],
+ nightstand:['phone','notebook','flash-drive'],
+ 'side-table':['phone','notebook'],
+ dresser:['folder','phone','notebook'],
+ 'filing-cabinet':['folder','papers'],
+ counter:['papers','phone','notebook'],
+ 'checkout':['papers','phone'],
+};
+const preferredRooms=new Set(['office','study','cubicles','meeting','control',
+ 'reception','staff','workshop','storage','stockroom','packing']);
+const modelKind=(model:OptionalIntelModel):OptionalIntelKind=>
+ model==='laptop'||model==='flash-drive'?'digital':model==='phone'?'communications':'documents';
+function generateEvidence(site:Site|undefined,primary=false,reservedRoomId?:string):OptionalIntelItem[]{
  if(!site||site.training)return [];
- const rooms=site.rooms.filter(r=>r.kind==='room'&&r.w>=35&&r.h>=35);
- const sorted=rooms.map((r,i)=>({
-  room:r,rank:mix((site.seed>>>0)^Math.imul(i+17,0x9e3779b9))
- })).sort((a,b)=>a.rank-b.rank||a.room.id.localeCompare(b.room.id));
- const wanted=Math.min(6,Math.max(2,Math.ceil(rooms.length/4)));
+ const rooms=site.rooms.filter(r=>r.kind==='room'&&r.w>=35&&r.h>=35&&
+   (primary?site.objective.x>=r.x&&site.objective.x<=r.x+r.w&&
+     site.objective.y>=r.y&&site.objective.y<=r.y+r.h:r.id!==reservedRoomId));
+ const cover=site.cover??[];
+ const inside=(p:Pt,r:typeof rooms[number],pad=9)=>p.x>=r.x+pad&&
+   p.x<=r.x+r.w-pad&&p.y>=r.y+pad&&p.y<=r.y+r.h-pad;
+ const clear=(p:Pt)=>cover.every(o=>Math.abs(p.x-o.x)>o.w/2+8||
+   Math.abs(p.y-o.y)>o.h/2+8)&&
+   (site.walls??[]).every(w=>pointToSegment(p,w)>9);
+ const sorted=rooms.map((room,i)=>({room,
+   rank:mix((site.seed>>>0)^Math.imul(i+17,0x9e3779b9))}))
+  .sort((a,b)=>Number(preferredRooms.has(b.room.purpose??''))-
+    Number(preferredRooms.has(a.room.purpose??''))||
+    a.rank-b.rank||a.room.id.localeCompare(b.room.id));
+ const wanted=primary?1:Math.min(6,Math.max(2,Math.ceil(rooms.length/4)));
  const output:OptionalIntelItem[]=[];
  for(const {room,rank} of sorted){
   if(output.length>=wanted)break;
-  const candidates=[
-   {x:room.x+room.w*.50,y:room.y+room.h*.50},
-   {x:room.x+room.w*.30,y:room.y+room.h*.35},
-   {x:room.x+room.w*.70,y:room.y+room.h*.65},
-   {x:room.x+room.w*.65,y:room.y+room.h*.30},
-   {x:room.x+room.w*.35,y:room.y+room.h*.70}
-  ];
-  const point=candidates.find(p=>
-   Math.hypot(p.x-site.objective.x,p.y-site.objective.y)>22&&
-   (site.cover??[]).every(o=>Math.abs(p.x-o.x)>o.w/2+9||
-     Math.abs(p.y-o.y)>o.h/2+9));
-  if(!point)continue;
-  const kind:OptionalIntelKind=(['documents','communications','digital'] as const)[rank%3];
-  output.push({id:'side-intel:'+site.seed+':'+room.id,
-   kind,p:point,roomId:room.id,discovered:false,
-   collectedBy:null,collectedAt:null});
+  const supports=cover.filter(o=>o.fixture&&surfaceModels[o.fixture]&&
+    inside(o,room,0)&&o.w>=15&&o.h>=15&&
+    (primary||Math.hypot(o.x-site.objective.x,o.y-site.objective.y)>22));
+  for(const o of supports){
+   const candidates=[
+    {x:o.x+o.w/2+10,y:o.y,dx:1,dy:0},
+    {x:o.x-o.w/2-10,y:o.y,dx:-1,dy:0},
+    {x:o.x,y:o.y+o.h/2+10,dx:0,dy:1},
+    {x:o.x,y:o.y-o.h/2-10,dx:0,dy:-1}
+   ];
+   const spot=candidates.find(v=>inside(v,room)&&clear(v)&&
+     (primary||Math.hypot(v.x-site.objective.x,v.y-site.objective.y)>22));
+   if(!spot)continue;
+   const fixture=o.fixture!;
+   const models=surfaceModels[fixture].filter(m=>m!=='laptop'||Math.min(o.w,o.h)>=23);
+   const model=models[rank%models.length];
+   const half=model==='laptop'||model==='folder'||model==='papers'?7:4;
+   const px=o.x+spot.dx*Math.max(0,o.w/2-half-2);
+   const py=o.y+spot.dy*Math.max(0,o.h/2-half-2);
+   const visual={x:px,y:py};
+   if((site.dressing??[]).some(d=>d.placement==='surface'&&
+     Math.hypot(d.x-px,d.y-py)<half+7))continue;
+   if(cover.some(other=>other!==o&&Math.abs(px-other.x)<other.w/2+half&&
+     Math.abs(py-other.y)<other.h/2+half))continue;
+   output.push({id:(primary?'primary-intel:':'side-intel:')+site.seed+':'+room.id,kind:modelKind(model),
+    model,p:{x:spot.x,y:spot.y},roomId:room.id,
+    surface:{p:visual,height:visibleSurfaceHeight(fixture),
+     yaw:Math.atan2(spot.dx,spot.dy),fixture,supportIndex:cover.indexOf(o),supportOrigin:{x:o.x,y:o.y}},
+    discovered:false,collectedBy:null,collectedAt:null});
+   break;
+  }
+ }
+ // Only furniture-free legacy/training fixtures use the old floor placement.
+ // Real furnished sites prefer fewer justified items to arbitrary floor loot.
+ if(!primary&&!cover.length)for(const {room,rank} of sorted){
+  if(output.length>=wanted)break;
+  const p={x:room.x+room.w*.5,y:room.y+room.h*.5};
+  if(Math.hypot(p.x-site.objective.x,p.y-site.objective.y)<=22||!clear(p))continue;
+  const model:OptionalIntelModel=(['folder','phone','flash-drive'] as const)[rank%3];
+  output.push({id:'side-intel:'+site.seed+':'+room.id,kind:modelKind(model),
+    model,p,roomId:room.id,discovered:false,collectedBy:null,collectedAt:null});
  }
  return output;
+}
+/** Primary and optional evidence share the same bounded generation rules.
+ * Only the primary item can occupy its authored objective room's reserved surface. */
+export function generateOptionalIntel(site:Site|undefined,reservedRoomId?:string):OptionalIntelItem[]{
+ return generateEvidence(site,false,reservedRoomId);
+}
+export function generatePrimaryIntel(site:Site|undefined):OptionalIntelItem|undefined{
+ if(!site||site.training)return undefined;
+ const placed=generateEvidence(site,true)[0];
+ return placed??{id:'primary-intel:'+site.seed,kind:'documents',model:'folder',
+   p:{...site.objective},roomId:site.rooms.find(r=>site.objective.x>=r.x&&
+    site.objective.x<=r.x+r.w&&site.objective.y>=r.y&&site.objective.y<=r.y+r.h)?.id??'',
+   discovered:false,collectedBy:null,collectedAt:null};
+}
+/** Move the visual and reachable contact together with the same mutable fixture.
+ * Stable cover indices are preserved by the existing physical-prop owner. */
+export function updateEvidenceSupport(item:OptionalIntelItem,cover:readonly Obstacle[]):boolean{
+ const surface=item.surface;
+ if(item.collectedBy!==null||!surface||surface.supportIndex===undefined||!surface.supportOrigin)return false;
+ const o=cover[surface.supportIndex];
+ if(!o||o.fixture!==surface.fixture||o.destroyed||o.toppled){
+  delete item.surface;return true;
+ }
+ const dx=o.x-surface.supportOrigin.x,dy=o.y-surface.supportOrigin.y;
+ if(Math.abs(dx)+Math.abs(dy)<.00001)return false;
+ item.p={x:item.p.x+dx,y:item.p.y+dy};
+ item.surface={...surface,p:{x:surface.p.x+dx,y:surface.p.y+dy},
+  supportOrigin:{x:o.x,y:o.y}};
+ return true;
 }
 /** Observation belongs to the real squad cone, even with full map enabled. */
 export function observeOptionalIntel(items:OptionalIntelItem[],
@@ -127,6 +212,7 @@ export function advanceOptionalIntel(s:IntelMission,dt:number,
     s.extractedOperators?.find(a=>a.id===item.collectedBy);
   if(!carrier||carrier.health<=0){
    if(carrier)item.p={...carrier.p};
+   delete item.surface;
    item.collectedBy=null;
   }
  }

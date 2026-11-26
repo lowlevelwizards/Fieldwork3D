@@ -12,7 +12,7 @@ import {resolveMissionKind,captureTargetIndex} from './breach-mission-semantics.
 import type {IntelMode} from './breach-intel.ts';
 import {initialIntel,bindIntelWorld} from './breach-intel.ts';
 import {createObjectiveKnowledge} from './breach-objective-intel.ts';
-import {generateOptionalIntel} from './breach-optional-intel.ts';
+import {generateOptionalIntel,generatePrimaryIntel} from './breach-optional-intel.ts';
 import {withActions} from './breach-actor-initial-state.ts';
 import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
 import {freshMagazineIssue} from './arsenal/live-magazine-capacity.ts';
@@ -214,6 +214,13 @@ export function assembleSession(index=0,siteSeed?:number,
     holdTime:0,rescue:null,captureTarget:null,captureSecured:false,
     intelCarrierId:null,optionalIntel:generateOptionalIntel(site),intelGather:null,
     extractedOperators:[],pendingExtractionIds:[]};
+  if(state.missionType==='intel'){
+    state.primaryIntel=generatePrimaryIntel(site);
+    if(state.primaryIntel){
+      state.scenario.objective=clone(state.primaryIntel.p);
+      state.optionalIntel=generateOptionalIntel(site,state.primaryIntel.roomId);
+    }
+  }
   if(state.missionType==='capture'){
     // Respect the mission-specific target role from the actual encounter.
     // Fallback to the legacy first defender for older saved/practice maps.

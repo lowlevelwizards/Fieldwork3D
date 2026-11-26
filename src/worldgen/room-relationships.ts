@@ -59,7 +59,7 @@ export function auditRoomRelationships(site:Pick<Site,'rooms'|'doors'|'archetype
  if(!site.archetype)return [];
  const out:SpatialRelationshipDiagnostic[]=[];
  for(const door of site.doors){
-  if(door.id==='FRONT'||door.id==='SERVICE'||door.id==='SHUTTER')continue;
+  if(door.id==='FRONT'||door.id==='FRONT-R'||door.id==='SERVICE'||door.id==='SHUTTER')continue;
   const p={x:(door.a.x+door.b.x)/2,y:(door.a.y+door.b.y)/2};
   const touching=site.rooms.filter(r=>
    p.x>=r.x-.1&&p.x<=r.x+r.w+.1&&p.y>=r.y-.1&&p.y<=r.y+r.h+.1);

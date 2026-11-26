@@ -98,3 +98,23 @@ export function objectiveIntelDescription(
    return 'POSSIBLE OBJECTIVE AREA · '+info.area.label;
  return 'OBJECTIVE LOCATION UNKNOWN · SEARCH REQUIRED';
 }
+
+/** Confirmed hold area: use the accessible room's rectangular footprint,
+ * capped to eight navigation cells per axis around the authored objective.
+ * Legacy or exterior objectives retain their historical circular check. */
+export type HoldObjectiveBounds={minX:number;minY:number;maxX:number;maxY:number};
+export function holdObjectiveBounds(site:Site|undefined,p:Pt):HoldObjectiveBounds|null{
+ const room=site?.rooms.find(r=>r.kind==='room'&&p.x>=r.x&&
+   p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h);
+ if(!room)return null;
+ const inset=6,limit=128; // 8 x 16 world-unit navigation cells
+ const x=room.x+inset,y=room.y+inset;
+ const w=Math.min(limit,room.w-2*inset),h=Math.min(limit,room.h-2*inset);
+ if(w<=0||h<=0)return null;
+ const minX=Math.max(x,Math.min(p.x-w/2,x+room.w-2*inset-w));
+ const minY=Math.max(y,Math.min(p.y-h/2,y+room.h-2*inset-h));
+ return {minX,minY,maxX:minX+w,maxY:minY+h};
+}
+export function inHoldObjectiveBounds(p:Pt,b:HoldObjectiveBounds):boolean{
+ return p.x>=b.minX&&p.x<=b.maxX&&p.y>=b.minY&&p.y<=b.maxY;
+}

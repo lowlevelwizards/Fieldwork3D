@@ -2,7 +2,7 @@ import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
 import {canConcludeWithdrawal,commitIndividualExtractions,commitTransportExtractions,deployedTeam} from './breach-operation-outcomes.ts';
-import {observeOptionalIntel,beginOptionalIntelGather,collectProximityOptionalIntel,advanceOptionalIntel,
+import {observeOptionalIntel,beginOptionalIntelGather,collectProximityOptionalIntel,advanceOptionalIntel,updateEvidenceSupport,
  type OptionalIntelItem,type OptionalIntelGather,eligibleOptionalIntel}
  from './breach-optional-intel.ts';
 import {coverTargetToken} from './worldgen/site-object-identity.ts';
@@ -85,6 +85,7 @@ import {relocateCover,canRelocateCover} from './breach-movable-cover.ts';
 
 
 import type {WindowState} from './breach-windows.ts';
+import {nearestBashableWindow} from './breach-window-bash.ts';
 import {type AIIntent} from './breach-ai-policy.ts';
 
 import {sessionWorldGeometry,publishSessionCoverToActiveSite} from './breach-world-context.ts';
@@ -160,7 +161,7 @@ import {verifiedDeploymentChoices,type DeploymentChoice} from './breach-deployme
 import type {OperationKind} from './breach-operations.ts';
 
 import {initialIntel,bindIntelWorld,observeIntel,routeWithIntel,intelPassable,intelNudgeSegmentClear,doorKnown,type IntelMode,type IntelState} from './breach-intel.ts';
-import {discoverObjective,type ObjectiveKnowledge} from './breach-objective-intel.ts';
+import {discoverObjective,holdObjectiveBounds,inHoldObjectiveBounds,type ObjectiveKnowledge} from './breach-objective-intel.ts';
 
 import {stageMagazines,chooseReloadMagazine,reloadMagazineDelay} from './equipment-magazine-placement.ts';
 import {magazineKit,reloadDuration as reloadTiming,type MagazineItem,type ReloadMode} from './breach-magazines.ts';
@@ -289,7 +290,8 @@ export type TeamActor=Operator & {
   weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
   /** A3 fixed-step micro-aim state. Never sourced from render history. */
   aimSideOffset?:number;aimSideTarget?:number;lastAimSideProbeAt?:number;
-  lastBashAt:number;lastBashRole:'push'|'receive'|null;
+  lastBashAt:number;lastBashRole:import('./breach-contact-reactions.ts').BashRole;
+  glassBashContact?:import('./breach-contact-reactions.ts').GlassBashContact|null;
   /** Bounded, idle-only clearer gaze; never an authored aim or detection. */
   clearLookBearing?:number|null;lastClearLookProbeAt?:number;
   /** Brief physical interruption after a door leaf impact, not a wound. */
@@ -442,6 +444,7 @@ export type Session=Omit<TacticalState,'operators'> & {
   pendingExtractionIds?:string[];
   /** A named MIA casualty-recovery mission, not a second objective authority. */
   missingRecoveryTargetId?:string;
+  primaryIntel?:OptionalIntelItem;
   optionalIntel:OptionalIntelItem[];
   intelGather:OptionalIntelGather|null;};
 // The elective enemy-planning budget is mission-local and never serialized.
@@ -544,7 +547,7 @@ function knownPortalGesture(s:Session,from:Pt,to:Pt,blocked:Pt):boolean{
  * Using the selected waypoint's world position avoids context buttons that
  * appear available but target the unrelated final route endpoint. */
 export function planNearbyInteraction(s:Session,id:string,
- action:'push'|'open-window'|'close-window',afterNodeId?:number,
+ action:'push'|'open-window'|'close-window'|'break-window',afterNodeId?:number,
  pushPoint?:Pt):boolean{
  const a=party(s,id);if(!a||!canEdit(s))return false;
  const insertion=afterNodeId===undefined?-1:
@@ -590,6 +593,10 @@ export function planNearbyInteraction(s:Session,id:string,
    const yaw=base+clamp(delta,-Math.PI*4/9,Math.PI*4/9);
    return queue('prop:'+coverTargetToken(item.o,item.index),
       {x:Math.cos(yaw),y:Math.sin(yaw)});
+ }
+ if(action==='break-window'){
+  const window=nearestBashableWindow(s,at,p=>liveVisibility(s,p));
+  return !!window&&queue('window:'+window.id);
  }
  let target:typeof s.windows[number]|undefined,bestWindow=54*54;
  for(const w of s.windows){
@@ -1795,6 +1802,7 @@ function observe(s:Session){
       if(observed&&rescueSubject)
         s.scenario.objective=clone(actualObjective);
       if(!s.objectiveIntel.discovered)discoverObjective(s,observed);
+      if(observed&&s.primaryIntel&&s.mission==='secure')s.primaryIntel.discovered=true;
     }
   }
   // Site knowledge persists, current knowledge does not. Sight has geometry,
@@ -1920,6 +1928,9 @@ function mission(s:Session,dt:number){
         {action:'individual-extraction',contributorId:member.id});
     }
   }
+  for(const item of s.optionalIntel)updateEvidenceSupport(item,s.coverState);
+  if(s.primaryIntel&&s.mission==='secure'&&updateEvidenceSupport(s.primaryIntel,s.coverState))
+    s.scenario.objective=clone(s.primaryIntel.p);
   if(s.optionalIntel.length){
     // Legacy timed interactions still advance for replay/save compatibility.
     // Ordinary scattered evidence is collected instantly as an operator
@@ -1946,6 +1957,11 @@ function mission(s:Session,dt:number){
     if(!courier||courier.health<=0){
       if(courier)s.scenario.objective=clone(courier.p);
       s.intelCarrierId=null;s.mission='secure';s.holdTime=0;
+      if(s.primaryIntel){
+        s.primaryIntel.p=clone(s.scenario.objective);
+        delete s.primaryIntel.surface;
+        s.primaryIntel.collectedBy=null;s.primaryIntel.discovered=true;
+      }
       notify(s,'INTEL DROPPED — RECOVER AT CASUALTY');
       battleEvent(s,'objective',courier??null,s.scenario.objective,
         'INTEL DROPPED');
@@ -2044,9 +2060,11 @@ function mission(s:Session,dt:number){
   const objectivePoint=rescuePerson?rescuePerson.p:
     s.missionType==='capture'&&capturePerson?capturePerson.p:
     s.scenario.objective;
+  const holdBounds=s.missionType==='hold'?holdObjectiveBounds(s.site,objectivePoint):null;
   const atObjective=team(s).filter(a=>a.health>0&&
-    near(a.p,objectivePoint,36)&&
-    sweptBodyClear(a.p,objectivePoint,s.doors,4,sessionWorldGeometry(s)));
+    (holdBounds?inHoldObjectiveBounds(a.p,holdBounds):
+      near(a.p,objectivePoint,36)&&
+      sweptBodyClear(a.p,objectivePoint,s.doors,4,sessionWorldGeometry(s))));
   const objectiveReached=atObjective.length>0;
   if(s.mission==='secure'&&objectiveReached&&
      (s.missionType!=='rescue'||!rescuePerson||
@@ -2069,6 +2087,9 @@ function mission(s:Session,dt:number){
       const collector=atObjective[0];
       if(!collector)return;
       s.intelCarrierId=collector.id;
+      if(s.primaryIntel){
+        s.primaryIntel.collectedBy=collector.id;s.primaryIntel.collectedAt=s.seconds;
+      }
     }
     if(s.missionType==='capture'){
       const target=capturePerson;

@@ -5,6 +5,7 @@ import type {SessionWorldGeometry} from './breach-world-context.ts';
  */
 import {type Pt,passable,route} from './breach-core.ts';
 import type {Site} from './breach-site.ts';
+import {primaryEntranceSpan} from './worldgen/primary-entrance.ts';
 import {insideSiteFootprint,exteriorBriefedAt,accessibleExteriorWall}
  from './breach-site-footprint.ts';
 import {initializeWindows} from './breach-windows.ts';
@@ -60,7 +61,8 @@ export function verifiedDeploymentChoices(site:Site,world?:SessionWorldGeometry)
   if(door.pairedWith)consumed.add(door.pairedWith);
   const kind=door.id==='FRONT'?'primary':
    door.kind==='shutter'?'shutter':'secondary';
-  const entry=verify(site,door.id,kind,'door',door,world);
+  const entry=verify(site,door.id,kind,'door',
+   kind==='primary'?primaryEntranceSpan(site.doors)??door:door,world);
   if(entry)result.push(entry);
  }
  for(const w of initializeWindows(site.windows??[])){
