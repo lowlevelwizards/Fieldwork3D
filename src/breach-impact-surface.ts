@@ -18,6 +18,11 @@ export type SurfaceAttachment={
  // Capture the collider dimensions at impact, not at playback time.
  coverW?:number;coverD?:number;coverTurn?:number;coverToppled?:boolean;
 };
+export type ImpactNormal={impactNX?:number;impactNY?:number;impactNZ?:number};
+/** Optional recorded art metadata; never changes hit resolution. */
+export function metalImpactNormal(surface:string|undefined,ref:SurfaceAttachment|undefined):ImpactNormal{
+ return surface==='metal'&&ref?{impactNX:ref.nx,impactNY:ref.ny,impactNZ:ref.nz}:{};
+}
 export type SurfaceMarkPose={x:number;y:number;z:number;nx:number;ny:number;nz:number;radius:number};
 /** Transparent opening fractures are readable from either side; opaque
  * impacts retain the original struck-face requirement. */

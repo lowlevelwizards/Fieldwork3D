@@ -17,14 +17,16 @@ test('V17 faceted muzzle flash uses one small colored mesh and no material group
  g.dispose();
 });
 
-import {createDetonationGeometry,sampleDetonationArt,DETONATION_ART_LIFETIME} from '../src/rendering/breach-detonation-art.ts';
+import {createDetonationGeometry,sampleDetonationArt,DETONATION_ART_LIFETIME,detonationSmokeWeight} from '../src/rendering/breach-detonation-art.ts';
 test('V17 compact angular detonation expires before its evidence and preserves deterministic age samples',()=>{
  const g=createDetonationGeometry();g.computeBoundingBox();
- assert.equal(g.getAttribute('position').count,72);
+ assert.equal(g.getAttribute('position').count,144);
+ assert.equal(g.groups.length,0);
  assert.deepEqual(g.boundingBox.min.toArray(),[-1,-1,-1]);
  assert.deepEqual(g.boundingBox.max.toArray(),[1,1,1]);
  const p={scale:0,verticalScale:0,opacity:0};
- assert.ok(sampleDetonationArt(0,p));const first={...p};
+ assert.ok(sampleDetonationArt(0,p));const first={...p};assert.ok(first.scale>=14&&first.opacity===1);
+ assert.equal(detonationSmokeWeight(0),0);assert.ok(detonationSmokeWeight(.2)>0&&detonationSmokeWeight(.2)<1);assert.equal(detonationSmokeWeight(.35),1);
  assert.ok(sampleDetonationArt(.1,p));assert.ok(p.scale>=first.scale);
  assert.ok(sampleDetonationArt(.35,p));assert.ok(p.verticalScale<p.scale);assert.ok(p.opacity<first.opacity);
  const after={...p};assert.equal(sampleDetonationArt(DETONATION_ART_LIFETIME,p),false);

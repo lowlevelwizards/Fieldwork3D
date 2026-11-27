@@ -1,3 +1,4 @@
+import {metalImpactNormal} from './breach-impact-surface.ts';
 import {TacticalScene3D} from './breach-3d.ts';
 import {newSession,team,enemies,type ShotEvent,type Session} from './breach-game.ts';
 import {activateSite,type Pt} from './breach-core.ts';
@@ -213,7 +214,7 @@ function choose(kind:Sample){
   if(!box)return;
   const p={x:box.x,y:box.y+box.h/2},height=kind==='wood'?10:25;
   const ref=coverAttachment(index,box,{x:p.x,y:p.y+20},{x:p.x,y:p.y-20},.5,height);
-  const shot=emit(kind,p,height);shot.impactFixture=box.fixture;
+  const shot=emit(kind,p,height);shot.impactFixture=box.fixture;Object.assign(shot,metalImpactNormal(kind,ref));
   retainImpactMark(session,{id:session.nextEffectId++,p,age:0,surface:kind,height,shotId:shot.id,surfaceRef:ref});
   focus({x:box.x,y:box.y});label(kind==='wood'?'Wood desk · splinters, paper and dust':'Metal · sparks');
  }else if(kind==='flash'){

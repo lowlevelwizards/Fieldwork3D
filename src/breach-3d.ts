@@ -2,6 +2,7 @@ import {syncWindowCoveringVisual,windowCoveringVisualForParent} from './renderin
 import {coveringMotion,isCoveringAction} from './breach-window-covering-interaction.ts';
 import {normalizeWindowCovering} from './breach-window-coverings.ts';
 import {windowCoveringSightSegments,windowCoveringTransientSegments} from './breach-window-covering-optics.ts';
+import {detonationSmokeWeight} from './rendering/breach-detonation-art.ts';
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {bloodMarkRadius,bloodMarkTint} from './breach-blood-evidence.ts';
@@ -3262,7 +3263,7 @@ export class TacticalScene3D{
         !(this.smokePreviewEnabled&&puffSurface==='dust'&&!fixtureImpactAccent(shot.impactFixture))){
         const surface=shot.surface??'dust',sample=this.materialImpactScratch;
         for(let i=0;i<MATERIAL_IMPACT_PROFILES[surface].count;i++){
-          if(!sampleMaterialImpact(surface,shot.id,i,shot.age,end.x,end.y,end.z,sample,shot.impactFixture))continue;
+          if(!sampleMaterialImpact(surface,shot.id,i,shot.age,end.x,end.y,end.z,sample,shot.impactFixture,shot,shot.start.x-shot.end.x,shot.start.y-shot.end.y))continue;
           if(!omniscient&&!this.presentationSight.query(s,'effect',shot.id+':chip:'+i,{x:sample.x,y:sample.z}))continue;
           if(!this.dropletPreview){
             this.dropletPreview=makeBloodDropletBatch(this.tracerGeometry,MATERIAL_IMPACT_PARTICLE_LIMIT);
@@ -3309,7 +3310,7 @@ export class TacticalScene3D{
           const sample=this.materialImpactScratch;
           if(!(this.smokePreviewEnabled&&surface==='dust'&&!fixtureImpactAccent(cue.fixture)))
            for(let i=0;i<p.count;i++){
-            if(!sampleMaterialImpact(surface,cue.id,i,shot.age,cue.p.x,cue.height,cue.p.y,sample,cue.fixture))continue;
+            if(!sampleMaterialImpact(surface,cue.id,i,shot.age,cue.p.x,cue.height,cue.p.y,sample,cue.fixture,cue,shot.start.x-cue.p.x,shot.start.y-cue.p.y))continue;
             if(!omniscient&&!this.presentationSight.query(s,'effect','material:'+cue.id+':chip:'+i,{x:sample.x,y:sample.z}))continue;
             if(!this.dropletPreview){
               this.dropletPreview=makeBloodDropletBatch(this.tracerGeometry,MATERIAL_IMPACT_PARTICLE_LIMIT);
@@ -3338,6 +3339,8 @@ export class TacticalScene3D{
         if(!omniscient&&!this.presentationSight.query(s,'effect','puff-burst:'+burst.id,burst.p))continue;
         for(let i=0;i<puffCount('flash');i++){
           if(!samplePuff('flash',burst.id,i,burst.age,burst.p.x,13,burst.p.y,puff))continue;
+          puff.alpha*=detonationSmokeWeight(burst.age);
+          if(puff.alpha<=0)continue;
           if(!omniscient&&!this.presentationSight.query(s,'effect','puff-burst:'+burst.id+':'+i,{x:puff.x,y:puff.z}))continue;
           if(!this.dustPuffs){this.dustPuffs=new DustPuffBatch();this.effects.add(this.dustPuffs.mesh);}
           this.dustPuffs.add(puff);
