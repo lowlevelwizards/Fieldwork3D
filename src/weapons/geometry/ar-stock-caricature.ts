@@ -24,18 +24,20 @@ export function addARStockCaricature(root:THREE.Group,id:string,
  const paint=kind==='sopmod'?tan:dark;
  // Broad symbolic art masses, deliberately nonfunctional; the decorative
  // tokens have no interaction, joints, bores or real-world fitment.
- function sculpt(p:Outline,depth:number,bevel:number,mat:THREE.Material,tag:string,taper=0){
+ function sculpt(p:Outline,depth:number,bevel:number,mat:THREE.Material,tag:string,taper=0,crown=0){
   const shape=new THREE.Shape(),outline=points(p);
   shape.moveTo(...outline[0]);for(const q of outline.slice(1))shape.lineTo(...q);
   shape.closePath();
   const g=new THREE.ExtrudeGeometry(shape,{depth:depth-bevel*2,steps:1,
    bevelEnabled:true,bevelSegments:1,bevelSize:bevel,bevelThickness:bevel,curveSegments:1});
   g.translate(0,0,-(depth-bevel*2)/2);
-  if(taper){
+  if(taper||crown){
    const pos=g.getAttribute('position');
    for(let i=0;i<pos.count;i++){
     const u=THREE.MathUtils.clamp((pos.getX(i)-rear)/(front-rear),0,1);
-    pos.setZ(i,pos.getZ(i)*(1-taper*u));
+    // Stylized crown shading/volume in local miniature art space only.
+    const y=THREE.MathUtils.clamp((pos.getY(i)+.13)/1.59,0,1);
+    pos.setZ(i,pos.getZ(i)*(1-taper*u)*(1-crown*y));
    }
    pos.needsUpdate=true;g.computeVertexNormals();
   }
@@ -62,17 +64,24 @@ export function addARStockCaricature(root:THREE.Group,id:string,
    m.userData.arStockCaricature=kind;
    sculpt([[.09,1.52],[.99,1.52],[1.04,-.14],[.10,-.14]],
     3.44,.12,paint,'arStockUpperMass',.08);
-   flat([[.35,-1.98],[.65,-.65],[.76,-.81],[.45,-2.16]],
+   // Static graphic accent originates at the underside of the upper art mass.
+   flat([[.39,-1.48],[.65,-.10],[.78,-.10],[.50,-1.62]],
     1.9,G36_RUBBER,'arStockDecorativeLatch');
    flat([[0,1.68],[.14,1.68],[.14,-4.25],[0,-4.08]],3.32,G36_RUBBER,'arStockDecorativePad');
   }else{
-   // Contrasting slim graphic underside and dominant straight upper volume.
-   flat([[.08,.05],[.94,.05],[.48,-2.72],[.10,-3.78]],sop?2.2:1.85,paint,'arStockCaricature');
-   sculpt([[.08,1.46],[.99,1.46],[1.02,-.13],[.09,-.13]],
-    sop?4.25:3.05,sop?.34:.15,paint,'arStockUpperMass',sop?.18:.06);
-   flat([[.47,-2.62],[.82,-.94],[.95,-1.11],[.60,-2.82]],
-    sop?1.9:1.7,G36_RUBBER,'arStockDecorativeLatch');
-   flat([[0,1.58],[.14,1.58],[.14,-3.84],[0,-3.84]],sop?3.95:3.11,G36_RUBBER,'arStockDecorativePad');
+   // Straight graphic upper silhouette and three-corner lower art mass.
+   // SOPMOD identity comes from the crown's broad-to-narrow shaded volume,
+   // not a raised hump or a globally enlarged stock.
+   const lip=sop?.19:.12;
+   flat([[lip-.025,.06],[.96,.06],[lip-.025,-3.78]],
+    sop?2.2:1.85,paint,'arStockCaricature');
+   sculpt([[lip-.02,1.40],[.99,1.40],[.99,-.13],[lip-.02,-.13]],
+    sop?4.25:3.05,.12,paint,'arStockUpperMass',0,sop?.42:0);
+   // Close-seated diagonal decorative mark, with no moving mechanism.
+   flat([[.39,-2.47],[.72,-.99],[.84,-1.09],[.51,-2.57]],
+    sop?2.3:2.0,G36_RUBBER,'arStockDecorativeLatch');
+   flat([[0,1.52],[lip,1.52],[lip,-3.84],[0,-3.84]],
+    sop?3.95:3.11,G36_RUBBER,'arStockDecorativePad');
   }
  }
 }

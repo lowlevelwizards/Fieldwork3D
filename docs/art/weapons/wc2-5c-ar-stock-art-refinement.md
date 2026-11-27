@@ -1,0 +1,2 @@
+# WC2.5c — visual refinement
+Preserve WC2.5b fixed AR art and all game metadata. Flatten and square the classic/SOPMOD upper art, remove an extra lower silhouette corner, seat decorative accents closer, differentiate the SOPMOD crown with a tapered graphic volume and thicker rear pad, and originate the MOE decorative accent at its upper artwork. No physical mechanisms or game contact data changes. Dedicated capture and broader integration verification required; not a release approval.

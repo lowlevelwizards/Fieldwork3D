@@ -33,3 +33,21 @@ test('each authored miniature has one pad and adjustable variants have static ar
   }finally{clearWeaponSilhouette(g);}
  }
 });
+
+test('WC2.5c decorative upper silhouettes and pad hierarchy',()=>{
+ const mat=new THREE.MeshBasicMaterial();
+ const host=FAMILY_PRESETS.find(p=>p.id==='ar-m4a1');
+ const bounds=(g,tag)=>new THREE.Box3().setFromObject(g.children.find(n=>n.userData[tag]));
+ const models=['ar-stock-m4','ar-compact','ar-stock-moe'].map(stock=>buildModularWeaponSilhouette({family:'ar',parts:{...host.parts,stock}},mat,mat));
+ try{
+  const [classic,sop,moe]=models;
+  const size=(b)=>b.getSize(new THREE.Vector3());
+  assert.ok(size(bounds(sop,'arStockDecorativePad')).x>size(bounds(classic,'arStockDecorativePad')).x,'SOPMOD pad visibly thicker');
+  for(const g of [classic,sop]){
+   const upper=bounds(g,'arStockUpperMass'),pad=bounds(g,'arStockDecorativePad');
+   assert.ok(Math.abs(upper.max.y-pad.max.y)<.15,'flat upper silhouette and rear pad');
+   assert.ok(bounds(g,'arStockDecorativeLatch').intersectsBox(bounds(g,'arStockCaricature')),'accent stays close to lower artwork');
+  }
+  assert.ok(bounds(moe,'arStockDecorativeLatch').intersectsBox(bounds(moe,'arStockUpperMass')),'MOE accent begins at upper artwork');
+ }finally{for(const g of models)clearWeaponSilhouette(g);mat.dispose();}
+});
