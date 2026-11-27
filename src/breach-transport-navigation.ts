@@ -1,7 +1,6 @@
 /** CT3 — conservative transport profile for the existing game motor.
  * Only live collision validation consumes physical geometry; authoring
  * continues to use the existing intel route. */
-import type {Pt} from './breach-core.ts';
 import type {TransportMode} from './breach-casualty-transport.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {hasTransportLink} from './breach-transport-custody.ts';

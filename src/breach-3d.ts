@@ -130,6 +130,8 @@ import {bakedOperatorCarry,prewarmSavedOperatorCarry}
 import {updateOperatorAppearance} from './breach-operator-appearance.ts';
 import {readEquipmentInteraction} from './breach-equipment-interaction-pose.ts';
 import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
+import {linkedTransportPatient} from './breach-transport-navigation.ts';
+import {loadedCarrierHeading} from './breach-loaded-carrier-pose.ts';
 import {downedTransportPresentation} from './breach-capture-transport-presentation.ts';
 import {SurrenderedFirearmsPresenter} from './rendering/breach-surrendered-firearms-presenter.ts';
 import {spatialSurfaceKnown,shotVisibility,windowPresentationKnown,windowCoveringPresentationKnown} from './breach-presentation.ts';
@@ -2611,6 +2613,12 @@ export class TacticalScene3D{
       // Only an actual reciprocal GO-time carrier may lift or reorient a
       // downed body. Live and replay use their sampled actor roster.
       const transport=downedTransportPresentation(actor,s.operators);
+      const transportPatient=linkedTransportPatient(s,actor);
+      const loadedTransport=transportPatient&&actor.health>0?{
+        mode:transportPatient.transportMode??'drag' as const,patientId:transportPatient.id,
+        patient:transportPatient.p,heading:transportPatient.heading}:undefined;
+      const loadedHeading=loadedTransport?loadedCarrierHeading(loadedTransport.mode,
+        {x:drawActor.x,y:drawActor.z},loadedTransport.patient,drawActor.heading):null;
       // Airborne body is a fixed-tick simulation outcome. Keep the 3D
       // miniature at its authored horizontal position, lifted only by the
       // recorded traversal arc (never by render-time speculative physics).
@@ -2869,7 +2877,7 @@ export class TacticalScene3D{
       poseOperator(object.physical,{
         x:drawActor.x,z:drawActor.z,
         heading:transport?.heading??(previewPreOpen?
-          doorFacing:drawActor.heading),
+          doorFacing:loadedHeading??drawActor.heading),
         handlingOverride:previewPreOpen?'high':undefined,
         velocity:actor.traversal?0:actor.velocity,
         seconds:poseSeconds,idleLifeSeconds:actorIdleSeconds,
@@ -2895,7 +2903,7 @@ export class TacticalScene3D{
          weaponConfiguration:actor.weaponConfiguration,
          weaponLightOn:actor.weaponLightOn,
          nvgDeployed:actor.nvgDeployed===true,
-        transportContact:actor.transportContact,
+        transportContact:actor.transportContact,loadedTransport,
         treatmentActive:actor.treatmentActive,
         treatmentProgress:actor.treatmentProgress,
         // Real GO-time civilian contact flashes a gentle support-hand

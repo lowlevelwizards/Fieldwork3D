@@ -22,6 +22,7 @@ import * as THREE from 'three';
 import {readSlingKind} from './breach-weapon-retention.ts';
 import {sampleSecondaryRetention} from './breach-secondary-retention.ts';
 import {oneHandRetentionWeight} from './breach-weapon-retention-actions.ts';
+import {sampleLoadedCarrier} from './breach-loaded-carrier-pose.ts';
 import {sampleTransportContact,transportContactHands} from './breach-transport-contact.ts';
 import {sampleRetentionTransition} from './breach-weapon-retention-transition.ts';
 import {solveOperatorDirectSlingPose} from './breach-operator-sling-pose.ts';
@@ -139,7 +140,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     preparedDecision.locomotion;
   const transportContact=!p.down&&!p.surrender&&p.transportContact?
     sampleTransportContact(p.transportContact):null;
-  const crouch=postureCrouch+(p.coverStanceDrop??0)+(transportContact?.bend??0)*7;
+  const loaded=!p.down&&!p.surrender&&p.loadedTransport?
+    sampleLoadedCarrier(p.loadedTransport,physicalSpeed,p.stride):null;
+  const crouch=postureCrouch+(p.coverStanceDrop??0)+(transportContact?.bend??0)*7+(loaded?.crouch??0);
   frame.hip.position.y=LEG_HIP_HEIGHT-crouch;
   frame.chest.position.y=26-crouch;
   // Low traversal carries a rearward pelvis and counterbalanced thorax.
@@ -292,6 +295,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     (p.posture==='crouch'?.075:0);
   frame.chest.rotation.x=clamp(p.injury===2?.07:p.injury===1?.025:0,0,.09)+
     motion.torsoSide;
+  if(loaded){frame.chest.rotation.z-=loaded.torsoLean;
+    frame.chest.rotation.x+=loaded.torsoSide+loaded.strideSway;}
   frame.chest.rotation.y+=motion.torsoYaw+
     poseWeight*profile.torsoTurn+
     relaxedLowReady*(familyLow?.torsoTurn??0);
@@ -1112,7 +1117,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const liveOneHand=oneHandWeight>0&&!p.retentionTransition&&!p.retentionPreview;
   const liveHandsFree=!!p.retentionTransition&&p.retentionTransition.mode!==null;
   const handsFreeAction=liveHandsFree&&p.retentionTransition!.weight>=1&&
-    (treatmentActive||doorActive||equipmentActive||!!transportContact);
+    (treatmentActive||doorActive||equipmentActive||!!transportContact||!!loaded);
   const retentionMode=switchingSlung?'front-slung':liveOneHand?'held-one':p.retentionTransition?
     p.retentionTransition.mode:p.retentionPreview;
   const retentionWeight=switchingSlung?switchPose.retention:liveOneHand?oneHandWeight:p.retentionTransition?.weight??1;
@@ -1161,6 +1166,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }):null;
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
+    if(loaded&&!transportContact){
+      const shoulder=shoulderFor(i),target=i===0?loaded.wristLeft:loaded.wristRight;
+      const requested=P(target.x,target.y,target.z);
+      const solved=solveTwoBone(shoulder,requested,10,10,P(0,-8,sign*5),ARM_LIMITS);
+      arm.bend.copy(solved.bendPlane);arm.outOfReach=!solved.reached;
+      r.elbowSpread[i]=Math.max(0,sign*(solved.joint.z-shoulder.z));
+      setOperatorArmSegments(scratch,i as 0|1,shoulder,solved.joint,solved.effector,scratch.sides[i]);
+      setOperatorHandPose(scratch,i as 0|1,solved.effector,0);
+      continue;
+    }
     if(retention&&(!liveOneHand||i===1)&&!handsFreeAction&&(!switchingSlung||switchPose.pistol<=.08)){
       const shoulder=shoulderFor(i),requested=i===0?retention.left:retention.right;
       const guide=P(3,-9,sign*2);
