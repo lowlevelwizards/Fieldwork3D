@@ -153,9 +153,16 @@ export const specs={
     "src/breach-operations-board-controller.ts",
     "tests/consolidation-p8-outfitter-zones.test.mjs",
     "src/ui/loadout-prep.css",
-    "scripts/smoke-loadout-ux-r1.mjs",
     ".github/actions/outfitter-mobile-smoke/action.yml",
-    ".github/workflows/loadout-ux-r1-critical.yml"
+    ".github/workflows/loadout-ux-r1-critical.yml",
+    "src/equipment-preview.ts",
+    "src/ui/campaign-gear-picker.ts",
+    "src/equipment-thumbnail-camera.ts",
+    "tests/equipment-thumbnail-camera.test.mjs",
+    "scripts/smoke-loadout-bench-r1.mjs",
+    "tests/equipment-visual-inspection.test.mjs",
+    "tests/equipment-physical-board.test.mjs",
+    "tests/equipment-field-transfer.test.mjs"
   ],
   "loadout-bench-r1-critical": [
     "src/equipment-thumbnail-color.ts",

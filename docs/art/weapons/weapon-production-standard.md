@@ -3,7 +3,7 @@
 **Status:** WC2 comparative review candidate; no asset receives grandfathered artistic approval.  
 **Version:** 2.1 · 2026-11-26 (WC2 comparative sculptural direction; retains technical contract)  
 **Owner:** Arsenal / weapon appearance pipeline.  
-**Companion documents:** [R2 silhouette contract](geometry-r2-silhouette-contract.md), [Arsenal V2 baseline](../../arsenal-v2-baseline.md), and the historical AR / AK / FAL / FNC / HK case studies in this directory.
+**Companion documents:** [R2 silhouette contract](geometry-r2-silhouette-contract.md), [Arsenal V2 baseline](../../arsenal-v2-baseline.md), and the historical AR / AK / FAL / FNC / HK case studies linked below in Git history.
 
 > **Core rule:** Create a recognizable, authentic **miniature**, not a photorealistic weapon with fewer polygons. Build its identity from purposeful exterior masses, meaningful open space, clear proportions, and restrained materials. Optimize before ornamenting. **Actual game-scale visual approval, not passing code tests, determines whether art is done.**
 
@@ -364,14 +364,14 @@ A weapon/variant may be called **ART APPROVED** only when:
 | Arsenal camera and shared light | `src/arsenal/viewport.ts`, `src/arsenal/inspection-lighting.ts` |
 | Rifle hand contact | `src/breach-weapon-contact-zones.ts` |
 | Measured geometry report | `scripts/audit-weapon-geometry.mjs` |
-| Proven simple blockout method | `docs/art/weapons/fal-stage1-silhouette-spec.md` |
-| Shape reduction evidence | `docs/art/weapons/fal-p6-shape-economy.md` |
-| FNC small-scale silhouette correction | `docs/art/weapons/fnc-p18-silhouette-first-spec.md` |
-| FNC texture-atlas method | `docs/art/weapons/fnc-p21-pixel-surface-atlas.md` |
-| FNC proportion correction | `docs/art/weapons/fnc-p29-vertical-proportions.md` |
+| Proven simple blockout method | [Historical reference](https://github.com/lowlevelwizards/Fieldwork3D/blob/6e4101d5ba1294cc465695f78a392618463100bf/docs/art/weapons/fal-stage1-silhouette-spec.md) |
+| Shape reduction evidence | [Historical reference](https://github.com/lowlevelwizards/Fieldwork3D/blob/6e4101d5ba1294cc465695f78a392618463100bf/docs/art/weapons/fal-p6-shape-economy.md) |
+| FNC small-scale silhouette correction | [Historical reference](https://github.com/lowlevelwizards/Fieldwork3D/blob/6e4101d5ba1294cc465695f78a392618463100bf/docs/art/weapons/fnc-p18-silhouette-first-spec.md) |
+| FNC texture-atlas method | [Historical reference](https://github.com/lowlevelwizards/Fieldwork3D/blob/6e4101d5ba1294cc465695f78a392618463100bf/docs/art/weapons/fnc-p21-pixel-surface-atlas.md) |
+| FNC proportion correction | [Historical reference](https://github.com/lowlevelwizards/Fieldwork3D/blob/6e4101d5ba1294cc465695f78a392618463100bf/docs/art/weapons/fnc-p29-vertical-proportions.md) |
 | AR and AK differentiation | `docs/art/weapons/ar-r46-silhouette-spec.md`, `docs/art/weapons/ak-r43-silhouette-spec.md` |
 | HK/G3 isolation and regression | `docs/art/weapons/hk-g3-family-scope-audit-2026-11-15.md` |
 
 ### Maintenance rule
 
-Update this **single canonical file** when a verified production lesson changes the universal methodology. Keep weapon-specific shapes, art coordinates, dates, milestone results, and performance numbers in their own family specifications. For a universal policy revision, record the rationale, affected existing families, tests and evidence; do not silently promote one weapon's convenience into a global rule.
+Update this **single canonical file** when a verified production lesson changes the universal methodology. Keep durable weapon-specific design requirements in current family specifications; record completed milestones and intermediate art coordinates in PRs and Git history. For a universal policy revision, record the rationale, affected existing families, tests and evidence; do not silently promote one weapon's convenience into a global rule.

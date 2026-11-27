@@ -16,12 +16,9 @@ test('consolidation 4-7 has one library boundary per recipe and no second equipm
  assert.doesNotMatch(common,/equipRoster|equipCampaign|loadedRounds|magazineSerial/);
 });
 
-test('legacy named mobile workflows use one shared browser acceptance',()=>{
- for(const name of ['loadout-ux-r1-critical.yml',
-  'visual-armory-v1-critical.yml','visual-armory-v2-critical.yml']){
-  const text=workflow(name);
-  assert.match(text,/uses: \.\/\.github\/actions\/outfitter-mobile-smoke/);
- }
+test('canonical mobile outfitter workflow uses shared browser acceptance',()=>{
+ const text=workflow('loadout-ux-r1-critical.yml');
+ assert.match(text,/uses: \.\/\.github\/actions\/outfitter-mobile-smoke/);
 });
 
 test('Campaign and Quick Play reuse the DOM factory without re-owning gear',()=>{
