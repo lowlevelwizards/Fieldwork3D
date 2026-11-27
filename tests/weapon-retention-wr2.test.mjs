@@ -40,3 +40,32 @@ test('WR2.1 nested part transforms are measured in the silhouette root frame',()
  root.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose()});
  mat.dispose();
 });
+
+import {ARSENAL_REFERENCES} from '../src/arsenal/catalog.ts';
+import {initialWeaponConfiguration,selectWeaponFamilyPreset,readWeaponConfiguration} from '../src/equipment-weapon-assemblies.ts';
+import {alternateStockPosition} from '../src/weapon-stock-position.ts';
+import {buildWeaponSilhouette,clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
+test('WR2.2 production catalog supplies finite candidate anchors for installed silhouette art',()=>{
+ const material=new THREE.MeshBasicMaterial();
+ const failures=[];
+ const inspect=(config,id)=>{
+  const body=buildWeaponSilhouette(config.weapon,material,material,config);
+  try{
+   const sockets=body.userData.retentionSockets;
+   if(!sockets){failures.push(id+': missing receiver art');return;}
+   for(const p of [sockets.rear,sockets.single,...(sockets.front?[sockets.front]:[])])
+    if(![p.x,p.y,p.z].every(Number.isFinite))failures.push(id+': nonfinite candidate');
+   if(sockets.front&&sockets.front.x<=sockets.rear.x+1)failures.push(id+': inverted support');
+  }finally{clearWeaponSilhouette(body);}
+ };
+ try{
+  assert.ok(ARSENAL_REFERENCES.length>0);
+  for(const ref of ARSENAL_REFERENCES){
+   const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration(ref.legacy.weapon),ref.id);
+   inspect(cfg,ref.id);
+   const alternate=alternateStockPosition(ref.legacy.parts.stock);
+   if(alternate)inspect(readWeaponConfiguration({...cfg,stockPosition:alternate},cfg.weapon),ref.id+'/'+alternate);
+  }
+ }finally{material.dispose();}
+ assert.deepEqual(failures,[]);
+});

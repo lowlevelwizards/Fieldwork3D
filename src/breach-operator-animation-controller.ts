@@ -356,6 +356,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // Preserve the read-only stock descriptor for the live fitted weapon.
     r.weaponBody.userData.visibleStockContact=
       model.userData.visibleStockContact??null;
+    r.weaponBody.userData.retentionSockets=model.userData.retentionSockets??null;
     while(model.children.length)r.weaponBody.add(model.children[0]);
     r.droppedWeaponBody.userData.visibleStockContact=null;
     // Detachable geometry is copied from precisely the same named AR/AK
@@ -828,6 +829,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       r.weaponSteel,r.weaponDark,config);
     r.droppedWeaponBody.userData.visibleStockContact=
       dropped.userData.visibleStockContact??null;
+    r.droppedWeaponBody.userData.retentionSockets=dropped.userData.retentionSockets??null;
     while(dropped.children.length)
       r.droppedWeaponBody.add(dropped.children[0]);
     if(config){
