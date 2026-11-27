@@ -1,4 +1,5 @@
 /** Single source of truth for the tactical palette's visible actions and their states. */
+import {transportContextAllowed} from '../breach-transport-controls.ts';
 import type {StackFormation} from '../breach-entry-coordination.ts';
 export type ContextAction={id:string;label:string;group:'primary'|'advanced'|'state'|'destructive';
   pressed?:boolean;disabled?:boolean;title?:string};
@@ -22,6 +23,7 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   nearEscortableSuspect?:boolean;nearFollowingSuspect?:boolean;
   nearCivilianCasualty?:boolean;nearDownedCaptureTarget?:boolean;
   carryingCivilian?:boolean;carryingCaptureTarget?:boolean;
+  transportQueued?:boolean;
   availableTools?:readonly string[];doorWedged?:boolean;
   /** A prior witnessed interruption exists; not a query of current hidden lock state. */
   resumeAvailable?:boolean;
@@ -29,6 +31,16 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   /** Based only on the previously witnessed interruption. */
   resumeReason?:'locked'|'jammed'|'coordinated';};
 export function contextActionChoices(o:ContextOptions):ContextAction[]{
+ const loaded=o.carryingCivilian||o.carryingCaptureTarget;
+ if(loaded){
+  const release={id:o.carryingCivilian?'ctxReleaseCivilian':'ctxReleaseCapture',
+    label:o.transportQueued?'SET DOWN HERE':'SET DOWN',group:'primary' as const,
+    title:o.transportQueued?'Queue lowering after the planned route':'Lower the casualty at the current position'};
+  if(o.door)return [release];
+  return [release,{id:'ctxWait',label:'WAIT',group:'primary',title:'Wait while maintaining casualty custody'},
+    ...(o.node?[{id:'ctxDelete',label:'DELETE POINT',group:'destructive' as const}]:[])]
+    .filter(a=>transportContextAllowed(a.id));
+ }
  // Stack layouts and recovery are automatic AI procedures, not menu actions.
  if(o.door){
   const doorActions:ContextAction[]=o.doorPartial?[
