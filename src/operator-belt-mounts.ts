@@ -10,13 +10,13 @@ export const BELT_REGIONS=['front-left','front-right','left-hip','right-hip','re
 export type BeltRegion=typeof BELT_REGIONS[number];
 type RegionSpec={segment:number;offset:number;width:number};
 const REGIONS:Record<BeltRegion,RegionSpec>={
- 'front-left':{segment:0,offset:-3.45,width:2.6},
- 'front-right':{segment:0,offset:3.45,width:2.6},
- 'left-hip':{segment:6,offset:0,width:6.5},
- 'right-hip':{segment:2,offset:0,width:6.5},
+ 'front-left':{segment:0,offset:-3.65,width:3.25},
+ 'front-right':{segment:0,offset:3.65,width:3.25},
+ 'left-hip':{segment:6,offset:.25,width:6.5},
+ 'right-hip':{segment:2,offset:-.25,width:6.5},
  // All rear regions share the back span and explicitly reserve intervals.
- 'rear-right':{segment:4,offset:-3.45,width:2.6},
- 'rear-left':{segment:4,offset:3.45,width:2.6},
+ 'rear-right':{segment:4,offset:-3.65,width:3.25},
+ 'rear-left':{segment:4,offset:3.65,width:3.25},
  rear:{segment:4,offset:0,width:3.5}
 };
 export type BeltFootprint={width:number;height:number;depth:number;spaces:number};
@@ -54,7 +54,8 @@ export function resolveBeltMounts(style:BeltStyle,requests:readonly BeltMountReq
    const seg=beltContactSegments()[spec.segment];
    if(interval[0]<-seg.length/2+.35||interval[1]>seg.length/2-.35)continue;
    if(mounts.some(m=>m.segment===spec.segment&&interval[0]<m.interval[1]+.18&&interval[1]>m.interval[0]-.18))continue;
-   const socket=beltSurface(style,spec.segment,spec.offset);
+   const contact=beltSurface(style,spec.segment,spec.offset);
+   const socket=contact?{...contact,y:contact.y+Math.min(1.5,BELT_PROFILES[style].height*.45+.35)}:null;
    if(!socket)continue;
    chosen={id,region,segment:spec.segment,interval,socket,footprint:{...f}};break;
   }

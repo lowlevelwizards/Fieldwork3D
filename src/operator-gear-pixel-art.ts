@@ -27,7 +27,8 @@ export function gearPixelMap(mark:GearMark,w:number,h:number){
  map=new THREE.DataTexture(pixels,nx,ny,THREE.RGBAFormat);
  map.name='Fieldwork gear pixel '+key;map.channel=1;
  map.magFilter=THREE.NearestFilter;map.minFilter=THREE.NearestFilter;
- map.generateMipmaps=false;map.wrapS=map.wrapT=THREE.ClampToEdgeWrapping;
+ map.generateMipmaps=false;map.wrapS=mark==='webbing'||mark==='padding'?THREE.RepeatWrapping:THREE.ClampToEdgeWrapping;
+ map.wrapT=THREE.ClampToEdgeWrapping;
  map.needsUpdate=true;cache.set(key,map);return map;
 }
 export function gearMarkedMaterial(source:THREE.Material,mark:GearMark,w:number,h:number):THREE.Material{

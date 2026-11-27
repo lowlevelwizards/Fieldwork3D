@@ -30,9 +30,9 @@ export function beltBandGeometry(style:Exclude<BeltStyle,'no-belt'>){
  const quad=(a:V,b:V,c:V,d:V,length:number,height:number,marked=false)=>{
   const coords=[[0,0],[length,0],[length,height],[0,height]];
   const vertices=[a,b,c,d];
-  for(const j of [0,1,2,0,2,3]){
+  for(const j of [0,2,1,0,3,2]){
    pos.push(...vertices[j]);uv.push(coords[j][0]/TILE_WORLD_SIZE,coords[j][1]/TILE_WORLD_SIZE);
-   uv1.push(marked?coords[j][0]/Math.ceil(length):.999,marked?coords[j][1]/Math.ceil(height):.999);
+   uv1.push(marked?coords[j][0]/8:.999,marked?coords[j][1]/Math.ceil(p.height):.999);
   }
  };
  for(let i=0;i<8;i++){
