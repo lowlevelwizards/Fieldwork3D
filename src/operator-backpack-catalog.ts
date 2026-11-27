@@ -26,9 +26,13 @@ export type PackStyle=keyof typeof PACK_PROFILES;
 export const PACK_STYLES=Object.keys(PACK_PROFILES) as PackStyle[];
 export const LEGACY_PACK_STYLES={
  'backpack-none':['no-pack'],
- 'backpack-day':['hydration','admin-pack','day-pack','assault-pack','sling-bag','civilian-pack'],
- 'backpack-field':['field-pack','rucksack','medic-pack','comms-pack','duffel']
+ 'backpack-day':['hydration','admin-pack','day-pack','assault-pack','civilian-pack'],
+ 'backpack-field':['field-pack','rucksack','medic-pack','comms-pack']
 } as const satisfies Record<LegacyPackEquipment,readonly string[]>;
+/** Old saved appearance aliases, never offered as items. */
+export function migratePackAppearance(style:unknown):unknown{
+ return style==='sling-bag'?'civilian-pack':style==='duffel'?'rucksack':style;
+}
 export function legacyPackEquipment(style:string):LegacyPackEquipment|undefined{
  for(const id of Object.keys(LEGACY_PACK_STYLES) as LegacyPackEquipment[])
   if((LEGACY_PACK_STYLES[id] as readonly string[]).includes(style))return id;
@@ -49,7 +53,8 @@ export function proposedPackStyle(oldStyle:string):PackStyle|undefined{
 }
 /** Advisory only: caller must quote the real inventory transaction before changing a save. */
 export function quotePackMigration(id:LegacyPackEquipment,style:string,usedSpaces:number,compatible:boolean){
- const target=legacyPackEquipment(style)===id?proposedPackStyle(style):undefined;
+ const migrated=migratePackAppearance(style);
+ const target=typeof migrated==='string'&&legacyPackEquipment(migrated)===id?proposedPackStyle(migrated):undefined;
  if(!target)return {ok:false as const,reason:'INVALID LEGACY PAIR'};
  if(!Number.isFinite(usedSpaces)||usedSpaces<0)return {ok:false as const,reason:'INVALID OCCUPANCY'};
  const profile=PACK_PROFILES[target];
