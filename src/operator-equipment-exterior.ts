@@ -15,12 +15,15 @@ export type SlingShoulderLane=Readonly<{
  kind:'outside'|'open-branch';crown:readonly [number,number,number];
  frontEntry?:readonly [number,number,number];
 }>;
+export type ShoulderContactPoint=readonly [number,number,number];
+export type ShoulderContour=Readonly<{rear:ShoulderContactPoint;crown:ShoulderContactPoint;front:ShoulderContactPoint}>;
 export type EquipmentExterior=Readonly<{
  front:(y:number,z:number)=>number;
  back:(y:number,z:number)=>number;
  side:(y:number,x:number,sign:-1|1)=>number;
  shoulder:(sign:-1|1)=>readonly [number,number,number];
  slingShoulder:(sign:-1|1,width:number)=>SlingShoulderLane;
+ shoulderContour:(sign:-1|1,lateral:number,width:number,thickness:number)=>ShoulderContour;
 }>;
 const cache=new Map<string,EquipmentExterior>();
 export function equipmentExterior(armor:string,rig:string,top:string,sharedRig=false):EquipmentExterior{
@@ -45,7 +48,7 @@ export function equipmentExterior(armor:string,rig:string,top:string,sharedRig=f
  const back=(y:number,z:number)=>{
   let v=garmentContactAnchor(top,y).back;
   if(visible&&y>=spec.bottom+.2&&y<=spec.top-.2&&Math.abs(z)<=plateHalfWidthAt(spec,y,true))
-   v=Math.min(v,fit.back-.24);
+   v=Math.min(v,fit.back-.07);
   return v;
  };
  const side=(y:number,x:number,sign:-1|1)=>{
@@ -63,12 +66,23 @@ export function equipmentExterior(armor:string,rig:string,top:string,sharedRig=f
     v=Math.max(v,sign===1?b.max.z:-b.min.z);
   return sign*v;
  };
- const shoulder=(sign:-1|1):readonly [number,number,number]=>{
-  const bare=garmentContactAnchor(top,5.2);
-  return [0,Math.max(bare.topY,frame.shoulderY)+
-    (visible?spec.strapThickness*.5:0)+(!sharedRig&&frame.mode==='external-harness'&&r!=='no-rig'?.32:0),
-    sign*frame.shoulderRight.z];
+ // Contact is sampled on the actual garment shoulder and the authored
+ // armor bridge (not a horizontal span between the front/back plate faces).
+ const shoulderContour=(sign:-1|1,lateral:number,width:number,thickness:number):ShoulderContour=>{
+  const cloth=garmentContactAnchor(top,5.2);
+  const z=sign*Math.min(cloth.side-width*.5-.08,Math.max(1.8,Math.abs(lateral)));
+  const land=visible&&spec?armorStrapLanding(fit,spec):undefined;
+  const onArmor=!!land&&Math.abs(Math.abs(z)-land.shoulderZ)<(spec.shoulderWidth+width)*.5;
+  // Existing rig shoulder center includes the armor already. Do not add
+  // armor thickness twice. Only overlapping textile lanes add a layer.
+  const onRig=!sharedRig&&r!=='no-rig'&&frame.mode==='external-harness'&&
+   Math.abs(Math.abs(z)-frame.shoulderRight.z)<(.92+width)*.5;
+  const armorCrown=onArmor?fit.shoulderY+spec.strapThickness*.5:cloth.topY;
+  const crownY=Math.max(cloth.topY,armorCrown,onRig?frame.shoulderY+.24:0)+thickness*.5-.035;
+  const edgeY=Math.max(cloth.topY-.04,crownY-(onArmor?.27:.10));
+  return {rear:[cloth.back-.12,edgeY,z],crown:[0,crownY,z],front:[cloth.front+.12,edgeY,z]};
  };
+ const shoulder=(sign:-1|1):ShoulderContactPoint=>shoulderContour(sign,frame.shoulderRight.z,.85,0).crown;
  // Only the modeled skeletal front branch has an authored opening.
  // Do not invent a tunnel underneath solid shoulder pads or a rig yoke.
  // The common crown is still routed on top; the opening is a front entry.
@@ -83,5 +97,5 @@ export function equipmentExterior(armor:string,rig:string,top:string,sharedRig=f
   }
   return {kind:'outside',crown};
  };
- const result={front,back,side,shoulder,slingShoulder};cache.set(key,result);return result;
+ const result={front,back,side,shoulder,shoulderContour,slingShoulder};cache.set(key,result);return result;
 }
