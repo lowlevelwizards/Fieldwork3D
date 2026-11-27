@@ -30,3 +30,10 @@ export function equipmentAssembly(style:string,armor:string,rig:string,requested
  const externalRig=rig!=='no-rig'&&!frontCarrierMount(armor,rig)&&mode!=='shared';
  return {mode,compatible:choices.includes(mode),externalRig,sharedRig:mode==='shared',direct:mode==='direct',adapter:mode==='adapter'};
 }
+
+/** Shared suspension joins are defined once in chest space; the rig
+ * builder subtracts its group translation to reach the identical socket. */
+export function sharedRigClips(frame:{front:{x:number};shoulderRight:{z:number}},sign:-1|1){
+ const z=sign*Math.min(5.6,Math.max(3.5,frame.shoulderRight.z)+.35);
+ return {upper:[frame.front.x+.28,2.2,z] as const,lower:[frame.front.x+.1,-3.2,sign*5.6] as const};
+}
