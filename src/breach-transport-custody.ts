@@ -23,3 +23,10 @@ export function releaseTransport(c:TransportCarrier,p?:TransportPatient|null){
  if(p?.carriedById===c.id){p.carriedById=null;p.transportMode=null;}
  c.carryingId=null;c.transportLatched=false;c.transportContact=undefined;c.dragTrail=undefined;return true;
 }
+
+/** Presentation and replay may disclose the actual patient of a living
+ * friendly carrier, regardless of cone or patient-center occlusion. A
+ * stale one-way link or hostile carrier is never a visibility grant. */
+export function friendlyTransportVisible(p:TransportPatient,operators:readonly (TransportCarrier&{side:string})[]):boolean{
+ return p.health<=0&&!!p.carriedById&&operators.some(c=>c.side==='blue'&&c.health>0&&hasTransportLink(c,p));
+}

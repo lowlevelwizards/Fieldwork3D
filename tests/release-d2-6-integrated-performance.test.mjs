@@ -114,8 +114,11 @@ test('D2.6.3 transport roster remains actor-first and motion arbiter owns all de
  const src=source('breach-simulation-motion-phase.ts');
  assert.match(src,/let coupledBodyStarts:Map<string,Pt>\|null=null/);
  assert.match(src,/if\(!coupledBodyStarts\)coupledBodyStarts=new Map/);
- assert.match(src,/for\(const o of s\.operators\)if\(o!==carrier&&o\.health>0\)/);
- assert.match(src,/for\(const c of s\.civilians\)if\(c!==civil\)/);
+ assert.match(src,/for\(const a of s\.operators\)if\(a\.health>0\)nearby\.push\(a\)/);
+ assert.match(src,/for\(const c of s\.civilians\)if\(c\.health>0\)nearby\.push\(c\)/);
+ assert.ok(src.indexOf('nearby.push(a)')<src.indexOf('nearby.push(c)'));
+ assert.match(src,/for\(const patient of s\.operators\)if\(patient\.health<=0&&patient\.carriedById&&\s*s\.operators\.some\(c=>c\.health>0&&hasTransportLink\(c,patient\)\)\)/);
+ assert.match(src,/for\(const civil of s\.civilians\)if\(civil\.carriedById&&\s*s\.operators\.some\(c=>c\.health>0&&hasTransportLink\(c,civil\)\)\)/);
  assert.match(src,/resolveMovementFrame\(proposals/);
  assert.match(src,/reconcileCivilianTransportFrame\(proposals,decisions,transportLinks\)/);
 });
