@@ -5,6 +5,7 @@
  * not consume this module.
  */
 import * as THREE from 'three';
+import {readSlingKind} from './breach-weapon-retention.ts';
 import type {OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import type {
@@ -74,7 +75,7 @@ export function solveOperatorDroppedWeapon(r:OperatorRig,p:OperatorPose,
   .multiply(held.quaternion);
  const origin=r.root.getWorldPosition(scratch.origin);
  const side=p.downPose==='left'?-1:1;
- const sling=p.weaponConfiguration?.slots.sling==='sling-two-point'&&
+ const sling=readSlingKind(p.weaponConfiguration?.slots.sling)!=='none'&&
   !p.surrender;
  const rest=e.dropRest.set(origin.x+(sling?4:9),sling?6:1.8,
   origin.z+side*(sling?5:11));

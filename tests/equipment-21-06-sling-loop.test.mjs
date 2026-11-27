@@ -40,7 +40,8 @@ test('21.06 receiver accessory only contains hardware, not phantom static straps
  const c=setWeaponAttachment(initialWeaponConfiguration('carbine'),'sling','sling-two-point');
  const m=new THREE.MeshBasicMaterial();
  const g=buildWeaponAccessories(c,m,m);
- assert.equal(g.children.length,2);
+ assert.equal(g.children.length,1);
+ assert.ok(g.getObjectByName('weapon-accessory-sling-rigid-mounts'));
  for(const obj of g.children)if(obj instanceof THREE.Mesh)obj.geometry.dispose();
  m.dispose();
 });

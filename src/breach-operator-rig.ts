@@ -299,7 +299,8 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   // Three geometry-reused fabric spans connect gun mounts with shoulder
   // routing. No ropes, IK targets, simulated joints or per-frame geometry.
   const slingStraps=[0,1,2].map(()=>{
-   const strap=block(chest,0,0,0,.8,1,.7,vest);
+   const strap=block(chest,0,0,0,1.05,1,.24,vest);
+   strap.name='fieldwork-sling-webbing';
    strap.castShadow=false;strap.receiveShadow=false;strap.visible=false;
    return strap;
   });
