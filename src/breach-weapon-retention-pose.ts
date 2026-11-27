@@ -61,10 +61,10 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
  const y=z.clone().cross(axis).normalize();
  const q=!one?retainedSwing(p.heldQuaternion,axis):
   new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(axis,y,z));
- if(!one&&p.motion){
-  const m=sampleSuspensionMotion(p.sling,p.motion);
-  q.premultiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(m.roll,m.yaw,m.pitch)));
- }
+ const suspension=!one&&p.motion?sampleSuspensionMotion(p.sling,p.motion):null;
+ if(suspension)
+  q.premultiply(new THREE.Quaternion().setFromEuler(
+    new THREE.Euler(suspension.roll,suspension.yaw,suspension.pitch)));
  const anchor=one?new THREE.Vector3(5.5,-5.2,9.6+armor):
   front?new THREE.Vector3((p.exterior?.front(-2.8,0)??(7.1+armor))+1.35,
     -3.3,p.sling==='single'?2.4:0):
@@ -81,6 +81,11 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
   new THREE.Vector3(p.balanceX*p.scale.x,0,0);
  if(!one&&socket)anchor.y+=4;
  const position=anchor.clone().sub(offset.clone().applyQuaternion(q));
+ if(suspension){
+  position.y+=suspension.lift;
+  if(side)position.x+=suspension.foreAft+suspension.sway*.5;
+  else position.z+=suspension.sway;
+ }
  if(!one&&(!p.exterior||!p.bounds)){
   // Conservative silhouette centerline against body/ground. The exact
   // equipment envelope and world obstruction policy is WR11.
@@ -96,6 +101,13 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
  if(!one&&p.bounds){
   const {correction}=clearRetentionEnvelope({...p,bounds:p.bounds,position,quaternion:q});
   position.add(correction);
+ }
+ // Clearance is authoritative: add only a small outward excursion after
+ // contact fit, never an inward penetration or floor-changing movement.
+ if(suspension){
+  if(front)position.x+=suspension.separation;
+  else if(side)position.z+=suspension.separation;
+  else position.x-=suspension.separation;
  }
  const right=one?anchor.clone():sampleRetentionFreeWrist(1,p.mode,p.locomotion,p.exterior);
  const left=sampleRetentionFreeWrist(-1,p.mode,p.locomotion,p.exterior);

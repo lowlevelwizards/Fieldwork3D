@@ -83,8 +83,9 @@ export function routeSlingTransition(out:readonly SlingRibbonKnot[],
    const y=a.point.y,margin=width*.6+.16;
    const xEdge=Math.abs(c>=0?fit.front(y,0):packedRearSurface(fit.back(y,0),y,0,pack))+margin;
    const zEdge=Math.abs(fit.side(y,0,sign))+margin;
-   const radius=Math.max(Math.hypot(a.point.x,a.point.z),
-    Math.min(xEdge/Math.max(.001,Math.abs(c)),zEdge/Math.max(.001,Math.abs(s))));
+   const radius0=Math.hypot(oldX,oldZ)*(1-f)+Math.hypot(b.point.x,b.point.z)*f;
+   const surfaceRadius=Math.min(xEdge/Math.max(.001,Math.abs(c)),zEdge/Math.max(.001,Math.abs(s)));
+   const radius=radius0+Math.max(0,surfaceRadius-radius0)*Math.sin(Math.PI*f);
    a.point.x=c*radius;a.point.z=s*radius;
    // Blend the radial normal along the same arc (no zero-vector flip).
    a.normal.set(c,0,s);

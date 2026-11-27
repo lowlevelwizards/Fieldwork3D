@@ -1146,6 +1146,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       locomotion:{stride:p.stride,speed:physicalSpeed,posture:p.posture,gait:p.gait,
         injury:p.injury,direction:(p.travelYaw??p.heading)-p.heading},
       motion:{stride:p.stride,speed:physicalSpeed,acceleration:p.acceleration,
+        momentum:p.motionImpulse,posture:p.posture,gait:p.gait,
         turning:p.turning,massKg:retentionAssembly?.massKg??3,
         inertia:retentionAssembly?.rotationalInertia??100}},retentionWeight):null;
   if(retention){

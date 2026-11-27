@@ -1,6 +1,5 @@
 /** SR10 — relaxed wrist targets from existing deterministic gait phase.
  * No new locomotion clock and no simulation changes. */
-import * as THREE from 'three';
 import {neutralMannequinWrist} from './operator-mannequin-pose.ts';
 import type {EquipmentExterior} from './operator-equipment-exterior.ts';
 import type {RetentionPoseMode} from './breach-weapon-retention-pose.ts';
