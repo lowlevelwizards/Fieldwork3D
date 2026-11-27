@@ -22,7 +22,7 @@ import * as THREE from 'three';
 import {readSlingKind} from './breach-weapon-retention.ts';
 import {sampleSecondaryRetention} from './breach-secondary-retention.ts';
 import {oneHandRetentionWeight} from './breach-weapon-retention-actions.ts';
-import {patientRootTransform,patientWrist,TRANSPORT_PATIENT_CHEST_Y,TRANSPORT_PATIENT_HIP_Y} from './breach-transport-patient-pose.ts';
+import {patientTransportContacts,patientRootTransform,patientWrist,TRANSPORT_PATIENT_CHEST_Y,TRANSPORT_PATIENT_HIP_Y} from './breach-transport-patient-pose.ts';
 import {sampleLoadedCarrier} from './breach-loaded-carrier-pose.ts';
 import {sampleTransportContact,transportContactHands} from './breach-transport-contact.ts';
 import {sampleRetentionTransition} from './breach-weapon-retention-transition.ts';
@@ -95,6 +95,10 @@ function approach(v:number,target:number,rate:number,dt:number){
 const P=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
 const EQUIPMENT_LOCAL_Z=new THREE.Vector3(0,0,1);
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
+  if(p.loadedTransport&&!p.down&&!p.surrender){
+    p={...p,aiming:false,aimBlend:0,firing:false,shotHeading:p.heading,
+      handlingOverride:'ready',poseV3Preview:false};
+  }
   // Timing only for opt-in ?perf=1 tactical rigs. Lab, replay and normal
   // gameplay never pay for these marks or store diagnostic objects.
   const profilePose=r.root.userData.fieldworkProfilePose===true;
@@ -197,7 +201,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const motorYaw=-hipTarget;
   const scheduledYaw=p.pelvisYaw??(r.footsteps.mode==='pivot'?
     r.footsteps.pelvisYaw:undefined);
-  r.legacyYaw=scheduledYaw??(p.deterministic||discontinuity||!r.lastPose?
+  r.legacyYaw=p.loadedTransport?.mode==='drag'?-p.heading:scheduledYaw??(p.deterministic||discontinuity||!r.lastPose?
     motorYaw:approach(r.legacyYaw,motorYaw,3.8,dt));
   const headingYaw=r.legacyYaw;
   const turn=turnHierarchy({pelvisYaw:headingYaw,
@@ -1157,6 +1161,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   if(p.transportPatient&&p.down){
     frame.chest.position.set(0,TRANSPORT_PATIENT_CHEST_Y,0);frame.chest.rotation.set(0,0,0);
   }
+  const pairContacts=p.loadedTransport?.patientPose&&!p.down&&!p.surrender?
+    patientTransportContacts(p.loadedTransport.patientPose,p.heading):null;
+  r.root.userData.transportContactErrors=diagnosticsEnabled&&pairContacts?[]:null;
   beginOperatorArmPose(r,scratch);
   // S6.2: single upper-body IK owner. Draw fraction, aim and reload clocks
   // are fixed-step facts; this pure pose is never a second combat state.
@@ -1188,14 +1195,21 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       setOperatorArmSegments(scratch,i as 0|1,shoulder,solved.joint,solved.effector,scratch.sides[i]);
       setOperatorHandPose(scratch,i as 0|1,solved.effector,0);continue;
     }
-    if(loaded&&!transportContact){
+    if(loaded&&(!transportContact||pairContacts)){
       const shoulder=shoulderFor(i),target=i===0?loaded.wristLeft:loaded.wristRight;
-      const requested=P(target.x,target.y,target.z);
-      const solved=solveTwoBone(shoulder,requested,10,10,P(0,-8,sign*5),ARM_LIMITS);
+      // Convert the paired world anchor through the exact current chest
+      // matrix (including loaded lean and pelvis yaw), not just yaw math.
+      const requested=pairContacts?frame.chest.worldToLocal(pairContacts[i].clone()):P(target.x,target.y,target.z);
+      const solved=solveTwoBone(shoulder,requested,10,10,P(1,-8,sign*5),ARM_LIMITS);
+      if(diagnosticsEnabled&&pairContacts)r.root.userData.transportContactErrors.push(solved.effector.distanceTo(requested));
       arm.bend.copy(solved.bendPlane);arm.outOfReach=!solved.reached;
       r.elbowSpread[i]=Math.max(0,sign*(solved.joint.z-shoulder.z));
       setOperatorArmSegments(scratch,i as 0|1,shoulder,solved.joint,solved.effector,scratch.sides[i]);
       setOperatorHandPose(scratch,i as 0|1,solved.effector,0);
+      // Align the palm with the finished forearm, so the contact does not
+      // look like a disconnected sideways fist.
+      const palm=operatorHandTransform(scratch,i as 0|1);
+      palm.quaternion.setFromUnitVectors(P(1,0,0),solved.effector.clone().sub(solved.joint).normalize());
       continue;
     }
     if(retention&&(!liveOneHand||i===1)&&!handsFreeAction&&(!switchingSlung||switchPose.pistol<=.08)){

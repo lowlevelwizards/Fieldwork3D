@@ -23,13 +23,15 @@ export function readTransportPatientPose(patient:Patient,carriers:readonly Carri
  const contact=carrier.transportContact;
  const release=contact?.kind==='release'?clamp(contact.elapsed/Math.max(.01,contact.duration)):0;
  const motion=Math.sin((carrier.stride??0)*.12)*clamp((carrier.velocity??0)/25);
- const dragHeight=5.8;
+ const dragHeight=THREE.MathUtils.lerp(10.2,5.8,release);
  // Head is along -forward of the supine model. Carry lies transversely,
  // with the upper torso seated on the right-side shoulder region.
  const heading=mode==='drag'?toward+Math.PI:carrier.heading+Math.PI/2;
- const height=mode==='drag'?dragHeight:THREE.MathUtils.lerp(30.5+motion*.35,dragHeight,release);
- const offset=mode==='drag'?5.8:0;
- return {mode,carrierId:carrier.id,heading,roll:Math.PI/2,
+ const idleRise=3*Math.max(0,1-(carrier.velocity??0)/12);
+ const height=mode==='drag'?dragHeight:THREE.MathUtils.lerp(32+idleRise+motion*.35,5.8,release);
+ const offset=mode==='drag'?7.8:0;
+ return {mode,carrierId:carrier.id,heading,
+  roll:mode==='drag'?THREE.MathUtils.lerp(1.30,Math.PI/2,release):Math.PI/2,
   chest:{x:patient.p.x+Math.cos(toward)*offset,y:height,z:patient.p.y+Math.sin(toward)*offset},
   release,motion};
 }
@@ -40,10 +42,25 @@ export function patientRootTransform(p:TransportPatientPose,scale=1){
  return {position,quaternion:canonicalRootOrientation(0,-p.heading,p.roll),legacy};
 }
 export function patientAnkleOffset(p:TransportPatientPose,side:number){
- return p.mode==='drag'?{x:1.4+Math.abs(p.motion)*.45,y:-20,z:side*.45}:
+ return p.mode==='drag'?{x:-2.0+Math.abs(p.motion)*.45,y:-20,z:side*.45}:
   {x:-10.2,y:-15.5,z:side*1.1};
 }
 export function patientWrist(p:TransportPatientPose,side:number){
  return p.mode==='drag'?{x:-1,y:-11,z:side*8.4}:
   {x:-11.2,y:-6,z:side*7.5};
+}
+
+/** CT10: both hands refer to the same model-space frame as the patient rig.
+ * Drag grasps the shoulder/underarm region. Carry supports upper torso and
+ * thigh separately. Sort by carrier lateral axis to avoid crossed arms. */
+export function patientTransportContacts(p:TransportPatientPose,carrierHeading:number){
+ const {legacy}=patientRootTransform(p);
+ const center=new THREE.Vector3(p.chest.x,p.chest.y,p.chest.z);
+ const local=p.mode==='drag'?
+  [new THREE.Vector3(.8,4.8,-7.8),new THREE.Vector3(.8,4.8,7.8)]:
+  [new THREE.Vector3(-2,5.5,3),new THREE.Vector3(-2,-12,3)];
+ const world=local.map(v=>v.applyQuaternion(legacy).add(center));
+ const side=new THREE.Vector3(-Math.sin(carrierHeading),0,Math.cos(carrierHeading));
+ world.sort((a,b)=>a.dot(side)-b.dot(side));
+ return [world[0],world[1]] as const;
 }

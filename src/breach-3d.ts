@@ -2618,7 +2618,8 @@ export class TacticalScene3D{
       const transportPatient=linkedTransportPatient(s,actor);
       const loadedTransport=transportPatient&&actor.health>0?{
         mode:transportPatient.transportMode??'drag' as const,patientId:transportPatient.id,
-        patient:transportPatient.p,heading:transportPatient.heading}:undefined;
+        patient:transportPatient.p,heading:transportPatient.heading,
+        patientPose:readTransportPatientPose(transportPatient,s.operators)}:undefined;
       const loadedHeading=loadedTransport?loadedCarrierHeading(loadedTransport.mode,
         {x:drawActor.x,y:drawActor.z},loadedTransport.patient,drawActor.heading):null;
       // Airborne body is a fixed-tick simulation outcome. Keep the 3D
@@ -2943,7 +2944,8 @@ export class TacticalScene3D{
           liveMotion?.acceleration[actor.id]??0,
         motionImpulse:replay?.momentum[actor.id]??
           liveMotion?.momentum[actor.id],
-        pelvisYaw:replay?.pelvisYaw[actor.id]??liveMotion?.pelvisYaw[actor.id],
+        pelvisYaw:loadedTransport?.mode==='drag'?undefined:
+           replay?.pelvisYaw[actor.id]??liveMotion?.pelvisYaw[actor.id],
         travelYaw:replay?.travelYaw[actor.id]??
           liveMotion?.travelYaw[actor.id],
         posture:actor.posture,coverStanceDrop:actor.coverStanceDrop??0,

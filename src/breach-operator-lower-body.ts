@@ -147,7 +147,7 @@ export function applyOperatorLegIK(r:OperatorRig,p:OperatorPose,
   shoe.position.copy(relative);
   const angles=output.shoeRotation[i];
   angles.z=target.pitch??0;
-  angles.y=target.worldYaw-headingYaw;
+  angles.y=p.loadedTransport?.mode==='drag'?0:target.worldYaw-headingYaw;
   if(p.transportPatient&&p.down)angles.set(0,0,p.transportPatient.mode==='carry'?.35:0);
   shoe.quaternion.setFromEuler(angles);
  }

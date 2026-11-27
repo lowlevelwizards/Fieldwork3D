@@ -3,7 +3,8 @@
 import type {Pt} from './breach-core.ts';
 import type {TransportMode} from './breach-casualty-transport.ts';
 export type LoadedTransportPose=Readonly<{mode:TransportMode;patientId:string;
- patient:Pt;heading:number;releaseWeight?:number}>;
+ patient:Pt;heading:number;releaseWeight?:number;
+ patientPose?:import('./breach-transport-patient-pose.ts').TransportPatientPose}>;
 export function loadedCarrierHeading(mode:TransportMode,carrier:Pt,patient:Pt,heading:number){
  const dx=patient.x-carrier.x,dy=patient.y-carrier.y;
  return mode==='drag'&&Math.hypot(dx,dy)>3?Math.atan2(dy,dx):heading;
