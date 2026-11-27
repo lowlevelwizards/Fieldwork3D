@@ -21,7 +21,9 @@ test('BP10 every compatible mount has a single suspension owner and finite fitte
  }
  assert.equal(equipmentAssembly('assault-panel','armor-bare','no-rig').compatible,false);
  assert.equal(equipmentAssembly('day-pack','armor-bare','chicom-rig','direct').mode,'independent');
- assert.equal(readWardrobe({...initialWardrobe(),packMount:'adapter'}).packMount,'adapter');
+ assert.equal(readWardrobe({...initialWardrobe(),packMount:'adapter'}).packMount,undefined);
+ assert.equal(equipmentAssembly('day-pack','plate-jpc','split-front','independent').mode,'direct');
+ assert.equal(equipmentAssembly('day-pack','armor-bare','split-front').mode,'shared');
  assert.equal(readWardrobe({...initialWardrobe(),packMount:'invalid'}).packMount,undefined);
 });
 test('BP10 category-specific defaults and eligible prints, no irrelevant snow covers or legacy modern panel',()=>{
