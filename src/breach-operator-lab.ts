@@ -1170,8 +1170,7 @@ function isolateKit(body:OperatorRig){
    body.medicalPouch,body.radioUnit,body.utilityTool,
    body.flashCanister])mesh.visible=false;
  }
- hide('pack',body.pack,v.dayPack,v.fieldPack,v.packHarness,
-  ...all(v.wardrobeGear.pack),...all(v.accessories.pack));
+ hide('pack',body.pack,...(v.packPreview.harness?[v.packPreview.harness]:[]),...all(v.accessories.pack));
  hide('clothes',v.jacket,v.lightShirt,
   ...Object.values(v.fieldBlouses).flatMap(b=>[
     b.torso,...b.upper,...b.lower,...b.cuffed,...b.cuffedLower,...b.rolledUpper]),
