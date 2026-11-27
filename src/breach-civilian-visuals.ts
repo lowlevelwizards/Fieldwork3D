@@ -154,7 +154,7 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
  // The foot IK samples root elevation during its solve. Put the true
  // neutral transport height on the root BEFORE posing, otherwise a prior
  // carried/dragged frame contaminates the next standing frame.
- const transportHeight=pose==='carried'?10:pose==='dragged'?2:0;
+ const transportHeight=transportPatient?0:pose==='carried'?10:pose==='dragged'?2:0;
  r.root.position.set(c.p.x,transportHeight,c.p.y);
  poseOperator(r.character,{
   x:c.p.x,z:c.p.y,heading:c.heading,velocity:moving?c.velocity:0,

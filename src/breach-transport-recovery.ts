@@ -4,7 +4,7 @@ import type {Pt} from './breach-core.ts';
 export function chooseTransportStep<T>(from:Pt,intended:Pt,
  propose:(point:Pt)=>T|null,clear:(a:Pt,b:Pt)=>boolean,allowAlternate=true):
  {carrier:Pt;body:T;adjusted:boolean}|null{
- const direct=propose(intended);
+ const direct=clear(from,intended)?propose(intended):null;
  if(direct)return {carrier:intended,body:direct,adjusted:false};
  const dx=intended.x-from.x,dy=intended.y-from.y;
  if(!allowAlternate||Math.hypot(dx,dy)<.0001)return null;

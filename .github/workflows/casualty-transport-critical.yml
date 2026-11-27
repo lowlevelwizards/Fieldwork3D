@@ -10,6 +10,11 @@ on:
       - 'src/breach-weapon-retention-live.ts'
       - 'src/breach-grounded-primary.ts'
       - 'src/breach-game.ts'
+      - 'src/casualty-transport-lab-*.ts'
+      - 'src/ui/context-actions.ts'
+      - 'src/ui/tactical-palette-controller.ts'
+      - 'casualty-transport-lab.html'
+      - 'vite.config.ts'
       - 'tests/casualty-transport-*.test.mjs'
       - '.github/workflows/casualty-transport-critical.yml'
   workflow_dispatch:
@@ -25,5 +30,6 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - run: node --experimental-strip-types --test tests/casualty-transport-*.test.mjs tests/dispatch-d15-8-transport-route.test.mjs tests/dispatch-d15-capture-transport-presentation.test.mjs tests/civilian-r2-rescue-transport.test.mjs tests/equipment-22-07-transport.test.mjs tests/equipment-22-08-casualty-extraction.test.mjs tests/weapon-retention-wr8.test.mjs tests/weapon-retention-wr10.test.mjs
+      - run: node --experimental-strip-types --test tests/casualty-transport-*.test.mjs tests/dispatch-d15-8-transport-route.test.mjs tests/dispatch-d15-capture-transport-presentation.test.mjs tests/civilian-r2-rescue-transport.test.mjs tests/equipment-22-07-transport.test.mjs tests/equipment-22-08-casualty-extraction.test.mjs tests/weapon-retention-wr8.test.mjs tests/weapon-retention-wr10.test.mjs tests/dispatch-d15-capture-transport-go.test.mjs tests/oc-transport-targeting.test.mjs tests/civilian-r2-transport-replay.test.mjs tests/equipment-22-04-treatment.test.mjs tests/breach-roadmap3-context-commands.test.mjs tests/door-operating-modes.test.mjs
       - run: npm run build
+      - run: test -f dist/casualty-transport-lab.html

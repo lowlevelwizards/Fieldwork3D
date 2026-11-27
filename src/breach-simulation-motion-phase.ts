@@ -5,7 +5,7 @@
 import {chooseTransportStep} from './breach-transport-recovery.ts';
 import {proposeAttachedCarry} from './breach-attached-carry.ts';
 import {proposeDragTrail,type DragTrail} from './breach-drag-trail.ts';
-import {transportProfile} from './breach-transport-navigation.ts';
+import {linkedTransportPatient,transportProfile} from './breach-transport-navigation.ts';
 import {hasTransportLink} from './breach-transport-custody.ts';
 import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
 import {length} from './breach-plan.ts';
@@ -56,15 +56,17 @@ export function advanceSimulationMotion(s:Session,h:number,
   // carries a civilian. Ordinary traffic and empty missions need none.
   let coupledBodyStarts:Map<string,Pt>|null=null;
   let dragProposals:Map<string,DragTrail|undefined>|null=null;
+  let transportRadii:Map<string,number>|null=null;
   for(const carrier of s.operators){
     if(!carrier.carryingId)continue;
-    const civil=s.civilians.find(c=>hasTransportLink(carrier,c))??
-      s.operators.find(o=>hasTransportLink(carrier,o));
+    const civil=linkedTransportPatient(s,carrier);
     if(!civil||civil.health>0||carrier.health<=0)continue;
     const from=motionStart.get(carrier.id)??carrier.p;
     const bodyFrom=motionStart.get(civil.id)??civil.p;
     const mode=civil.transportMode??carrier.plan[0]?.transportMode??'drag';
     const profile=transportProfile(mode);
+    if(!transportRadii)transportRadii=new Map();
+    transportRadii.set(civil.id,profile.bodyRadius);
     const clear=(a:Pt,b:Pt)=>sweptBodyClear(a,b,s.doors,profile.bodyRadius,geometry());
     const intended=carrier.p;
     const pair=chooseTransportStep(from,intended,to=>{
@@ -204,6 +206,8 @@ export function advanceSimulationMotion(s:Session,h:number,
   }
   const decisions=resolveMovementFrame(proposals,p=>{
     const currentWorld=geometry();
+    const radius=transportRadii?.get(p.id);
+    if(radius!==undefined)return sweptBodyClear(p.from,p.to,s.doors,radius,currentWorld);
     if(p.side==='neutral')return sweptBodyClear(
       p.from,p.to,s.doors,OPERATOR_RADIUS,currentWorld);
     const a=actorById?.get(p.id)??s.operators.find(unit=>unit.id===p.id)!;

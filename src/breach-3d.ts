@@ -3007,7 +3007,8 @@ export class TacticalScene3D{
       // The shared pose solver publishes its local fall/root offset. Restore
       // only the actual transport elevation afterward (as for civilians);
       // otherwise the body stays floor-flat while physically carried.
-      if(!transportPatientPose){if(transport)object.root.position.y+=transport.lift;}
+      // Reciprocal transported subjects already own their full anatomical root.
+      // Do not apply the legacy lift a second time.
       // One existing muzzle flash follows the actual physical Glock socket
       // only once a selected sidearm is completely drawn. The rifle retains
       // its original visual authority in every other phase.

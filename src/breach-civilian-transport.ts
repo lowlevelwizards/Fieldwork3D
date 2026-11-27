@@ -77,8 +77,10 @@ export function reconcileCivilianTransportFrame(
   const carrier=resolved.get(carrierId),body=resolved.get(bodyId);
   const carrierStart=original.get(carrierId),bodyStart=original.get(bodyId);
   if(!carrier||!body||!carrierStart||!bodyStart)continue;
-  if(carrier.blocked){
-    body.point=bodyStart.from;body.blocked='actor';continue;
+  if(carrier.blocked||body.blocked){
+    const reason=carrier.blocked??body.blocked??'actor';
+    carrier.point=carrierStart.from;carrier.blocked=reason;
+    body.point=bodyStart.from;body.blocked=reason;continue;
   }
   for(const other of proposals){
     if(other.id===carrierId||other.id===bodyId||
