@@ -28,9 +28,11 @@ const create=id=>{
  group.updateMatrixWorld(true);
  return {config,group};
 };
-test('catalog: 8 AR, 9 AK and 12 distinct HK factory models',()=>{
- assert.equal(FAMILY_PRESETS.length,29);
- assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,12);
+test('catalog: twelve distinct HK factory models survive expansion of other families',()=>{
+ const expected=['hk-g3','hk-g3a3','hk-g3a4','hk-hk33a2','hk-hk33a3',
+  'hk-hk53a3','hk-mp5a3','hk-mp5sd3','hk-mp5k','hk-mp5k-pdw','hk-mp5a2','hk-mp5sd2'];
+ assert.equal(new Set(FAMILY_PRESETS.map(x=>x.id)).size,FAMILY_PRESETS.length);
+ assert.deepEqual(FAMILY_PRESETS.filter(x=>x.family==='hk').map(x=>x.id).sort(),expected.sort());
  for(const id of ids){
   const {config,group}=create(id);
   assert.equal(matchingFamilyPreset(config.build).id,id);
@@ -137,4 +139,34 @@ test('factory muzzle is excluded when an accessory owns the tip',()=>{
   assert.ok(box.max.x>=resolveWeaponAssembly(config).muzzleX);
   clearWeaponSilhouette(group);clearWeaponSilhouette(other);
  }
+});
+
+test('WC2.3c: fixed furniture is faceted exterior art with retained landmarks',()=>{
+ const names=['hk-g3','hk-g3a3','hk-hk33a2','hk-mp5a2','hk-mp5sd2'];
+ const shapes=[];
+ for(const id of names){
+  const {config,group}=create(id);
+  try{
+   const stock=group.children.filter(x=>x.name.startsWith('family-stock-'));
+   assert.equal(stock.length,2,id+' one shell and one pad');
+   const shell=stock.find(x=>x.userData.hkFixedFurnitureArt);
+   const pad=stock.find(x=>x!==shell);
+   assert.ok(shell&&pad,id+' one sculpted shell and pad');
+   const z=shell.geometry.getAttribute('position');
+   assert.ok(new Set(Array.from({length:z.count},(_,i)=>Math.abs(z.getZ(i)).toFixed(3))).size>3,
+    id+' actual cross-sectional planes, not a flat extrusion');
+   assert.ok(new THREE.Box3().setFromObject(shell).intersectsBox(new THREE.Box3().setFromObject(pad)),
+    id+' pad and visual shell meet');
+   const bounds=new THREE.Box3().setFromObject(shell);
+   assert.ok(Math.abs(partVisualBounds(group,'stock').min.x-resolveWeaponAssembly(config).stockX)<.001,id+' rear landmark');
+   shapes.push({positions:Array.from(shell.geometry.getAttribute('position').array),
+    depth:bounds.max.z-bounds.min.z});
+  }finally{clearWeaponSilhouette(group)}
+ }
+ for(let i=0;i<4;i++)for(let j=i+1;j<4;j++)
+  assert.notDeepEqual(shapes[i].positions,shapes[j].positions,'independent art profiles');
+ assert.ok(Math.abs(shapes[0].depth-shapes[1].depth)<.1,'related rifle furniture retains family resemblance');
+ assert.ok(shapes[1].depth>shapes[2].depth,'HK33 restrained visual mass');
+ assert.ok(shapes[3].depth>shapes[2].depth,'MP5 compact broad mass');
+ assert.deepEqual(shapes[3],shapes[4],'A2 and SD2 share fixed furniture exactly');
 });

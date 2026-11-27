@@ -10,6 +10,8 @@ import {initialWeaponConfiguration,readWeaponConfiguration,
  from '../src/equipment-weapon-assemblies.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
+import {buildWeaponAccessories} from '../src/breach-weapon-accessories.ts';
+import {mountedAccessorySeat} from '../src/weapons/geometry/mounted-accessory-layout.ts';
 import {stocklessMP5K} from '../src/breach-weapon-pose.ts';
 import {attachmentPrice,catalogStockIds} from '../src/equipment-weapon-inventory.ts';
 import {lowReadyArchetype} from '../src/breach-low-ready-archetypes.ts';
@@ -47,8 +49,13 @@ test('MP5K-PDW side folder is a real shoulder stock, but K cap remains stockless
  assert.equal(resolveWeaponAssembly(k).stockX,-6.65);
  assert.equal(resolveWeaponAssembly(pdw).stockX,-13.05);
  const gun=model(pdw);
- assert.equal(gun.children.filter(x=>x.userData.hkMP5PDWUpper).length,1);
- assert.equal(gun.children.filter(x=>x.userData.hkMP5PDWBrace).length,1);
+ const frames=gun.children.filter(x=>x.userData.hkMP5PDWFrame);
+ assert.equal(frames.length,1,'one contiguous sculpted frame');
+ gun.updateMatrixWorld(true);
+ const through=new THREE.Raycaster(new THREE.Vector3(-10.8,-.1,10),new THREE.Vector3(0,0,-1));
+ const solid=new THREE.Raycaster(new THREE.Vector3(-10.8,.65,10),new THREE.Vector3(0,0,-1));
+ assert.equal(through.intersectObject(frames[0]).length,0,'negative space is genuinely open');
+ assert.ok(solid.intersectObject(frames[0]).length>0,'the upper silhouette remains solid');
  assert.equal(gun.children.filter(x=>x.userData.hkMP5PDWButt).length,1);
  assert.equal(gun.children.filter(x=>x.userData.hkMP5StocklessCap).length,0);
  assert.ok(Math.abs(new THREE.Box3().setFromObject(gun).min.x+13.05)<.01);
@@ -68,9 +75,23 @@ test('standard MP5 can morph from tropical to three-sided rail with optional gri
  const mounted=setWeaponAttachment(rail,'foregrip','foregrip-vertical');
  assert.equal(mounted.slots.foregrip,'foregrip-vertical');
  const grip=model(mounted);
- assert.equal(grip.children.filter(x=>x.userData.hkTriRailVerticalGrip).length,1);
+ const extras=buildWeaponAccessories(mounted,steel,dark);
+ assert.equal(grip.children.filter(x=>x.userData.hkTriRailVerticalGrip||
+  x.name.startsWith('family-art-hk-trirail-vertical-grip')).length,0,
+  'no duplicate grip in the body builder');
+ assert.equal(extras.children.filter(x=>x.name.startsWith('weapon-accessory-foregrip-vertical')).length,2);
+ const seat=mountedAccessorySeat(mounted,'foregrip');
+ assert.ok(seat?.hand,'accepted grip has a shared hand anchor');
+ const contacts=riflePoseContacts('smg',mounted)?.support;
+ assert.ok(contacts,'support contact exists');
+ assert.equal(contacts.near.y,seat.hand.y);
+ assert.equal(contacts.far.y,seat.hand.y);
+ assert.equal((contacts.near.x+contacts.far.x)/2,seat.hand.x);
+ const gripBounds=new THREE.Box3().setFromObject(extras.getObjectByName('weapon-accessory-foregrip-vertical'));
+ assert.ok(seat.hand.y>=gripBounds.min.y && seat.hand.y<=gripBounds.max.y,
+  'preferred palm height falls inside visible grip height');
+ extras.traverse(x=>{if(x instanceof THREE.Mesh)x.geometry.dispose()});extras.clear();
  assert.equal(resolveWeaponAssembly(mounted).supportX,7.0);
- assert.equal(riflePoseContacts('smg',mounted)?.support.near.y,-3.65);
  clearWeaponSilhouette(grip);
  assert.equal(setConfiguredFamilyPart(preset('hk-mp5sd3'),'handguard','hk-mp5-trirail').build.parts.handguard,
   'hk-mp5sd-shroud','SD integral front end cannot take the standard MP5 rail');
@@ -80,12 +101,21 @@ test('HK claw top rail only appears when fitted to HK; keeps true muzzle geometr
  assert.equal(b.slots.opticMount,'optic-hk-claw');
  assert.equal(familyAccessoryAllowed(a.build,'opticMount','optic-hk-claw'),true);
  const gun=model(b),plain=model(a);
- assert.equal(gun.children.filter(x=>x.userData.hkClawMount).length,8);
- const top=gun.children.find(x=>x.userData.hkClawMount==='rail');
+ const mounts=gun.children.filter(x=>x.userData.hkClawMount);
+ assert.equal(mounts.length,1,'consolidated single-draw claw mount');
+ const top=mounts[0];
+ assert.equal(top.userData.hkClawMount,'assembly');
+ assert.equal(top.userData.hkClawFeet,4);
  const topBox=new THREE.Box3().setFromObject(top);
- for(const foot of gun.children.filter(x=>x.userData.hkClawMount==='foot'))
-  assert.ok(new THREE.Box3().setFromObject(foot).intersectsBox(topBox),
-   'claw feet must actually connect to top rail');
+ assert.ok(Math.abs(topBox.max.y-top.userData.hkClawSupportTopY)<.02);
+ const sighted=setWeaponAttachment(b,'optic','optic-reflex');
+ const extras=buildWeaponAccessories(sighted,steel,dark);
+ const base=extras.getObjectByName('weapon-accessory-optic-reflex-base');
+ assert.ok(base,'mounted optic base exists');
+ const baseBox=new THREE.Box3().setFromObject(base);
+ assert.ok(baseBox.min.y<=topBox.max.y+.02 && baseBox.min.y>=topBox.max.y-.20,
+  'optic base rests on visible claw bridge');
+ extras.traverse(x=>{if(x instanceof THREE.Mesh)x.geometry.dispose()});extras.clear();
  assert.equal(plain.children.filter(x=>x.userData.hkClawMount).length,0);
  assert.equal(resolveWeaponAssembly(b).muzzleX,resolveWeaponAssembly(a).muzzleX);
  clearWeaponSilhouette(gun);clearWeaponSilhouette(plain);

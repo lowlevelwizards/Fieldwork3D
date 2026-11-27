@@ -1,0 +1,6 @@
+# WC2.3c — fixed furniture rebuild
+User rejected WC2.3b's shapes. The rejected pass is the pinned comparison baseline (run 45947004961; artifact 15174654086; revision d19c6670a0d154a0664213eb80c991d23b1be8f0). Previous external-photo assessment informs the visual direction, but this commit does not claim new reference verification.
+
+Remove swollen lower contours and artificial separation. Four fictional miniature art treatments share a continuous tapered gesture and use broad faceted cross-sections rather than constant-depth profiles. Wood receives broader soft planar transitions; polymer and lean rifle art retain related forms; compact furniture is restrained rather than bulbous. A2 and SD2 share exactly the same art. Existing rear landmarks, pads, part IDs, materials, non-stock geometry and all game behavior unchanged by design.
+
+Acceptance: actual multiview before/after and native-scale captures, existing pose and compatibility checks, one shell and pad, draw-call parity, verify cost and absence of visible gaps. Check broad surfaces at gameplay distance, not just side outline. All validation and user visual acceptance pending. General integration blocker remains outside artwork scope. Keep draft, no deployment.

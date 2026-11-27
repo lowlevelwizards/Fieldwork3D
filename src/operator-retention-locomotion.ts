@@ -18,7 +18,7 @@ export function sampleRetentionFreeWrist(side:-1|1,mode:RetentionPoseMode,
  const careful=motion?.gait==='pie'||motion?.gait==='squeeze';
  const phase=retentionGaitPhase(finite(motion?.stride))+(side===1?Math.PI:0);
  const carryingSide=mode==='side-slung'&&side===1;
- const amp=(motion?.gait==='run'?4.2:3.1)*speed*
+ const amp=(motion?.gait==='run'?3.6:3.1)*speed*
   (crouch?.62:1)*(careful?.45:1)*(carryingSide?.40:1)*
   (finite(motion?.injury)>=2?.65:1);
  const swing=Math.sin(phase)*amp;
