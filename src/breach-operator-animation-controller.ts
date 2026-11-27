@@ -20,7 +20,7 @@ import type {OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import * as THREE from 'three';
 import {readSlingKind} from './breach-weapon-retention.ts';
-import {sampleRetentionPose} from './breach-weapon-retention-pose.ts';
+import {sampleRetentionTransition} from './breach-weapon-retention-transition.ts';
 import {solveOperatorDirectSlingPose} from './breach-operator-sling-pose.ts';
 import {beginOperatorEquipmentPose,solveOperatorDroppedWeapon,
  finishOperatorEquipmentPose} from './breach-operator-equipment-output.ts';
@@ -1091,11 +1091,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const contactReach=!equipmentActive&&!p.down&&!p.surrender&&!p.firing&&
     contactAge>=0&&contactAge<.64?
     Math.sin(Math.PI*contactAge/.64):0;
-  const retentionAssembly=p.retentionPreview&&config?resolveWeaponAssembly(config):null;
-  const retention=p.retentionPreview&&!p.down&&!p.surrender&&!p.unarmedPreview&&
+  const retentionMode=p.retentionTransition?
+    p.retentionTransition.mode:p.retentionPreview;
+  const retentionWeight=p.retentionTransition?.weight??1;
+  const retentionAssembly=retentionMode&&config?resolveWeaponAssembly(config):null;
+  const retention=retentionMode&&retentionWeight>0&&!p.down&&!p.surrender&&!p.unarmedPreview&&
     !p.firing&&!p.aiming&&!reloadActive&&!doorActive&&!throwActive&&!treatmentActive&&
     !equipmentActive&&(p.secondarySwitch?.fraction??0)===0?
-    sampleRetentionPose({mode:p.retentionPreview,
+    sampleRetentionTransition({mode:retentionMode,
       sling:readSlingKind(config?.slots.sling),scale:heldWeapon.scale,
       heldPosition:heldWeapon.position,heldQuaternion:heldWeapon.quaternion,
       primaryGrip:fit.primary,supportGrip:fit.support,
@@ -1106,7 +1109,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       sockets:r.weaponBody.userData.retentionSockets,
       motion:{stride:p.stride,speed:physicalSpeed,acceleration:p.acceleration,
         turning:p.turning,massKg:retentionAssembly?.massKg??3,
-        inertia:retentionAssembly?.rotationalInertia??100}}):null;
+        inertia:retentionAssembly?.rotationalInertia??100}},retentionWeight):null;
   if(retention){
     heldWeapon.position.copy(retention.position);
     heldWeapon.quaternion.copy(retention.quaternion);

@@ -1,0 +1,2 @@
+# WR6 — Explicit retention transition samples
+The new caller-owned state reverses in place, changes between stows through held, uses an outboard back-stow corridor, and samples the existing weapon and both wrists without an independent render clock. The pose contract can accept a static preview or recorded transition. It is not yet wired into live action scheduling, weapon switching, or grounded inventory. WR7–WR10 must gate the actual action on achieved retention and own interruption/replay state; WR12 exposes the controls. Visual acceptance remains outstanding.
