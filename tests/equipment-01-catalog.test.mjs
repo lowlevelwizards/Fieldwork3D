@@ -25,6 +25,7 @@ test('starter loadout choices are valid, with a single item per slot',()=>{
 });
 test('physical carry weight derives from item metadata, not combat stats',()=>{
  const ids=['primary-carbine','armor-carrier','backpack-day'];
- assert.equal(equipmentMass(ids),3.15+6.8+1.2);
+ // BP12 canonical daypack has a 1.0 kg empty mass (formerly 1.2 kg).
+ assert.equal(equipmentMass(ids),3.15+6.8+1.0);
  assert.equal(equipmentMass(['unknown','head-none']),0);
 });
