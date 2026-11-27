@@ -176,7 +176,7 @@ export function createWardrobeGearLayers(
 }
 export function updateWardrobeGearLayers(v:WardrobeGearLayers,
  armor:string,rig:string,belt:string,pack:string,top='combat-shirt',
- aliceLoad:AliceLc2Load='standard',m1956Variant:M1956Variant='late'){
+ aliceLoad:AliceLc2Load='standard',m1956Variant:M1956Variant='late',sharedPack=false){
  v.ensureArmor?.(armor);v.ensureRig?.(rig);
  if(rig==='alice-lc2'){
   v.ensureAliceWaist?.();
@@ -205,12 +205,12 @@ export function updateWardrobeGearLayers(v:WardrobeGearLayers,
  }
  // Harness straps remain distinct from pouch geometry and reach ABOVE the
  // selected uniform shoulder cap, including BDU collar and bulky Gorka hood.
- updateFittedRigHarness(v.rig,rig,top,exterior);
+ updateFittedRigHarness(v.rig,rig,top,sharedPack?{...exterior,mode:'shared-pack'}:exterior);
  // Placards can use a minimal standalone harness when no external carrier
  // provides attachment loops; never leave an unsupported slab floating.
  const placard=v.rig['chest-placard'];
  if(placard)for(const child of placard.children)
   if(child.name==='standalone-harness')
-   child.visible=rig==='chest-placard'&&
+   child.visible=!sharedPack&&rig==='chest-placard'&&
     (!('mode' in exterior)||exterior.mode!=='carrier-placard');
 }
