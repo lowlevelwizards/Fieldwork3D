@@ -432,7 +432,7 @@ export class CampaignKitPreview{
    return visual.wardrobeGear.armor[looks.armorStyle]??null;
   if(slot==='rig')return visual.wardrobeGear.rig[looks.rigStyle]??null;
   if(slot==='belt')return visual.wardrobeGear.belt[looks.beltStyle]??null;
-  if(slot==='backpack')return visual.wardrobeGear.pack[looks.packStyle]??null;
+  if(slot==='backpack')return visual.packPreview.active?.root??null;
   if(slot==='primary')return this.rig.weaponBody;
   if(slot==='medical'||slot==='utility')
    return inspectEquipmentMesh(this.rig,equipment,{kind:slot});
