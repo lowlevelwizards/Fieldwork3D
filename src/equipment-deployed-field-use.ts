@@ -1,3 +1,4 @@
+import {quoteUnifiedFieldContent,quoteUnifiedWedgeReturn,consumeUnifiedContent} from './equipment-unified-deployed.ts';
 /** L2.12F2: tactical use of a physically issued field consumable.
  * A TeamActor's existing live charge is the simulation authority. Its
  * detached deployment equipment is the placement/location manifest, not a
@@ -11,9 +12,10 @@ import {FIELD_ITEMS,fieldQuantity,
 
 export type LiveFieldItem='flashbang'|'wedge'|'zip-tie';
 type LiveFieldActor=Pick<TeamActor,
- 'equipment'|'spareMagazines'|'flashCharges'|'wedgeRemaining'|'restraintRemaining'>;
+ 'equipment'|'spareMagazines'|'flashCharges'|'wedgeRemaining'|'restraintRemaining'|'unifiedCarry'>;
 export type FieldUseQuote={
  available:boolean;accessSeconds:number;location:FieldCarryLocation|null;
+ contentId?:string;
 };
 const counters:Readonly<Record<LiveFieldItem,
  'flashCharges'|'wedgeRemaining'|'restraintRemaining'>>={
@@ -37,6 +39,11 @@ export function quoteDeployedFieldUse(
  // Historical/synthetic actors without a deployed loadout keep the earlier
  // counter-only contract; this does not issue stock or bypass equipped gear.
  if(!inventory)return {available:true,accessSeconds:0,location:null};
+ if(actor.unifiedCarry){
+  const q=quoteUnifiedFieldContent(actor.unifiedCarry,item,inventory);
+  return q?{available:true,accessSeconds:q.accessSeconds,location:q.location,contentId:q.id}:
+   {available:false,accessSeconds:Infinity,location:null};
+ }
  for(const location of preference[item]){
   if(inventory.stacks.some(row=>row.itemId===item&&
       row.location===location&&row.quantity>0)){
@@ -61,6 +68,7 @@ export function spendDeployedFieldItem(
  const index=inventory.stacks.findIndex(row=>
   row.itemId===item&&row.location===quote.location&&row.quantity>0);
  if(index<0)return false;
+ if(actor.unifiedCarry&&(!quote.contentId||!consumeUnifiedContent(actor,quote.contentId)))return false;
  const stacks=inventory.stacks.flatMap((row,i)=>{
   if(i!==index)return [{...row}];
   return row.quantity>1?[{...row,quantity:row.quantity-1}]:[];
@@ -82,6 +90,15 @@ export function restoreDeployedWedge(actor:LiveFieldActor):boolean{
  const total=fieldQuantity(inventory,'wedge');
  if(total>=FIELD_ITEMS.wedge.maxPerOperator||
     actor.wedgeRemaining>=FIELD_ITEMS.wedge.maxPerOperator)return false;
+ if(actor.unifiedCarry){
+  const q=quoteUnifiedWedgeReturn(actor.unifiedCarry,inventory);if(!q)return false;
+  const stacks=inventory.stacks.map(row=>({...row}));
+  const row=stacks.find(r=>r.itemId==='wedge'&&r.location===q.location);
+  if(row)row.quantity++;else stacks.push({itemId:'wedge',location:q.location,quantity:1});
+  actor.equipment={...kit,fieldInventory:{version:1,stacks}};
+  actor.unifiedCarry={...actor.unifiedCarry,manifest:q.manifest};
+  actor.wedgeRemaining++;return true;
+ }
  const locations:readonly FieldCarryLocation[]=['belt','rig','pocket','backpack'];
  for(const location of locations){
   if(!FIELD_ITEMS.wedge.locations.includes(location))continue;

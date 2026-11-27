@@ -1,3 +1,6 @@
+import {quoteUnifiedCarryTransaction} from './equipment-unified-loadout.ts';
+import {reconcileUnifiedFieldLimit,type UnifiedDeployedCarry} from './equipment-unified-deployed.ts';
+import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 /** L2.12F1 — a deployment is a detached view of the saved operator kit.
  * Roster/Campaign remain the sole owners of pre-mission equipment, ammo and
  * medical stock. This snapshot is projected once onto the existing TeamActor
@@ -22,6 +25,8 @@ export type DeploymentInventorySource={
  weaponConfiguration:WeaponConfiguration;
  magazine:number;reserve:number;magazines:readonly MagazineItem[];
  loadedMagazineId:string;
+ /** Explicit staging switch; production callers remain V1 until the full migration. */
+ carryMode?:'unified';wardrobe?:WardrobeOptions;
  /** Campaign can have depleted medical stock; Quick Play issues kit defaults. */
  medicalSupplies?:FieldMedicalSupplies;
 };
@@ -33,6 +38,7 @@ export type DeploymentInventorySnapshot={
  medicalSupplies:FieldMedicalSupplies;
  flashCharges:number;wedgeRemaining:number;restraintRemaining:number;
  weaponLightOn:boolean;loadMovementScale:number;
+ unifiedCarry?:UnifiedDeployedCarry;
 };
 /** The existing fit/placement functions own all magazine conservation and
  * physical placement. Valid author-chosen IDs, rounds and locations survive;
@@ -41,12 +47,24 @@ export type DeploymentInventorySnapshot={
  */
 export function captureDeploymentInventory(
  source:DeploymentInventorySource):DeploymentInventorySnapshot{
- const equipment=readEquipmentLoadout(source.loadout,source.weapon,source.id);
+ let equipment=readEquipmentLoadout(source.loadout,source.weapon,source.id);
  const config=structuredClone(resolveCatalogConfiguration(source.weaponConfiguration,source.weapon,starterWeaponPreset(source.id)));
  const fitted=fitMagazineInventory(source.id,source.weapon,config,
   source.magazine,source.reserve,source.magazines);
- const spareMagazines=source.weapon==='shotgun'?[]:
+ let spareMagazines=source.weapon==='shotgun'?[]:
   stageMagazines(fitted.magazines,equipment);
+ let unifiedCarry:UnifiedDeployedCarry|undefined;
+ if(source.carryMode==='unified'){
+  const fit=quoteUnifiedCarryTransaction({kit:equipment,wardrobe:source.wardrobe,magazines:spareMagazines,
+   primaryPart:config.build?.parts.magazine,shellReserve:source.weapon==='shotgun'?fitted.reserve:undefined});
+  if(!fit.ok)throw Error('UNIFIED CARRY DOES NOT FIT: '+fit.reason);
+  equipment=fit.kit;
+  spareMagazines=fit.magazines.map(m=>{
+   if(!m.location||m.location==='overflow')throw Error('UNIFIED CARRY MISSING MAGAZINE '+m.id);
+   return {...m,location:m.location};
+  });
+  unifiedCarry={input:fit.input,manifest:fit.manifest};
+ }
  const permitted=kitMedicalSupplies(equipment);
  const medicalSupplies=source.medicalSupplies?
   normalizedMedicalSupplies(source.medicalSupplies,permitted):permitted;
@@ -55,7 +73,7 @@ export function captureDeploymentInventory(
   magazine:fitted.magazine,reserve:fitted.reserve,
   insertedMagazineId:readLoadedMagazineId(source.id,source.weapon,
    source.loadedMagazineId,spareMagazines),
-  spareMagazines,medicalSupplies,
+  spareMagazines,medicalSupplies,...(unifiedCarry?{unifiedCarry}:{}),
   flashCharges:equippedFlashCharges(equipment),
   wedgeRemaining:issuedWedges(equipment),
   restraintRemaining:equippedRestraintCharges(equipment),
@@ -70,6 +88,7 @@ export function applyDeploymentInventory(
  const snapshot=captureDeploymentInventory(source);
  actor.weapon=snapshot.weapon;
  actor.equipment=snapshot.equipment;
+ actor.unifiedCarry=snapshot.unifiedCarry;
  actor.weaponConfiguration=snapshot.weaponConfiguration;
  actor.magazine=snapshot.magazine;
  actor.reserve=snapshot.reserve;
@@ -104,4 +123,5 @@ export function limitDeployedFlashIssue(actor:TeamActor,issued:number):void{
  });
  actor.equipment={...actor.equipment,
   fieldInventory:{version:1,stacks}};
+ if(actor.unifiedCarry)actor.unifiedCarry=reconcileUnifiedFieldLimit(actor.unifiedCarry,'flashbang',actor.equipment.fieldInventory!);
 }

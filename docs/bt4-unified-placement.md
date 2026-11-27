@@ -23,3 +23,6 @@ The chest pouch construction recipe and headless slot metadata now share one sou
 The resolver now reserves neutral-pose 3D waist/chest envelopes and checks existing rig pouch and backpack body exclusion volumes. These are conservative static fit checks, not dynamic pose collision certification; pack size comes from the canonical profile and existing fitted contact frame.
 
 BT4.9–10 contract: exact content-cell retrieval uses existing access timing by carrier; returns reuse compatible existing holder cells (including their stable lane index) or truly free concealed storage, never generate a new exposed holder during combat. These pure transaction candidates still need to be called by the authoritative reload, item-use and pickup systems before release.
+
+## Rolling BT4 gameplay batch
+BT4.7/9: explicit staged deployment mode now accepts only a complete conserved fit, stores mission-local reservations separately from stock, uses them for field retrieval/spending and wedge return, and reconciles campaign issue reductions without removing holders. Legacy production deployment remains unchanged; explicit opt-in failure leaves actor untouched. Secondary magazine cell exchange helper is staged for the next integration commit. No release until live primary, secondary, visuals, replay and preparation transactions are migrated.

@@ -186,6 +186,8 @@ export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
 export type Personality='guard'|'aggressor'|'cautious';
 export type TeamActor=Operator & {
+  /** BT4 staged mission-local physical reservations; never saved as loadout stock. */
+  unifiedCarry?:import('./equipment-unified-deployed.ts').UnifiedDeployedCarry;
   /** Explicit sidearm selection is independent of primary inventory. */
   secondarySwitch:import('./secondary-switching.ts').SecondarySwitchState;
   /** One authored, fixed-step pistol reload; rifle magazine fields are untouched. */
