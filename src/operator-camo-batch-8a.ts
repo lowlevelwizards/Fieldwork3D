@@ -17,49 +17,49 @@ export type Camo8ARecipe={
 const p=(tone:number,...xy:number[]):Motif=>[tone,xy];
 const recipes={
  'russian-izlom':{
-  label:'RUSSIAN IZLOM',
+  label:'Russian Izlom',
   description:'Skol/Izlom dark temperate print: tightly interlocked hard-edged short angular lozenges, tan sparks and rust fracture shards, without Leto leaf/pea-dot motifs',
   colors:[[46,56,49],[72,106,68],[181,154,105],[105,78,68],[30,39,38]],
   targetCoverage:[.26,.26,.16,.17,.15],motifs:[]
  },
  'greek-lizard':{
-  label:'GREEK LIZARD',
+  label:'Greek Lizard',
   description:'Classic Greek Lizard: warm khaki ground beneath overlapping torn, tapered olive/russet horizontal brushstrokes with occasional stipple gaps, not Kamysh bars',
   colors:[[169,161,122],[67,88,62],[120,78,62],[42,58,49]],
   targetCoverage:[.36,.30,.21,.13],motifs:[]
  },
  'urban-kamysh':{
-  label:'URBAN KAMYSH',
+  label:'Urban Kamysh',
   description:'Russian urban blue Kamysh: cool blue-grey and navy-black reed/tiger bands, linked wavy silhouettes with rough stepped torn tips and open mist-blue negative space',
   colors:[[142,154,167],[91,111,136],[64,83,106],[27,36,51]],
   targetCoverage:[.29,.27,.23,.21],motifs:[]
  },
  'jgsdf-type2':{
-  label:'JGSDF TYPE II',
+  label:'JGSDF Type II',
   description:'Jieitai Dot: dense smaller rounded vegetation-data flecks in moss, rust brown, stone tan and restrained charcoal clusters, distinct from S2000 earth-ground spotting',
   colors:[[108,139,92],[61,104,74],[127,96,84],[179,181,149],[44,52,50]],
   targetCoverage:[.32,.25,.18,.12,.13],motifs:[]
  },
  'pencott-metropolis':{
-  label:'PENCOTT METROPOLIS',
+  label:'PenCott MetroPolis',
   description:'Identical PenCott macro/midi/micro geometry with concrete ash, slate, mineral charcoal and occasional low-chroma earth; distinctive industrial MetroPolis palette',
   colors:[[161,160,151],[115,121,116],[82,94,93],[43,49,51],[112,96,86]],
   targetCoverage:[.25,.27,.23,.16,.09],motifs:[]
  },
  'south-african-s2000':{
-  label:'SOLDIER 2000',
+  label:'Soldier 2000',
   description:'SANDF Soldier 2000: exposed Kalahari earth-brown ground, broad irregular green islands and distinctive internal mint/forest pea-spots, unlike dense JGSDF flecks',
   colors:[[132,106,89],[61,101,86],[112,148,126],[167,184,159],[41,72,61]],
   targetCoverage:[.42,.21,.14,.13,.10],motifs:[]
  },
  'kryptek-typhon':{
-  label:'KRYPTEK TYPHON',
+  label:'Kryptek Typhon',
   description:'Exact Highlander fracture and outlined Kryptek reptile-net master in dark neutral graphite/charcoal; remove blue-purple cast and limit bright grayscale',
   colors:[[119,123,125],[81,86,89],[61,65,67],[37,41,44],[21,24,27]],
   targetCoverage:[.29,.27,.22,.15,.07],motifs:[]
  },
  'norwegian-m98':{
-  label:'NORWEGIAN M98',
+  label:'Norwegian M98',
   description:'Norwegian M98 big flowing rounded dark forest, yellow olive and warm tan disruption, strict three inks and no small chip noise',
   colors:[[109,130,70],[40,55,43],[180,149,102]],
   targetCoverage:[.34,.37,.29],motifs:[]

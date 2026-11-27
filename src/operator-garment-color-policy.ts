@@ -6,7 +6,7 @@ import {OPERATOR_SOLID_FAMILIES} from './operator-solid-color-families.ts';
 import type {HeadwearCamoId} from './operator-headwear-camo.ts';
 import type {FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 export const GARMENT_SOLID_COLORS={
- 'olive-drab':{label:'OD Green',hex:OPERATOR_SOLID_FAMILIES['olive-drab']},
+ 'olive-drab':{label:'Olive Drab',hex:OPERATOR_SOLID_FAMILIES['olive-drab']},
  'ranger-green':{label:'Ranger Green',hex:OPERATOR_SOLID_FAMILIES['ranger-green']},
  'forest-green':{label:'Forest Green',hex:OPERATOR_SOLID_FAMILIES['forest-green']},
  'field-green':{label:'Field Green',hex:OPERATOR_SOLID_FAMILIES['field-green']},

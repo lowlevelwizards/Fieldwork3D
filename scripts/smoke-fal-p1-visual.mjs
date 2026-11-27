@@ -74,9 +74,9 @@ try{
   await page.goto(origin+'/arsenal.html',{waitUntil:'domcontentloaded'});
   await page.getByRole('searchbox',{name:'Find weapon model',exact:true}).fill('FAL');
   const variants=[
-   ['FN FAL 50.00 · Wood','wood-5000'],
-   ['FN FAL 50.61 Para','para-5061'],
-   ['FN FAL 50.63 Para','para-5063']
+   ['FAL 50.00 · Wood','wood-5000'],
+   ['FAL 50.61 Para','para-5061'],
+   ['FAL 50.63 Para','para-5063']
   ];
   for(const [name,file] of variants){
    await page.getByRole('button',{name:'Select '+name}).click();
@@ -92,7 +92,7 @@ try{
   // an unsupported-parts exception.
   await page.setViewportSize({width:430,height:920});
   await page.getByRole('region',{name:'Selected weapon',exact:true}).locator('.arsenal-hero-open').click();
-  await page.waitForFunction(()=>document.body.textContent?.includes('FN FAL 50.63 Para')&&
+  await page.waitForFunction(()=>document.body.textContent?.includes('FAL 50.63 Para')&&
    !!document.querySelector('canvas'),null,{timeout:30000});
   const paraWorkbench=await page.screenshot({path:'fal-p1-captures/arsenal-para-5063-mobile-workbench.png'});
   if(paraWorkbench.length<11000)throw Error('Blank Para Workbench');

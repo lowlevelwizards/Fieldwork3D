@@ -13,10 +13,10 @@ import {HK_BLACK_METAL,HK_DARK_POLYMER,AR_MUTED_FDE,FAL_VENT_SHADOW,
  GLOCK_COYOTE_SLIDE,GLOCK_PORT_SHADOW} from './weapon-visual-palette.ts';
 
 export const GLOCK_APPEARANCE_REFERENCES=[
- {id:'glock-g19-gen3',name:'G19 · Gen 3',description:'Balanced compact · reference master'},
- {id:'glock-g26',name:'G26 · Subcompact',description:'Short upper and compact grip · distinctly stout'},
- {id:'glock-g19x',name:'G19X · Crossover',description:'Compact slide · fuller coyote grip'},
- {id:'glock-g19-gen5-mos',name:'G19 · Gen 5 MOS',description:'Modern compact · restrained optic-cut identity'}
+ {id:'glock-g19-gen3',name:'Glock 19 · Gen 3',description:'Balanced compact · reference master'},
+ {id:'glock-g26',name:'Glock 26 · Subcompact',description:'Short upper and compact grip · distinctly stout'},
+ {id:'glock-g19x',name:'Glock 19X · Crossover',description:'Compact slide · fuller coyote grip'},
+ {id:'glock-g19-gen5-mos',name:'Glock 19 · Gen 5 MOS',description:'Modern compact · restrained optic-cut identity'}
 ] as const;
 export type GlockAppearanceId=typeof GLOCK_APPEARANCE_REFERENCES[number]['id'];
 export function isGlockAppearanceId(value:string):value is GlockAppearanceId{

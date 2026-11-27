@@ -20,17 +20,17 @@ try{
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto(origin+'/arsenal.html',{waitUntil:'domcontentloaded'});
   await page.getByRole('searchbox',{name:'Find weapon model',exact:true}).fill('FNC');
-  const button=page.getByRole('button',{name:'Select FN FNC'});
+  const button=page.getByRole('button',{name:'Select FNC'});
   await button.waitFor({state:'visible'});
   await button.click();
-  await page.waitForFunction(()=>document.querySelector('section[aria-label="Selected weapon"] .arsenal-hero-copy h2')?.textContent==='FN FNC'&&
+  await page.waitForFunction(()=>document.querySelector('section[aria-label="Selected weapon"] .arsenal-hero-copy h2')?.textContent==='FNC'&&
    (document.querySelector('section[aria-label="Selected weapon"] .arsenal-hero-media img')?.naturalWidth??0)>=400,null,{timeout:30000});
   await mkdir('fnc-arsenal-captures',{recursive:true});
   await page.getByRole('region',{name:'Selected weapon',exact:true}).screenshot({path:'fnc-arsenal-captures/fnc-arsenal-desktop.png'});
   await page.setViewportSize({width:430,height:930});
   await page.getByRole('region',{name:'Selected weapon',exact:true}).locator('.arsenal-hero-open').click();
   await page.waitForFunction(()=>!!document.querySelector('canvas')&&
-   document.body.textContent?.includes('FN FNC'),null,{timeout:30000});
+   document.body.textContent?.includes('FNC'),null,{timeout:30000});
   await page.screenshot({path:'fnc-arsenal-captures/fnc-mobile-workbench.png'});
   if(errors.length)throw Error('Arsenal FNC page errors: '+errors.join(' | '));
   console.log('FN FNC Arsenal hero and mobile Workbench passed');

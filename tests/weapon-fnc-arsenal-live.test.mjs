@@ -30,7 +30,7 @@ test('FNC is a distinct searchable factory platform with valid 5.56 parts',()=>{
  const refs=arsenalReferencesForPlatform('fnc');
  assert.equal(refs.length,1);
  assert.equal(refs[0].id,'fnc-service');
- assert.equal(refs[0].name,'FN FNC');
+ assert.equal(refs[0].name,'FNC');
  const preset=FAMILY_PRESETS.find(p=>p.id==='fnc-service');
  assert.ok(preset);
  assert.ok(validFamilyBuild({family:preset.family,parts:preset.parts},'rifle'));

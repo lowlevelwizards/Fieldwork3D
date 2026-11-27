@@ -169,7 +169,7 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
  pasgtDetails:{slits:true,band:'elastic',concealment:'none'},weaponFamily:'M16A2',
  gaps:[patch,weapon('ar-family','M16A2 service rifle'),gap('alice-webbing','ALICE field webbing')],
  sourceNotes:'Representative late Cold War woodland kit, not a single unit.'},
- {id:'us-army-dcu-2003',name:'US Army · Iraq 2003',country:'United States',organization:'military',
+ {id:'us-army-dcu-2003',name:'US Army · Iraq / DCU',country:'United States',organization:'military',
  environment:'desert',era:{start:2002,end:2006,label:'2002–2006'},
  summary:'Three-color desert field uniform with transitional ballistic protection.',
  baseRecipeId:'desert-field',uniformCamo:'three-color-desert',
@@ -339,7 +339,7 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
  sourceNotes:'General law-enforcement equipment category; actual SWAT kit differs widely by agency.'},
 
  // Dated VISUAL studies, not a claim of universal issue or unit-specific kit.
- {id:'private-security-iraq-2007',name:'Private Security · Iraq 2007',country:'Iraq',
+ {id:'private-security-iraq-2007',name:'Private Security · Iraq',country:'Iraq',
  organization:'irregular',environment:'urban',era:{start:2006,end:2008,label:'Mid-2000s'},
  summary:'Low-profile private security: blue polo, beige trousers and black armor.',
  baseRecipeId:'police-entry',topSolid:'navy',trousersSolid:'khaki',
@@ -348,7 +348,7 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
  gearSolid:'black',weaponFamily:'Mixed private-security weapons (AR proxy)',
  gaps:[patch,gap('private-security-rifle','Contract-specific primary weapon','minor')],
  sourceNotes:'2007 reporting describes beige trousers, blue polos and black body armor on British private-security personnel in Iraq. Rifle preview is illustrative, not universal. Source: Washington Post, 24 August 2007.'},
- {id:'ukraine-territorial-2022',name:'Ukrainian Territorial Defense · Early 2022',country:'Ukraine',
+ {id:'ukraine-territorial-2022',name:'Ukrainian Territorial Defense · Early Volunteers',country:'Ukraine',
  organization:'irregular',environment:'urban',era:{start:2022,end:2022,label:'February–March 2022'},
  summary:'Early volunteers in mixed civilian clothing and minimal field equipment.',
  baseRecipeId:'irregular-canvas',topSolid:'slate',trousersSolid:'olive-drab',
