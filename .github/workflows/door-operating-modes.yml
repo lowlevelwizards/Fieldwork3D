@@ -13,6 +13,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm ci --no-audit --no-fund
+      - run: npm install --no-audit --no-fund
       - run: npm run check
       - run: node --experimental-strip-types --test tests/door-operating-modes.test.mjs tests/ei3-contextual-door-pairs.test.mjs tests/breach-door-order-lockpick-regressions.test.mjs tests/gameplay-g4d-auto-door-contact.test.mjs tests/worldgen-double-doors.test.mjs
