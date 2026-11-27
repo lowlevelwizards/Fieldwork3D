@@ -19,8 +19,7 @@ function mesh(parent:THREE.Group,name:string,g:THREE.BufferGeometry,m:THREE.Mate
 }
 export function packBox(parent:THREE.Group,name:string,m:THREE.Material,p:PackPoint,size:PackPoint){
  validate(p,size);
- const g=new THREE.BoxGeometry(...size);
- garmentBoxUV(g,...size,...p,m);
+ const g=garmentBoxUV(new THREE.BoxGeometry(...size),...size,m,...p);
  return mesh(parent,name,g,m,p);
 }
 /** Authored textile volume: optional narrowed top/bottom and compressed
@@ -32,14 +31,13 @@ export function packVolume(parent:THREE.Group,name:string,m:THREE.Material,p:Pac
  const topWidth=cut.topWidth??1,bottomWidth=cut.bottomWidth??1,topDepth=cut.topDepth??1;
  if(![topWidth,bottomWidth,topDepth].every(n=>positive(n)&&n<=1))throw new RangeError('Invalid textile taper');
  // Two height bands form broad deliberate shoulder cuts, not a sphere.
- const g=new THREE.BoxGeometry(d,h,w,1,3,1);
- garmentBoxUV(g,d,h,w,...p,m);
+ const g=garmentBoxUV(new THREE.BoxGeometry(d,h,w,1,3,1),d,h,w,m,...p);
  const pos=g.getAttribute('position');
  for(let i=0;i<pos.count;i++){
   const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);
   const t=y>=h*.49?topWidth:y<=-h*.49?bottomWidth:1;
   const depth=y>=h*.49?topDepth:1;
-  pos.setXYZ(i,x<0?d*.5-(d*.5-x)*depth:x,y,z*t);
+  pos.setXYZ(i,d*.5-(d*.5-x)*depth,y,z*t);
  }
  pos.needsUpdate=true;g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();
  return mesh(parent,name,g,m,p);
