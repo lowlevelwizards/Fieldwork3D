@@ -68,3 +68,10 @@ test('BT3R: all authored attachments stay at belt contact without protruding bri
  }
  m.dispose();
 });
+
+test('BT3R: larger dump bag is reserved at the rear; rolled side fixture remains compatible',()=>{
+ const full=attachmentMountRequest('dump','dump-pouch','padded-belt','standard','rear');
+ const rolled=attachmentMountRequest('dump','dump-pouch','padded-belt','rolled','right-hip');
+ assert.equal(resolveBeltMounts('padded-belt',[full]).mounts[0].region,'rear');
+ assert.equal(resolveBeltMounts('padded-belt',[rolled]).mounts[0].region,'right-hip');
+});

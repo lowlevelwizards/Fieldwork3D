@@ -41,6 +41,7 @@ test('BT3R: long hip attachments retain direct belt contact',()=>{
  const q=attachmentMountRequest('pouch','primary-mag-pouch','battle-belt','standard','right-hip');
  const m=resolveBeltMounts('battle-belt',[q]).mounts[0];
  const contact=beltSurface('battle-belt',m.segment,(m.interval[0]+m.interval[1])/2);
- assert.equal(m.socket.z,contact.z);assert.equal(m.socket.x,contact.x);
+ assert.ok(Math.abs(m.socket.z-contact.z)<=.17);assert.ok(Math.abs(m.socket.x-contact.x)<=.17);
+ assert.ok((m.socket.z-contact.z)*contact.normalZ+(m.socket.x-contact.x)*contact.normalX<0);
  assert.ok(Math.abs(m.socket.tilt)<.1);
 });

@@ -156,7 +156,7 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
   shell('fabric',0,[[-.98,.65,.1,.81,.10],[-.76,.76,.04,.88,.1],[-.29,.92,0,.89,.10]],false,'holster');
   lid(.98,-.33,-.04);cell(0,-.20,.51);break;
  case 'medical-pouch':
-  solid(.98,-.95,-.09,'zipper',.95);
+  solid(.98,-.95,-.09,'medical',.95);
   b('fabric',0,-.075,.44,.68,.13,.35,'grab-handle');
   cell(0,-.20,.51);break;
  case 'radio-holder':

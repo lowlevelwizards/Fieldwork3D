@@ -33,7 +33,7 @@ export function beltBandGeometry(style:Exclude<BeltStyle,'no-belt'>,outerBand=fa
   const vertices=[a,b,c,d];
   for(const j of [0,2,1,0,3,2]){
    pos.push(...vertices[j]);uv.push(coords[j][0]/TILE_WORLD_SIZE,coords[j][1]/TILE_WORLD_SIZE);
-   uv1.push(marked?coords[j][0]/8:.999,marked?coords[j][1]/Math.ceil(p.height):.999);
+   uv1.push(marked?coords[j][0]/8:.999,marked?coords[j][1]/Math.ceil(outerBand?1.65:p.height):.999);
   }
  };
  for(let i=0;i<8;i++){

@@ -59,8 +59,9 @@ export function resolveBeltMounts(style:BeltStyle,requests:readonly BeltMountReq
    // the waist and use a subtle outward lean only for deep hip holders.
    const side=region==='left-hip'||region==='right-hip';
    const socket=contact?{...contact,
+    x:contact.x-contact.normalX*.16,z:contact.z-contact.normalZ*.16,
     y:contact.y+Math.min(2.8,Math.max(1.25,f.height*.43)),
-    tilt:side&&f.height>4?-.075:0}:null;
+    tilt:side&&f.height>4?-.04:0}:null;
    if(!socket)continue;
    chosen={id,region,segment:spec.segment,interval,socket,footprint:{...f}};break;
   }

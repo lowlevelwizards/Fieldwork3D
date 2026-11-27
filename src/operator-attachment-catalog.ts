@@ -35,7 +35,7 @@ export const ATTACHMENTS={
  'medical-pouch':d('Medical pouch','equipment',5.55,3.9,3.0,1,service,rear,1),
  'radio-holder':d('Radio holder','equipment',3.35,6.8,2.65,1,all,sides,1),
  'flashlight-holder':d('Flashlight holder','equipment',2.65,5.5,2.65,1,all,sides,1),
- 'restraint-pouch':d('Restraint pouch','equipment',3.9,3.5,2.2,0,all,hips,0),
+ 'restraint-pouch':d('Restraint pouch','equipment',3.9,3.5,2.2,0,all,rear,0),
  'wedge-holder':d('Door wedge holder','equipment',3.5,3.8,2.4,1,service,sides,2),
  'grenade-pouch':d('Grenade pouch','equipment',3.3,4.1,3.0,1,service,sides,1),
  'utility-pouch':d('General-purpose pouch','storage',4.65,4.15,3.2,1,service,rear,0,['standard','compact','expanded']),

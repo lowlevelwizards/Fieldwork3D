@@ -21,6 +21,7 @@ export function gearPixelMap(mark:GearMark,w:number,h:number){
   if(mark==='medical'){
    const cx=Math.floor(nx/2),cy=Math.floor(ny/2);
    if((x===cx&&Math.abs(y-cy)<=1)||(y===cy&&Math.abs(x-cx)<=1))tone=110;
+   if(y===ny-1)tone=x===nx-2?125:165;
   }
   if(mark==='webbing'&&y===Math.min(ny-1,Math.floor(ny/2)+1)&&x%4!==3)tone=222;
   if(mark==='padding'&&y===ny-1)tone=222;
