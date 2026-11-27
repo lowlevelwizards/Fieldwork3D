@@ -1,3 +1,4 @@
+import {packTextile,PACK_TEXTILES} from './operator-backpack-textiles.ts';
 import {OPERATOR_SOLID_FAMILIES} from './operator-solid-color-families.ts';
 /** Authored solid fabric and cuff colors. No runtime sampling of printed
  * camouflage pixels: folds are chosen deliberately for each fabric family.
@@ -24,7 +25,8 @@ export const GARMENT_SOLID_COLORS={
  'navy':{label:'Deep Navy',hex:0x344654},
  'muted-blue':{label:'Dusty Blue',hex:0x61798a},
  'rust':{label:'Rust Red',hex:0x874e41},
- 'burnt-orange':{label:'Burnt Orange',hex:0x9b6847}
+ 'burnt-orange':{label:'Burnt Orange',hex:0x9b6847},
+ 'medical-red':{label:'Medical Red',hex:0xa63e36}
 } as const;
 export type GarmentSolidId=keyof typeof GARMENT_SOLID_COLORS;
 const all:readonly GarmentSolidId[]=[
@@ -32,11 +34,12 @@ const all:readonly GarmentSolidId[]=[
  'foliage','khaki','sand','tan','coyote','brown','slate',
  'charcoal','black','off-white','nutria-brown',
  'navy','muted-blue','rust','burnt-orange'];
+export const CIVILIAN_PACK_SOLIDS=['navy','muted-blue','rust','forest-green','burnt-orange','charcoal','khaki','slate','black'] as const satisfies readonly GarmentSolidId[];
 const kit:readonly GarmentSolidId[]=[
  'olive-drab','ranger-green','forest-green','foliage','khaki',
  'sand','tan','coyote','brown','nutria-brown','slate','charcoal','black'];
 export const FABRIC_SOLID_CHOICES:Readonly<Record<FabricCamoChannel,readonly GarmentSolidId[]>>={
- top:all,trousers:all,armor:kit,gear:kit,pack:kit
+ top:all,trousers:all,armor:kit,gear:kit,pack:[...new Set([...kit,...CIVILIAN_PACK_SOLIDS,...Object.values(PACK_TEXTILES).flatMap(p=>p.solids)])]
 };
 /** Independent glove dye palette: never reads shirt print, top solid or
  * auto-matched equipment colors. Existing gloves default to ranger green. */
@@ -64,7 +67,8 @@ export const CASUAL_SHIRT_SOLIDS:Readonly<Record<string,readonly GarmentSolidId[
   'ranger-green','tan','coyote','navy']
 };
 export function solidChoicesFor(channel:FabricCamoChannel,
- outfit?:{top:string}):readonly GarmentSolidId[]{
+ outfit?:{top:string;packStyle?:string}):readonly GarmentSolidId[]{
+ if(channel==='pack'&&outfit?.packStyle)return packTextile(outfit.packStyle).solids;
  return channel==='top'&&outfit&&CASUAL_SHIRT_SOLIDS[outfit.top]?
   CASUAL_SHIRT_SOLIDS[outfit.top]:FABRIC_SOLID_CHOICES[channel];
 }
@@ -159,7 +163,7 @@ export const SOLID_COMBAT_KNIT_DEFAULTS:Readonly<Record<GarmentSolidId,GarmentSo
  sage:'foliage',foliage:'foliage',khaki:'khaki',sand:'sand',tan:'khaki',
  coyote:'coyote',brown:'coyote','nutria-brown':'khaki',slate:'slate',
  charcoal:'charcoal',black:'black','off-white':'off-white',
- navy:'navy','muted-blue':'slate',rust:'brown','burnt-orange':'brown'
+ navy:'navy','muted-blue':'slate',rust:'brown','burnt-orange':'brown','medical-red':'brown'
 };
 export function resolvedCombatKnitSolid(options:{
  print?:HeadwearCamoId|null;solid?:GarmentSolidId|null;

@@ -8,6 +8,8 @@ import {setEquipmentChoice} from './equipment-loadouts.ts';
 import {bareLabEquipment} from './operator-lab-baseline.ts';
 import {initialWardrobe,type WardrobeOptions,type WardrobeSlot}
  from './operator-wardrobe-data.ts';
+import {supportsDirectPack} from './operator-backpack-fit.ts';
+import {resolvedWardrobe} from './operator-wardrobe-data.ts';
 import {selectWardrobeItem} from './operator-wardrobe-unified.ts';
 import {studioUsesClothesOnly} from './operator-studio-preview-policy.ts';
 
@@ -18,6 +20,10 @@ export function appearanceThumbnailContext(
  kit:EquipmentLoadout,wardrobe:WardrobeOptions,
  slot:WardrobeSlot,id:string,liveContext:boolean
 ):AppearanceThumbnailContext{
+ if(slot==='packStyle'&&id==='admin-pack'&&!supportsDirectPack(resolvedWardrobe(wardrobe,kit).armorStyle)){
+  const carrier=selectWardrobeItem(kit,wardrobe,'armorStyle','plate-jpc');
+  return selectWardrobeItem(carrier.kit,carrier.wardrobe,slot,id);
+ }
  if(!liveContext){
   let next={kit:bareLabEquipment(),wardrobe:initialWardrobe()};
   for(const [baseSlot,baseId] of [

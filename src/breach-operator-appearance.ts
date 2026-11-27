@@ -1,3 +1,6 @@
+import type {HeadwearCamoId} from './operator-headwear-camo.ts';
+import {packTextile} from './operator-backpack-textiles.ts';
+import {syncGearMarkedMaterials} from './operator-gear-pixel-art.ts';
 /** Stage 11: visual outfit, gear and wound-color presentation ownership.
  * Caches only appearance fingerprints; never solves motion, fires, moves actors
  * or updates replay/simulation state.
@@ -30,6 +33,7 @@ import {garmentSolidHex,isGarmentSolidId,solidChoicesFor,resolvedCuffSolid,resol
  from './operator-garment-color-policy.ts';
 import {fabricCamoCompatible,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
+import {applyPackDetailPalette} from './operator-backpack-preview.ts';
 import {applyOperatorVisualKit} from './operator-visual-kit.ts';
 import {nvgMounted} from './equipment-night-vision.ts';
 import {updateOperatorEquipmentDetails} from './operator-equipment-details.ts';
@@ -76,7 +80,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     p.flashCharges??null,p.wedgeRemaining??null,
     p.restraintRemaining??null,p.treatmentActive??null,
     p.weaponConfiguration?.build?.parts.magazine??null,
-    p.nvgDeployed??false
+    p.nvgDeployed??false,r.root.userData.fieldworkAuthoredPackPreview===true
   ]);
   const fingerprintMs=traceAppearance?performance.now()-fingerprintStart:0;
   r.root.userData.fieldworkLightingAppearanceKey=appearanceKey;
@@ -249,7 +253,12 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   const kitStart=traceAppearance?performance.now():0;
   applyOperatorVisualKit(r.visualKit,gear,identity,
     p.magazineCarryLocations,p.faceStyle,p.wardrobe,p.weaponConfiguration,
-    nvgMounted(p),p.nvgDeployed===true);
+    nvgMounted(p),p.nvgDeployed===true,r.root.userData.fieldworkAuthoredPackPreview===true);
+   // Preview-only: legacy pack contents are internal unless BP13 mounts them.
+   if(r.visualKit.packPreview.active){
+    for(const item of [r.medicalPouch,r.utilityTool,r.radioUnit,...r.flashCanisters,...r.wedgeMeshes,...r.cuffMeshes])
+     if(item.parent===r.pack)item.visible=false;
+   }
   // An occupied functional holster replaces (never overlays) the wardrobe's
   // decorative EMPTY holster at the same belt side.
   if(p.equipment?.secondary?.weapon){
@@ -348,6 +357,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   });
   const signature=rigSignature(clothing.rigStyle);
   const armorDefault=armorSignature(clothing.armorStyle);
+  let resolvedArmorPrint:HeadwearCamoId|null=null,resolvedPackPrint:HeadwearCamoId|null=null;
   for(const [channel,material] of fabricChannels){
    const authored=channel==='head'?null:
     p.wardrobe?.fabricCamo?.[channel as FabricCamoChannel];
@@ -360,18 +370,23 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     channel==='gear'?(clothing.rigStyle==='no-rig'||
      validRigSolid(clothing.rigStyle,storedSolid)):
     channel==='armor'?validArmorSolid(clothing.armorStyle,storedSolid):
-    channel==='top'?solidChoicesFor('top',clothing).includes(storedSolid):true
+    channel==='top'?solidChoicesFor('top',clothing).includes(storedSolid):
+    channel==='pack'?solidChoicesFor('pack',clothing).includes(storedSolid):true
    )?storedSolid:null;
    // A model's iconic textile applies only while the specific channel
    // has no *valid* manual color or print. Stale, incompatible saved
    // choices stay stored for later, but don't obscure another armor default.
-   const iconicPrint=p.wardrobe&&!approvedManual&&!validManualSolid?
+   const directPack=channel==='pack'&&r.visualKit.packPreview.fit?.mode==='direct';
+    const inherited:HeadwearCamoId|null=directPack?resolvedArmorPrint:null;
+    const iconicPrint:HeadwearCamoId|null|undefined=p.wardrobe&&!approvedManual&&!validManualSolid?
     channel==='gear'&&clothing.rigStyle!=='no-rig'?signature.print:
     channel==='armor'&&clothing.armorStyle!=='armor-bare'?
-     armorDefault.print:null:null;
-   const print=approvedManual??(iconicPrint&&
+     armorDefault.print:directPack?inherited:null:null;
+   const print:HeadwearCamoId|null=approvedManual??(iconicPrint&&
     fabricCamoCompatible(iconicPrint,channel as FabricCamoChannel,clothing)?
      iconicPrint:null);
+   if(channel==='armor')resolvedArmorPrint=print;
+   if(channel==='pack')resolvedPackPrint=print;
    const map=print?
     wardrobeFabricCamoTexture(print,channel as FabricCamoChannel,
      headwearCamoPlacement(r.camoIdentity,'garment:'+channel,print,
@@ -396,11 +411,16 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
      const id=channel==='gear'&&clothing.rigStyle!=='no-rig'?
       signature.solid:
       channel==='armor'&&clothing.armorStyle!=='armor-bare'?
-       armorDefault.solid:automaticGear[channel];
-     r.colors.set(material,new THREE.Color(garmentSolidHex(id)));
+       armorDefault.solid:channel==='pack'&&r.visualKit.packPreview.active?packTextile(clothing.packStyle).solid:automaticGear[channel];
+     r.colors.set(material,directPack&&!validManualSolid&&!print&&!resolvedArmorPrint?(r.colors.get(r.vestMaterial)??new THREE.Color(garmentSolidHex(id))).clone():new THREE.Color(garmentSolidHex(id)));
     }
    }
   }
+  const packPrint=resolvedPackPrint;
+  const detailHex=packPrint&&fabricCamoCompatible(packPrint,'pack',clothing)?
+   garmentSolidHex(resolveAutomaticGearColors({print:packPrint}).pack):
+   (r.colors.get(r.packMaterial)??r.packMaterial.color).getHex();
+  applyPackDetailPalette(r.visualKit.packPreview,detailHex,r.colors);
   // Plaid is a separate woven shirt fabric, never a military camouflage ID.
   // Shared cloth UVs cover the torso and articulated button-up sleeves.
   const plaid=clothing.top==='button-up-shirt'?
@@ -623,6 +643,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     for(const [material,original] of r.colors){
       material.color.copy(original);
       if(downed)material.color.lerp(DOWNED_TINT,.46);
+      if(material instanceof THREE.MeshStandardMaterial)syncGearMarkedMaterials(material);
     }
   }
   if(previousAppearance){

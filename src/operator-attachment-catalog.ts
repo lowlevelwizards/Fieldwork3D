@@ -27,19 +27,19 @@ const d=(name:string,category:AttachmentDefinition['category'],width:number,heig
  interaction:[0,0,depth*.5]
 });
 export const ATTACHMENTS={
- 'pistol-mag-pouch':d('Pistol magazine pouch','ammunition',1.75,3.55,1.45,1,all,sides,1,['standard','double']),
- 'primary-mag-pouch':d('Primary magazine pouch','ammunition',2.5,4.5,2.05,1,service,sides,1,['standard','compact','expanded']),
- 'shell-holder':d('Shotgun shell holder','ammunition',3.65,2.75,1.15,1,all,hips,4),
- 'rigid-holster':d('Rigid holster','holster',3.25,5.75,1.9,1,all,hips,1,['standard'],['belt']),
- 'flap-holster':d('Flap holster','holster',3.45,5.6,2.0,1,all,hips,1,['standard'],['belt']),
- 'medical-pouch':d('Medical pouch','equipment',4.35,3.05,2.25,1,service,rear,1),
- 'radio-holder':d('Radio holder','equipment',2.0,5.45,1.75,1,all,sides,1),
- 'flashlight-holder':d('Flashlight holder','equipment',1.55,4.7,1.65,1,all,sides,1),
- 'restraint-pouch':d('Restraint pouch','equipment',2.65,2.5,1.3,0,all,hips,0),
- 'wedge-holder':d('Door wedge holder','equipment',2.15,3.55,1.45,1,service,sides,2),
- 'grenade-pouch':d('Grenade pouch','equipment',2.15,3.75,2.05,1,service,sides,1),
- 'utility-pouch':d('General-purpose pouch','storage',3.1,3.4,2.0,1,service,rear,0,['standard','compact','expanded']),
- 'dump-pouch':d('Dump pouch','storage',4.5,5.5,2.9,1,modular,rear,0,['standard','rolled'],['belt','rig'])
+ 'pistol-mag-pouch':d('Pistol magazine pouch','ammunition',2.4,4.3,2.0,1,all,sides,1,['standard','double']),
+ 'primary-mag-pouch':d('Primary magazine pouch','ammunition',4.85,6.6,3.0,1,service,sides,1,['standard','compact','expanded']),
+ 'shell-holder':d('Shotgun shell holder','ammunition',5.6,3.75,1.9,1,all,hips,4),
+ 'rigid-holster':d('Rigid holster','holster',3.65,6.6,2.25,1,all,hips,1,['standard'],['belt']),
+ 'flap-holster':d('Flap holster','holster',4.1,6.6,2.5,1,all,hips,1,['standard'],['belt']),
+ 'medical-pouch':d('Medical pouch','equipment',5.55,3.9,3.0,1,service,rear,1),
+ 'radio-holder':d('Radio holder','equipment',3.35,6.8,2.65,1,all,sides,1),
+ 'flashlight-holder':d('Flashlight holder','equipment',2.65,5.5,2.65,1,all,sides,1),
+ 'restraint-pouch':d('Restraint pouch','equipment',3.9,3.5,2.2,0,all,rear,0),
+ 'wedge-holder':d('Door wedge holder','equipment',3.5,3.8,2.4,1,service,sides,2),
+ 'grenade-pouch':d('Grenade pouch','equipment',3.3,4.1,3.0,1,service,sides,1),
+ 'utility-pouch':d('General-purpose pouch','storage',4.65,4.15,3.2,1,service,rear,0,['standard','compact','expanded']),
+ 'dump-pouch':d('Dump pouch','storage',7.5,7.1,4.8,1,modular,rear,0,['standard','rolled'],['belt','rig'])
 } satisfies Record<string,AttachmentDefinition>;
 export type AttachmentId=keyof typeof ATTACHMENTS;
 export const ATTACHMENT_IDS=Object.keys(ATTACHMENTS) as AttachmentId[];
@@ -51,10 +51,10 @@ export function attachmentVariant(id:AttachmentId,variant:AttachmentVariant='sta
 }
 export function attachmentFootprint(id:AttachmentId,requested:AttachmentVariant='standard'):BeltFootprint{
  const v=attachmentVariant(id,requested),f=ATTACHMENTS[id].footprint;
- if(v==='double')return {...f,width:3.55,spaces:2};
- if(v==='rolled')return {...f,height:2.0,depth:2.0};
- if(v==='compact')return {...f,width:f.width*.83,height:f.height*.85,depth:f.depth*.9};
- if(v==='expanded')return {...f,width:f.width*1.22,height:f.height*1.15,depth:f.depth*1.18};
+ if(v==='double')return {...f,width:4.8,spaces:2};
+ if(v==='rolled')return {...f,width:5.8,height:2.8,depth:2.65};
+ if(v==='compact')return id==='primary-mag-pouch'?{...f,width:4.45,height:5.35,depth:2.9}:{...f,width:f.width*.83,height:f.height*.85,depth:f.depth*.9};
+ if(v==='expanded')return {...f,width:f.width*1.22,height:Math.min(8,f.height*1.12),depth:f.depth*1.18};
  return {...f};
 }
 export function attachmentContentSlots(id:AttachmentId,variant:AttachmentVariant='standard'){

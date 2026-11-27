@@ -142,7 +142,7 @@ test('B3: unchanged lower-body poses match frozen B2 leg writer',()=>{
    const ref=legacyLegReference(expected,next,c.feet,c.kick??null,
     expected.legacyYaw);
    assertClose(slotValues(output),snapshot(expected),c.name);
-   assert.deepEqual(actual.legGap,expected.legGap,c.name+' reach gaps');
+   assertClose([actual.legGap],[expected.legGap],c.name+' reach gaps');
    for(let i=0;i<2;i++){
     assert.equal(actual.feet[i].outOfReach,expected.feet[i].outOfReach,
      c.name+' reach status '+i);

@@ -1,4 +1,5 @@
 /** Unified Operator Lab model and motion browser: visual-only selections. */
+import {legacyPackEquipment} from './operator-backpack-catalog.ts';
 import {FAMILY_PRESETS,type WeaponFamilyPreset} from './equipment-weapon-families.ts';
 import {ARSENAL_PLATFORMS,ARSENAL_REFERENCES}
  from './arsenal/catalog.ts';
@@ -25,14 +26,13 @@ export const POSE_RIG_OPTIONS=[
  ['m1956-lce','M1956'],['lbv','LBV'],['sadf-webbing','SADF']
 ] as const;
 export const POSE_PACK_OPTIONS=[
- ['no-pack','None'],['hydration','Hydration'],['admin-pack','Admin'],
- ['day-pack','Day pack'],['assault-pack','Assault pack'],['sling-bag','Sling bag'],
- ['field-pack','Field pack'],['rucksack','Rucksack'],['medic-pack','Medic'],
- ['comms-pack','Comms'],['duffel','Duffel']
+ ['no-pack','None'],['hydration','Hydration carrier · art preview'],['admin-pack','Assault panel · art preview'],
+ ['day-pack','Tactical daypack · art preview'],['assault-pack','Assault pack · art preview'],['sling-bag','Sling bag'],['civilian-pack','Civilian backpack · art preview'],
+ ['field-pack','ALICE field pack · art preview'],['rucksack','Expedition rucksack · art preview'],['medic-pack','Medical pack · art preview'],
+ ['comms-pack','Communications pack · art preview'],['duffel','Duffel']
 ] as const;
 export function posePackEquipment(pack:string):'backpack-none'|'backpack-day'|'backpack-field'{
- return pack==='no-pack'?'backpack-none':
-  ['field-pack','rucksack','medic-pack','comms-pack','duffel'].includes(pack)?'backpack-field':'backpack-day';
+ return legacyPackEquipment(pack)??'backpack-day';
 }
 export const POSE_UNIFORM_OPTIONS=[
  ['bdu-shirt','BDU'],['acu-shirt','ACU'],

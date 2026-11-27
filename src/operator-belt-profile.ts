@@ -5,10 +5,10 @@
  */
 export const BELT_PROFILES={
  'no-belt':{equipment:'belt-none',name:'No belt',capacity:0,massKg:0,bulk:0,height:0,thickness:0},
- 'plain-belt':{equipment:'belt-light',name:'Leather belt',capacity:1,massKg:.15,bulk:0,height:1.05,thickness:.24},
- 'duty-belt':{equipment:'belt-standard',name:'Utility belt',capacity:4,massKg:.5,bulk:1,height:1.75,thickness:.5},
- 'battle-belt':{equipment:'belt-battle',name:'Battle belt',capacity:5,massKg:.55,bulk:2,height:2.25,thickness:.76},
- 'padded-belt':{equipment:'belt-padded',name:'Padded war belt',capacity:6,massKg:.9,bulk:3,height:3.35,thickness:1.25}
+ 'plain-belt':{equipment:'belt-light',name:'Leather belt',capacity:1,massKg:.15,bulk:0,height:1.15,thickness:.32},
+ 'duty-belt':{equipment:'belt-standard',name:'Utility belt',capacity:4,massKg:.5,bulk:1,height:1.85,thickness:.58},
+ 'battle-belt':{equipment:'belt-battle',name:'Battle belt',capacity:5,massKg:.55,bulk:2,height:2.6,thickness:.86},
+ 'padded-belt':{equipment:'belt-padded',name:'Padded war belt',capacity:6,massKg:.9,bulk:3,height:3.8,thickness:1.35}
 } as const;
 export type BeltStyle=keyof typeof BELT_PROFILES;
 export const BELT_STYLES=Object.keys(BELT_PROFILES) as BeltStyle[];

@@ -65,7 +65,7 @@ export function addARStockCaricature(root:THREE.Group,id:string,
    sculpt([[.09,1.52],[.99,1.52],[1.04,-.14],[.10,-.14]],
     3.44,.12,paint,'arStockUpperMass',.08);
    // Static graphic accent originates at the underside of the upper art mass.
-   flat([[.39,-1.48],[.65,-.10],[.78,-.10],[.50,-1.62]],
+   flat([[.32,-1.18],[.48,-.10],[.65,-.10],[.48,-1.32]],
     1.9,G36_RUBBER,'arStockDecorativeLatch');
    flat([[0,1.68],[.14,1.68],[.14,-4.25],[0,-4.08]],3.32,G36_RUBBER,'arStockDecorativePad');
   }else{
@@ -73,13 +73,13 @@ export function addARStockCaricature(root:THREE.Group,id:string,
    // SOPMOD identity comes from the crown's broad-to-narrow shaded volume,
    // not a raised hump or a globally enlarged stock.
    const lip=sop?.19:.12;
-   flat([[lip-.025,.06],[.96,.06],[lip-.025,-3.78]],
+   flat([[lip-.025,.12],[.99,.12],[lip-.025,-3.78]],
     sop?2.2:1.85,paint,'arStockCaricature');
    sculpt([[lip-.02,1.40],[.99,1.40],[.99,-.13],[lip-.02,-.13]],
     sop?4.25:3.05,.12,paint,'arStockUpperMass',0,sop?.42:0);
    // Close-seated diagonal decorative mark, with no moving mechanism.
-   flat([[.39,-2.47],[.72,-.99],[.84,-1.09],[.51,-2.57]],
-    sop?2.3:2.0,G36_RUBBER,'arStockDecorativeLatch');
+   flat([[.27,-2.50],[.60,-1.02],[.72,-1.02],[.39,-2.50]],
+    sop?2.28:1.93,G36_RUBBER,'arStockDecorativeLatch');
    flat([[0,1.52],[lip,1.52],[lip,-3.84],[0,-3.84]],
     sop?3.95:3.11,G36_RUBBER,'arStockDecorativePad');
   }

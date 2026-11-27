@@ -66,6 +66,7 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset,setWeaponAttachment}
 import {loadArsenalBuildLibrary} from './arsenal/saved-builds.ts';
 import {arsenalRecipeToLegacy,readArsenalRecipe,type ArsenalRecipeV2}
  from './arsenal/recipes.ts';
+import {supportsDirectPack} from './operator-backpack-fit.ts';
 import {POSE_ARMOR_OPTIONS,POSE_RIG_OPTIONS,POSE_UNIFORM_OPTIONS,POSE_PACK_OPTIONS,
  POSE_ANIMATIONS,POSE_WEAPON_GROUPS,POSE_SIDEARM_GROUPS,
  posePreset,poseWeaponType,poseSidearm,poseSidearmArtOnly,
@@ -201,6 +202,14 @@ function syncKit(){
  syncWardrobe();syncPosePickers();
 }
 /** Same wardrobe/kit as Appearance; never a duplicate "fit costume". */
+function syncPanelOption(armor:string){
+ const panel=document.querySelector<HTMLOptionElement>('#posePack option[value="admin-pack"]');
+ if(!panel)return;
+ const ok=supportsDirectPack(armor);
+ if(panel.disabled===ok)panel.disabled=!ok;
+ const label=ok?'Assault panel · art preview':'Assault panel · compatible plate carrier required';
+ if(panel.textContent!==label)panel.textContent=label;
+}
 function syncPosePickers(){
  const current=(document.getElementById('weapon') as HTMLSelectElement).value;
  if(!poseSidearm(poseWeaponPreset)&&poseWeaponType(poseWeaponPreset)!==current)
@@ -234,6 +243,7 @@ function syncPosePickers(){
  ] as const){
   const element=document.getElementById(id) as HTMLSelectElement;
   if(element?.options.length)element.value=value;
+   if(id==='posePack')syncPanelOption(look.armorStyle);
  }
 }
 const recipeSelect=document.getElementById('wardrobeRecipe') as HTMLSelectElement;
@@ -731,6 +741,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio,compact?1.5:2));
 renderer.shadowMap.enabled=true;renderer.setClearColor(0xc4c5bd);
 appearanceGrid=new OperatorAppearanceGrid(
  document.getElementById('appearanceItemBrowser')!,renderer,(slot,id)=>{
+  if(slot==='packStyle'&&id==='admin-pack'&&!supportsDirectPack(resolvedWardrobe(wardrobeOptions,labKit).armorStyle))return;
   const choice=selectWardrobeItem(labKit,wardrobeOptions,slot,id);
   if(resolvedWardrobe(choice.wardrobe,choice.kit)[slot]!==id)return;
   checkpointAppearance();
@@ -743,7 +754,7 @@ appearanceGrid=new OperatorAppearanceGrid(
    status.textContent=id==='bare'?'UNCOVERED HEAD':
     'SELECTED '+id.replaceAll('-',' ').toUpperCase()+
     ' · original approved headwear model';
- });
+ },(slot,id)=>slot!=='packStyle'||id!=='admin-pack'||supportsDirectPack(resolvedWardrobe(wardrobeOptions,labKit).armorStyle));
 appearanceGrid.refresh(labKit,wardrobeOptions);
 const scene=new THREE.Scene();
 const camera=new THREE.OrthographicCamera(-28,28,34,-34,.1,600);
@@ -935,6 +946,7 @@ for(const [element,slot] of [
  [poseUniformSelect,'top'],[posePackSelect,'packStyle']
 ] as const){
  element.addEventListener('change',()=>{
+  if(slot==='packStyle'&&element.value==='admin-pack'&&!supportsDirectPack(resolvedWardrobe(wardrobeOptions,labKit).armorStyle)){syncPosePickers();return;}
   checkpointAppearance();
   wardrobeOptions={...wardrobeOptions,styles:{
    ...wardrobeOptions.styles,[slot]:element.value}};
@@ -997,6 +1009,7 @@ function ensureGaitCompare(){
   if(!gaitCompareRig){
     gaitCompareRig=createOperatorRig(operator.value,
       operator.value==='hostile'?'red':'blue');
+     gaitCompareRig.root.userData.fieldworkAuthoredPackPreview=true;
     scene.add(gaitCompareRig.root);
   }
 }
@@ -1095,6 +1108,7 @@ function beginTwoLookComparison(){
  for(let i=0;i<2;i++){
   const body=createOperatorRig(operator.value,
    operator.value==='hostile'?'red':'blue');
+   body.root.userData.fieldworkAuthoredPackPreview=true;
   variantBodies.push(body);scene.add(body.root);
  }
  fit();
@@ -1219,6 +1233,7 @@ kitCompareButton.addEventListener('click',()=>{
  for(let i=0;i<3;i++){
   const body=createOperatorRig(operator.value,
    operator.value==='hostile'?'red':'blue');
+   body.root.userData.fieldworkAuthoredPackPreview=true;
   scene.add(body.root);kitBodies.push(body);
  }
  kitCompareButton.setAttribute('aria-pressed','true');fit();
@@ -1238,6 +1253,7 @@ function ensureComparison(){
   for(const [index,info] of COMPARE_POSES.entries()){
     const body=createOperatorRig(operator.value,
       operator.value==='hostile'?'red':'blue');
+   body.root.userData.fieldworkAuthoredPackPreview=true;
     const column=index%2,row=Math.floor(index/2);
     body.root.position.set((column-.5)*77,0,(row-1)*70);
     scene.add(body.root);comparisonRigs.push(body);
@@ -1378,6 +1394,7 @@ const build=()=>{
   if(rig){clearAttachmentPreview(rig);clearLabBerettaPreview(rig);releaseOperatorPreviewRig(scene,rig);}
   endKitComparison();
   rig=createOperatorRig(operator.value,operator.value==='hostile'?'red':'blue');
+   rig.root.userData.fieldworkAuthoredPackPreview=true;
   scene.add(rig.root);
 };
 operator.addEventListener('change',build);
@@ -2129,6 +2146,8 @@ function draw(){
    retain:pistolFrame.reload.retain,
    inserted:pistolFrame.reload.progress>=.72
   }:null;
+  // Preserve legacy physical cargo inspection until BP13 authored mounts.
+  rig.root.userData.fieldworkAuthoredPackPreview=inspectionTarget()?.location!=='backpack';
   if(!comparing)poseOperator(rig,{
     x:motion.x,z:motion.z,
     heading:motion.heading,
@@ -2467,8 +2486,10 @@ function draw(){
   canvas.dataset.poseFitWeaponStock=exactWeaponConfig?.build?.parts.stock??'';
   const activeLook=resolvedWardrobe(wardrobeOptions,currentKit);
   canvas.dataset.poseFitArmor=activeLook.armorStyle;
+  syncPanelOption(activeLook.armorStyle);
   canvas.dataset.poseFitRig=activeLook.rigStyle;
    canvas.dataset.poseFitPack=activeLook.packStyle;
+  canvas.dataset.authoredPack=rig.visualKit.packPreview.active?.style??'legacy';
   canvas.dataset.poseFitTop=activeLook.top;
   canvas.dataset.lowReadyFit=staticReport?.status??'action';
   canvas.dataset.poseV3DynamicReport=JSON.stringify(
@@ -2533,6 +2554,41 @@ function draw(){
     choose<HTMLElement>('labStatus').hidden=true;
   }
 }
+// Explicit capture harness only; renders the real posed rig at a native
+// 1000px resolution instead of upscaling the mobile canvas.
+if(poseFlags.get('packArtCapture')==='1')Object.assign(window,{
+ fieldworkCapturePack:(view:string)=>{
+  if(!rig?.visualKit.packPreview.active)throw Error('Select authored pack');
+  rig.root.updateMatrixWorld(true);
+  const box=new THREE.Box3().setFromObject(rig.visualKit.packPreview.active.root);
+  const target=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
+  const relative=view==='back'?new THREE.Vector3(0,2,70):
+   view==='side'?new THREE.Vector3(70,2,0):
+   view==='front'?new THREE.Vector3(0,2,-70):new THREE.Vector3(48,14,56);
+  relative.applyAxisAngle(new THREE.Vector3(0,1,0),(rig.legacyYaw??0)-LEGACY_FRAME_YAW);
+  const silhouette=view==='silhouette';
+  if(silhouette)relative.set(0,2,70).applyAxisAngle(new THREE.Vector3(0,1,0),(rig.legacyYaw??0)-LEGACY_FRAME_YAW);
+  const span=silhouette?29:Math.max(22,size.y+7,size.x+size.z+6);
+  const c=new THREE.OrthographicCamera(-span/2,span/2,span/2,-span/2,.1,600);
+  c.position.copy(target).add(relative);c.lookAt(target);
+  const prior=renderer.getSize(new THREE.Vector2()),ratio=renderer.getPixelRatio();
+  try{
+   renderer.setPixelRatio(1);renderer.setSize(1000,1000,false);
+   if(silhouette){
+    const study=new THREE.Scene();study.background=new THREE.Color(0xc4c5bd);
+    const copy=rig.visualKit.packPreview.active.root.clone(true);
+    copy.matrixAutoUpdate=false;copy.matrix.copy(rig.visualKit.packPreview.active.root.matrixWorld);
+    study.add(copy);
+    const matte=new THREE.MeshBasicMaterial({color:0x455044});
+    study.overrideMaterial=matte;
+    try{renderer.render(study,c);}finally{matte.dispose();}
+   }else renderer.render(scene,c);
+   return canvas.toDataURL('image/png');
+  }finally{
+   renderer.setPixelRatio(ratio);renderer.setSize(prior.x,prior.y,false);renderer.render(scene,camera);
+  }
+ }
+});
 function tick(now:number){
   const elapsed=Math.min(.05,Math.max(0,(now-last)/1000));
   last=now;

@@ -24,7 +24,7 @@ export function beltSurface(style:BeltStyle,index:number,along=0){
  if(!seg||style==='no-belt')return null;
  const t=BELT_PROFILES[style].thickness;
  // Padded belt has a narrow fastening section over the front contact.
- const thickness=style==='padded-belt'&&index===0?.5:t;
+ const thickness=style==='padded-belt'?(index===0?.76:t+.32):t;
  const offset=Math.max(-seg.length/2,Math.min(seg.length/2,along));
  const tx=Math.cos(seg.yaw),tz=-Math.sin(seg.yaw);
  return {x:seg.x+seg.normalX*thickness+tx*offset,y:BELT_CENTER_Y+(style==='padded-belt'&&index!==0?.36:0),

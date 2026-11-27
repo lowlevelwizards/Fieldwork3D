@@ -1,3 +1,4 @@
+import {packPrintCompatible,PACK_TEXTILES} from './operator-backpack-textiles.ts';
 /** Fieldwork Stage 2 camouflage garment policy.
  * A print appearing on a uniform does NOT imply it was ever produced as a
  * plate carrier, chest rig, rucksack or combat shirt. This deliberately
@@ -105,6 +106,7 @@ export type CamoOutfit={
 };
 export function fabricCamoCompatible(id:HeadwearCamoId,
  channel:FabricCamoChannel,outfit:CamoOutfit):boolean{
+ if(channel==='pack')return packPrintCompatible(outfit.packStyle,id);
  const entry=FABRIC_CAMO_POLICY[id];
  if(!entry.channels.includes(channel))return false;
  switch(channel){
@@ -156,11 +158,7 @@ export function fabricCamoCompatible(id:HeadwearCamoId,
    return validArmorPrint(outfit.armorStyle,id);
   case 'gear':
    return validRigPrint(outfit.rigStyle,id);
-  case 'pack':
-   if(id==='alpenflage'||id==='east-german-strichtarn'||
-    id==='woodland-marpat')
-    return ['field-pack','rucksack'].includes(outfit.packStyle);
-   return outfit.packStyle!=='no-pack';
+
  }
 }
 export function fabricCamoChoices(channel:FabricCamoChannel,
@@ -168,5 +166,7 @@ export function fabricCamoChoices(channel:FabricCamoChannel,
  return HEADWEAR_CAMO_IDS.filter(id=>fabricCamoCompatible(id,channel,outfit));
 }
 export function fabricCamoAllowedChannels(id:HeadwearCamoId):readonly FabricCamoChannel[]{
- return FABRIC_CAMO_POLICY[id].channels;
+ const channels=FABRIC_CAMO_POLICY[id].channels;
+ const pack=Object.values(PACK_TEXTILES).some(p=>p.prints.includes(id));
+ return pack&&!channels.includes('pack')?[...channels,'pack']:channels;
 }
