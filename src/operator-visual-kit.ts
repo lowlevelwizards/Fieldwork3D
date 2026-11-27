@@ -1,3 +1,4 @@
+import {equipmentAssembly} from './operator-equipment-assembly.ts';
 import {canonicalBeltStyle} from './operator-belt-profile.ts';
 /** OV visual assemblies. Geometry only: the established IK joints, shot transforms,
  * collisions and equipment ledger remain authoritative. Keep compact, readable
@@ -409,11 +410,12 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   wardrobe?.trouserHem??'bloused',looks.footwear==='bare-feet',looks.top);
  updateWardrobeBodyLayers(v.wardrobeBody,looks.top,looks.trousers,
   looks.knees,looks.wrist);
+ const assembly=equipmentAssembly(looks.packStyle,looks.armorStyle,looks.rigStyle,wardrobe?.packMount);
  updateWardrobeGearLayers(v.wardrobeGear,
   usingWardrobe?looks.armorStyle:'armor-bare',
   usingWardrobe?looks.rigStyle:'no-rig',
   looks.beltStyle,looks.packStyle,looks.top,
-  wardrobe?.aliceLoad??'standard',wardrobe?.m1956Variant??'late');
+  wardrobe?.aliceLoad??'standard',wardrobe?.m1956Variant??'late',authoredPackPreview&&s.backpack!=='backpack-none'&&assembly.sharedRig);
  // Record ONLY candidate surfaces for later shoulder/buttplate fitting.
  // The fit is rebuilt on a wardrobe change, not on an animation tick.
  // No stock, joint, ballistics or collision state is mutated here.
@@ -473,7 +475,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   dayStyle==='medic-pack'?.92:1,
   dayStyle==='comms-pack'?.90:1);
  v.packHarness.visible=s.backpack!=='backpack-none';
- const authored=updatePackPreview(v.packPreview,authoredPackPreview&&s.backpack!=='backpack-none',looks.packStyle,looks.armorStyle,looks.rigStyle,looks.top);
+ const authored=updatePackPreview(v.packPreview,authoredPackPreview&&s.backpack!=='backpack-none',looks.packStyle,looks.armorStyle,looks.rigStyle,looks.top,wardrobe?.packMount,looks.beltStyle);
  if(authored){
   v.dayPack.visible=false;v.fieldPack.visible=false;v.packHarness.visible=false;
   const overlay=v.wardrobeGear.pack[looks.packStyle];if(overlay)overlay.visible=false;
@@ -617,7 +619,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  refineStaticReceiver(v.baseTorso,BASE_TORSO_VERTEX_BUDGET);
  if(clothTorso)refineStaticReceiver(clothTorso,STATIC_SHIRT_RECEIVER_BUDGET);
  const lightingKey=[looks.top,looks.armorStyle,looks.rigStyle,looks.packStyle,
-  wardrobe?.sleeveState??'unrolled',authored?.style??'legacy'].join('/');
+  wardrobe?.sleeveState??'unrolled',authored?.style??'legacy',assembly.mode].join('/');
  const packs=[pack,v.fieldPack,v.dayPack,v.packPreview.active?.root]
   .filter((g):g is THREE.Group=>!!g&&g.visible);
  // R5.3-B: declare real caster/receiver relationships instead of
