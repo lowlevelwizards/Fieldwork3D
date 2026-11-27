@@ -229,11 +229,8 @@ export function createOperatorVisualKit(
   part(fieldWebbing,gearFabric,-.4,-.5,sign*7.4,8.6,1.45,.72);
  }
  part(fieldWebbing,dark,6.25,-3.1,0,.85,1.65,13.8);
- const belt=bundle(hip);
- part(belt,dark,0,-2.0,0,8.75,1.5,13.15);
- part(belt,steel,4.6,-2.0,0,.65,1.9,2.4);
- for(const z of [-5.5,5.5])
-  part(belt,trim,0,-2.0,z,.8,2.5,.85);
+ // Stable inspection/retention parent; actual style meshes are built below.
+ const belt=bundle(hip);belt.name='operator-belt';
  // The existing pack mesh remains the inertia parent, preserving the exact
  // existing animation. These are surface details, not new physics bodies.
  const dayPack=bundle(pack),fieldPack=bundle(pack);
@@ -304,7 +301,7 @@ export function createOperatorVisualKit(
  for(const mesh of [...magazines.rig,...magazines.belt,...magazines.pocket])
   mesh.visible=false;
  const wardrobeGear=createWardrobeGearLayers(chest,hip,pack,vest,
-  gearFabric,packFabric,dark,trim,lazyAccessories);
+  gearFabric,packFabric,dark,trim,lazyAccessories,belt,steel);
  // Broad armor plates can receive opt-in chunky highlight patches;
  // never highlight carrier webbing, pouches or exposed textile seams.
  for(const [style,group] of Object.entries(wardrobeGear.armor))
@@ -314,7 +311,7 @@ export function createOperatorVisualKit(
  // Static layered clothing/armor/pack geometry becomes a few multi-face
  // meshes per material. Keep individually issued magazines unmerged.
  for(const surface of [helmet,cap,hair,jacket,lightShirt,softArmor,
-  plateCarrier,chestRig,fieldWebbing,belt,dayPack,fieldPack,packHarness])
+  plateCarrier,chestRig,fieldWebbing,dayPack,fieldPack,packHarness])
    consolidateVisualGroup(surface);
  return {visualChest:chest,baseTorso,wardrobeHead,wardrobeBody,identityVisuals,wardrobeGear,accessories,fieldBlouses,fieldTrousers,newUpper,casualShirts,
   helmet,cap,hair,jacket,lightShirt,
@@ -458,11 +455,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   s.armor==='armor-soft'?1.15:0;
  v.chestRig.position.x=armorOffset;
  v.fieldWebbing.position.x=armorOffset;
- v.belt.visible=s.belt!=='belt-none';
- v.belt.scale.set(looks.beltStyle==='plain-belt'?.76:
-  looks.beltStyle==='light-belt'?.82:1,
-  looks.beltStyle==='padded-belt'?1.35:
-  s.belt==='belt-light'?.72:1,1);
+ v.belt.visible=looks.beltStyle!=='no-belt';
+ v.belt.scale.set(1,1,1);
  v.dayPack.visible=s.backpack==='backpack-day';
  v.fieldPack.visible=s.backpack==='backpack-field';
  const dayStyle=looks.packStyle;

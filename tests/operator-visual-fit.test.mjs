@@ -18,7 +18,8 @@ test('rear pack and belt fit preserve original motor anatomy',()=>{
  assert.ok(Math.abs(rig.rigPouches[0].position.z)>7);
  poseOperator(rig,pose(setEquipmentChoice(kit,'belt','belt-light')),0);
  assert.equal(rig.visualKit.belt.visible,true);
- assert.ok(rig.visualKit.belt.scale.y<1);
+ assert.equal(rig.visualKit.belt.scale.y,1);
+ assert.equal(rig.visualKit.wardrobeGear.belt['plain-belt'].visible,true);
  assert.ok(rig.feet.every(f=>Number.isFinite(f.anchor.x)));
  rig.dispose();
 });
