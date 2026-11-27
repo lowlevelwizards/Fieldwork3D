@@ -1,0 +1,47 @@
+import test from 'node:test';import assert from 'node:assert/strict';import * as THREE from 'three';
+import {equipmentExterior} from '../src/operator-equipment-exterior.ts';
+import {createSlingRoute,createSlingContactRoute,routeSlingRibbon,fitSlingContactRoute} from '../src/operator-sling-route.ts';
+import {frontDropPhase,frontDropRebound,sampleRetentionTransition} from '../src/breach-weapon-retention-transition.ts';
+import {sampleRetentionPose} from '../src/breach-weapon-retention-pose.ts';
+import {sampleSecondaryRetention} from '../src/breach-secondary-retention.ts';
+import {slingArtProfile} from '../src/operator-sling-profile.ts';
+const fit=equipmentExterior('plate-heavy','full-chest','combat-shirt');
+const box=new THREE.Box3(new THREE.Vector3(-17,-10,-7),new THREE.Vector3(-5,11,7));
+test('SR21 a bulky pack does not inflate front shoulder height or flank radius',()=>{
+ const a=new THREE.Vector3(11,1,-1),b=new THREE.Vector3(11,-6,2);
+ const withPack=createSlingRoute(),without=createSlingRoute(),contact=createSlingContactRoute();
+ routeSlingRibbon(withPack,a,b,fit,'front-slung',1.35,box);
+ routeSlingRibbon(without,a,b,fit,'front-slung',1.35);
+ assert.equal(withPack[2].point.y,without[2].point.y);
+ assert.equal(withPack[6].point.z,without[6].point.z);
+ assert.ok(withPack[3].point.x>box.min.x+3);
+ fitSlingContactRoute(contact,withPack,fit,1.35,box);
+ assert.ok(contact[5].point.y>withPack[2].point.y);
+ assert.deepEqual(contact[0].point.toArray(),a.toArray());
+ assert.deepEqual(contact.at(-1).point.toArray(),b.toArray());
+ routeSlingRibbon(withPack,a,b,fit,'back-slung',1.35,box);
+ assert.ok(withPack[2].point.y<box.max.y);
+ assert.ok(withPack[2].point.x>box.min.x+3);
+});
+const p={mode:'front-slung',sling:'two',scale:new THREE.Vector3(1,1,1),heldPosition:new THREE.Vector3(8,3,0),heldQuaternion:new THREE.Quaternion(),primaryGrip:new THREE.Vector3(6,-3,1),supportGrip:new THREE.Vector3(15,-2,-1),balanceX:1,armorPush:0,pack:false,chestHeight:35,muzzleX:19.5,stockX:-13.5};
+test('SR21 drop leads, compresses, rebounds and has exact deterministic endpoints',()=>{
+ assert.ok(frontDropPhase(.45)>.65);
+ assert.equal(frontDropPhase(.7),1);
+ assert.ok(frontDropRebound(.64)<0);
+ assert.ok(frontDropRebound(.87)>0);
+ assert.ok(Math.abs(frontDropRebound(1))<1e-8);
+ assert.deepEqual(sampleRetentionTransition(p,1),sampleRetentionPose(p));
+ assert.ok(sampleRetentionTransition(p,0).position.distanceTo(p.heldPosition)<1e-6);
+ const a=sampleRetentionTransition(p,.64),b=sampleRetentionTransition(p,.87);
+ assert.ok(a.position.y<b.position.y);
+ assert.deepEqual(a,sampleRetentionTransition(p,.64));
+});
+test('SR21 secondary equipped retains moving front-hang suspension and exact settled endpoint',()=>{
+ const switchPose=sampleSecondaryRetention(1,true);
+ assert.equal(switchPose.retention,1);assert.equal(switchPose.pistol,1);
+ const moving={speed:55,stride:.14,massKg:3,inertia:100,profile:slingArtProfile('sling-two-point'),gait:'walk'};
+ const a=sampleRetentionTransition({...p,motion:moving},switchPose.retention);
+ const b=sampleRetentionTransition({...p,motion:{...moving,stride:.56}},switchPose.retention);
+ assert.ok(a.position.distanceTo(b.position)>.3);
+ assert.ok(a.quaternion.angleTo(b.quaternion)>.04);
+});
