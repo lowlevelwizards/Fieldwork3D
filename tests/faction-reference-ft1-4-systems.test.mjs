@@ -24,9 +24,9 @@ const make=(timelineId,year,extra={})=>generateHistoricalLoadout({
 test('FT1.4 extends systems without new historical items or visual content',()=>{
  assert.equal(FACTION_REFERENCES.length,44);
  assert.equal(FACTION_TIMELINES.length,34);
- assert.equal(HISTORICAL_EQUIPMENT.length,35);
- assert.equal(HISTORICAL_ISSUE_RECORDS.length,32);
- assert.equal(new Set(HISTORICAL_EQUIPMENT.map(x=>x.id)).size,35);
+ assert.equal(HISTORICAL_EQUIPMENT.length,38);
+ assert.equal(HISTORICAL_ISSUE_RECORDS.length,35);
+ assert.equal(new Set(HISTORICAL_EQUIPMENT.map(x=>x.id)).size,38);
 });
 test('FT1.4 content demand counts unique affected reference kits and maps actual stand-ins',()=>{
  const a=prioritizeContentDemand();
@@ -111,7 +111,7 @@ test('FT1.4 quality audit preserves absent research while reporting visual and a
 test('FT1.4 research and content-audit dimensions remain independent',()=>{
  const report=auditFactionResearchCoverage();
  assert.equal(report.researchedTimelines,9);
- assert.equal(report.historicalAssociations,32);
+ assert.equal(report.historicalAssociations,35);
  assert.equal(report.datedAppearanceReferences,44);
  assert.equal(report.visualNeedCount,report.futureContentQueue.length);
  assert.ok(report.visualNeedCount>0);
