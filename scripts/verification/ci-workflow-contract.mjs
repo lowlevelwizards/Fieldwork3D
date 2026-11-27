@@ -21,12 +21,7 @@ const paths={
  replayR3Library:'.github/workflows/replay-r3-library-smoke.yml',
  replayR43Visual:'.github/workflows/replay-r43-bodycam-qa.yml',
  replayDirectorReset:'.github/workflows/replay-director-reset.yml',
- debrief1:'.github/workflows/after-action-v4-stage1.yml',
- debrief2:'.github/workflows/after-action-v4-stage2.yml',
- debrief3:'.github/workflows/after-action-v4-stage3.yml',
- debrief4:'.github/workflows/after-action-v4-stage4.yml',
- debrief5:'.github/workflows/after-action-v4-stage5.yml',
- debrief6:'.github/workflows/after-action-v5-critical.yml',
+ debrief:'.github/workflows/after-action-acceptance.yml',
  d3retail:'.github/workflows/d3-14d2-retail-recovery.yml',
  d3departure:'.github/workflows/d3-17c-departure.yml',
  d3join:'.github/workflows/d3-17d-door-join.yml',
@@ -181,39 +176,21 @@ export function validateWorkflowContracts(wf){
  must('glockArt','smoke-consolidation-p9-arsenal.mjs');
  must('glockArt','beretta-m9-art-review');
 
- // A5: preserve all six stage-specific real debrief browser suites, while
- // only the primary CI creates a main PR workflow run.
+ // RC2k: single reusable debrief workflow with all six original jobs.
  must('ci','--test tests/ci-after-action-routing.test.mjs');
  must('ci','CI_HEAD_REF:');
- for(const [name,job,output] of [
-  ['debrief1','debrief-v4-navigation','debriefV41'],
-  ['debrief2','debrief-v4-summary','debriefV42'],
-  ['debrief3','debrief-v4-persistent3d','debriefV43'],
-  ['debrief4','debrief-v4-forensic','debriefV44'],
-  ['debrief5','debrief-v4-timeline','debriefV45'],
-  ['debrief6','debrief-v5-browser','debriefV5']]){
-  must('ci',job+':');
-  must('ci','uses: ./.github/workflows/'+paths[name].split('/').at(-1));
-  must('ci','needs.specialist-routing.outputs.'+output);
-  must(name,'workflow_call:');
-  must(name,'workflow_dispatch:');
-  const header=wf[name].slice(0,wf[name].indexOf('jobs:'));
-  assert.ok(!/^  pull_request:/m.test(header),name+' still launches independent PR');
-  must(name,'actions/upload-artifact@v4');
-  must(name,'FIELDWORK_CI_CHROME');
+ must('ci','after-action-acceptance:');
+ must('ci','uses: ./.github/workflows/after-action-acceptance.yml');
+ must('ci','needs.specialist-routing.outputs.debriefAny');
+ must('ci','needs.specialist-routing.outputs.debriefJSON');
+ must('debrief','workflow_call:');
+ must('debrief','workflow_dispatch:');
+ no('debrief','  pull_request:');
+ for(const [lane,job,smoke,artifact] of [["debriefV41","navigation-and-browser","smoke-after-action-v3.mjs","after-action-v4-stage1-viewport-evidence"],["debriefV42","summary-and-squad","smoke-after-action-v3.mjs","after-action-v4-stage2-viewport-evidence"],["debriefV43","retained-models","smoke-after-action-v4-stage3.mjs","after-action-v4-stage3-webgl-captures"],["debriefV44","forensic","smoke-after-action-v4-stage4.mjs","after-action-v4-stage4-forensic"],["debriefV45","mission-investigation","smoke-after-action-v4-stage5.mjs","after-action-v4-stage5-investigation"],["debriefV5","browser-smoke","smoke-after-action-v5.mjs","after-action-v5-browser-evidence"]]){
+  const body=wf.debrief.split('\n  '+job+':\n')[1]?.split(/\n  [\w-]+:\n/)[0]||'';
+  for(const needle of ['fromJSON(inputs.lanes).'+lane,"inputs.lane == '"+lane+"'",smoke,artifact,'actions/upload-artifact@v4','FIELDWORK_CI_CHROME'])
+   assert.ok(body.includes(needle),job+' missing '+needle);
  }
- for(const [name,smoke,artifact] of [
-  ['debrief1','smoke-after-action-v3.mjs','after-action-v4-stage1-viewport-evidence'],
-  ['debrief2','smoke-after-action-v3.mjs','after-action-v4-stage2-viewport-evidence'],
-  ['debrief3','smoke-after-action-v4-stage3.mjs','after-action-v4-stage3-webgl-captures'],
-  ['debrief4','smoke-after-action-v4-stage4.mjs','after-action-v4-stage4-forensic'],
-  ['debrief5','smoke-after-action-v4-stage5.mjs','after-action-v4-stage5-investigation'],
-  ['debrief6','smoke-after-action-v5.mjs','after-action-v5-browser-evidence']]){
-  must(name,smoke);
-  must(name,artifact);
- }
- must('debrief3',"startsWith(github.head_ref, 'refactor/ci-after-action-')");
- must('debrief6',"startsWith(github.head_ref, 'refactor/ci-after-action-')");
  // A6a: one nested reusable dispatch for historical replay mobile lanes.
  must('ci','--test tests/ci-replay-mobile-routing.test.mjs');
  must('ci','replay-mobile-acceptance:');

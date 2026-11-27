@@ -121,12 +121,8 @@ jobs:
       movementDoorJSON: ${{ steps.owners.outputs.movementDoorJSON }}
       arsenalM30: ${{ steps.owners.outputs.arsenalM30 }}
       glockArt: ${{ steps.owners.outputs.glockArt }}
-      debriefV41: ${{ steps.owners.outputs.debriefV41 }}
-      debriefV42: ${{ steps.owners.outputs.debriefV42 }}
-      debriefV43: ${{ steps.owners.outputs.debriefV43 }}
-      debriefV44: ${{ steps.owners.outputs.debriefV44 }}
-      debriefV45: ${{ steps.owners.outputs.debriefV45 }}
-      debriefV5: ${{ steps.owners.outputs.debriefV5 }}
+      debriefAny: ${{ steps.owners.outputs.debriefAny }}
+      debriefJSON: ${{ steps.owners.outputs.debriefJSON }}
       replayMobileAny: ${{ steps.owners.outputs.replayMobileAny }}
       replayMobileJSON: ${{ steps.owners.outputs.replayMobileJSON }}
     steps:
@@ -205,45 +201,12 @@ jobs:
 
 
 
-  debrief-v4-navigation:
+  after-action-acceptance:
     needs: specialist-routing
-    if: ${{ needs.specialist-routing.outputs.debriefV41 == 'true' }}
-    uses: ./.github/workflows/after-action-v4-stage1.yml
-    permissions:
-      contents: read
-
-  debrief-v4-summary:
-    needs: specialist-routing
-    if: ${{ needs.specialist-routing.outputs.debriefV42 == 'true' }}
-    uses: ./.github/workflows/after-action-v4-stage2.yml
-    permissions:
-      contents: read
-
-  debrief-v4-persistent3d:
-    needs: specialist-routing
-    if: ${{ needs.specialist-routing.outputs.debriefV43 == 'true' }}
-    uses: ./.github/workflows/after-action-v4-stage3.yml
-    permissions:
-      contents: read
-
-  debrief-v4-forensic:
-    needs: specialist-routing
-    if: ${{ needs.specialist-routing.outputs.debriefV44 == 'true' }}
-    uses: ./.github/workflows/after-action-v4-stage4.yml
-    permissions:
-      contents: read
-
-  debrief-v4-timeline:
-    needs: specialist-routing
-    if: ${{ needs.specialist-routing.outputs.debriefV45 == 'true' }}
-    uses: ./.github/workflows/after-action-v4-stage5.yml
-    permissions:
-      contents: read
-
-  debrief-v5-browser:
-    needs: specialist-routing
-    if: ${{ needs.specialist-routing.outputs.debriefV5 == 'true' }}
-    uses: ./.github/workflows/after-action-v5-critical.yml
+    if: ${{ needs.specialist-routing.outputs.debriefAny == 'true' }}
+    uses: ./.github/workflows/after-action-acceptance.yml
+    with:
+      lanes: ${{ needs.specialist-routing.outputs.debriefJSON }}
     permissions:
       contents: read
 

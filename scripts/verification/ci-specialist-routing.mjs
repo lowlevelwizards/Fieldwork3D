@@ -117,12 +117,12 @@ export function selectWeaponVisualSuites(paths=[]){
 export const afterActionSpecs=[
  {
   "key": "debriefV41",
-  "workflow": "after-action-v4-stage1.yml",
+  "workflow": "after-action-acceptance.yml",
   "prefixes": [
    "feature/after-action-v4-"
   ],
   "paths": [
-   ".github/workflows/after-action-v4-stage1.yml",
+   ".github/workflows/after-action-acceptance.yml",
    "src/breach-app-flow.ts",
    "src/breach-main.ts",
    "src/breach-after-action-replay-navigation.ts",
@@ -134,12 +134,12 @@ export const afterActionSpecs=[
  },
  {
   "key": "debriefV42",
-  "workflow": "after-action-v4-stage2.yml",
+  "workflow": "after-action-acceptance.yml",
   "prefixes": [
    "feature/after-action-v4-stage2-"
   ],
   "paths": [
-   ".github/workflows/after-action-v4-stage2.yml",
+   ".github/workflows/after-action-acceptance.yml",
    "index.html",
    "src/breach-style.css",
    "src/breach-after-action-report.ts",
@@ -151,12 +151,12 @@ export const afterActionSpecs=[
  },
  {
   "key": "debriefV43",
-  "workflow": "after-action-v4-stage3.yml",
+  "workflow": "after-action-acceptance.yml",
   "prefixes": [
    "feature/after-action-v4-stage3-"
   ],
   "paths": [
-   ".github/workflows/after-action-v4-stage3.yml",
+   ".github/workflows/after-action-acceptance.yml",
    "src/ui/breach-after-action-*.ts",
    "src/ui/breach-mission-screens.ts",
    "src/breach-main.ts",
@@ -167,12 +167,12 @@ export const afterActionSpecs=[
  },
  {
   "key": "debriefV44",
-  "workflow": "after-action-v4-stage4.yml",
+  "workflow": "after-action-acceptance.yml",
   "prefixes": [
    "feature/after-action-v4-stage4-"
   ],
   "paths": [
-   ".github/workflows/after-action-v4-stage4.yml",
+   ".github/workflows/after-action-acceptance.yml",
    "src/breach-hit-anatomy.ts",
    "src/breach-forensic-evidence.ts",
    "src/breach-shot-resolution.ts",
@@ -189,12 +189,12 @@ export const afterActionSpecs=[
  },
  {
   "key": "debriefV45",
-  "workflow": "after-action-v4-stage5.yml",
+  "workflow": "after-action-acceptance.yml",
   "prefixes": [
    "feature/after-action-v4-stage5-"
   ],
   "paths": [
-   ".github/workflows/after-action-v4-stage5.yml",
+   ".github/workflows/after-action-acceptance.yml",
    "index.html",
    "src/breach-style.css",
    "src/breach-after-action-timeline.ts",
@@ -206,14 +206,14 @@ export const afterActionSpecs=[
  },
  {
   "key": "debriefV5",
-  "workflow": "after-action-v5-critical.yml",
+  "workflow": "after-action-acceptance.yml",
   "prefixes": [
    "feat/after-action-v5-",
    "feature/after-action-v6-",
    "fix/after-action-v6-mobile-"
   ],
   "paths": [
-   ".github/workflows/after-action-v5-critical.yml",
+   ".github/workflows/after-action-acceptance.yml",
    "index.html",
    "src/breach-style.css",
    "src/breach-after-action-*.ts",
@@ -234,12 +234,14 @@ export function afterActionPathMatches(glob,path){
 }
 export function selectAfterActionSuites(paths=[],headRef=''){
  const files=[...new Set(paths)].sort();
+ // Shared workflow edits exercise every preserved lane; normal source edits retain their existing routing policy.
+ const infrastructure=files.includes('.github/workflows/after-action-acceptance.yml');
  return Object.fromEntries(afterActionSpecs.map(spec=>{
   const probe=headRef.startsWith(debriefAcceptancePrefix)&&
    ['debriefV43','debriefV5'].includes(spec.key);
   const eligible=spec.prefixes.some(prefix=>headRef.startsWith(prefix))||probe;
-  return [spec.key,eligible&&files.some(file=>spec.paths.some(glob=>
-   afterActionPathMatches(glob,file)))];
+  return [spec.key,infrastructure||(eligible&&files.some(file=>spec.paths.some(glob=>
+   afterActionPathMatches(glob,file))))];
  }));
 }
 
@@ -619,7 +621,7 @@ function main(){
  console.log('Specialist CI routing',JSON.stringify({...result,movement,weapons,debrief,replay,replayLegacy,replayDirectorReset}));
  if(args.includes('--github-output')){
   assert.ok(process.env.GITHUB_OUTPUT,'GITHUB_OUTPUT missing');
-  appendFileSync(process.env.GITHUB_OUTPUT,[...Object.entries(result.selected),...Object.entries(movement),...Object.entries(weapons),...Object.entries(debrief),['replayMobileAny',replayMobileAny],['replayMobileJSON',JSON.stringify(replayAll)],['movementDoorAny',movementDoorAny],['movementDoorJSON',JSON.stringify(movementDoor)]]
+  appendFileSync(process.env.GITHUB_OUTPUT,[...Object.entries(result.selected),...Object.entries(movement),...Object.entries(weapons),['debriefAny',Object.values(debrief).some(Boolean)],['debriefJSON',JSON.stringify(debrief)],['replayMobileAny',replayMobileAny],['replayMobileJSON',JSON.stringify(replayAll)],['movementDoorAny',movementDoorAny],['movementDoorJSON',JSON.stringify(movementDoor)]]
    .map(([name,enabled])=>name+'='+String(enabled)).join('\n')+'\n');
  }
 }
