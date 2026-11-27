@@ -54,7 +54,7 @@ test('BP3 pack seat, harness symmetry and direct mount compatibility',()=>{
   assert.equal(fit.upperSeats.length,2);
   assert.ok(Math.abs(fit.upperSeats[0][2]+fit.upperSeats[1][2])<1e-6);
   assert.ok(Math.abs(root.position.x+PACK_PIVOT[0]-fit.center[0])<1e-6);
-  if(style==='assault-panel'){assert.equal(fit.spans.length,0);continue;}
+  if(fit.mode==='direct'){assert.equal(fit.spans.length,0);continue;}
   assert.equal(fit.spans.length,12);
   for(const span of fit.spans)assert.ok([...span.a,...span.b,...span.normal].every(Number.isFinite));
  }
