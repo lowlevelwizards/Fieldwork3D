@@ -59,6 +59,15 @@ const DOWNED_TINT=new THREE.Color(0x555c57);
 /** Outfit, headwear and material maps are static between kit changes.
  * Keep a per-rig snapshot separate from motion/IK, which still runs on
  * every frame. Weak keys release disposed operator preview rigs. */
+/** Manifest objects are immutable transaction snapshots. Cache only the
+ * structural fingerprint; content changes do not rebuild the wardrobe. */
+const carryLayoutKeys=new WeakMap<NonNullable<OperatorPose['unifiedCarry']>['manifest'],string>();
+function carryLayoutKey(state:OperatorPose['unifiedCarry']){
+ if(!state)return '';
+ const prior=carryLayoutKeys.get(state.manifest);if(prior!==undefined)return prior;
+ const key=JSON.stringify(state.manifest.placements.map(q=>[q.slotIds,q.kind,q.holder,q.variant,q.waist?.socket,q.mount]));
+ carryLayoutKeys.set(state.manifest,key);return key;
+}
 const appearanceState=new WeakMap<OperatorRig,{
  key:string;downed:boolean;outfit:ReturnType<typeof resolvedWardrobe>
 }>();
@@ -85,7 +94,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     p.flashCharges??null,p.wedgeRemaining??null,
     p.restraintRemaining??null,p.treatmentActive??null,
     p.weaponConfiguration?.build?.parts.magazine??null,
-    p.nvgDeployed??false,!!p.unifiedCarry,p.unifiedCarry?.manifest.placements.map(q=>[q.slotIds,q.kind,q.holder,q.variant,q.waist?.socket,q.mount])??null,r.root.userData.fieldworkAuthoredPackPreview===true
+    p.nvgDeployed??false,!!p.unifiedCarry,carryLayoutKey(p.unifiedCarry),r.root.userData.fieldworkAuthoredPackPreview===true
   ]);
   const fingerprintMs=traceAppearance?performance.now()-fingerprintStart:0;
   r.root.userData.fieldworkLightingAppearanceKey=appearanceKey;
@@ -99,8 +108,11 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     fingerprintMs,appearanceChanged:appearanceChanged?1:0};
   // Resolve once per appearance fingerprint, including in-place Studio edits.
   // No repeated wardrobe normalization in coupled, coordinated or IK paths.
-  const baseWardrobe=p.wardrobe??initialWardrobe();
-  const visualWardrobe=p.unifiedCarry&&p.equipment?{...baseWardrobe,styles:{...baseWardrobe.styles,beltStyle:beltStyleForEquipment(p.equipment.slots.belt)}}:p.wardrobe;
+  let visualWardrobe=p.wardrobe;
+  if(appearanceChanged&&p.unifiedCarry&&p.equipment){
+   const base=p.wardrobe??initialWardrobe();
+   visualWardrobe={...base,styles:{...base.styles,beltStyle:beltStyleForEquipment(p.equipment.slots.belt)}};
+  }
   const clothing=appearanceChanged?
     resolvedWardrobe(visualWardrobe,p.equipment):previousAppearance!.outfit;
   if(appearanceChanged){

@@ -51,7 +51,18 @@ export function gearPixelMap(mark:GearMark,w:number,h:number){
 export function gearMarkedMaterial(source:THREE.Material,mark:GearMark,w:number,h:number):THREE.Material{
  if(!(source instanceof THREE.MeshStandardMaterial))return source;
  const map=gearPixelMap(mark,w,h),key=map.name;
- let variants=linked.get(source);if(!variants){variants=new Map();linked.set(source,variants);}
+ let variants=linked.get(source);
+ if(!variants){
+  const owned=new Map<string,THREE.MeshStandardMaterial>();
+  variants=owned;linked.set(source,owned);
+  // These clones belong to their palette source, even if an old holder
+  // has already left the scene. The shared pixel maps remain cached.
+  const release=()=>{
+   source.removeEventListener('dispose',release);
+   linked.delete(source);for(const m of owned.values())m.dispose();owned.clear();
+  };
+  source.addEventListener('dispose',release);
+ }
  let material=variants.get(key);if(material)return material;
  material=source.clone();material.name=key;
  material.aoMap=map;material.aoMapIntensity=mark==='medical'||mark==='radio'?.9:.58;material.needsUpdate=true;
