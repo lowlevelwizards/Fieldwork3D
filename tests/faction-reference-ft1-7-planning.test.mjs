@@ -19,8 +19,8 @@ import {FT17_CANDIDATE_DECISIONS}
 test('FT1.7 preserves all historical and visual content, covering 44 x 9 cells',()=>{
  assert.equal(FACTION_REFERENCES.length,44);
  assert.equal(FACTION_TIMELINES.length,34);
- assert.equal(HISTORICAL_EQUIPMENT.length,38);
- assert.equal(HISTORICAL_ISSUE_RECORDS.length,35);
+ assert.equal(HISTORICAL_EQUIPMENT.length,40);
+ assert.equal(HISTORICAL_ISSUE_RECORDS.length,37);
  const m=buildReferenceCoverageMatrix();
  assert.equal(m.cells.length,44*9);
  assert.equal(m.issues.length,0);
