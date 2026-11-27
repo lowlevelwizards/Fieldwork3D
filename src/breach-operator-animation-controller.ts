@@ -381,6 +381,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }
     r.weaponLightLens=r.weaponAccessories.getObjectByName('weapon-light-lens')??null;
     r.droppedLightLens=null;
+    const slingMaterial=r.slingStraps[0]?.material;
+    if(slingMaterial instanceof THREE.MeshStandardMaterial)
+      slingMaterial.color.setHex(config?.slots.sling==='sling-traditional'?0x80664a:
+        config?.slots.sling==='sling-single-point'?0x383b34:0x4e5544);
     r.visualWeapon=p.weapon;r.visualWeaponConfiguration=config;
     if(profilePose)weaponBuildMs+=performance.now()-buildStart;
   }

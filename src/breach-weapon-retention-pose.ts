@@ -25,6 +25,8 @@ export function retentionPoseSupported(mode:RetentionPoseMode,sling:SlingKind){
 }
 export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|null{
  if(!retentionPoseSupported(p.mode,p.sling))return null;
+ if(p.mode!=='held-one'&&(p.sockets===null||
+   p.sockets&&!p.sockets.supported.includes(p.sling==='single'?'single':'two')))return null;
  const armor=Math.max(0,Math.min(2,p.armorPush));
  const one=p.mode==='held-one',front=p.mode==='front-slung';
  const side=p.mode==='side-slung';

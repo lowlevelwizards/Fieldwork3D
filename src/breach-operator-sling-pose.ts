@@ -38,6 +38,7 @@ function positionSpans(straps:readonly SlingNode[],p:SlingPoseSource,
  }
 }
 function seatsFor(mode:SlingKind,sockets:WeaponRetentionSockets|null|undefined){
+ if(sockets===null)return null;
  const s=sockets??fallback;
  return mode==='single'?[s.single,s.single] as const:
   s.front?[s.rear,s.front] as const:null;

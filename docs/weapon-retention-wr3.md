@@ -1,2 +1,4 @@
 # WR3 — Sling equipment and artwork
 Single-point and traditional two-point IDs, labels, costs, saved configuration compatibility; measured game-art sockets drive merged hardware and flat reusable straps. Existing explicit no-sling choices remain unchanged. Traditional variant currently shares two-point strap material and routing; differentiated finishes and final body-fit/visual review remain. No live hands-free weapon custody yet.
+
+WR3 closeout adds an independent textile material with distinct dark single-point, olive tactical two-point and warm brown traditional finishes. No shared vest color mutation. Explicit player color selection and live art review remain deferred.

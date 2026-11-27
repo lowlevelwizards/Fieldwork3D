@@ -29,3 +29,22 @@ test('WR6 pure replay samples match exact endpoints and preserve held-one grip',
  const grip=p.primaryGrip.clone().sub(p.heldPosition).applyQuaternion(sample.quaternion).add(sample.position);
  assert.ok(grip.distanceTo(sample.right)<1e-6);
 });
+
+import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
+import {initialWeaponConfiguration,setWeaponAttachment} from '../src/equipment-weapon-assemblies.ts';
+test('WR6 real rig uses one primary and samples a transition consistently in either direction',()=>{
+ const rig=createOperatorRig('rook','blue');
+ const config=setWeaponAttachment(initialWeaponConfiguration('carbine'),'sling','sling-two-point');
+ const p={x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,posture:'stand',injury:0,weapon:'carbine',reload:0,reloadDuration:0,lastThrowAt:-100,lastDoorAt:-100,down:false,surrender:false,aiming:false,firing:false,turning:0,weaponConfiguration:config,deterministic:true};
+ const draw=(weight,desired='front-slung')=>{
+  poseOperator(rig,{...p,retentionTransition:{mode:'front-slung',desired,weight}},0);
+  assert.ok(rig.weapon.visible&&!rig.droppedGun.visible);
+  return rig.weapon.position.clone();
+ };
+ const a=draw(.45);draw(1);const b=draw(.45,null);
+ assert.ok(a.distanceTo(b)<1e-5);
+ rig.dispose();
+});
+test('WR6 missing measured suspension hardware does not produce a hands-free visual',()=>{
+ assert.equal(sampleRetentionTransition({...input,sockets:null},.5),null);
+});
