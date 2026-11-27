@@ -7,7 +7,7 @@ import type {OperatorPoseScratch} from './breach-operator-pose-scratch.ts';
 import {readSlingKind,type SlingKind} from './breach-weapon-retention.ts';
 import {equipmentExterior,type EquipmentExterior} from './operator-equipment-exterior.ts';
 import {resolvedWardrobe} from './operator-wardrobe-data.ts';
-import {createSlingRoute,routeSlingTransition} from './operator-sling-route.ts';
+import {createSlingRoute,routeSlingTransition,createSlingContactRoute,fitSlingContactRoute} from './operator-sling-route.ts';
 import {slingArtProfile} from './operator-sling-profile.ts';
 import {updateSlingRibbonGeometry} from './operator-sling-ribbon.ts';
 import type {RetentionPoseMode} from './breach-weapon-retention-pose.ts';
@@ -15,18 +15,20 @@ import type {WeaponRetentionSockets} from './weapons/geometry/weapon-retention-s
 type SlingNode=Pick<THREE.Object3D,'visible'|'position'|'scale'|'quaternion'>;
 type SlingPoseSource=Pick<OperatorPose,'weaponConfiguration'|'surrender'|'stride'|'worldWeaponReleased'>&
  Partial<Pick<OperatorPose,'equipment'|'wardrobe'>>;
-const routes=new WeakMap<THREE.Mesh,{path:ReturnType<typeof createSlingRoute>;alternate:ReturnType<typeof createSlingRoute>}>();
+const routes=new WeakMap<THREE.Mesh,{path:ReturnType<typeof createSlingRoute>;alternate:ReturnType<typeof createSlingRoute>;contact:ReturnType<typeof createSlingContactRoute>}>();
 const ribbonWidth=(p:SlingPoseSource)=>slingArtProfile(p.weaponConfiguration?.slots.sling).width;
 function exteriorFor(p:SlingPoseSource){
  const w=resolvedWardrobe(p.wardrobe,p.equipment);
  return equipmentExterior(w.armorStyle,w.rigStyle,w.top);
 }
 function prepareRibbon(mesh:THREE.Mesh,p:SlingPoseSource,rear:THREE.Vector3,
- front:THREE.Vector3,fit:EquipmentExterior,retention?:RetentionPoseMode,pack?:THREE.Box3,weight=1){
+ front:THREE.Vector3,fit:EquipmentExterior,retention?:RetentionPoseMode,pack?:THREE.Box3,weight=1,physicalSpeed=0){
  let route=routes.get(mesh);
- if(!route){route={path:createSlingRoute(),alternate:createSlingRoute()};routes.set(mesh,route);}
+ if(!route){route={path:createSlingRoute(),alternate:createSlingRoute(),contact:createSlingContactRoute()};routes.set(mesh,route);}
  routeSlingTransition(route.path,route.alternate,rear,front,fit,retention,ribbonWidth(p),pack,weight,
   slingArtProfile(p.weaponConfiguration?.slots.sling));
+ const slack=.12+Math.min(1,Math.max(0,physicalSpeed)/65)*(.11+.10*Math.sin(p.stride*Math.PI*2));
+ fitSlingContactRoute(route.contact,route.path,fit,ribbonWidth(p),pack,slack);
 }
 function ribbonTransform(t:SlingNode){
  t.visible=true;t.position.set(0,0,0);t.quaternion.identity();t.scale.set(1,1,1);
@@ -37,7 +39,7 @@ export function commitOperatorSlingRibbon(r:Pick<OperatorRig,'slingStraps'>,p:Sl
  const mesh=r.slingStraps[0];
  if(!mesh?.userData.fieldworkSlingRibbon)return;
  const route=routes.get(mesh);
- if(mesh.visible&&route)updateSlingRibbonGeometry(mesh.geometry,route.path,ribbonWidth(p));
+ if(mesh.visible&&route)updateSlingRibbonGeometry(mesh.geometry,route.contact,ribbonWidth(p));
  else mesh.geometry.setDrawRange(0,0);
 }
 const P=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
@@ -92,7 +94,7 @@ export function updateOperatorSlingPose(
  const front=r.chest.worldToLocal(gun.localToWorld(writePoint(P(0,0,0),points[1])));
  const mesh=r.slingStraps[0];
  if(mesh?.userData.fieldworkSlingRibbon){
-  prepareRibbon(mesh,p,rear,front,exteriorFor(p));ribbonTransform(mesh);
+  prepareRibbon(mesh,p,rear,front,exteriorFor(p),undefined,undefined,1,physicalSpeed);ribbonTransform(mesh);
   commitOperatorSlingRibbon(r,p);return;
  }
  positionSpans(r.slingStraps,p,mode,physicalSpeed,vertical,delta,rear,front,P(0,0,0),P(0,0,0));
@@ -119,7 +121,7 @@ export function solveOperatorDirectSlingPose(r:OperatorRig,p:SlingPoseSource,
  }
  const mesh=r.slingStraps[0];
  if(mesh?.userData.fieldworkSlingRibbon){
-  prepareRibbon(mesh,p,rear,front,exterior??exteriorFor(p),retention,pack,weight);
+  prepareRibbon(mesh,p,rear,front,exterior??exteriorFor(p),retention,pack,weight,physicalSpeed);
   ribbonTransform(straps[0]);return;
  }
  positionSpans(straps,p,mode,physicalSpeed,scratch.vertical,scratch.slingDelta,

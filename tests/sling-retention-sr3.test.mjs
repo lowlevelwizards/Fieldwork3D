@@ -26,7 +26,7 @@ test('SR3 live rig publishes one reusable visible mesh and hides it on surrender
   const p={x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,posture:'stand',injury:0,weapon:'carbine',reload:0,reloadDuration:0,lastThrowAt:-100,lastDoorAt:-100,down:false,surrender:false,aiming:false,firing:false,turning:0,weaponConfiguration:config,deterministic:true};
   poseOperator(r,p,0);
   const g=r.slingStraps[0].geometry,positions=g.getAttribute('position');
-  assert.equal(r.slingStraps.filter(m=>m.visible).length,1);assert.equal(g.drawRange.count,54);
+  assert.equal(r.slingStraps.filter(m=>m.visible).length,1);assert.equal(g.drawRange.count,108);
   poseOperator(r,{...p,seconds:1,retentionPreview:'back-slung'},0);
   assert.equal(r.slingStraps[0].geometry,g);assert.equal(g.getAttribute('position'),positions);
   assert.ok(Array.from(positions.array).every(Number.isFinite));

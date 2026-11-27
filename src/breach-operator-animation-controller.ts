@@ -1151,7 +1151,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.retentionTransition.mode:p.retentionPreview;
   const retentionWeight=transportStow?1:switchingSlung?switchPose.retention:liveOneHand?oneHandWeight:p.retentionTransition?.weight??1;
   const retentionAssembly=retentionMode&&config?resolveWeaponAssembly(config):null;
-  const retentionPack=(retentionMode==='side-slung'||retentionMode==='back-slung')?
+  const retentionPack=hasSuspension?
     retentionPackBounds(r,clothing.packStyle,attachments[EAI.pack]):undefined;
   const retention=!p.primaryGrounded&&retentionMode&&retentionWeight>0&&!p.down&&!p.surrender&&!p.unarmedPreview&&
     (transportStow||switchingSlung||!p.firing&&!reloadActive&&(liveOneHand||liveHandsFree||!p.aiming&&!doorActive&&!throwActive&&!treatmentActive&&!equipmentActive)&&
