@@ -7,8 +7,7 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {type Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
-import {equipmentRetrievalSeconds} from './equipment-carry-placement.ts';
-import {initialEquipmentLoadout} from './equipment-loadouts.ts';
+import {deployedEquipmentAccess} from './equipment-unified-deployed.ts';
 import {kitMedicalSupplies,transferMedicalSupply,spendMedicalSupply}
  from './equipment-medical-supplies.ts';
 import {treatmentSupplyForWound,treatmentDuration}
@@ -47,12 +46,8 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
     }
     // Reaching a casualty's pouch and stowing the recovered item each
     // incur the actual kit container access time; no instant inventory swap.
-    const fromTime=equipmentRetrievalSeconds(
-      patient.equipment??initialEquipmentLoadout(patient.weapon),
-      patient.spareMagazines,'medical');
-    const toTime=equipmentRetrievalSeconds(
-      a.equipment??initialEquipmentLoadout(a.weapon),
-      a.spareMagazines,'medical');
+    const fromTime=deployedEquipmentAccess(patient,'medical');
+    const toTime=deployedEquipmentAccess(a,'medical');
     if(!Number.isFinite(fromTime)||!Number.isFinite(toTime)){
       failCurrentOrder(s,a,n,'MEDICAL STORAGE UNAVAILABLE');return true;
     }
@@ -201,8 +196,8 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
     if(a.actionTimer===0){
       a.lastTreatmentAt=s.seconds;a.lastTreatmentTargetId=patient.id;
     }
-    const access=equipmentRetrievalSeconds(
-      a.equipment??initialEquipmentLoadout(a.weapon),a.spareMagazines,'medical');
+    const access=deployedEquipmentAccess(a,'medical');
+    if(a.unifiedCarry&&!Number.isFinite(access)){failCurrentOrder(s,a,n,'MEDICAL STORAGE UNAVAILABLE');return true;}
     const duration=treatmentDuration(supply)+(Number.isFinite(access)?access:0);
     a.actionTimer+=dt;
     a.treatmentActive=true;

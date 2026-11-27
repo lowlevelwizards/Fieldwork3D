@@ -45,7 +45,7 @@ const part=(g:THREE.Group,m:THREE.Material,x:number,y:number,z:number,
 };
 export function createWardrobeAccessoryVisuals(
  chest:THREE.Group,hip:THREE.Group,pack:THREE.Mesh,
- gear:THREE.Material,dark:THREE.Material,trim:THREE.Material
+ gear:THREE.Material,dark:THREE.Material,trim:THREE.Material,beltFabric:THREE.Material=gear
 ):WardrobeAccessoryVisuals{
  const result={
   beltLeft:{},beltRight:{},chest:{},pack:{}
@@ -57,7 +57,7 @@ export function createWardrobeAccessoryVisuals(
    const sign=slot==='beltLeft'?-1:1,z=sign*8.25;
    if(slot==='beltLeft'||slot==='beltRight'){
     const family=ART[name];
-    if(family)authored.set(g,{family,palette:{fabric:gear,dark,hardware:trim,contents:dark,accent:trim}});
+    if(family)authored.set(g,{family,palette:{fabric:beltFabric,dark,hardware:trim,contents:dark,accent:trim}});
     if(name==='utility-loop'){
      part(g,trim,-.4,-3.2,z,2.7,.6,1.5);
      part(g,trim,-.4,-5.3,z,2.7,.6,1.5);

@@ -12,6 +12,7 @@ import {CampaignKitPreview} from '../equipment-preview.ts';
 import './campaign-pre-go-prep.css';
 
 export type CampaignPreGoPrepHooks={
+ carryMode?:'unified';
  getCampaign:()=>CampaignState|null;
  canPrepare:()=>boolean;
  issue:(operatorId:string,inventory:FieldInventory)=>boolean;
@@ -115,6 +116,7 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
   };
   editorHost.replaceChildren(createFieldGadgetEditor({
    loadout:selected.loadout,magazines:selected.magazines,
+   automatic:hooks.carryMode==='unified'?selected:undefined,
    onInspectLocation:location=>preview?.highlightCarryLocation(location),
    onInspectItem:item=>preview?.inspectCarryItem(item),
    onModelThumbnail:item=>preview?.renderModelThumbnail(item)??null,

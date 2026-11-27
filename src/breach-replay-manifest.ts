@@ -11,6 +11,7 @@ export type ReplayActorIdentity={
   id:string;name:string;side:'blue'|'red';
   appearanceSeed:number;weapon:Session['operators'][number]['weapon'];
   equipment?:Session['operators'][number]['equipment'];
+  unifiedCarry?:Session['operators'][number]['unifiedCarry'];
   wardrobe?:Session['operators'][number]['wardrobe'];
   weaponConfiguration?:Session['operators'][number]['weaponConfiguration'];
 };
@@ -48,6 +49,7 @@ export function captureReplayManifest(s:Session,
       id:a.id,name:a.name,side:a.side,
       appearanceSeed:a.appearanceSeed,weapon:a.weapon,
       equipment:a.equipment?structuredClone(a.equipment):undefined,
+      unifiedCarry:a.unifiedCarry?structuredClone(a.unifiedCarry):undefined,
       wardrobe:a.wardrobe?structuredClone(a.wardrobe):undefined,
       weaponConfiguration:a.weaponConfiguration?
         structuredClone(a.weaponConfiguration):undefined
@@ -65,6 +67,7 @@ export function applyReplayActorIdentity(s:Session,m:ReplayManifest|null):void{
     a.appearanceSeed=identity.appearanceSeed;
     a.weapon=identity.weapon;
     a.equipment=identity.equipment?structuredClone(identity.equipment):undefined;
+    a.unifiedCarry=identity.unifiedCarry?structuredClone(identity.unifiedCarry):undefined;
     a.wardrobe=identity.wardrobe?structuredClone(identity.wardrobe):undefined;
     a.weaponConfiguration=identity.weaponConfiguration?
       structuredClone(identity.weaponConfiguration):undefined;

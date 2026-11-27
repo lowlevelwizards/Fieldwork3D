@@ -1,3 +1,5 @@
+import {createAutomaticCarryEditor} from './automatic-carry-editor.ts';
+import type {UnifiedPreparationSource} from '../equipment-unified-preparation.ts';
 /** L2.2 — one touch-first physical field inventory editor for Quick Play
  * and Campaign. Rendering never owns supply, stock or mission authority.
  */
@@ -16,6 +18,8 @@ import './loadout-prep.css';
 
 export type FieldGadgetEditorOptions={
  loadout:EquipmentLoadout;magazines:readonly MagazineItem[];
+ /** Supply only when the owning preparation transaction uses unified fit. */
+ automatic?:UnifiedPreparationSource;
  onCommit:(inventory:FieldInventory,focusLabel?:string)=>void;
  /** Optional preview-only feedback; never authorizes or changes equipment. */
  onInspectLocation?:(location:FieldCarryLocation)=>void;
@@ -49,6 +53,7 @@ type PhysicalChoice=
  |{kind:'field';id:FieldItemId;from:FieldCarryLocation}
  |{kind:'magazine';id:string;from:FieldCarryLocation};
 export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLElement{
+ if(options.automatic)return createAutomaticCarryEditor(options.automatic,options);
  const {loadout,magazines,onCommit}=options;
  const inventory=readFieldInventory(loadout.fieldInventory,loadout);
  const root=document.createElement('section');
