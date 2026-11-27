@@ -29,7 +29,7 @@ test('FAL S2/P13: four compatible factory references with shared receiver',()=>{
  const matches=FAMILY_PRESETS.filter(p=>p.family==='fal');
  assert.deepEqual(matches.map(x=>x.id),
   ['fal-5000','fal-5000-classic','fal-5061','fal-5063']);
- assert.equal(ARSENAL_PLATFORMS.find(p=>p.id==='fal')?.name,'FN FAL');
+ assert.equal(ARSENAL_PLATFORMS.find(p=>p.id==='fal')?.name,'FAL');
  assert.deepEqual(arsenalReferencesForPlatform('fal').map(p=>p.id),
   matches.map(x=>x.id));
  assert.equal(Object.values(FAMILY_PARTS).filter(p=>p.family==='fal').length,11);
