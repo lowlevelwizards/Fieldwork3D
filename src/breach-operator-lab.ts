@@ -2485,7 +2485,7 @@ function draw(){
   syncPanelOption(activeLook.armorStyle);
   canvas.dataset.poseFitRig=activeLook.rigStyle;
    canvas.dataset.poseFitPack=activeLook.packStyle;
-  canvas.dataset.authoredPack=rig.visualKit.packPreview.active?.style??'legacy';
+  canvas.dataset.authoredPack=rig.visualKit.packPreview.active?.style??'none';
   canvas.dataset.poseFitTop=activeLook.top;
   canvas.dataset.lowReadyFit=staticReport?.status??'action';
   canvas.dataset.poseV3DynamicReport=JSON.stringify(
