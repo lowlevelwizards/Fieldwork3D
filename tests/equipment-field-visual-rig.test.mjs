@@ -43,6 +43,8 @@ test('field canisters attach to the correct bones without creating a new rig',()
    moveFieldStack(four,'flashbang','rig','belt')};
   poseOperator(rig,pose(belt,4),0);
   assert.ok(rig.flashCanisters.every(x=>x.parent===rig.hip));
+  assert.ok(rig.flashCanisters.every(x=>Array.isArray(x.userData.fieldworkBeltFlashRest)));
+  assert.equal(rig.hip.children.filter(x=>x.name.startsWith('issued-belt-grenade-pouch-')&&x.visible).length,4);
   assert.equal(rig.flashCanisters[0],rig.flashCanister);
  }finally{rig.dispose();}
 });

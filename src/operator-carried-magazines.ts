@@ -46,7 +46,7 @@ export function carriedMagazineProfile(part:string|null|undefined):CarriedMagPro
  }
  return null;
 }
-export function carriedMagazineGeometry(part:string):THREE.BufferGeometry|null{
+export function carriedMagazineGeometry(part:string,native=false):THREE.BufferGeometry|null{
  const profile=carriedMagazineProfile(part);
  if(!profile)return null;
  if(profile.family==='hk'||profile.family==='fal'||profile.family==='g36'){
@@ -65,8 +65,7 @@ export function carriedMagazineGeometry(part:string):THREE.BufferGeometry|null{
   const geometry=new THREE.ExtrudeGeometry(shape,{depth,steps:1,
    bevelEnabled:false,curveSegments:1});
   geometry.translate(-center,-topY+profile.length*.5,-depth*.5);
-  geometry.scale(.62,Math.min(.82,4/profile.length),.73);
-  geometry.rotateY(Math.PI/2);
+  if(!native){geometry.scale(.62,Math.min(.82,4/profile.length),.73);geometry.rotateY(Math.PI/2);}
   return geometry;
  }
  const ar=profile.family==='ar'||profile.family==='fnc';
@@ -87,7 +86,6 @@ export function carriedMagazineGeometry(part:string):THREE.BufferGeometry|null{
  // Face the curved silhouette toward the viewer instead of projecting
  // magazine width out through the carrier's front plate.
  geometry.translate(-curve.topX,-curve.topY+profile.length*.5,-depth*.5);
- geometry.scale(.62,Math.min(.82,4/profile.length),.73);
- geometry.rotateY(Math.PI/2);
+ if(!native){geometry.scale(.62,Math.min(.82,4/profile.length),.73);geometry.rotateY(Math.PI/2);}
  return geometry;
 }

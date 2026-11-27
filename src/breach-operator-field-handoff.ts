@@ -1,3 +1,4 @@
+import {restoreBeltFlashRest} from './operator-belt-flash-pouches.ts';
 /** F6.2 — one reusable, physically issued flash canister handoff.
  * No cloned mesh, geometry allocation, projectile, sound or inventory write.
  * The SAME canister is moved between its authored pouch and support hand.
@@ -34,7 +35,7 @@ export function presentFlashHandoff(r:OperatorRig,p:OperatorPose,
   const item=items[old];
   if(mesh){
    mesh.visible=!!item;
-   if(item){
+   if(item&&!restoreBeltFlashRest(r,mesh)){
     const socket=flashCanisterSocket(item.location,item.index);
     const parent=socket.bone==='chest'?r.chest:
       socket.bone==='pack'?r.pack:r.hip;

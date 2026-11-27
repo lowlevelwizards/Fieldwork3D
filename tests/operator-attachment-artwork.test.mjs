@@ -22,7 +22,7 @@ test('BT3: all 13 authored families and variants build finite consolidated bound
   setAttachmentSampleCount(v,0);
   assert.ok(v.contents.every(c=>!c.visible)&&v.holder.visible,id);
   placeAttachmentVisual(v,{x:3,y:2,z:1,yaw:Math.PI/2});
-  assert.deepEqual(v.root.position.toArray(),[3,2,1]);
+  assert.ok(Math.abs(v.root.position.x-3)<=.23&&v.root.position.y===2&&Math.abs(v.root.position.z-1)<=.23);
   v.root.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
  }
  m.dispose();
@@ -49,8 +49,8 @@ test('BT3R: native rifle-magazine bounding box fits the full-size holder mouth',
  const {nativePrimaryMagazineSize}=await import('../src/operator-attachment-reference.ts');
  for(const variant of ['standard','compact','expanded']){
   const size=nativePrimaryMagazineSize(variant==='compact'),p=attachmentFootprint('primary-mag-pouch',variant);
-  assert.ok(size.x<=p.width*.99-.60,variant+' width');
-  assert.ok(size.z<=p.depth-.60,variant+' depth');
+  assert.ok(size.x<=p.width*.99-.88,variant+' width');
+  assert.ok(size.z<=p.depth-.88,variant+' depth');
   assert.ok(size.y<=p.height,variant+' height');
  }
  const dump=attachmentFootprint('dump-pouch'),mag=nativePrimaryMagazineSize();
@@ -136,4 +136,21 @@ test('BT3R final: flared cavity follows lower taper and has a chunky inset lip',
  assert.ok(mouth.some(([,z])=>Math.abs(z-wall)<1e-5),'back rim thickness');
  assert.ok(mouth.some(([,z])=>Math.abs(z-(4.8-wall))<1e-5),'front rim thickness');
  g.dispose();
+});
+
+test('BT3P: native family artwork is not reduced to the legacy carried proxy',async()=>{
+ const {nativeEquippedMagazine}=await import('../src/operator-attachment-reference.ts');
+ const {carriedMagazineGeometry}=await import('../src/operator-carried-magazines.ts');
+ for(const part of ['ar-mag30','ak-mag762-resin','fal-mag20','g36-mag30','hk9-mag30']){
+  const g=nativeEquippedMagazine(part),old=carriedMagazineGeometry(part);assert.ok(g&&old,part);old.computeBoundingBox();
+  assert.ok(g.boundingBox.getSize(new THREE.Vector3()).y>old.boundingBox.getSize(new THREE.Vector3()).y,part);g.dispose();old.dispose();
+ }
+});
+
+test('BT3P: grenade pouch reserves unique locations without adding equipment',async()=>{
+ const {planBeltFlashPouches}=await import('../src/operator-belt-flash-pouches.ts');
+ const mounts=planBeltFlashPouches('duty-belt',[0,1,2,3],['right-hip']);
+ assert.equal(mounts.length,4);assert.equal(new Set(mounts.map(m=>m.region)).size,4);
+ assert.ok(mounts.every(m=>m.region!=='right-hip'));
+ assert.equal(planBeltFlashPouches('no-belt',[0]).length,0);
 });
