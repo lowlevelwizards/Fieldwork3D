@@ -17,9 +17,9 @@ export const PACK_PROFILES={
  'day-pack':{id:'backpack-day',label:'Tactical daypack',capacity:8,massKg:1,bulk:2,harness:'padded',role:'general',reference:'RUSH12',motion:.65,size:[5.2,12.5,9.3]},
  'assault-pack':{id:'backpack-assault',label:'Assault pack',capacity:12,massKg:1.6,bulk:3,harness:'padded',role:'general',reference:'3 Day Assault',motion:.6,size:[8.4,15,12.2]},
  'field-pack':{id:'backpack-field',label:'ALICE field pack',capacity:16,massKg:2.2,bulk:4,harness:'load-bearing',role:'general',reference:'Medium ALICE',motion:.4,size:[8,14,15.5]},
- rucksack:{id:'backpack-expedition',label:'Expedition rucksack',capacity:24,massKg:3.2,bulk:5,harness:'load-bearing',role:'general',reference:'PLCE Bergen',motion:.7,size:[10,19,17]},
- 'medic-pack':{id:'backpack-medical',label:'Medical pack',capacity:12,massKg:1.5,bulk:3,harness:'padded',role:'medical',reference:'Medic Assault',motion:.4,size:[5.5,13,12.5]},
- 'comms-pack':{id:'backpack-comms',label:'Communications pack',capacity:12,massKg:1.8,bulk:3,harness:'load-bearing',role:'comms',reference:'COMM-3',motion:.35,size:[7,15,10]},
+ rucksack:{id:'backpack-expedition',label:'Expedition rucksack',capacity:24,massKg:3.2,bulk:5,harness:'load-bearing',role:'general',reference:'PLCE Bergen',motion:.7,size:[10,21,16]},
+ 'medic-pack':{id:'backpack-medical',label:'Medical pack',capacity:12,massKg:1.5,bulk:3,harness:'padded',role:'medical',reference:'Medic Assault',motion:.4,size:[4.5,13,12.5]},
+ 'comms-pack':{id:'backpack-comms',label:'Communications pack',capacity:12,massKg:1.8,bulk:3,harness:'load-bearing',role:'comms',reference:'COMM-3',motion:.35,size:[5.6,15,10]},
  'civilian-pack':{id:'backpack-civilian',label:'Civilian backpack',capacity:6,massKg:.5,bulk:2,harness:'light',role:'general',reference:'Classic school daypack',motion:.85,size:[4.8,11.5,9]}
 } as const satisfies Record<string,PackProfile>;
 export type PackStyle=keyof typeof PACK_PROFILES;
