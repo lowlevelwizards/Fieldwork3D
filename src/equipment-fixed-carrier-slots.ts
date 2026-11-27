@@ -108,8 +108,9 @@ export function registeredRigStorage(cells:readonly MagazinePouchCell[],carrier:
   const nearest=Math.min(...lanes.filter(v=>v!==lane).map(v=>Math.abs(v-lane)),Infinity);
   const depth=Math.min(c.depth-.12,nearest);
   if(depth<=0||c.width<=.12||c.height<=0)continue;
+  const turned=Math.abs(Math.sin(c.yaw??0))>.9;
   out.push({id:carrier+':mag:'+key,carrier,accepts:['primary-mag'],dedicated:true,concealed:false,
-   dimensions:{width:c.width-.12,height:c.height+1.1,depth},cell:{...c}});
+   dimensions:{width:turned?depth:c.width-.12,height:c.height+1.1,depth:turned?c.width-.12:depth},cell:{...c}});
  }
  return out;
 }

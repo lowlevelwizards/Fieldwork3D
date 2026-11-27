@@ -1,3 +1,6 @@
+import {clearUnifiedCarryPreview,showUnifiedCarryPreview,hideUnifiedCarryPreview,maskLegacyCarryForPreview} from './operator-unified-carry-preview.ts';
+import type {PlacementManifest} from './equipment-unified-placement.ts';
+import type {StorageSlot} from './equipment-fixed-carrier-slots.ts';
 import {quoteUnifiedLoadout} from './equipment-unified-loadout.ts';
 import {registeredMagazinePouches} from './operator-magazine-pouch-fit.ts';
 import {secondaryMagazineArtwork} from './secondary-holster-visual.ts';
@@ -1394,7 +1397,7 @@ const build=()=>{
   if(variantComparing)endVariantComparison();
   labSwitch=null;
   clearComparison();clearGaitCompare();
-  if(rig){clearAttachmentPreview(rig);clearLabBerettaPreview(rig);releaseOperatorPreviewRig(scene,rig);}
+  if(rig){clearUnifiedCarryPreview(rig);clearAttachmentPreview(rig);clearLabBerettaPreview(rig);releaseOperatorPreviewRig(scene,rig);}
   endKitComparison();
   rig=createOperatorRig(operator.value,operator.value==='hostile'?'red':'blue');
    rig.root.userData.fieldworkAuthoredPackPreview=true;
@@ -1998,7 +2001,8 @@ const attachmentContentsSelect=choose<HTMLSelectElement>('attachmentPreviewConte
 const attachmentPreviewStatus=choose<HTMLOutputElement>('attachmentPreviewStatus');
 const carryAudit=choose<HTMLDetailsElement>('unifiedCarryAudit');
 const carryAuditOutput=choose<HTMLOutputElement>('unifiedCarryAuditOutput');
-let carryAuditKey='';
+const carryAuditVisual=choose<HTMLInputElement>('unifiedCarryVisual');
+let carryAuditKey='',carryAuditManifest:PlacementManifest|undefined,carryAuditStorage:StorageSlot[]=[];
 populateAttachmentPreviewOptions(attachmentPreviewSelect);
 attachmentPreviewSelect.addEventListener('change',()=>{
  const id=attachmentPreviewSelect.value;
@@ -2533,6 +2537,8 @@ function draw(){
   // Explicit diagnostic: only calculate on a changed outfit while open.
   // The current simulation still owns its V1 placement; do not imply that
   // this quote has mutated gameplay inventory or drawn these holders.
+  let restoreUnifiedVisibility:(()=>void)|undefined;
+  hideUnifiedCarryPreview(rig);
   if(carryAudit.open&&!comparing&&!kitComparing&&!variantComparing){
    const look=resolvedWardrobe(wardrobeOptions,currentKit);
    const waist=rig.visualKit.wardrobeGear.waistRig[look.rigStyle];
@@ -2547,12 +2553,21 @@ function draw(){
     carryAuditKey=key;
     const {input,manifest}=quoteUnifiedLoadout({kit:currentKit,wardrobe:wardrobeOptions,magazines:mags,
      primaryPart:part,rigCells:cells,auxiliaryCells:auxiliary});
+    carryAuditManifest=manifest;carryAuditStorage=[...input.storage];
     carryAuditOutput.textContent=[
      (manifest.valid?'FIT':'UNPLACED EQUIPMENT')+' · '+manifest.placements.flatMap(p=>p.itemIds).length+'/'+input.items.length+' ITEMS',
      ...manifest.placements.map(p=>p.carrier.toUpperCase()+' · '+p.slotIds.join(' / ')+' · '+(p.holder??(p.concealed?'concealed':'authored cell'))+' · '+p.itemIds.join(', ')),
      ...manifest.unplaced.map(p=>'NO FIT · '+p.id+' · '+p.reason),
      ...(manifest.searchTruncated?['BOUNDED SEARCH LIMIT REACHED']:[])
     ].join('\n');
+   }
+   if(carryAuditVisual.checked&&carryAuditManifest&&attachmentPreviewSelect.value==='off'){
+    const unrendered=showUnifiedCarryPreview(rig,carryAuditKey,carryAuditManifest,carryAuditStorage,owner,{
+     primaryPart:part??(currentWeapon==='rifle'?'fal-mag20':currentWeapon==='smg'?'hk9-mag30':'ar-mag30'),
+     secondaryWeapon:currentKit.secondary?.weapon??undefined,
+     secondaryMagazine:secondaryMagazineArtwork(rig.hip),grenade:rig.flashCanister});
+    carryAuditOutput.dataset.unrendered=String(unrendered.length);
+    restoreUnifiedVisibility=maskLegacyCarryForPreview(rig);
    }
   }
   const attachmentChoice=attachmentPreviewSelect.value;
@@ -2567,7 +2582,7 @@ function draw(){
   }
   if(attachmentPreviewStatus.textContent!==attachmentStatus)
    attachmentPreviewStatus.textContent=attachmentStatus;
-  renderer.render(scene,camera);
+  try{renderer.render(scene,camera);}finally{restoreUnifiedVisibility?.();}
   if(renderer.info.render.calls<1)
     throw Error('3D renderer returned without drawing an operator');
   canvas.dataset.drawCalls=String(renderer.info.render.calls);

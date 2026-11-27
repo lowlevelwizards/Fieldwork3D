@@ -1,7 +1,7 @@
 /** BT4.4–5: pure deterministic placement manifest. The resolver is a
  * transaction candidate, never an inventory issuer. Existing V1 location
  * fields are projections to migrate after all consumers are ready. */
-import {ATTACHMENTS,attachmentFootprint,type AttachmentId,type AttachmentVariant} from './operator-attachment-catalog.ts';
+import {ATTACHMENTS,attachmentFootprint,attachmentContentSlots,type AttachmentId,type AttachmentVariant} from './operator-attachment-catalog.ts';
 import type {BeltStyle} from './operator-belt-profile.ts';
 import {fixedWaistCandidates,fixedWaistSlots,waistPlacementsConflict,dimensionsFit,
  type Carrier,type CarryKind,type Dimensions,type StorageSlot,type WaistPlacement,type Contact} from './equipment-fixed-carrier-slots.ts';
@@ -126,7 +126,7 @@ export function resolveUnifiedCarry(input:CarryInput,maxNodes=12000):PlacementMa
   if(!grouped||item.holder||item.variant)continue;
   const compatible=jobs.slice(i+1).filter(j=>j.item.kind===item.kind&&!j.item.holder&&!j.item.variant&&
    !!j.item.optional===!!item.optional&&holderFits(j.item,grouped.holder,grouped.variant));
-  for(let n=Math.min(grouped.max,compatible.length+1);n>=2;n--){
+  for(let n=2;n<=Math.min(grouped.max,compatible.length+1);n++){
    const ids=[item.id,...compatible.slice(0,n-1).map(j=>j.item.id)];
    const options=itemCandidates(input,{...item,holder:grouped.holder,variant:grouped.variant},slots)
     .filter(c=>c.holder===grouped.holder&&c.variant===grouped.variant&&!!c.waist)
@@ -174,7 +174,7 @@ export function resolveUnifiedCarry(input:CarryInput,maxNodes=12000):PlacementMa
  }
  bestScore=score;bestMask=mask;
  if(count(best)<jobs.length)visit(0,0,'');
- const placements=best.map(({order:_,...p})=>({...p,contentIds:[...p.itemIds]}));
+ const placements=best.map(({order:_,...p})=>({...p,contentIds:[...p.itemIds,...Array.from({length:Math.max(0,(p.holder?attachmentContentSlots(p.holder,p.variant):1)-p.itemIds.length)},()=>null)]}));
  const placed=new Set(placements.flatMap(p=>p.itemIds));
  const unplaced=[...invalid,...jobs.filter(j=>!placed.has(j.item.id)).map(j=>({id:j.item.id,reason:'no-fit' as const}))].sort((a,b)=>cmp(a.id,b.id));
  return {placements,unplaced,valid:!invalid.length&&!jobs.some(j=>!j.item.optional&&!placed.has(j.item.id)),searchTruncated:truncated};

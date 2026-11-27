@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {initialEquipmentLoadout,setEquipmentChoice} from '../src/equipment-loadouts.ts';
 import {initialWardrobe} from '../src/operator-wardrobe-data.ts';
 import {initialSecondaryEquipment} from '../src/secondary-equipment.ts';
-import {quoteUnifiedLoadout,unifiedLoadoutInput,nativeMagazineDimensions} from '../src/equipment-unified-loadout.ts';
+import {quoteUnifiedLoadout,unifiedLoadoutInput,nativeMagazineDimensions,quoteUnifiedCarryTransaction} from '../src/equipment-unified-loadout.ts';
 test('BT4 loadout adapter conserves issued identities, counts and source JSON',()=>{
  const kit=initialEquipmentLoadout();kit.secondary=initialSecondaryEquipment('test','glock-g19-gen3');
  kit.fieldInventory={version:1,stacks:[{itemId:'flashbang',quantity:2,location:'rig'},{itemId:'flashbang',quantity:1,location:'belt'}]};
@@ -30,4 +30,18 @@ test('BT4 native dimensions and unknown build handling',()=>{
  const d=nativeMagazineDimensions('ar-mag30');
  assert.ok(d.width>2&&d.height>4&&d.depth>1);
  assert.equal(nativeMagazineDimensions('no-such-art'),null);
+});
+
+test('BT4 transaction is detached, rejects unfit rather than losing items, preserves rounds',()=>{
+ let kit=initialEquipmentLoadout();kit=setEquipmentChoice(kit,'rig','rig-none');
+ kit=setEquipmentChoice(kit,'armor','armor-none');kit=setEquipmentChoice(kit,'belt','belt-none');
+ kit=setEquipmentChoice(kit,'medical','medical-none');kit=setEquipmentChoice(kit,'utility','utility-none');
+ kit.fieldInventory={version:1,stacks:[]};
+ const magazines=[{id:'owned',weapon:'carbine',rounds:11,location:'belt'}];
+ const source={kit,magazines,primaryPart:'ar-mag30'};const before=JSON.stringify(source);
+ const q=quoteUnifiedCarryTransaction(source);assert.equal(q.ok,true);
+ assert.equal(q.magazines[0].id,'owned');assert.equal(q.magazines[0].rounds,11);assert.notEqual(q.kit,kit);
+ assert.equal(JSON.stringify(source),before);
+ const bare=setEquipmentChoice(setEquipmentChoice(kit,'backpack','backpack-none'),'legs','legs-none');
+ const reject=quoteUnifiedCarryTransaction({...source,kit:bare});assert.equal(reject.ok,false);
 });

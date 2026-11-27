@@ -1,6 +1,8 @@
 /** BT4: adapt existing authoritative owned inventory into a read-only fit
  * quote. It does not stage, create, spend, or rewrite any legacy item.
  * Authored rig cells are supplied by the actual carrier, not a guessed count. */
+import type {MagazineLocation} from './equipment-magazine-placement.ts';
+import type {FieldCarryLocation,FieldInventory} from './equipment-field-inventory.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import type {MagazineItem} from './breach-magazines.ts';
 import {initialFieldInventory,fieldQuantity,FIELD_ITEMS,FIELD_ITEM_IDS} from './equipment-field-inventory.ts';
@@ -95,4 +97,32 @@ export function unifiedLoadoutInput(source:UnifiedLoadoutSource):CarryInput{
 export function quoteUnifiedLoadout(source:UnifiedLoadoutSource){
  const input=unifiedLoadoutInput(source),manifest=resolveUnifiedCarry(input);
  return {input,manifest};
+}
+
+/** Projection for consumers that still use the V1 carrier enum. Armor shares
+ * chest access timing, but the manifest retains its independent physical ID.
+ * Return a detached, conserved candidate only; never commit from this helper.
+ * V1 capacity validators cannot authorize the projected armor positions until
+ * their own migration is complete. */
+export function quoteUnifiedCarryTransaction(source:UnifiedLoadoutSource){
+ const {input,manifest}=quoteUnifiedLoadout(source);
+ if(!manifest.valid)return {ok:false as const,manifest,reason:manifest.unplaced.map(x=>x.id+': '+x.reason).join(' · ')};
+ const locations=new Map<string,Exclude<MagazineLocation,'overflow'>>();
+ for(const p of manifest.placements)for(const id of p.itemIds)locations.set(id,p.carrier==='armor'?'rig':p.carrier);
+ const kit=structuredClone(source.kit);
+ const magazines=source.magazines.map(m=>({...m,location:locations.get(m.id)??m.location}));
+ if(kit.secondary?.weapon)kit.secondary={...kit.secondary,spareMagazines:kit.secondary.spareMagazines.map(m=>({...m,location:locations.get(m.id)??m.location}))};
+ const original=kit.fieldInventory??initialFieldInventory(kit),next:FieldInventory={version:1,stacks:[]};
+ for(const id of FIELD_ITEM_IDS){
+  const total=fieldQuantity(original,id);
+  for(let i=0;i<total;i++){
+   const loc=locations.get('field:'+id+':'+i);
+   if(!loc||!FIELD_ITEMS[id].locations.includes(loc as FieldCarryLocation))
+    return {ok:false as const,manifest,reason:'UNMAPPED FIELD ITEM '+id};
+   const row=next.stacks.find(r=>r.itemId===id&&r.location===loc);
+   if(row)row.quantity++;else next.stacks.push({itemId:id,location:loc,quantity:1});
+  }
+ }
+ kit.fieldInventory=next;
+ return {ok:true as const,kit,magazines,manifest,input};
 }

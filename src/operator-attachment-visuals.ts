@@ -10,9 +10,9 @@ import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {gearMarkedMaterial,gearBoxMarkUV,type GearMark} from './operator-gear-pixel-art.ts';
 import {TILE_WORLD_SIZE} from './rendering/pixel-recipes.ts';
 import {nativePrimaryMagazine,nativeEquippedMagazine,SIDEARM_OPERATOR_SCALE} from './operator-attachment-reference.ts';
-import {buildGlockAppearance,glockArtSockets} from './weapons/geometry/glock-family-silhouettes.ts';
+import {buildGlockAppearance,glockArtSockets,type GlockAppearanceId} from './weapons/geometry/glock-family-silhouettes.ts';
 export type AttachmentPalette=Record<AttachmentMaterial,THREE.Material>;
-export type AttachmentSamples={primaryPart?:string|null;secondaryMagazine?:THREE.Mesh;grenade?:THREE.Mesh};
+export type AttachmentSamples={primaryPart?:string|null;secondaryMagazine?:THREE.Mesh;secondaryWeapon?:GlockAppearanceId;grenade?:THREE.Mesh};
 export const ATTACHMENT_FABRIC_WALL=.44;
 export const ATTACHMENT_DUMP_WALL=.82;
 export type AttachmentVisual={
@@ -173,8 +173,9 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
   shell('dark',0,[[-.98,.64,.10,.82,.10],[-.78,.72,.06,.90,.09],
    [-.22,.96,0,1,.10]],true,'holster','tapered-polymer-shell',.35);
   cell(0,-.19,.54,(_p,g)=>{
-   const gun=buildGlockAppearance('glock-g19-gen3',{details:false});
-   const pivot=glockArtSockets('glock-g19-gen3').holsterPivot;
+   const model=samples.secondaryWeapon??'glock-g19-gen3';
+   const gun=buildGlockAppearance(model,{details:false});
+   const pivot=glockArtSockets(model).holsterPivot;
    gun.position.set(-pivot.x,-pivot.y,-pivot.z);
    const cradle=new THREE.Group();cradle.scale.setScalar(SIDEARM_OPERATOR_SCALE);cradle.rotation.z=-Math.PI/2;
    cradle.add(gun);g.add(cradle);cradle.updateMatrixWorld(true);
