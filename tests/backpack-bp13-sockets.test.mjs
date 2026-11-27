@@ -1,0 +1,15 @@
+import test from 'node:test';import assert from 'node:assert/strict';import * as THREE from 'three';
+import {buildAuthoredPack} from '../src/operator-backpack-art.ts';
+import {authoredCargoSocket} from '../src/operator-backpack-sockets.ts';
+const material=()=>({fabric:new THREE.MeshStandardMaterial(),trim:new THREE.MeshStandardMaterial(),dark:new THREE.MeshStandardMaterial()});
+test('BP13 external mounts require an actual compatible socket on requested side',()=>{
+ const day=buildAuthoredPack('day-pack',material());
+ assert.equal(authoredCargoSocket(day,'medical',undefined,'medical-basic'),undefined);
+ assert.equal(authoredCargoSocket(day,'medical','medical-pack-right','medical-basic'),undefined);
+ assert.equal(authoredCargoSocket(day,'medical','medical-pack-left','medical-basic').id,'left-medical');
+ assert.equal(authoredCargoSocket(day,'utility','utility-pack-right','utility-light').id,'right-utility');
+ const civilian=buildAuthoredPack('civilian-pack',material());
+ assert.equal(authoredCargoSocket(civilian,'utility','utility-pack-right','utility-radio'),undefined);
+ const comms=buildAuthoredPack('comms-pack',material());
+ assert.equal(authoredCargoSocket(comms,'utility','utility-pack-left','utility-radio').kind,'radio');
+});
