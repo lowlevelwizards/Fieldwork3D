@@ -18,8 +18,8 @@ test('distinct carrier, rig, and pack assemblies follow real attachment nodes',(
   equipment:setEquipmentChoice(base.equipment,'backpack','backpack-field')},0);
  const style=rig.visualKit.wardrobeGear;
  assert.equal(style.armor['soft-slick'].visible,true);
- assert.equal(style.pack['medic-pack'].visible,true);
- assert.equal(style.pack['medic-pack'].parent,rig.pack);
+ assert.equal(rig.visualKit.packPreview.active.style,'medic-pack');
+ assert.equal(rig.visualKit.packPreview.active.root.parent,rig.pack);
  assert.equal(style.rig['micro-rig'].visible,true);
  assert.equal(style.rig['full-chest'].visible,false);
  rig.dispose();
