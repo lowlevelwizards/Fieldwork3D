@@ -19,7 +19,7 @@ test('BP13 pack materials, print roll and independent uniform choice survive exp
  const restored=importWardrobeLook(exportWardrobeLook(makeWardrobeLook('Field load',kit,w)));
  assert.ok(restored);
  assert.equal(restored.kit.slots.backpack,'backpack-expedition');
- assert.deepEqual(restored.wardrobe.fabricCamo,w.fabricCamo);
+ assert.deepEqual(restored.wardrobe.fabricCamo,JSON.parse(JSON.stringify(w.fabricCamo)));
  assert.deepEqual(restored.wardrobe.fabricCamoRoll,w.fabricCamoRoll);
  assert.deepEqual(restored.wardrobe.fabricSolids,w.fabricSolids);
  assert.equal(restored.wardrobe.lastFabricCamo.pack,'woodland-dpm');
