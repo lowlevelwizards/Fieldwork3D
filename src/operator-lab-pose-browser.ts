@@ -27,9 +27,9 @@ export const POSE_RIG_OPTIONS=[
 ] as const;
 export const POSE_PACK_OPTIONS=[
  ['no-pack','None'],['hydration','Hydration carrier · art preview'],['admin-pack','Assault panel · art preview'],
- ['day-pack','Tactical daypack · art preview'],['assault-pack','Assault pack · art preview'],['sling-bag','Sling bag'],
- ['field-pack','Field pack'],['rucksack','Rucksack'],['medic-pack','Medic'],
- ['comms-pack','Comms'],['duffel','Duffel']
+ ['day-pack','Tactical daypack · art preview'],['assault-pack','Assault pack · art preview'],['sling-bag','Sling bag'],['civilian-pack','Civilian backpack · art preview'],
+ ['field-pack','ALICE field pack · art preview'],['rucksack','Expedition rucksack · art preview'],['medic-pack','Medical pack · art preview'],
+ ['comms-pack','Communications pack · art preview'],['duffel','Duffel']
 ] as const;
 export function posePackEquipment(pack:string):'backpack-none'|'backpack-day'|'backpack-field'{
  return legacyPackEquipment(pack)??'backpack-day';
