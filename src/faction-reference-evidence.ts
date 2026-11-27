@@ -67,6 +67,14 @@ export const HISTORICAL_EVIDENCE:readonly HistoricalEvidence[]=[
   publisher:'DDR Museum Berlin',url:'https://www.ddr-museum.de/de/objects/1028224',
   kind:'museum',published:'1981',
   claim:'NVA Strichtarn winter field uniform object dated 1981; not universal 1980 issue proof.'},
+ {id:'us-ocp-wear-2015',title:'Frequently Asked Questions: Operational Camouflage Pattern Uniform',
+  publisher:'U.S. Army',kind:'official',published:'2015-10-26',
+  url:'https://www.army.mil/article/156735/frequently_asked_questions_operational_camouflage_pattern_uniform/',
+  claim:'During the uniform transition, Tan 499 belts and coyote brown boots were authorized with OCP or OEF-CP, not UCP.'},
+ {id:'usmc-boots-2004',title:'Mandatory possession dates for MCCUU and MCCB',
+  publisher:'U.S. Marine Corps',kind:'official',published:'2004',
+  url:'https://www.marines.mil/News/Messages/Messages-Display/Article/894296/mandatory-possession-dates-for-the-marine-corps-combat-utility-uniforms-mccuu-a/',
+  claim:'The 2004 guidance specifies mandatory possession dates for combat uniforms and combat boots and restricts older black and black-green boots.'},
  ...FT12_EVIDENCE
 ];
 export const historicalEvidence=(id:string):HistoricalEvidence|undefined=>
