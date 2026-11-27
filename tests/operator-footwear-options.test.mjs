@@ -1,4 +1,8 @@
 import test from 'node:test';
+import * as THREE from 'three';
+import {footwearDetailTexture} from '../src/operator-footwear-detail.ts';
+import {PIXEL_WORLD_SIZE} from '../src/rendering/pixel-recipes.ts';
+import {LEG_LOWER_LENGTH} from '../src/breach-leg-geometry.ts';
 import assert from 'node:assert/strict';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 import {initialEquipmentLoadout} from '../src/equipment-loadouts.ts';
@@ -31,4 +35,79 @@ test('legacy saves migrate only to current assets; low footwear restores preferr
  assert.equal(readWardrobe({version:1,styles:{footwear:'field-boots'}}).styles.footwear,'combat-boots');
  assert.equal(resolveFootwearHem('bdu-trousers','sneakers','bloused'),'unbloused');
  assert.equal(resolveFootwearHem('bdu-trousers','combat-boots','bloused'),'bloused');
+});
+
+test('FW13: pixel detail atlas is shared, opaque, nearest-sampled and authored for each shod style',()=>{
+ const fingerprints=new Set();
+ for(const id of FOOTWEAR_IDS.filter(id=>id!=='bare-feet')){
+  const tex=footwearDetailTexture(id),{data,width,height}=tex.image;
+  assert.strictEqual(footwearDetailTexture(id),tex);
+  assert.equal(width,64);assert.equal(height,64);
+  assert.equal(tex.magFilter,THREE.NearestFilter);
+  assert.equal(tex.minFilter,THREE.NearestMipmapLinearFilter);
+  const pixel=(x,y)=>data[(y*width+x)*4];
+  const laceX=id==='sneakers'?4:3;
+  assert.ok(pixel(laceX,3)<pixel(laceX,4),'dark top lace stroke next to highlight');
+  assert.ok(pixel(laceX,3)<150,'one-art-pixel lace shadow');
+  assert.ok(data.every((v,i)=>i%4!==3||v===255),'opaque surface texture, not an overlay');
+  const side=pixel(35,3);
+  if(id==='combat-boots'||id==='hiking-boots')assert.ok(side<255,'canvas panel');
+  else assert.equal(side,255,'other shoe sides stay plain');
+  if(id==='hiking-boots'||id==='hiking-shoes')assert.ok(pixel(40,3)<180,'printed rubber toe');
+  fingerprints.add(Array.from(data).join(','));
+ }
+ assert.equal(fingerprints.size,5,'style-specific artwork');
+});
+test('FW13: no overlapping toe prism or lace panels; mapped upper and shaft share the original material',()=>{
+ const r=createOperatorRig('rook','blue');
+ try{
+  for(const id of FOOTWEAR_IDS){
+   const {kit,wardrobe}=selectWardrobeItem(initialEquipmentLoadout(),initialWardrobe(),'footwear',id);
+   poseOperator(r,pose(kit,wardrobe),0);
+   for(const variants of r.visualKit.footwear.models){
+    const model=variants[id];
+    if(id==='bare-feet'){assert.equal(model.foot.children.length,1);continue;}
+    assert.deepEqual(model.foot.children.map(o=>o.name),['sole','upper']);
+    const shell=model.foot.children[1];
+    assert.strictEqual(shell.material.map,footwearDetailTexture(id));
+    const uv=shell.geometry.getAttribute('uv'),normal=shell.geometry.getAttribute('normal');
+    for(let i=0;i<uv.count;i++){
+     assert.ok(uv.getX(i)>0&&uv.getX(i)<1&&uv.getY(i)>0&&uv.getY(i)<1);
+     if(Math.abs(normal.getZ(i))>.9)assert.ok(uv.getX(i)>.5&&uv.getY(i)<.5,'side tile');
+     else assert.ok(uv.getX(i)<.5&&uv.getY(i)<.5,'top tile');
+    }
+    const shaft=model.shaft.children.find(o=>o.name==='shaft');
+    if(shaft)assert.strictEqual(shaft.material.map,shell.material.map);
+   }
+  }
+ }finally{r.dispose();}
+});
+
+test('FW13 metric upper and shaft UVs match shared gear texel density on every triangle edge',()=>{
+ const r=createOperatorRig('rook','blue');
+ function metric(mesh,yScale=1){
+  const geo=mesh.geometry,pos=geo.getAttribute('position'),uv=geo.getAttribute('uv'),index=geo.index;
+  const count=index?.count??pos.count;
+  for(let i=0;i<count;i+=3){
+   const tri=[0,1,2].map(k=>index?index.getX(i+k):i+k);
+   for(let j=0;j<3;j++){
+    const a=tri[j],b=tri[(j+1)%3];
+    const world=Math.hypot(pos.getX(a)-pos.getX(b),(pos.getY(a)-pos.getY(b))*yScale,pos.getZ(a)-pos.getZ(b));
+    const texels=64*Math.hypot(uv.getX(a)-uv.getX(b),uv.getY(a)-uv.getY(b));
+    assert.ok(Math.abs(texels-world/PIXEL_WORLD_SIZE)<1e-4,mesh.name+' world '+world+' / texels '+texels);
+   }
+  }
+ }
+ try{
+  for(const id of FOOTWEAR_IDS.filter(id=>id!=='bare-feet')){
+   const {kit,wardrobe}=selectWardrobeItem(initialEquipmentLoadout(),initialWardrobe(),'footwear',id);
+   poseOperator(r,pose(kit,wardrobe),0);
+   for(const variants of r.visualKit.footwear.models){
+    const model=variants[id];
+    metric(model.foot.children[1]);
+    const shaft=model.shaft.children.find(o=>o.name==='shaft');
+    if(shaft)metric(shaft,LEG_LOWER_LENGTH);
+   }
+  }
+ }finally{r.dispose();}
 });
