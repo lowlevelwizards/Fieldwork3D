@@ -1,3 +1,4 @@
+import type {HeadwearCamoId} from './operator-headwear-camo.ts';
 import {packTextile} from './operator-backpack-textiles.ts';
 import {syncGearMarkedMaterials} from './operator-gear-pixel-art.ts';
 /** Stage 11: visual outfit, gear and wound-color presentation ownership.
@@ -356,6 +357,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   });
   const signature=rigSignature(clothing.rigStyle);
   const armorDefault=armorSignature(clothing.armorStyle);
+  let resolvedArmorPrint:HeadwearCamoId|null=null,resolvedPackPrint:HeadwearCamoId|null=null;
   for(const [channel,material] of fabricChannels){
    const authored=channel==='head'?null:
     p.wardrobe?.fabricCamo?.[channel as FabricCamoChannel];
@@ -375,7 +377,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
    // has no *valid* manual color or print. Stale, incompatible saved
    // choices stay stored for later, but don't obscure another armor default.
    const directPack=channel==='pack'&&r.visualKit.packPreview.fit?.mode==='direct';
-    const inherited=directPack?(p.wardrobe?.fabricCamo?.armor??armorDefault.print):null;
+    const inherited=directPack?resolvedArmorPrint:null;
     const iconicPrint=p.wardrobe&&!approvedManual&&!validManualSolid?
     channel==='gear'&&clothing.rigStyle!=='no-rig'?signature.print:
     channel==='armor'&&clothing.armorStyle!=='armor-bare'?
@@ -383,6 +385,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
    const print=approvedManual??(iconicPrint&&
     fabricCamoCompatible(iconicPrint,channel as FabricCamoChannel,clothing)?
      iconicPrint:null);
+   if(channel==='armor')resolvedArmorPrint=print;
+   if(channel==='pack')resolvedPackPrint=print;
    const map=print?
     wardrobeFabricCamoTexture(print,channel as FabricCamoChannel,
      headwearCamoPlacement(r.camoIdentity,'garment:'+channel,print,
@@ -408,11 +412,11 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
       signature.solid:
       channel==='armor'&&clothing.armorStyle!=='armor-bare'?
        armorDefault.solid:channel==='pack'&&r.visualKit.packPreview.active?packTextile(clothing.packStyle).solid:automaticGear[channel];
-     r.colors.set(material,directPack&&!validManualSolid&&!print?(r.colors.get(r.vestMaterial)??new THREE.Color(garmentSolidHex(id))).clone():new THREE.Color(garmentSolidHex(id)));
+     r.colors.set(material,directPack&&!validManualSolid&&!print&&!resolvedArmorPrint?(r.colors.get(r.vestMaterial)??new THREE.Color(garmentSolidHex(id))).clone():new THREE.Color(garmentSolidHex(id)));
     }
    }
   }
-  const packPrint=p.wardrobe?.fabricCamo?.pack??(r.visualKit.packPreview.fit?.mode==='direct'?p.wardrobe?.fabricCamo?.armor??armorDefault.print:undefined);
+  const packPrint=resolvedPackPrint;
   const detailHex=packPrint&&fabricCamoCompatible(packPrint,'pack',clothing)?
    garmentSolidHex(resolveAutomaticGearColors({print:packPrint}).pack):
    (r.colors.get(r.packMaterial)??r.packMaterial.color).getHex();
