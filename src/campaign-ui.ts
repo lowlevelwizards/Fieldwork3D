@@ -1,3 +1,4 @@
+import {quoteUnifiedPreparation} from './equipment-unified-preparation.ts';
 import {uiNode as node,uiButton as button} from './ui/dom-elements.ts';
 /** Campaign screens. Render only on navigation and state changes, never per frame. */
 import {SQUAD_IDENTIFICATION_COLORS,type CampaignState,type Contract}
@@ -73,6 +74,7 @@ import './ui/campaign-uxr-workspaces.css';
 import {buildQuickLoadoutGroups,loadoutGroupForSlot,QUICK_LOADOUT_GROUPS,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
 export type CampaignHandlers={
+ carryMode?:'unified';
  newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;training:()=>void;
  newSandbox:()=>void;continueSandbox:()=>void;
  newDispatch:()=>void;continueDispatch:()=>void;
@@ -2216,9 +2218,10 @@ export class CampaignScreen{
    if(slot==='rig'||slot==='belt'||slot==='backpack')
     attachCarryGearChangePreview({
      select,host:wrap,slot,kit:person.loadout,magazines:person.magazines,
+     automatic:this.handlers.carryMode==='unified'?person:undefined,
      onInspect:where=>this.preview?.highlightCarryLocation(where),
      onApply:itemId=>{
-      const quote=quoteCarryGearChange(person.loadout,person.magazines,slot,itemId);
+      const quote=this.handlers.carryMode==='unified'?quoteUnifiedPreparation(person,{kind:'gear',slot,id:itemId}):quoteCarryGearChange(person.loadout,person.magazines,slot,itemId);
       if(!quote.ok)return;
       this.carryUndo.record(id,captureCarryUndo(person.loadout,person.magazines),
        captureCarryUndo(quote.kit,quote.magazines));
@@ -2233,14 +2236,14 @@ export class CampaignScreen{
   }
   const carryUndoButton=button('UNDO LAST CARRY MOVE',()=>{
    const expected=captureCarryUndo(person.loadout,person.magazines);
-   const undo=this.carryUndo.peek(id,expected);
+   const undo=this.carryUndo.peek(id,expected,this.handlers.carryMode==='unified'?person:undefined);
    if(!undo.ok)return;
    this.carryUndo.clear(id);
    this.handlers.undoCarryGear(id,expected,undo.restore);
   },'fw-carry-undo-action');
   carryUndoButton.setAttribute('aria-label','Undo last physical carry move');
   carryUndoButton.disabled=locked||!this.carryUndo.peek(id,
-   captureCarryUndo(person.loadout,person.magazines)).ok;
+   captureCarryUndo(person.loadout,person.magazines),this.handlers.carryMode==='unified'?person:undefined).ok;
   grouped.field('carry').append(carryUndoButton);
   const squadFlashReserved=c.operators.filter(o=>o.id!==id&&c.squadIds.includes(o.id))
    .reduce((count,o)=>count+fieldQuantity(
@@ -2249,6 +2252,7 @@ export class CampaignScreen{
   // Keep this existing validated authority outside the mobile presentation.
   const physicalEditor=createFieldGadgetEditor({
    loadout:person.loadout,magazines:person.magazines,locked,
+   automatic:this.handlers.carryMode==='unified'?person:undefined,
    onInspectLocation:location=>this.preview?.highlightCarryLocation(location),
    onInspectItem:item=>{
     this.preview?.inspectCarryItem(item);

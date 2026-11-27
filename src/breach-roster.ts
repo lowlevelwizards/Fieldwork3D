@@ -211,10 +211,15 @@ export function equipRoster(roster:RosterState,id:string,weapon:WeaponId):Roster
 /** Quick play has unlimited equipment availability, but each individual
  * soldier still has an independent, persistent and compatible configuration. */
 export function equipRosterGear(roster:RosterState,id:string,slot:LoadoutSlot,
- itemId:string):RosterState{
+ itemId:string,carryMode?:'unified'):RosterState{
  if(slot==='primary')return roster;
  const member=roster.members.find(m=>m.id===id);
  if(!member)return roster;
+ if(carryMode==='unified'){
+  const q=quoteUnifiedPreparation(member,{kind:'gear',slot,id:itemId});
+  if(!q.ok)return roster;
+  return {...roster,members:roster.members.map(m=>m.id===id?{...m,loadout:q.kit,magazines:q.magazines}:m)};
+ }
  const next=setEquipmentChoice(member.loadout,slot,itemId);
  if(next===member.loadout)return roster;
  return {...roster,members:roster.members.map(m=>m.id===id?

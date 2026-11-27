@@ -984,20 +984,22 @@ export function retireOperator(c:CampaignState,id:string):CampaignState{
 /** Non-weapon issued kit customization. Weapon swaps must go through the
  * stock-aware equipCampaignWeapon path, never through this editor. */
 export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
- itemId:string):CampaignState{
+ itemId:string,carryMode?:'unified'):CampaignState{
  if(c.activeContractId||slot==='primary'||
   !mayChooseCampaignContent(c,'equipment',itemId,slot))return c;
  const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!o)return c;
- const next=setEquipmentChoice(o.loadout,slot,itemId);
+ const fit=carryMode==='unified'?quoteUnifiedPreparation(o,{kind:'gear',slot,id:itemId}):undefined;
+ if(fit&&!fit.ok)return c;
+ const next=fit?.ok?fit.kit:setEquipmentChoice(o.loadout,slot,itemId);
  if(next===o.loadout)return c;
  const stock=quoteCampaignFieldStockChange(c,o.loadout,next);
- if(!stock.ok||!fieldCarryReport(next,stageMagazines(o.magazines,next),
-  next.fieldInventory??initialFieldInventory(next)).valid)return c;
+ if(!stock.ok||(!fit&&!fieldCarryReport(next,stageMagazines(o.magazines,next),
+  next.fieldInventory??initialFieldInventory(next)).valid))return c;
  return {...c,supplies:stock.stock,operators:c.operators.map(m=>m.id===id?{...m,loadout:next,
   fieldRestockLayout:fieldRestockPreference(next),
   medicalSupplies:normalizedMedicalSupplies(m.medicalSupplies,kitMedicalSupplies(next)),
-  magazines:stageMagazines(m.magazines,next),
+  magazines:fit?.ok?fit.magazines:stageMagazines(m.magazines,next),
   armorCondition:clampArmorToKit(m.armorCondition,next)}:m)};
 }
 

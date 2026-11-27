@@ -2,7 +2,7 @@
  * All Campaign actions continue using campaign-state and campaign-persistence.
  */
 import {initialArmorIntegrity} from './equipment-armor.ts';
-import {applyDeploymentInventory,limitDeployedFlashIssue}
+import {applyDeploymentInventory,limitDeployedFlashIssue,captureDeploymentInventory,applyCapturedDeploymentInventory,type DeploymentInventorySnapshot}
  from './equipment-deployment-snapshot.ts';
 import {allocateFlashSupply} from './equipment-supply.ts';
 import {refillCampaignSquad} from './equipment-campaign-squad-refill.ts';
@@ -53,6 +53,7 @@ import type {SiteScale} from './breach-site.ts';
 import type {Session} from './breach-game.ts';
 
 export type CampaignFlowHooks={
+ carryMode?:'unified';
  getCampaign:()=>CampaignState|null;setCampaign:(value:CampaignState|null)=>void;
  saveCampaign:()=>boolean;
  getCampaignSlot:()=>CampaignSlot;
@@ -242,8 +243,12 @@ function issuePreGoFieldKit(operatorId:string,inventory:FieldInventory):boolean{
  const session=config.getSession();
  if(!current?.activeContractId||model.mode!=='mission'||
    config.isReplaying()||session.started||session.phase!=='planning')return false;
- const next=equipCampaignPreGoFieldInventory(current,operatorId,inventory);
+ const next=equipCampaignPreGoFieldInventory(current,operatorId,inventory,config.carryMode);
  if(next===current)return false;
+ if(config.carryMode==='unified'){
+  const failure=campaignCarryPreflight(next);
+  if(failure){void showFieldworkNotice('Equipment cannot fit',failure);return false;}
+ }
  model.campaign=next;
  if(!config.saveCampaign()){
   model.campaign=current;
@@ -251,12 +256,13 @@ function issuePreGoFieldKit(operatorId:string,inventory:FieldInventory):boolean{
    'The mission equipment has not changed. Free storage or export the campaign first.');
   return false;
  }
- applyCampaignRosterToSession(session,next);
+ applyCampaignRosterToSession(session,next,config.carryMode);
  config.refreshHud();
  showFieldworkActionFeedback('PRE-GO EQUIPMENT UPDATED');
  return true;
 }
 const preGoPrep=mountCampaignPreGoPrep(config.briefingRoster,{
+ carryMode:config.carryMode,
  getCampaign:()=>model.campaign,
  canPrepare:()=>{
   const s=config.getSession();
@@ -267,6 +273,7 @@ const preGoPrep=mountCampaignPreGoPrep(config.briefingRoster,{
 });
 
 const campaignScreen=new CampaignScreen({
+ carryMode:config.carryMode,
  newCampaign:async()=>{
   if(config.getCampaignInSlot('legacy')&&!await confirmFieldworkAction({
    title:'Start a new campaign?',
@@ -333,6 +340,10 @@ const campaignScreen=new CampaignScreen({
   if(!previous)return;
   const next=acceptContract(previous,id);
   if(next===previous)return;
+  if(config.carryMode==='unified'){
+   const failure=campaignCarryPreflight(next);
+   if(failure){void showFieldworkNotice('Equipment cannot fit',failure);return;}
+  }
   model.campaign=next;
   if(!config.saveCampaign()){
    model.campaign=previous;
@@ -377,17 +388,17 @@ const campaignScreen=new CampaignScreen({
  serviceWeapon:(id)=>applyVisibleCampaignAction(
   c=>serviceCampaignWeapon(c,id),'Weapon maintenance completed'),
  equipFieldInventory:(id,inventory)=>applyVisibleCampaignAction(
-  c=>equipCampaignFieldInventory(c,id,inventory),'Field equipment updated'),
+  c=>equipCampaignFieldInventory(c,id,inventory,config.carryMode),'Field equipment updated'),
  copyFieldInventory:(sourceId,targetId)=>applyVisibleCampaignAction(
-  c=>copyCampaignFieldInventory(c,sourceId,targetId),'Carried gadgets copied'),
+  c=>copyCampaignFieldInventory(c,sourceId,targetId,config.carryMode),'Carried gadgets copied'),
  copyCarryLayout:(sourceId,targetId)=>applyVisibleCampaignAction(
-  c=>copyCampaignCarryLayout(c,sourceId,targetId),'Carry layout copied · positions only'),
+  c=>copyCampaignCarryLayout(c,sourceId,targetId,config.carryMode),'Carry layout copied · positions only'),
  equipGear:(id,slot,itemId)=>applyVisibleCampaignAction(
-  c=>equipCampaignGear(c,id,slot,itemId),'Operator equipment updated'),
+  c=>equipCampaignGear(c,id,slot,itemId,config.carryMode),'Operator equipment updated'),
  equipCarryGear:(id,slot,itemId)=>applyVisibleCampaignAction(
-  c=>equipCampaignCarryGear(c,id,slot,itemId),'Carrying equipment updated'),
+  c=>equipCampaignCarryGear(c,id,slot,itemId,config.carryMode),'Carrying equipment updated'),
  undoCarryGear:(id,expected,before)=>applyVisibleCampaignAction(
-  c=>undoCampaignCarryGear(c,id,expected,before),'Physical carry change undone'),
+  c=>undoCampaignCarryGear(c,id,expected,before,config.carryMode),'Physical carry change undone'),
  equipWeaponPreset:(id,presetId)=>applyVisibleCampaignAction(
   c=>equipCampaignOwnedPreset(c,id,presetId),'Owned weapon model issued'),
  equipWeaponFamilyPart:(id,slot,partId)=>applyVisibleCampaignAction(
@@ -397,11 +408,11 @@ const campaignScreen=new CampaignScreen({
    equipCampaignWeaponAttachment(c,id,slot,partId),
   acquire?'Attachment acquired and equipped':'Weapon attachment updated'),
  moveMagazine:(id,magazineId,location)=>applyVisibleCampaignAction(
-  c=>moveCampaignMagazine(c,id,magazineId,location),'Magazine placement updated'),
+  c=>config.carryMode==='unified'?c:moveCampaignMagazine(c,id,magazineId,location),'Magazine placement updated'),
  saveKitPreset:(id,name)=>applyVisibleCampaignAction(
   c=>saveCampaignKitPreset(c,id,name),'Operator kit preset saved'),
  applyKitPreset:(id,presetId)=>applyVisibleCampaignAction(
-  c=>applyCampaignKitPreset(c,id,presetId),'Operator kit preset applied'),
+  c=>applyCampaignKitPreset(c,id,presetId,config.carryMode),'Operator kit preset applied'),
  deleteKitPreset:(presetId)=>applyVisibleCampaignAction(
   c=>deleteCampaignKitPreset(c,presetId),'Operator kit preset deleted'),
  renameOperator:(id,callsign)=>applyVisibleCampaignAction(
@@ -450,6 +461,10 @@ function deployCampaignContract(){
    'Missing, retired, or recovering personnel cannot deploy. Assign a ready replacement in Personnel.');
   showCampaignHome();return;
  }
+ if(config.carryMode==='unified'){
+  const failure=campaignCarryPreflight(model.campaign);
+  if(failure){void showFieldworkNotice('Equipment cannot fit',failure);showCampaignHome();return;}
+ }
  preGoPrep.close();
  const job=model.campaign.contracts.find(k=>k.id===model.campaign!.activeContractId);
  if(!job)return;
@@ -491,14 +506,29 @@ backButton.addEventListener('click',()=>{
    returnAfterMission:returnAfterCampaignMission};
 }
 
-export function applyCampaignRosterToSession(session:Session,campaign:CampaignState):void{
+/** Validate assigned personnel before accepting a contract or replacing a session. */
+export function campaignCarryPreflight(campaign:CampaignState):string|null{
+ for(const id of campaign.squadIds){
+  const m=campaign.operators.find(o=>o.id===id);if(!m)continue;
+  try{captureDeploymentInventory({...m,carryMode:'unified'});}
+  catch(error){return m.callsign+' · '+(error instanceof Error?error.message:String(error));}
+ }
+ return null;
+}
+export function applyCampaignRosterToSession(session:Session,campaign:CampaignState,carryMode?:'unified'):void{
+ const snapshots=new Map<string,DeploymentInventorySnapshot>();
+ if(carryMode==='unified')for(const a of team(session)){
+  const m=tacticalSlotOperator(campaign,a.id);
+  if(m)snapshots.set(a.id,captureDeploymentInventory({...m,carryMode}));
+ }
  for(const a of team(session)){
   const m=tacticalSlotOperator(campaign,a.id);
   if(m){
    a.name=m.callsign;a.skills={...m.skills};a.weapon=m.weapon;
    a.appearanceSeed=m.appearanceSeed;
    a.wardrobe=m.wardrobe;
-   applyDeploymentInventory(a,m);
+   const snapshot=snapshots.get(a.id);
+   if(snapshot)applyCapturedDeploymentInventory(a,snapshot);else applyDeploymentInventory(a,m);
    const protection=initialArmorIntegrity(m.loadout);
    a.armorIntegrity=Math.min(protection.torso,m.armorCondition.torso);
    a.helmetIntegrity=Math.min(protection.head,m.armorCondition.head);
