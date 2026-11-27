@@ -6,16 +6,21 @@ import {garmentContactAnchor} from './operator-garment-contact-surface.ts';
 import {fittedArmorSurfaces} from './operator-uniform-fit-envelope.ts';
 import {ARMOR_PROFILES} from './operator-armor-rig-silhouettes.ts';
 import {ARMOR_PROPORTIONS} from './operator-armor-proportions.ts';
-import {plateHalfWidthAt} from './operator-armor-straps.ts';
+import {armorStrapLanding,JPC_BRANCH_HALF_SPREAD,JPC_BRANCH_WIDTH,plateHalfWidthAt} from './operator-armor-straps.ts';
 import {rigContactFrame} from './operator-rig-contact-frame.ts';
 import {armorSideLayout} from './operator-armor-side-layout.ts';
 import {poseClearanceEnvelope} from './breach-pose-clearance-envelope.ts';
 
+export type SlingShoulderLane=Readonly<{
+ kind:'outside'|'open-branch';crown:readonly [number,number,number];
+ frontEntry?:readonly [number,number,number];
+}>;
 export type EquipmentExterior=Readonly<{
  front:(y:number,z:number)=>number;
  back:(y:number,z:number)=>number;
  side:(y:number,x:number,sign:-1|1)=>number;
  shoulder:(sign:-1|1)=>readonly [number,number,number];
+ slingShoulder:(sign:-1|1,width:number)=>SlingShoulderLane;
 }>;
 const cache=new Map<string,EquipmentExterior>();
 export function equipmentExterior(armor:string,rig:string,top:string):EquipmentExterior{
@@ -64,5 +69,19 @@ export function equipmentExterior(armor:string,rig:string,top:string):EquipmentE
     (visible?spec.strapThickness*.5:0)+(frame.mode==='external-harness'&&r!=='no-rig'?.32:0),
     sign*frame.shoulderRight.z];
  };
- const result={front,back,side,shoulder};cache.set(key,result);return result;
+ // Only the modeled skeletal front branch has an authored opening.
+ // Do not invent a tunnel underneath solid shoulder pads or a rig yoke.
+ // The common crown is still routed on top; the opening is a front entry.
+ const slingShoulder=(sign:-1|1,width:number):SlingShoulderLane=>{
+  const crown=shoulder(sign);
+  const gap=2*JPC_BRANCH_HALF_SPREAD-JPC_BRANCH_WIDTH;
+  if(a==='plate-jpc'&&spec&&(r==='no-rig'||frame.mode==='carrier-placard')&&
+    width+.08<=gap){
+   const landing=armorStrapLanding(fit,spec);
+   return {kind:'open-branch',crown,
+    frontEntry:[fit.front+.24,landing.frontY+.12,sign*landing.frontZ]};
+  }
+  return {kind:'outside',crown};
+ };
+ const result={front,back,side,shoulder,slingShoulder};cache.set(key,result);return result;
 }

@@ -20,7 +20,8 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
  const shoulderSign: -1|1=side?(rear.z+front.z>=0?-1:1):-1;
  const hipSign: -1|1=shoulderSign===-1?1:-1;
  const margin=width*.6+.16;
- const shoulder=fit.shoulder(shoulderSign);
+ const lane=fit.slingShoulder(shoulderSign,width);
+ const shoulder=lane.crown;
  const z=shoulder[2],sy=shoulder[1]+margin;
  const high=3.8,low=-3.5;
  const surface=(f:number,y:number,lateral:number)=>
@@ -37,7 +38,11 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
   out[i].point.set(x,y,z);out[i].normal.set(nx,ny,nz).normalize();
  };
  write(0,rear.x,rear.y,rear.z,face,0,side?hipSign:0);
- write(1,startX,high,z,face,0,0);
+ // The narrow modeled split can accept a front-entry lane; all other
+ // combinations retain the unobstructed exterior route.
+ const entry=!back?lane.frontEntry:undefined;
+ if(entry)write(1,entry[0]+.10,entry[1],entry[2],1,0,0);
+ else write(1,startX,high,z,face,0,0);
  write(2,crownFront,sy,z,face,1,0);
  write(3,crownBack,sy,z,-face,1,0);
  write(4,surface(-face,high,z),high,z,-face,0,0);
