@@ -1,0 +1,28 @@
+name: WR weapon retention critical
+on:
+  push:
+    branches: [feature/wr-weapon-retention]
+    paths:
+      - 'src/breach-weapon-retention.ts'
+      - 'tests/weapon-retention-wr1.test.mjs'
+      - '.github/workflows/weapon-retention-critical.yml'
+  pull_request:
+    paths:
+      - 'src/breach-weapon-retention.ts'
+      - 'tests/weapon-retention-wr1.test.mjs'
+      - '.github/workflows/weapon-retention-critical.yml'
+  workflow_dispatch:
+concurrency:
+  group: wr-critical-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/weapon-retention-wr1.test.mjs tests/breach-pose-action-state.test.mjs tests/breach-roadmap3-sling-pose.test.mjs tests/secondary-s5-switching.test.mjs
+      - run: npm run build
