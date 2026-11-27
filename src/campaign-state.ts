@@ -1,4 +1,4 @@
-import {quoteUnifiedPreparation} from './equipment-unified-preparation.ts';
+import {quoteUnifiedPreparation,quoteUnifiedFieldCopy} from './equipment-unified-preparation.ts';
 /** Campaign domain. Nothing here advances in the render/simulation loop. */
 import type {ReportQuality} from './briefing/briefing-types.ts';
 import {validRecoveredIntelReceipt,type RecoveredIntelReceipt} from './breach-optional-intel.ts';
@@ -1019,13 +1019,13 @@ export function equipCampaignCarryGear(c:CampaignState,id:string,
  * No magazines, ammunition, field supply, or unrelated gear are issued.
  */
 export function undoCampaignCarryGear(c:CampaignState,id:string,
- expected:CarryUndoSnapshot,before:CarryUndoSnapshot):CampaignState{
+ expected:CarryUndoSnapshot,before:CarryUndoSnapshot,carryMode?:'unified'):CampaignState{
  if(c.activeContractId)return c;
  const operator=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!operator)return c;
  const current=captureCarryUndo(operator.loadout,operator.magazines);
  if(JSON.stringify(current)!==JSON.stringify(expected))return c;
- const quote=quoteCarryUndo(current,before);
+ const quote=quoteCarryUndo(current,before,carryMode==='unified'?operator:undefined);
  if(!quote.ok)return c;
  for(const slot of ['rig','belt','backpack'] as const){
   if(operator.loadout.slots[slot]===quote.restore.loadout.slots[slot])continue;
@@ -1039,8 +1039,8 @@ export function undoCampaignCarryGear(c:CampaignState,id:string,
  * The owning Campaign state enforces operator status and contract phase.
  */
 export function copyCampaignCarryLayout(c:CampaignState,
- sourceId:string,targetId:string):CampaignState{
- if(c.activeContractId||sourceId===targetId)return c;
+ sourceId:string,targetId:string,carryMode?:'unified'):CampaignState{
+ if(carryMode==='unified'||c.activeContractId||sourceId===targetId)return c;
  const valid=(o:CampaignOperator)=>o.status!=='lost'&&o.status!=='retired';
  const source=c.operators.find(o=>o.id===sourceId&&valid(o));
  const target=c.operators.find(o=>o.id===targetId&&valid(o));
@@ -1095,12 +1095,17 @@ function issueCampaignFieldInventory(c:CampaignState,id:string,
  * weapon, armor and medical kit; campaign stock is re-quoted atomically.
  */
 export function copyCampaignFieldInventory(c:CampaignState,sourceId:string,
- targetId:string):CampaignState{
+ targetId:string,carryMode?:'unified'):CampaignState{
  if(sourceId===targetId||c.activeContractId)return c;
  const source=c.operators.find(o=>o.id===sourceId);
  const target=c.operators.find(o=>o.id===targetId);
  if(!source||!target||target.status==='lost'||target.status==='retired')return c;
  const inventory=source.loadout.fieldInventory??initialFieldInventory(source.loadout);
+ if(carryMode==='unified'){
+  const fit=quoteUnifiedFieldCopy(source.loadout,target);
+  if(!fit.ok||!fit.kit.fieldInventory)return c;
+  return equipCampaignFieldInventory(c,target.id,fit.kit.fieldInventory,'unified');
+ }
  const quote=quoteFieldInventoryCopy(inventory,target.loadout,target.magazines);
  if(!quote.ok)return c;
  return equipCampaignFieldInventory(c,target.id,quote.inventory);

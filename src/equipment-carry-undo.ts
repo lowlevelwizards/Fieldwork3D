@@ -1,3 +1,4 @@
+import {quoteUnifiedPreparation,type UnifiedPreparationSource} from './equipment-unified-preparation.ts';
 /** L2.12E1 — UI-only, bounded physical carry undo.
  * No persistence, stock ownership or automatic commit lives here.
  * The Campaign / Roster owner must authorize the returned candidate again.
@@ -28,7 +29,7 @@ const keyed=(items:readonly MagazineItem[])=>{
  * medical/tool loadout selectors are never rolled back by physical carry undo.
  */
 export function quoteCarryUndo(current:CarryUndoSnapshot,
- before:CarryUndoSnapshot):CarryUndoQuote{
+ before:CarryUndoSnapshot,automatic?:UnifiedPreparationSource):CarryUndoQuote{
  const here=keyed(current.magazines),previous=keyed(before.magazines);
  if(!here||!previous||here.size!==previous.size)
   return {ok:false,reason:'MAGAZINE INVENTORY HAS CHANGED'};
@@ -51,6 +52,14 @@ export function quoteCarryUndo(current:CarryUndoSnapshot,
  for(const id of FIELD_ITEM_IDS)
   if(fieldQuantity(currentField,id)!==fieldQuantity(oldField,id))
    return {ok:false,reason:'FIELD EQUIPMENT SUPPLY HAS CHANGED'};
+ if(automatic){
+  // Undo gear choices only, never old sidearm issue, old ammunition or
+  // old manual placements. Refit the current owned stock.
+  const kit={...current.loadout,slots:{...current.loadout.slots,
+   rig:before.loadout.slots.rig,belt:before.loadout.slots.belt,backpack:before.loadout.slots.backpack}};
+  const q=quoteUnifiedPreparation({...automatic,loadout:kit,magazines:current.magazines},{kind:'refit'});
+  return q.ok?{ok:true,restore:captureCarryUndo(q.kit,q.magazines)}:{ok:false,reason:q.reason};
+ }
  if(!fieldCarryReport(before.loadout,before.magazines,oldField).valid)
   return {ok:false,reason:'PREVIOUS CARRY CONFIGURATION NO LONGER FITS'};
  return {ok:true,restore:captureCarryUndo(before.loadout,before.magazines)};
@@ -64,12 +73,12 @@ export class CarryKitUndoHistory{
    after:fingerprint(after)
   });
  }
- peek(operatorId:string,current:CarryUndoSnapshot):CarryUndoQuote{
+ peek(operatorId:string,current:CarryUndoSnapshot,automatic?:UnifiedPreparationSource):CarryUndoQuote{
   const previous=this.prior.get(operatorId);
   if(!previous)return {ok:false,reason:'NO CARRY CHANGE TO UNDO'};
   if(previous.after!==fingerprint(current))
    return {ok:false,reason:'KIT HAS CHANGED SINCE LAST TRANSFER'};
-  return quoteCarryUndo(current,previous.before);
+  return quoteCarryUndo(current,previous.before,automatic);
  }
  clear(operatorId:string):void{this.prior.delete(operatorId);}
 }

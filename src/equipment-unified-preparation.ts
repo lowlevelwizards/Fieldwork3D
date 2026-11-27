@@ -75,3 +75,10 @@ export function quoteSavedSquadCarryMigration<T extends UnifiedPreparationSource
  // Never partly activate a squad, and never silently reduce its issue.
  return failures.length?{ok:false as const,failures}:{ok:true as const,members:migrated};
 }
+
+/** Copy quantities only, never a donor's physical locations or magazine IDs.
+ * Destination ownership and campaign stock checks remain with its owner. */
+export function quoteUnifiedFieldCopy(source:EquipmentLoadout,target:UnifiedPreparationSource){
+ const inventory=source.fieldInventory??initialFieldInventory(source);
+ return quoteUnifiedPreparation(target,{kind:'field',inventory:structuredClone(inventory)});
+}

@@ -482,3 +482,9 @@ export function wardrobeConflicts(w:WardrobeOptions,kit:EquipmentLoadout){
  const r=resolvedWardrobe(w,kit);
  return WARDROBE_SLOTS.filter(slot=>w.styles[slot]&&w.styles[slot]!==r[slot]);
 }
+
+/** Belt finish is cosmetic; invalid swatches never alter the outfit. */
+export function setWardrobeBeltSolid(wardrobe:WardrobeOptions,style:string,id:GarmentSolidId|null):WardrobeOptions{
+ if(id!==null&&!beltSolidChoices(style).includes(id))return wardrobe;
+ return {...wardrobe,beltSolid:id??undefined};
+}

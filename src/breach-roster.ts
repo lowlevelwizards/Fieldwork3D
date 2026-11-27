@@ -225,12 +225,12 @@ export function equipRosterCarryGear(roster:RosterState,id:string,
  * The caller may show an Undo button, but this owner has final authority.
  */
 export function undoRosterCarryGear(roster:RosterState,id:string,
- expected:CarryUndoSnapshot,before:CarryUndoSnapshot):RosterState{
+ expected:CarryUndoSnapshot,before:CarryUndoSnapshot,carryMode?:'unified'):RosterState{
  const member=roster.members.find(m=>m.id===id);
  if(!member)return roster;
  const current=captureCarryUndo(member.loadout,member.magazines);
  if(JSON.stringify(current)!==JSON.stringify(expected))return roster;
- const quote=quoteCarryUndo(current,before);
+ const quote=quoteCarryUndo(current,before,carryMode==='unified'?member:undefined);
  if(!quote.ok)return roster;
  return {...roster,members:roster.members.map(m=>m.id===id?
   {...m,loadout:quote.restore.loadout,magazines:quote.restore.magazines}:m)};
@@ -239,8 +239,8 @@ export function undoRosterCarryGear(roster:RosterState,id:string,
  * keeps every owned magazine, ammo round, wearable item and issued unit.
  */
 export function copyRosterCarryLayout(roster:RosterState,
- sourceId:string,targetId:string):RosterState{
- if(sourceId===targetId)return roster;
+ sourceId:string,targetId:string,carryMode?:'unified'):RosterState{
+ if(carryMode==='unified'||sourceId===targetId)return roster;
  const source=roster.members.find(m=>m.id===sourceId);
  const target=roster.members.find(m=>m.id===targetId);
  if(!source||!target)return roster;

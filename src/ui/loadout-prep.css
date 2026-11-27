@@ -538,3 +538,9 @@
  background:#76976b;color:#fff;border-color:#f0ffce;
  box-shadow:0 0 0 4px #b5dba388;
 }
+
+/* BT8: compact quantity-only automatic storage controls. */
+.fw-field-inventory-automatic-rows{display:grid;gap:6px}
+.fw-field-inventory-automatic-row{display:grid;grid-template-columns:minmax(0,1fr) 2ch 44px 44px;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #ffffff20}
+.fw-field-inventory-automatic-row button{min-height:44px;font-size:18px}
+.fw-field-inventory-automatic-details{margin-top:8px;overflow-wrap:anywhere}
