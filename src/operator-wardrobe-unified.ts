@@ -3,6 +3,7 @@
  * Later category art passes can replace the geometry without adding a second
  * generic armor/helmet selector.
  */
+import {legacyPackEquipment} from './operator-backpack-catalog.ts';
 import {setEquipmentChoice,type EquipmentLoadout,type LoadoutSlot}
  from './equipment-loadouts.ts';
 import {setWardrobeStyle,wardrobeItem,readWardrobe,
@@ -22,8 +23,7 @@ export function equipmentSlotForAppearance(slot:WardrobeSlot,id:string):
    family==='light'?'rig-light':'rig-full'};
   case 'beltStyle':return {slot:'belt',id:family==='none'?'belt-none':
    family==='light'?'belt-light':'belt-standard'};
-  case 'packStyle':return {slot:'backpack',id:family==='none'?'backpack-none':
-   family==='day'?'backpack-day':'backpack-field'};
+  case 'packStyle':return {slot:'backpack',id:legacyPackEquipment(id)};
   case 'top':return {slot:'top',id:family==='underlayer'?'top-none':
    ['t-shirt','polo-shirt','button-up-shirt','tank-top','hoodie','casual-jacket'].includes(id)?'top-light':'top-uniform'};
   case 'trousers':return {slot:'legs',id:family==='underlayer'?'legs-none':
