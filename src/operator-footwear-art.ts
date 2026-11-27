@@ -48,12 +48,12 @@ export function createFootwearVisuals(legs:readonly {lower:THREE.Mesh;shoe?:THRE
     const s=STYLES[id];
     prism(foot,s.sole,s.width,id==='sneakers'?sneakerSole:rubber,'sole');
     const shell=prism(foot,s.upper,s.width-.22,upper!,'upper');
-    mapFootwearUpperUV(shell.geometry,s.width-.22);
+    mapFootwearUpperUV(shell.geometry,s.upper);
     // FW13: canvas and rubber toe share this shell; no coplanar detail meshes.
     if(s.shaft){
      const h=s.shaft/LEG_LOWER_LENGTH;
      const cuff=box(shaft,s.shaftWidth,h+.045,s.shaftWidth,.5-h/2+.012,upper!,'shaft');
-     mapFootwearShaftUV(cuff.geometry,s.shaftWidth,h+.045);
+     mapFootwearShaftUV(cuff.geometry,h+.045);
     }
     const h=3.48/LEG_LOWER_LENGTH;
     if(FOOTWEAR[id].height!=='high')model.sock=box(shaft,3.45,h,3.55,.5-h/2,sockMaterial,'sock');
