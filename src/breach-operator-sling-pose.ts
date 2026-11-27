@@ -5,10 +5,41 @@ import type {OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import type {OperatorPoseScratch} from './breach-operator-pose-scratch.ts';
 import {readSlingKind,type SlingKind} from './breach-weapon-retention.ts';
+import {equipmentExterior,type EquipmentExterior} from './operator-equipment-exterior.ts';
+import {resolvedWardrobe} from './operator-wardrobe-data.ts';
+import {createSlingRoute,routeSlingTransition} from './operator-sling-route.ts';
+import {slingArtProfile} from './operator-sling-profile.ts';
+import {updateSlingRibbonGeometry} from './operator-sling-ribbon.ts';
 import type {RetentionPoseMode} from './breach-weapon-retention-pose.ts';
 import type {WeaponRetentionSockets} from './weapons/geometry/weapon-retention-sockets.ts';
 type SlingNode=Pick<THREE.Object3D,'visible'|'position'|'scale'|'quaternion'>;
-type SlingPoseSource=Pick<OperatorPose,'weaponConfiguration'|'surrender'|'stride'|'worldWeaponReleased'>;
+type SlingPoseSource=Pick<OperatorPose,'weaponConfiguration'|'surrender'|'stride'|'worldWeaponReleased'>&
+ Partial<Pick<OperatorPose,'equipment'|'wardrobe'>>;
+const routes=new WeakMap<THREE.Mesh,{path:ReturnType<typeof createSlingRoute>;alternate:ReturnType<typeof createSlingRoute>}>();
+const ribbonWidth=(p:SlingPoseSource)=>slingArtProfile(p.weaponConfiguration?.slots.sling).width;
+function exteriorFor(p:SlingPoseSource){
+ const w=resolvedWardrobe(p.wardrobe,p.equipment);
+ return equipmentExterior(w.armorStyle,w.rigStyle,w.top);
+}
+function prepareRibbon(mesh:THREE.Mesh,p:SlingPoseSource,rear:THREE.Vector3,
+ front:THREE.Vector3,fit:EquipmentExterior,retention?:RetentionPoseMode,pack?:THREE.Box3,weight=1){
+ let route=routes.get(mesh);
+ if(!route){route={path:createSlingRoute(),alternate:createSlingRoute()};routes.set(mesh,route);}
+ routeSlingTransition(route.path,route.alternate,rear,front,fit,retention,ribbonWidth(p),pack,weight,
+  slingArtProfile(p.weaponConfiguration?.slots.sling));
+}
+function ribbonTransform(t:SlingNode){
+ t.visible=true;t.position.set(0,0,0);t.quaternion.identity();t.scale.set(1,1,1);
+}
+/** Geometry upload follows the same committed attachment visibility.
+ * The direct solver stages knots, not displayed mesh transforms. */
+export function commitOperatorSlingRibbon(r:Pick<OperatorRig,'slingStraps'>,p:SlingPoseSource){
+ const mesh=r.slingStraps[0];
+ if(!mesh?.userData.fieldworkSlingRibbon)return;
+ const route=routes.get(mesh);
+ if(mesh.visible&&route)updateSlingRibbonGeometry(mesh.geometry,route.path,ribbonWidth(p));
+ else mesh.geometry.setDrawRange(0,0);
+}
 const P=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
 const kind=(p:SlingPoseSource)=>p.surrender||p.worldWeaponReleased?'none':readSlingKind(p.weaponConfiguration?.slots.sling);
 const fallback:WeaponRetentionSockets={rear:{x:-9,y:-.4,z:2.15},front:{x:10,y:-.4,z:2.15},single:{x:-5,y:1,z:2.15},supported:['single','two']};
@@ -59,10 +90,16 @@ export function updateOperatorSlingPose(
  r.root.updateMatrixWorld(true);
  const rear=r.chest.worldToLocal(gun.localToWorld(writePoint(P(0,0,0),points[0])));
  const front=r.chest.worldToLocal(gun.localToWorld(writePoint(P(0,0,0),points[1])));
+ const mesh=r.slingStraps[0];
+ if(mesh?.userData.fieldworkSlingRibbon){
+  prepareRibbon(mesh,p,rear,front,exteriorFor(p));ribbonTransform(mesh);
+  commitOperatorSlingRibbon(r,p);return;
+ }
  positionSpans(r.slingStraps,p,mode,physicalSpeed,vertical,delta,rear,front,P(0,0,0),P(0,0,0));
 }
 export function solveOperatorDirectSlingPose(r:OperatorRig,p:SlingPoseSource,
- scratch:OperatorPoseScratch,physicalSpeed:number,retention?:RetentionPoseMode):void{
+ scratch:OperatorPoseScratch,physicalSpeed:number,retention?:RetentionPoseMode,
+ exterior?:EquipmentExterior,pack?:THREE.Box3,weight=1):void{
  const e=scratch.equipmentOutput, straps=e.slingTargets;
  const mode=kind(p),held=e.weapons[0],drop=e.weapons[1];
  for(const strap of straps)strap.visible=false;
@@ -79,6 +116,11 @@ export function solveOperatorDirectSlingPose(r:OperatorRig,p:SlingPoseSource,
  }else{
   rear.multiply(held.scale).applyQuaternion(held.quaternion).add(held.position);
   front.multiply(held.scale).applyQuaternion(held.quaternion).add(held.position);
+ }
+ const mesh=r.slingStraps[0];
+ if(mesh?.userData.fieldworkSlingRibbon){
+  prepareRibbon(mesh,p,rear,front,exterior??exteriorFor(p),retention,pack,weight);
+  ribbonTransform(straps[0]);return;
  }
  positionSpans(straps,p,mode,physicalSpeed,scratch.vertical,scratch.slingDelta,
   rear,front,e.slingPoints[0],e.slingPoints[1],retention);

@@ -18,6 +18,7 @@ import {evaluateSleeveArmorContact}
 import {solveV3DynamicArm,type DynamicArmFit}
  from './breach-pose-v3-dynamic-arm.ts';
 import type {OperatorPoseScratch} from './breach-operator-pose-scratch.ts';
+import {neutralMannequinElbowPole} from './operator-mannequin-pose.ts';
 import type {PoseConstraintMode} from './breach-pose-v3-constraints.ts';
 
 import type {WeaponId} from './breach-combat.ts';
@@ -309,4 +310,34 @@ export function continuousElbowPole(shoulder:THREE.Vector3,
    if(score(alternate)>score(angle)+.0001)angle=alternate;
  }
  return from.applyAxisAngle(axis,angle*Math.max(0,Math.min(1,alpha)));
+}
+
+/** SR9 retention is a hand-target producer, not an independent IK solver.
+ * Carry source pole rotates continuously toward the free-arm anatomy.
+ * Reuse the continuous fitted sleeve strategy, not the discrete armed
+ * candidate ranking that would select a forward combat elbow at rest. */
+export function solveUnifiedRetentionArm(req:Readonly<{
+ shoulder:THREE.Vector3;desired:THREE.Vector3;sourcePole:THREE.Vector3;
+ release:number;side:-1|1;envelope:PoseClearanceEnvelope;
+ outboardStow?:boolean;
+ scratch:OperatorPoseScratch;armIndex:0|1;
+}>):FallbackArmResult{
+ const {shoulder,desired,sourcePole,side,envelope,scratch,armIndex}=req;
+ const delta=desired.clone().sub(shoulder);
+ const reach=delta.length();
+ const wrist=reach>19.92?shoulder.clone().addScaledVector(delta,19.92/reach):desired;
+ const release=Math.max(0,Math.min(1,req.release));
+ const rest=req.outboardStow?new THREE.Vector3(-2.0,-5,side*2.7):neutralMannequinElbowPole(side);
+ const pole=continuousElbowPole(shoulder,wrist,
+  shoulder.clone().add(sourcePole),shoulder.clone().add(rest),side,release);
+ // Near full extension, the downward pole becomes degenerate. A
+ // deterministic rear/outboard reference keeps the bend on the right side.
+ return solveUnifiedFallbackArm({
+  shoulder,wrist,desired,preferredPole:pole,previousBend:rest,side,
+  neutral:false,down:false,surrender:false,firing:false,
+  sourceContinuity:true,transitionPhase:release*.5,
+  envelope,mode:'interaction',allowVisualOverlap:true,
+  curatedSupport:false,familyLow:null,legacyFront:envelope.front,
+  scratch,armIndex
+ });
 }

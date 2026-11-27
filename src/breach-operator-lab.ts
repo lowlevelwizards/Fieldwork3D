@@ -810,11 +810,25 @@ const retentionMode=choose<HTMLSelectElement>('retentionMode');
 const retentionWeight=choose<HTMLInputElement>('retentionWeight');
 const retentionCycle=choose<HTMLInputElement>('retentionCycle');
 const retentionStatus=choose<HTMLOutputElement>('retentionStatus');
+const retentionRate=choose<HTMLSelectElement>('retentionRate');
+const retentionMotion=choose<HTMLSelectElement>('retentionMotion');
+let manualRetentionWeight=Number(retentionWeight.value);
+retentionWeight.addEventListener('input',()=>{manualRetentionWeight=Number(retentionWeight.value);});
+retentionCycle.addEventListener('input',()=>{if(!retentionCycle.checked)retentionWeight.value=String(manualRetentionWeight);});
+for(const [id,value] of [['retentionHeld',0],['retentionSettled',1]] as const){
+ choose<HTMLButtonElement>(id).addEventListener('click',()=>{
+  retentionCycle.checked=false;manualRetentionWeight=value;retentionWeight.value=String(value);draw();
+ });
+}
+diagnostic.add(new Option('SLING WEBBING PATH','retention-route'));
+choose<HTMLButtonElement>('retentionRoute').addEventListener('click',()=>{
+ diagnostic.value=diagnostic.value==='retention-route'?'off':'retention-route';draw();
+});
 diagnostic.add(new Option('SLING SOCKETS / RETENTION','retention'));
 choose<HTMLButtonElement>('retentionSockets').addEventListener('click',()=>{
  diagnostic.value=diagnostic.value==='retention'?'off':'retention';draw();
 });
-for(const control of [retentionSling,retentionMode,retentionWeight,retentionCycle])
+for(const control of [retentionSling,retentionMode,retentionWeight,retentionCycle,retentionRate,retentionMotion])
  control.addEventListener('input',()=>draw());
 poseStrictContact.addEventListener('change',()=>draw());
 poseWeaponSelect.add(new Option('No Weapon','none'));
@@ -1328,7 +1342,7 @@ function cameraFitZoom(mode:LabCameraFraming){
 
 const debug=new THREE.Group();scene.add(debug);
 const markerColors=[0xf1b77d,0x7cbbae,0xf2d88b,0xa0a8df];
-const markers=Array.from({length:8},(_,i)=>{
+const markers=Array.from({length:10},(_,i)=>{
   const mesh=new THREE.Mesh(new THREE.SphereGeometry(1.45,9,7),
     new THREE.MeshBasicMaterial({color:markerColors[i%4],
       depthTest:false}));
@@ -1794,6 +1808,33 @@ function showDiagnostics(){
       put(i+2,world.x,world.y,world.z);
     }
   }
+  if(layer==='retention-route'){
+    rig.root.updateMatrixWorld(true);
+    const mesh=rig.slingStraps[0];
+    if(!mesh?.visible){diagnosticText.textContent='NO VISIBLE WEBBING';return;}
+    const position=mesh.geometry.getAttribute('position');
+    const knots=Math.floor(mesh.geometry.drawRange.count/6)+1;
+    let length=0;
+    for(let i=0;i<knots;i++){
+      world.fromBufferAttribute(position,i*2);
+      world2.fromBufferAttribute(position,i*2+1);
+      world.add(world2).multiplyScalar(.5);
+      mesh.localToWorld(world);
+      if(i>0){
+        world2.fromBufferAttribute(position,(i-1)*2);
+        const index=(i-1)*2+1;
+        world2.set((world2.x+position.getX(index))*.5,
+          (world2.y+position.getY(index))*.5,(world2.z+position.getZ(index))*.5);
+        mesh.localToWorld(world2);
+        length+=world.distanceTo(world2);
+      }
+      if(i<markers.length)put(i,world.x,world.y,world.z);
+    }
+    diagnosticText.textContent='WEBBING KNOTS '+knots+' · LENGTH '+length.toFixed(1)+
+      '\\nELBOW SPREAD '+rig.elbowSpread.map(x=>x.toFixed(1)).join(' / ')+
+      ' · REACH '+rig.arms.map(a=>a.outOfReach?'LIMIT':'OK').join(' / ');
+    return;
+  }
   if(layer==='retention'){
     rig.root.updateMatrixWorld(true);
     const sockets=rig.weaponBody.userData.retentionSockets;
@@ -1808,7 +1849,7 @@ function showDiagnostics(){
       put(i,world.x,world.y,world.z);
     });
     diagnosticText.textContent='REAR / FRONT / SINGLE · '+sockets.supported.join(' / ').toUpperCase()+
-      '\nSTRAP SPANS '+rig.slingStraps.filter(x=>x.visible).map(x=>x.scale.y.toFixed(1)).join(' / ');
+      '\nWEBBING SEGMENTS '+(rig.slingStraps[0]?.visible?rig.slingStraps[0].geometry.drawRange.count/6:0);
     return;
   }
   if(layer==='weapon'){
@@ -2035,7 +2076,8 @@ function draw(){
   const retentionSample=!sidearm&&weapon.value!=='none'&&!motion.down&&
    !motion.reload&&motion.doorAt<0&&motion.throwAt<0&&!contactTrack?
    labRetentionSample(retentionMode.value,exactWeaponConfig?.slots.sling,
-     Number(retentionWeight.value),retentionCycle.checked,clock):undefined;
+     manualRetentionWeight,retentionCycle.checked,clock*Number(retentionRate.value)):undefined;
+  if(retentionCycle.checked&&retentionSample)retentionWeight.value=String(retentionSample.weight);
   retentionWeight.disabled=retentionCycle.checked||retentionMode.value==='auto';
   const message=retentionMode.value==='auto'?'FOLLOW ANIMATION':
    retentionSample?retentionSample.mode?.toUpperCase()+' · '+Math.round(retentionSample.weight*100)+'%':
@@ -2075,6 +2117,7 @@ function draw(){
       track==='reload-wounded'?2:0),
     weapon:currentWeapon,weaponConfiguration:exactWeaponConfig,
     retentionTransition:retentionSample,
+    labRetentionMotionScale:Number(retentionMotion.value),
     unarmedPreview:weapon.value==='none'&&track!=='reload-shotgun'&&!sidearm,
     reload:sidearm?0:motion.reload,reloadDuration:1.8,
     reloadMode:track==='reload-retention'?'retention':
@@ -2263,6 +2306,10 @@ function draw(){
       'LIGHT / STANDARD / HEAVY · PROPORTIONS LOCKED':
       'SIX STANCES · ORBIT / ZOOM TO COMPARE';
   }else showDiagnostics();
+  canvas.dataset.retentionMode=retentionSample?.mode??'';
+  canvas.dataset.retentionWeight=String(retentionSample?.weight??0);
+  canvas.dataset.retentionWebbing=String(rig.slingStraps[0]?.visible?
+    rig.slingStraps[0].geometry.drawRange.count/6:0);
   canvas.dataset.compare=String(comparing);
   canvas.dataset.compareGaits=String(gaitComparing);
   canvas.dataset.silhouette=String(silhouettes);

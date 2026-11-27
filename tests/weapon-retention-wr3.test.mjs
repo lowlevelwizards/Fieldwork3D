@@ -13,7 +13,8 @@ test('WR3 both sling variants survive save and generate finite straps',()=>{
   assert.equal(readWeaponConfiguration(JSON.parse(JSON.stringify(c)),c.weapon).slots.sling,id);
   assert.ok(attachmentPrice(id)>0);
   poseOperator(r,pose(c),0);
-  assert.ok(r.slingStraps.every(x=>x.visible&&Number.isFinite(x.scale.y)&&x.scale.y>0),id);
+  assert.equal(r.slingStraps.filter(x=>x.visible).length,1,id);
+  assert.ok(r.slingStraps[0].geometry.drawRange.count>0,id);
   finishes.add(r.slingStraps[0].material.color.getHex());
  }
  assert.equal(finishes.size,3);

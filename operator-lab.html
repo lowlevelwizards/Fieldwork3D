@@ -321,7 +321,11 @@ main[data-lab-active="poses"] #weapon{display:none}
   <label>TRANSITION<input id="retentionWeight" type="range" min="0" max="1" step=".01" value="1"/></label>
   <label><input id="retentionCycle" type="checkbox"/> LOOP STOW / RETURN</label>
  </div>
- <div class="pose-quick-controls"><button type="button" id="retentionSockets">SOCKET DIAGNOSTICS</button></div>
+ <div class="pose-select-grid">
+  <label>LOOP SPEED<select id="retentionRate"><option value=".5">HALF SPEED</option><option value="1" selected>NORMAL</option><option value="2">DOUBLE SPEED</option></select></label>
+  <label>SECONDARY MOTION<select id="retentionMotion"><option value="0">OFF</option><option value=".5">HALF</option><option value="1" selected>NORMAL</option><option value="1.5">EXAGGERATED</option></select></label>
+ </div>
+ <div class="pose-quick-controls"><button type="button" id="retentionHeld">HELD</button><button type="button" id="retentionSettled">SETTLED</button><button type="button" id="retentionSockets">SOCKET DIAGNOSTICS</button><button type="button" id="retentionRoute">WEBBING PATH</button></div>
  <output id="retentionStatus" aria-live="polite"></output>
  <small>Preview only · Use idle, walk or crouch to audition positions; action tracks retain their own hand contacts.</small>
  </details>

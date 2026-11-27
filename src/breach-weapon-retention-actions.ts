@@ -19,3 +19,14 @@ export function oneHandRetentionWeight(p:OperatorPose,
  if(a.physicalContact)return clamp(a.gripWeight);
  return 0;
 }
+
+/** SR14: a settled stow releases both hands, but an actual action owns
+ * only the limbs it needs. Keep the existing two-hand treatment, lockpick
+ * and restraint gestures; do not invent a second support contact. */
+export function retainedActionHands(p:OperatorPose,
+ a:ReturnType<typeof resolveOperatorActionState>):readonly [boolean,boolean]{
+ if(p.down||p.surrender)return [true,true];
+ if(a.treatmentActive||p.lockpickActive&&a.doorActive||
+  a.equipmentActive&&p.equipmentInteraction?.item==='zip-tie')return [true,true];
+ return [a.handOwners.left!=='weapon',a.handOwners.right!=='weapon'];
+}
