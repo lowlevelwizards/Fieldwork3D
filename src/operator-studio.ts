@@ -1312,6 +1312,15 @@ function renderMaterials(){
   addSolidSwatches(group,solidChoicesFor('pack',outfit),w.fabricSolids?.pack??null,id=>update(setWardrobeFabricSolid(w,'pack',id,outfit)));
   const patterns=fabricCamoChoices('pack',outfit);
   if(patterns.length)addCamoSwatches(group,patterns,w.fabricCamo?.pack??null,id=>update(setWardrobeFabricCamo(w,'pack',id,outfit)),'pack-art');
+  const mounting=row('PACK MOUNTING','Compatible modular configurations only; preview does not issue gear.');
+  const modes=packMountChoices(outfit.packStyle,outfit.armorStyle,outfit.rigStyle);
+  const resolved=equipmentAssembly(outfit.packStyle,outfit.armorStyle,outfit.rigStyle,w.packMount);
+  const labels:Record<PackMountMode,string>={auto:'AUTO',independent:'INDEPENDENT',direct:'DIRECT TO ARMOR',shared:'SHARED RIG',adapter:'ARMOR ADAPTER'};
+  for(const mode of ['auto',...modes] as PackMountMode[]){
+   const button=makeButton(labels[mode],(w.packMount??'auto')===mode,()=>update({...w,packMount:mode}));
+   button.dataset.packMount=mode;mounting.append(button);
+  }
+  const note=document.createElement('small');note.textContent='CURRENT: '+labels[resolved.mode];mounting.append(note);
   applyStudioStep();return;
  }
  const w=current(),outfit=resolvedWardrobe(w,p.loadout);
