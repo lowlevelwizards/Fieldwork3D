@@ -22,13 +22,14 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
  const shoulderSign: -1|1=-1; // fixed shoulder prevents a mid-frame mirrored route
  const hipSign: -1|1=shoulderSign===-1?1:-1;
  const margin=Math.min(.25,width*.16);
- const shoulder=fit.shoulder(shoulderSign);
+ const lane=fit.slingShoulder(shoulderSign,width);
+ const shoulder=lane.crown;
  // A front-hanging strap belongs to the body layer, not the outer
  // perimeter of a bulky pack. Hidden portions may pass behind the pack.
  // Keep its shoulder lane near the neck but still on the shoulder.
  const outerPack=back?pack:undefined;
  const hasPack=!!pack&&!pack.isEmpty();
- const z=shoulder[2]*(hasPack ? .88 : 1),sy=shoulder[1]+margin;
+ const z=shoulder[2]*(hasPack ? .76 : .90),sy=shoulder[1]+margin;
  const single=profile?.kind==='single';
  const low=profile?.returnHeight??-3.5;
  const surface=(f:number,y:number,lateral:number)=>
@@ -54,6 +55,11 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
  write(0,rear.x,rear.y,rear.z,face,0,side?hipSign:0);
  write(2,crownX,sy-(hasPack?.10:0),z,face,1,0);
  write(3,oppositeX,sy-(hasPack?.10:0),z,-face,1,0);
+ if(!back&&!side&&lane.kind==='open-branch'&&lane.frontEntry){
+  // Use only the actual modeled JPC opening and keep weapon sockets free.
+  const [x,y,lateral]=lane.frontEntry;
+  write(2,x+margin,y,lateral,1,1,0);
+ }
  write(6,farCorner,low,flank,-face,0,1);
  write(7,nearCorner,low,flank,face,0,1);
  write(9,front.x,front.y,front.z,face,0,side?hipSign:0);
