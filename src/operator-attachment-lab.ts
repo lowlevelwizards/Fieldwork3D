@@ -5,19 +5,20 @@ import {ATTACHMENTS,ATTACHMENT_IDS,attachmentMountRequest,validAttachmentId,
  type AttachmentId,type AttachmentVariant} from './operator-attachment-catalog.ts';
 import {resolveBeltMounts,type BeltRegion} from './operator-belt-mounts.ts';
 import type {BeltStyle} from './operator-belt-profile.ts';
+import {syncGearMarkedMaterials} from './operator-gear-pixel-art.ts';
 import {createAttachmentVisual,placeAttachmentVisual,setAttachmentSampleCount,type AttachmentVisual} from './operator-attachment-visuals.ts';
 type FixtureItem={id:AttachmentId;region:BeltRegion;variant?:AttachmentVariant};
 export const ATTACHMENT_FIXTURES={
  plainclothes:{style:'plain-belt',items:[{id:'rigid-holster',region:'right-hip'}]},
- patrol:{style:'duty-belt',items:[{id:'rigid-holster',region:'right-hip'},{id:'radio-holder',region:'front-left'},{id:'restraint-pouch',region:'left-hip'}]},
- tactical:{style:'battle-belt',items:[{id:'primary-mag-pouch',region:'front-left'},{id:'grenade-pouch',region:'front-right'},{id:'medical-pouch',region:'left-hip'}]},
- field:{style:'padded-belt',items:[{id:'utility-pouch',region:'left-hip',variant:'expanded'},{id:'dump-pouch',region:'right-hip'},{id:'primary-mag-pouch',region:'front-left'}]}
+ patrol:{style:'duty-belt',items:[{id:'rigid-holster',region:'right-hip'},{id:'radio-holder',region:'front-left'},{id:'restraint-pouch',region:'rear'}]},
+ tactical:{style:'battle-belt',items:[{id:'primary-mag-pouch',region:'left-hip'},{id:'grenade-pouch',region:'front-right'},{id:'medical-pouch',region:'rear'}]},
+ field:{style:'padded-belt',items:[{id:'utility-pouch',region:'left-hip',variant:'expanded'},{id:'dump-pouch',region:'rear'},{id:'primary-mag-pouch',region:'right-hip'}]}
 } satisfies Record<string,{style:BeltStyle;items:FixtureItem[]}>;
 export const ATTACHMENT_FIXTURE_IDS=Object.keys(ATTACHMENT_FIXTURES) as (keyof typeof ATTACHMENT_FIXTURES)[];
 export function attachmentFixture(choice:string,variant:AttachmentVariant='standard'):{style:BeltStyle;items:FixtureItem[]}|null{
  if(Object.prototype.hasOwnProperty.call(ATTACHMENT_FIXTURES,choice))
   return ATTACHMENT_FIXTURES[choice as keyof typeof ATTACHMENT_FIXTURES];
- if(validAttachmentId(choice))return {style:'padded-belt' as BeltStyle,items:[{id:choice,region:'right-hip' as BeltRegion,variant}]};
+ if(validAttachmentId(choice))return {style:'padded-belt' as BeltStyle,items:[{id:choice,region:(choice==='dump-pouch'?'rear':'right-hip') as BeltRegion,variant}]};
  return null;
 }
 type Preview={key:string;group:THREE.Group;visuals:AttachmentVisual[];accent:THREE.MeshStandardMaterial;status:string};
@@ -51,6 +52,7 @@ export function updateAttachmentPreview(rig:OperatorRig,choice:string,variant:At
   p={key,group,visuals,accent,status};previews.set(rig,p);
  }
  p.group.visible=true;
+ syncGearMarkedMaterials(rig.gearMaterial);syncGearMarkedMaterials(rig.weaponDark);syncGearMarkedMaterials(rig.bootMaterial);
  for(const v of p.visuals){
   const n=v.contents.length;
   setAttachmentSampleCount(v,countMode==='empty'?0:countMode==='partial'?Math.max(0,n-1):n);

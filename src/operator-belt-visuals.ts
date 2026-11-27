@@ -12,16 +12,17 @@ function piece(root:THREE.Group,material:THREE.Material,x:number,y:number,z:numb
  const mesh=new THREE.Mesh(garmentBoxUV(new THREE.BoxGeometry(w,h,d),w,h,d,material,x,y,z),material);
  mesh.name=name;mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);return mesh;
 }
-export function beltBandGeometry(style:Exclude<BeltStyle,'no-belt'>){
+export function beltBandGeometry(style:Exclude<BeltStyle,'no-belt'>,outerBand=false){
  const segs=beltContactSegments(),p=BELT_PROFILES[style],war=style==='padded-belt';
  const pos:number[]=[],uv:number[]=[],uv1:number[]=[];
  const corners=WAIST_CONTACT.map(([x,z],i)=>{
   const prev=segs[(i+7)%8],next=segs[i],front=war&&i<2;
-  const thick=front?.55:p.thickness;
+  const thick=outerBand?(front?.76:p.thickness+.32):(front?.55:p.thickness);
   const nx=prev.normalX+next.normalX,nz=prev.normalZ+next.normalZ;
   const k=thick/(nx*next.normalX+nz*next.normalZ);
-  const h=front?1.65:p.height,y=BELT_CENTER_Y+(war&&!front?.35:0);
-  return {inner:[x,z],outer:[x+nx*k,z+nz*k],top:y+h/2,bottom:y-h/2};
+  const h=outerBand?1.65:front?1.65:p.height,y=BELT_CENTER_Y+(war&&!front?.35:0);
+  const innerK=outerBand?(front?.53:p.thickness-.02)/(nx*next.normalX+nz*next.normalZ):0;
+  return {inner:[x+nx*innerK,z+nz*innerK],outer:[x+nx*k,z+nz*k],top:y+h/2,bottom:y-h/2};
  });
  type V=[number,number,number];
  const vertex=(i:number,outer:boolean,top:boolean):V=>{
@@ -40,7 +41,7 @@ export function beltBandGeometry(style:Exclude<BeltStyle,'no-belt'>){
   // The ring has exactly four quads per section, sharing edges rather
   // than overlapping box faces. Winding is outward on all four surfaces.
   quad(vertex(i,true,false),vertex(j,true,false),vertex(j,true,true),vertex(i,true,true),L,H,true);
-  quad(vertex(j,false,false),vertex(i,false,false),vertex(i,false,true),vertex(j,false,true),L,H);
+  if(!outerBand)quad(vertex(j,false,false),vertex(i,false,false),vertex(i,false,true),vertex(j,false,true),L,H);
   quad(vertex(i,false,true),vertex(i,true,true),vertex(j,true,true),vertex(j,false,true),p.thickness,L);
   quad(vertex(j,false,false),vertex(j,true,false),vertex(i,true,false),vertex(i,false,false),p.thickness,L);
  }
@@ -58,10 +59,14 @@ export function createBeltSilhouettes(parent:THREE.Group,fabric:THREE.Material,
   if(style==='no-belt')continue;
   const p=BELT_PROFILES[style],war=style==='padded-belt';
   const material=style==='battle-belt'?gearMarkedMaterial(fabric,'webbing',8,p.height):
-   war?gearMarkedMaterial(fabric,'padding',8,p.height):fabric;
+   war?gearMarkedMaterial(fabric,'padding',8,p.height):style==='plain-belt'?gearMarkedMaterial(fabric,'leather',8,p.height):fabric;
   const band=new THREE.Mesh(beltBandGeometry(style),material);band.name='continuous-belt-band';
   band.castShadow=true;band.receiveShadow=true;root.add(band);
-  const fx=beltContactSegments()[0].x+(war?.55:p.thickness),y=BELT_CENTER_Y;
+  if(war){
+   const strap=new THREE.Mesh(beltBandGeometry(style,true),gearMarkedMaterial(fabric,'webbing',8,1.65));
+   strap.name='raised-equipment-band';strap.castShadow=true;strap.receiveShadow=true;root.add(strap);
+  }
+  const fx=beltContactSegments()[0].x+(war?.76:p.thickness),y=BELT_CENTER_Y;
   if(style==='plain-belt'){
    // Broad rectangular metal frame; no subpixel buckle tongue.
    for(const side of [-1,1]){
