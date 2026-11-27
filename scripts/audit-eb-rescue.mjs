@@ -1,0 +1,13 @@
+import {writeFileSync} from 'node:fs';import assert from 'node:assert/strict';
+import {generateSite} from '../src/breach-site.ts';
+import {runStage1Scenario} from '../tests/fixtures/breach-stage1-contract-runner.mjs';
+const site=generateSite(27,'small',undefined,{seed:27,mission:'rescue',premise:'routine'},{vehiclePlacement:false});
+const options={site,mission:'rescue',intel:'floor-plan',enableCivilians:true,ticks:120,sampleEvery:20};
+const a=runStage1Scenario({...options,record:true}),b=runStage1Scenario(options);
+assert.equal(a.fingerprint,b.fingerprint);
+const target=a.first.civilians.filter(c=>c.rescueTarget);assert.equal(target.length,1);
+assert.ok(a.last.civilians.some(c=>c.id===target[0].id&&c.health>0));
+assert.ok(a.recorder.completeness.complete);
+const result={fingerprint:a.fingerprint,first:a.first,last:a.last,checkpoints:a.checkpoints};
+writeFileSync(process.argv[2],JSON.stringify(result,null,2));
+console.log('EB RESCUE WITNESS',JSON.stringify({fingerprint:a.fingerprint,civilians:a.last.civilians,phase:a.phase,shots:a.shotsFired}));

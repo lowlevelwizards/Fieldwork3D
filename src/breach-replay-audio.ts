@@ -2,6 +2,7 @@
  * Indexed interval queries never re-simulate world state or play sounds
  * during a seek. A playback controller chooses when to audition events.
  */
+import {hostileWarningCue} from './breach-audio-event-cues.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
 import type {Pt} from './breach-core.ts';
@@ -9,7 +10,7 @@ import type {WeaponId} from './breach-combat.ts';
 import type {GlockAppearanceId} from './weapons/geometry/glock-family-silhouettes.ts';
 
 export type ReplaySoundKind='gunshot'|'door'|'flash'|'reload'|
-  'interaction'|'surrender';
+  'interaction'|'surrender'|'warning';
 export type ReplaySoundEvent={
   id:string;t:number;kind:ReplaySoundKind;
   actorId:string|null;p:Pt|null;
@@ -33,10 +34,12 @@ export class ReplaySoundTimeline{
         hit:shot.hit,down:shot.down
       });
     for(const e of battle){
+      const warning=e.kind==='intel'&&hostileWarningCue(e.text);
       if(e.kind!=='door'&&e.kind!=='flash'&&e.kind!=='reload'&&
-        e.kind!=='interaction'&&e.kind!=='surrender')continue;
+        e.kind!=='interaction'&&e.kind!=='surrender'&&!warning)continue;
+      const kind=warning?'warning':e.kind as ReplaySoundKind;
       entries.push({
-        id:'battle:'+e.id,t:e.t,kind:e.kind,
+        id:'battle:'+e.id,t:e.t,kind,
         actorId:e.actor??null,p:e.p?{...e.p}:null,
         weapon:null,suppressed:false,hit:false,down:false,description:e.text
       });

@@ -85,7 +85,7 @@ add('top','uniform',[
  ['combat-shirt','Combat Shirt'],['smock-jacket','Windproof Field Smock'],
  ['gorka-jacket','Mountain / Gorka Jacket'],
  ['t-shirt','T-shirt'],['button-up-shirt','Button-up Shirt'],
- ['polo-shirt','Polo Shirt'],['tank-top','Tank Top']
+ ['polo-shirt','Polo Shirt'],['tank-top','Tank Top'],['hoodie','Hooded Sweatshirt'],['casual-jacket','Casual Zip Jacket']
 ]);
 // Bare-short placeholders are no longer visible wardrobe options.
 // Unremodeled lower-body pieces are represented by one honest foundation.
@@ -94,6 +94,8 @@ add('trousers','uniform',[
  ['acu-trousers','Modern Utility Trousers'],
  ['gorka-trousers','Mountain / Gorka Trousers']
 ]);
+add('trousers','civilian',[['jeans','Jeans'],['civilian-cargo','Civilian Cargo Trousers'],['track-pants','Track Pants']]);
+add('footwear','light',[['sneakers','Sneakers']]);
 add('footwear','unshod',[['bare-feet','Bare feet']]);
 add('footwear','boots',[['field-boots','Field boots (foundation)']]);
 add('armorStyle','none',[['armor-bare','No armor']]);
@@ -469,9 +471,9 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
   ['field-pack','rucksack','medic-pack','comms-pack','duffel']:
   ['no-pack'],slots.backpack==='backpack-day'?'day-pack':
   slots.backpack==='backpack-field'?'field-pack':'no-pack');
- choose('trousers',['bdu-trousers','acu-trousers','gorka-trousers'],
+ choose('trousers',['bdu-trousers','acu-trousers','gorka-trousers','jeans','civilian-cargo','track-pants'],
   'bdu-trousers');
- choose('footwear',slots.feet==='feet-none'?['bare-feet']:['field-boots'],
+ choose('footwear',slots.feet==='feet-none'?['bare-feet']:slots.feet==='feet-light'?['sneakers','field-boots']:['field-boots'],
   slots.feet==='feet-none'?'bare-feet':'field-boots');
  // Gloves are a cosmetic layer: explicit on/off stays independent of
  // the combat kit's hands slot, with the loadout used only as default.

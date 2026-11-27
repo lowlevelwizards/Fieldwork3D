@@ -52,6 +52,8 @@ export function isGarmentSolidId(value:unknown):value is GarmentSolidId{
 }
 /** Curated civilian shirt colors; no new neon or synthetic military palettes. */
 export const CASUAL_SHIRT_SOLIDS:Readonly<Record<string,readonly GarmentSolidId[]>>={
+ 'hoodie':['charcoal','black','navy','muted-blue','olive-drab','rust','off-white'],
+ 'casual-jacket':['charcoal','black','navy','slate','khaki','brown','olive-drab'],
  't-shirt':['off-white','black','charcoal','slate','navy','muted-blue',
   'olive-drab','ranger-green','khaki','tan','coyote','rust'],
  'button-up-shirt':['off-white','khaki','sand','nutria-brown','olive-drab','forest-green',

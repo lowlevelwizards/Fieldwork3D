@@ -37,6 +37,7 @@ export type MissionCreation={
   missionOverride?:Session['missionType'];
   prebuiltSite?:Site;
   risk?:1|2|3;
+  forceContext?:import('./worldgen/encounter-types.ts').EncounterContext['forceContext'];
   /** Optional D8 Dispatch contract-owned generation inputs. */
   incidentId?:string;
   archetype?:import('./breach-site.ts').BuildingArchetype;
@@ -97,7 +98,7 @@ export class BreachMissionController{
       request.missionOverride,request.prebuiltSite,
       {risk:request.risk,enableCivilians:prefs.civilianPreview,
        enableIncidentIntent:true,incidentId:request.incidentId,
-       archetype:request.archetype,strictIncident:!!request.incidentId});
+       archetype:request.archetype,forceContext:request.forceContext,strictIncident:!!request.incidentId});
     setSessionLightingMode(session,request.trainingLighting??
       request.restartStart?.lightingMode??prefs.selectedLightingMode);
     if(request.restartStart?.sitePower)

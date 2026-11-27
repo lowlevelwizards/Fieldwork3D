@@ -30,6 +30,9 @@ export function reconcileEnemyIntent(s:Session,a:TeamActor,visibleCount:number):
     // Fresh visual, acoustic or delivered report evidence interrupts it
     // explicitly in the decision controller.
     if(a.alert==='investigating'&&a.searchOrigin&&a.contact)return;
+    // While committed to a validated route, keep its destination rather
+    // than replacing it with the earlier uncertain estimate each tick.
+    if(a.alert==='investigating'&&a.contact&&a.nav.length)return;
     if(belief&&belief.lastAt>=s.seconds-24)
       a.contact={...belief.estimate};
     else if(!recentNoise){

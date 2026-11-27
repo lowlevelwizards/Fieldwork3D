@@ -1,5 +1,6 @@
 /** Grounded investigation timing. Personalities only change tempo
  * and risk tolerance; they never improve the knowledge available to AI. */
+import {AI_EXPERIENCE} from './breach-ai-group-profiles.ts';
 import type {NpcIdentity} from './breach-ai-identity.ts';
 export type InvestigationPersonality='guard'|'aggressor'|'cautious';
 export type InvestigationTempo={
@@ -14,8 +15,9 @@ export function investigationTempo(personality:InvestigationPersonality,
    {orientSeconds:.43+uncertaintyDelay*.7,inspectSeconds:.46,approachScale:.82};
  if(!identity)return base;
  // Human variation in assessment and inspection, never awareness or aim.
- return {...base,orientSeconds:base.orientSeconds*(1.20-.40*identity.composure),
-   inspectSeconds:base.inspectSeconds*(.80+.40*identity.patience)};
+ const experience=AI_EXPERIENCE[identity.competence];
+ return {...base,orientSeconds:base.orientSeconds*(1.20-.40*identity.composure)*experience.orientation,
+   inspectSeconds:base.inspectSeconds*(.80+.40*identity.patience)*experience.inspection};
 }
 
 /** Investigations cannot cling forever to a physically blocked candidate.

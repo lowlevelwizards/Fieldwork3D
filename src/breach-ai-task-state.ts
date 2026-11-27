@@ -3,7 +3,7 @@
 import type {TeamActor} from './breach-game.ts';
 import type {Pt} from './breach-core.ts';
 export function clearNpcSearch(a:TeamActor):void{
- a.searchOrigin=null;if(a.searchQueue.length)a.searchQueue=[];a.searchPauseUntil=0;
+ a.searchOrigin=null;if(a.searchQueue.length)a.searchQueue=[];a.searchPauseUntil=0;a.searchRecoveryPending=false;
 }
 export function clearNpcCoordination(a:TeamActor,releaseDestination=false):void{
  if(releaseDestination&&a.coordinationOwnsDefense){a.defense=null;a.nav=[];}
@@ -25,4 +25,18 @@ export function clearNpcTasks(a:TeamActor):void{
  a.contact=null;a.heard=null;a.contacted=false;a.watch=null;
  a.retreatPoint=null;a.defense=null;a.nav=[];a.alert='idle';
  a.checkedSearchAreas=[];a.lastSearchReportAt=undefined;
+}
+
+/** Both injury-driven and contact-driven withdrawal use one attempt owner.
+ * The caller provides existing physical shelter lookup; retries are bounded.
+ * preserveContactFallback retains the earlier contact-only hold response. */
+export function attemptNpcWithdrawal(a:TeamActor,now:number,findShelter:()=>Pt|null,
+ minimumDistance=0,preserveContactFallback=false):'committed'|'unavailable'|'deferred'{
+ if(a.alert==='retreat'||now<(a.withdrawRetryAt??0))return 'deferred';
+ const point=findShelter();
+ if(point&&(minimumDistance===0||Math.hypot(point.x-a.p.x,point.y-a.p.y)>minimumDistance)){
+  commitNpcWithdrawal(a,point,now);return 'committed';
+ }
+ if(preserveContactFallback){a.alert='cover';a.nav=[];a.defense=null;}
+ a.withdrawRetryAt=now+1.5;return 'unavailable';
 }

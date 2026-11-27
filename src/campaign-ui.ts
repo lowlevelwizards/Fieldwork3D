@@ -65,7 +65,8 @@ import {quoteCampaignSquadRefill,quoteCampaignOperatorRefill}
 import {FIELD_STOCK_PACKS,FIELD_STOCK_LIMIT}
  from './equipment-campaign-field-stock.ts';
 import {FieldInventoryUndoHistory} from './equipment-field-undo.ts';
-import {campaignIntelBalance,contractObjectiveIntel,campaignSquadPresent} from './campaign-state.ts';
+import {recoveredEvidenceSummary} from './breach-optional-intel.ts';
+import {campaignIntelBalance,contractObjectiveIntel,contractThreatIntel,campaignSquadPresent} from './campaign-state.ts';
 import {projectOperationsSummary} from './ui/campaign/operations-summary.ts';
 import './campaign-style.css';
 import './ui/campaign-uxr-workspaces.css';
@@ -82,6 +83,7 @@ export type CampaignHandlers={
  openReplayLibrary:()=>void;openMenuStudio:()=>void;
  chooseContract:(id:string)=>void;resumeContract:()=>void;
  reconContract:(id:string)=>void;
+ researchThreat?:(id:string)=>void;
  buyAmmo:()=>void;buyMedical:()=>void;buyFlash:()=>void;
  buyWedges:()=>void;buyCuffs:()=>void;
  resupply:(id:string)=>void;resupplyMedical:(id:string)=>void;
@@ -1084,6 +1086,8 @@ export class CampaignScreen{
    facts.append(node('span','','GRADE '+report.grade),
     node('span','',report.participatingIds.length+' OPERATORS'));
    article.append(facts);
+   if(report.recoveredEvidence?.length)article.append(node('p','campaign-note',
+    'RECOVERED EVIDENCE · '+recoveredEvidenceSummary(report.recoveredEvidence)));
    // Technical references and after-action evidence remain accessible
    // without forcing eight separate expanded report bodies into the log.
    const recordDetail=node('details','campaign-operation-detail');
@@ -2725,6 +2729,15 @@ export class CampaignScreen{
    recon.title='AVAILABLE INTEL: '+campaignIntelBalance(campaign);
    card.append(recon);
   }
+  const threatLevel=contractThreatIntel(c);
+  card.append(node('p','campaign-note','THREAT INTEL · '+threatLevel.toUpperCase()));
+  if(threatLevel!=='high'&&c.status==='available'&&!campaign.activeContractId&&this.handlers.researchThreat){
+   const cost=threatLevel==='low'?1:2;
+   const research=button('RESEARCH + '+(threatLevel==='low'?'AFFILIATION':'EXPERIENCE & EQUIPMENT')+' · '+cost+' INTEL',
+    ()=>this.handlers.researchThreat?.(c.id));
+   research.disabled=campaignIntelBalance(campaign)<cost;
+   card.append(research);
+  }
   card.append(button('REVIEW DEPLOYMENT',()=>this.reviewContract(c,campaign),
    'campaign-primary campaign-contract-review'));
   return card;
@@ -2779,6 +2792,7 @@ export class CampaignScreen{
    approximate:'Approximate section · several possible rooms',
    confirmed:'Confirmed objective room · exact marker authorized'
   } as const)[contractObjectiveIntel(contract)]);
+  add('THREAT REPORT',({low:'Unconfirmed affiliation',medium:'Possible affiliation',high:'Affiliation, experience and issued equipment assessment'} as const)[contractThreatIntel(contract)]);
   add('INTELLIGENCE',dossier?.intelligence??{
    unknown:'Site layout and threats are unknown until discovered',
    scouted:'Exterior intelligence available; interior remains uncertain',

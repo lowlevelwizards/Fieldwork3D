@@ -25,6 +25,8 @@ export type MissionTruth={
   intelMode:IntelMode;
   roomCount:number;
   hostileCount:number;
+  /** Private, aggregate starting issue. Never serialized into a player dossier. */
+  threatGroups?:import('./threat-dossier.ts').ThreatGroupFacts[];
   armedProfileCount:{ordinary:number;security:number;prepared:number};
   activeCivilianCount:number;
   rescueTargetPresent:boolean;
@@ -68,7 +70,7 @@ export type OperationDossierV1={
   campaign?:{
     contractId:string;title:string;reference?:string;
     region:string;risk:1|2|3;day:number;
-    followUp?:{contractId:string;title:string;outcome:'success'|'failure'};
+    followUp?:{contractId:string;title:string;outcome:'success'|'failure';recoveredEvidenceSummary?:string};
   };
   contract:{objective:string;condition:string;extraction:string};
   /** Fully resolved text, not rerolled on open/restart/replay. */

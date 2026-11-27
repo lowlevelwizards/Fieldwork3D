@@ -15,3 +15,11 @@ export function coverMoveCommitted(
   deadline:number):boolean{
  return hasCover&&remainingDistance>10&&now<deadline;
 }
+
+/** EB10: a failed cover route cannot become a permanent movement order.
+ * Retain the actual motor's stall and commitment boundaries. */
+export function defensiveTravelState(remaining:number,blockedSeconds:number,now:number,deadline:number):'arrived'|'expired'|'travel'{
+ if(remaining<=10)return 'arrived';
+ if(blockedSeconds>=2.7||now>=deadline)return 'expired';
+ return 'travel';
+}

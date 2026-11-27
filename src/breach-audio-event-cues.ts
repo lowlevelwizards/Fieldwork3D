@@ -9,6 +9,8 @@ export type LiveAudioCue={
 };
 export function liveAudioCuesForEvent(event:string):LiveAudioCue[]{
   const cues:LiveAudioCue[]=[];
+  const warning=hostileWarningCue(event);
+  if(warning)cues.push({id:warning,scale:.65});
   if(event.includes('OPENED')||event.includes('CLOSING'))
     cues.push({id:event.includes('CLOSING')?'doors.close':'doors.open',
       scale:1,fallback:[160,.16]});
@@ -37,4 +39,11 @@ export function liveAudioCuesForEvent(event:string):LiveAudioCue[]{
 export function unheardLiveAudioEvents<T extends {id:number;text:string}>(
  events:readonly T[],lastId:number):T[]{
  return events.filter(event=>event.id>lastId);
+}
+
+/** Only actual warning events get a world-local voice cue. No speculative
+ * alert sound, no global marker or new hearing event. */
+export function hostileWarningCue(text:string):string|undefined{
+ if(text.includes('WARNED NEARBY DEFENDERS'))return 'people.enemy_callout';
+ if(text.includes('REPORTED A SUSPICIOUS NOISE'))return 'people.enemy_suspicious';
 }

@@ -1,9 +1,10 @@
 /** Side-effect-free AI goal arbitration. Physical execution remains in the actor motor. */
+import {npcPressurePolicy,type Temperament} from './breach-ai-pressure-policy.ts';
 export type AIIntentKind='watch'|'investigate'|'engage'|'defend'|'withdraw';
 export type AIIntent={kind:AIIntentKind;chosenAt:number;commitUntil:number;reason:string};
 export type AIContext={visible:boolean;hasBelief:boolean;recentSound:boolean;
  suppression:number;morale:number;
- temperament?:'guard'|'aggressor'|'cautious'};
+ temperament?:Temperament};
 const priority:Record<AIIntentKind,number>=
  {watch:0,investigate:1,defend:2,engage:3,withdraw:4};
 export function chooseAiIntent(previous:AIIntent|null,context:AIContext,
@@ -12,10 +13,7 @@ export function chooseAiIntent(previous:AIIntent|null,context:AIContext,
  if(context.hasBelief||context.recentSound){
   kind='investigate';reason='unresolved contact or sound';
  }
- const caution=context.temperament==='cautious',bold=context.temperament==='aggressor';
- const defendAt=caution?.27:bold?.48:.35;
- const withdrawAt=caution?.56:bold?.79:.67;
- const moraleAt=caution?.70:bold?.43:.62;
+ const {intentDefend:defendAt,intentWithdraw:withdrawAt,intentMorale:moraleAt}=npcPressurePolicy(context.temperament);
  if(context.suppression>defendAt){
   kind='defend';reason='under suppressive fire';
  }

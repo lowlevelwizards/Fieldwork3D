@@ -1,4 +1,9 @@
 /** Isolated developer lab using ordinary live sessions and the fixed-step motor. */
+import {compileMissionFacts} from './briefing/mission-facts.ts';
+import {createOperationDossier} from './briefing/briefing-composer.ts';
+import type {MissionTruth,ReportQuality} from './briefing/briefing-types.ts';
+import {matchingFamilyPreset} from './equipment-weapon-families.ts';
+import {resolvedWardrobe} from './operator-wardrobe-data.ts';
 import {generateSite} from './breach-site.ts';
 import type {OperationKind} from './breach-operations.ts';
 import type {AiGroupKind,AiCompetence} from './breach-ai-identity.ts';
@@ -16,6 +21,12 @@ const detail=get<HTMLPreElement>('details'),history=get<HTMLPreElement>('history
 let session:Session|null=null,running=false,lastFrame=0,accum=0;
 let times:number[]=[],events:string[]=[],prior=new Map<string,string>();
 let driver='';let tickCount=0;
+let startingFacts:MissionTruth|null=null;
+let baseline:ReturnType<typeof comparisonSample>|null=null;
+let comparisonKey='';let activeProfile='seeded',activeTier='mixed';
+let previewActor='';
+let preview:Awaited<ReturnType<typeof import('./enemy-ai-lab-kit-preview.ts')['createEnemyKitPreview']>>|null=null;
+let previewLoading=false;
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 function reset(){
  running=false;accum=0;times=[];events=[];prior.clear();tickCount=0;
@@ -29,6 +40,10 @@ function reset(){
   if(site.encounter&&(profile||tier))site.encounter.groups=site.encounter.groups.map(g=>({...g,
     ...(profile?{behaviorProfile:profile}:{}),...(tier?{competenceOverride:tier}:{})}));
   session=newSession(0,seed,'floor-plan','small',mission,site,{enableCivilians:true});
+  startingFacts=compileMissionFacts(session);
+  comparisonKey=[seed,mission,get<HTMLSelectElement>('scenario').value].join('/');
+  activeProfile=profile||'seeded';activeTier=tier||'mixed';
+  previewActor='';
   driver='Quiet observation';
   if(get<HTMLSelectElement>('scenario').value==='entry'){
    const scout=team(session)[0];
@@ -38,8 +53,8 @@ function reset(){
    driver=accepted?'Authored room move accepted':'No legal room move — quiet observation';
   }
   actorSelect.replaceChildren(...enemies(session).map(a=>new Option(a.name+' · '+(a.npcIdentity?.competence??'legacy'),a.id)));
-  draw();inspect();
- }catch(e){session=null;status.textContent=String(e);}
+  draw();inspect();showDossier();updateComparison();updatePreview();
+ }catch(e){session=null;startingFacts=null;status.textContent=String(e);}
 }
 function sample(){
  if(!session)return;
@@ -65,12 +80,64 @@ function inspect(){
   '\nROUTE '+a.nav.length+' points · SEARCH '+a.searchQueue.length+' remaining'+
   '\nMOTIVATION '+(a.npcIdentity?.motivation??'legacy')+
   (a.npcIdentity?'\nTRAITS '+['composure','discipline','curiosity','patience','loyalty'].map(key=>key+' '+Math.round((a.npcIdentity as unknown as Record<string,number>)[key]*100)).join(' · '):''):'No NPCs';
+ if(a){
+  const look=resolvedWardrobe(a.wardrobe,a.equipment),build=a.weaponConfiguration?.build;
+  detail.textContent+='\nISSUED WEAPON '+((build&&matchingFamilyPreset(build)?.name)||a.weapon)+
+    '\nKIT '+[look.top,look.trousers,look.headwear,look.armorStyle,look.rigStyle,look.footwear].join(' · ')+
+    '\nREADINESS '+(a.encounterReadiness??'legacy')+' · ACTIVITY '+(a.encounterActivity??'legacy')+
+    '\nAMMUNITION '+a.magazine+' loaded / '+a.reserve+' reserve';
+ }
  history.textContent=events.slice(-18).reverse().join('\n');
  if(times.length){
   const sorted=[...times].sort((a,b)=>a-b);
   const q=(x:number)=>sorted[Math.floor((sorted.length-1)*x)].toFixed(2)+' ms';
   perf.textContent='P50 '+q(.5)+' · P95 '+q(.95)+' · P99 '+q(.99)+' · Max '+q(1)+' · '+tickCount+' ticks';
  }else perf.textContent='No samples';
+}
+function showDossier(){
+ const out=get<HTMLPreElement>('dossier');
+ if(!startingFacts){out.textContent='No session';return;}
+ const quality=get<HTMLSelectElement>('quality').value as ReportQuality;
+ const dossier=createOperationDossier(startingFacts,{quality});
+ out.textContent=dossier.claims.filter(c=>c.id==='threat'||c.id.startsWith('threat-'))
+  .map(c=>'['+c.confidence.toUpperCase()+'] '+c.text).join('\n\n');
+}
+function comparisonSample(){
+ const s=session;if(!s)return null;
+ const foes=enemies(s),sorted=[...times].sort((a,b)=>a-b);
+ const q=(p:number)=>sorted.length?Number(sorted[Math.floor((sorted.length-1)*p)].toFixed(3)):null;
+ return {key:comparisonKey,ticks:tickCount,seconds:Number(s.seconds.toFixed(2)),
+  profile:activeProfile,tier:activeTier,
+  population:foes.length,contacted:foes.filter(a=>a.contacted).length,down:foes.filter(a=>a.health<=0).length,
+  surrendered:foes.filter(a=>a.surrendered).length,shots:s.nextShotId-1,
+  p50:q(.5),p95:q(.95),max:q(1)};
+}
+function updateComparison(){
+ const current=comparisonSample(),out=get<HTMLPreElement>('comparison');
+ if(!current){out.textContent='No session';return;}
+ const describe=(r:NonNullable<typeof current>)=>r.profile+' / '+r.tier+' · '+r.ticks+' ticks · '+r.seconds+'s\n'+
+  'NPCs '+r.population+' · contact '+r.contacted+' · down '+r.down+' · surrendered '+r.surrendered+' · shots '+r.shots+
+  '\nTick ms (last 600): P50 '+(r.p50??'—')+' / P95 '+(r.p95??'—')+' / max '+(r.max??'—');
+ out.textContent=(baseline?'REFERENCE\n'+describe(baseline)+'\n\n':'Pin a reference, reset with another group or tier, run the same tick count.\n\n')+
+  'CURRENT\n'+describe(current)+(baseline?'\n\n'+(baseline.key===current.key&&baseline.ticks===current.ticks?
+   'Matched scenario and tick count; timing is sampled CPU cost, not FPS.':'Not a matched comparison yet: use the same seed, mission, scenario and tick count.'):'');
+}
+function updatePreview(){
+ if(!preview||!session)return;
+ const a=enemies(session).find(a=>a.id===actorSelect.value);
+ if(!a||previewActor===a.id)return;
+ previewActor=a.id;preview.show(a);
+}
+async function enablePreview(){
+ if(previewLoading||preview)return;
+ previewLoading=true;
+ const out=get<HTMLOutputElement>('kit-status');out.textContent='Loading shared operator rig…';
+ try{
+  const {createEnemyKitPreview}=await import('./enemy-ai-lab-kit-preview.ts');
+  preview=createEnemyKitPreview(get<HTMLCanvasElement>('kit-preview'));
+  updatePreview();out.textContent='Actual issued kit · static inspection';
+ }catch(e){out.textContent='Preview unavailable: '+String(e);}
+ finally{previewLoading=false;}
 }
 function draw(){
  const s=session;if(!s||!s.site)return;
@@ -112,8 +179,15 @@ function draw(){
 }
 get<HTMLButtonElement>('reset').onclick=reset;
 get<HTMLButtonElement>('play').onclick=()=>{if(!session)return;running=!running;accum=0;get<HTMLButtonElement>('play').textContent=running?'Pause':'Play';};
-get<HTMLButtonElement>('step').onclick=()=>{running=false;get<HTMLButtonElement>('play').textContent='Play';sample();draw();inspect();};
-actorSelect.onchange=()=>{draw();inspect();};
+get<HTMLButtonElement>('step').onclick=()=>{running=false;get<HTMLButtonElement>('play').textContent='Play';sample();draw();inspect();updateComparison();};
+actorSelect.onchange=()=>{draw();inspect();updatePreview();};
+get<HTMLSelectElement>('quality').onchange=showDossier;
+get<HTMLButtonElement>('pin').onclick=()=>{baseline=comparisonSample();updateComparison();};
+get<HTMLButtonElement>('sample').onclick=()=>{running=false;get<HTMLButtonElement>('play').textContent='Play';
+ const target=Math.max(1,Math.min(1800,Number(get<HTMLInputElement>('sample-ticks').value)||300));
+ for(let i=0;i<target&&session&&(session.phase==='planning'||session.phase==='running');i++)sample();
+ draw();inspect();updateComparison();};
+get<HTMLButtonElement>('kit-show').onclick=enablePreview;
 get<HTMLInputElement>('geometry').onchange=draw;get<HTMLInputElement>('routes').onchange=draw;
 new ResizeObserver(draw).observe(canvas);
 function frame(now:number){
@@ -121,7 +195,7 @@ function frame(now:number){
  if(running){
   accum+=elapsed*Number(get<HTMLSelectElement>('speed').value);
   let steps=0;while(accum>=1/60&&steps++<8&&running){accum-=1/60;sample();}
-  if(steps){draw();inspect();}
+  if(steps){draw();inspect();updateComparison();}
  }
  requestAnimationFrame(frame);
 }

@@ -31,12 +31,12 @@ export function hostilePhysicalityAt(a:Hostile,now:number):HostilePhysicality{
  const defensive=a.alert==='cover'||a.alert==='retreat';
  const reportAge=now-(a.lastReportAt??-100);
  const communication=a.velocity<=7&&reportAge>=0&&reportAge<.85?
-   Math.sin(Math.PI*reportAge/.85)*.065:0;
+   Math.sin(Math.PI*reportAge/.85)*.16:0;
  if(!investigating&&!defensive)return {...neutral(),headPitch:communication};
  const guarding=defensive&&a.suppression>=.27;
  // Defensive recoil is deliberately tiny because the shared chest joint
  // also owns the rifle. A head-only inclination can't move the muzzle.
- const headPitch=clamp((guarding?clamp((a.suppression-.20)*.15,0,.115):0)+communication,0,.115);
+ const headPitch=clamp((guarding?clamp((a.suppression-.20)*.26,0,.20):0)+communication,0,.24);
  const age=now-a.lastNoiseAt;
  const point=a.heard;
  if(!point||a.lastNoiseAt<0||!Number.isFinite(age)||age<0||
@@ -46,8 +46,8 @@ export function hostilePhysicalityAt(a:Hostile,now:number):HostilePhysicality{
  const fade=ease(age/.28)*(1-ease((age-3.7)/1.3));
  // During withdrawal a body may be moving away from the sound. Preserve a
  // human-scale glance, not a magical rear-facing or swiveling rifle pose.
- const maximum=investigating?.35:.25;
- const weight=investigating?.65:.48;
+ const maximum=investigating?.54:.30;
+ const weight=investigating?.85:.58;
  return {headYaw:clamp(wrap(bearing-a.heading),-maximum,maximum)*weight*fade,
    headPitch,investigating,guarding};
 }

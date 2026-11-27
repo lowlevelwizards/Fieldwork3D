@@ -62,7 +62,7 @@ open|Door open;close|Door close;creak|Door creak;handle|Handle turn;latch|Latch;
  {group:'combat',family:'impact',live:'flash',items:`
 flash|Flashbang detonation;flash_out|Flashbang thrown;hit|Visible impact;injured|Injury grunt;heavy_wound|Heavy wound;incapacitated|Incapacitated;death|Death fall;melee|Melee shove;buttstroke|Weapon butt strike;stagger|Stagger;knockback|Knockback;body_fall|Body falls;helmet_hit|Helmet impact;suppression|Suppression near miss;stun|Stun reaction;recover|Recovery;casualty_drag|Drag casualty;revive|Medical intervention;blood_drop|Blood drip;spent_casing|Casing scatter
 `},
- {group:'people',family:'voice',live:'surrender',items:`
+ {group:'people',family:'voice',live:'surrender,enemy_callout,enemy_suspicious',items:`
 surrender|Surrender cue;enemy_alert|Enemy alerted;enemy_suspicious|Suspicion;enemy_spot|Enemy spots operator;enemy_callout|Enemy callout;enemy_pain|Enemy pain;enemy_flee|Enemy flees;enemy_reloading|Enemy reload;enemy_search|Enemy searching;civilian_gasp|Civilian gasp;civilian_scream|Civilian scream;civilian_cry|Civilian distress;civilian_compliance|Civilian complies;civilian_restrained|Civilian restrained;civilian_release|Civilian released;operator_contact|Contact call;operator_clear|Room clear;operator_reloading|Reloading call;operator_injured|Operator wounded;operator_stack|Stack up;radio_report|Radio report
 `},
  {group:'environment',family:'ambient',items:`

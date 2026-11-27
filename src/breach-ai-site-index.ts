@@ -65,16 +65,40 @@ export function buildAiSiteIndex(site:Site|null,cover:readonly Obstacle[],doors:
  }
  return {anchors,areas,portals,observations};
 }
-const indexes=new WeakMap<SessionWorldGeometry,{revision:number;doorKey:string;site:Site|null;index:AiSiteIndex}>();
+type DoorThreshold={id:string;ax:number;ay:number;bx:number;by:number};
+const indexes=new WeakMap<SessionWorldGeometry,{revision:number;thresholds:DoorThreshold[];site:Site|null;index:AiSiteIndex}>();
+function sameThresholds(previous:readonly DoorThreshold[],doors:readonly Door[]):boolean{
+ if(previous.length!==doors.length)return false;
+ for(let i=0;i<doors.length;i++){
+  const old=previous[i],door=doors[i];
+  if(old.id!==door.id||old.ax!==door.a.x||old.ay!==door.a.y||old.bx!==door.b.x||old.by!==door.b.y)return false;
+ }
+ return true;
+}
 export function aiSiteIndex(world:SessionWorldGeometry,doors:readonly Door[]):AiSiteIndex{
- const revision=world.revision;
- // Leaves opening/closing do not alter their threshold. Geometry edits do.
- const doorKey=doors.map(d=>[d.id,d.a.x,d.a.y,d.b.x,d.b.y].join(':')).join('|');
+ const revision=world.revision,site=world.site;
  const cached=indexes.get(world);
- if(cached&&cached.revision===revision&&cached.doorKey===doorKey&&cached.site===world.site)return cached.index;
- const index=buildAiSiteIndex(world.site,world.cover,doors);
- indexes.set(world,{revision,doorKey,site:world.site,index});
+ // Read scalar thresholds directly on a cache hit. No per-query strings,
+ // nested arrays or map allocations. In-place geometry edits still invalidate.
+ if(cached&&cached.revision===revision&&cached.site===site&&sameThresholds(cached.thresholds,doors))return cached.index;
+ const index=buildAiSiteIndex(site,world.cover,doors);
+ const thresholds=doors.map(d=>({id:d.id,ax:d.a.x,ay:d.a.y,bx:d.b.x,by:d.b.y}));
+ indexes.set(world,{revision,thresholds,site,index});
  return index;
+}
+const adjacencyCache=new WeakMap<AiSiteIndex,ReadonlyMap<string,readonly string[]>>();
+function adjacencyFor(index:AiSiteIndex){
+ const cached=adjacencyCache.get(index);if(cached)return cached;
+ const map=new Map<string,Set<string>>();
+ for(const p of index.portals){
+  if(p.kind==='window')continue;
+  for(const id of p.areas){
+   let set=map.get(id);if(!set)map.set(id,set=new Set());
+   for(const other of p.areas)if(other!==id)set.add(other);
+  }
+ }
+ const adjacency=new Map([...map].map(([id,ids])=>[id,[...ids]]));
+ adjacencyCache.set(index,adjacency);return adjacency;
 }
 /** Adjacent area proposals only; windows are never treated as walkable edges. */
 function connectedAreaIds(index:AiSiteIndex,from:Pt,maxHops:number):string[]{
@@ -84,9 +108,9 @@ function connectedAreaIds(index:AiSiteIndex,from:Pt,maxHops:number):string[]{
  let frontier=[current.id];
  for(let hop=0;hop<Math.min(3,Math.max(0,Math.floor(maxHops)))&&frontier.length;hop++){
   const next=new Set<string>();
-  for(const p of index.portals)
-   if(p.kind!=='window'&&p.areas.some(id=>frontier.includes(id)))
-    for(const id of p.areas)if(!visited.has(id))next.add(id);
+  const adjacency=adjacencyFor(index);
+  for(const current of frontier)
+   for(const id of adjacency.get(current)??[])if(!visited.has(id))next.add(id);
   frontier=index.areas.filter(a=>next.has(a.id)).map(a=>a.id);
   for(const id of frontier){visited.add(id);result.push(id);}
  }

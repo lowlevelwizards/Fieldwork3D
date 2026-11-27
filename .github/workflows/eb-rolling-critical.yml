@@ -1,0 +1,74 @@
+name: EB rolling enemy identity critical
+on:
+  push:
+    branches: [feature/eb-enemy-behavior-identity-20261126]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: eb-critical-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Critical identity, AI, geometry, combat and production contracts
+        run: |
+          npm run check
+          node --experimental-strip-types --test tests/eb-foundation.test.mjs tests/eb-intelligence.test.mjs tests/briefing-composer.test.mjs tests/briefing-mission-facts.test.mjs tests/briefing-card-v3.test.mjs tests/briefing-campaign-continuity.test.mjs tests/oc-optional-intel.test.mjs tests/ea-foundation.test.mjs tests/awareness-ai-policy.test.mjs tests/breach-roadmap4-ai-reconciliation.test.mjs tests/breach-roadmap2-stage9-enemy-ai.test.mjs tests/release6-doctrine.test.mjs tests/release5-objective-response.test.mjs tests/release6-mission-identity.test.mjs tests/awareness-team-commitment-e2a.test.mjs tests/breach-ai-work-scheduler-performance.test.mjs tests/breach-encounter-readiness.test.mjs tests/worldgen-encounter-groups.test.mjs tests/worldgen-encounter-roles.test.mjs tests/worldgen-encounter-integration.test.mjs tests/dispatch-d15-suspect-restraint.test.mjs tests/dispatch-d15-opportunity-escape-rearm.test.mjs tests/performance-r3-r4-combat-morale.test.mjs tests/awareness-cover.test.mjs tests/breach-roadmap2-acoustic-perception.test.mjs tests/operator-casual-shirts.test.mjs tests/operator-wardrobe-body.test.mjs tests/operator-wardrobe-unified.test.mjs tests/operator-wardrobe-data.test.mjs
+      - name: Independent existing production golden contracts
+        if: always()
+        run: node --experimental-strip-types --test tests/breach-roadmap2-stage1-contracts.test.mjs
+      - name: Build
+        if: always()
+        run: npm run build
+      - name: Browser lab disclosure and comparison smoke
+        if: always()
+        run: |
+          npm install --no-save --package-lock=false playwright@1.65.1
+          npx playwright install chromium
+          node scripts/verification/ea-ai-lab-browser.mjs
+      - uses: actions/checkout@v4
+        if: always()
+        with:
+          ref: a017d8c0b40da0801ab9f528b7db6d790f67a87a
+          path: eb-base
+      - name: Pair exact real-session scale and encounter outcomes
+        if: always()
+        run: |
+          mkdir -p artifacts/eb
+          cp scripts/audit-eb-rescue.mjs eb-base/scripts/
+          ln -s "$PWD/node_modules" eb-base/node_modules
+          (cd eb-base && node --experimental-strip-types scripts/audit-eb-rescue.mjs ../artifacts/eb/base-rescue.json)
+          node --experimental-strip-types scripts/audit-eb-rescue.mjs artifacts/eb/candidate-rescue.json
+          node scripts/verify-eb-rescue-pair.mjs artifacts/eb/base-rescue.json artifacts/eb/candidate-rescue.json
+          cp scripts/audit-eb0-scale.mjs eb-base/scripts/
+          (cd eb-base && GITHUB_SHA=a017d8c0b40da0801ab9f528b7db6d790f67a87a node --experimental-strip-types scripts/audit-eb0-scale.mjs ../artifacts/eb/base-scale.json)
+          node --experimental-strip-types scripts/audit-eb0-scale.mjs artifacts/eb/candidate-scale.json
+          node --experimental-strip-types scripts/audit-eb0-scale.mjs artifacts/eb/repeat-scale.json
+          node scripts/compare-eb0-scale.mjs artifacts/eb/base-scale.json artifacts/eb/candidate-scale.json artifacts/eb/repeat-scale.json
+          cp scripts/audit-ea0-enemy-baseline.mjs eb-base/scripts/
+          (cd eb-base && EA_REVISION=a017d8c0b40da0801ab9f528b7db6d790f67a87a EA_OUTPUT="$GITHUB_WORKSPACE/artifacts/eb/base-entry.json" node --experimental-strip-types scripts/audit-ea0-enemy-baseline.mjs --quick)
+          EA_REVISION="$GITHUB_SHA" EA_OUTPUT=artifacts/eb/candidate-entry.json node --experimental-strip-types scripts/audit-ea0-enemy-baseline.mjs --quick
+          node scripts/compare-ea-baseline.mjs artifacts/eb/base-entry.json artifacts/eb/candidate-entry.json artifacts/eb/entry-delta.json
+          EA_REVISION="$GITHUB_SHA" EA_OUTPUT=artifacts/eb/repeat-entry.json node --experimental-strip-types scripts/audit-ea0-enemy-baseline.mjs --quick
+          node scripts/verify-eb-behavior-pairs.mjs artifacts/eb/base-entry.json artifacts/eb/candidate-entry.json artifacts/eb/repeat-entry.json
+      - name: EB22 matched group and experience matrix
+        if: always()
+        run: |
+          mkdir -p artifacts/eb
+          node --experimental-strip-types scripts/audit-eb22-profile-matrix.mjs artifacts/eb/profile-matrix.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eb-baseline-and-candidate
+          path: |
+            artifacts/eb/*
+            artifacts/ea/*
+          if-no-files-found: warn

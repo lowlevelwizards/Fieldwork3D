@@ -26,25 +26,26 @@ import {observeSuspicion,exhaustSuspicionSearch} from './breach-ai-suspicion.ts'
 import {bestBelief,addObservation} from './breach-awareness.ts';
 import {reconcileEnemyIntent,reconcileEnemyPosture} from './breach-ai-reconciliation.ts';
 import {chooseCombatAction} from './breach-ai-combat.ts';
-import {contactTactic,shouldSeekHoldCover} from './breach-ai-tactical-response.ts';
+import {shouldSeekHoldCover} from './breach-ai-tactical-response.ts';
 import {reportToListener} from './breach-communication.ts';
 import {missionGroupResponse} from './breach-ai-coordination.ts';
 import {stableCoordination,renewCoordinationUntil} from './breach-ai-team-commitment.ts';
-import {coverMoveDeadline,coverMoveCommitted} from './breach-ai-position-commitment.ts';
+import {coverMoveDeadline,coverMoveCommitted,defensiveTravelState} from './breach-ai-position-commitment.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo,stalledInvestigationAction} from './breach-ai-investigation.ts';
-import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
+import {routineDwellSeconds,contextualRoutineDwell,ambientStationary} from './breach-ai-routine-dwell.ts';
 import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
 import {captureTargetMayWithdraw,missionObjectiveResponse} from './breach-ai-mission-response.ts';
 import {retreatDoorClosureEligible,routineDoorClosureEligible} from './breach-ai-door-response.ts';
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
 import {localFixtureObservation} from './breach-ai-contextual-observation.ts';
-import {doctrineForPurpose} from './breach-ai-doctrine.ts';
+import {enemyPeersByGroup} from './breach-ai-morale.ts';
+import {encounterDoctrine} from './breach-ai-doctrine.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
 import {aiSiteIndex,connectedAreaCenters,groupObservationProposals} from './breach-ai-site-index.ts';
-import {clearNpcSearch,clearNpcCoordination,commitNpcWithdrawal,canAcceptNpcAssignment} from './breach-ai-task-state.ts';
-import {recentlyChecked,rememberChecked} from './breach-ai-search-memory.ts';
+import {clearNpcSearch,clearNpcCoordination,commitNpcWithdrawal,attemptNpcWithdrawal,canAcceptNpcAssignment} from './breach-ai-task-state.ts';
+import {recentlyChecked,rememberChecked,canRecordInspection} from './breach-ai-search-memory.ts';
 
 /** The authoritative simulation owns the motor, shot/geometry, visibility and
  * event ports. The AI owns observation response, tactical commitments and
@@ -120,8 +121,9 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   // Sound events expire quickly. The optional muzzle-clearance early return
   // must not consume away an actionable noise before the guard can react.
   const strongest=scanEnemySoundEvidence(s,a);
-  const freshAlarm=strongest&&
-    ['investigate','alarm'].includes(npcSoundResponse(strongest.kind,strongest.intensity,a.npcIdentity));
+  const noiseDisposition=strongest?
+    npcSoundResponse(strongest.kind,strongest.intensity,a.npcIdentity):'ignore';
+  const freshAlarm=!!strongest&&(noiseDisposition==='investigate'||noiseDisposition==='alarm');
   // The same local clearance motor is available to red and blue, but
   // never outranks a defensive withdrawal or interrupts a timed traversal.
   if(a.fireRetreatTarget){
@@ -220,16 +222,8 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       laneClear:lane.blocker==='clear',ammunition:a.magazine,
       suppression:a.suppression,morale:a.morale,temperament:a.personality});
     if(a.combatChoice==='withdraw'&&a.alert!=='retreat'&&s.seconds>=(a.withdrawRetryAt??0)){
-      const safe=defensivePosition(a,b.p,s,'shelter');
-      const tactic=contactTactic(a.combatChoice,!!safe&&d(safe,a.p)>11);
-      if(tactic.withdraw&&safe){
+      if(attemptNpcWithdrawal(a,s.seconds,()=>defensivePosition(a,b.p,s,'shelter'),11,true)==='committed')
         pendingInvestigation.delete(a);
-        commitNpcWithdrawal(a,safe,s.seconds);
-      }else{
-        // No physically reachable retreat: stop advancing and keep
-        // watch instead of attempting an impossible escape.
-        a.alert='cover';a.nav=[];a.defense=null;a.withdrawRetryAt=s.seconds+1.5;
-      }
     }
     if(a.combatChoice==='hold'&&a.alert!=='retreat'){
       // HOLD is not permission to repeatedly cancel and replan movement.
@@ -291,8 +285,6 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.alert='investigating';a.contact=a.heard??a.contact;
   }
   reconcileEnemyPosture(s,a,visible);
-  const noiseDisposition=strongest?
-    npcSoundResponse(strongest.kind,strongest.intensity,a.npcIdentity):'ignore';
   if(strongest&&noiseDisposition==='orient'&&!visible.length&&
      !a.contacted&&a.alert!=='retreat'){
     a.heard=clone(strongest.estimate);a.alert='suspicious';
@@ -304,7 +296,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
      a.encounterReactionUntil===Number.POSITIVE_INFINITY){
     a.encounterReactionStartedAt=s.seconds;
     a.encounterReactionUntil=s.seconds+encounterReactionDelay(
-      a.encounterReadiness??'attentive',a.id);
+      a.encounterReadiness??'attentive',a.id,0,a.encounterGroupId?a.npcIdentity?.competence:undefined);
   }
   if(strongest&&!visible.length&&a.alert!=='retreat'&&
      (!(a.coordinationRole&&s.seconds<a.coordinationUntil)||noiseDisposition==='alarm')){
@@ -339,10 +331,12 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       distanceOfEvidenceToPost:d(heard,s.scenario.objective),
       heardActionableEvidence:noiseDisposition==='alarm'||
         noiseDisposition==='investigate',
-      directSight:visible.length>0,suppression:a.suppression
+      directSight:visible.length>0,suppression:a.suppression,
+      motivation:a.encounterGroupId?a.npcIdentity?.motivation:undefined
     });
     const needsCover=a.personality==='cautious'||
-      (a.personality==='guard'&&a.morale<.65);
+      (a.personality==='guard'&&a.morale<.65)||
+      (a.encounterGroupId&&a.npcIdentity?.motivation==='survive'&&noiseDisposition==='alarm'&&a.morale<.72);
     if(objectiveResponse==='hold-post'){
       // Objective position is assigned mission geography, not enemy intel.
       a.defense=defensivePosition(a,heard,s);
@@ -371,7 +365,8 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     confirmedSight:visible.length>0,heardAlarm,
     hasEstimate:!!threatEstimate,
     isAlreadyWithdrawing:a.alert==='retreat',
-    secondsSinceAttempt:s.seconds-a.lastMissionEvadeAt
+    secondsSinceAttempt:s.seconds-a.lastMissionEvadeAt,
+    motivation:a.encounterGroupId?a.npcIdentity?.motivation:undefined
   })&&threatEstimate){
     a.lastMissionEvadeAt=s.seconds;
     const safe=defensivePosition(a,threatEstimate,s,'shelter');
@@ -446,7 +441,8 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         if(a.watch)rotate(a,angle(a.p,a.watch),dt,s);
       }
       a.routineIndex=visit+1;
-      a.routinePauseUntil=s.seconds+routineDwellSeconds(a.id,
+      const dwell=a.encounterGroupId?contextualRoutineDwell:routineDwellSeconds;
+      a.routinePauseUntil=s.seconds+dwell(a.id,
         a.encounterActivity??'idle',index,visit,a.npcIdentity?.patience);
       a.nav=[];a.velocity=0;
       return;
@@ -466,6 +462,17 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       a.routinePauseUntil=s.seconds+4;a.velocity=0;return;
     }
     approach(a,target,dt,s,.52);return;
+  }
+  // Generated stationary people retain their assigned post or quiet activity.
+  // Once evidence has faded they can settle without a gratuitous cover search.
+  // Existing authored routines above still take priority.
+  if(a.encounterGroupId&&!a.contacted&&!a.contact&&a.alert==='idle'&&
+     ambientStationary(a.encounterActivity,a.encounterRole)){
+    a.velocity=0;
+    if(a.nav.length)a.nav=[];
+    if(a.defense)a.defense=null;
+    if(a.watch)rotate(a,angle(a.p,a.watch),dt,s);
+    return;
   }
   // Unprepared occupants do not automatically run to combat positions.
   // Any credible sound or visual contact above interrupts this inactivity.
@@ -568,6 +575,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
     return;
   }
+  let recoveringSearch=!!a.searchRecoveryPending;
   if(a.contact&&a.alert==='investigating'&&!visible.length){
     // A failed approach is not proof that the disturbance vanished. Move
     // through remaining uncertain probes or eventually settle back down.
@@ -579,10 +587,11 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
     const recovery=stalledInvestigationAction(a.blockedTime,a.searchQueue.length);
     if(recovery==='inspect-next'){
+      recoveringSearch=true;a.searchRecoveryPending=true;
       a.nav=[];a.contact=clone(a.p);
       a.searchPauseUntil=s.seconds-.01;
     }else if(recovery==='stand-down'){
-      a.nav=[];a.contact=null;a.searchOrigin=null;a.alert='cover';
+      clearNpcSearch(a);a.nav=[];a.contact=null;a.alert='cover';
       exhaustSuspicionSearch(a.suspicion,s.seconds);
       a.defenseUntil=s.seconds+2;
     }
@@ -599,7 +608,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         if(result.kind==='pending'){a.velocity=0;return;}
         if(result.kind==='found'){
           a.nav=result.route;
-          if(d(result.point,a.contact)>0&&!a.searchOrigin){
+          if(!a.searchOrigin){
             a.searchOrigin=clone(a.contact);
             a.searchQueue=searchCandidates(a.searchOrigin,
               bestBelief(a.awareness)?.uncertainty??65,
@@ -608,7 +617,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
           a.contact=clone(result.point);
         }else{
           a.alert='cover';a.contact=null;a.defense=null;
-          a.searchOrigin=null;a.searchQueue=[];a.searchPauseUntil=0;
+          clearNpcSearch(a);
           exhaustSuspicionSearch(a.suspicion,s.seconds);
         }
       }
@@ -633,7 +642,8 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         a.velocity=0;rotate(a,angle(a.p,a.contact),dt,s);return;
       }
       const checked=a.checkedSearchAreas??(a.checkedSearchAreas=[]);
-      if(rememberChecked(checked,a.p,s.seconds,a.suspicion.lastEvidenceAt,'personal')&&
+      if(canRecordInspection(recoveringSearch,d(a.p,a.contact),s.seconds,a.searchPauseUntil)&&
+         rememberChecked(checked,a.p,s.seconds,a.suspicion.lastEvidenceAt,'personal')&&
          a.encounterGroupId&&s.seconds-(a.lastSearchReportAt??-100)>2&&
          enemies(s).some(peer=>peer!==a&&activeCombatant(peer)&&peer.encounterGroupId===a.encounterGroupId)){
         s.reports.push({id:s.nextReportId++,senderId:a.id,at:s.seconds,
@@ -660,9 +670,9 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       if(next){
         a.contact=clone(next);
         // Inspect only after arriving at the next search point.
-        a.searchPauseUntil=0;
+        a.searchPauseUntil=0;a.searchRecoveryPending=false;
       }else if(!a.searchQueue.length){
-        a.alert='cover';a.contact=null;a.searchOrigin=null;
+        a.alert='cover';a.contact=null;clearNpcSearch(a);
         exhaustSuspicionSearch(a.suspicion,s.seconds);
         a.searchPauseUntil=0;
         a.defense=defensivePosition(a,a.heard??a.p,s);
@@ -675,9 +685,20 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
   }
   if(a.alert==='cover'&&a.defense&&d(a.p,a.defense)>10){
-    if(!a.nav.length)a.nav=cachedEnemyRoute(s,a.p,a.defense);
-    if(a.nav.length)approach(a,a.defense,dt,s,.7);
-    else{a.defense=null;a.defenseUntil=s.seconds+.8;}
+    // A destination has a finite physical commitment. Don't retry a
+    // blocked elective cover route sixty times a second.
+    if(a.encounterGroupId&&defensiveTravelState(d(a.p,a.defense),a.blockedTime,s.seconds,a.defenseUntil)==='expired'){
+      a.defense=null;a.nav=[];a.velocity=0;a.defenseUntil=s.seconds+.8;
+    }else{
+      if(!a.nav.length){
+        if(a.encounterGroupId&&!visible.length&&!electiveAiWork(s,a,'cover-route')){
+          a.velocity=0;return;
+        }
+        a.nav=cachedEnemyRoute(s,a.p,a.defense);
+      }
+      if(a.nav.length)approach(a,a.defense,dt,s,.7);
+      else{a.defense=null;a.defenseUntil=s.seconds+.8;}
+    }
   }
   if(!a.contact&&a.watch)rotate(a,angle(a.p,a.watch),dt,s);
 }
@@ -686,19 +707,23 @@ function distributeReports(s:Session){
  const world=sessionWorldGeometry(s);
  if(!s.reports.some(report=>s.seconds-report.at<=1.5))return;
  const roster=enemies(s);
+ const byId=new Map(roster.map(a=>[a.id,a]));
+ const byGroup=enemyPeersByGroup(roster);
  for(const report of s.reports){
   if(s.seconds-report.at>1.5)continue;
-  const sender=roster.find(a=>a.id===report.senderId);
+  const sender=byId.get(report.senderId);
   if(!sender)continue;
   const eligible=(a:TeamActor)=>activeCombatant(a)&&
     a.encounterGroupId===sender.encounterGroupId;
-  const newlyInformed:string[]=[];
-  for(const recipient of roster){
-   if(!eligible(recipient)||report.deliveredTo.includes(recipient.id))continue;
+  const peers=byGroup.get(sender.encounterGroupId)??[];
+  const newlyInformed=new Set<string>();
+  const delivered=new Set(report.deliveredTo);
+  for(const recipient of peers){
+   if(!eligible(recipient)||delivered.has(recipient.id))continue;
    const observation=reportToListener(report,recipient.id,recipient.p,
      s.doors,world.walls,s.seconds);
    if(!observation)continue;
-   report.deliveredTo.push(recipient.id);
+   report.deliveredTo.push(recipient.id);delivered.add(recipient.id);
    addObservation(recipient.awareness,observation);
    if(report.kind==='area-checked'){
     if(observation.uncertainty<=30&&report.at>=recipient.suspicion.lastEvidenceAt)
@@ -706,7 +731,7 @@ function distributeReports(s:Session){
         observation.estimate,report.at,recipient.suspicion.lastEvidenceAt,'report');
     continue;
    }
-   newlyInformed.push(recipient.id);
+   newlyInformed.add(recipient.id);
    observeSuspicion(recipient.suspicion,{
      id:observation.id,at:s.seconds,kind:'report',
      cause:'heard-verbal-warning'
@@ -725,9 +750,9 @@ function distributeReports(s:Session){
   // A report may reach another ally on a later tick. The earlier
   // investigator keeps their role; only newcomers receive fresh orders.
   // Never coordinate an actor who did not actually hear the report.
-  if(!newlyInformed.length)continue;
-  const listeners=roster.filter(a=>eligible(a)&&
-    report.deliveredTo.includes(a.id)&&a.alert!=='retreat'&&!a.retreatPoint&&a.intent?.kind!=='engage');
+  if(!newlyInformed.size)continue;
+  const listeners=peers.filter(a=>eligible(a)&&
+    delivered.has(a.id)&&a.alert!=='retreat'&&!a.retreatPoint&&a.intent?.kind!=='engage');
   const prior=stableCoordination(listeners,s.seconds);
   // For a sound warning, the person who heard and raised it is already
   // investigating. Recipients can watch/support instead of duplicating
@@ -741,18 +766,17 @@ function distributeReports(s:Session){
   const committed={...(report.assignedRoles??{}),...prior,
        ...(reporter?{[reporter.id]:'investigate' as const}:{})};
   const roles=missionGroupResponse(participants,report.estimate,
-      committed,s.missionType,s.scenario.objective);
+      committed,s.missionType,s.scenario.objective,sender.encounterGroupId?sender.npcIdentity?.groupKind:undefined);
   report.assignedRoles=roles;report.coordinated=true;
   for(const a of listeners){
-   if(!newlyInformed.includes(a.id)||!canAcceptNpcAssignment(a,s.seconds))continue;
+   if(!newlyInformed.has(a.id)||!canAcceptNpcAssignment(a,s.seconds))continue;
    a.coordinationRole=roles[a.id];a.coordinationReportId=report.id;
    const heard=a.awareness.observations.find(observation=>
      observation.id==='report/'+report.id+'/'+a.id);
-   const purpose=s.site?.encounter?.groups.find(g=>
-     g.id===a.encounterGroupId)?.purpose;
+   const group=s.site?.encounter?.groups.find(g=>g.id===a.encounterGroupId);
    a.coordinationUntil=renewCoordinationUntil(s.seconds,a.coordinationUntil,
      roles[a.id],heard?.uncertainty??report.uncertainty,
-     doctrineForPurpose(purpose),a.npcIdentity);
+     encounterDoctrine(group),a.npcIdentity);
    const covering=roles[a.id]==='watch'||roles[a.id]==='support';
    if(covering&&a.intent?.kind!=='engage'&&a.alert!=='retreat'&&
       !a.retreatPoint){

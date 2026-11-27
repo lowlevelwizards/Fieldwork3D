@@ -115,3 +115,12 @@ export function campaignDeploymentSettings(
  const scale:SiteScale=rules.scale==='contract'?contract.scale:rules.scale;
  return {intel,scale};
 }
+
+/** EB20: explicit campaign-context bridge; a retained campaign must never
+ * affect Quick Play, training, or a restored resolved site. */
+export function campaignEnemyContext(mode:string,campaign:{rules?:CampaignRules}|null):
+ import('./worldgen/encounter-types.ts').EncounterContext['forceContext']{
+ if(mode!=='mission'||!campaign)return undefined;
+ const template=effectiveCampaignRules(campaign).template;
+ return template==='operations'?'military':template==='wasteland'?'survival':'civilian';
+}

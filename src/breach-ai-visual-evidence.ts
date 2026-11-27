@@ -46,7 +46,7 @@ export function scanEnemyVisualEvidence(s:Session,a:TeamActor,dt:number,
   const first=visible[0];
   a.encounterReactionUntil=s.seconds+encounterReactionDelay(
    a.encounterReadiness??'attentive',a.id,
-   Math.hypot(first.p.x-a.p.x,first.p.y-a.p.y));
+   Math.hypot(first.p.x-a.p.x,first.p.y-a.p.y),a.encounterGroupId?a.npcIdentity?.competence:undefined);
  }
  return visible;
 }

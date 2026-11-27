@@ -2,6 +2,8 @@
  * Deterministic initialization, actual observation, timed collection and
  * extraction accountability. No renderer, save or AI owns these records.
  */
+import {AI_GROUP_PROFILES,AI_GROUP_KINDS,AI_COMPETENCE,type AiGroupKind,type AiCompetence} from './breach-ai-group-profiles.ts';
+import type {ThreatGroupFacts} from './briefing/threat-dossier.ts';
 import type {Site} from './breach-site.ts';
 import {pointToSegment,type Pt,type Obstacle} from './breach-core.ts';
 import {visibleSurfaceHeight} from './worldgen/decoration-anchors.ts';
@@ -12,6 +14,8 @@ export type OptionalIntelItem={
  id:string;kind:OptionalIntelKind;p:Pt;roomId:string;
  /** p is the accessible contact/observation anchor, surface is the visual prop. */
  model?:OptionalIntelModel;surface?:{p:Pt;height:number;yaw:number;fixture:string;supportIndex?:number;supportOrigin?:Pt};
+ /** Starting issue only; never coordinates or current actor state. */
+ evidence?:IntelEvidence;
  discovered:boolean;collectedBy:string|null;collectedAt:number|null;
 };
 export type OptionalIntelGather={itemId:string;operatorId:string;elapsed:number};
@@ -239,4 +243,71 @@ export function optionalIntelRecovered(s:IntelMission):OptionalIntelItem[]{
    ...(s.extractedOperators??[]).filter(a=>a.side==='blue'&&a.health>0)
   ].map(a=>a.id));
  return s.optionalIntel.filter(i=>i.collectedBy!==null&&holders.has(i.collectedBy));
+}
+
+/** EB18: only the extraction-accountable item IDs can enter the archive.
+ * A receipt is evidence type, not an omniscient identity or location dump. */
+export type IntelEvidence={
+ topic:'affiliation'|'personnel'|'equipment'|'associates';group:AiGroupKind;
+ tiers?:AiCompetence[];equipment?:string[];
+};
+export type RecoveredIntelReceipt={id:string;kind:OptionalIntelKind;model?:OptionalIntelModel;evidence?:IntelEvidence};
+/** Link an authored fictional record to one actual starting affiliation.
+ * The item's own identity selects a stable subject, independently of AI RNG.
+ * Evidence describes a prior record, not live positions or a future roster. */
+export function attachIntelEvidence(items:readonly OptionalIntelItem[],groups:readonly ThreatGroupFacts[]):void{
+ if(!groups.length)return;
+ for(const item of items){
+  let hash=2166136261;for(const ch of item.id)hash=Math.imul(hash^ch.charCodeAt(0),16777619);
+  const g=groups[(hash>>>0)%groups.length];
+  const topic:IntelEvidence['topic']=item.model==='papers'||item.model==='notebook'?'personnel':
+   item.kind==='digital'?'equipment':item.kind==='communications'?'associates':'affiliation';
+  item.evidence={topic,group:g.kind,
+   ...(topic==='personnel'?{tiers:[...g.tiers]}:{}),
+   ...(topic==='equipment'?{equipment:[...g.weapons,...g.armor].slice(0,12)}:{})};
+ }
+}
+function validIntelEvidence(raw:unknown):raw is IntelEvidence{
+ if(!raw||typeof raw!=='object')return false;
+ const e=raw as IntelEvidence;
+ return ['affiliation','personnel','equipment','associates'].includes(e.topic)&&AI_GROUP_KINDS.includes(e.group)&&
+  (e.tiers===undefined||Array.isArray(e.tiers)&&e.tiers.length<=4&&e.tiers.every(t=>AI_COMPETENCE.includes(t)))&&
+  (e.equipment===undefined||Array.isArray(e.equipment)&&e.equipment.length<=12&&e.equipment.every(x=>typeof x==='string'&&x.length<=120));
+}
+export function evidenceDescription(e:IntelEvidence):string{
+ const group=AI_GROUP_PROFILES[e.group].label;
+ return group+' — '+(e.topic==='personnel'?'personnel records'+(e.tiers?.length?': '+e.tiers.join(', '):''):
+  e.topic==='equipment'?'equipment records'+(e.equipment?.length?': '+e.equipment.join(', '):''):
+  e.topic==='associates'?'communications / associated contacts':'affiliation record');
+}
+export function validRecoveredIntelReceipt(raw:unknown):raw is RecoveredIntelReceipt{
+ if(!raw||typeof raw!=='object')return false;
+ const r=raw as RecoveredIntelReceipt;
+ return typeof r.id==='string'&&r.id.length>0&&r.id.length<=200&&
+  ['documents','communications','digital'].includes(r.kind)&&
+  (r.model===undefined||['folder','papers','laptop','flash-drive','phone','notebook'].includes(r.model))&&
+  (r.evidence===undefined||validIntelEvidence(r.evidence));
+}
+export function recoveredIntelReceipts(items:readonly OptionalIntelItem[],recoveredIds:readonly string[]):RecoveredIntelReceipt[]{
+ const ids=new Set(recoveredIds),seen=new Set<string>(),out:RecoveredIntelReceipt[]=[];
+ for(const item of items){
+  if(!ids.has(item.id)||item.collectedBy===null||item.collectedAt===null||seen.has(item.id))continue;
+  const receipt={id:item.id,kind:item.kind,model:item.model,
+   ...(item.evidence?{evidence:structuredClone(item.evidence)}:{})};
+  if(!validRecoveredIntelReceipt(receipt))continue;
+  seen.add(item.id);out.push(receipt);
+  if(out.length>=6)break;
+ }
+ return out;
+}
+
+export function recoveredEvidenceSummary(items:readonly RecoveredIntelReceipt[]):string{
+ const groups=new Map<string,number>();
+ for(const item of items){
+  const label=(item.model??item.kind).replaceAll('-',' ');
+  groups.set(label,(groups.get(label)??0)+1);
+ }
+ const contents=[...new Set(items.flatMap(item=>item.evidence?[evidenceDescription(item.evidence)]:[]))];
+ return [...groups].map(([label,n])=>n+' × '+label).join(' · ')+
+  (contents.length?' | PRIOR RECORDS: '+contents.join(' ; '):'');
 }

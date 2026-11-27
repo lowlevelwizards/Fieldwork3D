@@ -25,6 +25,10 @@ export type EncounterContext = {
   civilianPolicy?:'scenario'|'on'|'off';
   /** Future inspector override; the default always derives from identity. */
   premise?:EncounterPremise;
+  /** EB5: optional scenario profile; ordinary generation resolves identity from context. */
+  groupProfile?:import('../breach-ai-group-profiles.ts').AiGroupKind;
+  /** Military profiles are only sampled in a military context; explicit scenario overrides remain available. */
+  forceContext?:'civilian'|'military'|'survival';
   /** Developer opt-in until B5–B8 are physically and visually integrated. */
   enableCivilians?:boolean;
   /** Experimental B5: only set by the Briefing Lab. */
@@ -52,7 +56,7 @@ export type CivilianSpec={
 export type EncounterGroup = {
   id:string;purpose:'occupants'|'security'|'organised'|'response'|'target';
   zoneId?:string;members:string[];
-  /** Optional authored scenario identity; ordinary generation remains unchanged. */
+  /** Resolved group identity; absent on legacy saved plans. */
   behaviorProfile?:import('../breach-ai-identity.ts').AiGroupKind;
   competenceOverride?:import('../breach-ai-identity.ts').AiCompetence;
 };
