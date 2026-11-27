@@ -35,14 +35,14 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
  // Real mounting bridge, broad enough to clear the trouser seam, not a
  // floating tab. All other surface details stay on the underlying mesh.
  b('fabric',0,-.16,.10,.68,.32,.20,'mount-bridge');
- const open=(cx:number,cw:number,bottom:number,top:number,mark?:GearMark)=>{
+ const open=(cx:number,cw:number,bottom:number,top:number,mark?:GearMark,channel:AttachmentMaterial='fabric')=>{
   const h=top-bottom,cy=(top+bottom)*.5;
   // Four separate walls plus a floor, meeting at edges, not overlapping
   // coplanar face strips. Interior aperture remains real.
-  b('fabric',cx,cy,.25,cw,h,.18,'back-wall');
-  b('fabric',cx,cy,.89,cw,h,.20,'front-wall',mark);
-  for(const s of [-1,1])b('fabric',cx+s*cw*.435,cy,.565,cw*.13,h,.45,'side-wall');
-  b('dark',cx,bottom+.07,.565,cw*.74,.14,.45,'floor');
+  b(channel,cx,cy,.25,cw,h,.18,'back-wall');
+  b(channel,cx,cy,.89,cw,h,.20,'front-wall',mark);
+  for(const s of [-1,1])b(channel,cx+s*cw*.45,cy,.565,cw*.10,h,.45,'side-wall');
+  b('dark',cx,bottom+.07,.565,cw*.80,.14,.45,'floor');
  };
  const closed=(cw:number,bottom:number,top:number,mark:GearMark='flap')=>{
   b('fabric',0,(top+bottom)*.5,.60,cw,top-bottom,.76,'body',mark);
@@ -70,7 +70,7 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
   open(0,.98,-.96,-.28,'band');
   cell(0,-.15,.56,(_p,g)=>{
    // Actual existing carried AR art profile, no arbitrary scaled proxy.
-   const geo=carriedMagazineGeometry('ar-mag30');
+   const geo=carriedMagazineGeometry(variant==='compact'?'ar-mag20':'ar-mag30');
    if(!geo)return;geo.rotateY(Math.PI/2);geo.computeBoundingBox();
    const bounds=geo.boundingBox!,center=bounds.getCenter(new THREE.Vector3());
    geo.translate(-center.x,-bounds.max.y,-center.z);
@@ -89,24 +89,23 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
    });
   }break;
  case 'rigid-holster':
-  open(0,.90,-.98,-.29);
-  b('dark',0,-.67,.92,.85,.56,.16,'molded-shell');
+  open(0,.96,-.98,-.29,undefined,'dark');
   cell(0,-.22,.55,(_p,g)=>{
    const gun=buildGlockAppearance('glock-g19-gen3',{details:false});
    const pivot=glockArtSockets('glock-g19-gen3').holsterPivot;
    gun.position.set(-pivot.x,-pivot.y,-pivot.z);
    const cradle=new THREE.Group();cradle.scale.setScalar(.37);cradle.rotation.z=-Math.PI/2;
-   cradle.add(gun);g.add(cradle);
+   cradle.position.set(-1.45,.95,0);cradle.add(gun);g.add(cradle);
    // Borrow authored geometry; the preview owns no shared weapon materials.
    gun.traverse(o=>{if(o instanceof THREE.Mesh)o.material=palette.contents;});
   });break;
  case 'flap-holster':
-  closed(.91,-.98,-.10);
-  b('fabric',0,-.29,.92,.97,.40,.16,'broad-flap','flap');
+  closed(.91,-.98,-.30);
+  b('fabric',0,-.19,.62,.97,.36,.76,'broad-flap','flap');
   cell(0,-.20,.56);break;
  case 'medical-pouch':
   closed(.98,-.95,-.10,'medical');
-  b('fabric',0,-.13,.62,.95,.25,.72,'grab-handle');
+  b('fabric',0,-.09,.54,.90,.16,.60,'grab-handle');
   cell(0,-.20,.56);break;
  case 'radio-holder':
   open(0,.91,-.96,-.44);
@@ -121,8 +120,8 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
    p('dark',0,-.13,.56,.78,.25,.74,'head');
   });break;
  case 'restraint-pouch':
-  closed(.92,-.95,-.15);
-  b('fabric',0,-.27,.92,.96,.38,.16,'case-flap','flap');break;
+  closed(.92,-.95,-.32);
+  b('fabric',0,-.18,.60,.96,.31,.76,'case-flap','flap');break;
  case 'wedge-holder':
   open(0,.96,-.95,-.38);
   for(let i=0;i<2;i++){

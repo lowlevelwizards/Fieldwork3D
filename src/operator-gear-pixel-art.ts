@@ -22,6 +22,8 @@ export function gearPixelMap(mark:GearMark,w:number,h:number){
    const cx=Math.floor(nx/2),cy=Math.floor(ny/2);
    if((x===cx&&Math.abs(y-cy)<=1)||(y===cy&&Math.abs(x-cx)<=1))tone=38;
   }
+  // Reserve the upper-right corner as the neutral sample for non-art faces.
+  if(x===nx-1&&y===ny-1)tone=255;
   const i=(y*nx+x)*4;pixels[i]=pixels[i+1]=pixels[i+2]=tone;pixels[i+3]=255;
  }
  map=new THREE.DataTexture(pixels,nx,ny,THREE.RGBAFormat);

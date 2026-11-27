@@ -69,9 +69,9 @@ export function createBeltSilhouettes(parent:THREE.Group,fabric:THREE.Material,
     piece(root,hardware,fx+.26,y,side*1.26,.52,.78,.48,'leather-buckle-side');
    }
   }else if(style==='duty-belt'){
-   piece(root,dark,fx+.39,y,0,.78,2.1,3.6,'utility-buckle');
+   piece(root,dark,fx+.39,y,0,.78,2.1,3.4,'utility-buckle');
   }else{
-   piece(root,dark,fx+.24,y,0,.48,1.9,3.5,'quick-release-base');
+   piece(root,dark,fx+.24,y,0,.48,1.9,3.3,'quick-release-base');
    for(const side of [-1,1])
     piece(root,hardware,fx+.69,y,side*.92,.62,1.7,1.48,'quick-release-half');
   }
