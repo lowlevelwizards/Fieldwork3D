@@ -6,6 +6,8 @@ import {readWardrobe,resolvedWardrobe,setWardrobeStyle,setWardrobeFabricSolid,
  setWardrobeFabricCamo,wardrobeConflicts,type WardrobeOptions,type WardrobeSlot}
  from './operator-wardrobe-data.ts';
 import {fabricCamoCompatible} from './operator-fabric-camo-policy.ts';
+import {footwearColorChoices} from './operator-footwear-catalog.ts';
+import {beltSolidChoices} from './operator-belt-profile.ts';
 import {isGloveSolid} from './operator-garment-color-policy.ts';
 import {resolvedTopColorway} from './operator-upper-colorways.ts';
 import {headwearCamoChoices} from './operator-headwear-camo.ts';
@@ -91,6 +93,10 @@ export function resolveFactionReference(input:FactionReference|string,
  // Keep independent historical equipment finishes; a uniform print never
  // implicitly prints a pack or vest. Empty cuts do not consume fabric channels.
  const appearance=reference.gearAppearance;
+ if(appearance?.footwearColor&&!footwearColorChoices(outfit.footwear).includes(appearance.footwearColor))
+  issues.push('Unavailable footwear finish: '+appearance.footwearColor);
+ if(appearance?.beltSolid&&!beltSolidChoices(outfit.beltStyle).includes(appearance.beltSolid))
+  issues.push('Unavailable belt finish: '+appearance.beltSolid);
  for(const [channel,style,empty,solid,print] of [
   ['armor',outfit.armorStyle,'armor-bare',appearance?.armorSolid??reference.gearSolid,appearance?.armorCamo],
   ['gear',outfit.rigStyle,'no-rig',appearance?.rigSolid??reference.gearSolid,appearance?.rigCamo],
@@ -116,6 +122,8 @@ export function resolveFactionReference(input:FactionReference|string,
  if(coverPrint&&!helmetCoverChoices(outfit.headwear).includes(coverPrint))
   incompatibleChannels.push('helmetCover');
  wardrobe=readWardrobe({...wardrobe,
+  ...(appearance?.footwearColor&&footwearColorChoices(outfit.footwear).includes(appearance.footwearColor)?{footwearColor:appearance.footwearColor}:{}),
+  ...(appearance?.beltSolid&&beltSolidChoices(outfit.beltStyle).includes(appearance.beltSolid)?{beltSolid:appearance.beltSolid}:{}),
   ...(appearance?.headwearSolid||reference.headwearColor?
     {headwearColor:appearance?.headwearSolid??reference.headwearColor}:{}),
   ...(headwearPrint&&headwearCamoChoices(outfit.headwear).includes(headwearPrint)?
