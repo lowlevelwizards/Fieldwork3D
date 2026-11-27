@@ -2,6 +2,8 @@
  * These are dated visual proxies, not claims that identical issued equipment existed.
  * Historical equipment colors and print availability remain cut-specific.
  */
+import {FOOTWEAR,type FootwearId} from './operator-footwear-catalog.ts';
+import {BELT_PROFILES,beltSolidChoices,type BeltStyle} from './operator-belt-profile.ts';
 import type {HeadwearCamoId} from './operator-headwear-camo.ts';
 import type {HeadwearSolidColorId} from './operator-headwear-colors.ts';
 import type {GarmentSolidId} from './operator-garment-color-policy.ts';
@@ -13,6 +15,7 @@ export type ReferenceGearAppearance={
  armorCamo?:HeadwearCamoId;armorSolid?:GarmentSolidId;
  rigCamo?:HeadwearCamoId;rigSolid?:GarmentSolidId;
  packCamo?:HeadwearCamoId;packSolid?:GarmentSolidId;
+ footwearColor?:string;beltSolid?:GarmentSolidId;
 };
 export type ReferenceGearProfile={
  kit?:Partial<Record<LoadoutSlot,string>>;
@@ -20,7 +23,7 @@ export type ReferenceGearProfile={
  appearance:ReferenceGearAppearance;
  note:string;
 };
-export const REFERENCE_GEAR_PROFILES:Readonly<Record<string,ReferenceGearProfile>>={
+const BASE_REFERENCE_GEAR_PROFILES:Readonly<Record<string,ReferenceGearProfile>>={
  'usmc-woodland-2005':{kit:{armor:'armor-carrier',backpack:'backpack-field'},styles:{headwear:'pasgt',armorStyle:'plate-legacy',rigStyle:'chest-placard',packStyle:'rucksack'},appearance:{headwearCamo:'woodland-marpat',armorSolid:'coyote',rigSolid:'coyote',packCamo:'woodland-marpat'},
   note:"LWH and Interceptor/MTV are future specialist cuts; PASGT, legacy armor and a pouch panel are closest."},
  'bundeswehr-flecktarn-2000':{kit:{},styles:{headwear:'pasgt',armorStyle:'soft-flak',rigStyle:'field-webbing',packStyle:'rucksack'},appearance:{headwearCamo:'flecktarn',armorSolid:'olive-drab',rigSolid:'olive-drab',packCamo:'flecktarn'},
@@ -37,27 +40,27 @@ export const REFERENCE_GEAR_PROFILES:Readonly<Record<string,ReferenceGearProfile
   note:"Field boonie and printed webbing; Swedish helmet and harness can be refined later."},
  'rhodesian-brushstroke-1975':{kit:{armor:'armor-none',rig:'rig-full',backpack:'backpack-field'},styles:{headwear:'boonie',armorStyle:'armor-bare',rigStyle:'m1956-lce',packStyle:'field-pack'},appearance:{headwearCamo:'rhodesian-brushstroke',rigSolid:'olive-drab',packSolid:'khaki'},
   note:"Period cotton M1956 webbing is closer than modern PLCE; local pattern still varies."},
- 'ukraine-mm14-2022':{kit:{rig:'rig-full'},styles:{headwear:'ach',armorStyle:'plate-standard',rigStyle:'split-front',packStyle:'day-pack'},appearance:{headwearCamo:'ukrainian-mm14',armorCamo:'ukrainian-mm14',rigCamo:'ukrainian-mm14',packCamo:'ukrainian-mm14'},
+ 'ukraine-mm14-2022':{kit:{rig:'rig-full'},styles:{headwear:'ach',armorStyle:'plate-standard',rigStyle:'split-front',packStyle:'assault-pack'},appearance:{headwearCamo:'ukrainian-mm14',armorCamo:'ukrainian-mm14',rigCamo:'ukrainian-mm14',packCamo:'ukrainian-mm14'},
   note:"Contemporary ACH/modular vest proxy; mixed green or coyote pieces remain valid."},
- 'pla-xingkong-2021':{kit:{rig:'rig-full'},styles:{headwear:'ach',armorStyle:'plate-legacy',rigStyle:'full-chest',packStyle:'day-pack'},appearance:{headwearCamo:'pla-xingkong',armorCamo:'pla-xingkong',rigCamo:'pla-xingkong',packCamo:'pla-xingkong'},
+ 'pla-xingkong-2021':{kit:{rig:'rig-full'},styles:{headwear:'ach',armorStyle:'plate-legacy',rigStyle:'full-chest',packStyle:'assault-pack'},appearance:{headwearCamo:'pla-xingkong',armorCamo:'pla-xingkong',rigCamo:'pla-xingkong',packCamo:'pla-xingkong'},
   note:"Broad protective armor and bib approximate the integrated PLA Type 19 vest."},
  'swiss-alpenflage-1980':{kit:{armor:'armor-none',rig:'rig-none',backpack:'backpack-field'},styles:{headwear:'patrol-cap',armorStyle:'armor-bare',rigStyle:'no-rig',packStyle:'field-pack'},appearance:{headwearCamo:'alpenflage',packCamo:'alpenflage'},
   note:"No separate rig: period jacket integrated large load pockets and attached rucksack."},
  'us-desert-1991':{kit:{},styles:{headwear:'pasgt',armorStyle:'soft-flak',rigStyle:'alice-lc2',packStyle:'field-pack'},appearance:{headwearCamo:'six-color-desert',armorCamo:'m81-woodland',rigSolid:'olive-drab',packSolid:'olive-drab'},
   note:"M81 flak over desert uniforms and olive ALICE are intentionally mismatched."},
- 'us-army-ocp-2019':{kit:{rig:'rig-full'},styles:{headwear:'ach',armorStyle:'plate-legacy',rigStyle:'split-front',packStyle:'day-pack'},appearance:{headwearCamo:'scorpion-w2',armorCamo:'scorpion-w2',rigCamo:'scorpion-w2',packCamo:'scorpion-w2'},
+ 'us-army-ocp-2019':{kit:{rig:'rig-full'},styles:{headwear:'ach',armorStyle:'plate-legacy',rigStyle:'split-front',packStyle:'assault-pack'},appearance:{headwearCamo:'scorpion-w2',armorCamo:'scorpion-w2',rigCamo:'scorpion-w2',packCamo:'scorpion-w2'},
   note:"Legacy broad armor best approximates IOTV; split-front approximates TAPS/MOLLE."},
- 'us-army-ucp-2010':{kit:{},styles:{headwear:'ach',armorStyle:'plate-legacy',rigStyle:'split-front',packStyle:'day-pack'},appearance:{headwearCamo:'ucp',armorCamo:'ucp',rigCamo:'ucp',packCamo:'ucp'},
+ 'us-army-ucp-2010':{kit:{},styles:{headwear:'ach',armorStyle:'plate-legacy',rigStyle:'split-front',packStyle:'assault-pack'},appearance:{headwearCamo:'ucp',armorCamo:'ucp',rigCamo:'ucp',packCamo:'ucp'},
   note:"Legacy full-coverage armor is the preferred IOTV-era stand-in."},
  'us-army-m81-1990':{kit:{},styles:{headwear:'pasgt',armorStyle:'soft-flak',rigStyle:'alice-lc2',packStyle:'field-pack'},appearance:{headwearCamo:'m81-woodland',armorCamo:'m81-woodland',rigSolid:'olive-drab',packSolid:'olive-drab'},
   note:"PASGT woodland fragmentation vest plus olive ALICE replace the police-style default."},
  'us-army-dcu-2003':{kit:{armor:'armor-carrier',rig:'rig-full'},styles:{headwear:'pasgt',armorStyle:'plate-legacy',rigStyle:'split-front',packStyle:'assault-pack'},appearance:{headwearCamo:'three-color-desert',armorCamo:'m81-woodland',rigCamo:'m81-woodland',packSolid:'olive-drab'},
   note:"Legacy armor approximates Interceptor OTV; period woodland MOLLE with desert clothing is deliberate."},
- 'us-army-erdl-1970':{kit:{armor:'armor-none',backpack:'backpack-field'},styles:{headwear:'boonie',armorStyle:'armor-bare',rigStyle:'m1956-lce',packStyle:'field-pack'},appearance:{headwearCamo:'erdl-lowland',rigSolid:'olive-drab',packSolid:'olive-drab'},
-  note:"M1956 H-suspenders and canvas pouches are correct era, with no plate armor."},
+ 'us-army-erdl-1970':{kit:{armor:'armor-none',backpack:'backpack-field'},styles:{headwear:'boonie',armorStyle:'armor-bare',rigStyle:'m1956-lce',packStyle:'no-pack'},appearance:{headwearCamo:'erdl-lowland',rigSolid:'olive-drab',packSolid:'olive-drab'},
+  note:"M1956 H-suspenders and canvas pouches are correct era; omit the pack rather than present the later ALICE pack as 1970 equipment."},
  'usmc-desert-2010':{kit:{armor:'armor-carrier',backpack:'backpack-field'},styles:{headwear:'pasgt',armorStyle:'plate-legacy',rigStyle:'chest-placard',packStyle:'rucksack'},appearance:{headwearCamo:'desert-marpat',armorSolid:'coyote',rigSolid:'coyote',packCamo:'woodland-marpat'},
   note:"MTV stand-in retains coyote MOLLE and woodland MARPAT ILBE."},
- 'us-navy-aor1-2014':{kit:{},styles:{headwear:'mich-2001',armorStyle:'plate-jpc',rigStyle:'micro-rig',packStyle:'day-pack'},appearance:{headwearSolid:'desert-tan',armorSolid:'coyote',rigSolid:'coyote',packSolid:'coyote'},
+ 'us-navy-aor1-2014':{kit:{},styles:{headwear:'mich-2001',armorStyle:'plate-jpc',rigStyle:'micro-rig',packStyle:'assault-pack'},appearance:{headwearSolid:'desert-tan',armorSolid:'coyote',rigSolid:'coyote',packSolid:'coyote'},
   note:"High-cut and JPC are already close; standard equipment should not all become AOR1."},
  'british-mtp-2015':{kit:{rig:'rig-full',backpack:'backpack-field'},styles:{headwear:'pasgt',armorStyle:'plate-legacy',rigStyle:'split-front',packStyle:'rucksack'},appearance:{headwearCamo:'british-mtp',armorCamo:'british-mtp',rigCamo:'british-mtp',packCamo:'british-mtp'},
   note:"PASGT/Mk7 and legacy/Osprey IV proxies are closest currently available."},
@@ -85,29 +88,29 @@ export const REFERENCE_GEAR_PROFILES:Readonly<Record<string,ReferenceGearProfile
   note:"Black PASGT-style ballistic helmet is a provisional police reference; visor missing."},
  'russian-gorka-leto-2010':{kit:{backpack:'backpack-none'},styles:{headwear:'patrol-cap',armorStyle:'armor-bare',rigStyle:'light-rig',packStyle:'no-pack'},appearance:{headwearSolid:'olive-drab',rigSolid:'olive-drab'},
   note:"Unarmored Gorka with subdued nylon; no invented printed SS-Leto carrier."},
- 'jgsdf-type2-2010':{kit:{armor:'armor-carrier',rig:'rig-full',backpack:'backpack-field'},styles:{headwear:'ach',armorStyle:'plate-legacy',rigStyle:'full-chest',packStyle:'field-pack'},appearance:{headwearCamo:'jgsdf-type2',armorCamo:'jgsdf-type2',rigCamo:'jgsdf-type2',packCamo:'jgsdf-type2'},
+ 'jgsdf-type2-2010':{kit:{armor:'armor-carrier',rig:'rig-full',backpack:'backpack-field'},styles:{headwear:'ach',armorStyle:'plate-legacy',rigStyle:'full-chest',packStyle:'rucksack'},appearance:{headwearCamo:'jgsdf-type2',armorCamo:'jgsdf-type2',rigCamo:'jgsdf-type2',packCamo:'jgsdf-type2'},
   note:"Legacy armor and printed bib proxy Type II/III Japanese protection."},
- 'indian-digital-2023':{kit:{rig:'rig-full'},styles:{headwear:'ach',armorStyle:'plate-legacy',rigStyle:'full-chest',packStyle:'day-pack'},appearance:{headwearSolid:'olive-drab',armorSolid:'olive-drab',rigSolid:'olive-drab',packSolid:'olive-drab'},
+ 'indian-digital-2023':{kit:{rig:'rig-full'},styles:{headwear:'ach',armorStyle:'plate-legacy',rigStyle:'full-chest',packStyle:'assault-pack'},appearance:{headwearSolid:'olive-drab',armorSolid:'olive-drab',rigSolid:'olive-drab',packSolid:'olive-drab'},
   note:"Protective kit stays olive; new digital carrier fabric not established."},
  'australian-dpcu-2004':{kit:{armor:'armor-none'},styles:{headwear:'pasgt',armorStyle:'armor-bare',rigStyle:'field-webbing',packStyle:'rucksack'},appearance:{headwearCamo:'australian-dpcu',rigCamo:'australian-dpcu',packCamo:'australian-dpcu'},
   note:"Period DPCU webbing without generic tactical police vest."},
  'canada-cadpat-tw-2012':{kit:{armor:'armor-carrier',rig:'rig-full',backpack:'backpack-field'},styles:{headwear:'pasgt',armorStyle:'plate-legacy',rigStyle:'full-chest',packStyle:'rucksack'},appearance:{headwearCamo:'cadpat-tw',armorCamo:'cadpat-tw',rigCamo:'cadpat-tw',packCamo:'cadpat-tw'},
   note:"Broad armor + printed tactical vest proxy CG634-era Canadian issue."},
- 'korean-granite-2023':{kit:{armor:'armor-carrier',rig:'rig-full'},styles:{headwear:'ach',armorStyle:'plate-legacy',rigStyle:'full-chest',packStyle:'day-pack'},appearance:{headwearCamo:'south-korean-granite-b',armorCamo:'south-korean-granite-b',rigCamo:'south-korean-granite-b',packSolid:'olive-drab'},
+ 'korean-granite-2023':{kit:{armor:'armor-carrier',rig:'rig-full'},styles:{headwear:'ach',armorStyle:'plate-legacy',rigStyle:'full-chest',packStyle:'assault-pack'},appearance:{headwearCamo:'south-korean-granite-b',armorCamo:'south-korean-granite-b',rigCamo:'south-korean-granite-b',packSolid:'olive-drab'},
   note:"Korean camouflaged body armor and pouches; pack kept green conservatively."},
  'indonesian-kopassus-1990':{kit:{head:'head-cap',armor:'armor-none'},styles:{headwear:'beret',armorStyle:'armor-bare',rigStyle:'field-webbing',packStyle:'field-pack'},appearance:{headwearSolid:'beret-scarlet',rigSolid:'olive-drab',packSolid:'olive-drab'},
   note:"Scarlet beret is unprinted and old webbing remains olive."},
  'sandf-s2000-2015':{kit:{head:'head-cap',armor:'armor-none'},styles:{headwear:'patrol-cap',armorStyle:'armor-bare',rigStyle:'sadf-webbing',packStyle:'field-pack'},appearance:{headwearCamo:'south-african-s2000',rigSolid:'nutria-brown',packCamo:'south-african-s2000'},
   note:"P83 is the available brown rig proxy; later SANDF-specific kit can replace it."},
  'private-security-iraq-2007':{
-  kit:{head:'head-none',armor:'armor-soft',rig:'rig-light',backpack:'backpack-none'},
-  styles:{headwear:'bare',top:'polo-shirt',trousers:'bdu-trousers',
+  kit:{legs:'legs-light',head:'head-none',armor:'armor-soft',rig:'rig-light',backpack:'backpack-none'},
+  styles:{headwear:'bare',top:'polo-shirt',trousers:'civilian-cargo',
    armorStyle:'soft-vest',rigStyle:'micro-rig',packStyle:'no-pack'},
   appearance:{armorSolid:'black',rigSolid:'black'},
   note:"2007 documented blue polo/khaki trouser/black-armor pairing. Rig and carbine are generic visual proxies, not claimed issue."},
  'ukraine-territorial-2022':{
-  kit:{head:'head-none',armor:'armor-none',rig:'rig-light',backpack:'backpack-none',hands:'hands-none'},
-  styles:{headwear:'bare',top:'button-up-shirt',trousers:'bdu-trousers',
+  kit:{legs:'legs-light',head:'head-none',armor:'armor-none',rig:'rig-light',backpack:'backpack-none',hands:'hands-none'},
+  styles:{headwear:'bare',top:'button-up-shirt',trousers:'civilian-cargo',
    armorStyle:'armor-bare',rigStyle:'chicom-rig',packStyle:'no-pack'},
   appearance:{rigSolid:'olive-drab'},
   note:"Early volunteers' mix of civilian clothes and basic field equipment, not a standardized Ukrainian military uniform."},
@@ -126,3 +129,67 @@ export const REFERENCE_GEAR_PROFILES:Readonly<Record<string,ReferenceGearProfile
   'us-swat-2015':{kit:{},styles:{headwear:'mich-2001',top:'bdu-shirt',trousers:'bdu-trousers',armorStyle:'soft-vest',rigStyle:'micro-rig',packStyle:'no-pack'},appearance:{headwearSolid:'black',armorSolid:'black',rigSolid:'black'},
   note:"Black high-cut ballistic helmet and external armor; no dedicated police visor."},
 };
+
+/** Explicit representative costume choices, not independently sourced issue records. */
+type ReferenceWear=readonly [FootwearId,string,BeltStyle,GarmentSolidId?];
+const REFERENCE_WEAR:Readonly<Record<string,ReferenceWear>>={
+ 'usmc-woodland-2005':['combat-boots','coyote','plain-belt','brown'],
+ 'bundeswehr-flecktarn-2000':['leather-boots','black','no-belt'],
+ 'russian-emr-2015':['combat-boots','black','plain-belt','black'],
+ 'british-dpm-1995':['leather-boots','black','no-belt'],
+ 'nva-strichtarn-1980':['leather-boots','black','no-belt'],
+ 'sadf-nutria-1985':['leather-boots','brown','no-belt'],
+ 'swedish-m90-2000':['leather-boots','black','no-belt'],
+ 'rhodesian-brushstroke-1975':['leather-boots','brown','no-belt'],
+ 'ukraine-mm14-2022':['combat-boots','coyote','plain-belt','brown'],
+ 'pla-xingkong-2021':['combat-boots','black','plain-belt','black'],
+ 'swiss-alpenflage-1980':['leather-boots','black','plain-belt','black'],
+ 'us-desert-1991':['combat-boots','sand','no-belt'],
+ 'us-army-ocp-2019':['combat-boots','coyote','plain-belt','brown'],
+ 'us-army-ucp-2010':['combat-boots','sand','plain-belt','tan'],
+ 'us-army-m81-1990':['combat-boots','black','no-belt'],
+ 'us-army-dcu-2003':['combat-boots','sand','plain-belt','tan'],
+ 'us-army-erdl-1970':['combat-boots','olive','no-belt'],
+ 'usmc-desert-2010':['combat-boots','coyote','plain-belt','brown'],
+ 'us-navy-aor1-2014':['hiking-boots','tan','battle-belt','coyote'],
+ 'british-mtp-2015':['combat-boots','coyote','plain-belt','brown'],
+ 'bundeswehr-tropentarn-2010':['combat-boots','sand','no-belt'],
+ 'finnish-m05-2015':['combat-boots','black','plain-belt','black'],
+ 'polish-pantera-2010':['combat-boots','black','plain-belt','black'],
+ 'italian-vegetato-2015':['combat-boots','black','plain-belt','black'],
+ 'belgian-jigsaw-1995':['leather-boots','black','no-belt'],
+ 'french-cce-2005':['leather-boots','black','no-belt'],
+ 'norwegian-m98-2005':['leather-boots','black','no-belt'],
+ 'greek-lizard-1990':['leather-boots','black','no-belt'],
+ 'swiss-taz90-2005':['leather-boots','black','no-belt'],
+ 'russian-flora-2000':['leather-boots','black','plain-belt','black'],
+ 'russian-omon-2002':['leather-boots','black','duty-belt','black'],
+ 'russian-gorka-leto-2010':['hiking-boots','brown','plain-belt','brown'],
+ 'jgsdf-type2-2010':['combat-boots','black','plain-belt','black'],
+ 'indian-digital-2023':['combat-boots','black','plain-belt','black'],
+ 'australian-dpcu-2004':['leather-boots','black','no-belt'],
+ 'canada-cadpat-tw-2012':['combat-boots','black','plain-belt','black'],
+ 'korean-granite-2023':['combat-boots','black','plain-belt','black'],
+ 'indonesian-kopassus-1990':['leather-boots','black','no-belt'],
+ 'sandf-s2000-2015':['combat-boots','coyote','no-belt'],
+ 'private-security-iraq-2007':['hiking-shoes','tan','plain-belt','black'],
+ 'ukraine-territorial-2022':['sneakers','grey','plain-belt','brown'],
+ 'us-police-polo-2020':['hiking-shoes','black','duty-belt','black'],
+ 'us-swat-mp5-1995':['leather-boots','black','duty-belt','black'],
+ 'us-swat-2015':['combat-boots','black','battle-belt','black'],
+};
+export const REFERENCE_GEAR_PROFILES:Readonly<Record<string,ReferenceGearProfile>>=
+ Object.fromEntries(Object.entries(BASE_REFERENCE_GEAR_PROFILES).map(([id,base])=>{
+  const wear=REFERENCE_WEAR[id];
+  if(!wear)throw Error('Missing dated wear profile '+id);
+  const [footwear,footwearColor,beltStyle,beltSolid]=wear;
+  if(!Object.hasOwn(FOOTWEAR[footwear].colors,footwearColor))throw Error('Invalid reference footwear finish '+id);
+  if(beltSolid&&!beltSolidChoices(beltStyle).includes(beltSolid))throw Error('Invalid reference belt finish '+id);
+  return [id,{
+   ...base,
+   kit:{...base.kit,feet:FOOTWEAR[footwear].equipment,belt:BELT_PROFILES[beltStyle].equipment},
+   styles:{...base.styles,footwear,beltStyle},
+   appearance:{...base.appearance,footwearColor,beltSolid},
+   note:base.note+' Footwear and separate belt are representative visual choices, not verified issue.'
+  }];
+ }));

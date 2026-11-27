@@ -4,6 +4,8 @@
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {readWardrobe,resolvedWardrobe,WARDROBE_SLOTS,
  type WardrobeOptions} from './operator-wardrobe-data.ts';
+import {footwearColorChoices,resolveFootwearHem} from './operator-footwear-catalog.ts';
+import {beltSolidChoices} from './operator-belt-profile.ts';
 import {FABRIC_CAMO_CHANNELS,fabricCamoCompatible} from './operator-fabric-camo-policy.ts';
 
 export const STUDIO_PRESET_STORAGE_KEY='fieldwork3d.operator-studio-presets.v1';
@@ -72,7 +74,11 @@ export function outfitPresetForKit(raw:unknown,kit:EquipmentLoadout):
   if(print&&!fabricCamoCompatible(print,channel,outfit))
    fabricCamo[channel]=undefined;
  }
- return readWardrobe({...safe,fabricCamo});
+ return readWardrobe({...safe,fabricCamo,
+  footwearColor:safe.footwearColor&&footwearColorChoices(outfit.footwear).includes(safe.footwearColor)?safe.footwearColor:undefined,
+  beltSolid:safe.beltSolid&&beltSolidChoices(outfit.beltStyle).includes(safe.beltSolid)?safe.beltSolid:undefined,
+  trouserHem:resolveFootwearHem(outfit.trousers,outfit.footwear,safe.trouserHem)
+ });
 }
 
 /** Publish an in-memory preset change only AFTER durable storage succeeds.
