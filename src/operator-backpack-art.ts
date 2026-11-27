@@ -22,7 +22,7 @@ function compression(g:THREE.Group,m:PackMaterials,x:number,y:number,z:number,de
  packBox(g,'side-compression',m.trim,[x,y,z],[depth,1.05,.23]);
  packBox(g,'side-buckle',m.dark,[x-.25,y,z],[1.25,1.35,.48]);
 }
-export function buildAuthoredPack(style:AuthoredPackStyle,m:PackMaterials,options:Readonly<{medicalMark?:boolean}>={}):AuthoredPack{
+export function buildAuthoredPack(style:AuthoredPackStyle,m:PackMaterials,options:Readonly<{medicalMark?:boolean;antenna?:boolean}>={}):AuthoredPack{
  const g=new THREE.Group();g.name='authored-pack-'+style;
  const sockets:PackSocket[]=[],graphics:PackGraphic[]=[];
  const box=(name:string,mat:THREE.Material,p:PackPoint,size:PackPoint)=>packBox(g,name,mat,p,size);
@@ -78,14 +78,14 @@ export function buildAuthoredPack(style:AuthoredPackStyle,m:PackMaterials,option
    vol('alice-main',m.fabric,[0,-.15,0],[8,14,15.5],{topWidth:.82,bottomWidth:.86,topDepth:.83,bottomDepth:.82});
    vol('alice-draped-lid',m.fabric,[-.7,4.8,0],[7.5,4.3,15.7],{topWidth:.87,bottomWidth:1,topDepth:.78},'alice-lid');
    for(const z of [-4.9,0,4.9]){
-    vol('alice-cargo-pouch',m.fabric,[-4.0,-2.9,z],[3.8,6.4,4.35],{topWidth:.95,bottomWidth:.85,bottomDepth:.85},'alice-pocket');
+    vol('alice-cargo-pouch',m.fabric,[-3.9,-2.9,z],[3.45,6.4,4.4],{topWidth:1,bottomWidth:.93},'alice-pocket');
    }
    // Simplified aluminum frame: only rails and lower crossbar extend outside bag.
    for(const z of [-5.4,5.4])box('alice-frame-rail',m.dark,[4.25,-.2,z],[.8,15.5,.8]);
    box('alice-frame-crossbar',m.dark,[4.25,-7.45,0],[.8,1.05,11.5]);
    box('alice-frame-top',m.dark,[4.25,7.0,0],[.8,.8,11.5]);
    for(const s of [-1,1]){
-    box('alice-lid-strap',m.trim,[-4.55,3.2,s*4.2],[.18,3.45,1.05]);
+    box('alice-lid-strap',m.trim,[-4.55,3.2,s*4.2],[.12,3.45,.85]);
     sockets.push({id:s<0?'left-utility':'right-medical',point:[-.6,-2.2,s*7.8],normal:[0,0,s],kind:s<0?'utility':'medical'});
    }
    mount={...mount,bodyFaceX:4.65,upperY:5.7,lowerY:-6.1,strapHalfWidth:4.2};
@@ -93,43 +93,43 @@ export function buildAuthoredPack(style:AuthoredPackStyle,m:PackMaterials,option
   }
   case 'rucksack':{
    // Tall PLCE Bergen. Side pockets are included in the 17-unit width.
-   vol('bergen-main',m.fabric,[0,0,0],[10,19,12.3],{topWidth:.87,bottomWidth:.79,topDepth:.82,bottomDepth:.75});
-   vol('bergen-lid',m.fabric,[-.65,8.0,0],[9.6,4.3,13.4],{topWidth:.79,bottomWidth:.96,topDepth:.76},'assault-lid');
+   vol('bergen-main',m.fabric,[0,0,0],[10,21,10.8],{topWidth:.92,bottomWidth:.88,topDepth:.88,bottomDepth:.85});
+   vol('bergen-lid',m.fabric,[-.65,9.1,0],[9.6,4.1,12.2],{topWidth:.88,bottomWidth:1,topDepth:.9},'assault-lid');
    vol('bergen-rear-pouch',m.fabric,[-4.65,-4.6,0],[2.65,5.8,8.2],{topWidth:.91,bottomWidth:.84,bottomDepth:.88},'day-upper');
    for(const s of [-1,1]){
-    vol('bergen-rocket-pouch',m.fabric,[-.15,-1.7,s*6.55],[6.6,12.2,4.35],{topWidth:.84,bottomWidth:.76,topDepth:.88,bottomDepth:.85},'bergen-side');
+    vol('bergen-rocket-pouch',m.fabric,[-.15,-.8,s*6.1],[6.6,14.0,4.15],{topWidth:.94,bottomWidth:.92,topDepth:.95},'bergen-side');
     box('bergen-lid-strap',m.trim,[-5.0,5.2,s*3.8],[.22,4.5,1.1]);
     box('bergen-buckle',m.dark,[-5.2,3.3,s*3.8],[.5,1.2,1.35]);
-    sockets.push({id:s<0?'left-utility':'right-medical',point:[-.2,-2.4,s*8.8],normal:[0,0,s],kind:s<0?'utility':'medical'});
-    sockets.push({id:'bottom-'+s,point:[-.7,-9.6,s*3.1],normal:[0,-1,0],kind:'tie-down'});
+    sockets.push({id:s<0?'left-utility':'right-medical',point:[-.2,-2.4,s*8.2],normal:[0,0,s],kind:s<0?'utility':'medical'});
+    sockets.push({id:'bottom-'+s,point:[-.7,-10.6,s*3.1],normal:[0,-1,0],kind:'tie-down'});
    }
-   mount={...mount,centerY:-.15,upperY:7.4,lowerY:-6.8,strapHalfWidth:4.5};
+   mount={...mount,centerY:.65,upperY:8.0,lowerY:-7.0,strapHalfWidth:4.5};
    break;
   }
   case 'medic-pack':{
    // Suitcase-like clamshell, an inset full-size panel and grab handles.
-   vol('medical-main',m.fabric,[0,0,0],[5.5,13,12.5],{topWidth:.92,bottomWidth:.92,topDepth:.86,bottomDepth:.86});
-   const center:PackPoint=[-2.65,0,0],size:PackPoint=[1.25,11.6,11.0],cut:PackCut={topWidth:.86,bottomWidth:.86,topDepth:.92,bottomDepth:.92};
+   vol('medical-main',m.fabric,[0,0,0],[4.5,13,12.5],{topWidth:.97,bottomWidth:.97,topDepth:.97,bottomDepth:.97});
+   const center:PackPoint=[-2.19,0,0],size:PackPoint=[.85,12.15,11.7],cut:PackCut={topWidth:.97,bottomWidth:.97,topDepth:.98,bottomDepth:.98};
    vol('medical-opening-panel',m.fabric,center,size,cut,'medical');
-   if(options.medicalMark)graphics.push({tile:'medical-mark',center,size,cut});
+   if(options.medicalMark!==false)graphics.push({tile:'medical-mark',center,size,cut});
    handle(g,m,.1,6.3,3.7);
    for(const s of [-1,1]){
-    box('medical-grab-handle',m.trim,[-.2,.6,s*6.25],[1.1,3.2,.8]);
+    box('medical-grab-handle',m.trim,[-.2,.6,s*6.25],[.9,2.7,.7]);
     sockets.push({id:s<0?'left-medical':'right-utility',point:[-.35,-2.6,s*6.3],normal:[0,0,s],kind:s<0?'medical':'utility'});
    }
    break;
   }
   case 'comms-pack':{
    // Rigid narrow radio bag with a wide upper access flap and lower pocket.
-   vol('comms-main',m.fabric,[0,0,0],[7,15,10],{topWidth:.94,bottomWidth:.91,topDepth:.88,bottomDepth:.91});
-   vol('comms-upper-access',m.fabric,[-3.05,4.35,0],[1.9,4.4,9.45],{topWidth:.93,bottomWidth:.97,topDepth:.91},'comms-upper');
-   vol('comms-lower-utility',m.fabric,[-3.05,-2.7,0],[2.6,6.7,8.55],{topWidth:.94,bottomWidth:.89,bottomDepth:.86},'day-upper');
+   vol('comms-main',m.fabric,[0,0,0],[5.6,15,10],{topWidth:.98,bottomWidth:.98,topDepth:.98});
+   vol('comms-upper-access',m.fabric,[-2.7,4.6,0],[1.2,4.1,9.45],{topWidth:.98,bottomWidth:1},'comms-upper');
+   vol('comms-lower-utility',m.fabric,[-2.7,-2.5,0],[1.55,6.7,8.55],{topWidth:.98,bottomWidth:.98},'day-upper');
    for(const s of [-1,1]){
-    box('comms-retention',m.trim,[-4.39,-2.4,s*2.9],[.2,5.9,1.0]);
+    box('comms-retention',m.trim,[-3.5,-2.4,s*2.9],[.12,5.9,.9]);
     sockets.push({id:'radio-side-'+s,point:[-.3,-1.6,s*5.1],normal:[0,0,s],kind:'radio'});
    }
    box('comms-cable-port',m.dark,[.0,7.35,2.9],[1.3,.6,1.45]);
-   handle(g,m,.45,7.4,3.2);
+   if(options.antenna!==false)box('radio-antenna-preview',m.dark,[0,10.1,2.9],[.6,5.0,.6]);
    sockets.push({id:'antenna-port',point:[0,7.68,2.9],normal:[0,1,0],kind:'antenna'});
    mount={...mount,centerY:.25,strapHalfWidth:3.8};
    break;
