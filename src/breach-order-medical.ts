@@ -39,6 +39,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
   if(n.kind==='recover-medical'){
     const patient=s.operators.find(o=>o.id===n.patientId&&o.side===a.side);
     if(!patient||patient.health>0){pop(a);return true;}
+    if(patient.carriedById){failCurrentOrder(s,a,n,'SET DOWN CASUALTY BEFORE RECOVERING SUPPLIES');return true;}
     if(!near(a.p,patient.p,27)){
       const dir=angle(patient.p,a.p);
       approach(a,{x:patient.p.x+Math.cos(dir)*21,
@@ -110,6 +111,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
         failCurrentOrder(s,a,n,'CASUALTY NOT IN PHYSICAL REACH');return true;
       }
       a.velocity=0;
+      if(s.seconds-a.lastHitAt<.35){a.actionTimer=0;a.transportContact=undefined;return true;}
       if(!rotate(a,angle(a.p,patient.p),dt,s))return true;
       if(!prepareHandsFree(a,dt,s))return true;
       a.actionTimer+=dt;
@@ -147,8 +149,12 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
       if((civil?.rescueTarget||
           friendly?.id===s.captureTarget&&s.missionType==='capture')&&
          s.mission==='extract'&&near(a.p,s.scenario.extract,37)){
-        // Keep custody until the physically trailing body enters extraction.
-        a.velocity=0;return true;
+        // A drag no longer drifts while stopped. Continue inside the gate
+        // until the actual patient also enters, rather than waiting forever.
+        if(!near(patient.p,s.scenario.extract,37)&&!near(a.p,s.scenario.extract,5))
+          approach(a,s.scenario.extract,dt,s);
+        else a.velocity=0;
+        return true;
       }
       a.velocity=0;a.actionTimer+=dt;
       a.transportContact=makeTransportContact(n.id,patient,mode,'release',a.actionTimer);
@@ -177,6 +183,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
           sessionWorldGeometry(s)))){
       failCurrentOrder(s,a,n,'CAPTIVE NOT IN PHYSICAL MEDICAL REACH');return true;
     }
+    if(patient.carriedById){failCurrentOrder(s,a,n,'SET DOWN CASUALTY BEFORE TREATMENT');return true;}
     const supply=treatmentSupplyForWound(wound,a.medicalSupplies);
     if(!supply){
       failCurrentOrder(s,a,n,'MEDICAL SUPPLY UNAVAILABLE');return true;

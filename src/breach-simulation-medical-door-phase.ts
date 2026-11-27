@@ -45,7 +45,7 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
   for(const operator of s.operators)operator.treatmentActive=false;
   // Medical state advances on the authoritative fixed tick only.
   for(const casualty of s.operators){
-    if(casualty.carryingId&&casualty.health<=0){
+    if(casualty.carryingId&&(casualty.health<=0||casualty.surrendered)){
       const civil=s.civilians.find(c=>c.id===casualty.carryingId);
       if(civil)dropCivilianCustody(civil,casualty);
       else releaseTransport(casualty,s.operators.find(o=>o.id===casualty.carryingId));
@@ -58,7 +58,7 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
         // custody so a carrier cannot become stuck in transport mode.
         if(casualty.carriedById){
           const carrier=s.operators.find(o=>o.id===casualty.carriedById);
-          if(carrier?.carryingId===casualty.id&&carrier.transportLatched){
+          if(carrier?.carryingId===casualty.id){
             releaseTransport(carrier,casualty);
           }
         }
@@ -78,6 +78,12 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
     casualty.injuryStage=Math.min(3,casualty.injuryStage+loss);
     casualty.health=Math.max(0,4-casualty.injuryStage);
     if(casualty.health<=0){
+      if(casualty.carryingId){
+        const civil=s.civilians.find(c=>c.id===casualty.carryingId);
+        if(civil)dropCivilianCustody(civil,casualty);
+        else releaseTransport(casualty,s.operators.find(o=>o.id===casualty.carryingId));
+      }
+      casualty.transportContact=undefined;
       recordActualDown(casualty,s.seconds);
       releaseDownedSuspectWeapons(s,casualty);
       casualty.lastDownAt=s.seconds;

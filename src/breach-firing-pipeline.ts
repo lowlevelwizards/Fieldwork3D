@@ -487,6 +487,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   if(a.secondaryReload&&(a.plan[0]?.kind!=='reload'||
       a.plan[0].id!==a.secondaryReload.orderId))a.secondaryReload=null;
+  if(a.carryingId||a.transportContact){a.aim=0;a.aimSideTarget=0;return;}
   if(a.retentionHolstering){a.aim=0;return;}
   if(a.primaryPlacement?.kind==='place'&&a.reload<=0){a.aim=0;return;}
   if(retentionBusy(a)&&a.reload<=0){a.aim=0;a.aimSideTarget=0;return;}
@@ -556,7 +557,6 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(a.side==='red'&&(a.encounterReactionUntil??0)>s.seconds){
     a.aim=Math.max(0,a.aim-dt*2);return;
   }
-  if(a.carryingId){a.aim=Math.max(0,a.aim-dt*3);return;}
   // Medical intervention occupies both hands; no free shots while treating.
   if(a.plan[0]?.kind==='treat'||a.treatmentActive){
     a.aim=Math.max(0,a.aim-dt*3);return;

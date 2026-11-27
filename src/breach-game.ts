@@ -2240,7 +2240,7 @@ function mission(s:Session,dt:number){
     (!s.withdrawalRequested||canConcludeWithdrawal(s))&&
     team(s).some(a=>a.health>0&&
     near(a.p,s.scenario.extract,37)&&
-    !(a.transportLatched&&a.carryingId&&
+    !(a.carryingId&&
       s.operators.some(p=>p.id===a.carryingId&&p.id!==s.captureTarget))&&
     validLivingCaptureExtraction(a)&&
     (s.missionType!=='intel'||s.intelCarrierId===a.id)&&

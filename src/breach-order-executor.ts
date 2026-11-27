@@ -1,3 +1,4 @@
+import {isTransportRelease,transportOrderAllowed} from './breach-transport-gameplay.ts';
 import {advanceGroundRecovery} from './breach-grounded-primary.ts';
 import {beginRetentionTick} from './breach-weapon-retention-live.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
@@ -61,6 +62,7 @@ export function createOrderExecutor(port:OrderExecutionPort){
   }
   // A short, validated muzzle-clearance step never edits the player's plan.
   // Complete or expire it before resuming the original waypoint motor.
+  if(a.carryingId&&a.fireRetreatTarget)cancelFireCorrection(a);
   if(a.fireRetreatTarget){
     const goal=a.fireRetreatTarget;
     // Higher-priority player actions and edited orders cancel optional
@@ -102,7 +104,7 @@ export function createOrderExecutor(port:OrderExecutionPort){
     if(civil)dropCivilianCustody(civil,a);
     else releaseTransport(a,s.operators.find(o=>o.id===a.carryingId));
   }
-  if(a.haltOnContact){
+  if(a.haltOnContact&&!isTransportRelease(n,a.carryingId)){
     const threat=visibleThreat;
     if(threat){
       a.motorPause='contact';
@@ -127,6 +129,9 @@ export function createOrderExecutor(port:OrderExecutionPort){
     return;
   }
   beginOrder(a,n,s.doors);
+  if(a.carryingId&&!transportOrderAllowed(n,a.carryingId,s.doors)){
+    failCurrentOrder(s,a,n,'HANDS OCCUPIED · SET DOWN CASUALTY FIRST',port.notify);return;
+  }
 
    if(executeEntryOrder(s,a,n,dt))return;
    if(executeMedicalOrder(s,a,n,dt))return;
