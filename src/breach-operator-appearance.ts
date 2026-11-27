@@ -60,7 +60,7 @@ const DOWNED_TINT=new THREE.Color(0x555c57);
  * Keep a per-rig snapshot separate from motion/IK, which still runs on
  * every frame. Weak keys release disposed operator preview rigs. */
 const appearanceState=new WeakMap<OperatorRig,{
- key:string;downed:boolean;outfit:ReturnType<typeof resolvedWardrobe>
+ key:string;downed:boolean;outfit:ReturnType<typeof resolvedWardrobe>;primaryMass?:number
 }>();
 
 /** Static appearance inputs can be baked from saved Studio/roster data
@@ -104,8 +104,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   if(appearanceChanged){
   // Passive, actual-pelvis-mounted S4 carry. An unissued or unequipped
   // secondary does not materialize. S5 will take over drawing authority.
-  syncHipSecondaryVisual(r.hip,p.equipment?.secondary,
-   !!p.equipment&&p.equipment.slots.belt!=='belt-none',r.chest,r.pack);
+
   // Stable career-based presentation, never changing physical collision or IK.
   const identity=p.appearanceSeed??0;
   if(identity!==r.appearanceSeed){
@@ -273,9 +272,13 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     p.magazineCarryLocations,p.faceStyle,p.wardrobe,p.weaponConfiguration,
     nvgMounted(p),p.nvgDeployed===true);
    const packState=r.visualKit.packPreview;
+   const concealPackCargo=!!packState.active&&!r.root.userData.fieldworkInspectPackCargo;
+   r.root.userData.fieldworkConcealPackCargo=concealPackCargo;
+   syncHipSecondaryVisual(r.hip,p.equipment?.secondary,
+    !!p.equipment&&p.equipment.slots.belt!=='belt-none',r.chest,r.pack,concealPackCargo);
    // Closed pack cargo is concealed unless its ledger location and an
    // explicit requested external socket both match the authored model.
-   if(packState.active&&!r.root.userData.fieldworkInspectPackCargo){
+   if(packState.active&&concealPackCargo){
     const art=packState.active;
     const mount=(item:THREE.Mesh,kind:'medical'|'utility',request:string|undefined,id:string)=>{
      if(item.parent!==r.pack||!item.visible)return;
@@ -676,7 +679,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   // Dynamic magazine weight is intentionally outside the static appearance
   // fingerprint: firing or replaying a round must not rebuild costume meshes.
   const packState=r.visualKit.packPreview;
-  if(appearanceChanged||p.packPrimaryMagazineMass!==undefined){
+  if(appearanceChanged||previousAppearance?.primaryMass!==p.packPrimaryMagazineMass){
    packState.motionScale=packSuspensionScale(packState.active?.style??'no-pack',packState.fit?.mode,
     packCargoMass(p.equipment,p.magazineCarryLocations,p.medicalCarryLocation,p.utilityCarryLocation,p.packPrimaryMagazineMass));
   }
@@ -694,7 +697,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     previousAppearance.key=appearanceKey;
     previousAppearance.downed=downed;
     previousAppearance.outfit=clothing;
-  }else appearanceState.set(r,{key:appearanceKey,downed,outfit:clothing});
+    previousAppearance.primaryMass=p.packPrimaryMagazineMass;
+  }else appearanceState.set(r,{key:appearanceKey,downed,outfit:clothing,primaryMass:p.packPrimaryMagazineMass});
 
  return clothing;
 }

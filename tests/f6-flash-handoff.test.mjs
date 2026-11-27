@@ -87,3 +87,16 @@ test('F6.2: actual operator frame can seek backwards without a second IK pass',(
   assert.equal(base.flashCharges,2);
  }finally{r.dispose();}
 });
+
+test('BP13 closed pack cargo returns concealed after cancellation and rewind',()=>{
+ const r=make(),p={...pose(),equipmentInteraction:{...pose().equipmentInteraction,location:'backpack'}};
+ r.root.userData.fieldworkConcealPackCargo=true;
+ const mesh=r.flashCanisters[1];
+ presentFlashHandoff(r,p,true);
+ assert.equal(mesh.parent,r.arms[0].hand);assert.equal(mesh.visible,true);
+ presentFlashHandoff(r,{...p,equipmentInteraction:null},false);
+ assert.equal(mesh.parent,r.pack);assert.equal(mesh.visible,false);
+ presentFlashHandoff(r,p,true);assert.equal(mesh.visible,true);
+ r.root.userData.fieldworkConcealPackCargo=false;
+ presentFlashHandoff(r,p,false);assert.equal(mesh.visible,true);
+});

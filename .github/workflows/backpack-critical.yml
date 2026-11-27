@@ -27,7 +27,7 @@ jobs:
       - run: npm run check
       - run: git fetch --depth=1 origin efd1b6e9828f4f2d4964362c4a0d1bf7b3707849
       - run: node --experimental-strip-types scripts/audit-backpack-geometry.mjs
-      - run: node --experimental-strip-types --test tests/backpack-bp*.test.mjs tests/operator-wardrobe-unified.test.mjs tests/equipment-01-catalog.test.mjs tests/equipment-20-13-assembly-mass.test.mjs tests/operator-wardrobe-gear-visuals.test.mjs tests/equipment-carry-gear-change.test.mjs tests/equipment-carry-gear-authority.test.mjs tests/equipment-07-encumbrance.test.mjs tests/operator-visual-fit.test.mjs tests/sling-retention-sr21-pack-motion.test.mjs tests/performance-p7-saved-operator.test.mjs
+      - run: node --experimental-strip-types --test tests/backpack-bp*.test.mjs tests/operator-wardrobe-unified.test.mjs tests/equipment-01-catalog.test.mjs tests/equipment-20-13-assembly-mass.test.mjs tests/operator-wardrobe-gear-visuals.test.mjs tests/equipment-carry-gear-change.test.mjs tests/equipment-carry-gear-authority.test.mjs tests/equipment-07-encumbrance.test.mjs tests/operator-visual-fit.test.mjs tests/sling-retention-sr21-pack-motion.test.mjs tests/performance-p7-saved-operator.test.mjs tests/f6-flash-handoff.test.mjs tests/f6-wedge-handoff.test.mjs tests/secondary-s8-3-physical-magazine.test.mjs
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - run: node scripts/smoke-backpack-art.mjs
         env:
