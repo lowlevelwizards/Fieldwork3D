@@ -3,7 +3,7 @@
  * fabric/camo maps. One alpha-tested draw batch per backpack; no shadow caster.
  */
 import * as THREE from 'three';
-import {packRing,PACK_VOLUME_RINGS,type PackCut,type PackPoint} from './operator-backpack-geometry.ts';
+import {packRing,PACK_VOLUME_RINGS,PACK_DETAIL_PIXEL,type PackCut,type PackPoint} from './operator-backpack-geometry.ts';
 type Tile={id:string;w:number;h:number;draw:(pixel:(x:number,y:number,tone?:number)=>void)=>void};
 const row=(p:(x:number,y:number,tone?:number)=>void,y:number,a:number,b:number,tone=0)=>{for(let x=a;x<=b;x++)p(x,y,tone);};
 const tiles:readonly Tile[]=[
@@ -14,10 +14,7 @@ const tiles:readonly Tile[]=[
  {id:'day-upper',w:8,h:4,draw:p=>{row(p,2,0,7);}},
  {id:'day-lower',w:9,h:7,draw:p=>{row(p,5,0,8);for(const y of [0,2,4])row(p,y,1,7,1);}},
  {id:'day-side',w:5,h:13,draw:p=>{for(let y=1;y<12;y++)p(2,y);}},
- {id:'assault-y',w:12,h:15,draw:p=>{
-  for(let y=1;y<=7;y++)p(5,y);
-  for(let i=0;i<=4;i++){p(5-i,7+i);p(6+i,7+i);}
-  p(6,7);}},
+ {id:'assault-y',w:1,h:1,draw:p=>p(0,0)},
  {id:'assault-lid',w:10,h:4,draw:p=>{row(p,2,1,8);}}
 ];
 const atlasSize=64,cell=16;
@@ -52,6 +49,39 @@ export function attachPackGraphics(root:THREE.Group,graphics:readonly PackGraphi
   if(i<0)throw Error('Unknown backpack graphic '+g.tile);
   const t=tiles[i],ox=(i%4)*cell,oy=Math.floor(i/4)*cell;
   const [d,h,w]=g.size,[cx,cy,cz]=g.center;
+  if(g.tile==='assault-y'){
+   // A flat, mitered Y, sampled from the same solid atlas texel. The
+   // diagonal edges are geometric graphics, not stair-stepped texture cells
+   // or extruded zipper parts. Split only where the shell changes slope.
+   const half=PACK_DETAIL_PIXEL*.46,join=-h*.015,tipY=h*.275,tipZ=w*.385;
+   const offset=new THREE.Vector2(tipY-join,-tipZ).normalize().multiplyScalar(half);
+   const shoulder=-h*.32,base=-h*.43;
+   const v=(z:number,y:number)=>new THREE.Vector2(z,y);
+   const outline=[
+    v(-half,shoulder),v(half,shoulder),v(half,join-half*.35),
+    v(tipZ+offset.x,tipY+offset.y),v(tipZ-offset.x,tipY-offset.y),
+    v(0,join+half*1.45),v(-tipZ+offset.x,tipY-offset.y),
+    v(-tipZ-offset.x,tipY+offset.y),v(-half,join-half*.35)
+   ];
+   const patch=(points:THREE.Vector2[])=>{
+    const start=pos.length/3;
+    for(const p of points){
+     const shape=packRing(d,w,p.y/h,g.cut??{});
+     pos.push(cx+shape.rear-.045,cy+p.y,cz+p.x);
+     uv.push((ox+.5)/atlasSize,(oy+.5)/atlasSize);
+    }
+    for(const [a,b,c] of THREE.ShapeUtils.triangulateShape(points,[])){
+     const A=points[a],B=points[b],C=points[c];
+     const cross=(B.x-A.x)*(C.y-A.y)-(B.y-A.y)*(C.x-A.x);
+     if(cross>0)indices.push(start+a,start+b,start+c);
+     else indices.push(start+a,start+c,start+b);
+    }
+   };
+   patch(outline);
+   patch([v(-half,base),v(half,base),v(half,shoulder),v(-half,shoulder)]);
+   root.userData.fieldworkPackAngledY=true;
+   continue;
+  }
   const rings=g.flat?[-.5,.5]:PACK_VOLUME_RINGS;
   const start=pos.length/3;
   for(const y of rings){
