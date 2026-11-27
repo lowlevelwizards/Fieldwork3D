@@ -146,3 +146,11 @@ test('BT3P: native family artwork is not reduced to the legacy carried proxy',as
   assert.ok(g.boundingBox.getSize(new THREE.Vector3()).y>old.boundingBox.getSize(new THREE.Vector3()).y,part);g.dispose();old.dispose();
  }
 });
+
+test('BT3P: grenade pouch reserves unique locations without adding equipment',async()=>{
+ const {planBeltFlashPouches}=await import('../src/operator-belt-flash-pouches.ts');
+ const mounts=planBeltFlashPouches('duty-belt',[0,1,2,3],['right-hip']);
+ assert.equal(mounts.length,4);assert.equal(new Set(mounts.map(m=>m.region)).size,4);
+ assert.ok(mounts.every(m=>m.region!=='right-hip'));
+ assert.equal(planBeltFlashPouches('no-belt',[0]).length,0);
+});

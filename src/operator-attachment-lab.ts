@@ -1,3 +1,5 @@
+import {nativeEquippedMagazine} from './operator-attachment-reference.ts';
+import {attachmentFootprint} from './operator-attachment-catalog.ts';
 /** BT3.7: isolated artwork audition, never serialized to a loadout. */
 import * as THREE from 'three';
 import type {OperatorRig} from './breach-operator-rig.ts';
@@ -38,13 +40,28 @@ export function updateAttachmentPreview(rig:OperatorRig,choice:string,variant:At
   const group=new THREE.Group();group.name='lab-only-attachment-audition';rig.hip.add(group);
   const accent=new THREE.MeshStandardMaterial({color:0xb76442,roughness:.9});
   const palette={fabric:rig.gearMaterial,dark:rig.weaponDark,hardware:rig.weaponSteel,contents:rig.bootMaterial,accent};
-  const requests=fixture.items.flatMap((item,i)=>{
+  // Use the native selected magazine only if its envelope fits. Try the
+  // larger dedicated variant first; otherwise use closed utility storage
+  // rather than scaling the native item or letting it poke through.
+  const items:FixtureItem[]=fixture.items.map(item=>{
+   if(item.id!=='primary-mag-pouch'||!samples.primaryPart)return item;
+   const g=nativeEquippedMagazine(samples.primaryPart);
+   if(!g)return {...item,id:'utility-pouch',variant:'standard'};
+   const box=g.boundingBox!,w=box.max.x-box.min.x,h=box.max.y-box.min.y,d=box.max.z-box.min.z;
+   g.dispose();
+   for(const variant of [item.variant??'standard','expanded'] as const){
+    const f=attachmentFootprint(item.id,variant);
+    if(w<=f.width*.99-.88&&d<=f.depth-.88&&h<=f.height)return {...item,variant};
+   }
+   return {...item,id:'utility-pouch',variant:'expanded'};
+  });
+  const requests=items.flatMap((item,i)=>{
    const req=attachmentMountRequest(String(i),item.id,fixture.style,item.variant,item.region);
    return req?[req]:[];
   });
   const result=resolveBeltMounts(fixture.style,requests);
   const visuals=result.mounts.map(m=>{
-   const item=fixture.items[Number(m.id)];
+   const item=items[Number(m.id)];
    const visual=createAttachmentVisual(item.id,palette,item.variant,true,samples);
    placeAttachmentVisual(visual,m.socket);group.add(visual.root);return visual;
   });

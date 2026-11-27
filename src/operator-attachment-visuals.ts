@@ -226,7 +226,7 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
    if(samples.grenade){
     const model=samples.grenade.clone(true);
     model.position.set(0,0,0);model.rotation.set(0,0,0);model.visible=true;
-    model.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry=o.geometry.clone();o.visible=true;}});
+    model.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry=o.geometry.clone();});
     g.add(model);
    }else{
     // Default Lab reference matches the existing issued flash art.
