@@ -288,3 +288,12 @@ test('new visual weapon options remain reference-only and retain honest proxy fi
   assert.deepEqual(visual.technicalIssues,[],id);
  }
 });
+
+test('reference look never carries an incompatible shoe color or waist finish onto owned kit',()=>{
+ const kit=initialEquipmentLoadout('carbine');
+ const before=JSON.stringify(kit);
+ const civilian=referenceLookForKit('ukraine-territorial-2022',kit);
+ assert.ok(civilian.substituted.includes('footwear'));
+ assert.equal(civilian.wardrobe.footwearColor,undefined);
+ assert.equal(JSON.stringify(kit),before);
+});
