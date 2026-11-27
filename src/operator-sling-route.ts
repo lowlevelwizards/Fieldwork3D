@@ -23,11 +23,16 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
  const hipSign: -1|1=shoulderSign===-1?1:-1;
  const margin=Math.min(.25,width*.16);
  const shoulder=fit.shoulder(shoulderSign);
- const z=shoulder[2],sy=Math.max(shoulder[1],pack?pack.max.y:shoulder[1])+margin;
+ // A front-hanging strap belongs to the body layer, not the outer
+ // perimeter of a bulky pack. Hidden portions may pass behind the pack.
+ // Keep its shoulder lane near the neck but still on the shoulder.
+ const outerPack=back?pack:undefined;
+ const hasPack=!!pack&&!pack.isEmpty();
+ const z=shoulder[2]*(hasPack ? .88 : 1),sy=shoulder[1]+margin;
  const single=profile?.kind==='single';
  const low=profile?.returnHeight??-3.5;
  const surface=(f:number,y:number,lateral:number)=>
-  (f===1?fit.front(y,lateral):packedRearSurface(fit.back(y,lateral),y,lateral,pack))+f*margin;
+  (f===1?fit.front(y,lateral):packedRearSurface(fit.back(y,lateral),y,lateral,outerPack))+f*margin;
  // A few decisive contact points. Straight runs between the actual
  // anchors are intentional; small textile intersections are preferable
  // to a stair-step route that looks like rigid tubing.
@@ -38,16 +43,17 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
   out[i].point.copy(out[a].point).lerp(out[b].point,t);
   out[i].normal.copy(out[a].normal).lerp(out[b].normal,t).normalize();
  };
- const crownFace=(f:number)=>f===-1&&pack&&z>=pack.min.z-margin&&z<=pack.max.z+margin?
-  Math.min(surface(f,5.2,z),pack.min.x-margin):surface(f,5.2,z);
+ // Shoulder contacts stay on the fitted shoulder, not on the far
+ // back plane of the pack. Its outer edge is only relevant lower down.
+ const crownFace=(f:number)=>(f===1?fit.front(5.2,z):fit.back(5.2,z))+f*margin;
  const crownX=crownFace(face),oppositeX=crownFace(-face);
  const flank=hipSign*Math.max(Math.abs(fit.side(low,0,hipSign)),
-  pack&&low>=pack.min.y&&low<=pack.max.y?Math.abs(hipSign===1?pack.max.z:pack.min.z):0)+hipSign*.18;
+  outerPack&&low>=outerPack.min.y&&low<=outerPack.max.y?Math.abs(hipSign===1?outerPack.max.z:outerPack.min.z):0)+hipSign*.18;
  const corner=(f:number)=>f*Math.max(...[0,.4,.82].map(t=>f*surface(f,low,flank*t)));
  const farCorner=corner(-face),nearCorner=corner(face);
  write(0,rear.x,rear.y,rear.z,face,0,side?hipSign:0);
- write(2,crownX,sy,z,face,1,0);
- write(3,oppositeX,sy,z,-face,1,0);
+ write(2,crownX,sy-(hasPack?.10:0),z,face,1,0);
+ write(3,oppositeX,sy-(hasPack?.10:0),z,-face,1,0);
  write(6,farCorner,low,flank,-face,0,1);
  write(7,nearCorner,low,flank,face,0,1);
  write(9,front.x,front.y,front.z,face,0,side?hipSign:0);
@@ -64,6 +70,18 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
  clearDiagonal(3,6,4,.33,-face);
  clearDiagonal(3,6,5,.67,-face);
  clearDiagonal(7,9,8,.5,face);
+ if(outerPack){
+  // One sloping upper-back contact, rather than lifting both crown
+  // points to the bag top and crossing its full depth at a right angle.
+  const k=out[1].point;
+  const top=outerPack.max.y;
+  const edge=outerPack.min.x-margin;
+  if(k.z>=outerPack.min.z-margin&&k.z<=outerPack.max.z+margin&&k.y<=top){
+   k.x=Math.min(k.x,edge);
+   k.y=Math.min(sy-.34,Math.max(k.y,top-.65));
+   out[1].normal.set(-1,.65,0).normalize();
+  }
+ }
  if(single){
   const jy=rear.y+2.25,jz=rear.z*.88;
   const jx=Math.max(rear.x+.10,surface(1,jy,jz));
@@ -92,14 +110,16 @@ export function routeSlingTransition(out:readonly SlingRibbonKnot[],
   a.point.lerp(b.point,f);
   a.normal.lerp(b.normal,f);
   if(i===2||i===3){ // crown stays outside both shoulder/pack top
-   a.point.y=Math.max(a.point.y,fit.shoulder(-1)[1]+Math.min(.25,width*.16));
+   a.point.y=Math.max(a.point.y,fit.shoulder(-1)[1]+Math.min(.25,width*.16)-(pack?.isEmpty()===false ? .10 : 0));
   }else{
    const sign=i<=4?-1:1;
    const start=Math.atan2(sign*Math.abs(oldZ),oldX);
    const end=Math.atan2(sign*Math.abs(b.point.z),b.point.x);
    const angle=start+(end-start)*f,c=Math.cos(angle),s=Math.sin(angle);
    const y=a.point.y,margin=width*.6+.16;
-   const xEdge=Math.abs(c>=0?fit.front(y,0):packedRearSurface(fit.back(y,0),y,0,pack))+margin;
+   const bodyBack=fit.back(y,0);
+   const backEdge=bodyBack+(packedRearSurface(bodyBack,y,0,pack)-bodyBack)*f;
+   const xEdge=Math.abs(c>=0?fit.front(y,0):backEdge)+margin;
    const zEdge=Math.abs(fit.side(y,0,sign))+margin;
    const radius0=Math.hypot(oldX,oldZ)*(1-f)+Math.hypot(b.point.x,b.point.z)*f;
    const surfaceRadius=Math.min(xEdge/Math.max(.001,Math.abs(c)),zEdge/Math.max(.001,Math.abs(s)));
@@ -132,6 +152,9 @@ export function fitSlingContactRoute(out:readonly SlingRibbonKnot[],path:readonl
   if(k.normal.lengthSq()<.0001)k.normal.copy(a.normal);
   k.normal.normalize();
   if(i===1||i===out.length-2)k.point.y-=Math.max(0,Math.min(.18,slack*.5));
+  // With a pack, round the shoulder crown with the existing midpoint;
+  // no added mesh or global clearance inflation.
+  if(pack&&i===5){k.point.y+=.20;k.normal.set(0,1,0);}
  }
  return out;
 }

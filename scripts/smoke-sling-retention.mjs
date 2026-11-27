@@ -20,33 +20,36 @@ try{
  await page.locator('#poseAnimation').selectOption('high-ready');
  const seek=async(value)=>page.locator('#timeline').evaluate((e,v)=>{e.value=String(v);e.dispatchEvent(new Event('input',{bubbles:true}));},value);
  const cases=[
-  ['ar-m4a1','armor-bare','no-rig','combat-shirt','sling-two-point'],
-  ['hk-mp5a3','plate-heavy','full-chest','gorka-jacket','sling-two-point'],
-  ['ak-akm','plate-jpc','chest-placard','bdu-shirt','sling-traditional'],
-  ['ar-m4a1','soft-slick','light-rig','smock-jacket','sling-single-point']
+  ['ar-m4a1','armor-bare','no-rig','combat-shirt','sling-two-point','no-pack'],
+  ['hk-mp5a3','plate-heavy','full-chest','gorka-jacket','sling-two-point','no-pack'],
+  ['ak-akm','plate-jpc','chest-placard','bdu-shirt','sling-traditional','no-pack'],
+  ['ar-m4a1','soft-slick','light-rig','smock-jacket','sling-single-point','no-pack'],
+  ['ar-m4a1','plate-heavy','full-chest','combat-shirt','sling-two-point','rucksack'],
+  ['hk-mp5a3','plate-jpc','chest-placard','bdu-shirt','sling-two-point','day-pack']
  ];
  const report=[];
- for(const [weapon,armor,rig,uniform,sling] of cases){
+ for(const [weapon,armor,rig,uniform,sling,pack] of cases){
   await page.locator('#poseWeapon').selectOption(weapon);
   await page.locator('#poseArmor').selectOption(armor);
   await page.locator('#poseRig').selectOption(rig);
   await page.locator('#poseUniform').selectOption(uniform);
+  await page.locator('#posePack').selectOption(pack);
   await page.locator('#retentionSling').selectOption(sling);
   for(const mode of sling==='sling-single-point'?['front-slung']:['front-slung','back-slung']){
    await page.locator('#retentionMode').selectOption(mode);
    await page.locator('#retentionSettled').click();
    await seek(500);
-   await page.waitForFunction(({mode,armor,rig,weapon})=>{
+   await page.waitForFunction(({mode,armor,rig,weapon,pack})=>{
     const d=document.getElementById('preview')?.dataset;
     return d?.ready==='true'&&d.retentionMode===mode&&d.retentionWeight==='1'&&
-      Number(d.retentionWebbing)>0&&d.poseFitArmor===armor&&d.poseFitRig===rig&&d.poseFitWeapon===weapon;
-   },{mode,armor,rig,weapon},{timeout:20000});
+      Number(d.retentionWebbing)>0&&d.poseFitArmor===armor&&d.poseFitRig===rig&&d.poseFitWeapon===weapon&&d.poseFitPack===pack;
+   },{mode,armor,rig,weapon,pack},{timeout:20000});
    for(const view of ['front','side','iso','game']){
     await page.locator('[data-lab-group="poses"] [data-view="'+view+'"]').click();
-    const name=[weapon,armor,rig,sling,mode,view].join('-');
+    const name=[weapon,armor,rig,pack,sling,mode,view].join('-');
     await page.locator('#preview').screenshot({path:out+'/'+name+'.png'});
    }
-   report.push({weapon,armor,rig,uniform,sling,mode,data:await page.locator('#preview').evaluate(e=>({...e.dataset}))});
+   report.push({weapon,armor,rig,uniform,sling,pack,mode,data:await page.locator('#preview').evaluate(e=>({...e.dataset}))});
   }
  }
  await page.locator('#retentionRoute').click();

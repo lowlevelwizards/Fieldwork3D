@@ -117,9 +117,9 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
  // Clearance is authoritative: add only a small outward excursion after
  // contact fit, never an inward penetration or floor-changing movement.
  if(suspension){
-  if(front)position.x+=suspension.separation*.45;
+  if(front)position.x+=suspension.separation*.58;
   else if(side)position.z+=suspension.separation*.25;
-  else position.x-=suspension.separation*.35;
+  else position.x-=suspension.separation*.50;
  }
  const right=one?anchor.clone():sampleRetentionFreeWrist(1,p.mode,p.locomotion,p.exterior);
  const left=sampleRetentionFreeWrist(-1,p.mode,p.locomotion,p.exterior);

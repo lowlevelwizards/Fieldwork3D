@@ -1,0 +1,5 @@
+# SR21 — compact pack layering and suspended movement
+
+The front/held route uses the body layer under the pack; the concealed segment is deliberately not forced across the outside of the bag. A back-hanging visual uses the pack exterior below the shoulder, with the shoulder itself remaining on the body and a single sloping contact. The existing midpoint rounds the crown slightly. This is a game-art layering choice, not a universal claim about real equipment. No authored weapon sockets or strap widths changed.
+
+Front stow travels most of its distance before the end of the existing fixed-step action window, then a bounded, deterministic compression and rebound settles it. Return uses the same reversible sample; action readiness timing is unchanged. The two-point locomotion motion profile is strengthened and the existing secondary-draw branch retains motion sampling at fraction 1. No separate physics clock or gameplay state. Ground correction bounds the compression; pack bounds and cloth contact are approximations. Mobile visual review remains required.

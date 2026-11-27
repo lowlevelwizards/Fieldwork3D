@@ -9,8 +9,14 @@ test('SR7 pack rear depth only applies where the visible bag occupies the sectio
  assert.equal(packedRearSurface(-5,-4,0,p),-5);
  const route=createSlingRoute(),a=new THREE.Vector3(-12,4,0),b=new THREE.Vector3(-12,-3,0);
  routeSlingRibbon(route,a,b,equipmentExterior('armor-bare','no-rig','combat-shirt'),'back-slung',1,p);
- assert.ok(route[2].point.y>p.max.y);
- assert.ok(route[2].point.x<=-11||Math.abs(route[2].point.z)>4);
+ const fit=equipmentExterior('armor-bare','no-rig','combat-shirt');
+ assert.ok(route[2].point.y<=fit.shoulder(-1)[1]+.3);
+ assert.ok(route[2].point.x>p.min.x+1);
+ const front=createSlingRoute(),bare=createSlingRoute();
+ routeSlingRibbon(front,a,b,fit,'front-slung',1,p);
+ routeSlingRibbon(bare,a,b,fit,'front-slung',1);
+ assert.ok(Math.abs(front[2].point.y-bare[2].point.y)<.15);
+ assert.ok(front[3].point.x>p.min.x+1);
 });
 test('SR7 pack measurement ignores hidden alternate artwork and tracks staged transform',()=>{
  const pack=new THREE.Group(),dayPack=new THREE.Group(),fieldPack=new THREE.Group();

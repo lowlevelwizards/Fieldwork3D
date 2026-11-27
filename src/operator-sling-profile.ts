@@ -7,8 +7,8 @@ export type SlingArtProfile=Readonly<{
 }>;
 export const SLING_ART_PROFILES:Readonly<Record<SlingArtProfile['id'],SlingArtProfile>>={
  single:{id:'single',kind:'single',width:1.16,color:0x383b34,freedom:1,returnHeight:-1.8,entryHeight:4.2},
- modern:{id:'modern',kind:'two',width:1.35,color:0x4e5544,freedom:.32,returnHeight:-3.5,entryHeight:3.8},
- traditional:{id:'traditional',kind:'two',width:1.0,color:0x80664a,freedom:.56,returnHeight:-4.4,entryHeight:3.5}
+ modern:{id:'modern',kind:'two',width:1.35,color:0x4e5544,freedom:.48,returnHeight:-3.5,entryHeight:3.8},
+ traditional:{id:'traditional',kind:'two',width:1.0,color:0x80664a,freedom:.67,returnHeight:-4.4,entryHeight:3.5}
 };
 export function slingArtProfile(id:string|undefined):SlingArtProfile{
  return id==='sling-single-point'?SLING_ART_PROFILES.single:
