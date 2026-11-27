@@ -1,0 +1,49 @@
+name: Belt artwork — native fit and mobile silhouettes
+on:
+  pull_request:
+    paths:
+      - 'src/operator-belt-*.ts'
+      - 'src/operator-attachment-*.ts'
+      - 'src/operator-gear-pixel-art.ts'
+      - 'src/operator-wardrobe-accessories.ts'
+      - 'tests/operator-belt-*.test.mjs'
+      - 'tests/operator-attachment-artwork.test.mjs'
+      - 'scripts/capture-belt-artwork.mjs'
+      - '.github/workflows/belt-artwork-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-fit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Belt geometry, physical contact, native artwork and fixture fit
+        run: node --experimental-strip-types --test tests/operator-belt-profile.test.mjs tests/operator-belt-geometry.test.mjs tests/operator-belt-mounts.test.mjs tests/operator-belt-readability.test.mjs tests/operator-attachment-artwork.test.mjs
+      - run: npm run check
+  mobile-silhouettes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/capture-belt-artwork.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: belt-artwork-mobile-captures
+          path: belt-artwork-captures/
+          if-no-files-found: warn
