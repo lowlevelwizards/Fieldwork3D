@@ -37,7 +37,7 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     label:o.transportQueued?'SET DOWN HERE':'SET DOWN',group:'primary' as const,
     title:o.transportQueued?'Queue lowering after the planned route':'Lower the casualty at the current position'};
   if(o.door)return [release];
-  return [release,{id:'ctxWait',label:'WAIT',group:'primary',title:'Wait while maintaining casualty custody'},
+  return [release,{id:'ctxWait',label:'WAIT',group:'primary' as const,title:'Wait while maintaining casualty custody'},
     ...(o.node?[{id:'ctxDelete',label:'DELETE POINT',group:'destructive' as const}]:[])]
     .filter(a=>transportContextAllowed(a.id));
  }

@@ -1,0 +1,2 @@
+# CT14 — Casualty Transport Lab
+Standalone Vite entry linked from main development settings and Operator Lab. Real operator rigs and production transport/contact/weight helpers; fixed 60Hz seekable preview track, mode, casualty type, sling, camera, playback/step and contact error diagnostics. Static obstacles demonstrate pair movement only; not a substitute for full gameplay door and traffic testing. Fix context palette TypeScript widening from CT12.

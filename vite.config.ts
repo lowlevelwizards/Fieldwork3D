@@ -23,6 +23,7 @@ export default defineConfig({
       enemyAiLab: 'enemy-ai-lab.html',
       wallMaterialLab: 'wall-material-lab.html',
       physicalityLab: 'physicality-lab.html',
+      casualtyTransportLab: 'casualty-transport-lab.html',
       a3PhysicalityLab: 'a3-physicality-lab.html',
       doorTestRange: 'door-test-range.html',
       assetLab: 'asset-lab.html',
