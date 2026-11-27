@@ -70,7 +70,7 @@ test('every rig presents only its explicit dedicated magazine pouch inventory',(
    for(let i=0;i<visible.length;i++){
     const mag=r.visualKit.magazines.rig[i];
     assert.ok(mag.visible,style+' valid first-fit placement');
-    assert.equal(mag.parent,waistStyles.has(style)?waist:r.chest,
+    assert.equal(mag.parent,waistStyles.has(style)?waist:chest,
      style+' authentic bone/container');
     mag.geometry.computeBoundingBox();
     const cell=actualCells[i];
