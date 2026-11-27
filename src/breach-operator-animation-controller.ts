@@ -27,6 +27,7 @@ import {solveOperatorDirectSlingPose,commitOperatorSlingRibbon} from './breach-o
 import {equipmentExterior} from './operator-equipment-exterior.ts';
 import {retentionPackBounds} from './operator-retention-pack.ts';
 import {retentionShape} from './operator-retention-shape.ts';
+import {slingArtProfile} from './operator-sling-profile.ts';
 import {beginOperatorEquipmentPose,solveOperatorDroppedWeapon,
  finishOperatorEquipmentPose} from './breach-operator-equipment-output.ts';
 import {EQUIPMENT_ATTACHMENT_INDEX as EAI}
@@ -398,8 +399,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.droppedLightLens=null;
     const slingMaterial=r.slingStraps[0]?.material;
     if(slingMaterial instanceof THREE.MeshStandardMaterial)
-      slingMaterial.color.setHex(config?.slots.sling==='sling-traditional'?0x80664a:
-        config?.slots.sling==='sling-single-point'?0x383b34:0x4e5544);
+      slingMaterial.color.setHex(slingArtProfile(config?.slots.sling).color);
     r.visualWeapon=p.weapon;r.visualWeaponConfiguration=config;
     if(profilePose)weaponBuildMs+=performance.now()-buildStart;
   }
@@ -1147,6 +1147,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         injury:p.injury,direction:(p.travelYaw??p.heading)-p.heading},
       motion:{stride:p.stride,speed:physicalSpeed,acceleration:p.acceleration,
         momentum:p.motionImpulse,posture:p.posture,gait:p.gait,
+        profile:slingArtProfile(config?.slots.sling),
         turning:p.turning,massKg:retentionAssembly?.massKg??3,
         inertia:retentionAssembly?.rotationalInertia??100}},retentionWeight):null;
   if(retention){

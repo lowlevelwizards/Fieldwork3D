@@ -8,6 +8,7 @@ import {readSlingKind,type SlingKind} from './breach-weapon-retention.ts';
 import {equipmentExterior,type EquipmentExterior} from './operator-equipment-exterior.ts';
 import {resolvedWardrobe} from './operator-wardrobe-data.ts';
 import {createSlingRoute,routeSlingTransition} from './operator-sling-route.ts';
+import {slingArtProfile} from './operator-sling-profile.ts';
 import {updateSlingRibbonGeometry} from './operator-sling-ribbon.ts';
 import type {RetentionPoseMode} from './breach-weapon-retention-pose.ts';
 import type {WeaponRetentionSockets} from './weapons/geometry/weapon-retention-sockets.ts';
@@ -15,8 +16,7 @@ type SlingNode=Pick<THREE.Object3D,'visible'|'position'|'scale'|'quaternion'>;
 type SlingPoseSource=Pick<OperatorPose,'weaponConfiguration'|'surrender'|'stride'|'worldWeaponReleased'>&
  Partial<Pick<OperatorPose,'equipment'|'wardrobe'>>;
 const routes=new WeakMap<THREE.Mesh,{path:ReturnType<typeof createSlingRoute>;alternate:ReturnType<typeof createSlingRoute>}>();
-const ribbonWidth=(p:SlingPoseSource)=>p.weaponConfiguration?.slots.sling==='sling-traditional'?.78:
- p.weaponConfiguration?.slots.sling==='sling-single-point'?.90:1.05;
+const ribbonWidth=(p:SlingPoseSource)=>slingArtProfile(p.weaponConfiguration?.slots.sling).width;
 function exteriorFor(p:SlingPoseSource){
  const w=resolvedWardrobe(p.wardrobe,p.equipment);
  return equipmentExterior(w.armorStyle,w.rigStyle,w.top);
@@ -25,7 +25,8 @@ function prepareRibbon(mesh:THREE.Mesh,p:SlingPoseSource,rear:THREE.Vector3,
  front:THREE.Vector3,fit:EquipmentExterior,retention?:RetentionPoseMode,pack?:THREE.Box3,weight=1){
  let route=routes.get(mesh);
  if(!route){route={path:createSlingRoute(),alternate:createSlingRoute()};routes.set(mesh,route);}
- routeSlingTransition(route.path,route.alternate,rear,front,fit,retention,ribbonWidth(p),pack,weight);
+ routeSlingTransition(route.path,route.alternate,rear,front,fit,retention,ribbonWidth(p),pack,weight,
+  slingArtProfile(p.weaponConfiguration?.slots.sling));
 }
 function ribbonTransform(t:SlingNode){
  t.visible=true;t.position.set(0,0,0);t.quaternion.identity();t.scale.set(1,1,1);

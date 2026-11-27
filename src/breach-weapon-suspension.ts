@@ -1,10 +1,12 @@
 /** WR5: analytic, bounded suspension response. Motion is sampled from
  * existing locomotion facts, not a render-time clock or accumulated physics. */
+import type {SlingArtProfile} from './operator-sling-profile.ts';
 import type {SlingKind} from './breach-weapon-retention.ts';
 export type SuspensionMotion=Readonly<{
  stride:number;speed:number;acceleration?:number;turning?:number;
  massKg:number;inertia:number;
  momentum?:Readonly<{drive:number;brake:number}>;
+ profile?:SlingArtProfile;
  posture?:'stand'|'crouch';gait?:'walk'|'run'|'pie'|'squeeze';
 }>;
 const finite=(v:number|undefined)=>Number.isFinite(v)?v!:0;
@@ -16,7 +18,8 @@ export function sampleSuspensionMotion(sling:SlingKind,m:SuspensionMotion){
  const phase=finite(m.stride)*Math.PI*2;
  const accel=clamp(finite(m.acceleration)/150,-1,1);
  const turn=clamp(finite(m.turning),-1,1);
- const freedom=sling==='single'?1:sling==='two'?.32:0;
+ const freedom=sling==='none'?0:m.profile?.kind===sling?m.profile.freedom:
+  sling==='single'?1:.32;
  const stance=(m.posture==='crouch'?.68:1)*
   (m.gait==='pie'||m.gait==='squeeze'?.55:1);
  const k=freedom*load*stance;

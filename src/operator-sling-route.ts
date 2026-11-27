@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type {EquipmentExterior} from './operator-equipment-exterior.ts';
 import type {RetentionPoseMode} from './breach-weapon-retention-pose.ts';
 import {packedRearSurface} from './operator-retention-pack.ts';
+import type {SlingArtProfile} from './operator-sling-profile.ts';
 import type {SlingRibbonKnot} from './operator-sling-ribbon.ts';
 export const SLING_ROUTE_KNOTS=10;
 export function createSlingRoute():SlingRibbonKnot[]{
@@ -14,7 +15,7 @@ export function createSlingRoute():SlingRibbonKnot[]{
 }
 export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
  rear:THREE.Vector3,front:THREE.Vector3,fit:EquipmentExterior,
- retention?:RetentionPoseMode,width=1.05,pack?:THREE.Box3){
+ retention?:RetentionPoseMode,width=1.05,pack?:THREE.Box3,profile?:SlingArtProfile){
  const back=retention==='back-slung';
  const side=retention==='side-slung';
  const face=back?-1:1;
@@ -24,7 +25,7 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
  const lane=fit.slingShoulder(shoulderSign,width);
  const shoulder=lane.crown;
  const z=shoulder[2],sy=Math.max(shoulder[1],back&&pack?pack.max.y:shoulder[1])+margin;
- const high=3.8,low=-3.5;
+ const high=profile?.entryHeight??3.8,low=profile?.returnHeight??-3.5;
  const surface=(f:number,y:number,lateral:number)=>
   (f===1?fit.front(y,lateral):packedRearSurface(fit.back(y,lateral),y,lateral,back?pack:undefined))+f*margin;
  const flank=(back&&pack?hipSign*Math.max(Math.abs(fit.side(low,0,hipSign)),Math.abs(hipSign===1?pack.max.z:pack.min.z)):fit.side(low,0,hipSign))+hipSign*margin;
@@ -62,12 +63,12 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
 export function routeSlingTransition(out:readonly SlingRibbonKnot[],
  alternate:readonly SlingRibbonKnot[],rear:THREE.Vector3,front:THREE.Vector3,
  fit:EquipmentExterior,retention:RetentionPoseMode|undefined,width:number,
- pack:THREE.Box3|undefined,weight:number){
+ pack:THREE.Box3|undefined,weight:number,profile?:SlingArtProfile){
  if(retention!=='back-slung'||weight>=1)
-  return routeSlingRibbon(out,rear,front,fit,retention,width,pack);
- routeSlingRibbon(out,rear,front,fit,undefined,width,pack);
+  return routeSlingRibbon(out,rear,front,fit,retention,width,pack,profile);
+ routeSlingRibbon(out,rear,front,fit,undefined,width,pack,profile);
  if(weight<=.5)return out;
- routeSlingRibbon(alternate,rear,front,fit,'back-slung',width,pack);
+ routeSlingRibbon(alternate,rear,front,fit,'back-slung',width,pack,profile);
  const t=Math.max(0,Math.min(1,(weight-.5)*2)),f=t*t*(3-2*t);
  for(let i=1;i<out.length-1;i++){
   const a=out[i],b=alternate[i],oldX=a.point.x,oldZ=a.point.z;
