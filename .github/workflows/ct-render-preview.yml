@@ -1,0 +1,21 @@
+name: CT carry rendered preview
+on:
+  push:
+    branches: [feature/ct-carry-preview-2]
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright
+      - run: npx playwright install --with-deps chromium
+      - run: npm run dev -- --port 4173 > /tmp/ct-vite.log 2>&1 &
+      - run: node scripts/ct-render-preview.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: casualty-transport-rendered-views
+          path: ct-preview/
