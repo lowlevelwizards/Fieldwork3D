@@ -75,8 +75,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Receiver-side mark is taller, directly OVER the magazine insertion.
  addWeaponPixelMark(root,'ar-port',m.portX,m.portY,1.82,
   m.portWidthX,m.portHeightY);
- // R4.6: the charging handle is a substantial, seated rear shelf.
- b('receiver',-5.92,1.59,0,1.68,.80,3.90,0);
+ // WC2.5b: subdued graphic rear shelf, seated into the upper silhouette.
+ b('receiver',-5.68,1.55,0,1.08,.48,3.55,0);
  // R4.8: a chunky square-ended assist, seated at its forward end and
  // canted OUTWARD at its rear. Rotating a deeper SOLID wedge around the
  // receiver's side yields dimensionality without the R4.6 dotted z-fight.

@@ -25,7 +25,11 @@ test('each authored miniature has one pad and adjustable variants have static ar
    assert.equal(pieces.filter(n=>n.userData.arStockCaricature).length,1);
    assert.equal(pieces.filter(n=>n.userData.arStockDecorativePad).length,1);
    assert.equal(pieces.filter(n=>n.userData.arStockDecorativeLatch).length,arStockArtKind(id)==='fixed'?0:1);
-   assert.ok(pieces.length<=4);
+   assert.ok(pieces.length<=5);
+   const pad=pieces.find(n=>n.userData.arStockDecorativePad);
+   const body=pieces.find(n=>n.userData.arStockCaricature);
+   assert.ok(new THREE.Box3().setFromObject(pad).intersectsBox(new THREE.Box3().setFromObject(body)),id+' pad seated in art');
+   assert.equal(pieces.filter(n=>n.userData.arStockUpperMass).length,arStockArtKind(id)==='fixed'?0:1);
   }finally{clearWeaponSilhouette(g);}
  }
 });
