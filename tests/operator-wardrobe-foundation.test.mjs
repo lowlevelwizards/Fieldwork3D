@@ -17,7 +17,7 @@ test('blank face and close fitting backpack do not change skeleton',()=>{
  const none=setEquipmentChoice(initialEquipmentLoadout(),'backpack','backpack-none');
  poseOperator(r,{...base,equipment:none},0);
  assert.equal(r.pack.visible,false);
- assert.equal(r.visualKit.packHarness.visible,false);
+ assert.equal(r.visualKit.packPreview.harness,undefined);
  r.dispose();
 });
 test('cap brim is not floating and headgear options remain exclusive',()=>{
