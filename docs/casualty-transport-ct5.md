@@ -1,0 +1,2 @@
+# CT5 — Attached carry foundation
+The live carry footprint follows a compact carrier-relative shoulder support point rather than a 13-unit ground pursuit slot. Acquisition converges with bounded swept movement; seated translation follows the carrier. Drop holds the last position during contact. Authoritative casualty position continues to drive mission extraction/selection. Legacy offset helper remains for old callers/tests. Exact visible shoulder support, body posture and lowering animation remain CT8–CT10.

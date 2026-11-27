@@ -2,12 +2,13 @@
  * Proposals capture pre-movement positions. A single arbiter decides hard
  * actor/civilian collisions; rejected motion is restored deterministically.
  */
+import {proposeAttachedCarry} from './breach-attached-carry.ts';
 import {proposeDragTrail,type DragTrail} from './breach-drag-trail.ts';
 import {transportProfile} from './breach-transport-navigation.ts';
 import {hasTransportLink} from './breach-transport-custody.ts';
 import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
 import {length} from './breach-plan.ts';
-import {proposedCivilianTransportStep,reconcileCivilianTransportFrame}
+import {reconcileCivilianTransportFrame}
  from './breach-civilian-transport.ts';
 import {civilianSenseDue,stepCivilianResponse} from './breach-civilian-response.ts';
 import {stepCivilianMovement} from './breach-civilian-movement.ts';
@@ -71,8 +72,8 @@ export function advanceSimulationMotion(s:Session,h:number,
     const profile=transportProfile(mode);
     const clear=(a:Pt,b:Pt)=>sweptBodyClear(a,b,s.doors,profile.bodyRadius,geometry());
     const drag=mode==='drag'?proposeDragTrail(civil.id,bodyFrom,from,carrier.p,carrier.dragTrail,clear):null;
-    const next=mode==='drag'?drag?.point??null:proposedCivilianTransportStep(bodyFrom,from,carrier.p,
-      carrier.heading,mode,clear,others,carrier.transportContact?.kind==='release'?0:h*36);
+    const next=mode==='drag'?drag?.point??null:proposeAttachedCarry(bodyFrom,from,carrier.p,
+      carrier.heading,h,clear,carrier.transportContact?.kind==='release');
     if(!next){
       carrier.p=clone(from);carrier.velocity=0;carrier.nav=[];
       civil.p=clone(bodyFrom);civil.velocity=0;
