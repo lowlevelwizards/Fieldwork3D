@@ -47,6 +47,8 @@ export function createOrderExecutor(port:OrderExecutionPort){
   // actor who requested movement, never a stationary friend or held stack.
   beginRetentionTick(a,dt);
   const n=a.plan[0];
+  if(a.transportContact&&(a.transportContact.order!==n?.id||a.health<=0||a.surrendered))
+    a.transportContact=undefined;
   if(advanceGroundRecovery(s,a,dt))return;
   a.motorPause=null;
   // An airborne crossing must reach a verified landing before combat pause,

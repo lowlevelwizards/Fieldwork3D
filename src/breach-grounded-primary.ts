@@ -58,7 +58,7 @@ export function advanceGroundRecovery(s:Session,a:TeamActor,dt:number):boolean{
   if(a.primaryPlacement?.order!==order?.id)a.primaryPlacement=undefined;
   return false;
  }
- if(a.health<=0||a.surrendered)return false;
+ if(a.health<=0||a.surrendered||a.carryingId)return false;
  if(a.primaryPlacement?.kind==='placed'&&a.primaryPlacement.order===order?.id)return false;
  if(order?.kind==='switch-weapon'&&(order.weaponHand??'secondary')==='secondary'||
     (a.secondarySwitch?.fraction??0)>0)return false;

@@ -1,3 +1,4 @@
+import {makeTransportContact,transportContactDuration} from './breach-transport-contact.ts';
 import {prepareHandsFree} from './breach-weapon-retention-live.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 8: deterministic medical supply recovery, treatment and
@@ -106,8 +107,12 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
              sessionWorldGeometry(s)))){
         failCurrentOrder(s,a,n,'CASUALTY NOT IN PHYSICAL REACH');return true;
       }
-      a.velocity=0;a.actionTimer+=dt;
-      if(a.actionTimer>=(mode==='drag'?.85:1.45)){
+      a.velocity=0;
+      if(!rotate(a,angle(a.p,patient.p),dt,s))return true;
+      if(!prepareHandsFree(a,dt,s))return true;
+      a.actionTimer+=dt;
+      a.transportContact=makeTransportContact(n.id,patient,mode,'pickup',a.actionTimer);
+      if(a.actionTimer>=transportContactDuration(mode,'pickup')){
         if(civil){
           if(!takeCivilianCustody(civil,a,mode)){
             failCurrentOrder(s,a,n,'CASUALTY TRANSPORT UNAVAILABLE');return true;
@@ -120,6 +125,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
             failCurrentOrder(s,a,n,'CASUALTY TRANSPORT UNAVAILABLE');return true;
           }
         }
+        a.transportContact=undefined;
         a.actionTimer=0;clearCurrentOrderIssue(a);
         notify(s,a.name+' '+(mode==='drag'?'DRAGGING':'CARRYING')+' '+
           ('name' in patient?patient.name:'CIVILIAN'));
@@ -142,6 +148,9 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
         // Keep custody until the physically trailing body enters extraction.
         a.velocity=0;return true;
       }
+      a.velocity=0;a.actionTimer+=dt;
+      a.transportContact=makeTransportContact(n.id,patient,mode,'release',a.actionTimer);
+      if(a.actionTimer<transportContactDuration(mode,'release'))return true;
       if(civil)dropCivilianCustody(civil,a);
       else releaseTransport(a,patient);
       notify(s,('name' in patient?patient.name:'CIVILIAN')+' RELEASED');

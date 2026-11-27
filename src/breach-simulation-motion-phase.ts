@@ -66,7 +66,8 @@ export function advanceSimulationMotion(s:Session,h:number,
     for(const c of s.civilians)if(c!==civil)others.push(c.p);
     const next=proposedCivilianTransportStep(bodyFrom,from,carrier.p,
       carrier.heading,civil.transportMode??carrier.plan[0]?.transportMode??'drag',
-      (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,geometry()),others,h*36);
+      (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,geometry()),others,
+      carrier.transportContact?.kind==='release'?0:h*36);
     if(!next){
       carrier.p=clone(from);carrier.velocity=0;carrier.nav=[];
       civil.p=clone(bodyFrom);civil.velocity=0;

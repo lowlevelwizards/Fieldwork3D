@@ -22,6 +22,7 @@ import * as THREE from 'three';
 import {readSlingKind} from './breach-weapon-retention.ts';
 import {sampleSecondaryRetention} from './breach-secondary-retention.ts';
 import {oneHandRetentionWeight} from './breach-weapon-retention-actions.ts';
+import {sampleTransportContact} from './breach-transport-contact.ts';
 import {sampleRetentionTransition} from './breach-weapon-retention-transition.ts';
 import {solveOperatorDirectSlingPose} from './breach-operator-sling-pose.ts';
 import {beginOperatorEquipmentPose,solveOperatorDroppedWeapon,
@@ -136,7 +137,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   });
   const {physicalSpeed,moving,direction,hipTarget,crouch:postureCrouch}=
     preparedDecision.locomotion;
-  const crouch=postureCrouch+(p.coverStanceDrop??0);
+  const transportContact=!p.down&&!p.surrender&&p.transportContact?
+    sampleTransportContact(p.transportContact):null;
+  const crouch=postureCrouch+(p.coverStanceDrop??0)+(transportContact?.bend??0)*7;
   frame.hip.position.y=LEG_HIP_HEIGHT-crouch;
   frame.chest.position.y=26-crouch;
   // Low traversal carries a rearward pelvis and counterbalanced thorax.
@@ -1109,7 +1112,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const liveOneHand=oneHandWeight>0&&!p.retentionTransition&&!p.retentionPreview;
   const liveHandsFree=!!p.retentionTransition&&p.retentionTransition.mode!==null;
   const handsFreeAction=liveHandsFree&&p.retentionTransition!.weight>=1&&
-    (treatmentActive||doorActive||equipmentActive);
+    (treatmentActive||doorActive||equipmentActive||!!transportContact);
   const retentionMode=switchingSlung?'front-slung':liveOneHand?'held-one':p.retentionTransition?
     p.retentionTransition.mode:p.retentionPreview;
   const retentionWeight=switchingSlung?switchPose.retention:liveOneHand?oneHandWeight:p.retentionTransition?.weight??1;
@@ -1199,7 +1202,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         p.labPistolPitch??0,p.labPistolStance==='retention');
       continue;
     }
-    if(!p.primaryGrounded&&!retention&&(manualShort||manualCarry)&&manualSourceFit&&!equipmentActive){
+    if(!transportContact&&!p.primaryGrounded&&!retention&&(manualShort||manualCarry)&&manualSourceFit&&!equipmentActive){
       const startShoulder=shoulderFor(i);
       const targetShoulder=new THREE.Vector3(
         ...manualPose!.targets[
@@ -1261,6 +1264,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     if(p.primaryGrounded&&!p.down&&!p.surrender&&!treatmentActive&&!equipmentActive&&!doorActive&&!throwActive){
       desired=P(3,-8.6,sign*9);
     }
+    if(transportContact&&p.transportContact&&!p.down&&!p.surrender){
+      const target=p.transportContact.point;
+      const local=P(target.x-p.x,5-frame.chest.position.y,target.y-p.z);
+      local.applyAxisAngle(P(0,1,0),-r.legacyYaw);
+      local.applyAxisAngle(P(0,1,0),-frame.chest.rotation.y);
+      desired.copy(P(3,-8.6,sign*9)).lerp(local.add(P(0,0,sign*3.5)),transportContact.reach);
+    }
     if(p.unarmedPreview&&p.civilianGesture){
       const gesture=p.civilianGesture;
       const wrist=gesture==='hands-behind'?
@@ -1291,7 +1301,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // V3 arms. Only when neither owns the pair does generic IK run.
     // No second IK pass may undo a validated elbow/armor solution.
     const destinationArms=coupled?.arms??coordinatedDynamic?.arms??null;
-    const pairedArms=!p.primaryGrounded&&!retention&&!carryTransitionActive&&!authoredBridge&&
+    const pairedArms=!transportContact&&!p.primaryGrounded&&!retention&&!carryTransitionActive&&!authoredBridge&&
       !reaching&&!p.unarmedPreview&&contactReach<.001&&!equipmentActive?destinationArms:null;
     if(pairedArms){
       const limb=pairedArms[i];

@@ -2895,6 +2895,7 @@ export class TacticalScene3D{
          weaponConfiguration:actor.weaponConfiguration,
          weaponLightOn:actor.weaponLightOn,
          nvgDeployed:actor.nvgDeployed===true,
+        transportContact:actor.transportContact,
         treatmentActive:actor.treatmentActive,
         treatmentProgress:actor.treatmentProgress,
         // Real GO-time civilian contact flashes a gentle support-hand
