@@ -36,6 +36,7 @@ export type ContextCommandResult={
  /** Arms player-directed route placement; it does not silently extract. */
  armTransport?:{patientId:string;mode:'drag'|'carry'};
 };
+import {projectedTransportPatient,transportContextAllowed} from './breach-transport-controls.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function dispatchTacticalContextCommand(input:{
  state:Session;selected:string;actor:TeamActor;
@@ -55,6 +56,8 @@ export function dispatchTacticalContextCommand(input:{
    return {handled:true,outcome:accepted?'accepted':'rejected',
      ...(!accepted?{failureReason}:{}),...options};
  };
+ if(projectedTransportPatient(a.carryingId,a.plan)&&!transportContextAllowed(action))
+   return finish(false,'HANDS OCCUPIED · SET DOWN CASUALTY FIRST');
  if(action.startsWith('ctxTreat:')){
   const patientId=action.slice('ctxTreat:'.length);
   const at=node?.p??finalPoint(a);

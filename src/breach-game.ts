@@ -5,6 +5,7 @@ import {plannedControl} from './breach-tactical-control-commands.ts';
 import {coveringActorAvailable,coveringContactClear,desiredCovering,sameCovering,type CoveringAction} from './breach-window-covering-interaction.ts';
 import {normalizeWindowCovering} from './breach-window-coverings.ts';
 import {windowCoveringsBlockSight} from './breach-window-covering-optics.ts';
+import {projectedTransportPatient} from './breach-transport-controls.ts';
 import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
@@ -201,6 +202,8 @@ export type TeamActor=Operator & {
   treatmentActive:boolean;treatmentProgress:number;
   carryingId:string|null;carriedById:string|null;
   transportLatched?:boolean;
+  transportContact?:import('./breach-transport-contact.ts').TransportContact;
+  dragTrail?:import('./breach-drag-trail.ts').DragTrail;
   downWeaponsReleased?:boolean;
   /** Physical downed-person drag/carry presentation, recorded for replay. */
   transportMode?:TransportMode|null;
@@ -1436,8 +1439,13 @@ export function planCasualtyPickup(s:Session,id:string,patientId:string,
 /** Authored emergency release supersedes only this patient's transport.
  * Other subsequent planned orders remain intact and the edit is undoable. */
 export function planCivilianRelease(s:Session,id:string):boolean{
- const a=party(s,id),c=s.civilians.find(c=>c.id===a?.carryingId);
- if(!a||!c||c.carriedById!==a.id||!canEdit(s))return false;
+ const a=party(s,id);
+ if(!a||!canEdit(s))return false;
+ const projected=projectedTransportPatient(a.carryingId,a.plan);
+ const c=s.civilians.find(c=>c.id===projected);
+ if(!c)return false;
+ if(!a.carryingId)return addNode(s,id,'interact',finalPoint(a),{objectId:c.id,interaction:'release-civilian'});
+ if(c.carriedById!==a.id)return false;
  return edit(s,a,()=>{
    a.plan=a.plan.filter(n=>n.kind!=='evacuate'||n.patientId!==c.id);
    a.plan.unshift({id:s.nextId++,kind:'interact',p:clone(a.p),
@@ -1448,10 +1456,12 @@ export function planCivilianRelease(s:Session,id:string):boolean{
  * Never silently counts a released body as extracted or changes its side. */
 export function planCaptureTransportRelease(s:Session,id:string):boolean{
   const a=party(s,id);
-  const patient=s.operators.find(o=>o.id===a?.carryingId);
-  if(!a||!patient||!canEdit(s)||
-     patient.health>0||
-     patient.carriedById!==a.id)return false;
+  if(!a||!canEdit(s))return false;
+  const projected=projectedTransportPatient(a.carryingId,a.plan);
+  const patient=s.operators.find(o=>o.id===projected);
+  if(!patient||patient.health>0)return false;
+  if(!a.carryingId)return addNode(s,id,'interact',finalPoint(a),{objectId:patient.id,interaction:'release-capture-target'});
+  if(patient.carriedById!==a.id)return false;
   return edit(s,a,()=>{
     a.plan=a.plan.filter(n=>n.kind!=='evacuate'||n.patientId!==patient.id);
     a.plan.unshift({id:s.nextId++,kind:'interact',p:clone(a.p),
@@ -1912,9 +1922,6 @@ const motorHooks:ActorMotorHooks={
 };
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1,
  profile?:((section:string,elapsedMs:number)=>void)){
- const patient=a.transportLatched&&a.carryingId?
-  s.operators.find(o=>o.id===a.carryingId)??s.civilians.find(c=>c.id===a.carryingId):null;
- if(patient)speedScale=Math.min(speedScale,patient.transportMode==='carry'?.38:.48);
  return advanceActorMotor(a,p,dt,s,motorHooks,speedScale,profile);
 }
 /** Authoritative 60 Hz session keeps the clock, gameplay side effects and
@@ -2233,7 +2240,7 @@ function mission(s:Session,dt:number){
     (!s.withdrawalRequested||canConcludeWithdrawal(s))&&
     team(s).some(a=>a.health>0&&
     near(a.p,s.scenario.extract,37)&&
-    !(a.transportLatched&&a.carryingId&&
+    !(a.carryingId&&
       s.operators.some(p=>p.id===a.carryingId&&p.id!==s.captureTarget))&&
     validLivingCaptureExtraction(a)&&
     (s.missionType!=='intel'||s.intelCarrierId===a.id)&&

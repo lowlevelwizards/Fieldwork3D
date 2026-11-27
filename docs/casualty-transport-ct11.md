@@ -1,0 +1,2 @@
+# CT11 — Physical load
+One stride policy owns drag/carry speed caps, acceleration, braking and turn losses. All authored travel modes (including sprint) remain capped while attached; the shared motor still owns exact position, collision and footsteps. No double application of legacy .48/.38 caps. Loaded poses use walk gait, mode-specific sway and the existing physical speed. No force-based physics, stamina system or independent renderer clock added. Tuning values remain subject to actual playtest.

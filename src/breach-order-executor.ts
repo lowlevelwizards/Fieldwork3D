@@ -1,3 +1,4 @@
+import {isTransportRelease,transportOrderAllowed} from './breach-transport-gameplay.ts';
 import {advanceGroundRecovery} from './breach-grounded-primary.ts';
 import {beginRetentionTick} from './breach-weapon-retention-live.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
@@ -12,6 +13,7 @@ import {fireCorrectionStopReason,cancelFireCorrection}
 import type {Session,TeamActor} from './breach-game.ts';
 import {type Pt} from './breach-core.ts';
 import {bodyClear,sweptBodyClear} from './breach-navigation.ts';
+import {releaseTransport} from './breach-transport-custody.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {advanceWaitOrder} from './breach-order-wait.ts';
 import {executeTacticalUtilityOrder,type UtilityOrderHooks}
@@ -46,6 +48,8 @@ export function createOrderExecutor(port:OrderExecutionPort){
   // actor who requested movement, never a stationary friend or held stack.
   beginRetentionTick(a,dt);
   const n=a.plan[0];
+  if(a.transportContact&&(a.transportContact.order!==n?.id||a.health<=0||a.surrendered))
+    a.transportContact=undefined;
   if(advanceGroundRecovery(s,a,dt))return;
   a.motorPause=null;
   // An airborne crossing must reach a verified landing before combat pause,
@@ -58,6 +62,7 @@ export function createOrderExecutor(port:OrderExecutionPort){
   }
   // A short, validated muzzle-clearance step never edits the player's plan.
   // Complete or expire it before resuming the original waypoint motor.
+  if(a.carryingId&&a.fireRetreatTarget)cancelFireCorrection(a);
   if(a.fireRetreatTarget){
     const goal=a.fireRetreatTarget;
     // Higher-priority player actions and edited orders cancel optional
@@ -97,15 +102,9 @@ export function createOrderExecutor(port:OrderExecutionPort){
      (n?.interaction!=='release-capture-target'||n.objectId!==a.carryingId)){
     const civil=s.civilians.find(c=>c.id===a.carryingId);
     if(civil)dropCivilianCustody(civil,a);
-    else {
-      const prior=s.operators.find(o=>o.id===a.carryingId);
-      if(prior?.carriedById===a.id){
-         prior.carriedById=null;prior.transportMode=null;
-       }
-      a.carryingId=null;
-    }
+    else releaseTransport(a,s.operators.find(o=>o.id===a.carryingId));
   }
-  if(a.haltOnContact){
+  if(a.haltOnContact&&!isTransportRelease(n,a.carryingId)){
     const threat=visibleThreat;
     if(threat){
       a.motorPause='contact';
@@ -130,6 +129,9 @@ export function createOrderExecutor(port:OrderExecutionPort){
     return;
   }
   beginOrder(a,n,s.doors);
+  if(a.carryingId&&!transportOrderAllowed(n,a.carryingId,s.doors)){
+    failCurrentOrder(s,a,n,'HANDS OCCUPIED · SET DOWN CASUALTY FIRST',port.notify);return;
+  }
 
    if(executeEntryOrder(s,a,n,dt))return;
    if(executeMedicalOrder(s,a,n,dt))return;

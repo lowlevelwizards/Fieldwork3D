@@ -256,7 +256,7 @@ export function captureOperatorPoseOutput(r:OperatorRig,p:OperatorPose):
  */
 function blendCompletePoseOutput(output:MutableOutput,p:OperatorPose,
  renderedHandling:string|null):void{
- if(!output.valid||p.deterministic||p.replayFeet||p.down||p.surrender)
+ if(!output.valid||p.deterministic||p.replayFeet||p.down||p.surrender||p.loadedTransport||p.transportContact)
   return;
  const visualSeconds=p.idleLifeSeconds??p.seconds;
  const elapsed=output.lastVisualSeconds===null?0:

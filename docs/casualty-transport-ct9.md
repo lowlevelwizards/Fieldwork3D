@@ -1,0 +1,2 @@
+# CT9 — casualty articulation
+Shared reciprocal transport presentation supplies a supine ground-drag and transverse elevated carry body frame, separate relaxed arm and ankle targets, and lowering height during release. Both operator and shared civilian rigs use the same staged skeleton outputs. No extra rigid-body physics or simulation state. Legacy stand-alone civilian callers keep compatibility. CT10 resolves carrier hands from this same shared body frame; body seating and reach require live visual acceptance.

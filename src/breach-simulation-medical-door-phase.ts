@@ -8,6 +8,7 @@ import {advanceMedicalCondition} from './breach-medical-wounds.ts';
 import {sampleBleedingEvidence} from './breach-blood-evidence.ts';
 import {releaseDownedSuspectWeapons} from './breach-suspect-weapons.ts';
 import {advanceDownedVitals,recordActualDown} from './breach-capture-vitals.ts';
+import {releaseTransport} from './breach-transport-custody.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
 import {advanceDoor,doorReachable,initialOpeningYieldCandidate} from './breach-door.ts';
@@ -33,9 +34,9 @@ export type MedicalDoorPhasePort={
 function liveDoorOccupants(s:Session):Pt[]{
   const positions:Pt[]=[];
   for(const operator of s.operators)
-    if(operator.health>0)positions.push(operator.p);
+    if(operator.health>0||operator.carriedById)positions.push(operator.p);
   for(const civilian of s.civilians)
-    if(civilian.health>0)positions.push(civilian.p);
+    if(civilian.health>0||civilian.carriedById)positions.push(civilian.p);
   return positions;
 }
 
@@ -44,27 +45,21 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
   for(const operator of s.operators)operator.treatmentActive=false;
   // Medical state advances on the authoritative fixed tick only.
   for(const casualty of s.operators){
-    if(casualty.carryingId&&casualty.health<=0){
+    if(casualty.carryingId&&(casualty.health<=0||casualty.surrendered)){
       const civil=s.civilians.find(c=>c.id===casualty.carryingId);
       if(civil)dropCivilianCustody(civil,casualty);
-      else {
-        const patient=s.operators.find(o=>o.id===casualty.carryingId);
-        if(patient?.carriedById===casualty.id){
-          patient.carriedById=null;patient.transportMode=null;
-        }
-        casualty.carryingId=null;casualty.transportLatched=false;
-      }
+      else releaseTransport(casualty,s.operators.find(o=>o.id===casualty.carryingId));
     }
     if(casualty.health<=0){
+      casualty.transportContact=undefined;
       releaseDownedSuspectWeapons(s,casualty);
       if(advanceDownedVitals(casualty,h,s.seconds)){
         // A living extraction is no longer possible. Release reciprocal
         // custody so a carrier cannot become stuck in transport mode.
         if(casualty.carriedById){
           const carrier=s.operators.find(o=>o.id===casualty.carriedById);
-          if(carrier?.carryingId===casualty.id&&carrier.transportLatched){
-            carrier.carryingId=null;carrier.transportLatched=false;
-            casualty.carriedById=null;casualty.transportMode=null;
+          if(carrier?.carryingId===casualty.id){
+            releaseTransport(carrier,casualty);
           }
         }
         s.deaths++;
@@ -83,6 +78,12 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
     casualty.injuryStage=Math.min(3,casualty.injuryStage+loss);
     casualty.health=Math.max(0,4-casualty.injuryStage);
     if(casualty.health<=0){
+      if(casualty.carryingId){
+        const civil=s.civilians.find(c=>c.id===casualty.carryingId);
+        if(civil)dropCivilianCustody(civil,casualty);
+        else releaseTransport(casualty,s.operators.find(o=>o.id===casualty.carryingId));
+      }
+      casualty.transportContact=undefined;
       recordActualDown(casualty,s.seconds);
       releaseDownedSuspectWeapons(s,casualty);
       casualty.lastDownAt=s.seconds;
@@ -126,7 +127,7 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
     if(door.open&&(door.openFraction??0)<.96&&
        (door.pushTarget??1)<=1.01){
       for(const actor of s.operators){
-        if(actor.health<=0)continue;
+        if(actor.health<=0||actor.carryingId)continue;
         const budget=openingYieldBudget(s,door,actor.id);
         if(budget<.03)continue;
         const candidate=initialOpeningYieldCandidate(door,actor.p,

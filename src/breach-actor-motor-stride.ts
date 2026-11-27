@@ -3,13 +3,16 @@
  */
 import {type Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
+import {linkedTransportPatient} from './breach-transport-navigation.ts';
+import {loadedMotorSample} from './breach-transport-weight.ts';
 import {injurySpeed} from './breach-combat.ts';
 import {approachingNarrowThreshold} from './breach-passage.ts';
 const clamp=(x:number,low:number,high:number)=>Math.max(low,Math.min(high,x));
 export function sampleActorMotorStride(a:TeamActor,s:Session,
  p:Pt,direction:number,dt:number,gap:number,speedScale:number):{
  canAutoSidestep:boolean;move:Pt}{
-  const canAutoSidestep=a.side==='blue'&&a.health>0&&
+  const patient=linkedTransportPatient(s,a);
+  const canAutoSidestep=!patient&&a.side==='blue'&&a.health>0&&
     a.pace!=='run'&&!a.squeeze&&!a.traversal&&!a.traversalPending&&
     !a.aimInstruction&&!approachingNarrowThreshold(a.p,p,s.doors)&&
     (a.plan[0]?.kind==='move'||a.plan[0]?.kind==='door')&&
@@ -33,7 +36,14 @@ export function sampleActorMotorStride(a:TeamActor,s:Session,
   // Narrow travel is genuine slow sideways movement, not a global
   // reduction to actor collision radius or a high-speed clipping shortcut.
   const desired=Math.min(requested,sideLimit,a.squeeze?16:Infinity);
-  a.velocity+=(desired-a.velocity)*Math.min(1,dt*6);
+  if(patient){
+    const dx=a.p.x-a.priorP.x,dy=a.p.y-a.priorP.y;
+    const previous=Math.hypot(dx,dy)>.02?Math.atan2(dy,dx):direction;
+    const turn=Math.atan2(Math.sin(direction-previous),Math.cos(direction-previous));
+    const unloaded=movingSpeed*(a.posture==='crouch'?.58:1)*suppression*
+      injurySpeed(a.injuryStage)*(a.loadMovementScale??1);
+    a.velocity=loadedMotorSample(patient.transportMode??'drag',desired,unloaded,a.velocity,dt,turn).velocity;
+  }else a.velocity+=(desired-a.velocity)*Math.min(1,dt*6);
   const advance=Math.min(gap,a.velocity*dt);
   const move={x:a.p.x+Math.cos(direction)*advance,
     y:a.p.y+Math.sin(direction)*advance};

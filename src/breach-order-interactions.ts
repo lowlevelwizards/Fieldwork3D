@@ -19,6 +19,8 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {setCivilianState} from './breach-civilian-types.ts';
 import {RESTRAINT_CONTACT_SECONDS} from './equipment-interaction-timings.ts';
+import {makeTransportContact,transportContactDuration} from './breach-transport-contact.ts';
+import {releaseTransport} from './breach-transport-custody.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {canSecureRescuePerson} from './breach-civilian-mission.ts';
 import {CIVILIAN_VOICE_RANGE} from './breach-civilian-context-selection.ts';
@@ -334,9 +336,11 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       }
       // A stopped/replanned carrier releases the actual actor where the
       // previous resolved physical tick left it. No off-screen relocation.
-      target.carriedById=null;target.transportMode=null;a.carryingId=null;
-      a.transportLatched=false;
-      a.velocity=0;
+      a.velocity=0;a.actionTimer+=dt;
+      const mode=target.transportMode??'drag';
+      a.transportContact=makeTransportContact(n.id,target,mode,'release',a.actionTimer);
+      if(a.actionTimer<transportContactDuration(mode,'release'))return true;
+      releaseTransport(a,target);
       const message=a.name+' RELEASED '+target.name;
       notify(s,message);
       battleEvent(s,'interaction',a,target.p,message,{
@@ -345,9 +349,14 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
     }
     if(n.interaction==='release-civilian'){
       const person=s.civilians.find(c=>c.id===n.objectId);
-      if(!person||!dropCivilianCustody(person,a)){
+      if(!person||person.carriedById!==a.id||a.carryingId!==person.id){
         failCurrentOrder(s,a,n,'CIVILIAN NOT IN CUSTODY');return true;
       }
+      a.velocity=0;a.actionTimer+=dt;
+      const mode=person.transportMode??'drag';
+      a.transportContact=makeTransportContact(n.id,person,mode,'release',a.actionTimer);
+      if(a.actionTimer<transportContactDuration(mode,'release'))return true;
+      dropCivilianCustody(person,a);
       if(person.rescueTarget&&s.rescue){
         s.rescue.following=null;s.rescue.p=clone(person.p);
       }

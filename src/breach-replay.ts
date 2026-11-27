@@ -61,6 +61,7 @@ export type ReplayActorFrame=ActorFrame & {
  /** S5.2: recorded explicit weapon hand, optional for all legacy films. */
  secondarySwitch?:SecondarySwitchState;
  retentionTransition?:TeamActor['retentionTransition'];
+ transportContact?:TeamActor['transportContact'];
  groundedPrimaryId?:number|null;
  primaryPlacement?:TeamActor['primaryPlacement'];
  /** S8.2: historical pistol magazine identity, rounds and handoff clock. */
@@ -246,6 +247,7 @@ export function snapshot(s:Session,seenGround?:string[],
        lastTreatmentTargetId:a.lastTreatmentTargetId,
        treatmentActive:a.treatmentActive,treatmentProgress:a.treatmentProgress,
        carryingId:a.carryingId,carriedById:a.carriedById,
+       transportContact:a.transportContact?{...a.transportContact,point:position(a.transportContact.point)}:undefined,
        transportLatched:a.transportLatched??false,
        downWeaponsReleased:a.downWeaponsReleased??false,
        transportMode:a.transportMode??null,
