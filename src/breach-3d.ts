@@ -2950,7 +2950,7 @@ export class TacticalScene3D{
           liveMotion?.travelYaw[actor.id],
         posture:actor.posture,coverStanceDrop:actor.coverStanceDrop??0,
         injury:actor.injuryStage,weapon:actor.weapon,
-        gait:actor.squeeze?'squeeze':
+        gait:loadedTransport?'walk':actor.squeeze?'squeeze':
           actor.plan[0]?.kind==='pie'?'pie':
           actor.pace==='run'||actor.plan[0]?.moveMode==='sprint'?
             'run':'walk',

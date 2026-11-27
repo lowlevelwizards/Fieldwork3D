@@ -158,7 +158,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
       notify(s,('name' in patient?patient.name:'CIVILIAN')+' RELEASED');
       pop(a);return true;
     }
-    approach(a,destination,dt,s,mode==='drag'?.48:.38);
+    approach(a,destination,dt,s);
     // Both neutral and operator casualties commit in shared motion phase.
     return true;
   }
