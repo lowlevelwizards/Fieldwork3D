@@ -34,7 +34,7 @@ export function buildAuthoredPack(style:AuthoredPackStyle,m:PackMaterials):Autho
  const g=new THREE.Group();g.name='authored-pack-'+style;
  const sockets:PackSocket[]=[];
  const box=(name:string,mat:THREE.Material,p:PackPoint,size:PackPoint)=>packBox(g,name,mat,p,size);
- const vol=(name:string,mat:THREE.Material,p:PackPoint,size:PackPoint,cut:Parameters<typeof packVolume>[4])=>packVolume(g,name,mat,p,size,cut);
+ const vol=(name:string,mat:THREE.Material,p:PackPoint,size:PackPoint,cut:Parameters<typeof packVolume>[5])=>packVolume(g,name,mat,p,size,cut);
  const mount=defaultPackMount(style);
  switch(style){
   case 'hydration':
