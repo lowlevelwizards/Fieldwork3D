@@ -75,9 +75,19 @@ export function fitPack(style:PackStyle,armor:string,rig:string,top:string,
   };
   add(upper,rearCrown,point(-1,1,0));
   if(!assembly.adapter)add(rearCrown,frontCrown,point(0,1,0));
-  if(assembly.adapter){buckles.push(rearCrown);continue;}
+  if(assembly.adapter){
+   buckles.push(rearCrown);
+   const seat=point(fit.back(-2.8,z)-.18,-2.8,z);
+   add(seat,lower,point(-1,0,0),width*.7);continue;
+  }
   add(frontCrown,front,point(1,1,0));
-  if(assembly.sharedRig){buckles.push(front);continue;}
+  if(assembly.sharedRig){
+   buckles.push(front);
+   // Lower stabilizer reaches the rig wing; the pack remains the rear support.
+   const wing=point(fit.front(-3.2,sign*5.6)+.12,-3.2,sign*5.6);
+   add(wing,flank,point(1,0,sign),width*.7);
+   add(flank,lower,point(-1,0,sign),width*.65);continue;
+  }
   add(front,buckle,point(1,0,0));
   add(buckle,flank,point(1,0,sign),width*.7);
   add(flank,lower,point(-1,0,sign),width*.65);
