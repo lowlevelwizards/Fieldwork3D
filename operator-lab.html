@@ -528,6 +528,13 @@ main[data-lab-active="poses"] #weapon{display:none}
 <label>CHEST DETAILS<select data-wardrobe-accessory="chest"></select></label>
 <label>PACK DETAILS<select data-wardrobe-accessory="pack"></select></label>
 </div></details>
+<details id="attachmentArtwork"><summary>BELT ATTACHMENT ARTWORK · PREVIEW ONLY</summary>
+<p class="kit-help">Inspect representative attachments and sample contents. This is an isolated Lab audition, not issued equipment. Undo restores the previous outfit; OFF hides samples.</p>
+<div class="kit-grid">
+<label>ARTWORK / FIXTURE<select id="attachmentPreview"></select></label>
+<label>VARIANT<select id="attachmentPreviewVariant"><option value="standard">STANDARD</option></select></label>
+<label>CONTENTS<select id="attachmentPreviewContents"><option value="full">FULL SAMPLE</option><option value="partial">PARTIAL</option><option value="empty">EMPTY</option></select></label>
+</div><output id="attachmentPreviewStatus" role="status"></output></details>
 <details id="wardrobePlacement"><summary>ADVANCED / PHYSICAL CARRY</summary>
 <div class="kit-grid">
 <label>MEDICAL POSITION<select data-wardrobe-mount="medical"></select></label>

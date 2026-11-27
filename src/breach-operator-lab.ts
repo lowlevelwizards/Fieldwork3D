@@ -1,3 +1,6 @@
+import {attachmentFixture,clearAttachmentPreview,updateAttachmentPreview,populateAttachmentPreviewOptions} from './operator-attachment-lab.ts';
+import {ATTACHMENTS,validAttachmentId,type AttachmentVariant} from './operator-attachment-catalog.ts';
+import {BELT_PROFILES} from './operator-belt-profile.ts';
 /** Build 122: deterministic physical animation workbench.
  * Identical Build 119/120 rig and footstep scheduler as gameplay/replay.
  */
@@ -1372,7 +1375,7 @@ const build=()=>{
   if(variantComparing)endVariantComparison();
   labSwitch=null;
   clearComparison();clearGaitCompare();
-  if(rig){clearLabBerettaPreview(rig);releaseOperatorPreviewRig(scene,rig);}
+  if(rig){clearAttachmentPreview(rig);clearLabBerettaPreview(rig);releaseOperatorPreviewRig(scene,rig);}
   endKitComparison();
   rig=createOperatorRig(operator.value,operator.value==='hostile'?'red':'blue');
   scene.add(rig.root);
@@ -1969,6 +1972,29 @@ function showDiagnostics(){
     layer==='weapon'?'BUTTPLATE / GRIPS / POCKET / ELBOW HINTS':''
   ].filter(Boolean).join('\n');
 }
+const attachmentPreviewSelect=choose<HTMLSelectElement>('attachmentPreview');
+const attachmentVariantSelect=choose<HTMLSelectElement>('attachmentPreviewVariant');
+const attachmentContentsSelect=choose<HTMLSelectElement>('attachmentPreviewContents');
+const attachmentPreviewStatus=choose<HTMLOutputElement>('attachmentPreviewStatus');
+populateAttachmentPreviewOptions(attachmentPreviewSelect);
+attachmentPreviewSelect.addEventListener('change',()=>{
+ const id=attachmentPreviewSelect.value;
+ attachmentVariantSelect.replaceChildren();
+ for(const v of validAttachmentId(id)?ATTACHMENTS[id].variants:['standard'])
+  attachmentVariantSelect.add(new Option(v.toUpperCase(),v));
+ const fixture=attachmentFixture(id);
+ if(fixture){
+  // Only the Lab kit is changed. Remove competing carriers from this
+  // isolated audition; the user can restore the prior kit with Undo.
+  checkpointAppearance();
+  labKit=setEquipmentChoice(labKit,'belt',BELT_PROFILES[fixture.style].equipment);
+  wardrobeOptions={...wardrobeOptions,styles:{...wardrobeOptions.styles,beltStyle:fixture.style}};
+  for(const [slot,item] of [['rig','rig-none'],['armor','armor-none'],['backpack','backpack-none'],
+   ['medical','medical-none'],['utility','utility-none'],['tactical','tactical-none']] as const)
+   labKit=setEquipmentChoice(labKit,slot,item);
+  syncKit();
+ }
+});
 function draw(){
   if(!rig)return;
   if(npcActive()){
@@ -2477,6 +2503,18 @@ function draw(){
       label.hidden=p.z>1||p.z< -1;
     });
   }
+  const attachmentChoice=attachmentPreviewSelect.value;
+  const attachmentStatus=updateAttachmentPreview(rig,attachmentChoice,
+   attachmentVariantSelect.value as AttachmentVariant,attachmentContentsSelect.value,
+   !comparing&&!kitComparing&&!variantComparing);
+  if(attachmentStatus){
+   // Cosmetic samples only. The actual equipment ledger is never populated.
+   rig.beltPouch.visible=false;
+   for(const g of [...Object.values(rig.visualKit.accessories.beltLeft),
+    ...Object.values(rig.visualKit.accessories.beltRight)])g.visible=false;
+  }
+  if(attachmentPreviewStatus.textContent!==attachmentStatus)
+   attachmentPreviewStatus.textContent=attachmentStatus;
   renderer.render(scene,camera);
   if(renderer.info.render.calls<1)
     throw Error('3D renderer returned without drawing an operator');

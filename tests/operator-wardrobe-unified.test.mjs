@@ -18,7 +18,7 @@ test('clothing, equipment and gloves are selected with one item card',()=>{
  let kit=bareLabEquipment(),wardrobe=initialWardrobe();
  const choices=[['armorStyle','plate-jpc','armor','armor-carrier'],
   ['rigStyle','full-chest','rig','rig-full'],
-  ['beltStyle','battle-belt','belt','belt-standard'],
+  ['beltStyle','battle-belt','belt','belt-battle'],
   ['packStyle','medic-pack','backpack','backpack-field'],
   ['top','bdu-shirt','top','top-uniform'],
   ['top','acu-shirt','top','top-uniform'],
