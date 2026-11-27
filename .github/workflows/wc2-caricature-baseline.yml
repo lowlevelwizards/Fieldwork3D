@@ -1,17 +1,12 @@
 name: WC2 current sculptural comparison baseline
 on:
   push:
-    branches: [art/wc2-caricature-sculptural-unification]
+    branches: [art/wc24-ak-fixed-furniture]
     paths:
       - '.github/workflows/wc2-caricature-baseline.yml'
       - 'scripts/compose-wc2-comparison-plates.py'
-      - 'src/weapons/geometry/hk-mp5-silhouettes.ts'
-      - 'src/weapons/geometry/hk-silhouettes.ts'
-      - 'src/weapons/geometry/hk-556-silhouettes.ts'
-      - 'src/weapons/geometry/hk-retractable-stock.ts'
-      - 'src/weapons/geometry/hk-fixed-furniture-art.ts'
-      - 'tests/weapon-hk-modular-r1.test.mjs'
-      - 'tests/weapon-hk-expansion.test.mjs'
+      - 'src/weapons/geometry/ak-silhouettes.ts'
+      - 'tests/weapon-ak-*.test.mjs'
   workflow_dispatch:
 concurrency:
   group: wc2-art-${{ github.ref }}
@@ -36,18 +31,18 @@ jobs:
       - run: node --experimental-strip-types scripts/audit-weapon-art-inventory.mjs
       - run: node --experimental-strip-types scripts/capture-weapon-art-baseline.mjs
       - run: node --experimental-strip-types scripts/capture-wa0-operator-context.mjs
-      - name: Retrieve pinned rejected WC2.3b WebGL candidate
+      - name: Retrieve pinned pre-WC2.4 AK art reference
         uses: actions/download-artifact@v4
         with:
           name: wc2-current-comparison
-          run-id: 45947004961
+          run-id: 45948620512
           github-token: ${{ github.token }}
           path: reports/wc2-before
       - run: |
           python -m pip install --user pillow
           python scripts/compose-wc2-comparison-plates.py
-      - name: HK stock and pose regression gates
-        run: node --experimental-strip-types --test tests/weapon-hk-modular-r1.test.mjs tests/weapon-hk-mp5-family.test.mjs tests/weapon-hk-expansion.test.mjs
+      - name: AK stock and pose regression gates
+        run: node --experimental-strip-types --test tests/weapon-ak-*.test.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

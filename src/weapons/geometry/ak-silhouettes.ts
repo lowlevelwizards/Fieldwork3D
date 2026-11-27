@@ -135,12 +135,11 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   line('stock',[-5.25,-1.3],[-9.45,.15],.72,1.00,0);
   b('stock',-13.5,-1,0,.96,3.50,2.30,1);
  }else if(stock.startsWith('ak-rpk-clubfoot')){
-  // RPK-specific broad butt, tucked wrist, and exaggerated low clubfoot heel.
-  // The comb joins the receiver at the LOWER-receiver roof, not halfway
-  // down its wall. Retain the deep clubfoot behind the narrower stock neck.
-  p('stock',[[-15.85,.69],[-10.6,.88],[-6.22,1.01],
-   [-6.38,-1.48],[-9.96,-1.99],[-11.48,-3.43],
-   [-13.75,-4.06],[-15.85,-3.42]],3.06,2);
+  // WC2.4: refine the existing clubfoot gesture in the miniature art.
+  // Preserve the characteristic broad heel rather than making it generic.
+  p('stock',[[-15.85,.69],[-10.60,.88],[-6.22,1.01],
+   [-6.38,-1.48],[-9.96,-1.99],[-11.10,-3.12],
+   [-13.75,-4.06],[-15.00,-3.90],[-15.85,-3.42]],3.06,2);
  }else if(stock==='ak-triangle-full'){
   // Standard AKS-74 side-folding TRIANGLE: strong top rail, single lower
   // diagonal, open center, clean skinny butt. It must not read as an AKMS.
@@ -176,34 +175,20 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   b('stock',-14.57,-1.49,0,.81,3.60,2.49,0);
   b('stock',-14.52,-2.99,0,.80,.46,3.12,0);
  }else if(stock==='ak-sidefold'||stock==='ak-sidefold-plum'){
-  // Reuse the strongest AK-74M polymer cheek/heel profile across 100-series.
-  // Solid modern folder preserves a hinge/buttpad identity, but adopts
-  // the AKM's clean narrow wrist and controlled drop into the broad butt.
-  p('stock',[[-14.40,.15],[-9.85,-.06],[-6.20,.72],
-   [-6.32,-1.83],[-10.17,-2.88],
+  // WC2.4: solid polymer artwork only, shared across modern variants.
+  // One quieter planar mass; the existing hinge presentation is unchanged.
+  p('stock',[[-14.40,.15],[-11.15,.15],[-8.55,.39],[-6.20,.72],
+   [-6.32,-1.83],[-10.10,-2.72],
    [-12.75,-3.06],[-14.40,-2.92]],3.07,1);
   b('stock',-6.29,-.20,0,.64,1.78,2.50,0);
  }else{
   const isWood=stock.startsWith('ak-wood')&&
    !stock.endsWith('-plum');
-  if(parts.receiver==='akm'){
-   // Two clear quads: a receiver-height 24-degree descending neck and
-   // a larger broad rear butt. No narrow pointed wedge at the junction.
-   // Smooth the wrist into the butt rather than a sharp dropped elbow.
-   p('stock',[[-6.42,.92],[-9.94,-.30],
-    [-10.30,-3.01],[-6.42,-2.04]],3.07,isWood?2:1);
-   p('stock',[[-9.91,-.32],[-15.45,.00],
-    [-15.45,-3.24],[-12.77,-3.35],
-    [-10.24,-2.95]],3.07,isWood?2:1);
-  }else{
-   // Fixed 74-pattern stock adopts the accepted two-quad AKM contour.
-   // The material and 5.45 front-end, not an awkward wedge, distinguish it.
-   p('stock',[[-6.42,.92],[-9.94,-.30],
-    [-10.30,-3.01],[-6.42,-2.04]],3.07,isWood?2:1);
-   p('stock',[[-9.91,-.32],[-15.45,.00],
-    [-15.45,-3.24],[-12.77,-3.35],
-    [-10.24,-2.95]],3.07,isWood?2:1);
-  }
+  // WC2.4: one continuous exterior art silhouette replaces overlapping
+  // quads. Keep the shared classic furniture language, not invented variants.
+  p('stock',[[-6.42,.92],[-9.60,.20],[-12.20,.04],[-15.45,.00],
+   [-15.45,-3.24],[-12.77,-3.35],[-10.00,-2.95],[-6.42,-2.04]],
+   3.07,isWood?2:1);
   if(stock.startsWith('ak-wood74'))
    b('stock',-10.7,-1,1.97,2.0,.65,.18,1);
  }

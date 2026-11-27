@@ -68,11 +68,11 @@ test('R4.5 correct ejection-port center, long selector and stamped-cover policy'
   done(m);
  }
 });
-test('R4.5 AKM is two dropped, broad quads; AKMS a single rod on each side',()=>{
+test('R4.5 / WC2.4 AKM is a continuous art silhouette; AKMS remains unchanged',()=>{
  const a=model('ak-akm'),ms=model('ak-akms');
  const wood=slot(a.group,'stock');
- assert.equal(wood.length,2,'two simple connected stock quads');
- assert.ok(box(wood[0]).intersectsBox(box(wood[1])));
+ assert.equal(wood.length,1,'one continuous fixed-stock art volume');
+ assert.ok(box(wood[0]).intersectsBox(bounds(a.group,'receiver')));
  const stock=slot(ms.group,'stock');
  assert.equal(stock.length,6);
  const rods=stock.filter(x=>Math.abs(x.position.z)>0.9&&

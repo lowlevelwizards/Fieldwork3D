@@ -116,12 +116,13 @@ test('R4.7 lower receiver omits trigger guard but keeps understated rivets',()=>
   dispose(a);
  }
 });
-test('R4.7 fixed wood stocks use one AKM two-quad family and all stocks slimmed',()=>{
+test('R4.7 / WC2.4 fixed wood stocks share one continuous art form',()=>{
  for(const id of ['ak-akm','ak-ak74']){
   const a=build(id),pieces=slot(a.group,'stock');
-  assert.equal(pieces.length,id==='ak-ak74'?3:2,
-   id+' shares two-piece stock plus optional side inset');
-  assert.ok(box(pieces[0]).intersectsBox(box(pieces[1])));
+  assert.equal(pieces.length,id==='ak-ak74'?2:1,
+   id+' shares one solid art volume plus existing side inset');
+  assert.ok(slot(a.group,'receiver').some(m=>box(m).intersectsBox(box(pieces[0]))),
+   id+' art volume remains seated');
   for(const p of pieces)
    assert.ok(box(p).max.z-box(p).min.z<3.15,'slim side-to-side stock');
   dispose(a);
