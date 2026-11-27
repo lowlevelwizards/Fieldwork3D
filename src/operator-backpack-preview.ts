@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import {authoredPackStyle,buildAuthoredPack,type AuthoredPack,type AuthoredPackStyle} from './operator-backpack-art.ts';
 import {buildPackHarness,fitPack,mountPackArtwork,type PackFit} from './operator-backpack-fit.ts';
-import {packWebbing,packBox,finishPackArtwork,type PackPoint,type PackMaterials} from './operator-backpack-geometry.ts';
+import {packRibbon,packBox,finishPackArtwork,PACK_DETAIL,type PackPoint,type PackMaterials} from './operator-backpack-geometry.ts';
 import {equipmentExterior} from './operator-equipment-exterior.ts';
 export type PackPreviewState={
  parent:THREE.Object3D;chest:THREE.Group;materials:PackMaterials;
@@ -27,21 +27,21 @@ function addHose(state:PackPreviewState,fit:PackFit,armor:string,rig:string,top:
  const z=Math.min(sz,3.9);
  const front=surface.front(3.8,z);
  const points:PackPoint[]=[
-  [cx+.3,cy+4.65,2],
-  [surface.back(5,z)-.22,sy+.36,z],
-  [0,sy+.39,z],
-  [surface.front(5,z)+.24,sy+.24,z],
-  [front+.40,3.8,z+.25],
-  [surface.front(2.3,z+.25)+.38,2.3,z+.25]
+  [cx+.3,cy+5.65,1.6],
+  [surface.back(5,z)-.22,sy+.48,z],
+  [0,sy+.51,z],
+  [surface.front(5,z)+.24,sy+.43,z],
+  [front+.52,3.8,z+.25],
+  [surface.front(2.3,z+.25)+.50,2.3,z+.25]
  ];
  // A few chunky angled hose segments and one bite valve.
- for(let i=1;i<points.length;i++){
-  const a=points[i-1],b=points[i];
-  const dir=new THREE.Vector3(...b).sub(new THREE.Vector3(...a)).normalize();
+ const spans=points.slice(1).map((b,i)=>{
+  const a=points[i],dir=new THREE.Vector3(...b).sub(new THREE.Vector3(...a)).normalize();
   const normal:PackPoint=Math.abs(dir.x)<.85?[1,0,0]:[0,1,0];
-  packWebbing(root,'hose-'+i,m.dark,a,b,.35,.35,normal);
- }
- packBox(root,'bite-valve',m.dark,points[points.length-1],[.45,.8,.49]);
+  return {a,b,normal,width:PACK_DETAIL.hose,thickness:PACK_DETAIL.hose};
+ });
+ packRibbon(root,'hose',m.dark,spans);
+ packBox(root,'bite-valve',m.dark,points[points.length-1],[.8,1.15,.85]);
  finishPackArtwork(root);state.harness?.add(root);
 }
 export function updatePackPreview(state:PackPreviewState,enabled:boolean,style:string,armor:string,rig:string,top:string){
