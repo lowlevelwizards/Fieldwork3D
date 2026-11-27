@@ -1,3 +1,4 @@
+import {BELT_PROFILES} from './operator-belt-profile.ts';
 import {PACK_PROFILES} from './operator-backpack-catalog.ts';
 /** Equipment 01: declarative equipment identities. Combat numbers remain
  * authoritative in breach-combat; these are carrying/visual metadata only. */
@@ -47,14 +48,14 @@ export const EQUIPMENT_CATALOG:Readonly<Record<string,EquipmentDefinition>>={
   massKg:1.1,bulk:1,capacity:4,visual:'chest-rig',description:'Four accessible carrying spaces.'},
  'rig-full':{id:'rig-full',name:'Field Webbing',category:'load-bearing',slot:'rig',
   massKg:1.9,bulk:2,capacity:7,visual:'chest-rig',description:'Expanded load-bearing webbing.'},
- 'belt-none':{id:'belt-none',name:'No Belt',category:'load-bearing',slot:'belt',massKg:0,bulk:0,capacity:0,description:'No belt or carried equipment.'},
- 'belt-light':{id:'belt-light',name:'Leather Belt',category:'load-bearing',slot:'belt',
+ 'belt-none':{id:'belt-none',name:BELT_PROFILES['no-belt'].name,category:'load-bearing',slot:'belt',massKg:0,bulk:0,capacity:0,description:'No belt or carried equipment.'},
+ 'belt-light':{id:'belt-light',name:BELT_PROFILES['plain-belt'].name,category:'load-bearing',slot:'belt',
   massKg:.15,bulk:0,capacity:1,visual:'belt',description:'Simple clothing belt with one small equipment space.'},
- 'belt-standard':{id:'belt-standard',name:'Duty Belt',category:'load-bearing',slot:'belt',
+ 'belt-standard':{id:'belt-standard',name:BELT_PROFILES['duty-belt'].name,category:'load-bearing',slot:'belt',
   massKg:.5,bulk:1,capacity:4,visual:'belt',description:'Rigid general-purpose service belt.'},
- 'belt-battle':{id:'belt-battle',name:'Battle Belt',category:'load-bearing',slot:'belt',
+ 'belt-battle':{id:'belt-battle',name:BELT_PROFILES['battle-belt'].name,category:'load-bearing',slot:'belt',
   massKg:.55,bulk:2,capacity:5,visual:'belt',description:'Structured modular equipment belt.'},
- 'belt-padded':{id:'belt-padded',name:'Padded Battle Belt',category:'load-bearing',slot:'belt',
+ 'belt-padded':{id:'belt-padded',name:BELT_PROFILES['padded-belt'].name,category:'load-bearing',slot:'belt',
   massKg:.9,bulk:3,capacity:6,visual:'belt',description:'Broad padded load-bearing platform.'},
  ...Object.fromEntries(Object.values(PACK_PROFILES).map(p=>[p.id,{
   id:p.id,name:p.label,category:'load-bearing',slot:'backpack',
