@@ -64,6 +64,10 @@ export const GLOCK_G2_ART={
 // G2.8: subtly fuller slide, with the real muzzle X and grip sockets fixed.
 const SLIDE_REAR=-8.66,SLIDE_TOP=3.17,SLIDE_BOTTOM=.21;
 const SLIDE_DEPTH=3.20,FRAME_DEPTH=2.62;
+export function glockMagazineArtDimensions(id:GlockAppearanceId){
+ const a=GLOCK_G2_ART[id],w=a.frontHeelX-a.rearHeelX;
+ return {bodyWidth:w-.36,bodyDepth:FRAME_DEPTH-.48,bodyHeight:-a.heelY-.18,plateWidth:w+.48,plateDepth:FRAME_DEPTH+.40,plateHeight:.56};
+}
 
 export function buildGlockAppearance(id:GlockAppearanceId,
  options:GlockAppearanceOptions={}):THREE.Group{
@@ -148,9 +152,9 @@ export function buildGlockAppearance(id:GlockAppearanceId,
  root.add(frameMesh);
 
  // G2.8: a visibly chunkier magazine floorplate, without changing capacity.
+ const magazineArt=glockMagazineArtDimensions(id);
  const floorplate=box('magazine',(art.rearHeelX+art.frontHeelX)/2,
-  art.heelY-.24,0,art.frontHeelX-art.rearHeelX+.48,
-  .56,FRAME_DEPTH+.40,polymer);
+  art.heelY-.24,0,magazineArt.plateWidth,magazineArt.plateHeight,magazineArt.plateDepth,polymer);
  floorplate.userData.glockMagazineFloorplate=true;
 
  // Two simplified chunky low-profile landmarks (not rail-height sights).

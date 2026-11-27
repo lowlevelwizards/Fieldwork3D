@@ -1,5 +1,7 @@
 import {authoredCargoSocket} from './operator-backpack-sockets.ts';
 import {packCargoMass,packSuspensionScale} from './operator-backpack-motion.ts';
+import {beltStyleForEquipment,beltSolidChoices} from './operator-belt-profile.ts';
+import {syncLiveUnifiedCarry} from './operator-unified-carry-live.ts';
 import {resolveFootwearHem} from './operator-footwear-catalog.ts';
 import {prepareBeltFlashPouches,restoreBeltFlashRest} from './operator-belt-flash-pouches.ts';
 import {canonicalBeltStyle} from './operator-belt-profile.ts';
@@ -20,7 +22,7 @@ import * as THREE from 'three';
 import {operatorPixelTextures} from './rendering/pixel-materials.ts';
 import {syncHipSecondaryVisual} from './secondary-holster-visual.ts';
 import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
-import {resolvedWardrobe} from './operator-wardrobe-data.ts';
+import {resolvedWardrobe,initialWardrobe} from './operator-wardrobe-data.ts';
 import {equipmentExterior} from './operator-equipment-exterior.ts';
 import {SKIN_TONES,seededSkinTone} from './operator-identity-palette.ts';
 import {isH1ModernHelmet,resolveHelmetSetup} from './operator-helmet-setup-policy.ts';
@@ -60,6 +62,15 @@ const DOWNED_TINT=new THREE.Color(0x555c57);
 /** Outfit, headwear and material maps are static between kit changes.
  * Keep a per-rig snapshot separate from motion/IK, which still runs on
  * every frame. Weak keys release disposed operator preview rigs. */
+/** Manifest objects are immutable transaction snapshots. Cache only the
+ * structural fingerprint; content changes do not rebuild the wardrobe. */
+const carryLayoutKeys=new WeakMap<NonNullable<OperatorPose['unifiedCarry']>['manifest'],string>();
+function carryLayoutKey(state:OperatorPose['unifiedCarry']){
+ if(!state)return '';
+ const prior=carryLayoutKeys.get(state.manifest);if(prior!==undefined)return prior;
+ const key=JSON.stringify(state.manifest.placements.map(q=>[q.slotIds,q.kind,q.holder,q.variant,q.waist?.socket,q.mount]));
+ carryLayoutKeys.set(state.manifest,key);return key;
+}
 const appearanceState=new WeakMap<OperatorRig,{
  key:string;downed:boolean;outfit:ReturnType<typeof resolvedWardrobe>;primaryMass?:number
 }>();
@@ -70,7 +81,7 @@ export type OperatorAppearanceInputs=Pick<OperatorPose,
  'appearanceSeed'|'equipment'|'wardrobe'|'magazineCarryLocations'|'packPrimaryMagazineMass'|
  'medicalCarryLocation'|'utilityCarryLocation'|'faceStyle'|
  'flashCharges'|'wedgeRemaining'|'restraintRemaining'|'treatmentActive'|
- 'weaponConfiguration'|'nvgDeployed'|'down'|'surrender'>;
+ 'weaponConfiguration'|'nvgDeployed'|'down'|'surrender'|'unifiedCarry'>;
 export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInputs){
   // Profile serialization separately from the one-time kit rebuild. In-place
   // edits in Studio and replay must still invalidate on the very next pose.
@@ -86,7 +97,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     p.flashCharges??null,p.wedgeRemaining??null,
     p.restraintRemaining??null,p.treatmentActive??null,
     p.weaponConfiguration?.build?.parts.magazine??null,
-    p.nvgDeployed??false,!!r.root.userData.fieldworkInspectPackCargo
+    p.nvgDeployed??false,!!r.root.userData.fieldworkInspectPackCargo,
+    ...(p.unifiedCarry?[true,carryLayoutKey(p.unifiedCarry)]:[])
   ]);
   const fingerprintMs=traceAppearance?performance.now()-fingerprintStart:0;
   r.root.userData.fieldworkLightingAppearanceKey=appearanceKey;
@@ -100,8 +112,13 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     fingerprintMs,appearanceChanged:appearanceChanged?1:0};
   // Resolve once per appearance fingerprint, including in-place Studio edits.
   // No repeated wardrobe normalization in coupled, coordinated or IK paths.
+  let visualWardrobe=p.wardrobe;
+  if(appearanceChanged&&p.unifiedCarry&&p.equipment){
+   const base=p.wardrobe??initialWardrobe();
+   visualWardrobe={...base,styles:{...base.styles,beltStyle:beltStyleForEquipment(p.equipment.slots.belt)}};
+  }
   const clothing=appearanceChanged?
-    resolvedWardrobe(p.wardrobe,p.equipment):previousAppearance!.outfit;
+    resolvedWardrobe(visualWardrobe,p.equipment):previousAppearance!.outfit;
   if(appearanceChanged){
   // Passive, actual-pelvis-mounted S4 carry. An unissued or unequipped
   // secondary does not materialize. S5 will take over drawing authority.
@@ -270,13 +287,14 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
    garmentSolidHex(p.wardrobe?.gloveSolid??'ranger-green')));
   const kitStart=traceAppearance?performance.now():0;
   applyOperatorVisualKit(r.visualKit,gear,identity,
-    p.magazineCarryLocations,p.faceStyle,p.wardrobe,p.weaponConfiguration,
+    p.magazineCarryLocations,p.faceStyle,visualWardrobe,p.weaponConfiguration,
     nvgMounted(p),p.nvgDeployed===true);
    const packState=r.visualKit.packPreview;
    const concealPackCargo=!!packState.active&&!r.root.userData.fieldworkInspectPackCargo;
    r.root.userData.fieldworkConcealPackCargo=concealPackCargo;
    syncHipSecondaryVisual(r.hip,p.equipment?.secondary,
-    !!p.equipment&&p.equipment.slots.belt!=='belt-none',r.chest,r.pack,concealPackCargo);
+    !!p.equipment&&p.equipment.slots.belt!=='belt-none'&&(!p.unifiedCarry||p.unifiedCarry.manifest.placements.some(q=>q.kind==='sidearm'&&q.waist)),r.chest,r.pack,concealPackCargo,
+    p.unifiedCarry?.manifest.placements.find(q=>q.kind==='sidearm')?.waist?.socket);
    // Closed pack cargo is concealed unless its ledger location and an
    // explicit requested external socket both match the authored model.
    if(packState.active&&concealPackCargo){
@@ -505,6 +523,13 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   r.colors.set(strapMaterial,strapHex===null?
    (r.colors.get(r.gearMaterial)??r.gearMaterial.color).clone():
    new THREE.Color(strapHex));
+  const beltMaterial=r.visualKit.wardrobeGear.beltMaterial;
+  const beltSolid=p.wardrobe?.beltSolid;
+  const independentBelt=isGarmentSolidId(beltSolid)&&beltSolidChoices(clothing.beltStyle).includes(beltSolid);
+  const beltMap=independentBelt?operatorPixelTextures.get('fabric'):r.gearMaterial.map;
+  if(beltMaterial.map!==beltMap){beltMaterial.map=beltMap;beltMaterial.needsUpdate=true;}
+  r.colors.set(beltMaterial,independentBelt?new THREE.Color(garmentSolidHex(beltSolid)):
+   (r.colors.get(r.gearMaterial)??r.gearMaterial.color).clone());
   // One authoritative color ledger owns *every* material before the final
   // pose-time restore and optional injury desaturation. In particular, do not
   // overwrite the selected headgear swatch with the old neutral blend.
@@ -695,5 +720,6 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     previousAppearance.primaryMass=p.packPrimaryMagazineMass;
   }else appearanceState.set(r,{key:appearanceKey,downed,outfit:clothing,primaryMass:p.packPrimaryMagazineMass});
 
+ syncLiveUnifiedCarry(r,p,clothing.rigStyle,appearanceChanged);
  return clothing;
 }
