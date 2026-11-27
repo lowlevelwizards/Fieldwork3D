@@ -2,6 +2,7 @@
  * art frame (+X front,+Y up,+Z right). No world custody or combat changes.
  * A future action owner supplies the achieved location, never the renderer. */
 import * as THREE from 'three';
+import type {EquipmentExterior} from './operator-equipment-exterior.ts';
 import type {SlingKind} from './breach-weapon-retention.ts';
 import type {WeaponRetentionSockets} from './weapons/geometry/weapon-retention-sockets.ts';
 import {clearRetentionEnvelope} from './breach-weapon-retention-clearance.ts';
@@ -20,10 +21,19 @@ export type RetentionPoseInput=Readonly<{
  muzzleX:number;stockX:number;
  sockets?:WeaponRetentionSockets|null;motion?:SuspensionMotion;
  bounds?:THREE.Box3;rigDepth?:number;beltDepth?:number;
+ exterior?:EquipmentExterior;
 }>;
 export function retentionPoseSupported(mode:RetentionPoseMode,sling:SlingKind){
  return mode==='held-one'||mode==='front-slung'&&sling!=='none'||
   (mode==='side-slung'||mode==='back-slung')&&sling==='two';
+}
+/** Swing the existing silhouette toward its resting long axis without
+ * inventing a new longitudinal roll. The source twist is carried through
+ * the shortest rotation, including high-ready and reversed presentation. */
+export function retainedSwing(held:THREE.Quaternion,axis:THREE.Vector3){
+ const source=new THREE.Vector3(1,0,0).applyQuaternion(held).normalize();
+ return new THREE.Quaternion().setFromUnitVectors(source,axis)
+  .multiply(held).normalize();
 }
 export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|null{
  if(!retentionPoseSupported(p.mode,p.sling))return null;
@@ -34,7 +44,7 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
  const side=p.mode==='side-slung';
  // X axis is the long silhouette axis; side vector faces outboard.
  const axis=one?new THREE.Vector3(.42,-.88,.22):
-  front?new THREE.Vector3(.08,-.78,p.sling==='single'?.20:.62):
+  front?new THREE.Vector3(.08,-.92,p.sling==='single'?.16:.38):
   side?new THREE.Vector3(.38,-.90,.12):
   new THREE.Vector3(-.04,-.80,-.60);
  // A low stance flattens the long silhouette to avoid floor intersections.
@@ -45,13 +55,15 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
   new THREE.Vector3(front?1:-1,0,0);
  const z=outward.addScaledVector(axis,-outward.dot(axis)).normalize();
  const y=z.clone().cross(axis).normalize();
- const q=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(axis,y,z));
+ const q=front?retainedSwing(p.heldQuaternion,axis):
+  new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(axis,y,z));
  if(!one&&p.motion){
   const m=sampleSuspensionMotion(p.sling,p.motion);
   q.premultiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(m.roll,m.yaw,m.pitch)));
  }
  const anchor=one?new THREE.Vector3(5.5,-5.2,9.6+armor):
-  front?new THREE.Vector3(8.8+armor,-2.8,p.sling==='single'?2.8:0):
+  front?new THREE.Vector3((p.exterior?.front(-2.8,0)??(7.1+armor))+1.35,
+    -3.3,p.sling==='single'?2.4:0):
   side?new THREE.Vector3(1.0,-2.8,10.7+armor):
   new THREE.Vector3(p.pack?-13:-8.2,-.5,0);
  // The same rendered grip is used at the new pose, not a second socket.

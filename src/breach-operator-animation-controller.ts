@@ -1128,6 +1128,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       muzzleX:retentionAssembly?.muzzleX??19.5,stockX:retentionAssembly?.stockX??-13.5,
       sockets:r.weaponBody.userData.retentionSockets,
       bounds:r.weaponBody.userData.retentionBounds,
+      exterior:equipmentExterior(clothing.armorStyle,clothing.rigStyle,clothing.top),
       rigDepth:p.equipment?.slots.rig&&p.equipment.slots.rig!=='rig-none'?1.5:0,
       beltDepth:p.equipment?.slots.belt&&p.equipment.slots.belt!=='belt-none'?1.25:0,
       motion:{stride:p.stride,speed:physicalSpeed,acceleration:p.acceleration,
