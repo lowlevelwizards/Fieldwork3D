@@ -45,6 +45,8 @@ function holderFits(item:CarryItem,holder:AttachmentId,variant:AttachmentVariant
  const open=['primary-mag-pouch','pistol-mag-pouch','grenade-pouch','radio-holder','flashlight-holder','wedge-holder'].includes(holder);
  const wall=holder==='grenade-pouch'?.72:holder==='pistol-mag-pouch'?.64:open?.88:.45;
  if(holder==='pistol-mag-pouch'&&variant==='double')return dimensionsFit(item.dimensions,{width:f.width*.46-wall,height:f.height+1.1,depth:f.depth-wall});
+ if(holder==='shell-holder')return dimensionsFit(item.dimensions,{width:f.width*.20,height:f.height,depth:f.depth*.65});
+ if(holder==='wedge-holder')return dimensionsFit(item.dimensions,{width:f.width*.36,height:f.height,depth:f.depth-.70});
  return dimensionsFit(item.dimensions,{width:f.width-wall,height:f.height+(open?1.1:0),depth:f.depth-wall});
 }
 function itemCandidates(input:CarryInput,item:CarryItem,slots:ReturnType<typeof fixedWaistSlots>):Candidate[]{
@@ -93,7 +95,7 @@ function itemCandidates(input:CarryInput,item:CarryItem,slots:ReturnType<typeof 
  return out;
 }
 function conflicts(a:Placement,b:Placement){
- return a.slotIds.some(id=>b.slotIds.includes(id))||!!(a.waist&&b.waist&&waistPlacementsConflict(a.waist,b.waist));
+ return a.itemIds.some(id=>b.itemIds.includes(id))||a.slotIds.some(id=>b.slotIds.includes(id))||!!(a.waist&&b.waist&&waistPlacementsConflict(a.waist,b.waist));
 }
 /** Fixed priority tiers and stable IDs; bounded deterministic search only
  * when a straightforward arrangement fails. Never mutate input, never
@@ -113,11 +115,38 @@ export function resolveUnifiedCarry(input:CarryInput,maxNodes=12000):PlacementMa
  }
  jobs.sort((a,b)=>Number(!!a.item.optional)-Number(!!b.item.optional)||
   rank[a.item.kind]-rank[b.item.kind]||a.options.length-b.options.length||cmp(a.item.id,b.item.id));
+ // Group compatible items only on the same holder with real independent
+ // content cells. Retain single-holder alternatives for constrained outfits.
+ // Grouping is a candidate, not a mutation of inventory IDs or counts.
+ for(let i=0;i<jobs.length;i++){
+  const job=jobs[i],item=job.item;
+  const grouped=item.kind==='secondary-mag'?{holder:'pistol-mag-pouch' as const,variant:'double' as const,max:2}:
+   item.kind==='wedge'?{holder:'wedge-holder' as const,variant:'standard' as const,max:2}:
+   item.kind==='shell'?{holder:'shell-holder' as const,variant:'standard' as const,max:4}:null;
+  if(!grouped||item.holder||item.variant)continue;
+  const compatible=jobs.slice(i+1).filter(j=>j.item.kind===item.kind&&!j.item.holder&&!j.item.variant&&
+   !!j.item.optional===!!item.optional&&holderFits(j.item,grouped.holder,grouped.variant));
+  for(let n=Math.min(grouped.max,compatible.length+1);n>=2;n--){
+   const ids=[item.id,...compatible.slice(0,n-1).map(j=>j.item.id)];
+   const options=itemCandidates(input,{...item,holder:grouped.holder,variant:grouped.variant},slots)
+    .filter(c=>c.holder===grouped.holder&&c.variant===grouped.variant&&!!c.waist)
+    .map(c=>({...c,itemIds:ids}));
+   const at=job.options.findIndex(c=>c.carrier==='belt');
+   if(at>=0)job.options.splice(at,0,...options);
+   else{
+    const before=job.options.findIndex(c=>CARRY_PRIORITY[item.kind].indexOf(c.carrier)>CARRY_PRIORITY[item.kind].indexOf('belt'));
+    job.options.splice(before>=0?before:job.options.length,0,...options);
+   }
+  }
+ }
  // Reserve dedicated primary cells before other equipment competes for
  // flexible storage. Options still follow the individual carrier flow.
  const best:Candidate[]=[];let bestScore=-1,bestMask='',nodes=0,truncated=false;
  const mandatory=jobs.filter(j=>!j.item.optional).length;
  const selected:Candidate[]=[];
+ const weight=(id:string)=>jobs.find(j=>j.item.id===id)?.item.optional?1:jobs.length+1;
+ const count=(options:readonly Candidate[])=>options.reduce((n,p)=>n+p.itemIds.length,0);
+ const target=mandatory*(jobs.length+1)+(jobs.length-mandatory);
  const visit=(i:number,score:number,mask:string)=>{
   if(++nodes>maxNodes){truncated=true;return;}
   if(i===jobs.length){
@@ -125,12 +154,13 @@ export function resolveUnifiedCarry(input:CarryInput,maxNodes=12000):PlacementMa
     bestScore=score;bestMask=mask;best.splice(0,best.length,...selected);
    }return;
   }
-  if(bestScore===mandatory*(jobs.length+1)+(jobs.length-mandatory))return;
-  const j=jobs[i],weight=j.item.optional?1:jobs.length+1;
+  if(bestScore===target)return;
+  const j=jobs[i];
+  if(selected.some(p=>p.itemIds.includes(j.item.id))){visit(i+1,score,mask+'1');return;}
   for(const option of j.options){
    if(selected.some(p=>conflicts(p,option)))continue;
-   selected.push(option);visit(i+1,score+weight,mask+'1');selected.pop();
-   if(truncated||bestScore===mandatory*(jobs.length+1)+(jobs.length-mandatory))return;
+   selected.push(option);visit(i+1,score+option.itemIds.reduce((n,id)=>n+weight(id),0),mask+'1');selected.pop();
+   if(truncated||bestScore===target)return;
   }
   visit(i+1,score,mask+'0');
  };
@@ -138,11 +168,12 @@ export function resolveUnifiedCarry(input:CarryInput,maxNodes=12000):PlacementMa
  // usable diagnostic, even when many reserve magazines exhaust the search.
  let mask='',score=0;
  for(const job of jobs){
+  if(best.some(p=>p.itemIds.includes(job.item.id))){mask+='1';continue;}
   const option=job.options.find(o=>!best.some(p=>conflicts(p,o)));
-  if(option){best.push(option);mask+='1';score+=job.item.optional?1:jobs.length+1;}else mask+='0';
+  if(option){best.push(option);mask+='1';score+=option.itemIds.reduce((n,id)=>n+weight(id),0);}else mask+='0';
  }
  bestScore=score;bestMask=mask;
- if(best.length<jobs.length)visit(0,0,'');
+ if(count(best)<jobs.length)visit(0,0,'');
  const placements=best.map(({order:_,...p})=>p);
  const placed=new Set(placements.flatMap(p=>p.itemIds));
  const unplaced=[...invalid,...jobs.filter(j=>!placed.has(j.item.id)).map(j=>({id:j.item.id,reason:'no-fit' as const}))].sort((a,b)=>cmp(a.id,b.id));
