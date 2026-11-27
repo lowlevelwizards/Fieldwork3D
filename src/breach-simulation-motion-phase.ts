@@ -2,6 +2,7 @@
  * Proposals capture pre-movement positions. A single arbiter decides hard
  * actor/civilian collisions; rejected motion is restored deterministically.
  */
+import {chooseTransportStep} from './breach-transport-recovery.ts';
 import {proposeAttachedCarry} from './breach-attached-carry.ts';
 import {proposeDragTrail,type DragTrail} from './breach-drag-trail.ts';
 import {transportProfile} from './breach-transport-navigation.ts';
@@ -62,23 +63,26 @@ export function advanceSimulationMotion(s:Session,h:number,
     if(!civil||civil.health>0||carrier.health<=0)continue;
     const from=motionStart.get(carrier.id)??carrier.p;
     const bodyFrom=motionStart.get(civil.id)??civil.p;
-    // A single ordered roster replaces four filtering/mapping arrays;
-    // keep live positions and operator-before-civilian contact semantics.
-    const others:Pt[]=[];
-    for(const o of s.operators)if(o!==carrier&&o!==civil&&o.health>0)
-      others.push(o.p);
-    for(const c of s.civilians)if(c!==civil)others.push(c.p);
     const mode=civil.transportMode??carrier.plan[0]?.transportMode??'drag';
     const profile=transportProfile(mode);
     const clear=(a:Pt,b:Pt)=>sweptBodyClear(a,b,s.doors,profile.bodyRadius,geometry());
-    const drag=mode==='drag'?proposeDragTrail(civil.id,bodyFrom,from,carrier.p,carrier.dragTrail,clear):null;
-    const next=mode==='drag'?drag?.point??null:proposeAttachedCarry(bodyFrom,from,carrier.p,
-      carrier.heading,h,clear,carrier.transportContact?.kind==='release');
-    if(!next){
-      carrier.p=clone(from);carrier.velocity=0;carrier.nav=[];
-      civil.p=clone(bodyFrom);civil.velocity=0;
+    const intended=carrier.p;
+    const pair=chooseTransportStep(from,intended,to=>{
+      if(mode==='drag')return proposeDragTrail(civil.id,bodyFrom,from,to,carrier.dragTrail,clear);
+      const point=proposeAttachedCarry(bodyFrom,from,to,carrier.heading,h,clear,
+        carrier.transportContact?.kind==='release');
+      return point?{point,trail:undefined}:null;
+    },(a,b)=>sweptBodyClear(a,b,s.doors,OPERATOR_RADIUS,geometry()),
+      !carrier.traversal&&!carrier.squeeze&&!carrier.doorTraversal&&!carrier.transportContact);
+    if(!pair){
+      carrier.p=clone(from);carrier.priorP=clone(from);carrier.velocity=0;
+      civil.p=clone(bodyFrom);civil.priorP=clone(bodyFrom);civil.velocity=0;
+      if(d(from,intended)>.0001)recordRejectedMovementCommit(carrier,'geometry',s.seconds,h);
       continue;
     }
+    if(pair.adjusted){carrier.p=pair.carrier;carrier.velocity=Math.min(carrier.velocity,d(from,pair.carrier)/h);}
+    const next=pair.body.point;
+    const drag=mode==='drag'?pair.body:null;
     if(!coupledBodyStarts)coupledBodyStarts=new Map<string,Pt>();
     coupledBodyStarts.set(carrier.id,clone(bodyFrom));
     if(drag){if(!dragProposals)dragProposals=new Map();dragProposals.set(carrier.id,drag.trail);}

@@ -82,14 +82,14 @@ export function reconcileCivilianTransportFrame(
   }
   for(const other of proposals){
     if(other.id===carrierId||other.id===bodyId||
-       !other.alive||other.carried)continue;
+       (!other.alive&&!other.carried))continue;
     const movement=resolved.get(other.id);
     if(!movement||!sweptPairMayTouch(bodyStart.from,body.point,
       other.from,movement.point,20))continue;
     if(!crosses(bodyStart.from,body.point,
       other.from,movement.point))continue;
     const otherMoved=distance(other.from,movement.point)>.0001;
-    const safeToYield=otherMoved&&
+    const safeToYield=otherMoved&&!other.carried&&!links.some(link=>link.carrierId===other.id)&&
       !crosses(bodyStart.from,body.point,other.from,other.from)&&
       distance(body.point,other.from)>=20;
     if(safeToYield){
