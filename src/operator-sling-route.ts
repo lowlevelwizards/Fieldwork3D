@@ -46,15 +46,15 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
  };
  // Shoulder contacts stay on the fitted shoulder, not on the far
  // back plane of the pack. Its outer edge is only relevant lower down.
- const crownFace=(f:number)=>(f===1?fit.front(5.2,z):fit.back(5.2,z))+f*margin;
- const crownX=crownFace(face),oppositeX=crownFace(-face);
+ const contact=fit.shoulderContour(shoulderSign,z,width,margin*2);
+ const near=face===1?contact.front:contact.rear,far=face===1?contact.rear:contact.front;
  const flank=hipSign*Math.max(Math.abs(fit.side(low,0,hipSign)),
   outerPack&&low>=outerPack.min.y&&low<=outerPack.max.y?Math.abs(hipSign===1?outerPack.max.z:outerPack.min.z):0)+hipSign*.18;
  const corner=(f:number)=>f*Math.max(...[0,.4,.82].map(t=>f*surface(f,low,flank*t)));
  const farCorner=corner(-face),nearCorner=corner(face);
  write(0,rear.x,rear.y,rear.z,face,0,side?hipSign:0);
- write(2,crownX,sy-(hasPack?.10:0),z,face,1,0);
- write(3,oppositeX,sy-(hasPack?.10:0),z,-face,1,0);
+ write(2,near[0],near[1],near[2],face,1,0);
+ write(3,far[0],far[1],far[2],-face,1,0);
  if(!back&&!side&&lane.kind==='open-branch'&&lane.frontEntry){
   // Use only the actual modeled JPC opening and keep weapon sockets free.
   const [x,y,lateral]=lane.frontEntry;
@@ -150,7 +150,7 @@ export function fitSlingContactRoute(out:readonly SlingRibbonKnot[],path:readonl
  fit:EquipmentExterior,width:number,pack?:THREE.Box3,slack=0){
  // Preserve the simple diagonal route; intermediate vertices do not
  // independently snap to different surfaces. Small slack only on free ends.
- void fit;void width;void pack;
+ void pack;
  for(let i=0;i<out.length;i++){
   const a=path[Math.floor(i/2)],b=path[Math.min(path.length-1,Math.ceil(i/2))],k=out[i];
   k.point.copy(a.point).lerp(b.point,i%2?.5:0);
@@ -160,7 +160,11 @@ export function fitSlingContactRoute(out:readonly SlingRibbonKnot[],path:readonl
   if(i===1||i===out.length-2)k.point.y-=Math.max(0,Math.min(.18,slack*.5));
   // With a pack, round the shoulder crown with the existing midpoint;
   // no added mesh or global clearance inflation.
-  if(pack&&i===5){k.point.y+=.20;k.normal.set(0,1,0);}
+  if(i===5){
+   const p=k.point,sign=p.z<0?-1:1;
+   const crown=fit.shoulderContour(sign,p.z,width,Math.min(.25,width*.16)*2).crown;
+   p.y=Math.max(p.y,crown[1]);k.normal.set(0,1,0);
+  }
  }
  return out;
 }
