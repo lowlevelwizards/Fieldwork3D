@@ -77,6 +77,7 @@ import type {HistoricalLoadoutProposal}
  from './faction-reference-loadout-generator.ts';
 import {resolveFactionReference,referenceLookForKit} from './faction-reference-resolver.ts';
 import {resolveReferencePreview} from './faction-reference-preview-options.ts';
+import {quoteUnifiedLoadout} from './equipment-unified-loadout.ts';
 import {readRoster,initialRoster,
  freshQuickPlayRoster,serializeQuickPlayCosmetics} from './breach-roster.ts';
 import {readCampaign} from './campaign-state.ts';
@@ -903,6 +904,15 @@ function posePreview(){
  // in the live game; preview rig count is capped to actual rig capacity later.
  const sampleMagazines=armed&&previewEquipment.slots.rig!=='rig-none'?
   (['rig','rig','rig'] as const):[];
+ const previewLook=inspectWardrobe(historicalDraft?.wardrobe??reference?.wardrobe??displayedLook());
+ // Reference outfits use the same physical artwork ownership as the Lab.
+ // Sample magazine bodies are unloaded art props, never saved inventory.
+ const referenceCarry=reference&&!clothesOnly?quoteUnifiedLoadout({
+  kit:previewEquipment,wardrobe:previewLook,
+  magazines:weapon==='shotgun'?[]:sampleMagazines.map((_,i)=>({id:'reference-art:'+i,weapon,rounds:0})),
+  primaryPart:configuration.build?.parts.magazine
+ }):undefined;
+ canvas.dataset.referenceCarryFit=referenceCarry?String(referenceCarry.manifest.valid):'not-applicable';
  armedPose={
   x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
   posture:'stand',injury:0,weapon,reload:0,reloadDuration:0,
@@ -912,9 +922,9 @@ function posePreview(){
   faceStyle:studioUsesVisibleFace(activeCategory)?'quiet':'blank',
   unarmedPreview:!armed,weaponConfiguration:configuration,
   equipment:previewEquipment,
-  magazineCarryLocations:sampleMagazines,
-  wardrobe:inspectWardrobe(historicalDraft?.wardrobe??
-   reference?.wardrobe??displayedLook()),
+  magazineCarryLocations:referenceCarry?[]:sampleMagazines,
+  unifiedCarry:referenceCarry,
+  wardrobe:previewLook,
   appearanceSeed:p.appearanceSeed
  };
  poseOperator(rig,armedPose,0);
