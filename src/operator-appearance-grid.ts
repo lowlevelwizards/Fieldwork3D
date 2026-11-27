@@ -384,12 +384,24 @@ export class OperatorAppearanceGrid{
      {height:38.7,span:25,angle:[27,25,-43] as const}):
     item.slot==='facewear'&&item.id==='bandana'&&clothingMode==='lowered'?
      {height:40.4,span:19,angle:[27,25,-43] as const}:focus(item.slot);
-   const span=view.span;
+   const pack=item.slot==='packStyle'?rig.visualKit.packPreview.active?.root:undefined;
+   const target=new THREE.Vector3(0,view.height,0);
+   const direction=new THREE.Vector3(...view.angle);
+   let span=view.span;
+   if(pack){
+    rig.root.updateMatrixWorld(true);
+    const bounds=new THREE.Box3().setFromObject(pack);
+    bounds.getCenter(target);
+    // Derive rear-three-quarter from the actual attachment transform,
+    // not a guessed world-facing angle. Keep the shared thumbnail renderer.
+    direction.set(-55,18,31).transformDirection(pack.matrixWorld).multiplyScalar(65);
+    const size=bounds.getSize(new THREE.Vector3());
+    span=Math.max(13,size.y*.76,size.x*.95,size.z*.86);
+   }
    this.camera.left=-span;this.camera.right=span;
    this.camera.top=span;this.camera.bottom=-span;
-   this.camera.position.set(view.angle[0],view.angle[1],view.angle[2]);
-   this.camera.position.y+=view.height;
-   this.camera.lookAt(0,view.height,0);
+   this.camera.position.copy(target).add(direction);
+   this.camera.lookAt(target);
    this.camera.updateProjectionMatrix();
    this.renderer.setRenderTarget(this.target);
    this.scene.background=new THREE.Color(STUDIO_INSPECTION_BACKGROUND);
