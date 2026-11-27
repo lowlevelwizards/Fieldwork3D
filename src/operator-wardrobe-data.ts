@@ -1,10 +1,10 @@
 import {FOOTWEAR,FOOTWEAR_IDS,canonicalFootwear,footwearForEquipment,footwearColorChoices,footwearHemOptions} from './operator-footwear-catalog.ts';
-import {beltStyleForEquipment,canonicalBeltStyle,beltSolidChoices} from './operator-belt-profile.ts';
+import {BELT_PROFILES,beltStyleForEquipment,canonicalBeltStyle,beltSolidChoices} from './operator-belt-profile.ts';
 /** Tactical Wardrobe 2.0: style recipes, not new weapons or magic inventory.
  * Physical protection, carrying capacity, costs and ownership remain in
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
-import {packStylesForEquipment,packDefaultForEquipment,migratePackAppearance} from './operator-backpack-catalog.ts';
+import {PACK_PROFILES,packStylesForEquipment,packDefaultForEquipment,migratePackAppearance} from './operator-backpack-catalog.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {readHelmetSetup,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import {readHelmetField,type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
@@ -128,20 +128,20 @@ add('rigStyle','full',[
  ['split-front','Split-Front Chest Rig'],
  ['sadf-webbing','Bush / SADF-Style Webbing']
 ]);
-add('beltStyle','none',[['no-belt','No Belt']]);
-add('beltStyle','light',[['plain-belt','Leather Belt']]);
-add('beltStyle','standard',[['duty-belt','Duty Belt']]);
-add('beltStyle','battle',[['battle-belt','Battle Belt']]);
-add('beltStyle','padded',[['padded-belt','Padded Battle Belt']]);
-add('packStyle','none',[['no-pack','No Backpack']]);
+add('beltStyle','none',[['no-belt',BELT_PROFILES['no-belt'].name]]);
+add('beltStyle','light',[['plain-belt',BELT_PROFILES['plain-belt'].name]]);
+add('beltStyle','standard',[['duty-belt',BELT_PROFILES['duty-belt'].name]]);
+add('beltStyle','battle',[['battle-belt',BELT_PROFILES['battle-belt'].name]]);
+add('beltStyle','padded',[['padded-belt',BELT_PROFILES['padded-belt'].name]]);
+add('packStyle','none',[['no-pack',PACK_PROFILES['no-pack'].label]]);
 add('packStyle','day',[
- ['hydration','Hydration Carrier'],['admin-pack','Assault Panel'],
- ['day-pack','Tactical Daypack'],['assault-pack','Assault Pack'],
- ['civilian-pack','Civilian Backpack']
+ ['hydration',PACK_PROFILES['hydration'].label],['admin-pack',PACK_PROFILES['assault-panel'].label],
+ ['day-pack',PACK_PROFILES['day-pack'].label],['assault-pack',PACK_PROFILES['assault-pack'].label],
+ ['civilian-pack',PACK_PROFILES['civilian-pack'].label]
 ]);
 add('packStyle','field',[
- ['field-pack','ALICE Field Pack'],['rucksack','Expedition Rucksack'],
- ['medic-pack','Medical Pack'],['comms-pack','Communications Pack']
+ ['field-pack',PACK_PROFILES['field-pack'].label],['rucksack',PACK_PROFILES['rucksack'].label],
+ ['medic-pack',PACK_PROFILES['medic-pack'].label],['comms-pack',PACK_PROFILES['comms-pack'].label]
 ]);
 add('gloves','gloves',[['gloves-none','Bare Hands'],
  ['gloves-field','Field Gloves']]);
