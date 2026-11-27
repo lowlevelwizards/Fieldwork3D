@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {sampleSuspensionMotion} from '../src/breach-weapon-suspension.ts';
-const m={stride:.23,speed:50,acceleration:45,turning:.8,massKg:3,inertia:150};
+const m={stride:8.74,speed:50,acceleration:45,turning:.8,massKg:3,inertia:150};
 const length=x=>Math.hypot(x.roll,x.yaw,x.pitch);
 test('WR5 deterministic and bounded suspension differentiates one and two points',()=>{
  const single=sampleSuspensionMotion('single',m),two=sampleSuspensionMotion('two',m);

@@ -40,9 +40,9 @@ test('SR21 drop leads, compresses, rebounds and has exact deterministic endpoint
 test('SR21 secondary equipped retains moving front-hang suspension and exact settled endpoint',()=>{
  const switchPose=sampleSecondaryRetention(1,true);
  assert.equal(switchPose.retention,1);assert.equal(switchPose.pistol,1);
- const moving={speed:55,stride:.14,massKg:3,inertia:100,profile:slingArtProfile('sling-two-point'),gait:'walk'};
+ const moving={speed:55,stride:5.32,massKg:3,inertia:100,profile:slingArtProfile('sling-two-point'),gait:'walk'};
  const a=sampleRetentionTransition({...p,motion:moving},switchPose.retention);
- const b=sampleRetentionTransition({...p,motion:{...moving,stride:.56}},switchPose.retention);
+ const b=sampleRetentionTransition({...p,motion:{...moving,stride:21.28}},switchPose.retention);
  assert.ok(a.position.distanceTo(b.position)>.3);
  assert.ok(a.quaternion.angleTo(b.quaternion)>.04);
 });
