@@ -14,6 +14,47 @@ export function authoredPackStyle(style:string):AuthoredPackStyle|undefined{
  const id=style==='admin-pack'?'assault-panel':style;
  return (AUTHORED_PACK_STYLES as readonly string[]).includes(id)?id as AuthoredPackStyle:undefined;
 }
+/** Authored socket metadata is shared by UI and rendering; no mesh creation
+ * is needed to determine which external mounts are offered. */
+export function packSocketsForStyle(style:string):readonly PackSocket[]{
+ const sockets:PackSocket[]=[];
+ switch(authoredPackStyle(style)){
+  case 'day-pack':
+   for(const s of [-1,1]){
+    sockets.push({id:s<0?'left-medical':'right-utility',point:[-.4,-1.5,s*4.75],normal:[0,0,s],kind:s<0?'medical':'utility'});
+   }
+   break;
+  case 'assault-pack':
+   for(const s of [-1,1]){
+    sockets.push({id:s<0?'left-utility':'right-medical',point:[-.7,-2.5,s*7.3],normal:[0,0,s],kind:s<0?'utility':'medical'});
+    sockets.push({id:'bottom-'+s,point:[-.2,-7.68,s*2.5],normal:[0,-1,0],kind:'tie-down'});
+   }
+   break;
+  case 'field-pack':
+   for(const s of [-1,1]){
+    sockets.push({id:s<0?'left-utility':'right-medical',point:[-.6,-2.2,s*7.8],normal:[0,0,s],kind:s<0?'utility':'medical'});
+   }
+   break;
+  case 'rucksack':
+   for(const s of [-1,1]){
+    sockets.push({id:s<0?'left-utility':'right-medical',point:[-.2,-2.4,s*8.2],normal:[0,0,s],kind:s<0?'utility':'medical'});
+    sockets.push({id:'bottom-'+s,point:[-.7,-10.6,s*3.1],normal:[0,-1,0],kind:'tie-down'});
+   }
+   break;
+  case 'medic-pack':
+   for(const s of [-1,1]){
+    sockets.push({id:s<0?'left-medical':'right-utility',point:[-.35,-2.6,s*6.3],normal:[0,0,s],kind:s<0?'medical':'utility'});
+   }
+   break;
+  case 'comms-pack':
+   for(const s of [-1,1]){
+    sockets.push({id:'radio-side-'+s,point:[-.3,-1.6,s*5.1],normal:[0,0,s],kind:'radio'});
+   }
+   sockets.push({id:'antenna-port',point:[0,7.68,2.9],normal:[0,1,0],kind:'antenna'});
+   break;
+ }
+ return sockets;
+}
 /** A single chunky carry-loop cap instead of three tiny modeled bars. */
 function handle(g:THREE.Group,m:PackMaterials,x:number,y:number,w:number){
  packBox(g,'carry-handle',m.trim,[x,y,0],[.9,.85,w]);
@@ -24,7 +65,7 @@ function compression(g:THREE.Group,m:PackMaterials,x:number,y:number,z:number,de
 }
 export function buildAuthoredPack(style:AuthoredPackStyle,m:PackMaterials,options:Readonly<{medicalMark?:boolean;antenna?:boolean}>={}):AuthoredPack{
  const g=new THREE.Group();g.name='authored-pack-'+style;
- const sockets:PackSocket[]=[],graphics:PackGraphic[]=[];
+ const sockets=packSocketsForStyle(style),graphics:PackGraphic[]=[];
  const box=(name:string,mat:THREE.Material,p:PackPoint,size:PackPoint)=>packBox(g,name,mat,p,size);
  const vol=(name:string,mat:THREE.Material,center:PackPoint,size:PackPoint,cut:PackCut,tile?:string)=>{
   packVolume(g,name,mat,center,size,cut);
@@ -56,7 +97,6 @@ export function buildAuthoredPack(style:AuthoredPackStyle,m:PackMaterials,option
    for(const s of [-1,1]){
     graphics.push({tile:'day-side',center:[0,0,0],size:body,cut,face:s<0?'left':'right'});
     compression(g,m,-.22,-1.15,s*4.68,4.15);
-    sockets.push({id:s<0?'left-medical':'right-utility',point:[-.4,-1.5,s*4.75],normal:[0,0,s],kind:s<0?'medical':'utility'});
    }
    break;
   }
@@ -67,9 +107,6 @@ export function buildAuthoredPack(style:AuthoredPackStyle,m:PackMaterials,option
    for(const s of [-1,1]){
     vol('integrated-side-pocket',m.fabric,[-.88,-3.45,s*5.95],[5.2,5.9,2.7],{topWidth:.78,bottomWidth:.73,bottomDepth:.78});
     compression(g,m,-.4,.95,s*6.15,5.25);
-    sockets.push({id:s<0?'left-utility':'right-medical',point:[-.7,-2.5,s*7.3],normal:[0,0,s],kind:s<0?'utility':'medical'});
-    // Attachment metadata only. No hidden back pad or empty modeled tie-down.
-    sockets.push({id:'bottom-'+s,point:[-.2,-7.68,s*2.5],normal:[0,-1,0],kind:'tie-down'});
    }
    handle(g,m,.35,7.05,3.6);
    break;
@@ -86,7 +123,6 @@ export function buildAuthoredPack(style:AuthoredPackStyle,m:PackMaterials,option
    box('alice-frame-top',m.dark,[4.25,7.0,0],[.8,.8,11.5]);
    for(const s of [-1,1]){
     box('alice-lid-strap',m.trim,[-4.55,3.2,s*4.2],[.12,3.45,.85]);
-    sockets.push({id:s<0?'left-utility':'right-medical',point:[-.6,-2.2,s*7.8],normal:[0,0,s],kind:s<0?'utility':'medical'});
    }
    mount={...mount,bodyFaceX:4.65,upperY:5.7,lowerY:-6.1,strapHalfWidth:4.2};
    break;
@@ -100,8 +136,6 @@ export function buildAuthoredPack(style:AuthoredPackStyle,m:PackMaterials,option
     vol('bergen-rocket-pouch',m.fabric,[-.15,-.8,s*6.1],[6.6,14.0,4.15],{topWidth:.94,bottomWidth:.92,topDepth:.95},'bergen-side');
     box('bergen-lid-strap',m.trim,[-5.0,5.2,s*3.8],[.22,4.5,1.1]);
     box('bergen-buckle',m.dark,[-5.2,3.3,s*3.8],[.5,1.2,1.35]);
-    sockets.push({id:s<0?'left-utility':'right-medical',point:[-.2,-2.4,s*8.2],normal:[0,0,s],kind:s<0?'utility':'medical'});
-    sockets.push({id:'bottom-'+s,point:[-.7,-10.6,s*3.1],normal:[0,-1,0],kind:'tie-down'});
    }
    mount={...mount,centerY:.65,upperY:8.0,lowerY:-7.0,strapHalfWidth:4.5};
    break;
@@ -115,7 +149,6 @@ export function buildAuthoredPack(style:AuthoredPackStyle,m:PackMaterials,option
    handle(g,m,.1,6.3,3.7);
    for(const s of [-1,1]){
     box('medical-grab-handle',m.trim,[-.2,.6,s*6.25],[.9,2.7,.7]);
-    sockets.push({id:s<0?'left-medical':'right-utility',point:[-.35,-2.6,s*6.3],normal:[0,0,s],kind:s<0?'medical':'utility'});
    }
    break;
   }
@@ -126,11 +159,9 @@ export function buildAuthoredPack(style:AuthoredPackStyle,m:PackMaterials,option
    vol('comms-lower-utility',m.fabric,[-2.7,-2.5,0],[1.55,6.7,8.55],{topWidth:.98,bottomWidth:.98},'day-upper');
    for(const s of [-1,1]){
     box('comms-retention',m.trim,[-3.5,-2.4,s*2.9],[.12,5.9,.9]);
-    sockets.push({id:'radio-side-'+s,point:[-.3,-1.6,s*5.1],normal:[0,0,s],kind:'radio'});
    }
    box('comms-cable-port',m.dark,[.0,7.35,2.9],[1.3,.6,1.45]);
    if(options.antenna!==false)box('radio-antenna-preview',m.dark,[0,10.1,2.9],[.6,5.0,.6]);
-   sockets.push({id:'antenna-port',point:[0,7.68,2.9],normal:[0,1,0],kind:'antenna'});
    mount={...mount,centerY:.25,strapHalfWidth:3.8};
    break;
   }

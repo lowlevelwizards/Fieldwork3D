@@ -83,6 +83,7 @@ import {MAX_WARDROBE_LOOKS,makeWardrobeLook,readWardrobeLooks,
  from './operator-wardrobe-storage.ts';
 import {WARDROBE_ACCESSORY_SLOTS,WARDROBE_ACCESSORY_OPTIONS}
  from './operator-wardrobe-accessories.ts';
+import {authoredCargoSocketForStyle} from './operator-backpack-sockets.ts';
 import {WARDROBE_MOUNTS,wardrobeMount} from './operator-wardrobe-mounts.ts';
 import {WARDROBE_RECIPES,wardrobeRecipe,applyWardrobeRecipe}
  from './operator-wardrobe-recipes.ts';
@@ -616,7 +617,8 @@ function syncWardrobe(){
    const long=kind==='utility'&&
     ['utility-breach','utility-pry','utility-cutter'].includes(realKit.slots.utility);
    option.disabled=!!candidate&&(!item||candidate.location!==item.location||
-    candidate.socket.bone==='pack'&&realKit.slots.backpack==='backpack-none'||
+    candidate.socket.bone==='pack'&&(!authoredCargoSocketForStyle(compatible.packStyle,kind,
+     candidate.id,realKit.slots[kind]))||
     long&&!candidate.longAllowed);
   }
   const requested=wardrobeOptions.mounts[kind]??'auto';
