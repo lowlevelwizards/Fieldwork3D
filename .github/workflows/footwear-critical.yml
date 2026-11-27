@@ -13,7 +13,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
+      - run: npm install --no-audit --no-fund
       - run: npm run check
       - run: node --experimental-strip-types --test tests/operator-footwear-options.test.mjs tests/breach-motion-boot-forefoot.test.mjs tests/operator-garment-readability-20261103.test.mjs tests/operator-wardrobe-unified.test.mjs tests/operator-wardrobe-pattern-ui.test.mjs
