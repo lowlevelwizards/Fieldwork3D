@@ -1,7 +1,7 @@
 name: CT casualty transport critical
 on:
   push:
-    branches: [feature/ct-casualty-transport]
+    branches: [feature/ct-casualty-transport, feature/ct-carry-refinement]
   pull_request:
     paths:
       - 'src/breach-*transport*.ts'

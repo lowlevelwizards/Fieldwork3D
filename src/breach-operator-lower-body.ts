@@ -76,7 +76,7 @@ export function applyOperatorLegIK(r:OperatorRig,p:OperatorPose,
   // x=0 while displaying a forward-shifted pelvis tears the anatomy.
   // Armed rigs retain their original calibrated leg origin.
   const hipLocal=scratch.hips[i].set(
-    p.unarmedPreview?r.hip.position.x:0,r.hip.position.y,
+    p.unarmedPreview||p.transportPatient?r.hip.position.x:0,r.hip.position.y,
     r.hip.position.z+sign*LEG_HIP_SIDE);
   const anchor=target.position;
   foot.anchor.set(anchor.x,LEG_ANKLE_HEIGHT,anchor.y);
@@ -135,12 +135,17 @@ export function applyOperatorLegIK(r:OperatorRig,p:OperatorPose,
   foot.outOfReach=!leg.reached;
   // Never shift a scheduled foot to hide an unreachable knee. The tiny
   // additional visual cuff retains its existing gap threshold.
-  r.legGap[i]=leg.effector.distanceTo(relative);
+  // A downed subject has no planted-foot promise. Its shoe must follow
+  // the anatomical effector, including the very first post-release frame.
+  // The old ankle link could span an arbitrary gap from stale gait anchors.
+  const requestedGap=leg.effector.distanceTo(relative);
+  if(p.down)relative.copy(leg.effector);
+  r.legGap[i]=p.down?0:requestedGap;
   alignSegmentComponents(upper.position,upper.quaternion,upper.scale,
     hipLocal,leg.joint,scratch.sides[i]);
   alignSegmentComponents(lower.position,lower.quaternion,lower.scale,
     leg.joint,leg.effector,scratch.sides[i]);
-  ankle.visible=r.legGap[i]>.10;
+  ankle.visible=!p.down&&r.legGap[i]>.10;
   if(ankle.visible)
    alignSegmentComponents(ankle.position,ankle.quaternion,ankle.scale,
     leg.effector,relative,scratch.sides[i]);
