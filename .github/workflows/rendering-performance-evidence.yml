@@ -1,0 +1,420 @@
+name: Fieldwork rendering performance evidence
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/rendering-performance-evidence.yml'
+      - 'scripts/verification/e6-10-preflight-browser.mjs'
+      - 'scripts/verification/e6-11-device-benchmark-browser.mjs'
+      - 'scripts/verification/e6-12-post-ready-browser.mjs'
+      - 'scripts/verification/e6-13-briefing-idle-browser.mjs'
+      - 'scripts/verification/e6-14-live-first-browser.mjs'
+      - 'scripts/verification/e6-15-scene-phase-browser.mjs'
+      - 'scripts/verification/e6-16-shadow-submit-browser.mjs'
+      - 'scripts/verification/e6-8-cold-renderer-browser.mjs'
+      - 'scripts/verification/e6-9-cold-cpu-analysis.mjs'
+      - 'scripts/verification/e6-9-cold-cpu-browser.mjs'
+      - 'scripts/verification/rendering-evidence-routing.mjs'
+      - 'src/breach-3d.ts'
+      - 'src/breach-boot-config.ts'
+      - 'src/breach-main.ts'
+      - 'src/breach-quickplay-controller.ts'
+      - 'src/breach-runtime-loop.ts'
+      - 'src/rendering/breach-briefing-idle-policy.ts'
+      - 'src/rendering/breach-cold-device-evidence.ts'
+      - 'src/rendering/breach-cold-renderer-trace.ts'
+      - 'src/rendering/breach-live-shadow-submit-profiler.ts'
+      - 'src/rendering/breach-post-ready-attribution.ts'
+      - 'tests/ci-rendering-evidence-routing.test.mjs'
+      - 'tests/refactor-e6-10-preflight.test.mjs'
+      - 'tests/refactor-e6-11-device-cold-evidence.test.mjs'
+      - 'tests/refactor-e6-12-post-ready-attribution.test.mjs'
+      - 'tests/refactor-e6-13-briefing-idle.test.mjs'
+      - 'tests/refactor-e6-14-live-execution-cold.test.mjs'
+      - 'tests/refactor-e6-15-live-scene-attribution.test.mjs'
+      - 'tests/refactor-e6-16-shadow-submission.test.mjs'
+      - 'tests/refactor-e6-8-cold-renderer-attribution.test.mjs'
+      - 'tests/refactor-e6-9-cold-cpu-profile.test.mjs'
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: Rendering evidence lane
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - cold-renderer
+          - cold-cpu
+          - preflight
+          - device-benchmark
+          - runtime-attribution
+          - briefing-idle
+          - first-live
+          - live-scene
+          - shadow-submit
+permissions:
+  contents: read
+concurrency:
+  group: rendering-performance-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      cold-renderer: ${{ steps.select.outputs.cold-renderer }}
+      cold-cpu: ${{ steps.select.outputs.cold-cpu }}
+      preflight: ${{ steps.select.outputs.preflight }}
+      device-benchmark: ${{ steps.select.outputs.device-benchmark }}
+      runtime-attribution: ${{ steps.select.outputs.runtime-attribution }}
+      briefing-idle: ${{ steps.select.outputs.briefing-idle }}
+      first-live: ${{ steps.select.outputs.first-live }}
+      live-scene: ${{ steps.select.outputs.live-scene }}
+      shadow-submit: ${{ steps.select.outputs.shadow-submit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/ci-rendering-evidence-routing.test.mjs
+      - id: select
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVIDENCE_LANE: ${{ inputs.lane }}
+        run: node scripts/verification/rendering-evidence-routing.mjs >> "$GITHUB_OUTPUT"
+  cold-renderer:
+    needs: route
+    if: ${{ needs.route.outputs.cold-renderer == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Opt-in GL hooks, compile fallback, first contact and fog contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/refactor-e6-8-cold-renderer-attribution.test.mjs \
+            tests/quick-play-startup-progress.test.mjs \
+            tests/refactor-e6-7-rig-geometry.test.mjs \
+            tests/refactor-e6-4-attribution.test.mjs \
+            tests/refactor-e6cd-pose-fog.test.mjs \
+            tests/performance-p2-6-contact-prewarm.test.mjs
+      - name: Production typecheck and bundle
+        run: npm run build
+      - name: Cold real-browser shader warmup A/B, software WebGL only
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/e6-8-cold-renderer-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e6-8-cold-webgl-browser-evidence
+          path: artifacts/refactor-e6-8/cold-renderer/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  cold-cpu:
+    needs: route
+    if: ${{ needs.route.outputs.cold-cpu == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: CPU profiler marker, parser, cold renderer and startup contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/refactor-e6-9-cold-cpu-profile.test.mjs \
+            tests/refactor-e6-8-cold-renderer-attribution.test.mjs \
+            tests/quick-play-startup-progress.test.mjs \
+            tests/consolidation-stage2-config-persistence.test.mjs \
+            tests/refactor-e6-7-rig-geometry.test.mjs
+      - name: Production typecheck and bundle
+        run: npm run build
+      - name: CDP sampled cold first-frame A/B in real browser
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/e6-9-cold-cpu-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e6-9-cold-first-frame-cpu-profiles
+          path: artifacts/refactor-e6-9/cold-cpu/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  preflight:
+    needs: route
+    if: ${{ needs.route.outputs.preflight == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: First-frame state ownership, cold traces and architecture contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/refactor-e6-10-preflight.test.mjs \
+            tests/refactor-e6-9-cold-cpu-profile.test.mjs \
+            tests/refactor-e6-8-cold-renderer-attribution.test.mjs \
+            tests/quick-play-startup-progress.test.mjs \
+            tests/consolidation-stage2-config-persistence.test.mjs
+      - name: Production typecheck and bundle
+        run: npm run build
+      - name: Real-browser cold prepared shader A/B and visual evidence
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/e6-10-preflight-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e6-10-cold-preflight-browser-evidence
+          path: artifacts/refactor-e6-10/cold-first-frame/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  device-benchmark:
+    needs: route
+    if: ${{ needs.route.outputs.device-benchmark == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: A2 canonical opt-in, local device export and first-frame safety contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/refactor-e6-11-device-cold-evidence.test.mjs \
+            tests/refactor-e6-10-preflight.test.mjs \
+            tests/refactor-e6-9-cold-cpu-profile.test.mjs \
+            tests/refactor-e6-8-cold-renderer-attribution.test.mjs \
+            tests/quick-play-startup-progress.test.mjs \
+            tests/consolidation-stage2-config-persistence.test.mjs
+      - name: Production typecheck and bundle
+        run: npm run build
+      - name: Real browser opt-in device JSON download and post-ready RAF acceptance
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/e6-11-device-benchmark-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e6-11-mobile-cold-device-export
+          path: artifacts/refactor-e6-11/device-cold/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  runtime-attribution:
+    needs: route
+    if: ${{ needs.route.outputs.runtime-attribution == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Runtime preceding-frame correlation, bounded local evidence and regression tests
+        run: |
+          node --experimental-strip-types --test \
+            tests/refactor-e6-12-post-ready-attribution.test.mjs \
+            tests/refactor-e6-11-device-cold-evidence.test.mjs \
+            tests/refactor-e6-10-preflight.test.mjs \
+            tests/quick-play-startup-progress.test.mjs \
+            tests/consolidation-stage2-config-persistence.test.mjs
+      - name: Production typecheck and build
+        run: npm run build
+      - name: Real browser post-ready RAF and actual callback cost correlation
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/e6-12-post-ready-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e6-12-post-ready-browser-evidence
+          path: artifacts/refactor-e6-12/post-ready/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  briefing-idle:
+    needs: route
+    if: ${{ needs.route.outputs.briefing-idle == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Briefing policy and critical runtime/startup ownership
+        run: |
+          node --experimental-strip-types --test \
+            tests/refactor-e6-13-briefing-idle.test.mjs \
+            tests/refactor-e6-12-post-ready-attribution.test.mjs \
+            tests/refactor-e6-11-device-cold-evidence.test.mjs \
+            tests/refactor-e6-10-preflight.test.mjs \
+            tests/quick-play-startup-progress.test.mjs \
+            tests/consolidation-stage2-config-persistence.test.mjs
+      - name: Production typecheck and bundle
+        run: npm run build
+      - name: Real browser briefing hold and immediate release A/B
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/e6-13-briefing-idle-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e6-13-briefing-idle-browser-evidence
+          path: artifacts/refactor-e6-13/briefing-idle/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  first-live:
+    needs: route
+    if: ${{ needs.route.outputs.first-live == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Cold/live bounded ownership and prior runtime compatibility
+        run: |
+          node --experimental-strip-types --test \
+            tests/refactor-e6-14-live-execution-cold.test.mjs \
+            tests/refactor-e6-13-briefing-idle.test.mjs \
+            tests/refactor-e6-12-post-ready-attribution.test.mjs \
+            tests/refactor-e6-11-device-cold-evidence.test.mjs \
+            tests/quick-play-startup-progress.test.mjs \
+            tests/consolidation-stage2-config-persistence.test.mjs
+      - name: Production typecheck and bundle
+        run: npm run build
+      - name: Real browser first 90 execution frames with briefing hold A/B
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/e6-14-live-first-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e6-14-first-live-browser-evidence
+          path: artifacts/refactor-e6-14/live-execution/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  live-scene:
+    needs: route
+    if: ${{ needs.route.outputs.live-scene == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Actual scene costs, prior callback, opt-in and startup regression tests
+        run: |
+          node --experimental-strip-types --test \
+            tests/refactor-e6-15-live-scene-attribution.test.mjs \
+            tests/refactor-e6-14-live-execution-cold.test.mjs \
+            tests/refactor-e6-13-briefing-idle.test.mjs \
+            tests/refactor-e6-12-post-ready-attribution.test.mjs \
+            tests/refactor-e6-11-device-cold-evidence.test.mjs \
+            tests/quick-play-startup-progress.test.mjs \
+            tests/consolidation-stage2-config-persistence.test.mjs
+      - name: Production typecheck and bundle
+        run: npm run build
+      - name: Four fresh real browser 90-live scene breakdown samples
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/e6-15-scene-phase-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e6-15-live-scene-phase-evidence
+          path: artifacts/refactor-e6-15/live-scene/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  shadow-submit:
+    needs: route
+    if: ${{ needs.route.outputs.shadow-submit == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Actual scene costs, prior callback, opt-in and startup regression tests
+        run: |
+          node --experimental-strip-types --test \
+            tests/refactor-e6-16-shadow-submission.test.mjs \
+            tests/refactor-e6-15-live-scene-attribution.test.mjs \
+            tests/refactor-e6-14-live-execution-cold.test.mjs \
+            tests/refactor-e6-13-briefing-idle.test.mjs \
+            tests/refactor-e6-12-post-ready-attribution.test.mjs \
+            tests/refactor-e6-11-device-cold-evidence.test.mjs \
+            tests/quick-play-startup-progress.test.mjs \
+            tests/consolidation-stage2-config-persistence.test.mjs
+      - name: Production typecheck and bundle
+        run: npm run build
+      - name: Four fresh real browser 90-live shadow-map submission samples
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/e6-16-shadow-submit-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e6-16-live-scene-phase-evidence
+          path: artifacts/refactor-e6-16/live-scene/
+          if-no-files-found: ignore
+          retention-days: 14
+
