@@ -36,8 +36,18 @@ try{
   for(const id of ['plainclothes','patrol','tactical','field'])
    await capture(id,id==='plainclothes'?1:3,['iso','side','back','game']);
   for(const id of ['primary-mag-pouch','rigid-holster','dump-pouch','radio-holder','shell-holder'])
-   await capture(id,1,['iso','side']);
+   await capture(id,1,['iso','side','front','game']);
+  await select('attachmentPreviewContents','empty');
+  for(const id of ['dump-pouch','primary-mag-pouch','pistol-mag-pouch','radio-holder','grenade-pouch']){
+   await select('attachmentPreview',id);
+   await page.waitForFunction(()=>document.getElementById('attachmentPreviewStatus')?.textContent==='1/1 mounted · 0 fit rejections');
+   for(const view of ['iso','back']){
+    await page.locator('button[data-view="'+view+'"]:visible').first().click();
+    await page.waitForTimeout(180);
+    await page.locator('#preview').screenshot({path:'belt-artwork-captures/'+id+'-empty-'+view+'.png'});
+   }
+  }
   if(errors.length)throw Error(errors.join('; '));
-  console.log('Belt artwork: all nine representative previews mounted; phone screenshots captured.');
+  console.log('Belt artwork: role fixtures, full/empty holders and gameplay views captured.');
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}

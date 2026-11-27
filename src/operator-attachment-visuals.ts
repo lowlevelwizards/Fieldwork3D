@@ -20,7 +20,7 @@ export type AttachmentVisual={
 type Part=(channel:AttachmentMaterial,x:number,y:number,z:number,w:number,h:number,d:number,name?:string,mark?:GearMark)=>void;
 type Point=[number,number,number];
 type Section={y:number;width:number;back:number;front:number;cut:number};
-function sculptGeometry(sections:Section[],hollow=false,wall=.22){
+export function sculptGeometry(sections:Section[],hollow=false,wall=.30){
  const pos:number[]=[],uv:number[]=[],uv1:number[]=[];
  const low=sections[0].y,high=sections[sections.length-1].y;
  const width=Math.max(...sections.map(s=>s.width)),height=high-low;
@@ -53,12 +53,37 @@ function sculptGeometry(sections:Section[],hollow=false,wall=.22){
  const rings=sections.map(ring);
  cap(rings[0],false);
  for(let i=0;i<rings.length-1;i++)connect(rings[i],rings[i+1],false,true);
- const top=sections[sections.length-1];
  if(hollow){
-  const inside=ring({...top,width:top.width-2*wall,back:top.back+wall,front:top.front-wall,cut:Math.max(.04,top.cut-wall*.5)});
-  const floor=inside.map(([x,_y,z]):Point=>[x*.95,low+wall,z]);
-  connect(rings[rings.length-1],inside,false);
-  connect(floor,inside,true);cap(floor,true);
+  // Inset each actual section, not just the mouth. Copying a wide mouth
+  // down to the base made the cavity intersect/protrude through tapered
+  // outer walls (especially the dump bag), leaving a rectangular ghost.
+  // Offset the convex six-sided polygon along each edge normal; this
+  // preserves the chamfer and guarantees a real, constant planar wall.
+  const inset=(r:Point[],amount:number):Point[]=>r.map((v,i)=>{
+   const prev=r[(i+5)%6],next=r[(i+1)%6];
+   const ax=v[0]-prev[0],az=v[2]-prev[2],al=Math.hypot(ax,az);
+   const bx=next[0]-v[0],bz=next[2]-v[2],bl=Math.hypot(bx,bz);
+   const na=[-az/al,ax/al],nb=[-bz/bl,bx/bl];
+   const denom=1+na[0]*nb[0]+na[1]*nb[1];
+   return [v[0]+amount*(na[0]+nb[0])/denom,v[1],v[2]+amount*(na[1]+nb[1])/denom];
+  });
+  // The cavity floor is a raised slice of the actual taper, not a
+  // second copy of the bottom or a vertical prism with a wide footprint.
+  const floorY=low+Math.min(wall,height*.2);
+  const at=sections.findIndex(s=>s.y>=floorY);
+  const lo=sections[at-1],hi=sections[at];
+  const t=(floorY-lo.y)/(hi.y-lo.y);
+  const floorSection:Section={y:floorY,width:lo.width+(hi.width-lo.width)*t,
+   back:lo.back+(hi.back-lo.back)*t,front:lo.front+(hi.front-lo.front)*t,
+   cut:lo.cut+(hi.cut-lo.cut)*t};
+  const innerSections=[floorSection,...sections.filter(s=>s.y>floorY)];
+  const innerRings=innerSections.map(s=>inset(ring(s),wall));
+  // Top lip faces upward; cavity side normals point inward and floor up.
+  // All surfaces share boundary vertices, with no overlapping cap or
+  // redundant decorative ring. Non-indexed triangles keep hard facets.
+  connect(rings[rings.length-1],innerRings[innerRings.length-1],false);
+  for(let i=0;i<innerRings.length-1;i++)connect(innerRings[i],innerRings[i+1],true);
+  cap(innerRings[0],true);
  }else cap(rings[rings.length-1],true);
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
@@ -85,14 +110,14 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
  // Back face touches the belt; the lower body narrows modestly away from
  // the thigh. No mounting bridge, shelf, or independently floating tab.
  const shell=(channel:AttachmentMaterial,cx:number,sections:readonly (readonly [number,number,number,number,number])[],
-  hollow=false,mark?:GearMark,name='sculpted-body',wall=.22)=>{
+  hollow=false,mark?:GearMark,name='sculpted-body',wall=.30)=>{
   const s=sections.map(([y,w,back,front,cut])=>({y:y*H,width:w*W,back:back*D,front:front*D,cut:cut*W}));
   const m=mark?gearMarkedMaterial(palette[channel],mark,Math.max(...s.map(v=>v.width)),s[s.length-1].y-s[0].y):palette[channel];
   const mesh=new THREE.Mesh(sculptGeometry(s,hollow,wall),m);mesh.name=name;mesh.position.x=cx*W;
   mesh.castShadow=true;mesh.receiveShadow=true;holder.add(mesh);
  };
  const pouch=(cx:number,w:number,bottom:number,top:number,mark:GearMark='band',channel:AttachmentMaterial='fabric')=>{
-  shell(channel,cx,[[bottom,w*.94,.12,.92,.07],[top,w,0,1,.07]],true,mark,'open-pouch',.18);
+  shell(channel,cx,[[bottom,w*.94,.12,.92,.07],[top,w,0,1,.07]],true,mark,'open-pouch',.30);
  };
  const solid=(w:number,bottom:number,top:number,mark:GearMark='utility',front=.88)=>{
   shell('fabric',0,[[bottom,w*.86,.09,front*.89,.10],[bottom+.12,w,0,front,.11],
@@ -139,7 +164,7 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
  case 'rigid-holster':
   // Molded shell follows the narrower slide and widens at the mouth.
   shell('dark',0,[[-.98,.64,.10,.82,.10],[-.78,.72,.06,.90,.09],
-   [-.22,.96,0,1,.10]],true,'holster','tapered-polymer-shell',.18);
+   [-.22,.96,0,1,.10]],true,'holster','tapered-polymer-shell',.27);
   cell(0,-.19,.54,(_p,g)=>{
    const gun=buildGlockAppearance('glock-g19-gen3',{details:false});
    const pivot=glockArtSockets('glock-g19-gen3').holsterPivot;
@@ -200,7 +225,7 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
  case 'dump-pouch':
   if(variant==='rolled')solid(.96,-.92,-.08,'dump',.98);
   else shell('fabric',0,[[-.98,.67,.15,.77,.10],[-.79,.85,.10,.92,.12],
-   [-.21,1,0,1,.12]],true,'dump','flared-dump-bag',.20);
+   [-.21,1,0,1,.12]],true,'dump','flared-dump-bag',.46);
   break;
  }
  const interactionSocket=new THREE.Object3D();interactionSocket.name='interaction-socket';

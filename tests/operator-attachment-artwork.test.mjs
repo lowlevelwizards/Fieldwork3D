@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {ATTACHMENTS,ATTACHMENT_IDS,attachmentFootprint,attachmentMountRequest,attachmentContentSlots} from '../src/operator-attachment-catalog.ts';
-import {createAttachmentVisual,setAttachmentSampleCount,placeAttachmentVisual} from '../src/operator-attachment-visuals.ts';
+import {createAttachmentVisual,setAttachmentSampleCount,placeAttachmentVisual,sculptGeometry} from '../src/operator-attachment-visuals.ts';
 import {resolveBeltMounts} from '../src/operator-belt-mounts.ts';
 import {ATTACHMENT_FIXTURES} from '../src/operator-attachment-lab.ts';
 test('BT3: all 13 authored families and variants build finite consolidated bounds and separate content slots',()=>{
@@ -49,8 +49,8 @@ test('BT3R: native rifle-magazine bounding box fits the full-size holder mouth',
  const {nativePrimaryMagazineSize}=await import('../src/operator-attachment-reference.ts');
  for(const variant of ['standard','compact','expanded']){
   const size=nativePrimaryMagazineSize(variant==='compact'),p=attachmentFootprint('primary-mag-pouch',variant);
-  assert.ok(size.x<=p.width*.99-.36,variant+' width');
-  assert.ok(size.z<=p.depth-.36,variant+' depth');
+  assert.ok(size.x<=p.width*.99-.60,variant+' width');
+  assert.ok(size.z<=p.depth-.60,variant+' depth');
   assert.ok(size.y<=p.height,variant+' height');
  }
  const dump=attachmentFootprint('dump-pouch'),mag=nativePrimaryMagazineSize();
@@ -74,4 +74,66 @@ test('BT3R: larger dump bag is reserved at the rear; rolled side fixture remains
  const rolled=attachmentMountRequest('dump','dump-pouch','padded-belt','rolled','right-hip');
  assert.equal(resolveBeltMounts('padded-belt',[full]).mounts[0].region,'rear');
  assert.equal(resolveBeltMounts('padded-belt',[rolled]).mounts[0].region,'right-hip');
+});
+
+/** Quantized directed edge incidence checks closed topology independently
+ * of face normal attribute generation (the meshes intentionally split verts). */
+function assertClosedOriented(geometry,label){
+ const p=geometry.getAttribute('position'),normal=geometry.getAttribute('normal');
+ const key=i=>[p.getX(i),p.getY(i),p.getZ(i)].map(x=>Math.round(x*1e5)).join(',');
+ const edges=new Map(),triangles=new Set();
+ const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3(),cross=new THREE.Vector3();
+ let volume=0;
+ for(let i=0;i<p.count;i+=3){
+  a.fromBufferAttribute(p,i);b.fromBufferAttribute(p,i+1);c.fromBufferAttribute(p,i+2);
+  cross.subVectors(b,a).cross(c.clone().sub(a));
+  assert.ok(cross.lengthSq()>1e-10,label+' nondegenerate triangle');
+  assert.ok(cross.normalize().dot(new THREE.Vector3().fromBufferAttribute(normal,i))>.999,label+' normal');
+  volume+=a.dot(b.clone().cross(c))/6;
+  const k=[key(i),key(i+1),key(i+2)],tri=[...k].sort().join('|');
+  assert.ok(!triangles.has(tri),label+' duplicate triangle');triangles.add(tri);
+  for(let j=0;j<3;j++){
+   const from=k[j],to=k[(j+1)%3],e=[from,to].sort().join('|');
+   const count=edges.get(e)??[0,0];count[from<to?0:1]++;edges.set(e,count);
+  }
+ }
+ for(const count of edges.values())assert.deepEqual(count,[1,1],label+' manifold edge');
+ assert.ok(volume>0,label+' outward winding');
+}
+test('BT3R final: hollow shells have closed oriented topology and no duplicate faces',()=>{
+ const material=new THREE.MeshStandardMaterial(),palette={fabric:material,dark:material,hardware:material,contents:material,accent:material};
+ for(const id of ['primary-mag-pouch','pistol-mag-pouch','rigid-holster','radio-holder','flashlight-holder','wedge-holder','grenade-pouch','dump-pouch']){
+  for(const variant of ATTACHMENTS[id].variants){
+   const v=createAttachmentVisual(id,palette,variant);
+   v.holder.traverse(o=>{
+    if(!(o instanceof THREE.Mesh))return;
+    if(o.geometry.index===null)assertClosedOriented(o.geometry,id+'/'+variant);
+    o.geometry.dispose();
+   });
+  }
+ }
+ material.dispose();
+});
+test('BT3R final: flared cavity follows lower taper and has a chunky inset lip',()=>{
+ const sections=[{y:0,width:5,back:.7,front:3.7,cut:.6},
+  {y:1.4,width:6.4,back:.5,front:4.4,cut:.8},{y:5.5,width:7.5,back:0,front:4.8,cut:.9}];
+ const wall=.46,g=sculptGeometry(sections,true,wall);
+ assertClosedOriented(g,'flared shell');
+ const p=g.getAttribute('position');
+ const floor=[],mouth=[];
+ for(let i=0;i<p.count;i++){
+  if(Math.abs(p.getY(i)-wall)<1e-5)floor.push([p.getX(i),p.getZ(i)]);
+  if(Math.abs(p.getY(i)-5.5)<1e-5)mouth.push([p.getX(i),p.getZ(i)]);
+ }
+ assert.ok(floor.length>0);
+ const t=wall/1.4,half=(5+(6.4-5)*t)/2;
+ for(const [x,z] of floor){
+  assert.ok(Math.abs(x)<=half-wall+1e-5,'floor must be inside the actual lower side wall');
+  assert.ok(z>=.7+(.5-.7)*t+wall-1e-5,'floor inside back wall');
+  assert.ok(z<=3.7+(4.4-3.7)*t-wall+1e-5,'floor inside front wall');
+ }
+ assert.ok(mouth.some(([x])=>Math.abs(Math.abs(x)-(7.5/2-wall))<1e-5),'inset mouth thickness');
+ assert.ok(mouth.some(([,z])=>Math.abs(z-wall)<1e-5),'back rim thickness');
+ assert.ok(mouth.some(([,z])=>Math.abs(z-(4.8-wall))<1e-5),'front rim thickness');
+ g.dispose();
 });
