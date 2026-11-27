@@ -1,4 +1,4 @@
-/** MP5 9mm miniature family. The 5.56 and 7.62 HK builders are frozen.
+/** MP5 miniature family; WC2 shared exterior sculptural language.
  * Shared receiver + 9mm feed, with three different silhouettes. Geometry is
  * created ONLY when the workbench/weapon configuration changes.
  */
@@ -43,10 +43,11 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
    addCuboid(root,slot,parts[slot],ids[slot]++,x,y,z,
     width,height,depth,material);
 
- // Three *identical* 9mm bodies: no uniformly scaled-down MP5K.
- p('receiver',[[-6.10,-1.34],[-6.10,1.05],[-5.48,1.75],
-  [2.63,1.75],[3.35,1.14],[3.35,-1.42],
-  [2.78,-1.71],[-5.37,-1.71]],3.05);
+ // Shared compact visual body: squared ends and a stronger central mass.
+ // Keep the same planar mark surfaces and attachment/contact landmarks.
+ p('receiver',[[-6.10,-1.52],[-6.10,1.29],[-5.63,1.75],
+  [2.82,1.75],[3.35,1.33],[3.35,-1.54],
+  [2.78,-1.89],[-5.37,-1.89]],3.05);
  p('receiver',[[-5.55,-1.33],[-5.16,-2.08],[-4.43,-2.31],
   [-3.17,-2.57],[-2.72,-2.39],[-.53,-2.40],
   [2.46,-2.43],[3.13,-1.44]],2.95,dark);
@@ -84,9 +85,9 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
   // One heavy solid polymer shell; no added screws, vents or buttstock rails.
   const rear=-13.05,start=rear+.43;
   const fixed=p('stock',[
-   [start,1.07],[-11.39,1.19],[-10.79,1.14],
-   [-6.08,.80],[-6.01,-1.35],[-9.35,-2.37],
-   [start,-2.68]
+   [start,1.07],[-10.95,1.38],[-9.65,1.15],
+   [-6.08,.80],[-6.01,-1.35],[-8.44,-1.87],
+   [-10.08,-2.77],[start,-2.68]
   ],3.18,dark);
   fixed.userData.hkMP5FixedStock=true;
   const pad=b('stock',rear+.27,-.80,0,.54,3.99,3.54,dark);
@@ -95,13 +96,13 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
   const rear=-13.05;
   for(const z of [-1.10,1.10]){
    const rail=b('stock',(-12.53-5.90)/2,.34,z,
-    -5.90+12.53,.50,.50,steel);
+    -5.90+12.53,.78,.68,steel);
    rail.userData.hkMP5RetractRail=true;
   }
   const plate=p('stock',[
-   [rear,1.18],[rear+.73,1.12],[rear+.70,-.72],
-   [rear+.99,-1.60],[rear+.67,-2.29],[rear+.23,-2.58],
-   [rear,-2.32]
+   [rear,1.18],[rear+1.04,1.12],[rear+.91,-.52],
+   [rear+1.30,-1.51],[rear+.83,-2.39],[rear+.30,-2.71],
+   [rear,-2.45]
   ],3.34,dark);
   plate.userData.hkMP5RetractButt=true;
   const junction=b('stock',-6.09,.34,0,.82,1.0,2.95,steel);
