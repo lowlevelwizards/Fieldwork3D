@@ -32,7 +32,7 @@ function destroy(h:Holder){
 export function clearLiveUnifiedCarry(r:OperatorRig){
  const current=cache.get(r);if(!current)return;
  for(const h of current.holders.values())destroy(h);
- current.accent.dispose();cache.delete(r);
+ current.accent.dispose();cache.delete(r);delete r.root.userData.bt4Unrendered;
 }
 function suppressLegacy(r:OperatorRig){
  for(const o of [...r.rigPouches,r.beltPouch,r.medicalPouch,r.radioUnit,r.utilityTool,
@@ -93,7 +93,7 @@ function createHolder(r:OperatorRig,p:Placement,storage:readonly StorageSlot[],r
 /** Call after legacy appearance on the real rig, before pose constraints.
  * Legacy objects are suppressed for staged actors only. No per-frame
  * geometry construction, no changes to the inventory or simulation. */
-export function syncLiveUnifiedCarry(r:OperatorRig,p:Pick<OperatorPose,'unifiedCarry'|'weaponConfiguration'>,rigStyle:string){
+export function syncLiveUnifiedCarry(r:OperatorRig,p:Pick<OperatorPose,'unifiedCarry'|'weaponConfiguration'>,rigStyle:string,appearanceChanged=false){
  const state=p.unifiedCarry;
  if(!state){clearLiveUnifiedCarry(r);return;}
  const part=p.weaponConfiguration?.build?.parts.magazine;
@@ -103,6 +103,10 @@ export function syncLiveUnifiedCarry(r:OperatorRig,p:Pick<OperatorPose,'unifiedC
  const key=rigStyle+'|'+(part??'');
  let current=cache.get(r);
  if(current?.held){restore(current.held);current.held=null;}
+ if(current?.key===key&&current.manifest===state.manifest){
+  if(appearanceChanged)suppressLegacy(r);
+  return;
+ }
  if(!current||current.key!==key){
   clearLiveUnifiedCarry(r);
   current={manifest:state.manifest,key,holders:new Map(),items:new Map(),unrendered:[],accent:new THREE.MeshStandardMaterial({color:0xb76442,roughness:.9}),held:null};

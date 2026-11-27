@@ -1,3 +1,4 @@
+import {clearLiveUnifiedCarry} from './operator-unified-carry-live.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
 /** 109–113. Deliberately simple box anatomy and independently articulated limbs.
  * The battle motor remains authoritative. IK is presentation-only. */
@@ -390,6 +391,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
     lastHandling:null,lastHandlingAt:-100,autoHandling:null,
     elbowSpread:[0,0],legGap:[0,0],
     dispose:()=>{
+      clearLiveUnifiedCarry(rig);
       resetOperatorPoseOutput(rig);
       releaseOperatorAnimationFrame(rig);
       // All shortened variants must be released, even if not selected at

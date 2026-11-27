@@ -1,3 +1,4 @@
+import {quoteUnifiedPreparation} from './equipment-unified-preparation.ts';
 /** Campaign domain. Nothing here advances in the render/simulation loop. */
 import type {ReportQuality} from './briefing/briefing-types.ts';
 import {validRecoveredIntelReceipt,type RecoveredIntelReceipt} from './breach-optional-intel.ts';
@@ -1004,11 +1005,11 @@ export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
  * Existing inventory, content eligibility and contract locks remain final.
  */
 export function equipCampaignCarryGear(c:CampaignState,id:string,
- slot:CarryGearSlot,itemId:string):CampaignState{
+ slot:CarryGearSlot,itemId:string,carryMode?:'unified'):CampaignState{
  if(c.activeContractId||!mayChooseCampaignContent(c,'equipment',itemId,slot))return c;
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!member)return c;
- const quote=quoteCarryGearChange(member.loadout,member.magazines,slot,itemId);
+ const quote=carryMode==='unified'?quoteUnifiedPreparation(member,{kind:'gear',slot,id:itemId}):quoteCarryGearChange(member.loadout,member.magazines,slot,itemId);
  if(!quote.ok)return c;
  return {...c,operators:c.operators.map(o=>o.id===id?
   {...o,loadout:quote.kit,magazines:quote.magazines}:o)};
@@ -1054,30 +1055,31 @@ export function copyCampaignCarryLayout(c:CampaignState,
  * Prepared kit allocations are a reservation, not a purchase or stock debit.
  */
 export function equipCampaignFieldInventory(c:CampaignState,id:string,
- inventory:FieldInventory):CampaignState{
+ inventory:FieldInventory,carryMode?:'unified'):CampaignState{
  if(c.activeContractId)return c;
- return issueCampaignFieldInventory(c,id,inventory);
+ return issueCampaignFieldInventory(c,id,inventory,carryMode);
 }
 /** Accepted contracts can only adjust the assigned squad's countable field kit
  * before GO. The tactical phase gate is enforced by Campaign Flow; this
  * function never touches weapon ownership, medical supplies, or currencies.
  */
 export function equipCampaignPreGoFieldInventory(c:CampaignState,id:string,
- inventory:FieldInventory):CampaignState{
+ inventory:FieldInventory,carryMode?:'unified'):CampaignState{
  if(!c.activeContractId||!c.squadIds.includes(id))return c;
- return issueCampaignFieldInventory(c,id,inventory);
+ return issueCampaignFieldInventory(c,id,inventory,carryMode);
 }
 function issueCampaignFieldInventory(c:CampaignState,id:string,
- inventory:FieldInventory):CampaignState{
+ inventory:FieldInventory,carryMode?:'unified'):CampaignState{
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!member)return c;
  const next=readFieldInventory(inventory,member.loadout);
  // A malformed issue must not be normalized into free, hidden equipment.
  for(const item of ['flashbang','wedge','zip-tie'] as const)
   if(fieldQuantity(next,item)!==fieldQuantity(inventory,item))return c;
- if(!fieldCarryReport(member.loadout,member.magazines,next).valid)return c;
- const stock=quoteCampaignFieldStockChange(c,member.loadout,
-  {...member.loadout,fieldInventory:next});
+ const fit=carryMode==='unified'?quoteUnifiedPreparation(member,{kind:'field',inventory:next}):undefined;
+ if(fit?!fit.ok:!fieldCarryReport(member.loadout,member.magazines,next).valid)return c;
+ const fittedKit=fit?.ok?fit.kit:{...member.loadout,fieldInventory:next};
+ const stock=quoteCampaignFieldStockChange(c,member.loadout,fittedKit);
  if(!stock.ok)return c;
  const otherFlash=c.operators.filter(o=>o.id!==id&&
   c.squadIds.includes(o.id)).reduce((sum,o)=>sum+fieldQuantity(
@@ -1085,9 +1087,8 @@ function issueCampaignFieldInventory(c:CampaignState,id:string,
  if(c.squadIds.includes(id)&&
   otherFlash+fieldQuantity(next,'flashbang')>c.supplies.flash)return c;
  return {...c,supplies:stock.stock,operators:c.operators.map(o=>o.id===id?
-  {...o,fieldRestockLayout:fieldRestockPreference(
-   {...o.loadout,fieldInventory:next}),
-   loadout:{...o.loadout,fieldInventory:next}}:o)};
+  {...o,fieldRestockLayout:fieldRestockPreference(fittedKit),
+   loadout:fittedKit,...(fit?.ok?{magazines:fit.magazines}:{})}:o)};
 }
 
 /** Copy carried gadgets only. The destination retains its own magazines,

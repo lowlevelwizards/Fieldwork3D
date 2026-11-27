@@ -1,3 +1,4 @@
+import {quoteUnifiedPreparation} from './equipment-unified-preparation.ts';
 /** LW-15: versioned, bounded individual operator records.
  * Save state belongs to operations, never to the 60Hz world simulation.
  */
@@ -212,10 +213,10 @@ export function equipRosterGear(roster:RosterState,id:string,slot:LoadoutSlot,
  * The legacy generic gear selector remains for other equipment slots.
  */
 export function equipRosterCarryGear(roster:RosterState,id:string,
- slot:CarryGearSlot,itemId:string):RosterState{
+ slot:CarryGearSlot,itemId:string,carryMode?:'unified'):RosterState{
  const member=roster.members.find(m=>m.id===id);
  if(!member)return roster;
- const quote=quoteCarryGearChange(member.loadout,member.magazines,slot,itemId);
+ const quote=carryMode==='unified'?quoteUnifiedPreparation(member,{kind:'gear',slot,id:itemId}):quoteCarryGearChange(member.loadout,member.magazines,slot,itemId);
  if(!quote.ok)return roster;
  return {...roster,members:roster.members.map(m=>m.id===id?
   {...m,loadout:quote.kit,magazines:quote.magazines}:m)};
@@ -253,8 +254,13 @@ export function copyRosterCarryLayout(roster:RosterState,
  * The authoring UI validates capacity before calling this pathway.
  */
 export function equipRosterFieldInventory(roster:RosterState,id:string,
- inventory:FieldInventory):RosterState{
+ inventory:FieldInventory,carryMode?:'unified'):RosterState{
  const member=roster.members.find(m=>m.id===id);if(!member)return roster;
+ if(carryMode==='unified'){
+  const q=quoteUnifiedPreparation(member,{kind:'field',inventory});
+  if(!q.ok)return roster;
+  return {...roster,members:roster.members.map(m=>m.id===id?{...m,loadout:q.kit,magazines:q.magazines}:m)};
+ }
  const next=readFieldInventory(inventory,member.loadout);
  if(!fieldCarryReport(member.loadout,member.magazines,next).valid)return roster;
  return {...roster,members:roster.members.map(m=>m.id===id?

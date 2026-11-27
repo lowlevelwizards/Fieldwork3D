@@ -4,7 +4,7 @@ import {createOperatorRig} from '../src/breach-operator-rig.ts';
 import {resolveUnifiedCarry,removeManifestContent} from '../src/equipment-unified-placement.ts';
 import {syncLiveUnifiedCarry,liveUnifiedContent,presentLiveUnifiedHandoff,clearLiveUnifiedCarry} from '../src/operator-unified-carry-live.ts';
 test('BT4 holder mesh survives consumption, exact lane moves into hand and returns on cancellation',()=>{
- const r=createOperatorRig();
+ const r=createOperatorRig('bt4-test','blue');
  const input={belt:'padded-belt',storage:[],items:[{id:'field:flashbang:0',kind:'flash',dimensions:{width:2.5,height:5.8,depth:2.5}}]};
  let manifest=resolveUnifiedCarry(input);assert.ok(manifest.valid);
  const p={unifiedCarry:{input,manifest}};

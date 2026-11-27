@@ -670,6 +670,6 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     previousAppearance.outfit=clothing;
   }else appearanceState.set(r,{key:appearanceKey,downed,outfit:clothing});
 
- syncLiveUnifiedCarry(r,p,clothing.rigStyle);
+ syncLiveUnifiedCarry(r,p,clothing.rigStyle,appearanceChanged);
  return clothing;
 }
