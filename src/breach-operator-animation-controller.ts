@@ -1091,7 +1091,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const contactReach=!equipmentActive&&!p.down&&!p.surrender&&!p.firing&&
     contactAge>=0&&contactAge<.64?
     Math.sin(Math.PI*contactAge/.64):0;
-  const retentionAssembly=config?resolveWeaponAssembly(config):null;
+  const retentionAssembly=p.retentionPreview&&config?resolveWeaponAssembly(config):null;
   const retention=p.retentionPreview&&!p.down&&!p.surrender&&!p.unarmedPreview&&
     !p.firing&&!p.aiming&&!reloadActive&&!doorActive&&!throwActive&&!treatmentActive&&
     !equipmentActive&&(p.secondarySwitch?.fraction??0)===0?
@@ -1102,7 +1102,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       balanceX:retentionAssembly?.balanceX??0,armorPush:p.equipment?.slots.armor==='armor-carrier'?1.2:
         p.equipment?.slots.armor==='armor-soft'?.6:0,
       pack:r.pack.visible,chestHeight:frame.chest.position.y,
-      muzzleX:retentionAssembly?.muzzleX??19.5,stockX:retentionAssembly?.stockX??-13.5}):null;
+      muzzleX:retentionAssembly?.muzzleX??19.5,stockX:retentionAssembly?.stockX??-13.5,
+      sockets:r.weaponBody.userData.retentionSockets,
+      motion:{stride:p.stride,speed:physicalSpeed,acceleration:p.acceleration,
+        turning:p.turning,massKg:retentionAssembly?.massKg??3,
+        inertia:retentionAssembly?.rotationalInertia??100}}):null;
   if(retention){
     heldWeapon.position.copy(retention.position);
     heldWeapon.quaternion.copy(retention.quaternion);
@@ -1467,7 +1471,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   applyOperatorTraumaPose(r,p,downProgress,frame);
   // Same-frame held/drop world placement without temporary weapon node writes.
   solveOperatorDroppedWeapon(workingRig,p,scratch,downProgress,smooth);
-  solveOperatorDirectSlingPose(workingRig,p,scratch,physicalSpeed);
+  solveOperatorDirectSlingPose(workingRig,p,scratch,physicalSpeed,retention?.mode);
   finishOperatorPoseFrame(r,p,
     scratch.armOutput.transforms[0].quaternion,
     scratch.armOutput.transforms[3].quaternion,equipment);

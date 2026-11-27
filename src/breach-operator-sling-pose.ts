@@ -5,6 +5,7 @@ import type {OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import type {OperatorPoseScratch} from './breach-operator-pose-scratch.ts';
 import {readSlingKind,type SlingKind} from './breach-weapon-retention.ts';
+import type {RetentionPoseMode} from './breach-weapon-retention-pose.ts';
 import type {WeaponRetentionSockets} from './weapons/geometry/weapon-retention-sockets.ts';
 type SlingNode=Pick<THREE.Object3D,'visible'|'position'|'scale'|'quaternion'>;
 type SlingPoseSource=Pick<OperatorPose,'weaponConfiguration'|'surrender'|'stride'|'worldWeaponReleased'>;
@@ -13,14 +14,17 @@ const kind=(p:SlingPoseSource)=>p.surrender||p.worldWeaponReleased?'none':readSl
 const fallback:WeaponRetentionSockets={rear:{x:-9,y:-.4,z:2.15},front:{x:10,y:-.4,z:2.15},single:{x:-5,y:1,z:2.15},supported:['single','two']};
 function positionSpans(straps:readonly SlingNode[],p:SlingPoseSource,
  mode:SlingKind,physicalSpeed:number,vertical:THREE.Vector3,delta:THREE.Vector3,
- rear:THREE.Vector3,front:THREE.Vector3,mid1:THREE.Vector3,mid2:THREE.Vector3){
+ rear:THREE.Vector3,front:THREE.Vector3,mid1:THREE.Vector3,mid2:THREE.Vector3,retention?:RetentionPoseMode){
  const sway=Math.sin(p.stride*Math.PI*2)*Math.min(1,Math.max(0,physicalSpeed)/80)*.4;
  // Chest +X forward, +Z right. Two spans rise from the gun to opposite
  // shoulder/side regions and a broad shoulder bridge joins them.
  if(mode==='single'){
   mid1.set(1.8,6.6,-5.8);mid2.set(-1.4,5.9,5.8);
  }else{
-  mid1.set(.8,6.6,-5.8);mid2.set(4.8,-4.5,7.6+sway);
+  mid1.set(.8,6.6,-5.8);
+  if(retention==='back-slung')mid2.set(-6.6,-4.5,7.6+sway);
+  else if(retention==='side-slung')mid2.set(1.0,-4.5,9.6+sway);
+  else mid2.set(4.8,-4.5,7.6+sway);
  }
  for(let i=0;i<straps.length;i++){
   const start=i===0?rear:i===1?mid1:mid2;
@@ -57,7 +61,7 @@ export function updateOperatorSlingPose(
  positionSpans(r.slingStraps,p,mode,physicalSpeed,vertical,delta,rear,front,P(0,0,0),P(0,0,0));
 }
 export function solveOperatorDirectSlingPose(r:OperatorRig,p:SlingPoseSource,
- scratch:OperatorPoseScratch,physicalSpeed:number):void{
+ scratch:OperatorPoseScratch,physicalSpeed:number,retention?:RetentionPoseMode):void{
  const e=scratch.equipmentOutput, straps=e.slingTargets;
  const mode=kind(p),held=e.weapons[0],drop=e.weapons[1];
  for(const strap of straps)strap.visible=false;
@@ -76,5 +80,5 @@ export function solveOperatorDirectSlingPose(r:OperatorRig,p:SlingPoseSource,
   front.multiply(held.scale).applyQuaternion(held.quaternion).add(held.position);
  }
  positionSpans(straps,p,mode,physicalSpeed,scratch.vertical,scratch.slingDelta,
-  rear,front,e.slingPoints[0],e.slingPoints[1]);
+  rear,front,e.slingPoints[0],e.slingPoints[1],retention);
 }

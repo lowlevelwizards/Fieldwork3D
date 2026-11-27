@@ -1,0 +1,2 @@
+# WR5 — Suspension motion
+Deterministic analytic motion uses existing locomotion stride/speed, acceleration, turn and resolved weapon mass/inertia. Single-point motion has more freedom than two-point. Explicit slung previews are sampled before atomic publication; conservative ground/body centerline limits and mode-specific routing keep approximate clearance. This is not a cloth or rigid-body solver and does not yet test every piece of equipment/world geometry. Exact clearance and visual acceptance are WR11/WR13.
