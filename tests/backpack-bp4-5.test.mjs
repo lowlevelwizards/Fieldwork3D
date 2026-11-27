@@ -65,6 +65,11 @@ test('authored backpack is the only production model and incompatible panel fall
  assert.equal(kit.slots.backpack,'backpack-day');
  rig.dispose();
 });
+test('retired pack names and mounting overrides migrate without reissuing equipment',()=>{
+ assert.equal(readWardrobe({...initialWardrobe(),styles:{packStyle:'sling-bag'},packMount:'independent'}).styles.packStyle,'civilian-pack');
+ assert.equal(readWardrobe({...initialWardrobe(),styles:{packStyle:'duffel'}}).styles.packStyle,'rucksack');
+ assert.equal(readWardrobe({...initialWardrobe(),packMount:'adapter'}).packMount,undefined);
+});
 test('retired soft-paca raw saves migrate to current soft-slick',()=>{
  assert.equal(readWardrobe({...initialWardrobe(),styles:{armorStyle:'soft-paca'}}).styles.armorStyle,'soft-slick');
 });
