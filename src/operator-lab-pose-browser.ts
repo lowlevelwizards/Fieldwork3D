@@ -26,10 +26,10 @@ export const POSE_RIG_OPTIONS=[
  ['m1956-lce','M1956'],['lbv','LBV'],['sadf-webbing','SADF']
 ] as const;
 export const POSE_PACK_OPTIONS=[
- ['no-pack','None'],['hydration','Hydration carrier · art preview'],['admin-pack','Assault panel · art preview'],
- ['day-pack','Tactical daypack · art preview'],['assault-pack','Assault pack · art preview'],['sling-bag','Sling bag'],['civilian-pack','Civilian backpack · art preview'],
- ['field-pack','ALICE field pack · art preview'],['rucksack','Expedition rucksack · art preview'],['medic-pack','Medical pack · art preview'],
- ['comms-pack','Communications pack · art preview'],['duffel','Duffel']
+ ['no-pack','None'],['hydration','Hydration carrier'],['admin-pack','Assault panel'],
+ ['day-pack','Tactical daypack'],['assault-pack','Assault pack'],['civilian-pack','Civilian backpack'],
+ ['field-pack','ALICE field pack'],['rucksack','Expedition rucksack'],['medic-pack','Medical pack'],
+ ['comms-pack','Communications pack']
 ] as const;
 export function posePackEquipment(pack:string):'backpack-none'|'backpack-day'|'backpack-field'{
  return legacyPackEquipment(pack)??'backpack-day';
@@ -69,7 +69,7 @@ export const POSE_WEAPON_GROUPS:ReadonlyArray<Readonly<{
 export const POSE_SIDEARM_GROUPS=[
  {id:'glock',name:'Glock · playable',
   models:GLOCK_APPEARANCE_REFERENCES},
- {id:'beretta',name:'Beretta · art preview',
+ {id:'beretta',name:'Beretta',
   models:M9_APPEARANCE_REFERENCES}
 ] as const;
 export const poseSidearm=(id:string):SidearmPreviewId|undefined=>
