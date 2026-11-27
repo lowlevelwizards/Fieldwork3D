@@ -109,3 +109,13 @@ test('FT1.5 UI is grouped by faction -> role and shows source-separated per-slot
  assert.match(studio,/this\.select\(snapshot\.referenceId\)/);
  assert.match(studio,/onApplyProposedEquipment/);
 });
+
+test('refreshed visual gear snapshots expose independent footwear, belt and weapon attachments',()=>{
+ for(const ref of FACTION_REFERENCES){
+  const settings=referenceGearSettings(ref.id);
+  assert.ok(settings.footwear.some(x=>x.key==='equipment.feet'&&x.value===ref.kit.feet),ref.id);
+  assert.ok(settings.footwear.some(x=>x.key==='detail.footwearColor'),ref.id);
+  assert.ok(settings.carriage.some(x=>x.key==='equipment.belt'),ref.id);
+  assert.ok(settings.weapon.some(x=>x.key.startsWith('attachment.')),ref.id);
+ }
+});
