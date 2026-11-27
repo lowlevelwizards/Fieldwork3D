@@ -31,7 +31,7 @@ test('P2 tactical shadows stay 512 while Studio inspection defaults to 1024',()=
 });
 
 test('P2 every direct runtime light uses shared 512 shadow budget',()=>{
- const files=['src/main.ts','src/study-main.ts',
+ const files=['src/main.ts',
   'src/breach-operator-lab.ts','src/operator-pose-workbench-ui.ts'];
  for(const path of files){
   const code=source(path);

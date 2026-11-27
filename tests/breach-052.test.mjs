@@ -111,7 +111,7 @@ test('052 retirement: only geometry and seed fixtures survive; tactical HTML is 
  const redirect=readFileSync(new URL('../breach.html',import.meta.url),'utf8');
  assert.ok(vite.includes("breach: 'breach.html'"));
  assert.ok(vite.includes("world: 'world.html'"));
- assert.ok(vite.includes("study: 'study.html'"));
+ assert.ok(!vite.includes("study: 'study.html'"),'retired 051 art study stays out of production');
  assert.ok(canonical.includes('id="breachCanvas"'));
  assert.ok(redirect.includes('window.location.replace(target.href)'));
  assert.ok(src.includes("from './breach-core.ts'"));

@@ -5,13 +5,12 @@ export default defineConfig({
   build: {
     target: 'es2022',
     // The tactical Breach game is the GitHub Pages homepage.
-    // Keep former Verdigris and all other research scenes directly accessible.
+    // Retain only maintained research scenes as separate entry points.
     rollupOptions: { input: {
       main: 'index.html',
       verdigris: 'verdigris.html',
       riverLab: 'river-lab.html',
       world: 'world.html',
-      study: 'study.html',
       breach: 'breach.html',
       arsenal: 'arsenal.html',
       breachVisualLab: 'breach-visual-lab.html',
