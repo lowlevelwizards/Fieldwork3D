@@ -120,3 +120,12 @@ test('dated boot and trouser belt evidence is scoped to its documented windows',
  assert.ok(!ids('us-army-infantry',2020).includes('us-ocp-tan499-belt'));
  assert.ok(ids('usmc-field',2004).includes('usmc-mccb'));
 });
+
+test('pack research respects artifact context and fielding date',()=>{
+ const us=equipmentAtYear('us-army-infantry',2008).find(x=>x.equipment.id==='us-molle-pack-family');
+ assert.equal(us.record.theater,'Korea');
+ assert.ok(!ids('us-army-infantry',2007).includes('us-molle-pack-family'));
+ const au=equipmentAtYear('australian-field',2000).find(x=>x.equipment.id==='au-dpcu-large-pack');
+ assert.equal(au.record.confidence,'tentative');
+ assert.equal(au.equipment.model,undefined);
+});
