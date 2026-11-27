@@ -51,7 +51,7 @@ const slotCategory=(slot:string):GearCategory=>
  slot==='armor'?'armor':
  slot==='rig'||slot==='belt'?'carriage':
  slot==='backpack'?'pack':
- slot==='footwear'?'footwear':
+ slot==='feet'?'footwear':
  slot==='primary'?'weapon':'accessories';
 const wardrobeCategory=(slot:string):GearCategory=>
  slot==='top'||slot==='trousers'?'uniform':
@@ -104,6 +104,8 @@ export function referenceGearSettings(referenceId:string):
  for(const key of ['m1956Variant','aliceLoad','strapSolid','pouchSolid'] as const)
   put('carriage','detail.'+key,w[key]);
  put('carriage','detail.mounts',w.mounts);
+ put('carriage','detail.beltSolid',w.beltSolid);
+ put('footwear','detail.footwearColor',w.footwearColor);
  put('accessories','detail.attachments',w.accessories);
  put('uniform','detail.sleeveState',w.sleeveState);
  put('uniform','detail.trouserHem',w.trouserHem);
