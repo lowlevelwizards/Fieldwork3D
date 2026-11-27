@@ -13,7 +13,7 @@ try{
  browser=await chromium.launch({headless:true,...(process.env.FIELDWORK_CI_CHROME==='1'?{channel:'chrome'}:{})});
  const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto(origin+'/operator-lab.html?tab=poses',{waitUntil:'domcontentloaded'});
+ await page.goto(origin+'/operator-lab.html?tab=poses&packArtCapture=1',{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>document.getElementById('preview')?.dataset.ready==='true',{},{timeout:45000});
  await page.locator('#poseArmor').selectOption('plate-jpc');
  await page.locator('#poseRig').selectOption('chest-placard');
@@ -27,10 +27,15 @@ try{
    await page.locator('[data-lab-group="poses"] [data-view="'+view+'"]').click();
    await page.locator('#preview').screenshot({path:out+'/'+id+'-'+view+'.png'});
   }
+  for(const view of ['back','side','iso','front']){
+   const png=await page.evaluate(view=>window.fieldworkCapturePack(view),view);
+   await writeFile(out+'/'+id+'-'+view+'-native.png',Buffer.from(png.split(',')[1],'base64'));
+  }
   report.push({id,data:await page.locator('#preview').evaluate(e=>({...e.dataset}))});
  }
  await page.locator('#poseArmor').selectOption('armor-bare');
- if(!(await page.locator('#posePack option[value="admin-pack"]').isDisabled()))throw Error('Incompatible panel not disabled');
+ await page.waitForFunction(()=>document.getElementById('preview')?.dataset.poseFitArmor==='armor-bare');
+ if(!(await page.locator('#posePack option[value="admin-pack"]').evaluate(e=>e.disabled)))throw Error('Incompatible panel not disabled');
  await writeFile(out+'/report.json',JSON.stringify({report,errors},null,2));
  if(errors.length)throw Error(errors.join('; '));
 }finally{await browser?.close();server.kill();}
