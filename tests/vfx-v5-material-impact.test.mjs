@@ -38,3 +38,18 @@ test('V14 oversized material profiles preserve the existing particle budget and 
  assert.ok(p.glass.width>=1.2&&p.glass.length>=4);
  assert.ok(Object.values(p).every(x=>x.life<=.4&&x.pulse>=5.5));
 });
+
+test('Graphic metal sparks fan into the exposed side and align their long axis with travel',()=>{
+ for(const [nx,ny,nz] of [[1,0,0],[-1,0,0],[0,0,1],[0,0,-1],[0,1,0]]){
+  for(let i=0;i<5;i++){
+   const p=scratch(),q=scratch(),normal={impactNX:nx,impactNY:ny,impactNZ:nz};
+   assert.ok(sampleMaterialImpact('metal',29,i,.06,0,25,0,p,undefined,normal));
+   assert.ok(sampleMaterialImpact('metal',29,i,.061,0,25,0,q,undefined,normal));
+   assert.ok(p.x*nx+(p.y-25)*ny+p.z*nz>0);
+   const ax=-Math.sin(p.roll),ay=Math.cos(p.pitch)*Math.cos(p.roll),az=Math.sin(p.pitch)*Math.cos(p.roll);
+   const dx=q.x-p.x,dy=q.y-p.y,dz=q.z-p.z;
+   assert.ok((ax*dx+ay*dy+az*dz)/Math.hypot(dx,dy,dz)>.95);
+   assert.ok(p.length>p.width*4);
+  }
+ }
+});

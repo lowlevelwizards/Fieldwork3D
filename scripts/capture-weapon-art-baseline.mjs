@@ -10,6 +10,7 @@ const custom=collectCustomArtCases();
 const allPlatforms=[...new Set(inventory.references.map(r=>r.platform)),'accessory-samples',...new Set(custom.cases.map(r=>r.platform))];
 const platforms=process.env.WA0_PLATFORMS?process.env.WA0_PLATFORMS.split(','):allPlatforms;
 if(!platforms.length||platforms.some(p=>!allPlatforms.includes(p)))throw Error('Invalid capture platform filter');
+const solidAK=new Set(['ak-akm','ak-ak74','ak-ak74m','ak-ak103','ak-ak105','ak-rpk74']);
 const samples=['ar-m4a1','ak-ak74m','hk-g3a3','hk-mp5a3','g36-ka4','fal-5000','fnc-service'].map(id=>id+'-equipped');
 const revision=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
 const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port',String(port),'--strictPort'],{stdio:'ignore'});
@@ -34,7 +35,7 @@ try{
     const actual=report.records.map(r=>r.id);
     if(actual.length!==expected.length||new Set(actual).size!==expected.length||expected.some(id=>!actual.includes(id)))throw Error('Coverage mismatch '+platform);
     for(const record of report.records){
-     if(record.panels.length!==(platform.startsWith('custom-')?3:platform==='accessory-samples'?8:9)||record.panels.some(p=>p.metrics.foreground<5||p.metrics.edge!==0||p.metrics.calls<1))throw Error('Bad panel '+record.id);
+     if(record.panels.length!==(platform.startsWith('custom-')?3:platform==='accessory-samples'?8:solidAK.has(record.id)?12:9)||record.panels.some(p=>p.metrics.foreground<5||p.metrics.edge!==0||p.metrics.calls<1))throw Error('Bad panel '+record.id);
      const path=dir+'/'+platform+'/'+record.id;await mkdir(path,{recursive:true});
      const images=await page.locator('[data-id="'+record.id+'"] figure').evaluateAll(nodes=>nodes.map(n=>({name:n.dataset.view,src:n.querySelector('img').src})));
      for(const image of images)await writeFile(path+'/'+image.name+'.png',Buffer.from(image.src.split(',')[1],'base64'));

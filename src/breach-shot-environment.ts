@@ -1,6 +1,7 @@
 import {normalizeWindowCovering} from './breach-window-coverings.ts';
 import {coveringDamageAfterHit} from './breach-window-covering-physical.ts';
 import {setSessionWindowCovering} from './breach-window-covering-optics.ts';
+import {metalImpactNormal} from './breach-impact-surface.ts';
 import {publishSessionCoverToActiveSite} from './breach-world-context.ts';
 import {recordTrainingCoverStrike} from './training/training-targets.ts';
 /** Stage 10: physical environmental damage & evidence after real fired rays.
@@ -47,7 +48,7 @@ function emitMaterialEvents(s:Session,from:Pt,to:Pt,
   retainImpactMark(s,{id,p,surface:response.visual,age:0,height,
     shotId:s.nextShotId,surfaceRef:hit.surfaceRef});
   const fixture=hit.surfaceRef?.kind==='cover'?s.coverState[hit.surfaceRef.index]?.fixture:undefined;
-  if(cues.length<MAX_MATERIAL_CUES)cues.push({id,p:{...p},height,surface:response.visual,...(fixture?{fixture}:{})});
+  if(cues.length<MAX_MATERIAL_CUES)cues.push({id,p:{...p},height,surface:response.visual,...metalImpactNormal(response.visual,hit.surfaceRef),...(fixture?{fixture}:{})});
   if(response.sound!=='glass')
     hear(s,p,response.radius,'impact-'+response.sound);
  }

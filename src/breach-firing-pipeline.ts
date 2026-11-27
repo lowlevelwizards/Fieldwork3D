@@ -2,6 +2,7 @@ import {unifiedSecondaryAccess} from './equipment-unified-deployed.ts';
 import {hasGroundedPrimary} from './breach-grounded-primary.ts';
 import {retentionBusy} from './breach-weapon-retention-live.ts';
 import {hardWindowCoveringsBlockRay} from './breach-window-covering-optics.ts';
+import {metalImpactNormal} from './breach-impact-surface.ts';
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {advanceInterruptedSecondarySwitch} from './secondary-switching.ts';
 import {GLOCK_9MM_WEAPON,GLOCK_9MM_BALLISTICS} from './secondary-ballistics.ts';
@@ -290,7 +291,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     side:a.side,shotYaw:yaw,mode:'ads',spread,muzzleHeight:muzzle.y,
     impactHeight:height,firedAt:s.seconds,
     healthBefore:before,healthAfter:after,down:hit&&after<=0,
-    surface,...(!hit&&impact.stoppedHit?.surfaceRef?.kind==='cover'?{impactFixture:s.coverState[impact.stoppedHit.surfaceRef.index]?.fixture}:{}),...(materialImpacts?.length?{materialImpacts}:{})});
+    surface,...metalImpactNormal(surface,!hit?impact.stoppedHit?.surfaceRef:undefined),...(!hit&&impact.stoppedHit?.surfaceRef?.kind==='cover'?{impactFixture:s.coverState[impact.stoppedHit.surfaceRef.index]?.fixture}:{}),...(materialImpacts?.length?{materialImpacts}:{})});
   retainImpactMark(s,{id:s.nextEffectId++,p:clone(end),
     surface,height,age:0,shotId,surfaceRef:hit?undefined:impact.stoppedHit?.surfaceRef,
     ...(surface==='blood'?{bloodKind:'splat' as const,bloodAmount:1}:{})},sessionWorldGeometry(s).walls);

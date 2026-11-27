@@ -17,6 +17,7 @@ const viewDefs=[
  ['three-quarter',[.42,.29,1],[0,1,0]],['top',[0,1,0],[0,0,-1]],
  ['front',[1,0,0],[0,1,0]],['silhouette',[0,0,1],[0,1,0]]
 ] as const;
+const solidAK=new Set(['ak-akm','ak-ak74','ak-ak74m','ak-ak103','ak-ak105','ak-rpk74']);
 const vector=(v:readonly number[])=>new THREE.Vector3(v[0],v[1],v[2]);
 function orient(b:THREE.Box3,def:typeof viewDefs[number]){
  const center=b.getCenter(new THREE.Vector3());
@@ -85,6 +86,19 @@ async function generate(){
     if(!entry.equipped)add('side-shared',shot(b,viewDefs[0],480,240,spans[cohort]));
     add('native-128',shot(b,viewDefs[0],128,64));
     add('native-64',shot(b,viewDefs[0],64,32));
+   }
+   if(solidAK.has(entry.id)&&!entry.equipped&&!entry.custom){
+    const hidden:THREE.Mesh[]=[];
+    m.model.traverseVisible(n=>{
+     if(n instanceof THREE.Mesh&&!n.name.startsWith('family-stock-')){
+      hidden.push(n);n.visible=false;
+     }
+    });
+    try{
+     const isolated=bounds(m.model);
+     for(const v of viewDefs.filter(v=>['side','top','three-quarter'].includes(v[0])))
+      add('stock-'+v[0],shot(isolated,v,480,240));
+    }finally{for(const n of hidden)n.visible=true;}
    }
    holder.append(row);
    records.push({id:entry.id,platform:entry.platform,status:entry.status,cohort,accepted:m.accepted,custom:entry.custom?{partId:entry.custom.partId,hostId:entry.custom.hostId,parts:entry.custom.config.build?.parts}:null,panels});
