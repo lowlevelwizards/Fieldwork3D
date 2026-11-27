@@ -1,6 +1,6 @@
 import {equipmentSlotForAppearance} from './operator-wardrobe-unified.ts';
 import {WARDROBE_ITEMS} from './operator-wardrobe-data.ts';
-import {packMountChoices,equipmentAssembly,type PackMountMode} from './operator-equipment-assembly.ts';
+import {equipmentAssembly} from './operator-equipment-assembly.ts';
 /** Operator Studio: contextual appearance editing, not the animation workbench.
  * The hosting game owns authoritative roster/campaign writes. Standalone mode
  * uses the same validated roster persistence for previews and direct access.
@@ -877,7 +877,6 @@ function posePreview(){
    });
   }
   rig=createOperatorRig(p.id,'blue');
-  rig.root.userData.fieldworkAuthoredPackPreview=true;
   scene.add(rig.root);
  }
  // Always restore Standard materials before updating authored garments
@@ -1329,15 +1328,10 @@ function renderMaterials(){
    select.value=outfit[slot];select.disabled=readOnly;
    select.addEventListener('change',()=>update(setWardrobeStyle(w,slot,select.value)));assemblyGroup.append(select);
   }
-  const mounting=row('PACK MOUNTING','Compatible modular configurations only; preview does not issue gear.');
-  const modes=packMountChoices(outfit.packStyle,outfit.armorStyle,outfit.rigStyle);
-  const resolved=equipmentAssembly(outfit.packStyle,outfit.armorStyle,outfit.rigStyle,w.packMount);
-  const labels:Record<PackMountMode,string>={auto:'AUTO',independent:'INDEPENDENT',direct:'DIRECT TO ARMOR',shared:'SHARED RIG',adapter:'ARMOR ADAPTER'};
-  for(const mode of ['auto',...modes] as PackMountMode[]){
-   const button=makeButton(labels[mode],(w.packMount??'auto')===mode,()=>update({...w,packMount:mode}));
-   button.dataset.packMount=mode;mounting.append(button);
-  }
-  const note=document.createElement('small');note.textContent='CURRENT: '+labels[resolved.mode];mounting.append(note);
+  const mounting=row('PACK MOUNTING','Automatically fitted to the selected equipment.');
+  const resolved=equipmentAssembly(outfit.packStyle,outfit.armorStyle,outfit.rigStyle);
+  const note=document.createElement('small');note.dataset.packMountStatus=resolved.mode;
+  note.textContent=resolved.direct?'DIRECT TO ARMOR':resolved.sharedRig?'SHARED RIG HARNESS':'INDEPENDENT HARNESS';mounting.append(note);
   applyStudioStep();return;
  }
  const w=current(),outfit=resolvedWardrobe(w,p.loadout);
