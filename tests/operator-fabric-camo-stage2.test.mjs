@@ -39,7 +39,7 @@ test('authentic policy has exactly the approved 62 patterns and five independent
  assert.equal(fabricCamoCompatible('desert-marpat','armor',outfit),false);
  assert.equal(fabricCamoCompatible('woodland-marpat','armor',outfit),false);
  assert.equal(fabricCamoCompatible('woodland-marpat','pack',
-  {...outfit,packStyle:'sling-bag'}),false);
+  {...outfit,packStyle:'civilian-pack'}),false);
  assert.equal(fabricCamoCompatible('woodland-marpat','pack',
   {...outfit,packStyle:'rucksack'}),true);
  assert.equal(fabricCamoCompatible('alpenflage','top',outfit),false);
