@@ -41,7 +41,7 @@ const PART_LABELS:Readonly<Record<string,string>>={
  'hk556-mag30':'30-Round','hk556-mag25':'25-Round',
  'hk9-mag30':'30-Round',
  'fal-mag20':'20-Round Steel',
- 'r870-police-receiver':'870 Police',
+ 'r870-police-receiver':'Remington 870 Police',
  'r870-police-wood-stock':'Walnut Buttstock',
  'r870-police-wood-wrist':'Integrated Wood Grip',
  'r870-standard-tube':'Fixed Tube Magazine',
@@ -106,14 +106,14 @@ const PART_LABELS:Readonly<Record<string,string>>={
  'ak-long':'AK Long','ak-103-factory':'103 Factory',
  'ak-rpk-long':'RPK Heavy','ak-mid':'AK Carbine','ak-short':'AK Compact',
  'optic-mount-none':'No Mount','optic-irons':'Iron Sights',
- 'optic-reflex':'Reflex','optic-magnified':'Magnified',
+ 'optic-reflex':'Reflex Sight','optic-magnified':'Magnified Optic',
  'optic-hk-claw':'Claw Mount','muzzle-bare':'Bare',
- 'muzzle-hider':'Flash Hider','muzzle-brake':'Brake',
+ 'muzzle-hider':'Flash Hider','muzzle-brake':'Muzzle Brake',
  'muzzle-suppressor':'Suppressor','foregrip-none':'None',
- 'foregrip-handstop':'Handstop','foregrip-vertical':'Vertical',
+ 'foregrip-handstop':'Handstop','foregrip-vertical':'Vertical Grip',
  'light-none':'None','light-compact':'Compact Light',
- 'sling-none':'None','sling-two-point':'Two-Point',
- 'sling-single-point':'Single-Point','sling-traditional':'Traditional'
+ 'sling-none':'None','sling-two-point':'Two-Point Sling',
+ 'sling-single-point':'Single-Point Sling','sling-traditional':'Traditional Two-Point Sling'
 };
 /** UI label is deliberately separate from full reference description. */
 export function arsenalPartName(part:WeaponFamilyPart|WeaponAttachment):string{
