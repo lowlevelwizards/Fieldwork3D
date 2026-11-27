@@ -17,7 +17,7 @@ import {workbenchVisualAnchors,partVisualBounds}
  from '../src/weapons/geometry/weapon-visual-anchors.ts';
 
 const cohort={
- 'ak-ak74':{mag:'ak-mag545poly',saved:9},
+ 'ak-ak74':{mag:'ak-mag545poly',saved:8},
  'ak-aks74':{mag:'ak-mag545poly',saved:9},
  'ak-rpk74':{mag:'ak-mag545',saved:9},
  'ar-m16a4':{mag:'ar-magpoly',saved:8}
