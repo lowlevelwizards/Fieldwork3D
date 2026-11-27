@@ -1,10 +1,9 @@
-import {PACK_MOUNT_MODES,type PackMountMode} from './operator-equipment-assembly.ts';
 import {beltStyleForEquipment,canonicalBeltStyle} from './operator-belt-profile.ts';
 /** Tactical Wardrobe 2.0: style recipes, not new weapons or magic inventory.
  * Physical protection, carrying capacity, costs and ownership remain in
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
-import {legacyPackStyles,legacyPackDefault} from './operator-backpack-catalog.ts';
+import {legacyPackStyles,legacyPackDefault,migratePackAppearance} from './operator-backpack-catalog.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {readHelmetSetup,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import {readHelmetField,type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
@@ -137,14 +136,13 @@ add('beltStyle','battle',[['battle-belt','Battle belt']]);
 add('beltStyle','padded',[['padded-belt','Padded war belt']]);
 add('packStyle','none',[['no-pack','No backpack']]);
 add('packStyle','day',[
- ['hydration','Hydration carrier'],['admin-pack','Admin pack'],
- ['day-pack','Day pack'],['assault-pack','Assault pack'],
- ['sling-bag','Sling bag'],['civilian-pack','Civilian backpack']
+ ['hydration','Hydration carrier'],['admin-pack','Assault panel'],
+ ['day-pack','Tactical daypack'],['assault-pack','Assault pack'],
+ ['civilian-pack','Civilian backpack']
 ]);
 add('packStyle','field',[
  ['field-pack','ALICE field pack'],['rucksack','Expedition rucksack'],
- ['medic-pack','Medical pack'],['comms-pack','Communications pack'],
- ['duffel','Duffel bag']
+ ['medic-pack','Medical pack'],['comms-pack','Communications pack']
 ]);
 add('gloves','gloves',[['gloves-none','Bare hands'],
  ['gloves-field','Field gloves (foundation)']]);
@@ -176,7 +174,6 @@ export type WardrobeOptions=HelmetCoverConfig&{
  /** PASGT-family field-dress options; saved separately from modern mounts. */
  pasgtDetails?:PasgtDetails;
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
- packMount?:PackMountMode;
  /** East German helmet details are appearance-only. */
  m56Details?:M56Options['m56Details'];m56Net?:M56Options['m56Net'];
  policeVisorPosition?:PoliceVisorOptions['policeVisorPosition'];
@@ -243,7 +240,6 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(!raw||typeof raw!=='object')return result;
  const v=raw as Partial<WardrobeOptions>;
  if(v.version!==1)return result;
- if(v.packMount&&PACK_MOUNT_MODES.includes(v.packMount))result.packMount=v.packMount;
  if(isSkinToneId(v.skinTone))result.skinTone=v.skinTone;
  if(isHairStyleId(v.hairStyle))result.hairStyle=v.hairStyle;
  if(isHairToneId(v.hairTone))result.hairTone=v.hairTone;
@@ -256,7 +252,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
   for(const slot of WARDROBE_SLOTS){
    const id=v.styles[slot];
    // Retired near-duplicates migrate to their closest approved silhouette.
-   const upgraded=slot==='beltStyle'?canonicalBeltStyle(id):
+   const upgraded=slot==='packStyle'?migratePackAppearance(id):slot==='beltStyle'?canonicalBeltStyle(id):
      id==='soft-paca'?'soft-slick':
     id==='belt-harness'?'field-webbing':
     slot==='facewear'&&['scarf','gas-mask'].includes(id??'')?
@@ -467,6 +463,7 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
     slots.rig==='rig-light'?'light-rig':'no-rig');
  desired.beltStyle=beltStyleForEquipment(slots.belt,desired.beltStyle);
  choose('packStyle',[...legacyPackStyles(slots.backpack)],legacyPackDefault(slots.backpack));
+ if(desired.packStyle==='admin-pack'&&!['plate-jpc','plate-standard'].includes(desired.armorStyle))desired.packStyle='day-pack';
  choose('trousers',['bdu-trousers','acu-trousers','gorka-trousers','jeans','civilian-cargo','track-pants'],
   'bdu-trousers');
  choose('footwear',slots.feet==='feet-none'?['bare-feet']:slots.feet==='feet-light'?['sneakers','field-boots']:['field-boots'],
