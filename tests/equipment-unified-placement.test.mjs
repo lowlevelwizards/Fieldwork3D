@@ -91,3 +91,16 @@ test('BT4: bounded search yields a complete diagnostic for impossible loads and 
  assert.equal(m.unplaced.length,12);noOverlap(m);
  assert.deepEqual([...m.placements.flatMap(p=>p.itemIds),...m.unplaced.map(p=>p.id)].sort(),items.map(i=>i.id).sort());
 });
+
+test('BT4: static waist obstacle prevents placing an attachment through a low pack',()=>{
+ const bag=item('dump','dump',7,6,4);
+ const base=kit('padded-belt',[bag]);
+ const a=resolveUnifiedCarry(base);assert.equal(a.valid,true);
+ const v=byId(a,'dump').volume;
+ const b=resolveUnifiedCarry({...base,waistObstacles:[v]});
+ assert.notEqual(byId(b,'dump')?.waist?.region,'rear');
+});
+test('BT4: same carrier priority preserves a required holster even under impossible demand',()=>{
+ const items=[item('sidearm','sidearm',2,5,1),...Array.from({length:4},(_,i)=>item('p'+i,'secondary-mag',1.3,3,1))];
+ const m=resolveUnifiedCarry(kit('plain-belt',items));assert.equal(m.valid,false);assert.ok(byId(m,'sidearm'));noOverlap(m);
+});

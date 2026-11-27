@@ -3,15 +3,16 @@
  * fields are projections to migrate after all consumers are ready. */
 import {ATTACHMENTS,attachmentFootprint,attachmentContentSlots,type AttachmentId,type AttachmentVariant} from './operator-attachment-catalog.ts';
 import type {BeltStyle} from './operator-belt-profile.ts';
-import {fixedWaistCandidates,fixedWaistSlots,waistPlacementsConflict,dimensionsFit,
- type Carrier,type CarryKind,type Dimensions,type StorageSlot,type WaistPlacement,type Contact} from './equipment-fixed-carrier-slots.ts';
+import {fixedWaistCandidates,fixedWaistSlots,waistPlacementsConflict,dimensionsFit,waistVolume,frontHolderVolume,volumesOverlap,
+ type Carrier,type CarryKind,type Dimensions,type StorageSlot,type WaistPlacement,type Contact,type CarryVolume} from './equipment-fixed-carrier-slots.ts';
 export type CarryItem={id:string;kind:CarryKind;dimensions:Dimensions;
  /** Optional larger internal capacity claim, e.g. trauma or long tool. */
  units?:number;holder?:AttachmentId;variant?:AttachmentVariant;optional?:boolean};
 export type CarryInput={belt:BeltStyle;holsterSide?:'left'|'right';historicalWaist?:boolean;
- storage:readonly StorageSlot[];items:readonly CarryItem[]};
+ storage:readonly StorageSlot[];items:readonly CarryItem[];
+ waistObstacles?:readonly CarryVolume[];chestToHip?:number};
 export type Placement={itemIds:string[];contentIds?:readonly (string|null)[];carrier:Carrier;slotIds:string[];holder?:AttachmentId;
- variant?:AttachmentVariant;waist?:WaistPlacement;mount?:Contact;concealed:boolean};
+ variant?:AttachmentVariant;waist?:WaistPlacement;mount?:Contact;volume?:CarryVolume;concealed:boolean};
 export type PlacementManifest={placements:Placement[];unplaced:{id:string;reason:'no-fit'|'duplicate'|'invalid-item'}[];
  valid:boolean;searchTruncated:boolean};
 export const CARRY_PRIORITY:Readonly<Record<CarryKind,readonly Carrier[]>>={
@@ -66,7 +67,11 @@ function itemCandidates(input:CarryInput,item:CarryItem,slots:ReturnType<typeof 
     const allowed=item.kind==='sidearm'?definition.regions.filter(r=>r===side+'-hip'):definition.regions;
     const fits=fixedWaistCandidates(input.belt,slots,attachmentFootprint(holder,variant),allowed)
      .sort((a,b)=>preference.indexOf(a.region)-preference.indexOf(b.region)||a.ids.length-b.ids.length);
-    for(const waist of fits)out.push({itemIds:[item.id],carrier,slotIds:waist.ids,holder,variant,waist,concealed:false,order:order++});
+    for(const waist of fits){
+     const volume=waistVolume(waist);
+     if(input.waistObstacles?.some(b=>volumesOverlap(b,volume)))continue;
+     out.push({itemIds:[item.id],carrier,slotIds:waist.ids,holder,variant,waist,volume,concealed:false,order:order++});
+    }
    }
    }
   }else{
@@ -86,7 +91,7 @@ function itemCandidates(input:CarryInput,item:CarryItem,slots:ReturnType<typeof 
      const holder=item.holder??HOLDER[item.kind];if(!holder||!ATTACHMENTS[holder].carriers.includes(carrier==='armor'?'armor':'rig'))continue;
      for(const variant of item.variant?[item.variant]:['standard','expanded'] as const){
       if(!ATTACHMENTS[holder].variants.includes(variant)||!holderFits(item,holder,variant)||!dimensionsFit(attachmentFootprint(holder,variant),first.dimensions))continue;
-      out.push({itemIds:[item.id],carrier,slotIds:keys,holder,variant,mount:first.mount,concealed:false,order:order++});
+      out.push({itemIds:[item.id],carrier,slotIds:keys,holder,variant,mount:first.mount,volume:frontHolderVolume(first.mount,attachmentFootprint(holder,variant),input.chestToHip??5.8),concealed:false,order:order++});
      }
     }else out.push({itemIds:[item.id],carrier,slotIds:keys,concealed:first.concealed,order:order++});
    }
@@ -95,7 +100,8 @@ function itemCandidates(input:CarryInput,item:CarryItem,slots:ReturnType<typeof 
  return out;
 }
 function conflicts(a:Placement,b:Placement){
- return a.itemIds.some(id=>b.itemIds.includes(id))||a.slotIds.some(id=>b.slotIds.includes(id))||!!(a.waist&&b.waist&&waistPlacementsConflict(a.waist,b.waist));
+ return a.itemIds.some(id=>b.itemIds.includes(id))||a.slotIds.some(id=>b.slotIds.includes(id))||!!(a.waist&&b.waist&&waistPlacementsConflict(a.waist,b.waist))||
+  !!(a.volume&&b.volume&&a.carrier!==b.carrier&&volumesOverlap(a.volume,b.volume));
 }
 /** Fixed priority tiers and stable IDs; bounded deterministic search only
  * when a straightforward arrangement fails. Never mutate input, never
@@ -162,7 +168,7 @@ export function resolveUnifiedCarry(input:CarryInput,maxNodes=12000):PlacementMa
    selected.push(option);visit(i+1,score+option.itemIds.reduce((n,id)=>n+weight(id),0),mask+'1');selected.pop();
    if(truncated||bestScore===target)return;
   }
-  visit(i+1,score,mask+'0');
+  if(j.item.kind!=='sidearm'||!j.options.some(o=>!selected.some(p=>conflicts(p,o))))visit(i+1,score,mask+'0');
  };
  // Seed with a complete greedy result so the bounded search always has a
  // usable diagnostic, even when many reserve magazines exhaust the search.

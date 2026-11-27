@@ -10,14 +10,16 @@ import {initialFieldInventory,fieldQuantity,FIELD_ITEMS,FIELD_ITEM_IDS} from './
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {beltStyleForEquipment} from './operator-belt-profile.ts';
 import {ARMOR_PROPORTIONS} from './operator-armor-proportions.ts';
+import {rigContactFrame} from './operator-rig-contact-frame.ts';
+import {LEG_HIP_HEIGHT} from './breach-leg-geometry.ts';
 import {armorAttachmentFrame} from './operator-armor-attachment-frame.ts';
-import {supportsDirectPack} from './operator-backpack-fit.ts';
+import {fitPack,supportsDirectPack} from './operator-backpack-fit.ts';
 import {proposedPackStyle,PACK_PROFILES} from './operator-backpack-catalog.ts';
 import {nativeEquippedMagazine} from './operator-attachment-reference.ts';
 import type {MagazinePouchCell} from './operator-magazine-pouch-fit.ts';
 import {attachmentFootprint,type AttachmentId} from './operator-attachment-catalog.ts';
 import {clothingStorage,packStorage,registeredRigStorage,registeredAuxiliaryStorage,modularArmorStorage,
- type CarryKind,type Dimensions} from './equipment-fixed-carrier-slots.ts';
+ type CarryKind,type Dimensions,type CarryVolume} from './equipment-fixed-carrier-slots.ts';
 import {resolveUnifiedCarry,type CarryItem,type CarryInput} from './equipment-unified-placement.ts';
 export type UnifiedLoadoutSource={kit:EquipmentLoadout;wardrobe?:WardrobeOptions;magazines:readonly MagazineItem[];
  primaryPart?:string|null;rigCells?:readonly MagazinePouchCell[];auxiliaryCells?:readonly MagazinePouchCell[];
@@ -94,7 +96,24 @@ export function unifiedLoadoutInput(source:UnifiedLoadoutSource):CarryInput{
   items.push({id:'cosmetic:'+slot,kind:holder==='dump-pouch'?'dump':'cosmetic',
    dimensions:attachmentFootprint(holder,variant),holder,variant,optional:true});
  }
- return {belt,holsterSide:side?.holster==='belt-left'?'left':'right',historicalWaist,storage,items};
+ const chestToHip=26-LEG_HIP_HEIGHT,waistObstacles:CarryVolume[]=[];
+ if(!historicalWaist){
+  const shift=rigContactFrame(look.armorStyle,look.top,look.rigStyle).rigShiftX;
+  for(const c of [...rigCells,...auxiliary]){
+   // Existing pouch bodies are authored box envelopes. Their closed or
+   // empty status does not release the space they physically occupy.
+   waistObstacles.push({min:[c.x+shift-c.depth/2,c.y+chestToHip-c.height/2,c.z-c.width/2],
+    max:[c.x+shift+c.depth/2,c.y+chestToHip+c.height/2,c.z+c.width/2]});
+  }
+ }
+ if(pack&&packCompatible&&pack!=='no-pack'){
+  const fit=fitPack(pack,look.armorStyle,look.rigStyle,look.top,undefined,wardrobe?.packMount??'auto',belt);
+  if(fit.compatible){
+   const [x,y,z]=fit.center,[d,h,w]=PACK_PROFILES[pack].size;
+   waistObstacles.push({min:[x-d/2,y+chestToHip-h/2,z-w/2],max:[x+d/2,y+chestToHip+h/2,z+w/2]});
+  }
+ }
+ return {belt,holsterSide:side?.holster==='belt-left'?'left':'right',historicalWaist,storage,items,waistObstacles,chestToHip};
 }
 export function quoteUnifiedLoadout(source:UnifiedLoadoutSource){
  const input=unifiedLoadoutInput(source),manifest=resolveUnifiedCarry(input);

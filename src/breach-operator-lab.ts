@@ -2545,7 +2545,7 @@ function draw(){
    const chest=rig.visualKit.wardrobeGear.rig[look.rigStyle];
    const owner=registeredMagazinePouches(waist).length?waist:chest;
    const cells=registeredMagazinePouches(owner);
-   const auxiliary=chest?.userData.auxiliaryPouchCells??[];
+   const auxiliary=[...(chest?.userData.auxiliaryPouchCells??[]),...(waist?.userData.auxiliaryPouchCells??[])];
    const mags=currentCarry.filter(p=>p.kind==='magazine').map(p=>({id:p.id,weapon:currentWeapon,rounds:1}));
    const part=rig.visualKit.carriedMagazinePart;
    const key=JSON.stringify([currentKit,look,wardrobeOptions.accessories,mags.map(m=>m.id),part,cells,auxiliary]);

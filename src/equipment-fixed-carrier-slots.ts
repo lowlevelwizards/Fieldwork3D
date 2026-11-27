@@ -140,3 +140,22 @@ export function modularArmorStorage(style:string,rigStyle:string,frontX:number,w
   {id:'armor:front-wide',carrier:'armor',accepts:kinds,dimensions:{width:w,height:h,depth:4},concealed:false,mount:contact(0),conflicts:['armor:front-left','armor:front-right']}
  ];
 }
+
+/** Neutral pelvis-local exclusion envelope, deliberately conservative.
+ * Dynamic pose sweeps remain a separate visual acceptance gate. */
+export type CarryVolume={min:readonly [number,number,number];max:readonly [number,number,number]};
+export function volumesOverlap(a:CarryVolume,b:CarryVolume,padding=.06){
+ return a.min.every((v,i)=>v<b.max[i]+padding&&a.max[i]>b.min[i]-padding);
+}
+export function waistVolume(p:WaistPlacement):CarryVolume{
+ const xs=p.corners.map(c=>c[0]),zs=p.corners.map(c=>c[1]);
+ return {min:[Math.min(...xs),p.socket.y-p.footprint.height-.12,Math.min(...zs)],
+  max:[Math.max(...xs),p.socket.y+.15,Math.max(...zs)]};
+}
+export function frontHolderVolume(contact:Contact,f:Dimensions,chestToHip:number):CarryVolume{
+ const c=Math.cos(contact.yaw),s=Math.sin(contact.yaw);
+ const points=([-f.width/2,f.width/2] as const).flatMap(x=>([0,f.depth] as const).map(z=>
+  [contact.x+x*c+z*s,contact.z-x*s+z*c] as const));
+ const xs=points.map(p=>p[0]),zs=points.map(p=>p[1]),y=contact.y+chestToHip;
+ return {min:[Math.min(...xs),y-f.height,Math.min(...zs)],max:[Math.max(...xs),y+.1,Math.max(...zs)]};
+}
