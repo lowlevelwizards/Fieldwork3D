@@ -1,0 +1,2 @@
+# CT8 — Loaded carrier animation
+Read actual reciprocal casualty from sampled session. Drag faces the patient while preserving motor travel direction; carry remains travel/heading driven. Both use existing planted-foot gait and separate loaded crouch, torso lean and asymmetric hand positions. Arms are solved once through shared IK before staged publication. CT10 replaces approximate local wrists with paired world contacts. Fix CT3 unused type import after 33/33 focused tests passed.

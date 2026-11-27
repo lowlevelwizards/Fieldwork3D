@@ -16,8 +16,9 @@ function rayHit(p:Pt,dx:number,dy:number,s:Segment,range:number){
 }
 export function visionPolygon(origin:Pt,heading:number,range=240,
   walls:readonly Segment[]=WALLS,doors:readonly Door[]=[],lowObstructs=false,
-  cover:readonly import('./breach-core.ts').Obstacle[]=COVER):Pt[]{
-  const blockers=opticalBlockerSegments(walls,doors,cover,lowObstructs);
+  cover:readonly import('./breach-core.ts').Obstacle[]=COVER,
+  coveringSegments:readonly Segment[]=[]):Pt[]{
+  const blockers=opticalBlockerSegments(walls,doors,cover,lowObstructs,coveringSegments);
   // Preserve every original angle sample and resulting polygon vertex.
   // Only the ray intersection loop is culled: segments outside the
   // enclosing square cannot intersect a finite ray of this range.

@@ -1,0 +1,46 @@
+name: WC1–WC6 window coverings critical checks
+on:
+  pull_request:
+    paths:
+      - 'src/breach-window-coverings.ts'
+      - 'src/rendering/window-covering-visual.ts'
+      - 'src/asset-lab-main.ts'
+      - 'tests/wc*.test.mjs'
+      - 'scripts/smoke-wc6-window-coverings.mjs'
+      - 'src/breach-window-covering-*.ts'
+      - 'src/breach-ballistic-resolution.ts'
+      - 'src/breach-mantle.ts'
+      - 'src/worldgen/window-covering-placement.ts'
+      - '.github/workflows/wc1-window-coverings.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: wc-coverings-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/wc1-window-coverings.test.mjs tests/wc2-window-covering-placement.test.mjs tests/wc3-window-covering-optics.test.mjs tests/wc4-window-covering-interaction.test.mjs tests/wc5-window-covering-physical.test.mjs tests/wc6-window-covering-release.test.mjs tests/breach-roadmap4-ballistic-resolution.test.mjs tests/map-14-window-security.test.mjs tests/map-11-window-styles.test.mjs tests/asset-lab-preview-alignment.test.mjs tests/breach-fog-visibility.test.mjs tests/fog-interior-occlusion-regression.test.mjs tests/fog-exterior-facade-regression.test.mjs tests/fog-generated-sight-parity.test.mjs tests/breach-closeout-stage3-presentation.test.mjs tests/l1-3-powered-lighting-parity.test.mjs tests/ei4-window-bash.test.mjs tests/dispatch-d9-contact.test.mjs
+      - run: npm run check
+      - run: npm run build
+      - name: Install browser smoke tooling
+        run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: WC6 gallery and generated map WebGL smoke
+        run: node scripts/smoke-wc6-window-coverings.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wc6-gallery-captures
+          path: artifacts/wc6/
+          if-no-files-found: warn
+          retention-days: 14

@@ -5,6 +5,7 @@
 import type {Session,TeamActor} from './breach-game.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import {releaseSuspectHeldFirearm} from './breach-suspect-weapons.ts';
+import {challengeCompliance} from './breach-ai-morale.ts';
 import {clearNpcTasks} from './breach-ai-task-state.ts';
 
 export const SUSPECT_CHALLENGE_RANGE=100;
@@ -15,7 +16,7 @@ export const SUSPECT_CHALLENGE_COOLDOWN=6;
 
 export function challengeSuspectDecision(target:Pick<TeamActor,
  'health'|'surrendered'|'morale'|'suppression'|'injuryStage'|
- 'lastChallengeAt'>,now:number):'ineligible'|'cooldown'|'surrender'|'refuse'{
+ 'lastChallengeAt'>&Partial<Pick<TeamActor,'npcIdentity'|'encounterGroupId'>>,now:number):'ineligible'|'cooldown'|'surrender'|'refuse'{
  if(target.health<=0||target.surrendered)return 'ineligible';
  if(target.lastChallengeAt!==undefined&&
     now-target.lastChallengeAt<SUSPECT_CHALLENGE_COOLDOWN)return 'cooldown';
@@ -23,9 +24,8 @@ export function challengeSuspectDecision(target:Pick<TeamActor,
  // already uncertain suspect should be willing to surrender without first
  // being shot or heavily suppressed. Decisions remain deterministic and
  // use only the existing morale/pressure state, never a per-tick reroll.
- const pressure=target.suppression+Math.min(2,target.injuryStage)*.11;
- return target.morale<=.34||
-   target.morale<=.62&&pressure>=.22?'surrender':'refuse';
+ return challengeCompliance(target.morale,target.suppression,target.injuryStage,
+   target.encounterGroupId?target.npcIdentity?.motivation:undefined)?'surrender':'refuse';
 }
 export function commitSuspectSurrender(
  s:Session,target:TeamActor,

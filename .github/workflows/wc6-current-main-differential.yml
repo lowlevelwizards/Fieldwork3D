@@ -1,0 +1,49 @@
+name: WC6 exact current-main movement differential
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/wc6-current-main-differential.yml'
+      - 'src/breach-window-covering-*.ts'
+      - 'src/breach-game.ts'
+      - 'src/breach-mantle.ts'
+permissions:
+  contents: read
+concurrency:
+  group: wc6-main-differential-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  differential:
+    if: github.head_ref == 'feature/wc-window-coverings'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Compare real 45-second movement corpus on exact PR base and candidate
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          mkdir -p artifacts/wc6-differential
+          git worktree add --detach "$RUNNER_TEMP/wc6-base" "$BASE_SHA"
+          ln -s "$PWD/node_modules" "$RUNNER_TEMP/wc6-base/node_modules"
+          (cd "$RUNNER_TEMP/wc6-base" && node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --d329-cancellation-door-witness --progress --route-quality) > artifacts/wc6-differential/base.json
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --d329-cancellation-door-witness --progress --route-quality > artifacts/wc6-differential/candidate.json
+          node -e "const fs=require('node:fs');for(const name of ['base','candidate']){const r=JSON.parse(fs.readFileSync('artifacts/wc6-differential/'+name+'.json'));console.log(name,JSON.stringify(r.summary),JSON.stringify(r.routeQualitySummary));}"
+      - name: Evaluate the unchanged mainline release oracle on both reports
+        run: |
+          for side in base candidate; do
+            echo "=== $side ==="
+            node scripts/verify-d3-30-mainline.mjs "artifacts/wc6-differential/$side.json" || echo "$side failed unchanged oracle"
+          done
+          node scripts/verify-d3-30-mainline.mjs artifacts/wc6-differential/candidate.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wc6-main-differential
+          path: artifacts/wc6-differential/
+          retention-days: 14

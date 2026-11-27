@@ -1,3 +1,4 @@
+import {campaignEnemyContext} from './campaign-rules.ts';
 import {drawTacticalPersonStatus,visibleTacticalPerson} from './ui/tactical-person-status.ts';
 import {
   createBreachCanvasGestureController,type TacticalPointer}
@@ -1312,6 +1313,7 @@ function reset(next=state.variant,siteSeed?:number,
   missionController.transition(state,{
     variant:next,seed:siteSeed,missionOverride,prebuiltSite,
     risk:encounterRisk,deferScene,restartStart,
+    forceContext:campaignEnemyContext(appFlow.mode,campaign),
     incidentId:dispatchCase?.incidentId,archetype:dispatchCase?.archetype,
     trainingSquadSize:training?.squadSize,trainingLighting:training?.lighting,
     trainingLightKit:training?.lightKit

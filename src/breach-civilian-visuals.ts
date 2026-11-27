@@ -3,6 +3,7 @@
  * A model with real leg/arm length is preferable to scaling a squat model.
  */
 import * as THREE from 'three';
+import type {TransportPatientPose} from './breach-transport-patient-pose.ts';
 import type {CivilianActor} from './breach-civilian-types.ts';
 import type {FootTarget} from './breach-footsteps.ts';
 import {civilianPhysicalityAt} from './breach-encounter-physicality.ts';
@@ -130,7 +131,7 @@ export function createCivilianRig(c:CivilianActor,useSharedCharacter=false):Civi
  * movement, damage, sight, rescue and replay data are untouched.
  */
 function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number,
- replayFeet?:[FootTarget,FootTarget]){
+ replayFeet?:[FootTarget,FootTarget],transportPatient?:TransportPatientPose){
  const physical=civilianPhysicalityAt(c,now);
  const pose=physical.pose;
  const down=pose==='down'||pose==='carried'||pose==='dragged';
@@ -153,7 +154,7 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
  // The foot IK samples root elevation during its solve. Put the true
  // neutral transport height on the root BEFORE posing, otherwise a prior
  // carried/dragged frame contaminates the next standing frame.
- const transportHeight=pose==='carried'?10:pose==='dragged'?2:0;
+ const transportHeight=transportPatient?0:pose==='carried'?10:pose==='dragged'?2:0;
  r.root.position.set(c.p.x,transportHeight,c.p.y);
  poseOperator(r.character,{
   x:c.p.x,z:c.p.y,heading:c.heading,velocity:moving?c.velocity:0,
@@ -164,12 +165,13 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
   posture:'stand',interactionCrouch:crouchAmount,
   injury:injured?1:down?3:0,weapon:'carbine',
   reload:0,reloadDuration:0,lastDoorAt:-100,lastThrowAt:-100,
+  transportPatient,
   down,surrender:secured&&physical.kneel>.001,aiming:false,firing:false,
   civilianGesture:gesture,
   // Named physical state/gesture handoff uses the same displayed pose
   // buffers as operators. No simulation clock, extra foot solver or
   // current roster lookup. Manual timeline seeks stay direct.
-  npcTransitionKey:'civilian/'+pose+'/'+(gesture??'hands-neutral')+
+  npcTransitionKey:transportPatient?undefined:'civilian/'+pose+'/'+(gesture??'hands-neutral')+
     '/'+(secured&&physical.kneel>.001?'kneeling':'upright'),
   npcTransitionDuration:down?.15:
     physical.flinch>.15?.14:
@@ -213,7 +215,7 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
  // midair. Preserve it and add only the transport height and world XY.
  // This is render-only: the civilian's session position never changes.
  const localCollapseY=r.root.position.y;
- r.root.position.set(c.p.x,transportHeight+localCollapseY,c.p.y);
+ if(!transportPatient)r.root.position.set(c.p.x,transportHeight+localCollapseY,c.p.y);
  // The operator skeleton owns gait, planted feet, full-body crouching,
  // hands-up compliance and fall. Keep neutral carrying offset render-only.
  // Tactical renderers place armed actor roots from the Session *outside*
@@ -225,9 +227,9 @@ export function disposeCivilianRig(r:CivilianRig):void{
 }
 export function updateCivilianRig(r:CivilianRig,
  c:CivilianActor,now:number,
- replayFeet?:[FootTarget,FootTarget]):void{
+  replayFeet?:[FootTarget,FootTarget],transportPatient?:TransportPatientPose):void{
  if('character' in r){
-  updateSharedCivilianRig(r,c,now,replayFeet);
+  updateSharedCivilianRig(r,c,now,replayFeet,transportPatient);
   return;
  }
  r.root.position.set(c.p.x,0,c.p.y);

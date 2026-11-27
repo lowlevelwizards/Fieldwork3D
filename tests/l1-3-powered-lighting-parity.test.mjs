@@ -11,6 +11,7 @@ import {setSiteCircuitPower,setSiteFixtureSwitch,setSessionLightingMode}
 import {fixtureLightingVisuals,FIXTURE_POOL_RAYS,FIXTURE_VISUAL_CAP,
  fixtureVisualColor} from '../src/equipment-lighting-visuals.ts';
 import {lightRayDistance} from '../src/equipment-weapon-light-beam.ts';
+import {windowCoveringSightSegments,setSessionWindowCovering} from '../src/breach-window-covering-optics.ts';
 import {buildIlluminationBlockers} from '../src/equipment-light-field.ts';
 
 const make=(mode='night',site=l1BaselineSite())=>{
@@ -74,7 +75,7 @@ test('L1.3 power never adds discovery, room intel or simulation mutations',()=>{
 });
 test('L1.3 pool rays stop at the same opaque optical blockers as light math',()=>{
  const s=make(),v=fixtureLightingVisuals(s);
- const blockers=buildIlluminationBlockers(s.site.walls,s.doors,s.coverState);
+ const blockers=buildIlluminationBlockers(s.site.walls,s.doors,s.coverState,windowCoveringSightSegments(s));
  for(const f of v.fixtures.filter(f=>f.intensity>0)){
   for(let i=0;i<FIXTURE_POOL_RAYS;i++){
    const angle=i*Math.PI*2/FIXTURE_POOL_RAYS;
@@ -112,7 +113,7 @@ test('L1.3 both view renderers consume the shared visual module and preserve fog
  const flat=src('breach-2d-world-renderer.ts');
  const iso=src('rendering/breach-site-light-presenter.ts');
  const stage=src('breach-3d.ts');
- assert.match(shared,/buildIlluminationBlockers\(site\.walls,s\.doors,s\.coverState\)/);
+ assert.match(shared,/buildIlluminationBlockers\(site\.walls,s\.doors,s\.coverState,windowCoveringSightSegments\(s\)\)/);
  assert.match(flat,/fixtureLightingVisuals\(state\)/);
  assert.match(iso,/fixtureLightingVisuals\(s\)/);
  assert.match(iso,/presentDecor\(/);
@@ -122,4 +123,23 @@ test('L1.3 both view renderers consume the shared visual module and preserve fog
  assert.match(stage,/this\.fixtureLights\.reset\(\)/);
  assert.match(stage,/this\.fixtureLights\.update\(s,omniscient,personalDisclosure/);
  assert.doesNotMatch(iso,/SpotLight|castShadow\s*=\s*true/);
+});
+
+test('WC3 fixture footprints update within the same tick on covering changes',()=>{
+ const s=make('night'),first=fixtureLightingVisuals(s);
+ const source=first.fixtures.find(f=>f.intensity>0);
+ assert.ok(source);
+ const edge={id:'WC3-probe',x:source.p.x+10,y:source.p.y,width:30,vertical:true,sillHeight:0,headHeight:50,open:false,shattered:false,integrity:1,operable:false};
+ s.windows.push(edge);s.objectRevision++;
+ const open=fixtureLightingVisuals(s);
+ assert.equal(setSessionWindowCovering(s,edge.id,{family:'curtain',side:1,opening:0,palette:'linen'}),true);
+ const shut=fixtureLightingVisuals(s);
+ assert.notStrictEqual(shut,open);
+ const blockers=buildIlluminationBlockers(s.site.walls,s.doors,s.coverState,windowCoveringSightSegments(s));
+ const fixture=shut.fixtures.find(f=>f.id===source.id);
+ for(let i=0;i<FIXTURE_POOL_RAYS;i++){
+  const end=fixture.footprint[i+1];
+  assert.ok(Math.abs(Math.hypot(end.x-fixture.p.x,end.y-fixture.p.y)-lightRayDistance(fixture.p,i*Math.PI*2/FIXTURE_POOL_RAYS,fixture.range,blockers))<1e-7);
+ }
+ assert.ok(Math.hypot(fixture.footprint[1].x-fixture.p.x,fixture.footprint[1].y-fixture.p.y)<=10.001);
 });

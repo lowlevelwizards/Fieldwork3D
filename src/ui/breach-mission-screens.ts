@@ -9,7 +9,7 @@ import type {createBreachAudioController} from '../breach-audio-controller.ts';
 import {confirmFieldworkAction} from './fieldwork-controls.ts';
 import {disposeAfterActionPresentation} from './breach-after-action-controller.ts';
 import {team,operationBriefing,type Session} from '../breach-game.ts';
-import type {CampaignState} from '../campaign-state.ts';
+import {contractThreatIntel,type CampaignState} from '../campaign-state.ts';
 import type {DispatchIncidentContext} from '../dispatch-incident-context.ts';
 import {createBriefingCardModel,type BriefingReport,type BriefingTab}
  from '../briefing/briefing-view-model.ts';
@@ -593,7 +593,9 @@ export function buildBriefingDossier(session:Session,risk:1|2|3|undefined,
  briefingPreviewEnabled:boolean,mode:CampaignMode,campaign:CampaignState|null){
   if(!briefingPreviewEnabled||!session.site)return undefined;
   try{
-    const dossier=createOperationDossier(compileMissionFacts(session,{contractRisk:risk}));
+    const job=mode==='mission'?campaign?.contracts.find(c=>c.id===campaign.activeContractId):undefined;
+    const dossier=createOperationDossier(compileMissionFacts(session,{contractRisk:risk}),
+      job?{quality:contractThreatIntel(job)}:{});
     return mode==='mission'?
       attachCampaignDossierContext(dossier,campaign):dossier;
   }

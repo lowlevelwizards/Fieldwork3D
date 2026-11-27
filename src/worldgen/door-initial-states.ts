@@ -33,7 +33,8 @@ function sample(seed:number,id:string,salt:number):number{
 export function seededInitialDoorPose(site:Site,door:Door):Door{
  // Keep authored OPEN states and any deliberately posed leaves untouched.
  // Locks, physical holds, and wedges are always initially closed.
- if(door.locked||door.wedged||door.heldBy||door.open||
+ if(door.operatingMode==='automatic'||door.operatingMode==='coupled'||
+    door.locked||door.wedged||door.heldBy||door.open||
     door.openFraction!==undefined)return door;
  const [a,b]=neighboring(site,door);
  const exterior=!a||!b,roles=[a?.purpose??'',b?.purpose??''];

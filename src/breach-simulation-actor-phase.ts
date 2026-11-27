@@ -4,10 +4,10 @@
  */
 import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
 import {length,targetAngle,angleDifference} from './breach-plan.ts';
-import {witnessShock,countNearbyEnemyAllies,countRecentlySeenThreats,moraleResponse} from './breach-ai-morale.ts';
+import {witnessShock,countNearbyEnemyAllies,countRecentlySeenThreats,moraleResponse,fallenAlliesByGroup,enemyPeersByGroup} from './breach-ai-morale.ts';
 import {commitSuspectSurrender} from './breach-suspect-compliance.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
-import {commitNpcWithdrawal} from './breach-ai-task-state.ts';
+import {attemptNpcWithdrawal} from './breach-ai-task-state.ts';
 import {advanceSurrenderOpportunity,canAttemptSuspectEscape,
  suspectIsSupervised} from './breach-suspect-opportunity.ts';
 import {physicalFollowGoal,physicalFollowerSeparated}
@@ -43,11 +43,9 @@ export function advanceSimulationActors(s:Session,h:number,
  // Keep source-actor ordering (and the recorded lastDownAt gate), because
  // sighting a casualty may alter resolve and decisions *this same tick*.
  // A casualty not yet witnessed stays eligible on every later tick.
- const fallenEnemyAllies:TeamActor[]=[];
- for(const actor of s.operators)if(actor.side==='red'&&
-    actor.health<=0&&!actor.surrendered){
-   fallenEnemyAllies.push(actor);
- }
+ const fallenEnemyAllies=fallenAlliesByGroup(s.operators);
+ const noFallen:readonly TeamActor[]=[];
+ let groupPeers:ReturnType<typeof enemyPeersByGroup<TeamActor>>|undefined;
  for(const a of s.operators){
     if(a.health<=0&&a.reload>0){a.reload=0;a.reloadMode=null;}
     a.fireCd=Math.max(0,a.fireCd-h);
@@ -55,7 +53,7 @@ export function advanceSimulationActors(s:Session,h:number,
       a.morale=Math.min(1,a.morale+h*.006-
         (a.suppression>.65?h*.075:0));
       // Only a visible nearby casualty affects this actor's resolve.
-      for(const fallen of fallenEnemyAllies){
+      for(const fallen of fallenEnemyAllies.get(a.encounterGroupId)??noFallen){
         if(fallen===a||fallen.encounterGroupId!==a.encounterGroupId||
           fallen.lastDownAt<=(a.witnessedCasualtyTimes?.[fallen.id]??-Infinity))continue;
         const distance=d(a.p,fallen.p);
@@ -72,7 +70,7 @@ export function advanceSimulationActors(s:Session,h:number,
       // Nearby members of the same encounter group can steady resolve.
       // Do not pay an extra ally scan every tick for calm defenders.
       const peerSupport=(a.suppression>.25||a.morale<.65)?
-        countNearbyEnemyAllies(a,s.operators):0;
+        countNearbyEnemyAllies(a,(groupPeers??=enemyPeersByGroup(s.operators)).get(a.encounterGroupId)??noFallen):0;
       const threatened=a.suppression>.25||a.morale<.65||
         (a.alert==='retreat'&&a.blockedTime>=2.5);
       const recentThreats=threatened?
@@ -80,13 +78,12 @@ export function advanceSimulationActors(s:Session,h:number,
       const resolve=moraleResponse(a.morale,a.suppression,
         a.injuryStage,a.personality,{nearbyAllies:peerSupport,
           recentlySeenThreats:recentThreats,
+          motivation:a.encounterGroupId?a.npcIdentity?.motivation:undefined,
           retreatBlocked:a.alert==='retreat'&&a.blockedTime>=2.5});
       if(resolve==='withdraw'&&a.alert!=='retreat'&&s.seconds>=(a.withdrawRetryAt??0)){
         const threat=a.contact??a.heard??a.watch;
         if(threat){
-          const safe=port.defensivePosition(a,threat,s,'shelter');
-          if(safe)commitNpcWithdrawal(a,safe,s.seconds);
-          else a.withdrawRetryAt=s.seconds+1.5;
+          attemptNpcWithdrawal(a,s.seconds,()=>port.defensivePosition(a,threat,s,'shelter'));
         }
       }
       if(resolve==='surrender')

@@ -1,3 +1,4 @@
+import {normalizeWindowCovering} from './breach-window-coverings.ts';
 import {sessionWorldGeometry,invalidateSessionWorldGeometry,publishSessionCoverToActiveSite} from './breach-world-context.ts';
 /** Build 090–091: deterministic mission film, independent of the live motor.
  * We capture authoritative simulation outcomes at 20 Hz and never re-simulate
@@ -59,6 +60,10 @@ export type ActorFrame=Pick<TeamActor,
 export type ReplayActorFrame=ActorFrame & {
  /** S5.2: recorded explicit weapon hand, optional for all legacy films. */
  secondarySwitch?:SecondarySwitchState;
+ retentionTransition?:TeamActor['retentionTransition'];
+ transportContact?:TeamActor['transportContact'];
+ groundedPrimaryId?:number|null;
+ primaryPlacement?:TeamActor['primaryPlacement'];
  /** S8.2: historical pistol magazine identity, rounds and handoff clock. */
  secondaryEquipment?:SecondaryEquipment;
  secondaryReload?:SecondaryTimedReload|null;
@@ -207,7 +212,10 @@ export function snapshot(s:Session,seenGround?:string[],
       lastNoiseAt:a.lastNoiseAt,
       lastReportAt:a.side==='red'?a.lastReportAt:undefined,
       magazine:a.magazine,reserve:a.reserve,reload:a.reload,
-      secondarySwitch:a.secondarySwitch?{...a.secondarySwitch}:initialSecondarySwitch(),
+      groundedPrimaryId:a.groundedPrimaryId??null,
+       primaryPlacement:a.primaryPlacement?{...a.primaryPlacement}:undefined,
+       retentionTransition:a.retentionTransition?{...a.retentionTransition}:undefined,
+       secondarySwitch:a.secondarySwitch?{...a.secondarySwitch}:initialSecondarySwitch(),
       secondaryEquipment:a.equipment?.secondary?
         reuseFrozenReplayValue(a.equipment.secondary,prior?.secondaryEquipment,
           ()=>structuredClone(a.equipment!.secondary!)):undefined,
@@ -239,6 +247,7 @@ export function snapshot(s:Session,seenGround?:string[],
        lastTreatmentTargetId:a.lastTreatmentTargetId,
        treatmentActive:a.treatmentActive,treatmentProgress:a.treatmentProgress,
        carryingId:a.carryingId,carriedById:a.carriedById,
+       transportContact:a.transportContact?{...a.transportContact,point:position(a.transportContact.point)}:undefined,
        transportLatched:a.transportLatched??false,
        downWeaponsReleased:a.downWeaponsReleased??false,
        transportMode:a.transportMode??null,
@@ -527,6 +536,10 @@ export class MissionRecorder{
         coverStanceDrop:mix(a.coverStanceDrop??0,
           b.coverStanceDrop??0,alpha),
         reload:mix(a.reload,b.reload,alpha),
+        retentionTransition:a.retentionTransition&&b.retentionTransition&&
+          a.retentionTransition.mode===b.retentionTransition.mode?
+          {...a.retentionTransition,weight:mix(a.retentionTransition.weight,b.retentionTransition.weight,alpha)}:
+          a.retentionTransition,
         secondarySwitch:{...(a.secondarySwitch??initialSecondarySwitch()),
           fraction:mix(a.secondarySwitch?.fraction??0,
             b.secondarySwitch?.fraction??0,alpha)},
@@ -593,7 +606,10 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
     if(a)Object.assign(a,copy,{p:position(copy.p),
       // Archived films have no sidearm channel; neutralize stale future
       // state rather than leaking a selected pistol across seek.
-      secondarySwitch:copy.secondarySwitch?{...copy.secondarySwitch}:initialSecondarySwitch(),
+      groundedPrimaryId:copy.groundedPrimaryId??null,
+       primaryPlacement:copy.primaryPlacement?{...copy.primaryPlacement}:undefined,
+       retentionTransition:copy.retentionTransition?{...copy.retentionTransition}:undefined,
+       secondarySwitch:copy.secondarySwitch?{...copy.secondarySwitch}:initialSecondarySwitch(),
       secondaryReload:copy.secondaryReload?{...copy.secondaryReload}:null,
       // F2: rewind physically carried locations as well as the HUD counters.
       // Archived frames without this optional field keep their old kit.
@@ -703,7 +719,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   s.sitePower=f.sitePower?copySitePowerState(f.sitePower):
    s.site?createSitePowerState(s.site,s.lightingMode):undefined;
   s.illuminationRevision=(s.illuminationRevision??0)+1;
-  s.windows=(f.windows??[]).map(w=>({...w}));
+  s.windows=(f.windows??[]).map(w=>({...w,...(w.covering?{covering:normalizeWindowCovering(w)}:{})}));
   if(f.coverState){
     s.coverState.splice(0,s.coverState.length,
       ...withCoverPropIds(f.coverState).map(c=>({...c})));

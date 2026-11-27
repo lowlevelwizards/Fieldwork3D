@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import type {Session} from '../breach-game.ts';
 import type {ReplayDisclosure} from '../breach-replay-visibility.ts';
+import {readTransportPatientPose} from '../breach-transport-patient-pose.ts';
 import {presentCivilian} from './breach-3d-disclosure-presenter.ts';
 import {createCivilianRig,updateCivilianRig,disposeCivilianRig,type CivilianRig}
  from '../breach-civilian-visuals.ts';
@@ -57,6 +58,6 @@ export function reconcileSceneActorLifetimes<T extends FrameActorVisual>(
    // Hidden rigs have no draw/physics effect; re-pose on the very first
    // visible frame (including replay seeks) rather than every hidden RAF.
    rig.root.visible=visible;
-   if(visible)updateCivilianRig(rig,civil,s.seconds);
+   if(visible)updateCivilianRig(rig,civil,s.seconds,undefined,readTransportPatientPose(civil,s.operators));
  }
 }

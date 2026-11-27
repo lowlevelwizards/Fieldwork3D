@@ -11,6 +11,7 @@ import {windowVisualHeadHeight} from './breach-opening-proportions.ts';
 import {windowApertureSegment,windowBarrierFootprint}
  from './worldgen/window-geometry-contract.ts';
 import {synchronizeWindowBarriers} from './worldgen/window-collider-sync.ts';
+import {normalizeWindowCovering} from './breach-window-coverings.ts';
 import {GLASS_INTEGRITY} from './breach-glass-damage.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const windowStyles:Record<BuildingArchetype,readonly WindowStyle[]>={
@@ -145,7 +146,8 @@ export type WindowState=WindowOpening&{
  shatteredAt?:number;
 };
 export function initializeWindows(openings:readonly WindowOpening[]):WindowState[]{
- return openings.map(w=>({...w,open:false,integrity:GLASS_INTEGRITY,
+ return openings.map(w=>({...w,...(w.covering||w.treatment==='open-curtains'?
+   {covering:normalizeWindowCovering(w)}:{}),open:false,integrity:GLASS_INTEGRITY,
    shattered:false,operable:!w.interior&&w.width>=38&&
     !['picture','storefront','clerestory','wire'].includes(w.style??'standard')}));
 }

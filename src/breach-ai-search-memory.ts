@@ -13,3 +13,8 @@ export function rememberChecked(areas:CheckedArea[],p:Pt,now:number,
  if(areas.length>16)areas.shift();
  return true;
 }
+
+/** A route failure is not evidence that an area has been inspected. */
+export function canRecordInspection(recovering:boolean,remainingDistance:number,now:number,pauseUntil:number):boolean{
+ return !recovering&&remainingDistance<35&&pauseUntil>0&&now>=pauseUntil;
+}

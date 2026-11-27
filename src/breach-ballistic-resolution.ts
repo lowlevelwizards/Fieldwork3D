@@ -1,3 +1,4 @@
+import {windowCoveringPhysicalStrips} from './breach-window-covering-optics.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Ordered physical projectile ray resolution: one authoritative world query
  * shared by firing lane checks and committed projectile impacts.
@@ -29,6 +30,7 @@ export function strikeSurface(from:Pt,aimed:Pt,s:Session,
   end:Pt;surface:ShotEvent['surface'];penetrated:number[];remaining:number;
   paneHits:number[];glassDoorHits:{index:number;fraction:number}[];
   coverHits:{index:number;fraction:number}[];
+  coveringHits:{index:number;fraction:number}[];
   materialHits:MaterialHitEvidence[];stoppedHit?:MaterialHitEvidence}{
   const {walls:WALLS,cover:COVER}=sessionWorldGeometry(s);
   const hits:(BarrierHit & {height?:number;surfaceRef?:SurfaceAttachment})[]=[];
@@ -65,6 +67,17 @@ export function strikeSurface(from:Pt,aimed:Pt,s:Session,
       thickness:Math.min(4,Math.max(1,Math.min(box.w,box.h)*.08)),
       coverIndex:index,...(captureSurface?{height:heightAt(t),surfaceRef:coverAttachment(index,box,from,aimed,t,heightAt(t))}:{})});
   }
+  const coveringHits:{index:number;fraction:number}[]=[];
+  for(const strip of windowCoveringPhysicalStrips(s)){
+   const fraction=segmentImpact(from,aimed,strip.edge);
+   if(fraction===null)continue;
+   const height=heightAt(fraction);
+   if(height<strip.bottom||height>strip.top||coveringHits.some(h=>h.index===strip.windowIndex))continue;
+   coveringHits.push({index:strip.windowIndex,fraction});
+   // Soft coverings take damage but never consume penetration or stop a shot.
+   if(strip.family==='rolling-shutter'||strip.family==='hinged-shutter')
+    hits.push({fraction,material:strip.family==='rolling-shutter'?'steel':'hardwood',thickness:2,...(captureSurface?{height}:{})});
+  }
   const paneHits:{index:number;fraction:number}[]=[];
   for(const [index,window] of s.windows.entries()){
     if(window.shattered||window.open)continue;
@@ -83,6 +96,7 @@ export function strikeSurface(from:Pt,aimed:Pt,s:Session,
   return {end:{x:from.x+(aimed.x-from.x)*t,
     y:from.y+(aimed.y-from.y)*t},surface,
     penetrated:outcome.penetrated,remaining:outcome.remaining,
+    coveringHits:coveringHits.filter(p=>p.fraction<=t+.00001),
     paneHits:paneHits.filter(p=>p.fraction<=t+.00001).map(p=>p.index),
     glassDoorHits:glassDoorHits.filter(p=>p.fraction<=t+.00001),
     coverHits:hits.filter(h=>h.coverIndex!==undefined&&

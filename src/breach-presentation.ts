@@ -5,7 +5,7 @@ import {windowApertureSegment,windowBarrierMatches}
  from './worldgen/window-geometry-contract.ts';
 import {preciseGroundEvidenceAt} from './breach-ground-knowledge.ts';
 import {accessibleExteriorWall} from './breach-site-footprint.ts';
-import {type Session,type ShotEvent,liveVisibility,knownAt} from './breach-game.ts';
+import {type Session,type ShotEvent,liveVisibility,liveBodyVisible,knownAt} from './breach-game.ts';
 
 /**
  * Shared tactical presentation policy.
@@ -107,6 +107,14 @@ export function windowPresentationKnown(
  const coverIndex=windowCoverIndex(s.site,window.id);
  return coverIndex>=0&&s.intel.cover.has(coverIndex);
 }
+/** Covering state is furnishings knowledge, not architectural briefing.
+ * Static WC2 coverings stay remembered after observing the actual window. */
+export function windowCoveringPresentationKnown(s:Session,window:WindowOpening,omniscient=false):boolean{
+ if(omniscient||s.intel.mode==='full-view')return true;
+ if(!s.site)return false;
+ const index=windowCoverIndex(s.site,window.id);
+ return index>=0&&s.intel.cover.has(index);
+}
 /** A wide arch or service counter is architecture, but is NOT a wall
  * index or a discovered room. Hide it until it is physically observed,
  * remembered locally, or legitimately included in the briefing. */
@@ -149,7 +157,7 @@ export function doorVisibility(s:Session,door:Door){
   return {known:live||knownAt(s,p.x,p.y),live};
 }
 export function corpseVisible(s:Session,p:Pt,side:'blue'|'red'){
-  return side==='blue'||liveVisibility(s,p);
+  return side==='blue'||liveBodyVisible(s,p);
 }
 export function contactFade(age:number,duration:number){
   return Math.max(0,Math.min(1,1-age/duration));

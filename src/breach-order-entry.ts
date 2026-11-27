@@ -1,3 +1,4 @@
+import {prepareHandsFree} from './breach-weapon-retention-live.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 8: authored door-tool use and access/lock/latch timings.
  * This consumes a node only on real successful completion.
@@ -61,6 +62,7 @@ export function createEntryOrderHandler(port:OrderExecutionPort){
       failCurrentOrder(s,a,n,'ENTRY TOOL BLOCKED · '+verdict.reason);return true;
     }
     clearCurrentOrderIssue(a);a.velocity=0;rotate(a,angle(a.p,doorCenter(door)),dt);
+    if(method!=='wedge'&&method!=='unwedge'&&!prepareHandsFree(a,dt,s))return true;
     if(a.actionTimer===0){a.lastDoorAt=s.seconds;a.lastDoorId=door.id;
       a.lastDoorMethod='open';}
     // Tool retrieval from a backpack or inaccessible overflow is slower

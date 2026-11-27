@@ -12,12 +12,13 @@ import {resolveMissionKind,captureTargetIndex} from './breach-mission-semantics.
 import type {IntelMode} from './breach-intel.ts';
 import {initialIntel,bindIntelWorld} from './breach-intel.ts';
 import {createObjectiveKnowledge} from './breach-objective-intel.ts';
-import {generateOptionalIntel,generatePrimaryIntel} from './breach-optional-intel.ts';
+import {threatGroupFacts} from './briefing/threat-dossier.ts';
+import {attachIntelEvidence,generateOptionalIntel,generatePrimaryIntel} from './breach-optional-intel.ts';
 import {withActions} from './breach-actor-initial-state.ts';
-import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
+import {issueStarterWeapon} from './breach-weapon-issue.ts';
 import {freshMagazineIssue} from './arsenal/live-magazine-capacity.ts';
 import {enemyKitForEncounter} from './breach-enemy-loadouts.ts';
-import {doctrineForPurpose,doctrinePersonality,doctrineInitialMorale} from './breach-ai-doctrine.ts';
+import {encounterDoctrine,doctrinePersonality,doctrineInitialMorale} from './breach-ai-doctrine.ts';
 import {npcIdentity} from './breach-ai-identity.ts';
 import {createCivilian} from './breach-civilian-types.ts';
 import {civilianRefugePoints} from './breach-civilian-refuge.ts';
@@ -64,7 +65,7 @@ export function assembleSession(index=0,siteSeed?:number,
     }
     const friendly=operators.filter(a=>a.side==='blue');
     friendly.forEach((a,i)=>{
-      const issue=issueWeaponPreset(starterWeaponPreset(a.id));
+      const issue=issueStarterWeapon(a.id);
        a.weapon=issue.weapon;a.weaponConfiguration=issue.weaponConfiguration;
       const issueRounds=freshMagazineIssue(a.id,a.weapon,a.weaponConfiguration);
       a.magazine=issueRounds.magazine;a.reserve=issueRounds.reserve;
@@ -107,7 +108,9 @@ export function assembleSession(index=0,siteSeed?:number,
         a.routineIndex=0;a.routinePauseUntil=1.5+enemyRng()*3;
         a.encounterReactionUntil=Number.POSITIVE_INFINITY;}
       a.health=enemyRng()<.18?3:4;
-      const issued=enemyKitForEncounter(spec,site.seed,i);
+      const group=site.encounter?.groups.find(g=>g.id===spec?.groupId);
+      const issued=enemyKitForEncounter(spec,site.seed,i,group?.behaviorProfile?
+        {kind:group.behaviorProfile,id:group.id}:undefined);
       a.weapon=issued.weapon;
       a.weaponConfiguration=issued.weaponConfiguration;
       a.equipment=issued.equipment;a.wardrobe=issued.wardrobe;
@@ -121,9 +124,8 @@ export function assembleSession(index=0,siteSeed?:number,
       a.injuryStage=0;
       // One seeded draw for temperament when applicable, one for resolve:
       // no extra random draws or coupling between unrelated actors.
-      const group=site.encounter?.groups.find(g=>g.id===spec?.groupId);
       const purpose=group?.purpose;
-      const doctrine=doctrineForPurpose(purpose);
+      const doctrine=encounterDoctrine(group);
       a.npcIdentity=npcIdentity(site.seed,a.id,purpose,spec?.role,site.encounter?.premise,
         group?.behaviorProfile,group?.competenceOverride);
       a.routineExtensionAttempted=false;
@@ -172,7 +174,8 @@ export function assembleSession(index=0,siteSeed?:number,
   // geometry certification. Never consumes the encounter/worldgen RNG.
   const baseDoorRecords=initialDoors(site??null).map((d,i)=>({
     ...d,locked:d.locked??!!(site&&i>2&&i%7===0&&
-      d.kind!=='shutter'&&d.id!=='FRONT')
+      d.kind!=='shutter'&&d.id!=='FRONT'&&d.pairedWith!=='FRONT'&&
+      d.operatingMode!=='automatic'&&d.operatingMode!=='coupled')
   }));
   const proceduralDoors=!!site&&prebuiltSite===undefined&&!site.training;
   const initialDoorRecords=proceduralDoors?
@@ -221,6 +224,7 @@ export function assembleSession(index=0,siteSeed?:number,
       state.optionalIntel=generateOptionalIntel(site,state.primaryIntel.roomId);
     }
   }
+  attachIntelEvidence(state.optionalIntel,threatGroupFacts(state.operators));
   if(state.missionType==='capture'){
     // Respect the mission-specific target role from the actual encounter.
     // Fallback to the legacy first defender for older saved/practice maps.

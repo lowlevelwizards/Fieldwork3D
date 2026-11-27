@@ -1,3 +1,10 @@
+import {retrieveGroundedPrimary} from './breach-grounded-primary.ts';
+import {prepareHandsFree} from './breach-weapon-retention-live.ts';
+import {hardCoveringBlocksPaneContact} from './breach-window-covering-physical.ts';
+import {isCoveringAction,coveringActorAvailable,coveringContactClear,coveringHandContact,desiredCovering,sameCovering,coveringActionSeconds,coveringTransitionClear,COVERING_ACTION_LABELS} from './breach-window-covering-interaction.ts';
+import {normalizeWindowCovering} from './breach-window-coverings.ts';
+import {setSessionWindowCovering} from './breach-window-covering-optics.ts';
+import {releasePhysicalContact} from './breach-physical-contact-anchor.ts';
 import {assessTacticalAction} from './breach-action-assessment.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {PERSON_CONTACT_REACH} from './breach-person-contact-standpoint.ts';
@@ -12,6 +19,8 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {setCivilianState} from './breach-civilian-types.ts';
 import {RESTRAINT_CONTACT_SECONDS} from './equipment-interaction-timings.ts';
+import {makeTransportContact,transportContactDuration} from './breach-transport-contact.ts';
+import {releaseTransport} from './breach-transport-custody.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {canSecureRescuePerson} from './breach-civilian-mission.ts';
 import {CIVILIAN_VOICE_RANGE} from './breach-civilian-context-selection.ts';
@@ -38,8 +47,11 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
  // references evaporate when a plan is edited, completed or replayed.
  const pushTargets=new WeakMap<PlanNode,{token:string;index:number}>();
  const {approach,notify,battleEvent,liveVisibility,movePhysicalProp,hear}=port;
- const failCurrentOrder=(s:Session,a:TeamActor,n:PlanNode,reason:string)=>
+ const failCurrentOrder=(s:Session,a:TeamActor,n:PlanNode,reason:string)=>{
+  if(a.plan[0]?.id===n.id&&isCoveringAction(n.interaction)&&a.physicalContact?.intent==='covering')
+   a.physicalContact=releasePhysicalContact(a.physicalContact,s.seconds);
   failOrder(s,a,n,reason,port.notify);
+ };
  /** Shared GO-only physical stance policy. Full-body contact and movement
   * remain controlled by the real Session geometry and the existing motor.
   * The target can be a person or the precise dropped world item.
@@ -85,9 +97,9 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
     if(!contactCommand&&!near(a.p,n.p,7)){
       // Once an electrical action has begun, losing the contact position
       // cancels it rather than letting an absent hand finish remotely.
-      if((n.interaction==='power-on'||n.interaction==='power-off')&&
+      if((n.interaction==='power-on'||n.interaction==='power-off'||isCoveringAction(n.interaction))&&
          a.actionTimer>0){
-        failCurrentOrder(s,a,n,'POWER CONTROL CONTACT LOST');return true;
+        failCurrentOrder(s,a,n,isCoveringAction(n.interaction)?'COVERING CONTACT LOST':'POWER CONTROL CONTACT LOST');return true;
       }
       approach(a,n.p,dt,s,.65);return true;
     }
@@ -161,6 +173,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       a.velocity=0;
       const toward=Math.atan2(suspect.p.y-a.p.y,suspect.p.x-a.p.x);
       if(!rotate(a,toward,dt,s))return true;
+      if(!prepareHandsFree(a,dt,s))return true;
       if(!continueContact(a,dt,RESTRAINT_CONTACT_SECONDS))return true;
       suspect.restrained=true;suspect.lastCustodyAt=s.seconds;
       // Completing physical cuffs interrupts any pending escape, hand
@@ -256,6 +269,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       a.velocity=0;
       if(!rotate(a,Math.atan2(suspect.p.y-a.p.y,suspect.p.x-a.p.x),dt,s))
         return true;
+      if(!prepareHandsFree(a,dt,s))return true;
       if(!continueContact(a,dt,.9))return true;
       const pistol=suspect.equipment?.secondary;
       if(pistol?.weapon){
@@ -299,7 +313,13 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       a.velocity=0;
       if(!rotate(a,Math.atan2(weapon.p.y-a.p.y,weapon.p.x-a.p.x),dt,s))
         return true;
+      if(weapon.temporaryPlacement&&weapon.ownerId===a.id&&a.groundedPrimaryId===weapon.id&&
+         (a.secondarySwitch?.fraction??0)>0&&!prepareHandsFree(a,dt,s))return true;
       if(!continueContact(a,dt,.75))return true;
+      if(weapon.temporaryPlacement&&weapon.ownerId===a.id&&a.groundedPrimaryId===weapon.id){
+        if(!retrieveGroundedPrimary(s,a)){failCurrentOrder(s,a,n,'PRIMARY OUT OF REACH');return true;}
+        notify(s,a.name+' RETRIEVED PRIMARY');clearCurrentOrderIssue(a);pop(a);return true;
+      }
       weapon.status='secured';weapon.securedById=a.id;
       const message=a.name+' SECURED DROPPED FIREARM';
       notify(s,message);
@@ -316,9 +336,11 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       }
       // A stopped/replanned carrier releases the actual actor where the
       // previous resolved physical tick left it. No off-screen relocation.
-      target.carriedById=null;target.transportMode=null;a.carryingId=null;
-      a.transportLatched=false;
-      a.velocity=0;
+      a.velocity=0;a.actionTimer+=dt;
+      const mode=target.transportMode??'drag';
+      a.transportContact=makeTransportContact(n.id,target,mode,'release',a.actionTimer);
+      if(a.actionTimer<transportContactDuration(mode,'release'))return true;
+      releaseTransport(a,target);
       const message=a.name+' RELEASED '+target.name;
       notify(s,message);
       battleEvent(s,'interaction',a,target.p,message,{
@@ -327,9 +349,14 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
     }
     if(n.interaction==='release-civilian'){
       const person=s.civilians.find(c=>c.id===n.objectId);
-      if(!person||!dropCivilianCustody(person,a)){
+      if(!person||person.carriedById!==a.id||a.carryingId!==person.id){
         failCurrentOrder(s,a,n,'CIVILIAN NOT IN CUSTODY');return true;
       }
+      a.velocity=0;a.actionTimer+=dt;
+      const mode=person.transportMode??'drag';
+      a.transportContact=makeTransportContact(n.id,person,mode,'release',a.actionTimer);
+      if(a.actionTimer<transportContactDuration(mode,'release'))return true;
+      dropCivilianCustody(person,a);
       if(person.rescueTarget&&s.rescue){
         s.rescue.following=null;s.rescue.p=clone(person.p);
       }
@@ -390,7 +417,8 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
           failCurrentOrder(s,a,n,'RESTRAINT NOT AVAILABLE');return true;
         }
         if(a.actionTimer===0)a.lastCivilianContactAt=s.seconds;
-        if(!continueContact(a,dt,RESTRAINT_CONTACT_SECONDS))return true;
+        if(!prepareHandsFree(a,dt,s))return true;
+      if(!continueContact(a,dt,RESTRAINT_CONTACT_SECONDS))return true;
         person.restrained=true;
         person.lastContactAt=s.seconds;person.lastContactPoint=clone(a.p);
         a.lastCivilianContactAt=s.seconds;
@@ -476,6 +504,31 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         a.name+' '+(desired?'RESTORED':'CUT')+' POWER');
       clearCurrentOrderIssue(a);pop(a);return true;
     }
+    if(isCoveringAction(n.interaction)){
+      const w=n.objectId.startsWith('covering:')?s.windows.find(w=>w.id===n.objectId!.slice(9)):undefined;
+      const c=w?normalizeWindowCovering(w):undefined,next=c?desiredCovering(c,n.interaction):null;
+      if(!w||!c||!next||!coveringActorAvailable(a,s)||!coveringContactClear(s,w,c,a.p,a.posture==='crouch')){
+        failCurrentOrder(s,a,n,'COVERING LOCKED OR OUT OF REACH');return true;
+      }
+      if(sameCovering(c,next)){clearCurrentOrderIssue(a);pop(a);return true;}
+      if(!coveringTransitionClear(s,w,c,next,a)){failCurrentOrder(s,a,n,'SHUTTER CLEARANCE BLOCKED');return true;}
+      const point=coveringHandContact(w,c,a,s.seconds,a.physicalContact);
+      a.velocity=0;
+      if(!rotate(a,Math.atan2(point.anchor.point.z-a.p.y,point.anchor.point.x-a.p.x),dt,s))return true;
+      if(s.operators.some(o=>o!==a&&o.health>0&&o.actionTimer>0&&o.plan[0]?.objectId===n.objectId&&isCoveringAction(o.plan[0]?.interaction))){
+        failCurrentOrder(s,a,n,'COVERING IN USE');return true;
+      }
+      a.aim=0;a.fireCd=Math.max(a.fireCd,.25);a.physicalContact=point;a.actionTimer+=dt;
+      if(a.actionTimer<coveringActionSeconds(c))return true;
+      if(!setSessionWindowCovering(s,w.id,next)){
+        failCurrentOrder(s,a,n,'COVERING UNAVAILABLE');return true;
+      }
+      a.physicalContact=releasePhysicalContact(point,s.seconds);
+      const message=a.name+' '+COVERING_ACTION_LABELS[n.interaction]+' '+c.family.replaceAll('-',' ').toUpperCase();
+      hear(s,{x:w.x,y:w.y},c.family==='rolling-shutter'?100:c.family==='hinged-shutter'?65:25,'window');
+      notify(s,message);battleEvent(s,'interaction',a,{x:w.x,y:w.y},message);
+      clearCurrentOrderIssue(a);pop(a);return true;
+    }
     const [kind,id]=n.objectId.split(':');
     if(kind==='prop'&&n.interaction==='push'){
       let resolved=pushTargets.get(n);
@@ -546,7 +599,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
           n.interaction==='close-window'&&!window.open)){
         pop(a);return true; // Already in the state the player requested.
       }
-      if(window&&d(a.p,{x:window.x,y:window.y})<54&&
+      if(window&&!hardCoveringBlocksPaneContact(window,a.p)&&d(a.p,{x:window.x,y:window.y})<54&&
          manipulateWindow(window,n.interaction==='open-window'?'open':'close')){
         s.objectRevision++;
         hear(s,{x:window.x,y:window.y},85,'window');

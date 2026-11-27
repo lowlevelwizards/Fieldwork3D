@@ -1,3 +1,6 @@
+import {normalizeWindowCovering} from './breach-window-coverings.ts';
+import {coveringDamageAfterHit} from './breach-window-covering-physical.ts';
+import {setSessionWindowCovering} from './breach-window-covering-optics.ts';
 import {publishSessionCoverToActiveSite} from './breach-world-context.ts';
 import {recordTrainingCoverStrike} from './training/training-targets.ts';
 /** Stage 10: physical environmental damage & evidence after real fired rays.
@@ -123,5 +126,21 @@ function shatterStruckWindows(s:Session,paneHits:readonly number[],force:number)
  }
 }
 
- return {emitMaterialEvents,damageStruckCover,shatterStruckDoorGlass,shatterStruckWindows};
+ function damageStruckCoverings(s:Session,hits:readonly {index:number;fraction:number}[],force:number,maxFraction=1){
+  const touched=new Set<number>();
+  for(const h of hits){
+   if(h.fraction>maxFraction+.00001||touched.has(h.index))continue;
+   touched.add(h.index);
+   const w=s.windows[h.index],c=w?normalizeWindowCovering(w):undefined;
+   if(!w||!c)continue;
+   const next=coveringDamageAfterHit(c,force);
+   if(!next||!setSessionWindowCovering(s,w.id,next))continue;
+   if(next.integrity===0){
+    const point={x:w.x,y:w.y};
+    hear(s,point,c.family.includes('shutter')?110:40,'window');
+    battleEvent(s,'impact',null,point,c.family.replaceAll('-',' ').toUpperCase()+' DESTROYED');
+   }
+  }
+ }
+ return {emitMaterialEvents,damageStruckCover,shatterStruckDoorGlass,shatterStruckWindows,damageStruckCoverings};
 }

@@ -19,7 +19,9 @@ test('authoritative session delegates enemy actions and delivered warnings',()=>
  assert.match(controller,/scanEnemySoundEvidence\(s,a\)/);
  assert.match(controller,/scanEnemyVisualEvidence\(s,a,dt,inSight\)/);
  assert.match(controller,/reportToListener\(report,recipient.id,recipient.p,/);
- assert.match(controller,/report\.deliveredTo\.includes\(recipient.id\)/);
+ assert.match(controller,/const delivered=new Set\(report.deliveredTo\)/);
+ assert.match(controller,/delivered.has\(recipient.id\)/);
+ assert.match(controller,/report\.deliveredTo\.push\(recipient.id\);delivered\.add\(recipient.id\)/);
  assert.match(controller,/requestClearFireStep\(s,a,target,'muzzle'\)/);
  assert.match(controller,/approach\(a,/);
  assert.doesNotMatch(controller,/Math\.random|requestAnimationFrame|setTimeout|performance\.now/);

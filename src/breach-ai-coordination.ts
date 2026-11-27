@@ -2,6 +2,7 @@
  * Keep prior assignments stable as additional allies hear the message;
  * never use unseen player coordinates or global faction knowledge.
  */
+import type {AiGroupKind} from './breach-ai-group-profiles.ts';
 import type {Pt} from './breach-core.ts';
 import type {OperationKind} from './breach-operations.ts';
 import type {EncounterRole} from './worldgen/encounter-types.ts';
@@ -9,7 +10,8 @@ export type GroupRole='investigate'|'watch'|'support';
 type Listener={id:string;p:Pt};
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function groupResponse(heard:readonly Listener[],
- estimatedThreat:Pt,committed:Readonly<Record<string,GroupRole>>={}
+ estimatedThreat:Pt,committed:Readonly<Record<string,GroupRole>>={},
+ groupKind?:AiGroupKind
 ):Record<string,GroupRole>{
  const sorted=[...heard].sort((a,b)=>
   distance(a.p,estimatedThreat)-distance(b.p,estimatedThreat)||
@@ -21,15 +23,15 @@ export function groupResponse(heard:readonly Listener[],
   const previous=committed[actor.id];
   if(previous)roles[actor.id]=previous;
  }
+ // Loose groups may share a warning but do not necessarily adopt a
+ // formal supporting duty. Existing commitments are never reassigned.
+ const loose=groupKind==='opportunists'||groupKind==='fugitives';
+ const occupied=new Set(Object.values(roles));
  for(const actor of sorted){
   if(roles[actor.id])continue;
-  if(!Object.values(roles).includes('investigate'))
-   roles[actor.id]='investigate';
-  else if(!Object.values(roles).includes('watch'))
-   roles[actor.id]='watch';
-  else if(!Object.values(roles).includes('support'))
-   roles[actor.id]='support';
-  else roles[actor.id]='watch';
+  const role:GroupRole=!occupied.has('investigate')?'investigate':
+    !occupied.has('watch')||loose?'watch':!occupied.has('support')?'support':'watch';
+  roles[actor.id]=role;occupied.add(role);
  }
  return roles;
 }
@@ -42,8 +44,8 @@ export function groupResponse(heard:readonly Listener[],
 export function missionGroupResponse(
  heard:readonly (Listener&{role?:EncounterRole})[],estimatedThreat:Pt,
  committed:Readonly<Record<string,GroupRole>>,mission:OperationKind,
- objective:Pt):Record<string,GroupRole>{
- const roles=groupResponse(heard,estimatedThreat,committed);
+ objective:Pt,groupKind?:AiGroupKind):Record<string,GroupRole>{
+ const roles=groupResponse(heard,estimatedThreat,committed,groupKind);
  if(mission==='clear'||heard.length<2)return roles;
  const ordered=heard.filter(a=>
    (a.role==='sentry'||a.role==='reserve'||a.role==='leader')&&

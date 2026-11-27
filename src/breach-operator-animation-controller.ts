@@ -19,7 +19,18 @@ import {secondaryUpperBodyTargets,LAB_CLOSE_RETENTION}
 import type {OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import * as THREE from 'three';
-import {solveOperatorDirectSlingPose} from './breach-operator-sling-pose.ts';
+import {readSlingKind} from './breach-weapon-retention.ts';
+import {sampleSecondaryRetention} from './breach-secondary-retention.ts';
+import {patientTransportContacts,patientRootTransform,patientWrist,patientChestTilt,patientHipOffset,patientDrape,TRANSPORT_PATIENT_CHEST_Y,TRANSPORT_PATIENT_HIP_Y} from './breach-transport-patient-pose.ts';
+import {sampleLoadedCarrier} from './breach-loaded-carrier-pose.ts';
+import {sampleTransportContact,transportContactHands} from './breach-transport-contact.ts';
+import {oneHandRetentionWeight,retainedActionHands} from './breach-weapon-retention-actions.ts';
+import {sampleRetentionTransition,retentionHandRelease} from './breach-weapon-retention-transition.ts';
+import {solveOperatorDirectSlingPose,commitOperatorSlingRibbon} from './breach-operator-sling-pose.ts';
+import {equipmentExterior} from './operator-equipment-exterior.ts';
+import {retentionPackBounds} from './operator-retention-pack.ts';
+import {retentionShape} from './operator-retention-shape.ts';
+import {slingArtProfile} from './operator-sling-profile.ts';
 import {beginOperatorEquipmentPose,solveOperatorDroppedWeapon,
  finishOperatorEquipmentPose} from './breach-operator-equipment-output.ts';
 import {EQUIPMENT_ATTACHMENT_INDEX as EAI}
@@ -61,7 +72,7 @@ import {choreographV4ReloadHand} from './breach-reload-v4-hand.ts';
 import {prepareOperatorPoseDecision,resolveOperatorPoseDecision}
  from './breach-pose-decision.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
-import {cachedCoupledUpperBody,cachedCoordinatedUpperBody,cachedSupportUpperBody,solveUnifiedFallbackArm,continuousElbowPole} from './breach-unified-upper-body.ts';
+import {cachedCoupledUpperBody,cachedCoordinatedUpperBody,cachedSupportUpperBody,solveUnifiedFallbackArm,solveUnifiedRetentionArm,continuousElbowPole} from './breach-unified-upper-body.ts';
 import type {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
 import {ANATOMY,elbowCorridor,equipmentStockPush} from './breach-anatomy.ts';
 import {handlingProfile} from './breach-handling-profiles.ts';
@@ -88,6 +99,10 @@ function approach(v:number,target:number,rate:number,dt:number){
 const P=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
 const EQUIPMENT_LOCAL_Z=new THREE.Vector3(0,0,1);
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
+  if(p.loadedTransport&&!p.down&&!p.surrender){
+    p={...p,aiming:false,aimBlend:0,firing:false,shotHeading:p.heading,
+      handlingOverride:'ready',poseV3Preview:false};
+  }
   // Timing only for opt-in ?perf=1 tactical rigs. Lab, replay and normal
   // gameplay never pay for these marks or store diagnostic objects.
   const profilePose=r.root.userData.fieldworkProfilePose===true;
@@ -132,7 +147,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   });
   const {physicalSpeed,moving,direction,hipTarget,crouch:postureCrouch}=
     preparedDecision.locomotion;
-  const crouch=postureCrouch+(p.coverStanceDrop??0);
+  const transportContact=!p.down&&!p.surrender&&p.transportContact?
+    sampleTransportContact(p.transportContact):null;
+  const loaded=!p.down&&!p.surrender&&p.loadedTransport?
+    sampleLoadedCarrier(p.loadedTransport,physicalSpeed,p.stride):null;
+  const crouch=postureCrouch+(p.coverStanceDrop??0)+(transportContact?.bend??0)*7+(loaded?.crouch??0);
   frame.hip.position.y=LEG_HIP_HEIGHT-crouch;
   frame.chest.position.y=26-crouch;
   // Low traversal carries a rearward pelvis and counterbalanced thorax.
@@ -186,7 +205,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const motorYaw=-hipTarget;
   const scheduledYaw=p.pelvisYaw??(r.footsteps.mode==='pivot'?
     r.footsteps.pelvisYaw:undefined);
-  r.legacyYaw=scheduledYaw??(p.deterministic||discontinuity||!r.lastPose?
+  r.legacyYaw=p.loadedTransport?.mode==='drag'?-p.heading:scheduledYaw??(p.deterministic||discontinuity||!r.lastPose?
     motorYaw:approach(r.legacyYaw,motorYaw,3.8,dt));
   const headingYaw=r.legacyYaw;
   const turn=turnHierarchy({pelvisYaw:headingYaw,
@@ -285,6 +304,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     (p.posture==='crouch'?.075:0);
   frame.chest.rotation.x=clamp(p.injury===2?.07:p.injury===1?.025:0,0,.09)+
     motion.torsoSide;
+  if(loaded){frame.chest.rotation.z-=loaded.torsoLean;
+    frame.chest.rotation.x+=loaded.torsoSide+loaded.strideSway;}
   frame.chest.rotation.y+=motion.torsoYaw+
     poseWeight*profile.torsoTurn+
     relaxedLowReady*(familyLow?.torsoTurn??0);
@@ -333,6 +354,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // canonicalRoot * legacyFrame(+90 Y) = original Euler(pitch,yaw,roll).
   frame.root.quaternion.copy(
     canonicalRootOrientation(r.legacyPitch,r.legacyYaw,r.legacyRoll));
+  if(p.transportPatient&&p.down){
+    const patient=p.transportPatient;
+    const root=patientRootTransform(patient,frame.root.scale.x);
+    frame.root.position.copy(root.position);frame.root.quaternion.copy(root.quaternion);
+    r.legacyYaw=-patient.heading;r.legacyPitch=0;r.legacyRoll=patient.roll;
+    frame.hip.position.set(patientHipOffset(patient),TRANSPORT_PATIENT_HIP_Y,0);
+    frame.hip.rotation.set(0,0,-.18*patientDrape(patient));
+    frame.chest.position.set(0,TRANSPORT_PATIENT_CHEST_Y,0);frame.chest.rotation.set(0,0,patientChestTilt(patient));
+    frame.head.rotation.set(0,0,.25*patientDrape(patient));
+  }
   const legPose=applyOperatorLegIK(workingRig,p,scratch,targets,kick,headingYaw,smooth);
   // B3: all eight lower-body transforms are now computed off-scene.
   // Only the final B2 publication may write those visible leg nodes.
@@ -356,6 +387,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // Preserve the read-only stock descriptor for the live fitted weapon.
     r.weaponBody.userData.visibleStockContact=
       model.userData.visibleStockContact??null;
+    r.weaponBody.userData.retentionSockets=model.userData.retentionSockets??null;
+    const retentionBounds=new THREE.Box3().setFromObject(model);
+    // Capture before reparenting so cached samples use weapon-art coordinates.
+    const compileRetention=readSlingKind(config?.slots.sling)!=='none';
+    const retentionPoints=compileRetention?[...retentionShape([model],retentionBounds)]:[];
+    // Preserve source geometry for the shape compiler without traversing the
+    // animated weapon parent in world space. Reparent after collecting below.
     while(model.children.length)r.weaponBody.add(model.children[0]);
     r.droppedWeaponBody.userData.visibleStockContact=null;
     // Detachable geometry is copied from precisely the same named AR/AK
@@ -373,11 +411,19 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     if(config){
       const accessories=buildWeaponAccessories(config,r.weaponSteel,r.weaponDark,
        r.weaponLensMaterial);
+      const accessoryBounds=new THREE.Box3().setFromObject(accessories);
+      if(compileRetention)retentionPoints.push(...retentionShape([accessories],accessoryBounds));
+      retentionBounds.union(accessoryBounds);
       while(accessories.children.length)
        r.weaponAccessories.add(accessories.children[0]);
     }
+    r.weaponBody.userData.retentionBounds=retentionBounds;
+    r.weaponBody.userData.retentionShape=retentionPoints;
     r.weaponLightLens=r.weaponAccessories.getObjectByName('weapon-light-lens')??null;
     r.droppedLightLens=null;
+    const slingMaterial=r.slingStraps[0]?.material;
+    if(slingMaterial instanceof THREE.MeshStandardMaterial)
+      slingMaterial.color.setHex(slingArtProfile(config?.slots.sling).color);
     r.visualWeapon=p.weapon;r.visualWeaponConfiguration=config;
     if(profilePose)weaponBuildMs+=performance.now()-buildStart;
   }
@@ -814,10 +860,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }
   }
   r.reachRequest=null;
-  // S6.1: prevent simultaneous shouldered primary and held sidearm.
-  heldWeapon.visible=((!p.down&&!p.surrender)||downProgress<.30)&&
-    (p.secondarySwitch?.fraction??0)<.50;
-  droppedWeapon.visible=(p.down||p.surrender)&&downProgress>=.30&&
+  const slingKind=readSlingKind(config?.slots.sling);
+  const measuredSeats=r.weaponBody.userData.retentionSockets;
+  const hasSuspension=slingKind!=='none'&&!!measuredSeats?.supported.includes(slingKind);
+  const switchPose=sampleSecondaryRetention(p.secondarySwitch?.fraction??0,hasSuspension);
+  const switchingSlung=hasSuspension&&switchPose.retention>0;
+  // Retained primary remains visible while the sidearm is drawn.
+  heldWeapon.visible=!p.primaryGrounded&&((!p.down&&!p.surrender)||downProgress<.30)&&
+    (switchingSlung||(p.secondarySwitch?.fraction??0)<.50);
+  droppedWeapon.visible=!p.primaryGrounded&&(p.down||p.surrender)&&downProgress>=.30&&
     !p.worldWeaponReleased;
   if(droppedWeapon.visible&&r.droppedWeaponBody.children.length===0){
     const buildStart=profilePose?performance.now():0;
@@ -828,6 +879,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       r.weaponSteel,r.weaponDark,config);
     r.droppedWeaponBody.userData.visibleStockContact=
       dropped.userData.visibleStockContact??null;
+    r.droppedWeaponBody.userData.retentionSockets=dropped.userData.retentionSockets??null;
     while(dropped.children.length)
       r.droppedWeaponBody.add(dropped.children[0]);
     if(config){
@@ -1087,16 +1139,67 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const contactReach=!equipmentActive&&!p.down&&!p.surrender&&!p.firing&&
     contactAge>=0&&contactAge<.64?
     Math.sin(Math.PI*contactAge/.64):0;
+  const oneHandWeight=oneHandRetentionWeight(p,preparedDecision.action);
+  const liveOneHand=oneHandWeight>0&&!p.retentionTransition&&!p.retentionPreview;
+  const liveHandsFree=!!p.retentionTransition&&p.retentionTransition.mode!==null;
+  const handsFreeAction=liveHandsFree&&p.retentionTransition!.weight>=1&&
+    p.retentionTransition!.mode!=='held-one';
+  const retainedAction=handsFreeAction?
+    retainedActionHands(p,preparedDecision.action):null;
+  const transportStow=!!(p.transportCarrier||loaded||transportContact)&&hasSuspension&&!p.down&&!p.surrender&&
+    !p.primaryGrounded&&!p.worldWeaponReleased;
+  const retentionMode=transportStow?'front-slung':switchingSlung?'front-slung':liveOneHand?'held-one':p.retentionTransition?
+    p.retentionTransition.mode:p.retentionPreview;
+  const retentionWeight=transportStow?1:switchingSlung?switchPose.retention:liveOneHand?oneHandWeight:p.retentionTransition?.weight??1;
+  const retentionAssembly=retentionMode&&config?resolveWeaponAssembly(config):null;
+  const retentionPack=hasSuspension?
+    retentionPackBounds(r,clothing.packStyle,attachments[EAI.pack]):undefined;
+  const retention=!p.primaryGrounded&&retentionMode&&retentionWeight>0&&!p.down&&!p.surrender&&!p.unarmedPreview&&
+    (transportStow||switchingSlung||!p.firing&&!reloadActive&&(liveOneHand||liveHandsFree||!p.aiming&&!doorActive&&!throwActive&&!treatmentActive&&!equipmentActive)&&
+    (p.secondarySwitch?.fraction??0)===0)?
+    sampleRetentionTransition({mode:retentionMode,
+      sling:readSlingKind(config?.slots.sling),scale:heldWeapon.scale,
+      heldPosition:heldWeapon.position,heldQuaternion:heldWeapon.quaternion,
+      primaryGrip:fit.primary,supportGrip:fit.support,
+      balanceX:retentionAssembly?.balanceX??0,armorPush:p.equipment?.slots.armor==='armor-carrier'?1.2:
+        p.equipment?.slots.armor==='armor-soft'?.6:0,
+      pack:r.pack.visible,chestHeight:frame.chest.position.y,
+      muzzleX:retentionAssembly?.muzzleX??19.5,stockX:retentionAssembly?.stockX??-13.5,
+      sockets:r.weaponBody.userData.retentionSockets,
+      bounds:r.weaponBody.userData.retentionBounds,
+      shape:r.weaponBody.userData.retentionShape,
+      exterior:equipmentExterior(clothing.armorStyle,clothing.rigStyle,clothing.top),
+      packBounds:retentionPack,
+      rigDepth:p.equipment?.slots.rig&&p.equipment.slots.rig!=='rig-none'?1.5:0,
+      beltDepth:p.equipment?.slots.belt&&p.equipment.slots.belt!=='belt-none'?1.25:0,
+      locomotion:{stride:p.stride,speed:physicalSpeed,posture:p.posture,gait:p.gait,
+        injury:p.injury,direction:(p.travelYaw??p.heading)-p.heading},
+      motion:{stride:p.stride,speed:physicalSpeed,acceleration:p.acceleration,
+        momentum:p.motionImpulse,posture:p.posture,gait:p.gait,
+        profile:slingArtProfile(config?.slots.sling),strength:p.labRetentionMotionScale,
+        turning:p.turning,massKg:retentionAssembly?.massKg??3,
+        inertia:retentionAssembly?.rotationalInertia??100}},retentionWeight):null;
+  if(retention){
+    if(transportStow)heldWeapon.visible=true;
+    heldWeapon.position.copy(retention.position);
+    heldWeapon.quaternion.copy(retention.quaternion);
+  }
+  if(p.transportPatient&&p.down){
+    frame.chest.position.set(0,TRANSPORT_PATIENT_CHEST_Y,0);frame.chest.rotation.set(0,0,patientChestTilt(p.transportPatient));
+  }
+  const pairContacts=p.loadedTransport?.patientPose&&!p.down&&!p.surrender?
+    patientTransportContacts(p.loadedTransport.patientPose,p.heading):null;
+  r.root.userData.transportContactErrors=diagnosticsEnabled&&pairContacts?[]:null;
   beginOperatorArmPose(r,scratch);
   // S6.2: single upper-body IK owner. Draw fraction, aim and reload clocks
   // are fixed-step facts; this pure pose is never a second combat state.
   // Keep dedicated door/medical/flash gestures in charge when hands are busy.
   const secondaryTarget=p.equipment?.secondary?.weapon&&
-    (p.secondarySwitch?.fraction??0)>.08&&
+    switchPose.pistol>.08&&
     !p.unarmedPreview&&!p.down&&!p.surrender&&!treatmentActive&&
     !equipmentActive&&!doorActive&&!throwActive?
     secondaryUpperBodyTargets({
-      fraction:p.secondarySwitch?.fraction??0,
+      fraction:switchPose.pistol,
       aim:p.aimBlend??(p.aiming?1:0),moving:physicalSpeed>3,
       obstructed:!!p.obstruction||!!p.clearanceBlocked,
       reloadProgress:p.secondaryReload?
@@ -1109,11 +1212,64 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }):null;
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
-    if(secondaryTarget&&secondaryTarget.weight>0){
+    if(p.transportPatient&&p.down){
+      const base=i===0?ANATOMY.shoulderLeft:ANATOMY.shoulderRight;
+      const shoulder=P(base.x,base.y,base.z),wrist=patientWrist(p.transportPatient,sign);
+      const solved=solveTwoBone(shoulder,P(wrist.x,wrist.y,wrist.z),10,10,P(-4,-6,sign*4),ARM_LIMITS);
+      arm.bend.copy(solved.bendPlane);arm.outOfReach=!solved.reached;
+      r.elbowSpread[i]=Math.max(0,sign*(solved.joint.z-shoulder.z));
+      setOperatorArmSegments(scratch,i as 0|1,shoulder,solved.joint,solved.effector,scratch.sides[i]);
+      setOperatorHandPose(scratch,i as 0|1,solved.effector,0);continue;
+    }
+    if(loaded&&(!transportContact||pairContacts)){
+      const shoulder=shoulderFor(i),target=i===0?loaded.wristLeft:loaded.wristRight;
+      // Convert the paired world anchor through the exact current chest
+      // matrix (including loaded lean and pelvis yaw), not just yaw math.
+      const requested=pairContacts?frame.chest.worldToLocal(pairContacts[i].clone()):P(target.x,target.y,target.z);
+      const pole=p.loadedTransport?.mode==='carry'?
+        (i===0?P(5,-6,-4):P(-5,-5,7)):P(1,-8,sign*5);
+      const solved=solveTwoBone(shoulder,requested,10,10,pole,ARM_LIMITS);
+      if(diagnosticsEnabled&&pairContacts)r.root.userData.transportContactErrors.push(solved.effector.distanceTo(requested));
+      arm.bend.copy(solved.bendPlane);arm.outOfReach=!solved.reached;
+      r.elbowSpread[i]=Math.max(0,sign*(solved.joint.z-shoulder.z));
+      setOperatorArmSegments(scratch,i as 0|1,shoulder,solved.joint,solved.effector,scratch.sides[i]);
+      setOperatorHandPose(scratch,i as 0|1,solved.effector,0);
+      // Align the palm with the finished forearm, so the contact does not
+      // look like a disconnected sideways fist.
+      const palm=operatorHandTransform(scratch,i as 0|1);
+      palm.quaternion.setFromUnitVectors(P(1,0,0),solved.effector.clone().sub(solved.joint).normalize());
+      continue;
+    }
+    if(retention&&!transportContact&&!loaded&&!transportStow&&(!liveOneHand||i===1)&&!retainedAction?.[i]&&(!switchingSlung||switchPose.pistol<=.08)){
+      const shoulder=shoulderFor(i),requested=i===0?retention.left:retention.right;
+      const actualSource=coupled?.arms??coordinatedDynamic?.arms;
+      const corridor=elbowCorridor(handling,sign as -1|1,profile);
+      const sourcePole=actualSource?.[i]?.joint.clone().sub(shoulder)??
+        P(corridor.x,corridor.y,corridor.z).sub(shoulder);
+      const release=retentionHandRelease(retention.mode,sign as -1|1,retentionWeight);
+      const restShoulder=i===0?ANATOMY.shoulderLeft:ANATOMY.shoulderRight;
+      const holdingOne=retention.mode==='held-one'&&i===1;
+      const shoulderRelax=holdingOne?retentionWeight*.78:release;
+      shoulder.lerp(P(restShoulder.x,restShoulder.y-(retention.mode==='side-slung'&&i===1?.44:.28),restShoulder.z),shoulderRelax);
+      const solved=solveUnifiedRetentionArm({
+        shoulder,desired:requested,sourcePole,release,side:sign as -1|1,
+        outboardStow:retention.mode==='side-slung'&&i===1,
+        oneHandHold:holdingOne,poseWeight:retentionWeight,
+        envelope:poseEnvelope??poseClearanceEnvelope(clothing.armorStyle,clothing.rigStyle,clothing.top),
+        scratch,armIndex:i as 0|1
+      }).solution;
+      arm.bend.copy(solved.bendPlane);arm.outOfReach=requested.distanceTo(shoulder)>19.92||!solved.reached;
+      r.elbowSpread[i]=Math.max(0,sign*(solved.joint.z-shoulder.z));
+      setOperatorArmSegments(scratch,i as 0|1,shoulder,solved.joint,solved.effector,scratch.sides[i]);
+      setOperatorHandPose(scratch,i as 0|1,solved.effector,
+        clamp(fit.rotation.y,-1,1)*(1-release)+sign*.14*release);
+      continue;
+    }
+    if(!transportStow&&secondaryTarget&&secondaryTarget.weight>0){
       const shoulder=shoulderFor(i);
       const actualSource=coupled?.arms??coordinatedDynamic?.arms;
-      const source=actualSource?actualSource[i].effector:
-        i===0?fit.support:fit.primary;
+      const source=switchingSlung&&retention?(i===0?retention.left:retention.right):
+        actualSource?actualSource[i].effector:i===0?fit.support:fit.primary;
       const target=i===0?secondaryTarget.support:secondaryTarget.firing;
       const requested=source.clone().lerp(P(target.x,target.y,target.z),
         secondaryTarget.weight);
@@ -1140,7 +1296,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         p.labPistolPitch??0,p.labPistolStance==='retention');
       continue;
     }
-    if((manualShort||manualCarry)&&manualSourceFit&&!equipmentActive){
+    if(!transportContact&&!p.primaryGrounded&&!retention&&(manualShort||manualCarry)&&manualSourceFit&&!equipmentActive){
       const startShoulder=shoulderFor(i);
       const targetShoulder=new THREE.Vector3(
         ...manualPose!.targets[
@@ -1194,6 +1350,34 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         .applyEuler(fit.rotation).add(fit.origin);
       if(i===0&&reloadHandChest)desired.copy(reloadHandChest);
     }
+    if(transportStow&&retention&&p.transportCarrier&&!loaded&&!transportContact){
+      // A compact authored support gesture, not an inferred physical grip.
+      // The real carried subject and elevation remain scene-owned.
+      const carry=p.transportCarrier.mode==='carry';
+      const dx=p.transportCarrier.target.x-p.x,dz=p.transportCarrier.target.y-p.z;
+      const forward=clamp(dx*Math.cos(p.heading)+dz*Math.sin(p.heading),-12,12);
+      desired=shoulder.clone().add(P(carry?-3:Math.min(-3,forward*.55),
+        carry?-5:-13,sign*(carry?1.2:1.8)));
+    }else if(retention&&retainedAction?.[i]){
+      if(treatmentActive)desired=i===0?leftGrip.clone():rightGrip.clone();
+      else if(i===1)desired=leftGrip.clone().add(P(-1,0,3.2));
+      else if(reaching||equipmentActive)desired=leftGrip.clone();
+      // Other actions retain the existing local/world target conversion.
+    }else if(p.primaryGrounded&&(treatmentActive||doorActive||equipmentActive)){
+      if(treatmentActive)desired=i===0?leftGrip.clone():rightGrip.clone();
+      else if(i===1)desired=leftGrip.clone().add(P(-1,0,3.2));
+      else desired=leftGrip.clone();
+    }
+    if(p.primaryGrounded&&!p.down&&!p.surrender&&!treatmentActive&&!equipmentActive&&!doorActive&&!throwActive){
+      desired=P(3,-8.6,sign*9);
+    }
+    if(transportContact&&p.transportContact&&!p.down&&!p.surrender){
+      const target=transportContactHands(p.transportContact,p.heading)[i as 0|1];
+      const local=P(target.x-p.x,5-frame.chest.position.y,target.y-p.z);
+      local.applyAxisAngle(P(0,1,0),-r.legacyYaw);
+      local.applyAxisAngle(P(0,1,0),-frame.chest.rotation.y);
+      desired.copy(P(3,-8.6,sign*9)).lerp(local,transportContact.reach);
+    }
     if(p.unarmedPreview&&p.civilianGesture){
       const gesture=p.civilianGesture;
       const wrist=gesture==='hands-behind'?
@@ -1224,7 +1408,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // V3 arms. Only when neither owns the pair does generic IK run.
     // No second IK pass may undo a validated elbow/armor solution.
     const destinationArms=coupled?.arms??coordinatedDynamic?.arms??null;
-    const pairedArms=!carryTransitionActive&&!authoredBridge&&
+    const pairedArms=!transportContact&&!p.primaryGrounded&&!retention&&!carryTransitionActive&&!authoredBridge&&
       !reaching&&!p.unarmedPreview&&contactReach<.001&&!equipmentActive?destinationArms:null;
     if(pairedArms){
       const limb=pairedArms[i];
@@ -1374,9 +1558,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     arm.bend.copy(solved.bendPlane);
     arm.outOfReach=!reachable||!solved.reached||
       (i===0&&reaching&&contactDistance>19.92);
-    if(!releaseLeft&&i===0)r.gripError=Math.max(r.gripError,
+    if(!retention&&!releaseLeft&&i===0)r.gripError=Math.max(r.gripError,
       desired.distanceTo(solved.effector));
-    if(i===1&&!p.surrender)r.gripError=Math.max(r.gripError,
+    if(!retention&&i===1&&!p.surrender)r.gripError=Math.max(r.gripError,
       desired.distanceTo(solved.effector));
     setOperatorArmSegments(scratch,i as 0|1,
       shoulder,solved.joint,solved.effector,scratch.sides[i]);
@@ -1437,7 +1621,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   applyOperatorTraumaPose(r,p,downProgress,frame);
   // Same-frame held/drop world placement without temporary weapon node writes.
   solveOperatorDroppedWeapon(workingRig,p,scratch,downProgress,smooth);
-  solveOperatorDirectSlingPose(workingRig,p,scratch,physicalSpeed);
+  solveOperatorDirectSlingPose(workingRig,p,scratch,physicalSpeed,retention?.mode,
+    slingKind==='none'?undefined:equipmentExterior(clothing.armorStyle,clothing.rigStyle,clothing.top),retentionPack,retentionWeight);
   finishOperatorPoseFrame(r,p,
     scratch.armOutput.transforms[0].quaternion,
     scratch.armOutput.transforms[3].quaternion,equipment);
@@ -1452,10 +1637,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     finalEquipment.attachmentOutputs);
   // Exactly one commit of the six validated, rig-local output stages.
   commitOperatorPoseOutput(r,p);
+  commitOperatorSlingRibbon(r,p);
   // S6.1: one 3D Glock follows the finished firing wrist, not uncommitted IK.
   // The fixed-step fraction also gives deterministic replay and reversal.
   presentSecondaryDraw(r.hip,r.arms[1].hand,p.equipment?.secondary,
-    p.secondarySwitch?.fraction??0,!p.down&&!p.surrender,
+    switchPose.pistol,!p.down&&!p.surrender,
     p.shotHeading??p.heading,p.labPistolPitch??0,p.labPistolScale,
     p.labPistolContacts?.primaryFromPivot);
   presentSecondaryReload(r.hip,r.arms[0].hand,p.equipment?.secondary,

@@ -1,3 +1,6 @@
+import {hasGroundedPrimary} from './breach-grounded-primary.ts';
+import {retentionBusy} from './breach-weapon-retention-live.ts';
+import {hardWindowCoveringsBlockRay} from './breach-window-covering-optics.ts';
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {advanceInterruptedSecondarySwitch} from './secondary-switching.ts';
 import {GLOCK_9MM_WEAPON,GLOCK_9MM_BALLISTICS} from './secondary-ballistics.ts';
@@ -91,7 +94,7 @@ function random(s:Session){
 /** Shared post-ignition impact authority. Aim and LOS never call these. */
  const shotEnvironment=createShotEnvironmentCommitter({enemies,hear,battleEvent});
  const {emitMaterialEvents,damageStruckCover,
-  shatterStruckDoorGlass,shatterStruckWindows}=shotEnvironment;
+  shatterStruckDoorGlass,shatterStruckWindows,damageStruckCoverings}=shotEnvironment;
 /** One physically authoritative shot resolver for this game session. */
  const {commitShot}=createShotResolver({
   team,enemies,isSeen,liveVisibility,hear,notify,battleEvent,random,
@@ -244,6 +247,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   const muzzle=clearance.muzzle;
   const yaw=muzzle.yaw;
   const from={x:muzzle.x,y:muzzle.z};
+  if(hardWindowCoveringsBlockRay(s,a.p,from,muzzle.y))return;
   const far=muzzleEndpoint(from,yaw,Math.max(40,d(from,point)));
   const friends=team(s).filter(o=>o!==a&&o.health>0).map(safetyBodyFor);
   if(observedCivilianFireLane(s,a,from,muzzle.y,far,14)){
@@ -264,6 +268,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     return at!==null&&at<=fraction+.0001;
   });
   const glassDamage=glassImpactDamage(a.weapon);
+  damageStruckCoverings(s,impact.coveringHits,glassDamage,fraction);
   shatterStruckWindows(s,reachedPanes,glassDamage);
   shatterStruckDoorGlass(s,impact.glassDoorHits,fraction,glassDamage);
   damageStruckCover(s,impact.coverHits,WEAPONS[a.weapon].damage*.36,fraction,a.id);
@@ -482,6 +487,10 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   if(a.secondaryReload&&(a.plan[0]?.kind!=='reload'||
       a.plan[0].id!==a.secondaryReload.orderId))a.secondaryReload=null;
+  if(a.carryingId||a.transportContact){a.aim=0;a.aimSideTarget=0;return;}
+  if(a.retentionHolstering){a.aim=0;return;}
+  if(a.primaryPlacement?.kind==='place'&&a.reload<=0){a.aim=0;return;}
+  if(retentionBusy(a)&&a.reload<=0){a.aim=0;a.aimSideTarget=0;return;}
   // An undone/canceled order does not leave the operator permanently
   // half-drawn or lock the primary once a pistol is unissued.
   if(a.secondarySwitch&&a.plan[0]?.kind!=='switch-weapon'&&
@@ -495,6 +504,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     a.secondarySwitch.fraction>=1?
     a.equipment?.secondary:undefined;
   const sidearm=!!sidearmKit?.weapon;
+  if(hasGroundedPrimary(a)&&!sidearm){a.aim=0;a.aimSideTarget=0;return;}
   // During any incomplete transfer, never fire an invisible rifle or an
   // unheld pistol. A completed draw now follows the SAME firing pipeline.
   if(((a.secondarySwitch?.fraction??0)>0||
@@ -547,7 +557,6 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(a.side==='red'&&(a.encounterReactionUntil??0)>s.seconds){
     a.aim=Math.max(0,a.aim-dt*2);return;
   }
-  if(a.carryingId){a.aim=Math.max(0,a.aim-dt*3);return;}
   // Medical intervention occupies both hands; no free shots while treating.
   if(a.plan[0]?.kind==='treat'||a.treatmentActive){
     a.aim=Math.max(0,a.aim-dt*3);return;
@@ -623,14 +632,18 @@ function fire(s:Session,a:TeamActor,dt:number){
     if(clearance.blocked)return false;
     const from={x:clearance.muzzle.x,y:clearance.muzzle.z};
     const h=aimHeight(candidate.posture==='crouch');
+    if(hardWindowCoveringsBlockRay(s,a.p,from,clearance.muzzle.y))return false;
     if(observedCivilianFireLane(s,a,from,clearance.muzzle.y,
        candidate.p,h)){
       civilianShotWithheld(s,a);return false;
     }
-    const lane=nearShotLane(from,clearance.muzzle.y,candidate.p,h,
+    let lane=nearShotLane(from,clearance.muzzle.y,candidate.p,h,
       world.cover,world.walls,s.doors,friends);
     if(lane.blocker==='friendly')return false;
-    if(lane.blocker==='clear')return true;
+    if(lane.blocker==='clear'){
+      if(!hardWindowCoveringsBlockRay(s,from,candidate.p,clearance.muzzle.y,h))return true;
+      lane={blocker:'cover'};
+    }
     if(lane.blocker!=='cover')return false;
     const preview=strikeSurface(from,candidate.p,s,
       clearance.muzzle.y,h,

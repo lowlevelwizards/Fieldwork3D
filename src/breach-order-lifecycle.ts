@@ -79,7 +79,7 @@ function retireCurrentOrder(a:TeamActor,completed:boolean){
     a.doorTraversal=null;
   a.plan.shift();a.activeNode=-1;a.nav=[];a.autoSidestep=null;
   a.waitRemaining=0;
-  a.actionTimer=0;a.syncReady=null;a.pieIndex=0;
+  a.actionTimer=0;a.transportContact=undefined;a.syncReady=null;a.pieIndex=0;
   a.orderIssue=null;a.motorPause=null;
   a.passageWaitSeconds=0;a.passageStallReported=false;pathFor(a);
 }

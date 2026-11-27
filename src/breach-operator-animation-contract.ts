@@ -28,7 +28,24 @@ import type {CarryLocation,CarryPlacement} from './equipment-carry-placement.ts'
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 
+import type {RetentionTransitionState} from './breach-weapon-retention-transition.ts';
+import type {RetentionPoseMode} from './breach-weapon-retention-pose.ts';
+
 export type OperatorPose={
+  /** Explicit retention audition; live action migration is WR7–WR10. */
+  retentionPreview?:RetentionPoseMode;
+  /** Lab-only multiplier, never serialized to live gameplay. */
+  labRetentionMotionScale?:number;
+  /** Visual-only reciprocal transport, sampled from live/replay roster. */
+  transportCarrier?:{mode:'carry'|'drag';target:{x:number;y:number}};
+  transportedMode?:'carry'|'drag';
+  /** Explicit fixed-step/replay sample; no renderer-owned timer. */
+  retentionTransition?:RetentionTransitionState;
+  /** Session owns the actual world primary, even while this actor uses a sidearm. */
+  primaryGrounded?:boolean;
+  transportContact?:import('./breach-transport-contact.ts').TransportContact;
+  transportPatient?:import('./breach-transport-patient-pose.ts').TransportPatientPose;
+  loadedTransport?:import('./breach-loaded-carrier-pose.ts').LoadedTransportPose;
   /** V3 whole-arm fitting; enabled by the live tactical renderer. */
   poseV3Preview?:boolean;
   /** Diagnostic-only: compare against the original strict contact budget. */

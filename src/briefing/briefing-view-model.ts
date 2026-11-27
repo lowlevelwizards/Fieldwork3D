@@ -47,7 +47,7 @@ const primaries:Record<OperationKind,string>={
  capture:'Secure the designated target.',
 };
 const claimGroup=(claim:IntelClaim):Exclude<BriefingTab,'contract'>=>{
- if(['threat','prepared-resistance','civilian-presence'].includes(claim.id))return 'threat';
+ if(claim.id.startsWith('threat-')||['threat','prepared-resistance','civilian-presence'].includes(claim.id))return 'threat';
  if(['floor-plan','layout-unknown','vacant-record'].includes(claim.id))return 'site';
  return 'case';
 };
@@ -74,6 +74,9 @@ export function createBriefingCardModel(
   threat?.confidence==='credible'?'Occupants reported':
   threat?.confidence==='unverified'?'Possible hostiles':'Unconfirmed';
  const followUp=dossier?.campaign?.followUp;
+ if(followUp?.recoveredEvidenceSummary)reports.case.push({id:'recovered-case-evidence',
+  text:'Physically recovered in the preceding operation: '+followUp.recoveredEvidenceSummary+'.',
+  source:'records',confidence:'confirmed'});
  return {
   title:dossier?.identity.title??brief.code,
   missionLabel:brief.name,

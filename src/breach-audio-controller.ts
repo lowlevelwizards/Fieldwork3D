@@ -18,7 +18,7 @@ import {withFieldworkLiveMix} from './breach-live-sound-pack.ts';
 import {acousticResponseForCue} from './breach-audio-environment.ts';
 import {ReplaySoundTimeline,replayDoorSoundId}
   from './breach-replay-audio.ts';
-import {liveAudioCuesForEvent,unheardLiveAudioEvents} from './breach-audio-event-cues.ts';
+import {liveAudioCuesForEvent,unheardLiveAudioEvents,hostileWarningCue} from './breach-audio-event-cues.ts';
 import {replayAudioListener,replayBodycamPan}
   from './breach-replay-bodycam-controls.ts';
 
@@ -182,6 +182,7 @@ export function createBreachAudioController(config:{
   function playLiveEventCue(id:string,source?:Pt,scale=1):boolean{
     const {state,selected}=config.getContext();
     const listener=selectedActor(state,selected)?.p;
+    if(id.startsWith('people.enemy_')&&(!source||!listener))return true;
     if(!source||!listener)return playApprovedCue(id,scale,0,false,1,source);
     const radius=id==='combat.flash'?420:
       id.startsWith('doors.')?265:id.startsWith('equipment.')?145:190;
@@ -314,9 +315,9 @@ export function createBreachAudioController(config:{
       const p=event.p;
       const level=p&&listener?heardIntensity(p,listener,
         event.kind==='gunshot'?
-          WEAPONS[event.weapon??'carbine'].noise:150,
+          WEAPONS[event.weapon??'carbine'].noise:event.kind==='warning'?190:150,
         state.doors,WALLS):.35;
-      if(level<.025)continue;
+      if(level<.025||event.kind==='warning'&&(!p||!listener))continue;
       const pan=p&&listener?
         (bodycamActive&&listenerActor?
           replayBodycamPan(p,listenerActor):(p.x-listener.x)/210):0;
@@ -331,6 +332,9 @@ export function createBreachAudioController(config:{
             level*cue.bodyLevel,pan,true);
         }
         // Hit confirmation is never replayed unless disclosed independently.
+      }else if(event.kind==='warning'){
+        const cue=hostileWarningCue(event.description??'');
+        if(cue)playApprovedCue(cue,Math.min(level*.65,.7),pan,true,1/rateScale,p??undefined,hashString(event.id));
       }else{
         const tones={door:[160,.16],flash:[1350,.65],
           reload:[280,.09],interaction:[210,.12],

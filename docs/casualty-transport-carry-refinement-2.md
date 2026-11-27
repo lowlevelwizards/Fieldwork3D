@@ -1,0 +1,2 @@
+# Carry refinement 2
+Shift from across-back silhouette to a single-shoulder saddle. Pelvis is raised relative to chest, trunk axis is fore/aft on the outside of the helmet, and head/limbs drape down. Left hand supports forward torso; right hand supports trailing thigh, with independent elbow poles. Carrier counterleans. Lab carry camera frames closer. Drag mechanics and silhouette unchanged. Candidate requires rendered inspection.

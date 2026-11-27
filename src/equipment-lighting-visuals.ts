@@ -1,3 +1,4 @@
+import {windowCoveringSightSegments} from './breach-window-covering-optics.ts';
 /** L1.3: shared, render-only fixture state and physically clipped footprints.
  * This computes NO observations, fog, or illumination authority. Both Canvas
  * and Three consume the same source topology, power revision and obstacles.
@@ -58,7 +59,7 @@ export function fixtureLightingVisuals(s:Session):FixtureLightingVisuals{
  const program=planSiteLighting(site,s.lightingMode,power);
  const active=new Map(program.fixtures.map(f=>[f.id,f]));
  // Same opaque walls, door leaves and tall cover as sight/weapon lights.
- const blockers=buildIlluminationBlockers(site.walls,s.doors,s.coverState);
+ const blockers=buildIlluminationBlockers(site.walls,s.doors,s.coverState,windowCoveringSightSegments(s));
  const fixtures:FixtureVisual[]=[];
  let activeCount=0;
  for(const authored of siteLightingTopology(site).slice(0,FIXTURE_VISUAL_CAP)){

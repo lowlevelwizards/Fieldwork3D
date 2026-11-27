@@ -2,6 +2,7 @@
  * Presentation only: no stock, throw, animation, or collision authority.
  * Keep the four-pouch ceiling consistent with FIELD_ITEMS.flashbang.
  */
+import type {EquipmentExterior} from './operator-equipment-exterior.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {FIELD_ITEMS,initialFieldInventory,type FieldCarryLocation} from './equipment-field-inventory.ts';
 
@@ -41,6 +42,24 @@ export function flashCanisterSocket(location:VisibleFlashLocation,index:number){
   case 'backpack':return {bone:'pack' as const,
    x:-1.1,y:2.2-row*6.2,z:column?4.4:-4.4};
  }
+}
+
+/** Visual mount contact only. Keep issued charges and access location
+ * unchanged even when a legacy manifest points at an absent carrier.
+ * A rig-less operator may clip the visible canister to an equipped belt;
+ * without any visible mounting gear the item remains concealed. */
+export function fittedFlashCanisterSocket(location:VisibleFlashLocation,index:number,
+ fit:EquipmentExterior,hasRig:boolean,hasBelt:boolean,hasPack:boolean){
+ if(location==='backpack')return hasPack?flashCanisterSocket(location,index):null;
+ if(location==='belt'||!hasRig)
+  return hasBelt?flashCanisterSocket('belt',index):null;
+ const i=Math.max(0,Math.min(3,Math.floor(index)));
+ const z=[-4.8,4.8,-1.6,1.6][i],y=-2.6;
+ // The cylinder radius is 1.25; intersect the mount slightly so the
+ // canister is visibly clipped to the actual textile, not hovering.
+ const surface=Math.max(...[-1.8,0,1.8].flatMap(dy=>
+  [-.8,0,.8].map(dz=>fit.front(y+dy,z+dz))));
+ return {bone:'chest' as const,x:surface+.91,y,z};
 }
 
 /** Wedges are explicitly equipped, and physically consumed by the existing

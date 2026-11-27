@@ -17,7 +17,7 @@ export function recordRejectedMovementCommit(
  at:number,dt:number
 ):number{
  const order=actor.plan[0];
- if(!order||!['move','pie','door','sync'].includes(order.kind)){
+ if(!order||!['move','pie','door','sync','evacuate'].includes(order.kind)){
   rejected.delete(actor);
   return actor.blockedTime;
  }

@@ -1,3 +1,5 @@
+import {coveringContactPoint} from './breach-window-covering-interaction.ts';
+import {normalizeWindowCovering} from './breach-window-coverings.ts';
 /** A single read-only selection marker for the actual authored target.
  * Selection belongs to a stable actor/prop ID, never to an approximate tap
  * that could silently switch to someone else after the plan is queued.
@@ -32,6 +34,11 @@ export function selectedActionTarget(s:Session,a:TeamActor,
  const patient=node.kind==='treat'||node.kind==='evacuate'?
    node.patientId:null;
  const id=patient??node.objectId??'';
+ if(id.startsWith('covering:')){
+  const w=s.windows.find(w=>w.id===id.slice(9)),c=w?normalizeWindowCovering(w):undefined;
+  if(!w||!c||!liveVisibility(s,{x:w.x,y:w.y}))return null;
+  return {p:coveringContactPoint(w,c,node.p,a.posture==='crouch').p,kind:'prop'};
+ }
  if(id.startsWith('window:')){
   const window=s.windows.find(w=>w.id===id.slice(7));
   if(!window)return null;

@@ -1,3 +1,6 @@
+import {hardCoveringBlocksPaneContact} from './breach-window-covering-physical.ts';
+import {isCoveringAction} from './breach-window-covering-interaction.ts';
+import {planWindowCovering} from './breach-game.ts';
 import {assessTacticalAction} from './breach-action-assessment.ts';
 import {captureVitalStatus} from './breach-capture-vitals.ts';
 /** Authoritative contextual command mutations, independent of button DOM.
@@ -33,6 +36,7 @@ export type ContextCommandResult={
  /** Arms player-directed route placement; it does not silently extract. */
  armTransport?:{patientId:string;mode:'drag'|'carry'};
 };
+import {projectedTransportPatient,transportContextAllowed} from './breach-transport-controls.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function dispatchTacticalContextCommand(input:{
  state:Session;selected:string;actor:TeamActor;
@@ -52,6 +56,8 @@ export function dispatchTacticalContextCommand(input:{
    return {handled:true,outcome:accepted?'accepted':'rejected',
      ...(!accepted?{failureReason}:{}),...options};
  };
+ if(projectedTransportPatient(a.carryingId,a.plan)&&!transportContextAllowed(action))
+   return finish(false,'HANDS OCCUPIED · SET DOWN CASUALTY FIRST');
  if(action.startsWith('ctxTreat:')){
   const patientId=action.slice('ctxTreat:'.length);
   const at=node?.p??finalPoint(a);
@@ -59,6 +65,11 @@ export function dispatchTacticalContextCommand(input:{
     .some(patient=>patient.id===patientId&&patient.canTreat);
   return finish(permitted&&planMedicalTreatment(state,selected,patientId,node?.id),
     'PATIENT STABLE, UNREACHABLE, OR TREATMENT SUPPLIES UNAVAILABLE');
+ }
+ if(action.startsWith('ctxCovering:')){
+  const [,method,...id]=action.split(':');
+  return finish(isCoveringAction(method)&&planWindowCovering(state,selected,id.join(':'),method,node?.id),
+    'COVERING LOCKED, UNKNOWN OR OUT OF REACH');
  }
  if(action.startsWith('ctxPower:')){
   const parts=action.split(':');
@@ -273,7 +284,7 @@ export function dispatchTacticalContextCommand(input:{
    let nearby:typeof state.windows[number]|undefined;
    let best=54*54;
    for(const w of state.windows){
-     if(!w.operable||w.shattered)continue;
+     if(!w.operable||w.shattered||hardCoveringBlocksPaneContact(w,at))continue;
      const dx=w.x-at.x,dy=w.y-at.y,dist=dx*dx+dy*dy;
      if(dist<best){best=dist;nearby=w;}
    }

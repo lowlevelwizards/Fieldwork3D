@@ -150,6 +150,12 @@ test('D15.5E authored RELEASE stops physical transport at GO without moving the 
   assert.equal(carrier.carryingId,target.id,'planning does not release');
   toggling(s);
   stepSession(s,1/60);
+  assert.equal(carrier.carryingId,target.id,'release contact is timed, not instant');
+  assert.equal(carrier.transportContact?.kind,'release');
+  for(let i=0;i<60&&carrier.carryingId;i++){
+   stepSession(s,1/60);
+   assert.ok(Math.hypot(target.p.x-resting.x,target.p.y-resting.y)<.001,'no displacement during release');
+  }
   assert.equal(carrier.carryingId,null);
   assert.equal(target.carriedById,null);
   assert.ok(Math.hypot(target.p.x-resting.x,target.p.y-resting.y)<.001);

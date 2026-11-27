@@ -27,7 +27,18 @@ export function downedTransportPresentation(
    carrier.heading+Math.PI/2:
    length>3?Math.atan2(dy,dx):carrier.heading;
  return {carrierId:carrier.id,mode,heading,
-  // Match the established civilian shared-rig visual elevations.
+  // The compact simulation support frame now follows the carrier. The
+  // actual paired torso/limb pose is supplied in CT8–CT10.
   lift:mode==='carry'?18:2,
   carrierPosition:carrier.p};
+}
+
+/** SR15: only reciprocal recorded custody supplies a carrier animation.
+ * Includes civilians without coupling to any particular actor class. */
+export function carrierTransportPresentation(
+ carrier:Carrier,subject:{id:string;carriedById?:string|null;transportMode?:TransportMode|null;p:Pt}|undefined
+):{mode:TransportMode;target:Pt}|undefined{
+ if(carrier.health<=0||!subject||carrier.carryingId!==subject.id||
+  subject.carriedById!==carrier.id)return undefined;
+ return {mode:subject.transportMode==='carry'?'carry':'drag',target:subject.p};
 }

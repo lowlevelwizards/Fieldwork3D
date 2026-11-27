@@ -39,6 +39,7 @@ export function negotiateMotorPassage(
   // Exactly one actual, opposition-only retreat per authored goal.
   // Ordinary rank/spacing waits NEVER propose reverse movement.
   if(decision.reason==='opposing'&&a.passageWaitSeconds>=1.25&&
+      !a.carryingId&&
      !a.traversal&&!a.traversalPending){
     const retreatKey=(a.plan[0]?.id??'motor')+':'+a.routeGoalKey;
     if(a.passageRetreatKey!==retreatKey){

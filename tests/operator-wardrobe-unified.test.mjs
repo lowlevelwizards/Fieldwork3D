@@ -35,5 +35,5 @@ test('clothing, equipment and gloves are selected with one item card',()=>{
  }
  const result=selectWardrobeItem(kit,wardrobe,'armorStyle','does-not-exist');
  assert.equal(result.kit,kit);
- assert.equal(selectWardrobeItem(kit,wardrobe,'top','t-shirt').kit,kit);
+ assert.equal(selectWardrobeItem(kit,wardrobe,'top','t-shirt').kit.slots.top,'top-light');
 });

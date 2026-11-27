@@ -17,6 +17,10 @@ export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
   kind?:'hinged'|'shutter'|'sliding';
   slideDirection?:-1|1;
   pairedWith?:string;
+  /** Pair geometry is independent unless the mechanism explicitly links it. */
+  operatingMode?:'independent'|'coupled'|'automatic';
+  /** Fixed simulation clock of the last sensor occupancy. */
+  sensorOccupiedAt?:number;
   hinge?:'a'|'b';swing?:-1|1;openFraction?:number;
   angularVelocity?:number;resistance?:number;kickImpulse?:number;heldBy?:string|null;latchIntegrity?:number;frameIntegrity?:number;
   kicks?:number;lastKickAt?:number;forced?:boolean;locked?:boolean;jammed?:boolean;

@@ -4,6 +4,7 @@ import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import * as THREE from 'three';
 import {resetOperatorPoseOutput} from './breach-operator-pose-output.ts';
 import {releaseOperatorAnimationFrame} from './breach-operator-animation-frame.ts';
+import {createSlingRibbonGeometry} from './operator-sling-ribbon.ts';
 import {CORE_TORSO_CONTACT} from './operator-garment-contact-surface.ts';
 import {operatorPixelTextures,type PixelSurface} from './rendering/pixel-materials.ts';
 import {canonicalRootOrientation,LEGACY_FRAME_YAW,createCanonicalAttachment} from './operator-axis-convention.ts';
@@ -296,12 +297,19 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   droppedGun.userData.fieldworkRimRegion='hard-shell';
   weapon.add(weaponBody,weaponAccessories);
   droppedGun.add(droppedWeaponBody,droppedAccessories);
-  // Three geometry-reused fabric spans connect gun mounts with shoulder
-  // routing. No ropes, IK targets, simulated joints or per-frame geometry.
-  const slingStraps=[0,1,2].map(()=>{
-   const strap=block(chest,0,0,0,.8,1,.7,vest);
+  // One dynamic ribbon; keep two invisible registry slots until the
+  // pose-output architecture cleanup so old diagnostic IDs remain stable.
+  const slingMaterial=mat(0x4e5544,'fabric');
+  slingMaterial.userData.fieldworkFabric=true;
+  slingMaterial.side=THREE.DoubleSide;
+  const slingStraps=[0,1,2].map(i=>{
+   const strap=new THREE.Mesh(i===0?createSlingRibbonGeometry():
+    new THREE.BufferGeometry(),slingMaterial);
+   strap.name=i===0?'fieldwork-sling-webbing':'fieldwork-sling-reserved-'+i;
+   strap.userData.fieldworkSlingRibbon=i===0;
+   strap.frustumCulled=false;
    strap.castShadow=false;strap.receiveShadow=false;strap.visible=false;
-   return strap;
+   chest.add(strap);return strap;
   });
   // Chunky symbolic control; x/y/z always come from real receiver socket.
   // Keep distinct from the built weapon silhouette and any ballistic mesh.

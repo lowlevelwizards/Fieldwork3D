@@ -1,0 +1,2 @@
+# WR4 — Retention pose library
+Explicit, preview-only one-hand retained and front/side/back slung poses use the existing staged equipment output and arm IK; incompatible sling requests are rejected. The weapon's current rendered grip is preserved for one-hand support. Existing sidearm holstering remains the authority; actual grounded ownership is deliberately deferred to WR10. No action automatically selects these poses yet. Art tuning and visual contact review remain required.

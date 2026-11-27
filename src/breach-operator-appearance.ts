@@ -5,13 +5,14 @@
 import {ensureRigFlashCanisters,ensureRigWedgeMeshes,
  ensureRigFlexCuffMeshes,type OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
-import {visibleFlashCanisters,flashCanisterSocket,visibleDoorWedges,wedgeSocket,
+import {visibleFlashCanisters,fittedFlashCanisterSocket,visibleDoorWedges,wedgeSocket,
  visibleFlexCuffs,flexCuffSocket} from './equipment-field-visuals.ts';
 import * as THREE from 'three';
 import {operatorPixelTextures} from './rendering/pixel-materials.ts';
 import {syncHipSecondaryVisual} from './secondary-holster-visual.ts';
 import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
 import {resolvedWardrobe} from './operator-wardrobe-data.ts';
+import {equipmentExterior} from './operator-equipment-exterior.ts';
 import {SKIN_TONES,seededSkinTone} from './operator-identity-palette.ts';
 import {isH1ModernHelmet,resolveHelmetSetup} from './operator-helmet-setup-policy.ts';
 import {headwearSolidHex} from './operator-headwear-colors.ts';
@@ -200,10 +201,14 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     visibleFlashes.length===0&&p.equipment?.fieldInventory===undefined;
   r.flashCanisters.forEach((canister,i)=>{
     const placed=visibleFlashes[i];
-    canister.visible=!!placed||(i===0&&legacySmoke);
-    if(!canister.visible)return;
-    const socket=flashCanisterSocket(placed?.location??'belt',
-      placed?.index??0);
+    const issued=!!placed||(i===0&&legacySmoke);
+    const socket=issued?fittedFlashCanisterSocket(placed?.location??'belt',
+      placed?.index??0,equipmentExterior(clothing.armorStyle,clothing.rigStyle,clothing.top),
+      rigItem!=='rig-none'&&clothing.rigStyle!=='no-rig',
+      gear?.belt!=='belt-none'&&clothing.beltStyle!=='no-belt',
+      packItem!=='backpack-none'&&clothing.packStyle!=='no-pack'):null;
+    canister.visible=!!socket;
+    if(!socket)return;
     const parent=socket.bone==='chest'?r.chest:
       socket.bone==='pack'?r.pack:r.hip;
     if(canister.parent!==parent)parent.add(canister);
@@ -297,7 +302,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     r.skinMaterial:sleeveMaterial;
   }
   for(const leg of r.feet){
-   const hem=p.wardrobe?.trouserHem??'bloused';
+   const hem=['jeans','civilian-cargo','track-pants'].includes(clothing.trousers)?'unbloused':p.wardrobe?.trouserHem??'bloused';
    const shortHem=hem==='bloused'||hem==='cuffed';
    setSegmentCut(leg.lower,clothing.trousers==='base-shorts'||hem==='unbloused'?'full':hem);
    const shaft=leg.lower.userData.garmentBootShaft as THREE.Mesh|undefined;
@@ -380,7 +385,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     else if(channel==='top'&&isCasualShirtCut(clothing.top)){
      const defaults={
       't-shirt':'charcoal','button-up-shirt':'khaki',
-      'polo-shirt':'navy','tank-top':'olive-drab'
+      'polo-shirt':'navy','tank-top':'olive-drab','hoodie':'charcoal','casual-jacket':'slate'
      } as const;
      r.colors.set(material,new THREE.Color(garmentSolidHex(defaults[clothing.top])));
     }

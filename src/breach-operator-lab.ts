@@ -57,7 +57,8 @@ import {sampleLabPistolFrame,isLabPistolTrack,LAB_PISTOL_PREVIEW_SCALE}
 import {labPistolContacts} from './operator-lab-pistol-contacts.ts';
 import {presentLabBerettaPreview,clearLabBerettaPreview}
  from './operator-lab-beretta-preview.ts';
-import {initialWeaponConfiguration,selectWeaponFamilyPreset}
+import {labRetentionSample} from './operator-lab-retention.ts';
+import {initialWeaponConfiguration,selectWeaponFamilyPreset,setWeaponAttachment}
  from './equipment-weapon-assemblies.ts';
 import {loadArsenalBuildLibrary} from './arsenal/saved-builds.ts';
 import {arsenalRecipeToLegacy,readArsenalRecipe,type ArsenalRecipeV2}
@@ -804,6 +805,31 @@ const poseRigSelect=choose<HTMLSelectElement>('poseRig');
 const poseUniformSelect=choose<HTMLSelectElement>('poseUniform');
 const poseAnimationSelect=choose<HTMLSelectElement>('poseAnimation');
 const poseStrictContact=choose<HTMLInputElement>('poseStrictContact');
+const retentionSling=choose<HTMLSelectElement>('retentionSling');
+const retentionMode=choose<HTMLSelectElement>('retentionMode');
+const retentionWeight=choose<HTMLInputElement>('retentionWeight');
+const retentionCycle=choose<HTMLInputElement>('retentionCycle');
+const retentionStatus=choose<HTMLOutputElement>('retentionStatus');
+const retentionRate=choose<HTMLSelectElement>('retentionRate');
+const retentionMotion=choose<HTMLSelectElement>('retentionMotion');
+let manualRetentionWeight=Number(retentionWeight.value);
+retentionWeight.addEventListener('input',()=>{manualRetentionWeight=Number(retentionWeight.value);});
+retentionCycle.addEventListener('input',()=>{if(!retentionCycle.checked)retentionWeight.value=String(manualRetentionWeight);});
+for(const [id,value] of [['retentionHeld',0],['retentionSettled',1]] as const){
+ choose<HTMLButtonElement>(id).addEventListener('click',()=>{
+  retentionCycle.checked=false;manualRetentionWeight=value;retentionWeight.value=String(value);draw();
+ });
+}
+diagnostic.add(new Option('SLING WEBBING PATH','retention-route'));
+choose<HTMLButtonElement>('retentionRoute').addEventListener('click',()=>{
+ diagnostic.value=diagnostic.value==='retention-route'?'off':'retention-route';draw();
+});
+diagnostic.add(new Option('SLING SOCKETS / RETENTION','retention'));
+choose<HTMLButtonElement>('retentionSockets').addEventListener('click',()=>{
+ diagnostic.value=diagnostic.value==='retention'?'off':'retention';draw();
+});
+for(const control of [retentionSling,retentionMode,retentionWeight,retentionCycle,retentionRate,retentionMotion])
+ control.addEventListener('input',()=>draw());
 poseStrictContact.addEventListener('change',()=>draw());
 poseWeaponSelect.add(new Option('No Weapon','none'));
 // Show every real Arsenal factory reference, including FAL, FNC and G36.
@@ -1316,7 +1342,7 @@ function cameraFitZoom(mode:LabCameraFraming){
 
 const debug=new THREE.Group();scene.add(debug);
 const markerColors=[0xf1b77d,0x7cbbae,0xf2d88b,0xa0a8df];
-const markers=Array.from({length:8},(_,i)=>{
+const markers=Array.from({length:10},(_,i)=>{
   const mesh=new THREE.Mesh(new THREE.SphereGeometry(1.45,9,7),
     new THREE.MeshBasicMaterial({color:markerColors[i%4],
       depthTest:false}));
@@ -1782,6 +1808,50 @@ function showDiagnostics(){
       put(i+2,world.x,world.y,world.z);
     }
   }
+  if(layer==='retention-route'){
+    rig.root.updateMatrixWorld(true);
+    const mesh=rig.slingStraps[0];
+    if(!mesh?.visible){diagnosticText.textContent='NO VISIBLE WEBBING';return;}
+    const position=mesh.geometry.getAttribute('position');
+    const knots=Math.floor(mesh.geometry.drawRange.count/6)+1;
+    let length=0;
+    for(let i=0;i<knots;i++){
+      world.fromBufferAttribute(position,i*2);
+      world2.fromBufferAttribute(position,i*2+1);
+      world.add(world2).multiplyScalar(.5);
+      mesh.localToWorld(world);
+      if(i>0){
+        world2.fromBufferAttribute(position,(i-1)*2);
+        const index=(i-1)*2+1;
+        world2.set((world2.x+position.getX(index))*.5,
+          (world2.y+position.getY(index))*.5,(world2.z+position.getZ(index))*.5);
+        mesh.localToWorld(world2);
+        length+=world.distanceTo(world2);
+      }
+      if(i<markers.length)put(i,world.x,world.y,world.z);
+    }
+    diagnosticText.textContent='WEBBING KNOTS '+knots+' · LENGTH '+length.toFixed(1)+
+      '\\nELBOW SPREAD '+rig.elbowSpread.map(x=>x.toFixed(1)).join(' / ')+
+      ' · REACH '+rig.arms.map(a=>a.outOfReach?'LIMIT':'OK').join(' / ');
+    return;
+  }
+  if(layer==='retention'){
+    rig.root.updateMatrixWorld(true);
+    const sockets=rig.weaponBody.userData.retentionSockets;
+    if(!sockets||!rig.weapon.visible){
+      diagnosticText.textContent='NO VISIBLE PRIMARY SOCKETS';return;
+    }
+    const points=[sockets.rear,sockets.front,sockets.single];
+    points.forEach((point,i)=>{
+      if(!point)return;
+      world.set(point.x,point.y,point.z+.15);
+      rig!.weapon.localToWorld(world);
+      put(i,world.x,world.y,world.z);
+    });
+    diagnosticText.textContent='REAR / FRONT / SINGLE · '+sockets.supported.join(' / ').toUpperCase()+
+      '\nWEBBING SEGMENTS '+(rig.slingStraps[0]?.visible?rig.slingStraps[0].geometry.drawRange.count/6:0);
+    return;
+  }
   if(layer==='weapon'){
     rig.root.updateMatrixWorld(true);
     const g=weaponGrips(labWeapon());
@@ -1999,7 +2069,20 @@ function draw(){
   const savedWeaponConfig=track!=='reload-shotgun'&&poseArsenalRecipe&&
    poseArsenalRecipe.weapon===currentWeapon?
    arsenalRecipeToLegacy(poseArsenalRecipe):undefined;
-  const exactWeaponConfig=savedWeaponConfig??poseWeaponConfig;
+  const sourceWeaponConfig=savedWeaponConfig??poseWeaponConfig;
+  const exactWeaponConfig=!sidearm&&weapon.value!=='none'&&retentionSling.value!=='build'?
+   setWeaponAttachment(sourceWeaponConfig??initialWeaponConfiguration(currentWeapon),'sling',retentionSling.value):
+   sourceWeaponConfig;
+  const retentionSample=!sidearm&&weapon.value!=='none'&&!motion.down&&
+   !motion.reload&&motion.doorAt<0&&motion.throwAt<0&&!contactTrack?
+   labRetentionSample(retentionMode.value,exactWeaponConfig?.slots.sling,
+     manualRetentionWeight,retentionCycle.checked,clock*Number(retentionRate.value)):undefined;
+  if(retentionCycle.checked&&retentionSample)retentionWeight.value=String(retentionSample.weight);
+  retentionWeight.disabled=retentionCycle.checked||retentionMode.value==='auto';
+  const message=retentionMode.value==='auto'?'FOLLOW ANIMATION':
+   retentionSample?retentionSample.mode?.toUpperCase()+' · '+Math.round(retentionSample.weight*100)+'%':
+   'UNAVAILABLE · CHECK SLING / ANIMATION';
+  if(retentionStatus.textContent!==message)retentionStatus.textContent=message;
   const baseKit=syncPrimaryWeapon(labKit,currentWeapon);
   const sidearmModel=sidearm?isM9AppearanceId(sidearm)?
    'glock-g19-gen3':sidearm:null;
@@ -2033,6 +2116,8 @@ function draw(){
     injury:Math.max(motion.injury,Number(injury.value),
       track==='reload-wounded'?2:0),
     weapon:currentWeapon,weaponConfiguration:exactWeaponConfig,
+    retentionTransition:retentionSample,
+    labRetentionMotionScale:Number(retentionMotion.value),
     unarmedPreview:weapon.value==='none'&&track!=='reload-shotgun'&&!sidearm,
     reload:sidearm?0:motion.reload,reloadDuration:1.8,
     reloadMode:track==='reload-retention'?'retention':
@@ -2048,7 +2133,7 @@ function draw(){
     handlingIntent:preOpenTrack?'door':shoulderTrack?'stack':'hold',
     lastThrowAt:motion.throwAt,
     down:motion.down||Number(injury.value)===3,
-    surrender:false,aiming:pistolFrame?
+    surrender:false,aiming:retentionSample?false:pistolFrame?
      pistolFrame.aim>.2:motion.aim>.2,
     firing:!!pistolFrame&&pistolFrame.recoil>.01,turning:motion.turning,
     aimBlend:pistolFrame?.aim??motion.aim,
@@ -2221,6 +2306,10 @@ function draw(){
       'LIGHT / STANDARD / HEAVY · PROPORTIONS LOCKED':
       'SIX STANCES · ORBIT / ZOOM TO COMPARE';
   }else showDiagnostics();
+  canvas.dataset.retentionMode=retentionSample?.mode??'';
+  canvas.dataset.retentionWeight=String(retentionSample?.weight??0);
+  canvas.dataset.retentionWebbing=String(rig.slingStraps[0]?.visible?
+    rig.slingStraps[0].geometry.drawRange.count/6:0);
   canvas.dataset.compare=String(comparing);
   canvas.dataset.compareGaits=String(gaitComparing);
   canvas.dataset.silhouette=String(silhouettes);

@@ -1,3 +1,7 @@
+import {syncWindowCoveringVisual,windowCoveringVisualForParent} from './rendering/window-covering-visual.ts';
+import {coveringMotion,isCoveringAction} from './breach-window-covering-interaction.ts';
+import {normalizeWindowCovering} from './breach-window-coverings.ts';
+import {windowCoveringSightSegments,windowCoveringTransientSegments} from './breach-window-covering-optics.ts';
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {bloodMarkRadius,bloodMarkTint} from './breach-blood-evidence.ts';
@@ -126,9 +130,12 @@ import {bakedOperatorCarry,prewarmSavedOperatorCarry}
 import {updateOperatorAppearance} from './breach-operator-appearance.ts';
 import {readEquipmentInteraction} from './breach-equipment-interaction-pose.ts';
 import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
-import {downedTransportPresentation} from './breach-capture-transport-presentation.ts';
+import {linkedTransportPatient} from './breach-transport-navigation.ts';
+import {readTransportPatientPose} from './breach-transport-patient-pose.ts';
+import {loadedCarrierHeading} from './breach-loaded-carrier-pose.ts';
+import {downedTransportPresentation,carrierTransportPresentation} from './breach-capture-transport-presentation.ts';
 import {SurrenderedFirearmsPresenter} from './rendering/breach-surrendered-firearms-presenter.ts';
-import {spatialSurfaceKnown,shotVisibility,windowPresentationKnown} from './breach-presentation.ts';
+import {spatialSurfaceKnown,shotVisibility,windowPresentationKnown,windowCoveringPresentationKnown} from './breach-presentation.ts';
 import {markWindowOwner,markWallOwnerKnown,markCoverOwnerKnown} from './rendering/breach-evidence-owner.ts';
 import {ShotFrameDisclosure} from './rendering/breach-shot-disclosure.ts';
 import {recordedEffectAllows,groundEffectRow,shotEffectRow} from './breach-replay-effect-evidence.ts';
@@ -552,7 +559,8 @@ export class TacticalScene3D{
         if(friendly.health<=0)continue;
         const world=sessionWorldGeometry(s);
         const polygon=visionPolygon(friendly.p,friendly.heading,sightRangeForSite(s.site),
-          world.walls,s.doors,friendly.posture==='crouch',world.cover);
+          world.walls,s.doors,friendly.posture==='crouch',world.cover,
+          windowCoveringSightSegments(s,friendly.posture==='crouch'));
         const projected:FocusPoint[]=[];
         for(const p of polygon){
           const xy=this.miniatureScreenPoint(camera,p.x,p.y,13);
@@ -946,6 +954,7 @@ export class TacticalScene3D{
   /** Scratch index rebuilt from current session data; never hold prior
    * replay snapshots or a site's mutable window array across frames. */
   private readonly frameWindowsById=new Map<string,Session['windows'][number]>();
+  private readonly frameCoveringActors=new Map<string,TeamActor>();
   private windowShards:THREE.InstancedMesh|null=null;
   private readonly shardMatrix=new THREE.Object3D();
   private transientLights:TransientLightPreview|null=null;
@@ -1383,7 +1392,7 @@ export class TacticalScene3D{
     this.wallMaterials.clear();
     this.walls.length=0;this.wallOwners=[];
     this.doors.clear();this.windowGlass.clear();
-    this.frameWindowsById.clear();
+    this.frameWindowsById.clear();this.frameCoveringActors.clear();
     if(this.windowShards)this.windowShards.count=0;
     this.shardSlots.reset();this.shardColors.fill(-1);this.settledPanes.length=0;this.fractureSources.reset();
     this.transientLights?.reset();
@@ -2150,12 +2159,29 @@ export class TacticalScene3D{
     this.frameWindowsById.clear();
     if(indexWindows)for(const pane of s.windows)
       this.frameWindowsById.set(pane.id,pane);
+    const coveringActors=this.frameCoveringActors;coveringActors.clear();
+    for(const actor of s.operators){
+      if(personalWindows&&actor.id!==replayDisclosurePolicy?.observerId)continue;
+      const order=actor.plan[0];
+      if(actor.actionTimer>0&&order?.objectId?.startsWith('covering:')&&isCoveringAction(order.interaction))
+        coveringActors.set(order.objectId.slice(9),actor);
+    }
     for(const [id,glass] of this.windowGlass){
       const current=indexWindows?this.frameWindowsById.get(id):
         s.windows.find(w=>w.id===id);
       const seen=personalWindows&&replayDisclosurePolicy?.observerId?
         replayWindowHistory?.at(s.seconds,replayDisclosurePolicy.observerId,id):
         null;
+      const covering=windowCoveringVisualForParent(glass.parent);
+      if(covering){
+        covering.visible=personalWindows?!!seen?.covering:
+          !!current&&windowCoveringPresentationKnown(s,current,omniscient);
+        if(covering.visible){
+          const descriptor=personalWindows?seen?.covering:current?.covering??(current?normalizeWindowCovering(current):undefined);
+          const mover=coveringActors.get(id);
+          syncWindowCoveringVisual(covering,descriptor,mover&&descriptor?coveringMotion(mover,descriptor):null);
+        }
+      }
       const broken=personalWindows?!!seen?.shattered:!!current?.shattered;
       const opened=personalWindows?!!seen?.open:!!current?.open;
       glass.visible=!(broken||opened);
@@ -2588,6 +2614,20 @@ export class TacticalScene3D{
       // Only an actual reciprocal GO-time carrier may lift or reorient a
       // downed body. Live and replay use their sampled actor roster.
       const transport=downedTransportPresentation(actor,s.operators);
+      const carriedSubject=actor.carryingId?
+        this.frameActorsById.get(actor.carryingId)??s.civilians.find(c=>c.id===actor.carryingId):undefined;
+      const carrierTransport=carrierTransportPresentation(actor,carriedSubject);
+      const transportPatientPose=readTransportPatientPose(actor,s.operators);
+      const pickupId=actor.transportContact?.kind==='pickup'&&actor.transportContact.mode==='carry'?
+        actor.transportContact.patientId:undefined;
+      const transportPatient=linkedTransportPatient(s,actor)??(pickupId?
+        s.operators.find(o=>o.id===pickupId)??s.civilians.find(o=>o.id===pickupId):undefined);
+      const pairPose=transportPatient?readTransportPatientPose(transportPatient,s.operators):undefined;
+      const loadedTransport=transportPatient&&pairPose&&actor.health>0?{
+        mode:pairPose.mode,patientId:transportPatient.id,
+        patient:transportPatient.p,heading:transportPatient.heading,patientPose:pairPose}:undefined;
+      const loadedHeading=loadedTransport?loadedCarrierHeading(loadedTransport.mode,
+        {x:drawActor.x,y:drawActor.z},loadedTransport.patient,drawActor.heading):null;
       // Airborne body is a fixed-tick simulation outcome. Keep the 3D
       // miniature at its authored horizontal position, lifted only by the
       // recorded traversal arc (never by render-time speculative physics).
@@ -2782,7 +2822,7 @@ export class TacticalScene3D{
           this.beamBlockerRevision!==s.objectRevision||
           this.beamBlockerSignature!==signature){
         const geometry=sessionWorldGeometry(s);
-        this.beamBlockers=lightBeamBlockers(geometry.walls,s.doors,s.coverState);
+        this.beamBlockers=lightBeamBlockers(geometry.walls,s.doors,s.coverState,windowCoveringSightSegments(s));
         this.beamBlockerSignature=signature;
         // Same-tick replay/door updates must not reuse stale actor polygons.
         for(const visible of this.actors.values())visible.beamLast=null;
@@ -2846,7 +2886,7 @@ export class TacticalScene3D{
       poseOperator(object.physical,{
         x:drawActor.x,z:drawActor.z,
         heading:transport?.heading??(previewPreOpen?
-          doorFacing:drawActor.heading),
+          doorFacing:loadedHeading??drawActor.heading),
         handlingOverride:previewPreOpen?'high':undefined,
         velocity:actor.traversal?0:actor.velocity,
         seconds:poseSeconds,idleLifeSeconds:actorIdleSeconds,
@@ -2856,7 +2896,10 @@ export class TacticalScene3D{
           actor.traversalElapsed/Math.max(.001,actor.traversal.duration):0,
         appearanceSeed:actor.appearanceSeed,
         equipment:actor.equipment,wardrobe:actor.wardrobe,
-        secondarySwitch:actor.secondarySwitch,
+        retentionTransition:actor.retentionTransition,
+        transportCarrier:carrierTransport,transportedMode:transport?.mode,
+         primaryGrounded:actor.groundedPrimaryId!=null,
+         secondarySwitch:actor.secondarySwitch,
         secondaryReload:actor.secondaryReload,
         // B30: live and replay use the new posing by default.
         // This changes rendered anatomy only, not fixed-step ammo/shot.
@@ -2870,6 +2913,7 @@ export class TacticalScene3D{
          weaponConfiguration:actor.weaponConfiguration,
          weaponLightOn:actor.weaponLightOn,
          nvgDeployed:actor.nvgDeployed===true,
+        transportContact:actor.transportContact,loadedTransport,transportPatient:transportPatientPose,
         treatmentActive:actor.treatmentActive,
         treatmentProgress:actor.treatmentProgress,
         // Real GO-time civilian contact flashes a gentle support-hand
@@ -2907,12 +2951,13 @@ export class TacticalScene3D{
           liveMotion?.acceleration[actor.id]??0,
         motionImpulse:replay?.momentum[actor.id]??
           liveMotion?.momentum[actor.id],
-        pelvisYaw:replay?.pelvisYaw[actor.id]??liveMotion?.pelvisYaw[actor.id],
+        pelvisYaw:loadedTransport?.mode==='drag'?undefined:
+           replay?.pelvisYaw[actor.id]??liveMotion?.pelvisYaw[actor.id],
         travelYaw:replay?.travelYaw[actor.id]??
           liveMotion?.travelYaw[actor.id],
         posture:actor.posture,coverStanceDrop:actor.coverStanceDrop??0,
         injury:actor.injuryStage,weapon:actor.weapon,
-        gait:actor.squeeze?'squeeze':
+        gait:loadedTransport?'walk':actor.squeeze?'squeeze':
           actor.plan[0]?.kind==='pie'?'pie':
           actor.pace==='run'||actor.plan[0]?.moveMode==='sprint'?
             'run':'walk',
@@ -2930,7 +2975,7 @@ export class TacticalScene3D{
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
          doorGrip:previewPreOpen?undefined:doorGrip,physicalContact,
         down:actor.health<=0,surrender:actor.surrendered,
-        worldWeaponReleased:!!actor.downWeaponsReleased||actor.surrendered&&actor.releasedWeaponId!=null,
+        worldWeaponReleased:actor.groundedPrimaryId!=null||!!actor.downWeaponsReleased||actor.surrendered&&actor.releasedWeaponId!=null,
         restrained:actor.restrained===true,
         // Gameplay and replay use the same named NPC transition contract as
         // the Lab. In particular surrender -> cuffed must not snap wrists.
@@ -2969,7 +3014,8 @@ export class TacticalScene3D{
       // The shared pose solver publishes its local fall/root offset. Restore
       // only the actual transport elevation afterward (as for civilians);
       // otherwise the body stays floor-flat while physically carried.
-      if(transport)object.root.position.y+=transport.lift;
+      // Reciprocal transported subjects already own their full anatomical root.
+      // Do not apply the legacy lift a second time.
       // One existing muzzle flash follows the actual physical Glock socket
       // only once a selected sidearm is completely drawn. The rifle retains
       // its original visual authority in every other phase.
@@ -3057,7 +3103,7 @@ export class TacticalScene3D{
         if(!omniscient&&!this.presentationSight.query(s,'effect','flash-light:'+burst.id,burst.p))continue;
         this.transientLights.offer('flash',burst.id,burst.p.x,13,burst.p.y,burst.age);
       }
-    this.transientLights?.confine(sessionWorldGeometry(s),s.doors);
+    this.transientLights?.confine(sessionWorldGeometry(s),s.doors,windowCoveringTransientSegments(s));
     this.combatEffects.update(s,omniscient,
       personalDisclosure,p=>this.presentationSight.query(
         s,'effect',p.x+','+p.y,p));

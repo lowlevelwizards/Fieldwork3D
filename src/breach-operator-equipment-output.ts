@@ -5,6 +5,7 @@
  * not consume this module.
  */
 import * as THREE from 'three';
+import {readSlingKind} from './breach-weapon-retention.ts';
 import type {OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import type {
@@ -74,11 +75,23 @@ export function solveOperatorDroppedWeapon(r:OperatorRig,p:OperatorPose,
   .multiply(held.quaternion);
  const origin=r.root.getWorldPosition(scratch.origin);
  const side=p.downPose==='left'?-1:1;
- const sling=p.weaponConfiguration?.slots.sling==='sling-two-point'&&
+ const sling=readSlingKind(p.weaponConfiguration?.slots.sling)!=='none'&&
   !p.surrender;
  const rest=e.dropRest.set(origin.x+(sling?4:9),sling?6:1.8,
   origin.z+side*(sling?5:11));
  const t=smooth((downProgress-.30)/.70);
+ // A transported, still-owned slung primary must travel with its wearer,
+ // not aim for an imaginary world-floor resting point after the lift.
+ if(sling&&p.transportedMode&&!p.worldWeaponReleased){
+  const localRest=scratch.held.set(6.5,-2,0);
+  const chestRotation=r.chest.getWorldQuaternion(scratch.orientation);
+  const localQ=scratch.flat.setFromAxisAngle(scratch.origin.set(0,0,1),-Math.PI*.5);
+  const attachedQ=chestRotation.multiply(localQ);
+  const location=localRest.applyMatrix4(r.chest.matrixWorld);
+  drop.position.copy(r.legacyFrame.worldToLocal(location));
+  drop.quaternion.copy(r.legacyFrame.getWorldQuaternion(scratch.inverse).invert().multiply(attachedQ));
+  return;
+ }
  const location=worldHeld.lerp(rest,t);
  drop.position.copy(r.legacyFrame.worldToLocal(location));
  const flat=scratch.flat.setFromAxisAngle(scratch.vertical,

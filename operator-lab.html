@@ -274,7 +274,7 @@ main[data-lab-active="poses"] #weapon{display:none}
   <a href="./operator-lab.html?retry=1">RETRY LAB</a>
   <a href="./index.html">BACK TO BATTLE</a>
 </aside>
-<header><strong>FIELDWORK / OPERATOR LAB</strong><nav style="display:flex;gap:10px;align-items:center"><a href="./operator-lab.html?tab=poses">POSES</a><a href="./index.html">← BATTLE</a></nav></header>
+<header><strong>FIELDWORK / OPERATOR LAB</strong><nav style="display:flex;gap:10px;align-items:center"><a href="./operator-lab.html?tab=poses">POSES</a><a href="./casualty-transport-lab.html">TRANSPORT</a><a href="./index.html">← BATTLE</a></nav></header>
 <output id="diagnosticText" aria-live="off"></output>
 <output id="modelAxisLegend" aria-label="Operator model coordinate convention">
   MODEL AXES: FORWARD −Z · RIGHT +X · UP +Y
@@ -314,6 +314,21 @@ main[data-lab-active="poses"] #weapon{display:none}
   <button type="button" id="poseFrameBack">−1 FRAME</button>
   <button type="button" id="poseFrameNext">+1 FRAME</button>
  </div>
+ <details id="retentionLab"><summary>WEAPON RETENTION / SLINGS</summary>
+ <div class="pose-select-grid">
+  <label>SLING<select id="retentionSling"><option value="build">AS CONFIGURED</option><option value="sling-none">NONE</option><option value="sling-single-point">SINGLE POINT</option><option value="sling-two-point">TWO POINT</option><option value="sling-traditional">TRADITIONAL</option></select></label>
+  <label>POSITION<select id="retentionMode"><option value="auto">FOLLOW ANIMATION</option><option value="held-one">ONE HAND</option><option value="front-slung">FRONT SLUNG</option><option value="back-slung">BACK SLUNG</option></select></label>
+  <label>TRANSITION<input id="retentionWeight" type="range" min="0" max="1" step=".01" value="1"/></label>
+  <label><input id="retentionCycle" type="checkbox"/> LOOP STOW / RETURN</label>
+ </div>
+ <div class="pose-select-grid">
+  <label>LOOP SPEED<select id="retentionRate"><option value=".5">HALF SPEED</option><option value="1" selected>NORMAL</option><option value="2">DOUBLE SPEED</option></select></label>
+  <label>SECONDARY MOTION<select id="retentionMotion"><option value="0">OFF</option><option value=".5">HALF</option><option value="1" selected>NORMAL</option><option value="1.5">EXAGGERATED</option></select></label>
+ </div>
+ <div class="pose-quick-controls"><button type="button" id="retentionHeld">HELD</button><button type="button" id="retentionSettled">SETTLED</button><button type="button" id="retentionSockets">SOCKET DIAGNOSTICS</button><button type="button" id="retentionRoute">WEBBING PATH</button></div>
+ <output id="retentionStatus" aria-live="polite"></output>
+ <small>Preview only · Use idle, walk or crouch to audition positions; action tracks retain their own hand contacts.</small>
+ </details>
  <small id="poseSavedWeaponHint" aria-live="polite">Saved Arsenal builds preview exact parts and accessories without equipping them.</small>
  <small id="poseWorkspaceHint">Every primary and pistol model · Real operator poses · Play, scrub, orbit or step through frames.</small>
  <small id="poseSidearmHint" aria-live="polite" hidden></small>

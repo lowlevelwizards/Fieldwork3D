@@ -4,8 +4,8 @@ import {newSession} from '../src/breach-game.ts';
 import {snapshot} from '../src/breach-replay.ts';
 test('22.07 drag and carry follow travel direction without teleporting',()=>{
  const start={x:30,y:40},end={x:34,y:40};
- assert.deepEqual(casualtyTrailingPosition(start,end,0,'drag'),{x:18,y:40});
- assert.deepEqual(casualtyTrailingPosition(start,end,0,'carry'),{x:25,y:40});
+ assert.deepEqual(casualtyTrailingPosition(start,end,0,'drag'),{x:9,y:40});
+ assert.deepEqual(casualtyTrailingPosition(start,end,0,'carry'),{x:21,y:40});
 });
 test('22.07 walls and live teammates can veto paired movement',()=>{
  const start={x:0,y:0},dest={x:5,y:0};

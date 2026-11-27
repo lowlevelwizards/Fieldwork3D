@@ -13,6 +13,8 @@ export function assetPrimarySurface(item:Pick<AssetLibraryEntry,'id'|'origin'>):
  if(item.id==='baseboard')return 'painted-wood';
  if(item.id.startsWith('wall')||item.id==='arch')return 'plaster';
  if(item.id==='floor')return 'concrete';
+ if(item.id.startsWith('window-covering:curtain:')||item.id.startsWith('window-covering:roller-shade:'))return 'fabric';
+ if(item.id.startsWith('window-covering:hinged-shutter:'))return 'painted-wood';
  if(item.id.startsWith('window'))return 'painted-metal';
  return 'metal';
 }

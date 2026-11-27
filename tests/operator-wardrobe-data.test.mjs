@@ -14,8 +14,8 @@ test('all active wardrobe categories are distinct and dropped legacy data stays 
  const malformed=readWardrobe({version:1,
   styles:{top:'t-shirt',trousers:'jeans',headwear:'beanie'},
   patterns:{top:'flecktarn'},palette:999});
- assert.equal(malformed.styles.top,undefined);
- assert.equal(malformed.styles.trousers,undefined);
+ assert.equal(malformed.styles.top,'t-shirt');
+ assert.equal(malformed.styles.trousers,'jeans');
  assert.equal(malformed.styles.headwear,'beanie');
  assert.ok(!('patterns' in malformed));
  assert.ok(!('palette' in malformed));

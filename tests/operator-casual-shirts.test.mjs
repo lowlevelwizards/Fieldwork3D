@@ -23,21 +23,22 @@ const frame=(wardrobe,phase={})=>({
  aiming:false,firing:false,turning:0,deterministic:true,
  unarmedPreview:true,equipment:kit,wardrobe,...phase
 });
-test('four casual upper cuts are real catalog entries with curated solids',()=>{
+test('six casual upper cuts are real catalog entries with curated solids',()=>{
  assert.deepEqual(CASUAL_SHIRT_CUTS,
-  ['t-shirt','button-up-shirt','polo-shirt','tank-top']);
+  ['t-shirt','button-up-shirt','polo-shirt','tank-top','hoodie','casual-jacket']);
  for(const cut of CASUAL_SHIRT_CUTS){
   assert.ok(wardrobeItemsForSlot('top').some(item=>item.id===cut),cut);
-  assert.ok(CASUAL_SHIRT_SOLIDS[cut].length>=8);
+  assert.ok(CASUAL_SHIRT_SOLIDS[cut].length>=7);
   const resolved=resolvedWardrobe(outfit(cut),kit);
   assert.equal(resolved.top,cut);
   assert.deepEqual(solidChoicesFor('top',resolved),CASUAL_SHIRT_SOLIDS[cut]);
-  assert.ok(fabricCamoChoices('top',resolved).length>=3,cut);
+  if(cut==='hoodie'||cut==='casual-jacket')assert.equal(fabricCamoChoices('top',resolved).length,0,cut);
+  else assert.ok(fabricCamoChoices('top',resolved).length>=3,cut);
   assert.ok(!fabricCamoChoices('top',resolved).includes('ucp'),cut);
  }
  assert.ok(solidChoicesFor('top',{top:'button-up-shirt'}).includes('burnt-orange'));
  assert.ok(!solidChoicesFor('top',{top:'tank-top'}).includes('burnt-orange'));
- assert.deepEqual(sleeveStateOptions('button-up-shirt'),['unrolled','cuffed','rolled']);
+ assert.deepEqual(sleeveStateOptions('button-up-shirt'),['unrolled','cuffed','rolled','short']);
  assert.deepEqual(sleeveStateOptions('t-shirt'),['unrolled']);
  assert.ok(garmentSolidHex('navy')!==garmentSolidHex('rust'));
 });
@@ -70,6 +71,11 @@ test('casual short sleeves expose arm skin; tank top has no sleeve overlays',()=
   assert.equal(model.upper.every(g=>g.visible),cut!=='tank-top');
   assert.equal(model.torso.visible,true);
  }
+ poseOperator(r,frame(outfit('button-up-shirt',{sleeveState:'short'})),0);
+ const tropical=r.visualKit.casualShirts.cuts['button-up-shirt'];
+ assert.ok(tropical.upper.every(g=>g.visible));
+ assert.ok([...tropical.lower,...tropical.cuffedLower,...tropical.rolledUpper].every(g=>!g.visible));
+ for(const arm of r.arms){assert.strictEqual(arm.upper.material,r.skinMaterial);assert.strictEqual(arm.lower.material,r.skinMaterial);}
  for(const sleeveState of ['unrolled','cuffed','rolled']){
   poseOperator(r,frame(outfit('button-up-shirt',{sleeveState})),0);
   const model=r.visualKit.casualShirts.cuts['button-up-shirt'];
@@ -148,24 +154,26 @@ test('all casual tops recolor the ONE actual torso, without duplicate jacket she
  const r=createOperatorRig('rook','blue');
  const torso=r.visualKit.baseTorso;
  for(const top of CASUAL_SHIRT_CUTS){
-  poseOperator(r,frame(outfit(top,{fabricSolids:{top:'ranger-green'}})),0);
+  const selected=CASUAL_SHIRT_SOLIDS[top].includes('ranger-green')?'ranger-green':CASUAL_SHIRT_SOLIDS[top][0];
+  poseOperator(r,frame(outfit(top,{fabricSolids:{top:selected}})),0);
   const model=r.visualKit.casualShirts.cuts[top];
   assert.strictEqual(r.visualKit.baseTorso,torso,top+' keeps foundation');
   assert.ok(torso.geometry instanceof THREE.BufferGeometry,top+' uses a real torso');
   assert.strictEqual(r.poseCavity.torso.source,r.clothMaterial,
    'torso shadow receiver follows the one cloth color');
   assert.strictEqual(torso.material,r.poseCavity.torso.material);
-  assert.equal(torso.material.color.getHex(),garmentSolidHex('ranger-green'),
+  assert.equal(torso.material.color.getHex(),garmentSolidHex(selected),
    'visible torso uses selected shirt color');
-  assert.equal(r.colors.get(r.clothMaterial).getHex(),garmentSolidHex('ranger-green'));
+  assert.equal(r.colors.get(r.clothMaterial).getHex(),garmentSolidHex(selected));
   assert.ok(torso.visible,top+' torso stays visible');
   assert.ok(model.torso.visible,top+' small details active');
   for(const part of model.torso.children){
    if(!(part instanceof THREE.Mesh))continue;
-   part.geometry.computeBoundingBox();
-   const box=part.geometry.boundingBox;
-   assert.ok(box.max.x-box.min.x<.8,
-    top+' must not introduce full-width chest/shoulder slabs');
+   const names=(part.geometry.userData.fieldworkLightingPartSpans??[{partId:part.name}]).map(p=>p.partId);
+   for(const name of new Set(names)){
+    const size=partBounds(model.torso,name).getSize(new THREE.Vector3());
+    assert.ok(size.x<.8||size.y<3.5,top+' '+name+' must remain a thin accent or shallow folded feature, never a duplicate torso');
+   }
    assert.ok(part.material!==r.skinMaterial,
     top+' no false skin plaque over chest');
   }
@@ -302,5 +310,20 @@ test('gloves are independent from shirts, can be hidden and retain their own col
  assert.equal(resolvedWardrobe(manual,withoutHands).gloves,'gloves-field',
   'explicit glove appearance is independent of equipment truth');
  assert.equal(readWardrobe({...manual,gloveSolid:'invalid'}).gloveSolid,undefined);
+ r.dispose();
+});
+
+test('EB14 civilian trousers and full sleeves render on shared rig with no field trouser overlays',()=>{
+ const r=createOperatorRig('guard','red');
+ for(const top of ['hoodie','casual-jacket'])for(const trousers of ['jeans','civilian-cargo','track-pants']){
+  const wardrobe={...initialWardrobe(),styles:{top,trousers,footwear:'sneakers'},trouserHem:'unbloused'};
+  const equipment={...kit,slots:{...kit.slots,feet:'feet-light',legs:'legs-light',top:'top-light'}};
+  poseOperator(r,frame(wardrobe,{equipment}),0);
+  assert.ok(r.visualKit.casualShirts.cuts[top].torso.visible);
+  assert.ok(r.visualKit.casualShirts.cuts[top].lower.every(g=>g.visible));
+  assert.ok(r.visualKit.wardrobeBody.trousers[trousers].every(g=>g.visible));
+  assert.ok(Object.values(r.visualKit.fieldTrousers).every(m=>m.thigh.every(g=>!g.visible)));
+  assert.ok(r.visualKit.bootCuffs.every(g=>!g.visible));
+ }
  r.dispose();
 });

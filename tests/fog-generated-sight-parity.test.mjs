@@ -1,3 +1,4 @@
+import {windowCoveringSightSegments} from '../src/breach-window-covering-optics.ts';
 /** Real generated-site audit: polygon fog must never disclose floor behind walls.
  * This checks a bounded set of actual initial operator views, not a mock ray.
  */
@@ -28,7 +29,7 @@ test('generated-site 3D fog sight polygons do not over-disclose indoor ground',(
    const world=sessionWorldGeometry(s);
    for(const a of team(s).slice(0,2)){
     const polygon=visionPolygon(a.p,a.heading,sightRangeForSite(s.site),
-      world.walls,s.doors,a.posture==='crouch',world.cover);
+      world.walls,s.doors,a.posture==='crouch',world.cover,windowCoveringSightSegments(s,a.posture==='crouch'));
     const visited=new Set();
     for(const room of s.site.rooms){
      for(let y=Math.ceil(room.y/20)*20+10;y<room.y+room.h-5;y+=20)

@@ -1,3 +1,4 @@
+import {operatingLeaves,manualAssemblyBlocked} from './breach-door-operating-modes.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {nearMotorDoorStroke} from './breach-motor-door-broadphase.ts';
 /** Stage 7: handle physical closed leaves and intentional automatic
@@ -160,6 +161,12 @@ export function handleMotorDoor(
           a,s.seconds,p,episodeDoor.id)))
       doorAhead=episodeDoor;
   }
+  if(doorAhead?.operatingMode==='automatic'&&!doorAhead.latchBroken){
+    // The sensor phase owns this powered panel. The ordinary swept motor
+    // continues to respect its actual aperture, with no manual-open fallback.
+    a.motorPause=null;
+    return {paused:false,closed:false,clearingDoorId:doorAhead.id};
+  }
   if(doorAhead){
     const openingAllowed=claimOpeningIntent(s,a,doorAhead);
     // When this one door is physically stalled, its designated opener
@@ -281,7 +288,9 @@ export function handleMotorDoor(
     noteD32MotorDoorSelection(a,doorAhead.id,s.seconds);
     const opening=doorInteraction({target:doorAhead,actorId:a.id,
       actorPosition:a.p,action:'open'});
-    const denial=implicitOpenDenial(doorAhead,opening,a.id,a.p);
+    const assembly=operatingLeaves(s.doors,doorAhead);
+    const denial=implicitOpenDenial(doorAhead,opening,a.id,a.p)??
+      (manualAssemblyBlocked(assembly.filter(leaf=>leaf!==doorAhead),a.p)?'obstructed':null);
     if(denial==='held'||denial==='locked'||denial==='obstructed'){
       a.motorPause=denial==='held'?'door-held':
         denial==='locked'?'door-locked':'door-obstructed';
@@ -313,8 +322,11 @@ export function handleMotorDoor(
     }
     a.velocity=0;a.actionTimer+=dt;
     if(a.actionTimer>=.36&&!doorAhead.open){
-      releasePrivacyLockOnOpen(doorAhead,a.p);
-      doorAhead.open=true;doorAhead.openedAt=s.seconds;
+      for(const leaf of assembly){
+        releasePrivacyLockOnOpen(leaf,a.p);
+        leaf.open=true;leaf.openedAt=s.seconds;
+        leaf.pushTarget=Math.max(1,leaf.pushTarget??1);
+      }
       hooks.hear(s,doorCenter(doorAhead),125,'door');
       hooks.notify(s,a.name+' OPENED '+doorAhead.id);
     }

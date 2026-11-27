@@ -50,7 +50,11 @@ const GOLDENS=Object.freeze({
  // is separately verified on the archived input by V18 replay acceptance.
  // Keep this exact historical scenario; default VEH generation has a separate
  // occupied-site recorder/restart witness rather than silently replacing it.
- civilian:'4493f9bf02ba61ed927422ee60ef48dbf402eeda0b4aaa813e609246a59c1d88'
+ // EB22: paired run 45860754839 proves only NPC issued ammunition and
+ // heading changed across all seven checkpoints; civilian, movement,
+ // health, events and replay outcomes are identical. The historical hash
+ // remains independently pinned by verify-eb-rescue-pair.mjs.
+ civilian:'da37f5d9e892b59b7d636273459faf9c0f4fe7a824fe81545fefd30fc1924829'
 });
 function authorDoorEntry(s){
  const [rook,moss]=team(s);

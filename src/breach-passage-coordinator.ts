@@ -1,3 +1,4 @@
+import {transportPatientInThroat,transportThroatOccupiedByOther} from './breach-transport-door-clearance.ts';
 /** Q2: one deterministic doorway convoy authority per Session/GO schedule.
  * Ranks are attached to individual threshold crossings, not permanently to
  * characters. This unit never edits a PlanNode, door hinge or actor position.
@@ -146,8 +147,9 @@ function ownerFor(ctx:Context,s:Session,door:Door):Owner|null{
   const active=!!actor&&!!slot&&slot.doorId===door.id&&
     slot.fromSide===old.side&&slot.orderId===old.orderId&&
     ready({actor,slot},ctx);
-  if(active){
-   // Lateral shuffling and backward drift cannot renew the crossing
+  if(actor&&transportPatientInThroat(s,actor,door))return old;
+   if(active){
+    // Lateral shuffling and backward drift cannot renew the crossing
    // lease. A body already in the throat retains it until clearance.
    if(forwardTravel(old.lastAt,actor.p,door,old.side)>.7){
     old.lastAt={...actor.p};old.lastProgress=s.seconds;
@@ -263,7 +265,7 @@ export function coordinatePassage(s:Session,a:TeamActor,
  if(forward>.025&&door.open&&
     (door.openFraction??0)>=.72&&
     Math.abs(door.angularVelocity??0)<.16){
-  let blockedByBody=false;
+  let blockedByBody=transportThroatOccupiedByOther(s,a,door);
   for(const peer of s.operators){
    if(peer===a||peer.health<=0||finishedFriendly(a,peer))continue;
    const now=dist(a.p,peer.p);
@@ -294,12 +296,14 @@ export function coordinatePassage(s:Session,a:TeamActor,
  // Only after the full body clears the exit plane is this
  // crossing outside the shared queue. Inside the throat, the leader may
  // go but a follower cannot ignore the body directly ahead.
- if(normalDepth(a.p,door)*slot.fromSide< -OPERATOR_RADIUS-10)
+ if(normalDepth(a.p,door)*slot.fromSide< -OPERATOR_RADIUS-10&&
+    !transportPatientInThroat(s,a,door))
   return {...free,doorId:door.id,rank:slot.rank};
  const lane=ctx.lanes.get(laneKey(door.id,slot.fromSide));
  // Live occupant coordinates are never cached: short scalar scan,
  // no repeated per-operator temporary roster allocations.
- let hostileThroat=false;
+ let hostileThroat=forward>.025&&normalDepth(a.p,door)*slot.fromSide>OPERATOR_RADIUS&&
+   transportThroatOccupiedByOther(s,a,door);
  if(forward>.025&&normalDepth(a.p,door)*slot.fromSide>=0)
   for(const other of s.operators){
    if(other===a||other.health<=0||

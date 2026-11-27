@@ -28,10 +28,11 @@ import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
   purchaseAndEquipWeaponAttachment,moveCampaignMagazine,saveCampaignKitPreset,
   applyCampaignKitPreset,deleteCampaignKitPreset,renameCampaignOperator,
   setCampaignOperatorColor,cycleCampaignAppearance,setCampaignWardrobe,retireOperator,
-  reconContract,contractObjectiveIntel,type CampaignState} from './campaign-state.ts';
+  reconContract,researchContractThreat,contractObjectiveIntel,type CampaignState} from './campaign-state.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {familyPreset} from './equipment-weapon-families.ts';
 import {campaignDeploymentSettings} from './campaign-rules.ts';
+import {recoveredIntelReceipts} from './breach-optional-intel.ts';
 import {setObjectiveIntelLevel} from './breach-objective-intel.ts';
 import {newDispatchPilotCampaign} from './dispatch-campaign-starter.ts';
 import {createDispatchSetup,type DispatchCampaignDraft} from './dispatch-campaign-setup.ts';
@@ -110,6 +111,7 @@ function recordCompletedOperation(){
       missingRecoveredId:stats.missingPersonRecovery.operatorId,
       missingRecoveredBy:careerId(stats.missingPersonRecovery.carrierId)}:{}),
     intelRecovered:stats.optionalIntel.recovered,
+    recoveredEvidence:recoveredIntelReceipts(state.optionalIntel,stats.optionalIntel.itemIds),
     intelRecoveryBy:Object.fromEntries(members.flatMap(member=>{
       const n=state.optionalIntel.filter(item=>item.collectedBy===member.id&&
         stats.optionalIntel.itemIds.includes(item.id)).length;
@@ -343,6 +345,8 @@ const campaignScreen=new CampaignScreen({
  resumeContract:()=>deployCampaignContract(),
  reconContract:id=>applyVisibleCampaignAction(c=>reconContract(c,id),
   'Mission reconnaissance upgraded'),
+ researchThreat:id=>applyVisibleCampaignAction(c=>researchContractThreat(c,id),
+  'Threat assessment upgraded'),
  buyAmmo:()=>applyVisibleCampaignAction(purchaseAmmo,'60 rounds added to supplies'),
  buyMedical:()=>applyVisibleCampaignAction(purchaseMedical,'Medical kit added to supplies'),
  buyFlash:()=>applyVisibleCampaignAction(purchaseFlash,'2 flashbangs added to supplies'),

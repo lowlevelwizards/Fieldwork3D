@@ -1,3 +1,11 @@
+import {operatingLeaves} from './breach-door-operating-modes.ts';
+import {hardCoveringBlocksPaneContact} from './breach-window-covering-physical.ts';
+import {coveringActionSeconds} from './breach-window-covering-interaction.ts';
+import {plannedControl} from './breach-tactical-control-commands.ts';
+import {coveringActorAvailable,coveringContactClear,desiredCovering,sameCovering,type CoveringAction} from './breach-window-covering-interaction.ts';
+import {normalizeWindowCovering} from './breach-window-coverings.ts';
+import {windowCoveringsBlockSight} from './breach-window-covering-optics.ts';
+import {projectedTransportPatient} from './breach-transport-controls.ts';
 import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
@@ -182,6 +190,10 @@ export type TeamActor=Operator & {
   secondarySwitch:import('./secondary-switching.ts').SecondarySwitchState;
   /** One authored, fixed-step pistol reload; rifle magazine fields are untouched. */
   secondaryReload:import('./secondary-timed-reload.ts').SecondaryTimedReload|null;
+  retentionTransition?:import('./breach-weapon-retention-transition.ts').RetentionTransitionState;
+  groundedPrimaryId?:number|null;
+  retentionHolstering?:boolean;
+  primaryPlacement?:{order:number;kind:'place'|'placed'|'retrieve';elapsed:number};
   medical:MedicalCondition;medicalSupplies:FieldMedicalSupplies;
   /** D15.7: real downing / irreversible fatality evidence. */
   downedAt?:number|null;deathAt?:number|null;
@@ -190,6 +202,8 @@ export type TeamActor=Operator & {
   treatmentActive:boolean;treatmentProgress:number;
   carryingId:string|null;carriedById:string|null;
   transportLatched?:boolean;
+  transportContact?:import('./breach-transport-contact.ts').TransportContact;
+  dragTrail?:import('./breach-drag-trail.ts').DragTrail;
   downWeaponsReleased?:boolean;
   /** Physical downed-person drag/carry presentation, recorded for replay. */
   transportMode?:TransportMode|null;
@@ -203,6 +217,8 @@ export type TeamActor=Operator & {
   withdrawRetryAt?:number;
   lastMoraleEventAt:number;
   searchOrigin:Pt|null;searchQueue:Pt[];searchPauseUntil:number;
+  /** A failed route is not a checked location, including across deferred work slots. */
+  searchRecoveryPending?:boolean;
   checkedSearchAreas?:import('./breach-ai-search-memory.ts').CheckedArea[];
   lastSearchReportAt?:number;
   witnessedCasualtyTimes?:Record<string,number>;
@@ -600,13 +616,27 @@ export function planNearbyInteraction(s:Session,id:string,
  }
  let target:typeof s.windows[number]|undefined,bestWindow=54*54;
  for(const w of s.windows){
-   if(!w.operable||w.shattered||w.open!==(action==='close-window'))
+   if(!w.operable||w.shattered||hardCoveringBlocksPaneContact(w,at)||w.open!==(action==='close-window'))
      continue;
    const dx=w.x-at.x,dy=w.y-at.y,dist=dx*dx+dy*dy;
    if(dist<bestWindow){bestWindow=dist;target=w;}
  }
  if(!target)return false;
  return queue('window:'+target.id);
+}
+/** Queue a stable explicit covering state without mutating the world during planning. */
+export function planWindowCovering(s:Session,id:string,windowId:string,action:CoveringAction,afterNodeId?:number):boolean{
+ const a=party(s,id),w=s.windows.find(w=>w.id===windowId);
+ if(!a||!w||!canEdit(s)||!coveringActorAvailable(a,s))return false;
+ const index=afterNodeId===undefined?-1:a.plan.findIndex(n=>n.id===afterNodeId);
+ if(afterNodeId!==undefined&&index<0)return false;
+ const at=index>=0?a.plan[index].p:finalPoint(a),c=normalizeWindowCovering(w);
+ if(!c||!liveVisibility(s,{x:w.x,y:w.y})||!coveringContactClear(s,w,c,at,plannedControl(s,id,afterNodeId).posture==='crouch'))return false;
+ const next=desiredCovering(c,action);if(!next||sameCovering(c,next))return false;
+ return edit(s,a,()=>{
+  const order:PlanNode={id:s.nextId++,kind:'interact',p:clone(at),objectId:'covering:'+w.id,interaction:action,duration:coveringActionSeconds(c)};
+  if(index>=0)a.plan.splice(index+1,0,order);else a.plan.push(order);
+ });
 }
 /** Author a single explicit power setting in the existing editable plan.
  * Player knowledge gates the action; execution later checks real reach/LOS.
@@ -807,7 +837,7 @@ export function planSecureDroppedFirearm(s:Session,id:string,weaponId:number):bo
  const queued=addNode(s,id,'interact',from,{
    objectId:'weapon:'+item.id,interaction:'secure-firearm'
  });
- if(queued)notify(s,'SECURE FIREARM QUEUED — EXECUTES ON GO');
+ if(queued)notify(s,item.temporaryPlacement&&item.ownerId===a.id?'RETRIEVE PRIMARY QUEUED — EXECUTES ON GO':'SECURE FIREARM QUEUED — EXECUTES ON GO');
  return queued;
 }
 export function planMove(s:Session,id:string,p:Pt,strafe=false){
@@ -1108,10 +1138,9 @@ export function deletePlanNode(s:Session,id:string,nodeId:number){
  return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{a.plan=proposed;}));
 }
 
-/** A paired entrance is one user interaction but two collision leaves. */
+/** Mechanical linkage, not shared frame identity, determines action scope. */
 function pairedLeaves(s:Session,door:Door):Door[]{
- const pair=door.pairedWith?s.doors.find(d=>d.id===door.pairedWith):undefined;
- return pair?[door,pair]:[door];
+ return operatingLeaves(s.doors,door);
 }
 /** Specialized entry equipment uses the existing door reach/plan system. */
 export function planEntryTool(s:Session,id:string,doorId:string,
@@ -1410,8 +1439,13 @@ export function planCasualtyPickup(s:Session,id:string,patientId:string,
 /** Authored emergency release supersedes only this patient's transport.
  * Other subsequent planned orders remain intact and the edit is undoable. */
 export function planCivilianRelease(s:Session,id:string):boolean{
- const a=party(s,id),c=s.civilians.find(c=>c.id===a?.carryingId);
- if(!a||!c||c.carriedById!==a.id||!canEdit(s))return false;
+ const a=party(s,id);
+ if(!a||!canEdit(s))return false;
+ const projected=projectedTransportPatient(a.carryingId,a.plan);
+ const c=s.civilians.find(c=>c.id===projected);
+ if(!c)return false;
+ if(!a.carryingId)return addNode(s,id,'interact',finalPoint(a),{objectId:c.id,interaction:'release-civilian'});
+ if(c.carriedById!==a.id)return false;
  return edit(s,a,()=>{
    a.plan=a.plan.filter(n=>n.kind!=='evacuate'||n.patientId!==c.id);
    a.plan.unshift({id:s.nextId++,kind:'interact',p:clone(a.p),
@@ -1422,10 +1456,12 @@ export function planCivilianRelease(s:Session,id:string):boolean{
  * Never silently counts a released body as extracted or changes its side. */
 export function planCaptureTransportRelease(s:Session,id:string):boolean{
   const a=party(s,id);
-  const patient=s.operators.find(o=>o.id===a?.carryingId);
-  if(!a||!patient||!canEdit(s)||
-     patient.health>0||
-     patient.carriedById!==a.id)return false;
+  if(!a||!canEdit(s))return false;
+  const projected=projectedTransportPatient(a.carryingId,a.plan);
+  const patient=s.operators.find(o=>o.id===projected);
+  if(!patient||patient.health>0)return false;
+  if(!a.carryingId)return addNode(s,id,'interact',finalPoint(a),{objectId:patient.id,interaction:'release-capture-target'});
+  if(patient.carriedById!==a.id)return false;
   return edit(s,a,()=>{
     a.plan=a.plan.filter(n=>n.kind!=='evacuate'||n.patientId!==patient.id);
     a.plan.unshift({id:s.nextId++,kind:'interact',p:clone(a.p),
@@ -1484,6 +1520,7 @@ export function redoPlan(s:Session,id:string){
 /** The weapon, hand and world share one magazine identity.
  * Ammo moves only at timed detach/insert events, never on animation startup. */
 export function beginReload(s:Session,a:TeamActor):boolean{
+  if(a.groundedPrimaryId!=null||a.retentionHolstering||a.retentionTransition?.weight)return false;
   const w=WEAPONS[a.weapon];
   const capacity=liveMagazineCapacity(a.weapon,a.weaponConfiguration);
   if(a.health<=0||a.reload>0||a.reserve<=0||a.magazine>=capacity)return false;
@@ -1732,6 +1769,7 @@ function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
   const ray={a,b};
   if(sessionWorldGeometry(s).staticWallBlocksRay(ray))return false;
   if(doorBlocksSightRay(s.doors,ray))return false;
+  if(windowCoveringsBlockSight(s,a,b,lowBlocks?22:32))return false;
   // The broadphase only excludes distant static obstacles; the final
   // slab and optical tests remain authoritative at any framerate.
   return !sessionWorldGeometry(s).someCoverAlongRay(a,b,o=>coverBlocksOpticalSight(o,lowBlocks)&&
@@ -1753,6 +1791,7 @@ export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
   // crouching and cover damage. Neither fog nor awareness is cached.
   return cache.get(a,b,s.seconds,
     s.objectRevision+'/'+sessionWorldGeometry(s).revision,s.doors,()=>
+      !windowCoveringsBlockSight(s,a.p,b.p,effectiveEyeHeight(a),effectiveAimHeight(b))&&
       !exposure(a.p,b.p,s.doors,
         b.posture==='crouch',a.posture==='crouch',true,
         sessionWorldGeometry(s).walls,sessionWorldGeometry(s).cover,
@@ -1819,7 +1858,7 @@ function observe(s:Session){
       // Preserve the exact historical ordering of fine and micro samples,
       // and keep occlusion / memory mutation in authoritative simulation.
       forEachGroundSightCandidate(sight,bounds,20,(col,row,p)=>{
-        if(!unobstructed(blue.p,p,s,blue.posture==='crouch'))return;
+        if(!unobstructed(blue.p,p,s,blue.posture==='crouch'||effectiveEyeHeight(blue)<25))return;
         const fine='fine:'+col+','+row;
         s.seenGround.add(fine);
         notePersonalGround(s,blue.id,s.seconds,fine);
@@ -1828,7 +1867,7 @@ function observe(s:Session){
         notePersonalGround(s,blue.id,s.seconds,coarse);
       });
       forEachGroundSightCandidate(sight,bounds,10,(col,row,p)=>{
-        if(!unobstructed(blue.p,p,s,blue.posture==='crouch'))return;
+        if(!unobstructed(blue.p,p,s,blue.posture==='crouch'||effectiveEyeHeight(blue)<25))return;
         const micro=microKeyAt(col,row);
         s.seenGround.add(micro);
         notePersonalGround(s,blue.id,s.seconds,micro);
@@ -1851,7 +1890,7 @@ function observe(s:Session){
           if(dx*dx+dy*dy<=NEAR_FINE_SIGHT_RANGE**2)return;
           const fine='fine:'+col+','+row;
           if(viewed.has(fine))return;
-          if(!unobstructed(blue.p,p,s,blue.posture==='crouch'))return;
+          if(!unobstructed(blue.p,p,s,blue.posture==='crouch'||effectiveEyeHeight(blue)<25))return;
           viewed.add(fine);s.seenGround.add(fine);
           notePersonalGround(s,blue.id,s.seconds,fine);
           const coarse=Math.floor(p.x/40)+','+Math.floor(p.y/40);
@@ -1883,9 +1922,6 @@ const motorHooks:ActorMotorHooks={
 };
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1,
  profile?:((section:string,elapsedMs:number)=>void)){
- const patient=a.transportLatched&&a.carryingId?
-  s.operators.find(o=>o.id===a.carryingId)??s.civilians.find(c=>c.id===a.carryingId):null;
- if(patient)speedScale=Math.min(speedScale,patient.transportMode==='carry'?.38:.48);
  return advanceActorMotor(a,p,dt,s,motorHooks,speedScale,profile);
 }
 /** Authoritative 60 Hz session keeps the clock, gameplay side effects and
@@ -2204,7 +2240,7 @@ function mission(s:Session,dt:number){
     (!s.withdrawalRequested||canConcludeWithdrawal(s))&&
     team(s).some(a=>a.health>0&&
     near(a.p,s.scenario.extract,37)&&
-    !(a.transportLatched&&a.carryingId&&
+    !(a.carryingId&&
       s.operators.some(p=>p.id===a.carryingId&&p.id!==s.captureTarget))&&
     validLivingCaptureExtraction(a)&&
     (s.missionType!=='intel'||s.intelCarrierId===a.id)&&
@@ -2381,6 +2417,21 @@ export function observerPointVisible(
   if(sightDiagnosticsEnabled)sightDiagnosticCounts.personalOcclusionProbes++;
   return unobstructed(observer.p,p,s,observer.posture==='crouch'||
     effectiveEyeHeight(observer)<25);
+}
+/** Body-only close awareness: the center of a prone casualty can lie
+ * behind an operator while much of the model is still alongside them.
+ * No ground, living actor, or combat perception is granted by this test.
+ * Keep the actual world occlusion check, even inside the close radius. */
+export const CASUALTY_CLOSE_AWARENESS_RADIUS=24;
+export function observerBodyVisible(s:Session,observer:TeamActor,p:Pt):boolean{
+  if(observer.side!=='blue'||observer.health<=0)return false;
+  const dx=observer.p.x-p.x,dy=observer.p.y-p.y;
+  if(dx*dx+dy*dy<=CASUALTY_CLOSE_AWARENESS_RADIUS**2)
+    return unobstructed(observer.p,p,s,observer.posture==='crouch'||effectiveEyeHeight(observer)<25);
+  return observerPointVisible(s,observer,p);
+}
+export function liveBodyVisible(s:Session,p:Pt):boolean{
+  return s.intel.mode==='full-view'||s.operators.some(a=>observerBodyVisible(s,a,p));
 }
 export function liveVisibility(s:Session,p:Pt){
   if(sightDiagnosticsEnabled)sightDiagnosticCounts.liveQueries++;
