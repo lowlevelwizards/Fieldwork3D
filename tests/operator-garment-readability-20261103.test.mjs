@@ -7,6 +7,7 @@ import {initialWardrobe} from '../src/operator-wardrobe-data.ts';
 import {TILE_WORLD_SIZE} from '../src/rendering/pixel-materials.ts';
 import {garmentSolidHex,resolvedCombatKnitSolid,CAMO_CUFF_DEFAULTS,
  CAMO_COMBAT_KNIT_DEFAULTS} from '../src/operator-garment-color-policy.ts';
+import {HEADWEAR_CAMO_IDS} from '../src/operator-headwear-camo.ts';
 import {FIELD_TROUSER_PROFILES} from '../src/operator-field-trouser-prototypes.ts';
 
 const kit=initialEquipmentLoadout();
@@ -146,7 +147,7 @@ test('leg cuff color follows trouser/roll swatch, not top, with fatter cargo poc
 
 test('all approved camouflage patterns choose stable, authored knit pairings',()=>{
  const ids=Object.keys(CAMO_CUFF_DEFAULTS);
- assert.equal(ids.length,30);
+ assert.deepEqual([...ids].sort(),[...HEADWEAR_CAMO_IDS].sort(),'every approved camouflage has a cuff pairing');
  assert.deepEqual(Object.keys(CAMO_COMBAT_KNIT_DEFAULTS).sort(),ids.sort());
  assert.equal(resolvedCombatKnitSolid({print:'m81-woodland'}),'olive-drab');
  assert.equal(resolvedCombatKnitSolid({print:'multicam'}),'khaki');
