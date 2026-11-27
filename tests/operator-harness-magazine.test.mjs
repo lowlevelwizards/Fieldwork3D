@@ -12,12 +12,12 @@ test('backpack harness follows chest and disappears with the bag',()=>{
  const r=createOperatorRig('rook','blue');
  let kit=initialEquipmentLoadout();
  poseOperator(r,pose(kit),0);
- assert.equal(r.visualKit.packHarness.parent,r.chest);
- assert.equal(r.visualKit.packHarness.visible,true);
+ assert.equal(r.visualKit.packPreview.harness.parent,r.chest);
+ assert.equal(r.visualKit.packPreview.harness.visible,true);
  kit=setEquipmentChoice(kit,'backpack','backpack-none');
  poseOperator(r,pose(kit),0);
  assert.equal(r.pack.visible,false);
- assert.equal(r.visualKit.packHarness.visible,false);
+ assert.equal(r.visualKit.packPreview.harness,undefined);
  r.dispose();
 });
 test('SMG spares are visibly narrower and longer, without changing item placement',()=>{
