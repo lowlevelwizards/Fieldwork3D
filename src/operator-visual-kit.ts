@@ -3,6 +3,7 @@
  * low-poly silhouettes for the isometric camera.
  */
 import * as THREE from 'three';
+import {createPackPreview,updatePackPreview,type PackPreviewState} from './operator-backpack-preview.ts';
 import {tagVisualMaterial} from './rendering/material-identity.ts';
 import {createIdentityVisuals,updateIdentityVisuals,type IdentityVisuals}
  from './operator-identity-marking-visuals.ts';
@@ -73,7 +74,7 @@ export type OperatorVisualKit={
  softArmor:THREE.Group;plateCarrier:THREE.Group;
  chestRig:THREE.Group;fieldWebbing:THREE.Group;
  belt:THREE.Group;dayPack:THREE.Group;fieldPack:THREE.Group;
- packHarness:THREE.Group;
+ packHarness:THREE.Group;packPreview:PackPreviewState;
  cargoPockets:THREE.Mesh[];bootCuffs:THREE.Mesh[];sleeveCuffs:THREE.Mesh[];
  fieldToeCaps:THREE.Mesh[];lightInstepPanels:THREE.Mesh[];
  rolledForearms:THREE.Mesh[];rolledCuffs:THREE.Mesh[];kneePanels:THREE.Mesh[];
@@ -319,7 +320,7 @@ export function createOperatorVisualKit(
  return {visualChest:chest,baseTorso,wardrobeHead,wardrobeBody,identityVisuals,wardrobeGear,accessories,fieldBlouses,fieldTrousers,newUpper,casualShirts,
   helmet,cap,hair,jacket,lightShirt,
   softArmor,plateCarrier,chestRig,
-  fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,
+  fieldWebbing,belt,dayPack,fieldPack,packHarness,packPreview:createPackPreview(pack,chest,{fabric:packFabric,trim,dark}),cargoPockets,bootCuffs,
   fieldToeCaps,lightInstepPanels,sleeveCuffs,
   rolledForearms,rolledCuffs,kneePanels,eyeMarks,hairMaterial,magazines,
   haircuts,graphicMarks,patchMaterial,patches,
@@ -336,7 +337,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  slots:Slots|undefined,seed:number,magazineLocations:readonly CarryLocation[]=[],
  faceStyle:'blank'|'quiet'|'graphic'='blank',
  wardrobe?:WardrobeOptions,weaponConfiguration?:WeaponConfiguration,
- nvgPresent=false,nvgDeployed=false){
+ nvgPresent=false,nvgDeployed=false,authoredPackPreview=false){
  const s=slots??DEFAULT;
  const magazinePart=weaponConfiguration?.build?.parts.magazine??null;
  if(magazinePart!==v.carriedMagazinePart){
@@ -477,6 +478,11 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   dayStyle==='medic-pack'?.92:1,
   dayStyle==='comms-pack'?.90:1);
  v.packHarness.visible=s.backpack!=='backpack-none';
+ const authored=updatePackPreview(v.packPreview,authoredPackPreview&&s.backpack!=='backpack-none',looks.packStyle,looks.armorStyle,looks.rigStyle,looks.top);
+ if(authored){
+  v.dayPack.visible=false;v.fieldPack.visible=false;v.packHarness.visible=false;
+  const overlay=v.wardrobeGear.pack[looks.packStyle];if(overlay)overlay.visible=false;
+ }
  for(const pocket of v.cargoPockets)
   pocket.visible=!usingWardrobe&&s.legs==='legs-field';
  const tallBoot=['field-boots','combat-boots','tall-boots','hiking-boots']
@@ -616,8 +622,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  refineStaticReceiver(v.baseTorso,BASE_TORSO_VERTEX_BUDGET);
  if(clothTorso)refineStaticReceiver(clothTorso,STATIC_SHIRT_RECEIVER_BUDGET);
  const lightingKey=[looks.top,looks.armorStyle,looks.rigStyle,looks.packStyle,
-  wardrobe?.sleeveState??'unrolled'].join('/');
- const packs=[pack,v.fieldPack,v.dayPack]
+  wardrobe?.sleeveState??'unrolled',authored?.style??'legacy'].join('/');
+ const packs=[pack,v.fieldPack,v.dayPack,v.packPreview.active?.root]
   .filter((g):g is THREE.Group=>!!g&&g.visible);
  // R5.3-B: declare real caster/receiver relationships instead of
  // permitting every neighboring box to shade every surface.
