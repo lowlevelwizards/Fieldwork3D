@@ -3,7 +3,26 @@
  * physics, textures, lights or new material instances are allocated here.
  */
 import * as THREE from 'three';
-import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
+import {mapGarmentBoxUV} from './operator-fabric-camo-materials.ts';
+import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
+import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
+import {ART_PIXEL} from './rendering/material-art-scale.ts';
+export const PACK_DETAIL_PIXEL=ART_PIXEL;
+export const PACK_DETAIL={secondary:.75*ART_PIXEL,signature:ART_PIXEL,lightStrap:ART_PIXEL,paddedStrap:1.5*ART_PIXEL,hose:.7*ART_PIXEL} as const;
+export type PackCut=Readonly<{topWidth?:number;bottomWidth?:number;topDepth?:number;bottomDepth?:number}>;
+export const PACK_VOLUME_RINGS=[-.5,-.32,.32,.5] as const;
+export function packRing(d:number,w:number,y:number,cut:PackCut){
+ const t=y>.32?(y-.32)/.18:y<-.32?(-.32-y)/.18:0;
+ const widthScale=1+((y>0?(cut.topWidth??1):(cut.bottomWidth??1))-1)*t;
+ const depthScale=1+((y>0?(cut.topDepth??1):(cut.bottomDepth??1))-1)*t;
+ return {rear:d*.5-d*depthScale,half:w*.5*widthScale};
+}
+function metric(g:THREE.BoxGeometry,size:PackPoint,p:PackPoint,m:THREE.Material){
+ if(m.userData.fieldworkFabric===true)mapGarmentBoxUV(g,...size,...p);
+ else mapBoxPixelUV(g,...size);
+ return g;
+}
+
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 export type PackPoint=readonly [number,number,number];
 export type PackMaterials=Readonly<{fabric:THREE.Material;trim:THREE.Material;dark:THREE.Material}>;
@@ -19,27 +38,31 @@ function mesh(parent:THREE.Group,name:string,g:THREE.BufferGeometry,m:THREE.Mate
 }
 export function packBox(parent:THREE.Group,name:string,m:THREE.Material,p:PackPoint,size:PackPoint){
  validate(p,size);
- const g=garmentBoxUV(new THREE.BoxGeometry(...size),...size,m,...p);
+ const g=metric(new THREE.BoxGeometry(...size),size,p,m);
+ bakeGearGeometryAO(g,m);
  return mesh(parent,name,g,m,p);
 }
 /** Authored textile volume: optional narrowed top/bottom and compressed
  * rear upper edge. Faceted, not rounded; seams/pockets remain separate. */
 export function packVolume(parent:THREE.Group,name:string,m:THREE.Material,p:PackPoint,size:PackPoint,
- cut:Readonly<{topWidth?:number;bottomWidth?:number;topDepth?:number}>={}){
+ cut:PackCut={}){
  validate(p,size);
  const [d,h,w]=size;
- const topWidth=cut.topWidth??1,bottomWidth=cut.bottomWidth??1,topDepth=cut.topDepth??1;
- if(![topWidth,bottomWidth,topDepth].every(n=>positive(n)&&n<=1))throw new RangeError('Invalid textile taper');
- // Two height bands form broad deliberate shoulder cuts, not a sphere.
- const g=garmentBoxUV(new THREE.BoxGeometry(d,h,w,1,3,1),d,h,w,m,...p);
+ const factors=[cut.topWidth??1,cut.bottomWidth??1,cut.topDepth??1,cut.bottomDepth??1];
+ if(!factors.every(n=>positive(n)&&n<=1))throw new RangeError('Invalid textile taper');
+ // Four rings preserve actual broad shoulder/base facets; no accidental AO
+ // replacement of the sculpt. Broad fabric faces get one lateral AO sample.
+ const across=m.userData.fieldworkBakedEquipmentAO===true&&h>=6&&w>=6?2:1;
+ const g=metric(new THREE.BoxGeometry(d,h,w,across,3,across),size,p,m);
  const pos=g.getAttribute('position');
  for(let i=0;i<pos.count;i++){
-  const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);
-  const t=y>=h*.49?topWidth:y<=-h*.49?bottomWidth:1;
-  const depth=y>=h*.49?topDepth:1;
-  pos.setXYZ(i,d*.5-(d*.5-x)*depth,y,z*t);
+  const x=pos.getX(i),z=pos.getZ(i),y=pos.getY(i);
+  const ring=Math.max(0,Math.min(3,Math.round((y/h+.5)*3)));
+  const t=PACK_VOLUME_RINGS[ring],shape=packRing(d,w,t,cut);
+  pos.setXYZ(i,shape.rear+(x/d+.5)*(d*.5-shape.rear),t*h,z*shape.half/(w*.5));
  }
  pos.needsUpdate=true;g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();
+ bakeGearGeometryAO(g,m);
  return mesh(parent,name,g,m,p);
 }
 /** A flat straight webbing span with an authored face normal. Width stays
@@ -58,16 +81,16 @@ export function packWebbing(parent:THREE.Group,name:string,m:THREE.Material,
  return result;
 }
 export function packBuckle(parent:THREE.Group,name:string,m:PackMaterials,p:PackPoint,width:number){
- return packBox(parent,name,m.dark,p,[.38,.65,width+.18]);
+ return packBox(parent,name,m.dark,p,[.48,1.0,Math.max(1.1,width+.22)]);
 }
 /** Thin dark graphic strip and chunky pull, rather than individual teeth. */
 export function packZipper(parent:THREE.Group,name:string,m:PackMaterials,a:PackPoint,b:PackPoint,normal:PackPoint){
- const strip=packWebbing(parent,name,m.dark,a,b,.28,.07,normal);
- packBox(parent,name+'-pull',m.trim,b,[.2,.48,.38]);
+ const strip=packWebbing(parent,name,m.dark,a,b,PACK_DETAIL.signature,.075,normal);
  return strip;
 }
 /** Static batches only, never call while animating. Keep authored socket
  * metadata on the root rather than meshes consumed by the merge. */
 export function finishPackArtwork(root:THREE.Group){
+ root.userData.fieldworkPackComponents=root.children.length;
  consolidateVisualGroup(root);return root;
 }
