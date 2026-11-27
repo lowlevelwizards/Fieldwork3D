@@ -189,6 +189,8 @@ export type TeamActor=Operator & {
   /** One authored, fixed-step pistol reload; rifle magazine fields are untouched. */
   secondaryReload:import('./secondary-timed-reload.ts').SecondaryTimedReload|null;
   retentionTransition?:import('./breach-weapon-retention-transition.ts').RetentionTransitionState;
+  groundedPrimaryId?:number|null;
+  primaryPlacement?:{order:number;kind:'place'|'placed'|'retrieve';elapsed:number};
   medical:MedicalCondition;medicalSupplies:FieldMedicalSupplies;
   /** D15.7: real downing / irreversible fatality evidence. */
   downedAt?:number|null;deathAt?:number|null;
@@ -830,7 +832,7 @@ export function planSecureDroppedFirearm(s:Session,id:string,weaponId:number):bo
  const queued=addNode(s,id,'interact',from,{
    objectId:'weapon:'+item.id,interaction:'secure-firearm'
  });
- if(queued)notify(s,'SECURE FIREARM QUEUED — EXECUTES ON GO');
+ if(queued)notify(s,item.temporaryPlacement&&item.ownerId===a.id?'RETRIEVE PRIMARY QUEUED — EXECUTES ON GO':'SECURE FIREARM QUEUED — EXECUTES ON GO');
  return queued;
 }
 export function planMove(s:Session,id:string,p:Pt,strafe=false){

@@ -53,7 +53,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
     if(!Number.isFinite(fromTime)||!Number.isFinite(toTime)){
       failCurrentOrder(s,a,n,'MEDICAL STORAGE UNAVAILABLE');return true;
     }
-    if(!prepareHandsFree(a,dt))return true;
+    if(!prepareHandsFree(a,dt,s))return true;
     clearCurrentOrderIssue(a);a.velocity=0;a.actionTimer+=dt;
     if(a.actionTimer>=1.35+fromTime+toTime){
       const transferred=transferMedicalSupply(patient.medicalSupplies,
@@ -196,7 +196,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
     }
     a.velocity=0;rotate(a,angle(a.p,patient.p),dt);
     if(s.seconds-a.lastHitAt<.35){a.actionTimer=0;return true;}
-    if(!prepareHandsFree(a,dt))return true;
+    if(!prepareHandsFree(a,dt,s))return true;
     if(a.actionTimer===0){
       a.lastTreatmentAt=s.seconds;a.lastTreatmentTargetId=patient.id;
     }

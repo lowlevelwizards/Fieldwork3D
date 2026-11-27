@@ -1,3 +1,4 @@
+import {usesUnslungPlacement,prepareGroundedPrimary,hasGroundedPrimary,canRetrieveGroundedPrimary,retrieveGroundedPrimary} from './breach-grounded-primary.ts';
 /** Fixed-step SYNC, RELOAD and FLASH handlers, retaining authored timing.
  * Stable callbacks delegate game-owned events and order completion.
  */
@@ -39,9 +40,18 @@ export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
       h.fail(s,a,n,request.reason??'SECONDARY NOT EQUIPPED');return true;
     }
     h.clearIssue(a);a.velocity=0;
+    if(target==='secondary'&&usesUnslungPlacement(s,a)&&!prepareGroundedPrimary(s,a,dt))return true;
+    if(target==='primary'&&hasGroundedPrimary(a)&&!canRetrieveGroundedPrimary(s,a)){
+      h.fail(s,a,n,'PRIMARY ON GROUND — RETRIEVE WEAPON');return true;
+    }
     a.secondarySwitch=advanceSecondarySwitch(request.state,dt,
       a.equipment?.secondary,true);
-    if(secondarySwitchSettled(a.secondarySwitch))h.pop(a);
+    if(secondarySwitchSettled(a.secondarySwitch)){
+      if(target==='primary'&&hasGroundedPrimary(a)&&!retrieveGroundedPrimary(s,a)){
+        h.fail(s,a,n,'PRIMARY ON GROUND — RETRIEVE WEAPON');return true;
+      }
+      h.pop(a);
+    }
     return true;
   }
   if(n.kind==='sync'){
@@ -109,6 +119,7 @@ export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
       // Never start a rifle reload while the hands are between weapons.
       a.velocity=0;return true;
     }
+    if(hasGroundedPrimary(a)){h.fail(s,a,n,'PRIMARY ON GROUND — RETRIEVE WEAPON');return true;}
     // The authored order owns one reload, not an endless sequence of
     // refills when the final available magazine isn't completely full.
     if(a.actionTimer>0&&a.reload===0){h.pop(a);return true;}

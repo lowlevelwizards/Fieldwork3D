@@ -62,7 +62,7 @@ export function createEntryOrderHandler(port:OrderExecutionPort){
       failCurrentOrder(s,a,n,'ENTRY TOOL BLOCKED · '+verdict.reason);return true;
     }
     clearCurrentOrderIssue(a);a.velocity=0;rotate(a,angle(a.p,doorCenter(door)),dt);
-    if(method!=='wedge'&&method!=='unwedge'&&!prepareHandsFree(a,dt))return true;
+    if(method!=='wedge'&&method!=='unwedge'&&!prepareHandsFree(a,dt,s))return true;
     if(a.actionTimer===0){a.lastDoorAt=s.seconds;a.lastDoorId=door.id;
       a.lastDoorMethod='open';}
     // Tool retrieval from a backpack or inaccessible overflow is slower

@@ -61,6 +61,8 @@ export type ReplayActorFrame=ActorFrame & {
  /** S5.2: recorded explicit weapon hand, optional for all legacy films. */
  secondarySwitch?:SecondarySwitchState;
  retentionTransition?:TeamActor['retentionTransition'];
+ groundedPrimaryId?:number|null;
+ primaryPlacement?:TeamActor['primaryPlacement'];
  /** S8.2: historical pistol magazine identity, rounds and handoff clock. */
  secondaryEquipment?:SecondaryEquipment;
  secondaryReload?:SecondaryTimedReload|null;
@@ -209,7 +211,9 @@ export function snapshot(s:Session,seenGround?:string[],
       lastNoiseAt:a.lastNoiseAt,
       lastReportAt:a.side==='red'?a.lastReportAt:undefined,
       magazine:a.magazine,reserve:a.reserve,reload:a.reload,
-      retentionTransition:a.retentionTransition?{...a.retentionTransition}:undefined,
+      groundedPrimaryId:a.groundedPrimaryId??null,
+       primaryPlacement:a.primaryPlacement?{...a.primaryPlacement}:undefined,
+       retentionTransition:a.retentionTransition?{...a.retentionTransition}:undefined,
        secondarySwitch:a.secondarySwitch?{...a.secondarySwitch}:initialSecondarySwitch(),
       secondaryEquipment:a.equipment?.secondary?
         reuseFrozenReplayValue(a.equipment.secondary,prior?.secondaryEquipment,
@@ -596,7 +600,9 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
     if(a)Object.assign(a,copy,{p:position(copy.p),
       // Archived films have no sidearm channel; neutralize stale future
       // state rather than leaking a selected pistol across seek.
-      retentionTransition:copy.retentionTransition?{...copy.retentionTransition}:undefined,
+      groundedPrimaryId:copy.groundedPrimaryId??null,
+       primaryPlacement:copy.primaryPlacement?{...copy.primaryPlacement}:undefined,
+       retentionTransition:copy.retentionTransition?{...copy.retentionTransition}:undefined,
        secondarySwitch:copy.secondarySwitch?{...copy.secondarySwitch}:initialSecondarySwitch(),
       secondaryReload:copy.secondaryReload?{...copy.secondaryReload}:null,
       // F2: rewind physically carried locations as well as the HUD counters.

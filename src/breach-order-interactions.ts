@@ -1,3 +1,4 @@
+import {retrieveGroundedPrimary} from './breach-grounded-primary.ts';
 import {prepareHandsFree} from './breach-weapon-retention-live.ts';
 import {hardCoveringBlocksPaneContact} from './breach-window-covering-physical.ts';
 import {isCoveringAction,coveringActorAvailable,coveringContactClear,coveringHandContact,desiredCovering,sameCovering,coveringActionSeconds,coveringTransitionClear,COVERING_ACTION_LABELS} from './breach-window-covering-interaction.ts';
@@ -170,7 +171,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       a.velocity=0;
       const toward=Math.atan2(suspect.p.y-a.p.y,suspect.p.x-a.p.x);
       if(!rotate(a,toward,dt,s))return true;
-      if(!prepareHandsFree(a,dt))return true;
+      if(!prepareHandsFree(a,dt,s))return true;
       if(!continueContact(a,dt,RESTRAINT_CONTACT_SECONDS))return true;
       suspect.restrained=true;suspect.lastCustodyAt=s.seconds;
       // Completing physical cuffs interrupts any pending escape, hand
@@ -266,7 +267,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       a.velocity=0;
       if(!rotate(a,Math.atan2(suspect.p.y-a.p.y,suspect.p.x-a.p.x),dt,s))
         return true;
-      if(!prepareHandsFree(a,dt))return true;
+      if(!prepareHandsFree(a,dt,s))return true;
       if(!continueContact(a,dt,.9))return true;
       const pistol=suspect.equipment?.secondary;
       if(pistol?.weapon){
@@ -311,6 +312,10 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       if(!rotate(a,Math.atan2(weapon.p.y-a.p.y,weapon.p.x-a.p.x),dt,s))
         return true;
       if(!continueContact(a,dt,.75))return true;
+      if(weapon.temporaryPlacement&&weapon.ownerId===a.id&&a.groundedPrimaryId===weapon.id){
+        if(!retrieveGroundedPrimary(s,a)){failCurrentOrder(s,a,n,'PRIMARY OUT OF REACH');return true;}
+        notify(s,a.name+' RETRIEVED PRIMARY');clearCurrentOrderIssue(a);pop(a);return true;
+      }
       weapon.status='secured';weapon.securedById=a.id;
       const message=a.name+' SECURED DROPPED FIREARM';
       notify(s,message);
@@ -401,7 +406,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
           failCurrentOrder(s,a,n,'RESTRAINT NOT AVAILABLE');return true;
         }
         if(a.actionTimer===0)a.lastCivilianContactAt=s.seconds;
-        if(!prepareHandsFree(a,dt))return true;
+        if(!prepareHandsFree(a,dt,s))return true;
       if(!continueContact(a,dt,RESTRAINT_CONTACT_SECONDS))return true;
         person.restrained=true;
         person.lastContactAt=s.seconds;person.lastContactPoint=clone(a.p);

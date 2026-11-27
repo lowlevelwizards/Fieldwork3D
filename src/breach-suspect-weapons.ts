@@ -14,6 +14,8 @@ export type DroppedFirearm={
  secondaryWeapon?:GlockAppearanceId;
  /** Actual issued pistol+magazines, no fabricated kit on retrieval. */
  secondaryEquipment?:SecondaryEquipment;
+ /** Temporary friendly ground placement is not evidence until secured. */
+ temporaryPlacement?:boolean;
  status:'loose'|'secured'|'retrieved';
  securedById?:string;
 };

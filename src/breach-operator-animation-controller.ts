@@ -829,9 +829,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const switchPose=sampleSecondaryRetention(p.secondarySwitch?.fraction??0,hasSuspension);
   const switchingSlung=hasSuspension&&switchPose.retention>0;
   // Retained primary remains visible while the sidearm is drawn.
-  heldWeapon.visible=((!p.down&&!p.surrender)||downProgress<.30)&&
+  heldWeapon.visible=!p.primaryGrounded&&((!p.down&&!p.surrender)||downProgress<.30)&&
     (switchingSlung||(p.secondarySwitch?.fraction??0)<.50);
-  droppedWeapon.visible=(p.down||p.surrender)&&downProgress>=.30&&
+  droppedWeapon.visible=!p.primaryGrounded&&(p.down||p.surrender)&&downProgress>=.30&&
     !p.worldWeaponReleased;
   if(droppedWeapon.visible&&r.droppedWeaponBody.children.length===0){
     const buildStart=profilePose?performance.now():0;
@@ -1111,7 +1111,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.retentionTransition.mode:p.retentionPreview;
   const retentionWeight=switchingSlung?switchPose.retention:liveOneHand?oneHandWeight:p.retentionTransition?.weight??1;
   const retentionAssembly=retentionMode&&config?resolveWeaponAssembly(config):null;
-  const retention=retentionMode&&retentionWeight>0&&!p.down&&!p.surrender&&!p.unarmedPreview&&
+  const retention=!p.primaryGrounded&&retentionMode&&retentionWeight>0&&!p.down&&!p.surrender&&!p.unarmedPreview&&
     (switchingSlung||!p.firing&&!reloadActive&&(liveOneHand||liveHandsFree||!p.aiming&&!doorActive&&!throwActive&&!treatmentActive&&!equipmentActive)&&
     (p.secondarySwitch?.fraction??0)===0)?
     sampleRetentionTransition({mode:retentionMode,
@@ -1193,7 +1193,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         p.labPistolPitch??0,p.labPistolStance==='retention');
       continue;
     }
-    if(!retention&&(manualShort||manualCarry)&&manualSourceFit&&!equipmentActive){
+    if(!p.primaryGrounded&&!retention&&(manualShort||manualCarry)&&manualSourceFit&&!equipmentActive){
       const startShoulder=shoulderFor(i);
       const targetShoulder=new THREE.Vector3(
         ...manualPose!.targets[
@@ -1252,6 +1252,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       else if(i===1)desired=leftGrip.clone().add(P(-1,0,3.2));
       else desired=leftGrip.clone();
     }
+    if(p.primaryGrounded&&!treatmentActive&&!equipmentActive&&!doorActive&&!throwActive){
+      desired=P(3,-8.6,sign*9);
+    }
     if(p.unarmedPreview&&p.civilianGesture){
       const gesture=p.civilianGesture;
       const wrist=gesture==='hands-behind'?
@@ -1282,7 +1285,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // V3 arms. Only when neither owns the pair does generic IK run.
     // No second IK pass may undo a validated elbow/armor solution.
     const destinationArms=coupled?.arms??coordinatedDynamic?.arms??null;
-    const pairedArms=!retention&&!carryTransitionActive&&!authoredBridge&&
+    const pairedArms=!p.primaryGrounded&&!retention&&!carryTransitionActive&&!authoredBridge&&
       !reaching&&!p.unarmedPreview&&contactReach<.001&&!equipmentActive?destinationArms:null;
     if(pairedArms){
       const limb=pairedArms[i];
