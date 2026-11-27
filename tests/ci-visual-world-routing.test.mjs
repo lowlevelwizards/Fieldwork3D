@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {selectVisualWorld,specs} from '../scripts/verification/ci-visual-world-routing.mjs';
+import {selectVisualWorld,specs,matchesGlob} from '../scripts/verification/ci-visual-world-routing.mjs';
 const wf=name=>readFileSync(new URL('../.github/workflows/'+name+'.yml',import.meta.url),'utf8');
 const selected=paths=>Object.entries(selectVisualWorld(paths)).filter(([,value])=>value).map(([key])=>key);
 test('every prior positive path filter is retained and main PRs enter one router',()=>{
@@ -30,4 +30,10 @@ test('disjoint changes do not trigger unrelated visual lanes',()=>{
 test('infrastructure changes select all lanes and file order is stable',()=>{
  assert.equal(selected(['package.json']).length,Object.keys(specs).length);
  assert.deepEqual(selected(['tests/veh-parking.test.mjs','tests/vfx-v13-blood-evidence.test.mjs']),selected(['tests/vfx-v13-blood-evidence.test.mjs','tests/veh-parking.test.mjs']));
+});
+
+test('GitHub path glob semantics preserve nested double-star and slash boundaries',()=>{
+ assert.ok(matchesGlob('src/breach-render/nested.ts','src/breach-**'));
+ assert.ok(!matchesGlob('src/worldgen/vehicle-folder/sub.ts','src/worldgen/vehicle-*.ts'));
+ assert.ok(!matchesGlob('tests/vfx-v13-blood-evidenceXtestYmjs','tests/vfx-v13-blood-evidence.test.mjs'));
 });

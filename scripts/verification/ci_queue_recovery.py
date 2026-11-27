@@ -22,7 +22,10 @@ def eligible(run, pull, repo):
         and run.get("head_branch") == head.get("ref")
         and run.get("head_branch") not in ("main", "master")
         and bool(run.get("head_sha")) and bool(head.get("sha"))
-        and run["head_sha"] != head["sha"]
+        and run["head_sha"] not in (head["sha"], pull.get("merge_commit_sha"))
+        and (not run.get("pull_requests") or any(
+            item.get("number") == pull.get("number") for item in run["pull_requests"]
+        ))
         and (run.get("path") or "").split("@")[0] not in (
             ".github/workflows/pages.yml", ".github/workflows/queue-recovery.yml"
         )

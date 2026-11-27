@@ -4,6 +4,8 @@ on:
     branches: [ci/queue-recovery-r0-r2-20261127]
     paths:
       - '.github/workflows/queue-recovery.yml'
+  schedule:
+    - cron: '13,43 * * * *'
   workflow_dispatch:
     inputs:
       apply:
@@ -28,7 +30,7 @@ jobs:
       - name: Inspect and cancel only stale same-repository PR checks
         env:
           GH_TOKEN: ${{ github.token }}
-          APPLY: ${{ github.event_name == 'push' || inputs.apply }}
+          APPLY: ${{ github.event_name == 'push' || github.event_name == 'schedule' || inputs.apply }}
         run: |
           if [ "$APPLY" = true ]; then
             python3 scripts/verification/ci_queue_recovery.py --apply

@@ -20,7 +20,7 @@ jobs:
       - name: Validate queue and routing safety
         run: |
           python3 -m unittest discover -s scripts/verification -p test_ci_queue_recovery.py
-          node --test tests/ci-visual-world-routing.test.mjs tests/ci-equipment-routing.test.mjs tests/ci-regression-plan.test.mjs tests/ci-specialist-routing.test.mjs tests/ci-movement-routing.test.mjs tests/ci-movement-door-routing.test.mjs tests/ci-weapon-visual-routing.test.mjs tests/ci-after-action-routing.test.mjs tests/ci-replay-mobile-routing.test.mjs tests/ci-replay-legacy-routing.test.mjs tests/ci-replay-director-routing.test.mjs
+          node --test tests/ci-release-coordination.test.mjs tests/ci-visual-world-routing.test.mjs tests/ci-equipment-routing.test.mjs tests/ci-regression-plan.test.mjs tests/ci-specialist-routing.test.mjs tests/ci-movement-routing.test.mjs tests/ci-movement-door-routing.test.mjs tests/ci-weapon-visual-routing.test.mjs tests/ci-after-action-routing.test.mjs tests/ci-replay-mobile-routing.test.mjs tests/ci-replay-legacy-routing.test.mjs tests/ci-replay-director-routing.test.mjs
           node scripts/verification/ci-workflow-contract.mjs
           node scripts/verification/ci-workflow-inventory.mjs --check --markdown artifacts/ci-workflow-inventory.md --json artifacts/ci-workflow-inventory.json
           cat artifacts/ci-workflow-inventory.md >> "$GITHUB_STEP_SUMMARY"

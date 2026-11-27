@@ -14,6 +14,9 @@ class Safety(unittest.TestCase):
         for mutation in ({"head_sha": "new"}, {"event": "push"}, {"event": "workflow_dispatch"}, {"status": "completed"}, {"head_branch": "main"}, {"head_repository": {"full_name": "fork/Fieldwork3D"}}, {"path": ".github/workflows/pages.yml"}, {"path": ".github/workflows/queue-recovery.yml"}, {"head_sha": ""}):
             self.assertFalse(eligible(run(**mutation), pull(), REPO), mutation)
         self.assertFalse(eligible(run(), {**pull(), "state": "closed"}, REPO))
+        self.assertFalse(eligible(run(), {**pull(), "merge_commit_sha": "old"}, REPO))
+        self.assertFalse(eligible(run(pull_requests=[{"number": 43}]), pull(), REPO))
+        self.assertTrue(eligible(run(pull_requests=[{"number": 42}]), pull(), REPO))
         self.assertFalse(eligible(run(), pull(repo={"full_name":"fork/Fieldwork3D"}), REPO))
 
     def test_dry_run_and_recheck(self):

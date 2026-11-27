@@ -17,3 +17,9 @@
 
 ## Remaining migration
 Inventory all independent PR triggers and classify by current domain, historical/manual-only, or required release gate. Migrate each group into reusable routing only after verifying original test commands, source ownership, historical entry points and required check compatibility. Do not disable all workflows or bypass tests just to reduce queue counts. Add timeouts and PR-specific concurrency to further high-fanout lanes. Measure queue counts, runner time and test coverage before and after each batch. Coordinate production releases through one shared checkpoint.
+
+## Additional infrastructure
+- The visual/world dispatcher replaces ten independent main-PR triggers with one exact-path router. Original non-main and manual checks remain available; fixed unique concurrency groups avoid sibling cancellations.
+- Queue recovery runs twice hourly on main and preserves current head and test-merge SHAs as well as production. Manual execution defaults to report only.
+- The serialized release preflight is read-only: supply an exact open PR head, verify main/Pages alignment, mergeability, ancestry, and current workflow conclusions. It does not grant merge permission, override branch rules, or automatically merge. The release operator must still recheck the main/head lease immediately before merging and not start another release until public Pages verification passes.
+- Pages refuses non-main dispatches or a superseded checkout before publication and has a bounded timeout. Direct merges cannot be prevented by this workflow alone; repository rules/permissions need separate configuration.

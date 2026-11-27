@@ -1,7 +1,6 @@
 import {spawnSync} from 'node:child_process';
 import {appendFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {matchesGlob} from 'node:path';
 
 export const specs={
   "vfx-v11-production": [
@@ -151,6 +150,38 @@ export const specs={
   ]
 };
 const infrastructure=/^(?:package(?:-lock)?\.json|tsconfig[^/]*\.json|vite\.config\.[^/]+|\.github\/workflows\/ci-visual-world-acceptance\.yml|scripts\/verification\/ci-visual-world-routing\.mjs|tests\/ci-visual-world-routing\.test\.mjs)$/;
+// GitHub positive path patterns here use only literal characters, * and **.
+export function matchesGlob(path,glob){
+ let source='^';
+ for(let i=0;i<glob.length;i++){
+  const c=glob[i];
+  if(c==='*'){
+   if(glob[i+1]==='*'){source+='.*';i++;}
+   else source+='[^/]*';
+  }else source+=c.replace(/[.*+?^${}()|[\]\\]/g,'\\export function selectVisualWorld(paths){');
+ }
+ return new RegExp(source+'
+ const files=[...new Set(paths)];
+ const shared=files.some(path=>infrastructure.test(path));
+ return Object.fromEntries(Object.entries(specs).map(([key,globs])=>[
+  key,shared||files.some(path=>globs.some(glob=>matchesGlob(path,glob)))
+ ]));
+}
+function main(){
+ const {BASE_SHA:base,HEAD_SHA:head,GITHUB_OUTPUT:output}=process.env;
+ let selection=Object.fromEntries(Object.keys(specs).map(key=>[key,true]));
+ if(base&&head){
+  if(!/^[a-f0-9]{40}$/i.test(base)||!/^[a-f0-9]{40}$/i.test(head))throw Error('Invalid PR revision');
+  const diff=spawnSync('git',['diff','--name-only','--no-renames','-z',base+'...'+head],{encoding:'utf8'});
+  if(diff.status!==0)throw Error('Cannot classify visual ownership: '+diff.stderr);
+  selection=selectVisualWorld(diff.stdout.split('\0').filter(Boolean));
+ }
+ console.log(JSON.stringify(selection));
+ appendFileSync(output,Object.entries(selection).map(([key,value])=>key+'='+value).join('\n')+'\n');
+}
+if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1])main();
+).test(path);
+}
 export function selectVisualWorld(paths){
  const files=[...new Set(paths)];
  const shared=files.some(path=>infrastructure.test(path));
