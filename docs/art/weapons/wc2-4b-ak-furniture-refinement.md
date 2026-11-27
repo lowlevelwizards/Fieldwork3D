@@ -1,0 +1,6 @@
+# WC2.4b — restrained solid furniture art refinement
+User found first pass slightly better but not right yet. Move from flat silhouettes to broad faceted exterior game-art volumes, preserve shared classic and modern family forms, and retain the distinctive RPK heel without arbitrary differentiation. No change to open stocks, other weapon geometry, material ownership, attachment/pose authorities or behavior. The previous side inset and modern hinge presentation remain untouched.
+
+Review: pinned first candidate 6bb1a748, run 46024391398 artifact 15210403514. Whole-model pairs plus isolated stock side/top/quarter captures from the actual compiled art. Fresh exact external reference verification and human review remain outstanding. These are not approved art.
+
+Prior nine failures were stale historical source-piece assumptions after existing production mesh combination and obsolete global catalog census. Move per-piece assertions to the source builder, preserve actual compiled budgets, scope original 93 count to original AR/AK cohort. Add tests for art volumes, shared shapes, seating and untouched open furniture. Run all five focused suites. No waiver of failures. No merge or deploy before review.

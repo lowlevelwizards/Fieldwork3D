@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import {FAMILY_PRESETS} from '../src/equipment-weapon-families.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset,
  resolveWeaponAssembly} from '../src/equipment-weapon-assemblies.ts';
+import {buildModularWeaponSilhouette} from '../src/breach-modular-weapon-geometry.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
 import {partVisualBounds}
@@ -22,7 +23,11 @@ const close=(x,y,e=.001)=>Math.abs(x-y)<e;
 function model(id){
  const preset=FAMILY_PRESETS.find(x=>x.id===id);assert.ok(preset,id);
  const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration(preset.weapon),id);
- const group=buildWeaponSilhouette(cfg.weapon,plain,plain,cfg);
+ // Inspect authored components before the production compiler merges them.
+ const live=buildWeaponSilhouette(cfg.weapon,plain,plain,cfg);
+ assert.ok(live.children.length<=28,id+' production mesh budget');
+ clearWeaponSilhouette(live);
+ const group=buildModularWeaponSilhouette(cfg.build,plain,plain);
  group.updateMatrixWorld(true);
  return {preset,cfg,group};
 }

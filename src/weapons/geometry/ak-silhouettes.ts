@@ -13,6 +13,7 @@ import {addWeaponPixelMark,addWeaponPixelMarkPairBatched} from './weapon-pixel-d
 import {akMagazineCurve,akMagazineOutline,akMagazineRibOutlines}
  from './ak-magazine-profiles.ts';
 import {akBarrelArt,AK_BARREL_ART} from './ak-barrel-profiles.ts';
+import {addAKSolidFurnitureArt} from './ak-solid-furniture-art.ts';
 import {addAKReceiverSideDovetail} from './ak-side-mount-geometry.ts';
 
 // A2: the three shallow stamped-cover bands share the same tagged steel
@@ -137,9 +138,7 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  }else if(stock.startsWith('ak-rpk-clubfoot')){
   // WC2.4: refine the existing clubfoot gesture in the miniature art.
   // Preserve the characteristic broad heel rather than making it generic.
-  p('stock',[[-15.85,.69],[-10.60,.88],[-6.22,1.01],
-   [-6.38,-1.48],[-9.96,-1.99],[-11.10,-3.12],
-   [-13.75,-4.06],[-15.00,-3.90],[-15.85,-3.42]],3.06,2);
+  addAKSolidFurnitureArt(root,stock,index.stock++,'clubfoot',partMaterial('stock',2));
  }else if(stock==='ak-triangle-full'){
   // Standard AKS-74 side-folding TRIANGLE: strong top rail, single lower
   // diagonal, open center, clean skinny butt. It must not read as an AKMS.
@@ -177,18 +176,15 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  }else if(stock==='ak-sidefold'||stock==='ak-sidefold-plum'){
   // WC2.4: solid polymer artwork only, shared across modern variants.
   // One quieter planar mass; the existing hinge presentation is unchanged.
-  p('stock',[[-14.40,.15],[-11.15,.15],[-8.55,.39],[-6.20,.72],
-   [-6.32,-1.83],[-10.10,-2.72],
-   [-12.75,-3.06],[-14.40,-2.92]],3.07,1);
+  addAKSolidFurnitureArt(root,stock,index.stock++,'polymer',partMaterial('stock',1));
   b('stock',-6.29,-.20,0,.64,1.78,2.50,0);
  }else{
   const isWood=stock.startsWith('ak-wood')&&
    !stock.endsWith('-plum');
   // WC2.4: one continuous exterior art silhouette replaces overlapping
   // quads. Keep the shared classic furniture language, not invented variants.
-  p('stock',[[-6.42,.92],[-9.60,.20],[-12.20,.04],[-15.45,.00],
-   [-15.45,-3.24],[-12.77,-3.35],[-10.00,-2.95],[-6.42,-2.04]],
-   3.07,isWood?2:1);
+  addAKSolidFurnitureArt(root,stock,index.stock++,isWood?'classic':'classic-polymer',
+   partMaterial('stock',isWood?2:1));
   if(stock.startsWith('ak-wood74'))
    b('stock',-10.7,-1,1.97,2.0,.65,.18,1);
  }

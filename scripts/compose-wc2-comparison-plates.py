@@ -51,7 +51,7 @@ for cohort in ("primary","sidearm"):
     page.save(out/f"{cohort}-all-shared-scale.png")
 print(f"WC2 comparison plates: {len(records)} unique factory and sidearm references")
 
-# WC2.4: pair actual WebGL views with the pinned pre-edit baseline.
+# WC2.4b: pair actual WebGL views with the pinned pre-edit baseline.
 # The fitted views may independently frame each candidate; only side-shared
 # is a scale-controlled comparison. Never call these images visual approval.
 before_dir = Path("reports/wc2-before")
@@ -62,8 +62,8 @@ if before_dir.exists():
         raise ValueError("Expected exactly one pinned baseline manifest")
     before_root = before_files[0].parent
     before = json.loads(before_files[0].read_text())
-    if before["revision"] != "fb6147fc7a44e971ece40e0dea1ebcda200a0a99":
-        raise ValueError("Wrong WC2.4 baseline revision")
+    if before["revision"] != "6bb1a748bea3c7ea06fa2d9019b70edaeb6ae57f":
+        raise ValueError("Wrong WC2.4b baseline revision")
     def factory_map(m):
         return {r["id"]: r for report in m["reports"] for r in report["records"]
                 if r["platform"] != "accessory-samples" and r["status"] == "primary-reference"}
@@ -80,7 +80,7 @@ if before_dir.exists():
             raise ValueError("Shared camera scale changed: " + ident)
         page = Image.new("RGB", (1000, 66 + len(views)*268), "#1d2226")
         draw = ImageDraw.Draw(page)
-        draw.text((10, 8), ident + " | WC2.4 fixed-stock candidate comparison", fill="white", font=font)
+        draw.text((10, 8), ident + " | WC2.4b fixed-stock candidate comparison", fill="white", font=font)
         draw.text((10, 28), "BEFORE " + before["revision"][:12], fill="white", font=font)
         draw.text((510, 28), "AFTER " + manifest["revision"][:12], fill="white", font=font)
         draw.text((10, 46), "Shared side scale; other views fitted; native panels unscaled", fill="white", font=font)
@@ -90,12 +90,15 @@ if before_dir.exists():
             for x, source, record in [(10,before_root,older),(510,root,newer)]:
                 img=Image.open(source/record["platform"]/ident/(view+".png")).convert("RGB")
                 page.paste(img,(x+(480-img.width)//2,y+18))
-        page.save(out/("wc2-4-"+ident+"-before-after.png"))
+        page.save(out/("wc2-4b-"+ident+"-before-after.png"))
     # Cross-family shape plate: actual monochrome render, same-scale lit side,
     # and broad 3D presentation. The fitted columns are explicitly labeled.
-    plate([new[i] for i in affected], "wc2-4-fixed-stock-overview.png",
+    plate([new[i] for i in affected], "wc2-4b-fixed-stock-overview.png",
           ("side-shared","silhouette-fit","top-fit","three-quarter-fit"),
-          "WC2.4 | shared side / fitted monochrome / fitted top / fitted quarter | "+manifest["revision"][:12])
+          "WC2.4b | shared side / fitted monochrome / fitted top / fitted quarter | "+manifest["revision"][:12])
+    plate([new[i] for i in affected], "wc2-4b-isolated-stock-studies.png",
+          ("stock-side","stock-top","stock-three-quarter"),
+          "WC2.4b | isolated production stock art, fitted side / top / quarter")
     # Record unchanged render cost and geometry scope, not artistic approval.
     checks = {}
     for ident in sorted(i for i in new if i.startswith("ak-") and i in old):
@@ -105,5 +108,5 @@ if before_dir.exists():
                          "triangles_before": a["triangles"], "triangles_after": b["triangles"]}
         if b["calls"] > a["calls"]:
             raise ValueError("Unexpected draw-call increase: "+ident)
-    (out/"wc2-4-render-cost.json").write_text(json.dumps(checks, indent=2)+"\n")
-    print("WC2.4: six pinned fixed-stock sheets generated; review pending")
+    (out/"wc2-4b-render-cost.json").write_text(json.dumps(checks, indent=2)+"\n")
+    print("WC2.4b: six pinned fixed-stock sheets generated; review pending")
