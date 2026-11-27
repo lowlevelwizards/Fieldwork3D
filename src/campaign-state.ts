@@ -992,6 +992,7 @@ export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
  if(slot==='backpack')return equipCampaignCarryGear(c,id,slot,itemId);
  const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!o)return c;
+ if(slot==='armor'&&itemId!=='armor-carrier'&&o.loadout.slots.backpack==='backpack-panel')return c;
  const next=setEquipmentChoice(o.loadout,slot,itemId);
  if(next===o.loadout)return c;
  const stock=quoteCampaignFieldStockChange(c,o.loadout,next);
