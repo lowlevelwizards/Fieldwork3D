@@ -14,8 +14,11 @@ const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const smooth=(x:number)=>{const t=clamp(x);return t*t*(3-2*t);};
 /** Same release fraction for wrist, elbow and hand orientation. */
 export function retentionHandRelease(mode:RetentionPoseMode,side:-1|1,t:number){
- return side===-1?smooth((t-.15)/.52):
-  mode==='held-one'?0:smooth((t-.58)/.42);
+ if(mode==='held-one')return side===-1?smooth((t-.10)/.48):0;
+ if(mode==='front-slung')return side===-1?smooth((t-.06)/.38):
+  smooth((t-.24)/.48);
+ // Release the free arms before the weapon moves around the body.
+ return side===-1?smooth((t-.04)/.30):smooth((t-.16)/.34);
 }
 const duration=(mode:RetentionPoseMode)=>mode==='held-one'?.32:
  mode==='front-slung'?.58:mode==='side-slung'?.74:1.05;
@@ -51,7 +54,15 @@ export function sampleRetentionTransition(p:RetentionPoseInput,weight:number):Re
  const f=smooth(t);
  let position=p.heldPosition.clone().lerp(target.position,f);
  let quaternion=p.heldQuaternion.clone().slerp(target.quaternion,f);
- if(p.mode==='back-slung'){
+ if(p.mode==='front-slung'){
+  // A drop leads with the vertical motion; no intermediate flipped pose.
+  position.y=p.heldPosition.y+(target.position.y-p.heldPosition.y)*smooth(t*1.18);
+  position.x+=Math.sin(Math.PI*t)**2*.45;
+ }else if(p.mode==='side-slung'){
+  // Keep the silhouette in front of the torso until it has moved outboard.
+  position.x+=Math.sin(Math.PI*t)**2*1.5;
+  position.z+=Math.sin(Math.PI*t)**2*1.1;
+ }else if(p.mode==='back-slung'){
   // Keep the gun outboard while transferring it around the torso instead
   // of interpolating straight through the chest.
   const side=sampleRetentionPose({...p,mode:'side-slung'});
@@ -59,11 +70,13 @@ export function sampleRetentionTransition(p:RetentionPoseInput,weight:number):Re
    if(t<.5){
     const a=smooth(t*2);
     position=p.heldPosition.clone().lerp(side.position,a);
+    position.x+=Math.sin(Math.PI*a)**2*1.5;
+    position.z+=Math.sin(Math.PI*a)**2*1.1;
     quaternion=p.heldQuaternion.clone().slerp(side.quaternion,a);
    }else{
     const a=smooth((t-.5)*2);
     position=side.position.clone().lerp(target.position,a);
-    position.z+=Math.sin(Math.PI*a)*5;
+    position.z+=Math.sin(Math.PI*a)**2*5;
     quaternion=side.quaternion.clone().slerp(target.quaternion,a);
    }
   }

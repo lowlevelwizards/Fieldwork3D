@@ -18,7 +18,7 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
  const back=retention==='back-slung';
  const side=retention==='side-slung';
  const face=back?-1:1;
- const shoulderSign: -1|1=side?(rear.z+front.z>=0?-1:1):-1;
+ const shoulderSign: -1|1=-1; // fixed shoulder prevents a mid-frame mirrored route
  const hipSign: -1|1=shoulderSign===-1?1:-1;
  const margin=width*.6+.16;
  const lane=fit.slingShoulder(shoulderSign,width);
@@ -52,5 +52,45 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
  write(7,lowerFront,low,flank,face,0,hipSign);
  write(8,lowerFront,low,flank*.70,face,0,hipSign*.5);
  write(9,front.x,front.y,front.z,face,0,side?hipSign:0);
+ return out;
+}
+
+/** SR11: interpolate the body route as the weapon travels around the side.
+ * The socket knots stay exact. Crown knots travel above the shoulder;
+ * lower knots sweep around the exterior rather than lerp through the chest.
+ * The alternate route uses the same fixed-capacity scratch for every frame. */
+export function routeSlingTransition(out:readonly SlingRibbonKnot[],
+ alternate:readonly SlingRibbonKnot[],rear:THREE.Vector3,front:THREE.Vector3,
+ fit:EquipmentExterior,retention:RetentionPoseMode|undefined,width:number,
+ pack:THREE.Box3|undefined,weight:number){
+ if(retention!=='back-slung'||weight>=1)
+  return routeSlingRibbon(out,rear,front,fit,retention,width,pack);
+ routeSlingRibbon(out,rear,front,fit,undefined,width,pack);
+ if(weight<=.5)return out;
+ routeSlingRibbon(alternate,rear,front,fit,'back-slung',width,pack);
+ const t=Math.max(0,Math.min(1,(weight-.5)*2)),f=t*t*(3-2*t);
+ for(let i=1;i<out.length-1;i++){
+  const a=out[i],b=alternate[i],oldX=a.point.x,oldZ=a.point.z;
+  a.point.lerp(b.point,f);
+  a.normal.lerp(b.normal,f);
+  if(i===2||i===3){ // crown stays outside both shoulder/pack top
+   a.point.y=Math.max(a.point.y,fit.shoulder(-1)[1]+width*.6+.16);
+  }else{
+   const sign=i<=4?-1:1;
+   const start=Math.atan2(sign*Math.abs(oldZ),oldX);
+   const end=Math.atan2(sign*Math.abs(b.point.z),b.point.x);
+   const angle=start+(end-start)*f,c=Math.cos(angle),s=Math.sin(angle);
+   const y=a.point.y,margin=width*.6+.16;
+   const xEdge=Math.abs(c>=0?fit.front(y,0):packedRearSurface(fit.back(y,0),y,0,pack))+margin;
+   const zEdge=Math.abs(fit.side(y,0,sign))+margin;
+   const radius=Math.max(Math.hypot(a.point.x,a.point.z),
+    Math.min(xEdge/Math.max(.001,Math.abs(c)),zEdge/Math.max(.001,Math.abs(s))));
+   a.point.x=c*radius;a.point.z=s*radius;
+   // Blend the radial normal along the same arc (no zero-vector flip).
+   a.normal.set(c,0,s);
+  }
+  if(a.normal.lengthSq()<1e-8)a.normal.set(0,1,0);
+  a.normal.normalize();
+ }
  return out;
 }

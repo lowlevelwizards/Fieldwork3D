@@ -1532,7 +1532,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Same-frame held/drop world placement without temporary weapon node writes.
   solveOperatorDroppedWeapon(workingRig,p,scratch,downProgress,smooth);
   solveOperatorDirectSlingPose(workingRig,p,scratch,physicalSpeed,retention?.mode,
-    slingKind==='none'?undefined:equipmentExterior(clothing.armorStyle,clothing.rigStyle,clothing.top),retentionPack);
+    slingKind==='none'?undefined:equipmentExterior(clothing.armorStyle,clothing.rigStyle,clothing.top),retentionPack,retentionWeight);
   finishOperatorPoseFrame(r,p,
     scratch.armOutput.transforms[0].quaternion,
     scratch.armOutput.transforms[3].quaternion,equipment);
