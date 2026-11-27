@@ -46,6 +46,26 @@ try{
  await page.locator('#poseArmor').selectOption('armor-bare');
  await page.waitForFunction(()=>document.getElementById('preview')?.dataset.poseFitArmor==='armor-bare');
  if(!(await page.locator('#posePack option[value="admin-pack"]').evaluate(e=>e.disabled)))throw Error('Incompatible panel not disabled');
- await writeFile(out+'/report.json',JSON.stringify({report,errors},null,2));
+ // Actual Studio workflow: every new item available without issuing it;
+ // change real rig colors, verify review is never a saved appearance edit.
+ await page.goto(origin+'/operator-studio.html',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>document.getElementById('studioCanvas')?.dataset.ready==='true',{},{timeout:45000});
+ await page.getByRole('button',{name:'Customize gear'}).click();
+ await page.locator('#studioSubcategories button').filter({hasText:'PACK'}).click();
+ for(const [style,id] of [['hydration','hydration'],['admin-pack','assault-panel'],['day-pack','day-pack'],['assault-pack','assault-pack'],['field-pack','field-pack'],['rucksack','rucksack'],['medic-pack','medic-pack'],['comms-pack','comms-pack'],['civilian-pack','civilian-pack']]){
+  await page.locator('[data-appearance-item="'+style+'"]').click();
+  await page.waitForFunction(id=>document.getElementById('studioCanvas')?.dataset.authoredPack===id,id,{timeout:20000});
+  if(!await page.locator('#studioApply').isDisabled())throw Error('Review allowed save');
+ }
+ await page.locator('[data-appearance-item="day-pack"]').click();
+ await page.locator('#studioWorkflow button[data-studio-step="materials"]').click();
+ for(const [name,hex] of [['Black','292f2d'],['Coyote Brown','927557'],['Ranger Green','566a57']]){
+  await page.locator('#studioMaterials .solid-swatches button').filter({hasText:name}).click();
+  await page.waitForFunction(hex=>document.getElementById('studioCanvas')?.dataset.packReviewColor===hex,hex,{timeout:20000});
+  await page.screenshot({path:out+'/studio-day-pack-'+hex+'.png'});
+ }
+ await page.getByRole('button',{name:'Customize head'}).click();
+ await page.waitForFunction(()=>document.getElementById('studioCanvas')?.dataset.packReview==='false');
+ await writeFile(out+'/report.json',JSON.stringify({report,errors,studioReview:true},null,2));
  if(errors.length)throw Error(errors.join('; '));
 }finally{await browser?.close();server.kill();}
