@@ -7,5 +7,5 @@ test('Campaign armory records carry transactions and passes undo to final owner'
  assert.match(s,/this\.carryUndo\.record\(id,captureCarryUndo/);
  assert.match(s,/UNDO LAST CARRY MOVE/);
  assert.match(s,/this\.handlers\.undoCarryGear\(id,expected,undo.restore\)/);
- assert.match(flow,/undoCampaignCarryGear\(c,id,expected,before\)/);
+ assert.match(flow,/undoCampaignCarryGear\(c,id,expected,before,config\.carryMode\)/);
 });

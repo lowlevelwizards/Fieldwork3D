@@ -142,7 +142,7 @@ test('R7.3 all three actual view adapters retain their own committed kit and tra
  assert.match(campaign,/quoteCarryGearChange\(person\.loadout,person\.magazines/);
  assert.match(campaign,/this\.carryUndo\.record\(id,/);
  assert.match(campaign,/original\.dispatchEvent\(new Event\('change',\{bubbles:true\}\)\)/);
- assert.match(board,/equipRosterCarryGear\(before,member\.id,slot,itemId\)/);
+ assert.match(board,/equipRosterCarryGear\(before,member\.id,slot,itemId,config\.carryMode\)/);
  assert.match(board,/config\.setRoster\(after\);config\.saveRoster\(\);config\.applyRoster\(\)/);
  assert.match(creator,/options\.onEquipCarryGear\?\.\(selected\.id,slot,itemId\)/);
  assert.match(creator,/options\.onEquipGear\?\.\(selected\.id,slot,itemId\)/);
