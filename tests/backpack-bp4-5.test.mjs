@@ -73,3 +73,27 @@ test('actual operator preview replaces rather than overlaps legacy; normal rigs 
 test('retired soft-paca raw saves migrate to current soft-slick',()=>{
  assert.equal(readWardrobe({...initialWardrobe(),styles:{armorStyle:'soft-paca'}}).styles.armorStyle,'soft-slick');
 });
+
+test('assault Y is a continuous angular surface graphic within the existing batch',()=>{
+ const art=buildAuthoredPack('assault-pack',materials());
+ const mesh=art.root.getObjectByName('pack-pixel-graphics');
+ assert.equal(art.root.userData.fieldworkPackAngledY,true);
+ assert.equal(mesh.castShadow,false);
+ const p=mesh.geometry.getAttribute('position'),uv=mesh.geometry.getAttribute('uv');
+ // First 13 vertices are the joined Y outline and the lower shell band.
+ assert.ok(p.count>=13);
+ for(let i=1;i<13;i++){
+  assert.equal(uv.getX(i),uv.getX(0));
+  assert.equal(uv.getY(i),uv.getY(0));
+ }
+ assert.ok(p.getZ(3)>4&&p.getZ(7)<-4);
+ assert.ok(Math.abs(p.getY(3)-p.getY(4))>.2);
+ assert.ok(mesh.geometry.index.count/3<=30);
+ for(let i=0;i<27;i+=3){
+  const idx=mesh.geometry.index;
+  const a=new THREE.Vector3().fromBufferAttribute(p,idx.getX(i));
+  const b=new THREE.Vector3().fromBufferAttribute(p,idx.getX(i+1));
+  const c=new THREE.Vector3().fromBufferAttribute(p,idx.getX(i+2));
+  assert.ok(b.sub(a).cross(c.sub(a)).x<0,'outward-facing rear patch');
+ }
+});
