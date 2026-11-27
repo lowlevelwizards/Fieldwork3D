@@ -1,0 +1,2 @@
+# CT4 — Articulated ground drag foundation
+Drag follows committed carrier path rather than instantaneous travel angle. Preserve corners, coalesce collinear history, bound pursuit and sweep each proposed segment. Idle does not pull the subject to a new heading-derived target. History is committed only on accepted pair steps and cleared on release. Exact body articulation and hand anchors remain CT8–CT10.

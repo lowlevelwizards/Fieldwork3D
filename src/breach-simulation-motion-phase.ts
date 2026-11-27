@@ -2,6 +2,7 @@
  * Proposals capture pre-movement positions. A single arbiter decides hard
  * actor/civilian collisions; rejected motion is restored deterministically.
  */
+import {proposeDragTrail,type DragTrail} from './breach-drag-trail.ts';
 import {transportProfile} from './breach-transport-navigation.ts';
 import {hasTransportLink} from './breach-transport-custody.ts';
 import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
@@ -52,6 +53,7 @@ export function advanceSimulationMotion(s:Session,h:number,
   // Allocate custody rollback bookkeeping only if this frame truly
   // carries a civilian. Ordinary traffic and empty missions need none.
   let coupledBodyStarts:Map<string,Pt>|null=null;
+  let dragProposals:Map<string,DragTrail|undefined>|null=null;
   for(const carrier of s.operators){
     if(!carrier.carryingId)continue;
     const civil=s.civilians.find(c=>hasTransportLink(carrier,c))??
@@ -67,10 +69,10 @@ export function advanceSimulationMotion(s:Session,h:number,
     for(const c of s.civilians)if(c!==civil)others.push(c.p);
     const mode=civil.transportMode??carrier.plan[0]?.transportMode??'drag';
     const profile=transportProfile(mode);
-    const next=proposedCivilianTransportStep(bodyFrom,from,carrier.p,
-      carrier.heading,mode,
-      (from,to)=>sweptBodyClear(from,to,s.doors,profile.bodyRadius,geometry()),others,
-      carrier.transportContact?.kind==='release'?0:h*36);
+    const clear=(a:Pt,b:Pt)=>sweptBodyClear(a,b,s.doors,profile.bodyRadius,geometry());
+    const drag=mode==='drag'?proposeDragTrail(civil.id,bodyFrom,from,carrier.p,carrier.dragTrail,clear):null;
+    const next=mode==='drag'?drag?.point??null:proposedCivilianTransportStep(bodyFrom,from,carrier.p,
+      carrier.heading,mode,clear,others,carrier.transportContact?.kind==='release'?0:h*36);
     if(!next){
       carrier.p=clone(from);carrier.velocity=0;carrier.nav=[];
       civil.p=clone(bodyFrom);civil.velocity=0;
@@ -78,6 +80,7 @@ export function advanceSimulationMotion(s:Session,h:number,
     }
     if(!coupledBodyStarts)coupledBodyStarts=new Map<string,Pt>();
     coupledBodyStarts.set(carrier.id,clone(bodyFrom));
+    if(drag){if(!dragProposals)dragProposals=new Map();dragProposals.set(carrier.id,drag.trail);}
     civil.priorP=clone(bodyFrom);civil.p=next;civil.velocity=0;
   }
   cpuEnd('carried',carryStart);
@@ -239,6 +242,10 @@ export function advanceSimulationMotion(s:Session,h:number,
     // frame-denial episode rather than treating the next attempted step as
     // physical progress.
     recordRejectedMovementCommit(a,decision.blocked,s.seconds,h);
+  }
+  if(dragProposals)for(const [id,trail] of dragProposals){
+    const carrier=s.operators.find(a=>a.id===id);
+    if(carrier&&!decisions.some(d=>d.id===id&&d.blocked))carrier.dragTrail=trail;
   }
   for(const a of s.operators){
     clearUnrejectedCommit(a,s.seconds);

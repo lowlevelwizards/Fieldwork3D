@@ -202,6 +202,7 @@ export type TeamActor=Operator & {
   carryingId:string|null;carriedById:string|null;
   transportLatched?:boolean;
   transportContact?:import('./breach-transport-contact.ts').TransportContact;
+  dragTrail?:import('./breach-drag-trail.ts').DragTrail;
   downWeaponsReleased?:boolean;
   /** Physical downed-person drag/carry presentation, recorded for replay. */
   transportMode?:TransportMode|null;
