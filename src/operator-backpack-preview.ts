@@ -1,3 +1,4 @@
+import type {PackMountMode} from './operator-equipment-assembly.ts';
 /** Opt-in art preview. Does not change loadout IDs or inventory. */
 import * as THREE from 'three';
 import {packDetailPalette} from './operator-backpack-colors.ts';
@@ -37,7 +38,7 @@ function addHose(state:PackPreviewState,fit:PackFit,armor:string,rig:string,top:
  const surface=equipmentExterior(armor,rig,top);
  const [cx,cy]=fit.center;
  const [,sy,sz]=surface.shoulder(1);
- const z=Math.min(sz,3.9);
+ const z=Math.max(2.0,Math.min(sz-.85,3.4));
  const front=surface.front(3.8,z);
  const points:PackPoint[]=[
   [cx+.3,cy+5.65,1.6],
@@ -57,22 +58,22 @@ function addHose(state:PackPreviewState,fit:PackFit,armor:string,rig:string,top:
  packBox(root,'bite-valve',m.dark,points[points.length-1],[.8,1.15,.85]);
  finishPackArtwork(root);state.harness?.add(root);
 }
-export function updatePackPreview(state:PackPreviewState,enabled:boolean,style:string,armor:string,rig:string,top:string){
+export function updatePackPreview(state:PackPreviewState,enabled:boolean,style:string,armor:string,rig:string,top:string,mode:PackMountMode='auto',belt='no-belt'){
  const id=enabled?authoredPackStyle(style):undefined;
- const key=[id,armor,rig,top].join('|');
+ const key=[id,armor,rig,top,mode,belt].join('|');
  if(state.key===key)return state.active;
  state.key=key;
  if(state.active)state.active.root.visible=false;
  state.active=undefined;state.fit=undefined;removeHarness(state);
  if(!id)return undefined;
  // Validate mount before constructing an incompatible variant.
- if(!fitPack(id,armor,rig,top).compatible)return undefined;
+ if(!fitPack(id,armor,rig,top,undefined,mode,belt).compatible)return undefined;
  let art=state.models.get(id);
  if(!art){art=buildAuthoredPack(id,state.materials);state.models.set(id,art);state.parent.add(art.root);}
- const fit=fitPack(id,armor,rig,top,art.mount);
+ const fit=fitPack(id,armor,rig,top,art.mount,mode,belt);
  mountPackArtwork(art.root,fit);
  state.active=art;state.fit=fit;
- if(fit.spans.length){
+ if(fit.spans.length||id==='hydration'){
   state.harness=buildPackHarness(fit,state.materials);
   state.chest.add(state.harness);
   if(id==='hydration')addHose(state,fit,armor,rig,top);
