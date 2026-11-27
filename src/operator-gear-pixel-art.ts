@@ -66,7 +66,8 @@ export function gearBoxMarkUV(geometry:THREE.BoxGeometry,w:number,h:number){
  }
  geometry.setAttribute('uv1',new THREE.BufferAttribute(uv,2));
 }
-export function syncGearMarkedMaterials(source:THREE.MeshStandardMaterial){
+export function syncGearMarkedMaterials(source:THREE.Material){
+ if(!(source instanceof THREE.MeshStandardMaterial))return;
  for(const material of linked.get(source)?.values()??[]){
   material.color.copy(source.color);
   if(material.map!==source.map){material.map=source.map;material.needsUpdate=true;}
