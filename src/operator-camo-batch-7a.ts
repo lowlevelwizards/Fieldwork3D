@@ -16,49 +16,49 @@ export type Camo7ARecipe={
 };
 const recipes={
  'multicam-black':{
-  label:'MULTICAM BLACK',
+  label:'MultiCam Black',
   description:'Original MultiCam seven-ink silhouette in subdued blue-charcoal, graphite, black-green and a rare fog-gray glint',
   colors:[[43,52,51],[68,75,71],[36,46,43],[59,64,61],[23,29,31],[109,114,108],[78,84,77]],
   targetCoverage:[.22,.23,.25,.17,.05,.04,.04],motifs:[]
  },
  'multicam-alpine':{
-  label:'MULTICAM ALPINE',
+  label:'MultiCam Alpine',
   description:'Original MultiCam seven-ink silhouette as snowy off-white, pearl-gray, misted stone and sparse slate shadow',
   colors:[[216,216,207],[239,239,231],[187,195,192],[171,175,166],[121,133,129],[248,248,241],[203,205,200]],
   targetCoverage:[.22,.23,.25,.17,.05,.04,.04],motifs:[]
  },
  'pencott-greenzone':{
-  label:'PENCOTT GREENZONE',
+  label:'PenCott GreenZone',
   description:'Dense hybrid fractal woodland: angular macro islands, connected irregular mid-pixels and dark deep-green/brown micro clusters',
   colors:[[166,170,113],[115,143,86],[71,110,68],[44,75,52],[113,91,63]],
   targetCoverage:[.26,.27,.23,.16,.08],motifs:[]
  },
  'pencott-badlands':{
-  label:'PENCOTT BADLANDS',
+  label:'PenCott BadLands',
   description:'Same PenCott three-scale hybrid index topology, recolored to muted sand, brown-khaki, sage and dark upland earth',
   colors:[[205,191,155],[176,155,116],[139,135,102],[96,99,81],[86,70,57]],
   targetCoverage:[.26,.27,.23,.16,.08],motifs:[]
  },
  'desert-night':{
-  label:'DESERT NIGHT',
+  label:'Desert Night',
   description:'Historical sage-green regular lattice under irregular low-profile dark blotches, not a pixelated woodland print',
   colors:[[133,151,125],[84,105,83],[46,67,56]],
   targetCoverage:[.65,.28,.07],motifs:[]
  },
  'kryptek-highlander':{
-  label:'KRYPTEK HIGHLANDER',
+  label:'Kryptek Highlander',
   description:'Layered rocky earth forms with crossing angular fracture lattice and dark ink fissures',
   colors:[[195,178,140],[160,139,100],[121,111,82],[94,86,69],[49,58,49]],
   targetCoverage:[.29,.27,.22,.15,.07],motifs:[]
  },
  berezka:{
-  label:'KLMK BEREZKA',
+  label:'KLMK Berezka',
   description:'Soviet sunray camouflage with rows of irregular bright leaflets on a deep olive ground',
   colors:[[85,105,65],[182,184,113],[214,207,152],[55,72,52]],
   targetCoverage:[.62,.24,.10,.04],motifs:[]
  },
  'spectre-skwo':{
-  label:'SPECTRE SKWO',
+  label:'Spectre SKWO',
   description:'Fractured Spectre-derived olive/sage corridors, compact stepped dark links and restrained khaki-brown punctuation',
   colors:[[158,154,121],[112,126,91],[83,105,71],[117,94,70],[46,62,46]],
   targetCoverage:[.26,.28,.23,.16,.07],motifs:[]
