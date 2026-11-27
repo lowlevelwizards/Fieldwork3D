@@ -367,7 +367,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.weaponBody.userData.retentionSockets=model.userData.retentionSockets??null;
     const retentionBounds=new THREE.Box3().setFromObject(model);
     // Capture before reparenting so cached samples use weapon-art coordinates.
-    const retentionPoints=[...retentionShape([model],retentionBounds)];
+    const compileRetention=readSlingKind(config?.slots.sling)!=='none';
+    const retentionPoints=compileRetention?[...retentionShape([model],retentionBounds)]:[];
     // Preserve source geometry for the shape compiler without traversing the
     // animated weapon parent in world space. Reparent after collecting below.
     while(model.children.length)r.weaponBody.add(model.children[0]);
@@ -388,7 +389,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       const accessories=buildWeaponAccessories(config,r.weaponSteel,r.weaponDark,
        r.weaponLensMaterial);
       const accessoryBounds=new THREE.Box3().setFromObject(accessories);
-      retentionPoints.push(...retentionShape([accessories],accessoryBounds));
+      if(compileRetention)retentionPoints.push(...retentionShape([accessories],accessoryBounds));
       retentionBounds.union(accessoryBounds);
       while(accessories.children.length)
        r.weaponAccessories.add(accessories.children[0]);
@@ -1128,7 +1129,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.retentionTransition.mode:p.retentionPreview;
   const retentionWeight=transportStow?1:switchingSlung?switchPose.retention:liveOneHand?oneHandWeight:p.retentionTransition?.weight??1;
   const retentionAssembly=retentionMode&&config?resolveWeaponAssembly(config):null;
-  const retentionPack=slingKind!=='none'?retentionPackBounds(r,clothing.packStyle,attachments[EAI.pack]):undefined;
+  const retentionPack=(retentionMode==='side-slung'||retentionMode==='back-slung')?
+    retentionPackBounds(r,clothing.packStyle,attachments[EAI.pack]):undefined;
   const retention=!p.primaryGrounded&&retentionMode&&retentionWeight>0&&!p.down&&!p.surrender&&!p.unarmedPreview&&
     (transportStow||switchingSlung||!p.firing&&!reloadActive&&(liveOneHand||liveHandsFree||!p.aiming&&!doorActive&&!throwActive&&!treatmentActive&&!equipmentActive)&&
     (p.secondarySwitch?.fraction??0)===0)?

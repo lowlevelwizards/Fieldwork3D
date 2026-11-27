@@ -1822,8 +1822,10 @@ function showDiagnostics(){
       mesh.localToWorld(world);
       if(i>0){
         world2.fromBufferAttribute(position,(i-1)*2);
-        const other=new THREE.Vector3().fromBufferAttribute(position,(i-1)*2+1);
-        world2.add(other).multiplyScalar(.5);mesh.localToWorld(world2);
+        const index=(i-1)*2+1;
+        world2.set((world2.x+position.getX(index))*.5,
+          (world2.y+position.getY(index))*.5,(world2.z+position.getZ(index))*.5);
+        mesh.localToWorld(world2);
         length+=world.distanceTo(world2);
       }
       if(i<markers.length)put(i,world.x,world.y,world.z);

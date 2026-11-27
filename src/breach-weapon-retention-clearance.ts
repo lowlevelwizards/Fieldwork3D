@@ -16,7 +16,7 @@ export type RetentionClearanceInput=Readonly<{
  * spanning the entire torso. Positive or negative correction is allowed
  * along the resting normal: a separated silhouette should settle inward.
  * A single final correction owns the visual fit. */
-function fitLocal(p:RetentionClearanceInput,box:THREE.Box3,correction:THREE.Vector3){
+function fitLocal(p:RetentionClearanceInput,box:THREE.Box3,correction:THREE.Vector3,matrix:THREE.Matrix4){
  const fit=p.exterior!;
  const shape=p.shape?.length?p.shape:undefined;
  const points=shape??[
@@ -32,12 +32,12 @@ function fitLocal(p:RetentionClearanceInput,box:THREE.Box3,correction:THREE.Vect
  const world=new THREE.Vector3(),margin=.38;
  let minY=Infinity,shift=-Infinity;
  for(const point of points){
-  world.copy(point).multiply(p.scale).applyQuaternion(p.quaternion).add(p.position);
+  world.copy(point).applyMatrix4(matrix);
   minY=Math.min(minY,world.y);
  }
  correction.y=Math.max(0,2-p.chestHeight-minY);
  for(const point of points){
-  world.copy(point).multiply(p.scale).applyQuaternion(p.quaternion).add(p.position);
+  world.copy(point).applyMatrix4(matrix);
   const {x,z}=world,y=world.y+correction.y;
   const pack=p.packBounds;
   const packY=!!pack&&y>=pack.min.y-margin&&y<=pack.max.y+margin;
@@ -74,11 +74,11 @@ function fitLocal(p:RetentionClearanceInput,box:THREE.Box3,correction:THREE.Vect
  return {correction,box};
 }
 export function clearRetentionEnvelope(p:RetentionClearanceInput){
- const box=p.bounds.clone().applyMatrix4(new THREE.Matrix4().compose(
-  p.position,p.quaternion,p.scale));
+ const matrix=new THREE.Matrix4().compose(p.position,p.quaternion,p.scale);
+ const box=p.bounds.clone().applyMatrix4(matrix);
  const correction=new THREE.Vector3();
  if(box.isEmpty()||p.mode==='held-one')return {correction,box};
- if(p.exterior)return fitLocal(p,box,correction);
+ if(p.exterior)return fitLocal(p,box,correction,matrix);
  const armor=Math.max(0,Math.min(2,p.armorPush));
  correction.y=Math.max(0,2-p.chestHeight-box.min.y);
  if(p.mode==='front-slung')

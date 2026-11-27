@@ -27,10 +27,13 @@ export function retentionShape(roots:readonly THREE.Object3D[],bounds:THREE.Box3
    }
   });
  }
- const points:THREE.Vector3[]=[];
+ const points:THREE.Vector3[]=[],seen=new Set<string>();
  for(const b of bins)if(!b.isEmpty()){
   for(const x of [b.min.x,b.max.x])for(const y of [b.min.y,b.max.y])
-   for(const z of [b.min.z,b.max.z])points.push(new THREE.Vector3(x,y,z));
+   for(const z of [b.min.z,b.max.z]){
+    const key=x+'|'+y+'|'+z;
+    if(!seen.has(key)){seen.add(key);points.push(new THREE.Vector3(x,y,z));}
+   }
  }
  return points;
 }
