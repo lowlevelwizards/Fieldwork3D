@@ -1,3 +1,5 @@
+import {issuedPackStyle} from './operator-backpack-catalog.ts';
+import {initialWardrobe,setWardrobeStyle} from './operator-wardrobe-data.ts';
 /** BT4.12: headless, atomic preparation quote. The host owns authorization,
  * stock, campaign phase, and the commit. This adapter never changes issue
  * quantity or creates rounds; it only fits already-authorized candidate kit. */
@@ -28,7 +30,8 @@ export function quoteUnifiedPreparation(source:UnifiedPreparationSource,request:
   if(FIELD_ITEM_IDS.some(id=>fieldQuantity(inventory,id)!==fieldQuantity(request.inventory,id)))return {ok:false,reason:'INVALID FIELD ISSUE'};
   kit={...kit,fieldInventory:inventory};
  }
- const quote=quoteUnifiedCarryTransaction({kit,wardrobe:source.wardrobe,magazines:source.magazines,
+ const wardrobe=request.kind==='gear'&&request.slot==='backpack'?setWardrobeStyle(source.wardrobe??initialWardrobe(),'packStyle',issuedPackStyle(request.id)):source.wardrobe;
+ const quote=quoteUnifiedCarryTransaction({kit,wardrobe,magazines:source.magazines,
   primaryPart:source.weaponConfiguration?.build?.parts.magazine,shellReserve:source.weapon==='shotgun'?source.reserve:undefined});
  if(!quote.ok)return quote;
  const old=source.magazines;

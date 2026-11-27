@@ -57,7 +57,7 @@ export function unifiedLoadoutInput(source:UnifiedLoadoutSource):CarryInput{
  const auxiliary=look.rigStyle==='no-rig'?[]:source.auxiliaryCells??authored.auxiliary;
  const armor=ARMOR_PROPORTIONS[look.armorStyle],frame=armorAttachmentFrame(look.armorStyle,look.top);
  const pack=proposedPackStyle(look.packStyle);
- const packFit=pack?fitPack(pack,look.armorStyle,look.rigStyle,look.top,undefined,wardrobe?.packMount??'auto',belt):undefined;
+ const packFit=pack?fitPack(pack,look.armorStyle,look.rigStyle,look.top,undefined,'auto',belt):undefined;
  const packCompatible=!!pack&&!!packFit?.compatible&&(PACK_PROFILES[pack].harness!=='direct'||supportsDirectPack(look.armorStyle));
  const storage=[...registeredRigStorage(rigCells),...registeredAuxiliaryStorage(auxiliary),
   ...(armor?modularArmorStorage(look.armorStyle,look.rigStyle,frame.front.x,armor.width,armor.top,armor.bottom):[]),

@@ -229,8 +229,8 @@ export function auditLiveUnifiedClearance(r:OperatorRig){
  }
  // Thigh meshes include their actual animated garment transforms. The
  // pack body uses authored root bounds, excluding its separate harness.
- for(let i=0;i<r.legs.length;i++){
-  const mesh=r.legs[i].upper;mesh.geometry.computeBoundingBox();
+ for(let i=0;i<r.feet.length;i++){
+  const mesh=r.feet[i].upper;mesh.geometry.computeBoundingBox();
   if(mesh.visible&&mesh.geometry.boundingBox)obstacles.push({id:'thigh:'+i,box:worldBox(mesh.geometry.boundingBox,mesh.matrixWorld)});
  }
  const pack=r.visualKit.packPreview.active?.root;

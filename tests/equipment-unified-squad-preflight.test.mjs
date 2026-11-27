@@ -13,8 +13,13 @@ function outfit(op){
 test('BT12 staged squad deployment computes all fits before modifying any actor',()=>{
  const s=newSession(),r=initialRoster(),members=r.members.map(outfit);
  const before=team(s).map(a=>({id:a.id,equipment:structuredClone(a.equipment),weapon:a.weapon,name:a.name,flashCharges:a.flashCharges,manifest:a.unifiedCarry}));
- const invalid=members.at(-1);
+ const invalid=members.find(m=>m.id===team(s).at(-1).id);
+ assert.ok(invalid);
  invalid.loadout=setEquipmentChoice(setEquipmentChoice(invalid.loadout,'belt','belt-none'),'backpack','backpack-none');
+ // A large existing issue cannot fit any legal carrier; do not rely on
+ // one small item being impossible to carry after automatic migration.
+ invalid.loadout={...invalid.loadout,fieldInventory:{version:1,stacks:[{itemId:'flashbang',quantity:20,location:'rig'}]}};
+ assert.equal(quoteSavedCarryMigration(invalid).ok,false);
  assert.throws(()=>applyRosterIdentity(s,{...r,members},'unified'),/UNIFIED CARRY DOES NOT FIT/);
  assert.deepEqual(team(s).map(a=>({id:a.id,equipment:a.equipment,weapon:a.weapon,name:a.name,flashCharges:a.flashCharges,manifest:a.unifiedCarry})),before);
 });

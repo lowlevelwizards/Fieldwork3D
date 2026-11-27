@@ -990,7 +990,7 @@ export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
  itemId:string,carryMode?:'unified'):CampaignState{
  if(c.activeContractId||slot==='primary'||
   !mayChooseCampaignContent(c,'equipment',itemId,slot))return c;
- if(slot==='backpack')return equipCampaignCarryGear(c,id,slot,itemId);
+ if(slot==='backpack')return equipCampaignCarryGear(c,id,slot,itemId,carryMode);
  const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!o)return c;
  if(slot==='armor'&&itemId!=='armor-carrier'&&o.loadout.slots.backpack==='backpack-panel')return c;
