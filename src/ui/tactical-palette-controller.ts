@@ -16,7 +16,7 @@ import {sitePowerControls,controlPosition,POWER_CONTROL_REACH,
 import {interruptsWatch} from '../breach-plan.ts';
 import {equippedEntryMethods} from '../equipment-entry-tools.ts';
 import {entryToolVerdict} from '../breach-entry-tools.ts';
-import {team,enemies,isSeen,inSight,plannedControl,liveVisibility,
+import {team,enemies,isSeen,inSight,plannedControl,liveVisibility,liveBodyVisible,
  hasInterruptedSquadEntry,canEdit,type Session,type TeamActor} from '../breach-game.ts';
 import {SUSPECT_CHALLENGE_RANGE,SUSPECT_ESCORT_VOICE_RANGE}
  from '../breach-suspect-compliance.ts';
@@ -502,11 +502,11 @@ export function createTacticalPaletteController(config:{
     nearestPaletteCandidate(state.operators.filter(e=>e!==a&&
       (!input.personFocusId||e.id===input.personFocusId)),at,e=>
       e.health<=0&&captureVitalStatus(e)!=='deceased'&&!e.carriedById&&
-      (e.side===a.side||liveVisibility(state,e.p))&&
+      (e.side===a.side||liveBodyVisible(state,e.p))&&
       sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)),34):null;
   const casualtyAtPlan=routeEndCivilianActions?
     nearestPaletteCandidate(focusedCivilians,at,c=>!a.carryingId&&!a.plan.some(n=>n.kind==='evacuate')&&
-      c.health<=0&&!c.carriedById&&liveVisibility(state,c.p)):null;
+      c.health<=0&&!c.carriedById&&liveBodyVisible(state,c.p)):null;
   const secondaryHand=plannedSecondaryHand(a.secondarySwitch,a.plan,node?.id);
   const secondaryKit=a.equipment?.secondary;
   const projectedTransport=projectedTransportPatient(a.carryingId,a.plan);

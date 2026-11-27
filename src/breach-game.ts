@@ -2418,6 +2418,21 @@ export function observerPointVisible(
   return unobstructed(observer.p,p,s,observer.posture==='crouch'||
     effectiveEyeHeight(observer)<25);
 }
+/** Body-only close awareness: the center of a prone casualty can lie
+ * behind an operator while much of the model is still alongside them.
+ * No ground, living actor, or combat perception is granted by this test.
+ * Keep the actual world occlusion check, even inside the close radius. */
+export const CASUALTY_CLOSE_AWARENESS_RADIUS=24;
+export function observerBodyVisible(s:Session,observer:TeamActor,p:Pt):boolean{
+  if(observer.side!=='blue'||observer.health<=0)return false;
+  const dx=observer.p.x-p.x,dy=observer.p.y-p.y;
+  if(dx*dx+dy*dy<=CASUALTY_CLOSE_AWARENESS_RADIUS**2)
+    return unobstructed(observer.p,p,s,observer.posture==='crouch'||effectiveEyeHeight(observer)<25);
+  return observerPointVisible(s,observer,p);
+}
+export function liveBodyVisible(s:Session,p:Pt):boolean{
+  return s.intel.mode==='full-view'||s.operators.some(a=>observerBodyVisible(s,a,p));
+}
 export function liveVisibility(s:Session,p:Pt){
   if(sightDiagnosticsEnabled)sightDiagnosticCounts.liveQueries++;
   if(s.intel.mode==='full-view'){
