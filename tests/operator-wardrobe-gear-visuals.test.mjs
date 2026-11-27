@@ -10,14 +10,14 @@ const base={x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
 test('distinct carrier, rig, and pack assemblies follow real attachment nodes',()=>{
  const rig=createOperatorRig('rook','blue');
  let w=initialWardrobe();
- w=setWardrobeStyle(w,'armorStyle','soft-paca');
+ w=setWardrobeStyle(w,'armorStyle','soft-slick');
  w=setWardrobeStyle(w,'packStyle','medic-pack');
  w=setWardrobeStyle(w,'rigStyle','micro-rig');
  // A medic pack is a field-pack visual style: issue the compatible real item.
  poseOperator(rig,{...base,wardrobe:w,
   equipment:setEquipmentChoice(base.equipment,'backpack','backpack-field')},0);
  const style=rig.visualKit.wardrobeGear;
- assert.equal(style.armor['soft-paca'].visible,true);
+ assert.equal(style.armor['soft-slick'].visible,true);
  assert.equal(style.pack['medic-pack'].visible,true);
  assert.equal(style.pack['medic-pack'].parent,rig.pack);
  assert.equal(style.rig['micro-rig'].visible,true);

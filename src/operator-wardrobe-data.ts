@@ -3,6 +3,7 @@ import {beltStyleForEquipment,canonicalBeltStyle} from './operator-belt-profile.
  * Physical protection, carrying capacity, costs and ownership remain in
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
+import {legacyPackStyles,legacyPackDefault} from './operator-backpack-catalog.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {readHelmetSetup,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import {readHelmetField,type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
@@ -137,11 +138,11 @@ add('packStyle','none',[['no-pack','No backpack']]);
 add('packStyle','day',[
  ['hydration','Hydration carrier'],['admin-pack','Admin pack'],
  ['day-pack','Day pack'],['assault-pack','Assault pack'],
- ['sling-bag','Sling bag']
+ ['sling-bag','Sling bag'],['civilian-pack','Civilian backpack']
 ]);
 add('packStyle','field',[
- ['field-pack','Field pack'],['rucksack','Rucksack'],
- ['medic-pack','Medic pack'],['comms-pack','Communications pack'],
+ ['field-pack','ALICE field pack'],['rucksack','Expedition rucksack'],
+ ['medic-pack','Medical pack'],['comms-pack','Communications pack'],
  ['duffel','Duffel bag']
 ]);
 add('gloves','gloves',[['gloves-none','Bare hands'],
@@ -462,12 +463,7 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
   ['no-rig'],slots.rig==='rig-full'?'field-webbing':
     slots.rig==='rig-light'?'light-rig':'no-rig');
  desired.beltStyle=beltStyleForEquipment(slots.belt,desired.beltStyle);
- choose('packStyle',slots.backpack==='backpack-day'?
-  ['hydration','admin-pack','day-pack','assault-pack','sling-bag']:
-  slots.backpack==='backpack-field'?
-  ['field-pack','rucksack','medic-pack','comms-pack','duffel']:
-  ['no-pack'],slots.backpack==='backpack-day'?'day-pack':
-  slots.backpack==='backpack-field'?'field-pack':'no-pack');
+ choose('packStyle',[...legacyPackStyles(slots.backpack)],legacyPackDefault(slots.backpack));
  choose('trousers',['bdu-trousers','acu-trousers','gorka-trousers','jeans','civilian-cargo','track-pants'],
   'bdu-trousers');
  choose('footwear',slots.feet==='feet-none'?['bare-feet']:slots.feet==='feet-light'?['sneakers','field-boots']:['field-boots'],

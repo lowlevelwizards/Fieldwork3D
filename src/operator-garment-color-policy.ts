@@ -32,11 +32,12 @@ const all:readonly GarmentSolidId[]=[
  'foliage','khaki','sand','tan','coyote','brown','slate',
  'charcoal','black','off-white','nutria-brown',
  'navy','muted-blue','rust','burnt-orange'];
+export const CIVILIAN_PACK_SOLIDS=['navy','muted-blue','rust','forest-green','burnt-orange','charcoal','khaki','slate','black'] as const satisfies readonly GarmentSolidId[];
 const kit:readonly GarmentSolidId[]=[
  'olive-drab','ranger-green','forest-green','foliage','khaki',
  'sand','tan','coyote','brown','nutria-brown','slate','charcoal','black'];
 export const FABRIC_SOLID_CHOICES:Readonly<Record<FabricCamoChannel,readonly GarmentSolidId[]>>={
- top:all,trousers:all,armor:kit,gear:kit,pack:kit
+ top:all,trousers:all,armor:kit,gear:kit,pack:[...new Set([...kit,...CIVILIAN_PACK_SOLIDS])]
 };
 /** Independent glove dye palette: never reads shirt print, top solid or
  * auto-matched equipment colors. Existing gloves default to ranger green. */
@@ -64,7 +65,8 @@ export const CASUAL_SHIRT_SOLIDS:Readonly<Record<string,readonly GarmentSolidId[
   'ranger-green','tan','coyote','navy']
 };
 export function solidChoicesFor(channel:FabricCamoChannel,
- outfit?:{top:string}):readonly GarmentSolidId[]{
+ outfit?:{top:string;packStyle?:string}):readonly GarmentSolidId[]{
+ if(channel==='pack'&&outfit?.packStyle)return outfit.packStyle==='civilian-pack'?CIVILIAN_PACK_SOLIDS:kit;
  return channel==='top'&&outfit&&CASUAL_SHIRT_SOLIDS[outfit.top]?
   CASUAL_SHIRT_SOLIDS[outfit.top]:FABRIC_SOLID_CHOICES[channel];
 }

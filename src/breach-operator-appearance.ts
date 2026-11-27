@@ -31,6 +31,7 @@ import {garmentSolidHex,isGarmentSolidId,solidChoicesFor,resolvedCuffSolid,resol
  from './operator-garment-color-policy.ts';
 import {fabricCamoCompatible,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
+import {applyPackDetailPalette} from './operator-backpack-preview.ts';
 import {applyOperatorVisualKit} from './operator-visual-kit.ts';
 import {nvgMounted} from './equipment-night-vision.ts';
 import {updateOperatorEquipmentDetails} from './operator-equipment-details.ts';
@@ -77,7 +78,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     p.flashCharges??null,p.wedgeRemaining??null,
     p.restraintRemaining??null,p.treatmentActive??null,
     p.weaponConfiguration?.build?.parts.magazine??null,
-    p.nvgDeployed??false
+    p.nvgDeployed??false,r.root.userData.fieldworkAuthoredPackPreview===true
   ]);
   const fingerprintMs=traceAppearance?performance.now()-fingerprintStart:0;
   r.root.userData.fieldworkLightingAppearanceKey=appearanceKey;
@@ -250,7 +251,12 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   const kitStart=traceAppearance?performance.now():0;
   applyOperatorVisualKit(r.visualKit,gear,identity,
     p.magazineCarryLocations,p.faceStyle,p.wardrobe,p.weaponConfiguration,
-    nvgMounted(p),p.nvgDeployed===true);
+    nvgMounted(p),p.nvgDeployed===true,r.root.userData.fieldworkAuthoredPackPreview===true);
+   // Preview-only: legacy pack contents are internal unless BP13 mounts them.
+   if(r.visualKit.packPreview.active){
+    for(const item of [r.medicalPouch,r.utilityTool,r.radioUnit,...r.flashCanisters,...r.wedgeMeshes,...r.cuffMeshes])
+     if(item.parent===r.pack)item.visible=false;
+   }
   // An occupied functional holster replaces (never overlays) the wardrobe's
   // decorative EMPTY holster at the same belt side.
   if(p.equipment?.secondary?.weapon){
@@ -361,7 +367,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     channel==='gear'?(clothing.rigStyle==='no-rig'||
      validRigSolid(clothing.rigStyle,storedSolid)):
     channel==='armor'?validArmorSolid(clothing.armorStyle,storedSolid):
-    channel==='top'?solidChoicesFor('top',clothing).includes(storedSolid):true
+    channel==='top'?solidChoicesFor('top',clothing).includes(storedSolid):
+    channel==='pack'?solidChoicesFor('pack',clothing).includes(storedSolid):true
    )?storedSolid:null;
    // A model's iconic textile applies only while the specific channel
    // has no *valid* manual color or print. Stale, incompatible saved
@@ -397,11 +404,16 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
      const id=channel==='gear'&&clothing.rigStyle!=='no-rig'?
       signature.solid:
       channel==='armor'&&clothing.armorStyle!=='armor-bare'?
-       armorDefault.solid:automaticGear[channel];
+       armorDefault.solid:channel==='pack'&&clothing.packStyle==='civilian-pack'?'navy':automaticGear[channel];
      r.colors.set(material,new THREE.Color(garmentSolidHex(id)));
     }
    }
   }
+  const packPrint=p.wardrobe?.fabricCamo?.pack;
+  const detailHex=packPrint&&fabricCamoCompatible(packPrint,'pack',clothing)?
+   garmentSolidHex(resolveAutomaticGearColors({print:packPrint}).pack):
+   (r.colors.get(r.packMaterial)??r.packMaterial.color).getHex();
+  applyPackDetailPalette(r.visualKit.packPreview,detailHex,r.colors);
   // Plaid is a separate woven shirt fabric, never a military camouflage ID.
   // Shared cloth UVs cover the torso and articulated button-up sleeves.
   const plaid=clothing.top==='button-up-shirt'?

@@ -157,6 +157,7 @@ export function fabricCamoCompatible(id:HeadwearCamoId,
   case 'gear':
    return validRigPrint(outfit.rigStyle,id);
   case 'pack':
+   if(outfit.packStyle==='civilian-pack')return ['m81-woodland','multicam-black'].includes(id);
    if(id==='alpenflage'||id==='east-german-strichtarn'||
     id==='woodland-marpat')
     return ['field-pack','rucksack'].includes(outfit.packStyle);
