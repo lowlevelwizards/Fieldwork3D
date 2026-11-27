@@ -69,7 +69,8 @@ test('encounter regression: no false initial audio suspicion; real gunfire inter
  // using its ID/clock and never invent unseen target positions.
  assert.match(intake,/for\(const sound of s\.noise\)/);
  assert.match(intake,/sound\.id<=a\.lastNoiseExaminedId/);
- assert.match(intake,/interpretSound\(sound,a\.id,a\.p,s\.doors,sessionWorldGeometry\(s\)\.walls,s\.windows\)/);
+ assert.match(intake,/const walls=sessionWorldGeometry\(s\)\.walls;/);
+ assert.match(intake,/interpretSound\(sound,a\.id,a\.p,s\.doors,walls,s\.windows\)/);
  assert.match(intake,/if\(disposition!=='ignore'\)observeSuspicion/);
  assert.match(intake,/a\.lastNoiseExaminedId=Math\.max/);
 
