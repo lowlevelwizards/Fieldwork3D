@@ -203,8 +203,9 @@ function syncPanelOption(armor:string){
  const panel=document.querySelector<HTMLOptionElement>('#posePack option[value="admin-pack"]');
  if(!panel)return;
  const ok=supportsDirectPack(armor);
- panel.disabled=!ok;
- panel.textContent=ok?'Assault panel · art preview':'Assault panel · compatible plate carrier required';
+ if(panel.disabled===ok)panel.disabled=!ok;
+ const label=ok?'Assault panel · art preview':'Assault panel · compatible plate carrier required';
+ if(panel.textContent!==label)panel.textContent=label;
 }
 function syncPosePickers(){
  const current=(document.getElementById('weapon') as HTMLSelectElement).value;
