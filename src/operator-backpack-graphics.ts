@@ -17,7 +17,7 @@ const tiles:readonly Tile[]=[
  {id:'assault-y',w:1,h:1,draw:p=>p(0,0)},
  {id:'assault-lid',w:10,h:4,draw:p=>{row(p,2,1,8);}},
  {id:'alice-lid',w:15,h:5,draw:p=>{row(p,1,1,13);for(const x of [3,11])for(let y=0;y<5;y++)p(x,y,1);}},
- {id:'alice-pocket',w:4,h:6,draw:p=>{row(p,4,0,3,1);row(p,3,0,3);p(1,2);p(2,2);}},
+ {id:'alice-pocket',w:4,h:6,draw:p=>{row(p,4,0,3,1);row(p,3,0,3);p(1,2);}},
  {id:'bergen-side',w:4,h:12,draw:p=>{row(p,9,0,3);for(let y=1;y<9;y++)p(0,y,1);}},
  {id:'medical',w:1,h:1,draw:p=>p(0,0)},
  {id:'comms-upper',w:10,h:5,draw:p=>{row(p,3,0,9);for(let y=1;y<=2;y++)for(let x=3;x<=6;x++)p(x,y,1);}},
@@ -95,7 +95,7 @@ export function attachPackGraphics(root:THREE.Group,graphics:readonly PackGraphi
    // boundaries; each segment is a flat surface graphic, not hardware.
    const v=(z:number,y:number)=>new THREE.Vector2(z,y);
    const path=g.tile==='medical'?
-    [v(-w*.38,-h*.31),v(-w*.38,h*.25),v(-w*.28,h*.37),v(w*.28,h*.37),v(w*.38,h*.25),v(w*.38,-h*.31),v(w*.29,-h*.39),v(-w*.29,-h*.39),v(-w*.38,-h*.31)]:
+    [v(-w*.43,-h*.38),v(-w*.43,h*.33),v(-w*.37,h*.43),v(w*.37,h*.43),v(w*.43,h*.33),v(w*.43,-h*.38),v(w*.37,-h*.43),v(-w*.37,-h*.43),v(-w*.43,-h*.38)]:
     [v(-w*.39,h*.02),v(-w*.39,h*.26),v(-w*.26,h*.37),v(w*.26,h*.37),v(w*.39,h*.26),v(w*.39,h*.02)];
    const half=PACK_DETAIL_PIXEL*.43;
    const polygon=path.map((_,i)=>{
