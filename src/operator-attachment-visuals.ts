@@ -9,9 +9,12 @@ import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {gearMarkedMaterial,gearBoxMarkUV,type GearMark} from './operator-gear-pixel-art.ts';
 import {TILE_WORLD_SIZE} from './rendering/pixel-recipes.ts';
-import {nativePrimaryMagazine,SIDEARM_OPERATOR_SCALE} from './operator-attachment-reference.ts';
+import {nativePrimaryMagazine,nativeEquippedMagazine,SIDEARM_OPERATOR_SCALE} from './operator-attachment-reference.ts';
 import {buildGlockAppearance,glockArtSockets} from './weapons/geometry/glock-family-silhouettes.ts';
 export type AttachmentPalette=Record<AttachmentMaterial,THREE.Material>;
+export type AttachmentSamples={primaryPart?:string|null;secondaryMagazine?:THREE.Mesh;grenade?:THREE.Mesh};
+export const ATTACHMENT_FABRIC_WALL=.44;
+export const ATTACHMENT_DUMP_WALL=.82;
 export type AttachmentVisual={
  root:THREE.Group;holder:THREE.Group;contents:THREE.Group[];
  contentSockets:THREE.Group[];interactionSocket:THREE.Object3D;
@@ -93,7 +96,7 @@ export function sculptGeometry(sections:Section[],hollow=false,wall=.30){
  g.computeVertexNormals();return g;
 }
 export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette,
- requested:AttachmentVariant='standard',sampleContents=false):AttachmentVisual{
+ requested:AttachmentVariant='standard',sampleContents=false,samples:AttachmentSamples={}):AttachmentVisual{
  const variant=attachmentVariant(id,requested),footprint=attachmentFootprint(id,variant);
  const {width:W,height:H,depth:D}=footprint;
  const root=new THREE.Group();root.name='attachment-'+id;
@@ -111,14 +114,14 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
  // Back face touches the belt; the lower body narrows modestly away from
  // the thigh. No mounting bridge, shelf, or independently floating tab.
  const shell=(channel:AttachmentMaterial,cx:number,sections:readonly (readonly [number,number,number,number,number])[],
-  hollow=false,mark?:GearMark,name='sculpted-body',wall=.30)=>{
+  hollow=false,mark?:GearMark,name='sculpted-body',wall=ATTACHMENT_FABRIC_WALL)=>{
   const s=sections.map(([y,w,back,front,cut])=>({y:y*H,width:w*W,back:back*D,front:front*D,cut:cut*W}));
   const m=mark?gearMarkedMaterial(palette[channel],mark,Math.max(...s.map(v=>v.width)),s[s.length-1].y-s[0].y):palette[channel];
   const mesh=new THREE.Mesh(sculptGeometry(s,hollow,wall),m);mesh.name=name;mesh.position.x=cx*W;
   mesh.castShadow=true;mesh.receiveShadow=true;holder.add(mesh);
  };
  const pouch=(cx:number,w:number,bottom:number,top:number,mark:GearMark='band',channel:AttachmentMaterial='fabric')=>{
-  shell(channel,cx,[[bottom,w*.94,.12,.92,.07],[top,w,0,1,.07]],true,mark,'open-pouch',.30);
+  shell(channel,cx,[[bottom,w*.94,.12,.92,.07],[top,w,0,1,.07]],true,mark,'open-pouch',Math.min(ATTACHMENT_FABRIC_WALL,w*W*.16,D*.18));
  };
  const solid=(w:number,bottom:number,top:number,mark:GearMark='utility',front=.88)=>{
   shell('fabric',0,[[bottom,w*.86,.09,front*.89,.10],[bottom+.12,w,0,front,.11],
@@ -139,7 +142,8 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
   const n=attachmentContentSlots(id,variant),w=n===2?.46:.94;
   for(let i=0;i<n;i++){
    const x=(i-(n-1)/2)*.49;pouch(x,w,-.94,-.25);
-   cell(x,-.16,.52,p=>{
+   cell(x,-.16,.52,(p,g)=>{
+    if(samples.secondaryMagazine){const mesh=new THREE.Mesh(samples.secondaryMagazine.geometry.clone(),samples.secondaryMagazine.material);mesh.geometry.computeBoundingBox();const size=mesh.geometry.boundingBox!.getSize(new THREE.Vector3());mesh.position.y=-H*.78+H*.16+size.y/2;g.add(mesh);return;}
     p('contents',x,-.42,.52,w*.68,.72,.50,'magazine-body');
     p('hardware',x,-.075,.52,w*.78,.10,.60,'baseplate');
    });
@@ -148,9 +152,10 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
  case 'primary-mag-pouch':
   pouch(0,.99,-.98,-.25,'band');
   cell(0,-.09,.51,(_p,g)=>{
-   const geo=nativePrimaryMagazine(variant==='compact');
+   const geo=samples.primaryPart?nativeEquippedMagazine(samples.primaryPart):nativePrimaryMagazine(variant==='compact');
+   if(!geo)return;
    const mag=new THREE.Mesh(geo,palette.contents);mag.name='native-primary-magazine';
-   mag.position.y=Math.max(0,-H*.98+.30+ .04-(-H*.09+geo.boundingBox!.min.y));
+   mag.position.y=Math.max(0,-H*.98+ATTACHMENT_FABRIC_WALL+ .04-(-H*.09+geo.boundingBox!.min.y));
    mag.castShadow=true;mag.receiveShadow=true;g.add(mag);
   });break;
  case 'shell-holder':
@@ -166,7 +171,7 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
  case 'rigid-holster':
   // Molded shell follows the narrower slide and widens at the mouth.
   shell('dark',0,[[-.98,.64,.10,.82,.10],[-.78,.72,.06,.90,.09],
-   [-.22,.96,0,1,.10]],true,'holster','tapered-polymer-shell',.27);
+   [-.22,.96,0,1,.10]],true,'holster','tapered-polymer-shell',.35);
   cell(0,-.19,.54,(_p,g)=>{
    const gun=buildGlockAppearance('glock-g19-gen3',{details:false});
    const pivot=glockArtSockets('glock-g19-gen3').holsterPivot;
@@ -189,16 +194,16 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
  case 'radio-holder':
   pouch(0,.91,-.97,-.49,'band');
   cell(0,-.22,.51,p=>{
-   p('contents',0,-.50,.51,.72,.72,.60,'radio-body','radio');
-   p('dark',.27,-.10,.47,.16,.20,.17,'antenna');
-   p('hardware',-.24,-.17,.49,.23,.12,.25,'top-control');
+   p('contents',0,-.55,.51,.61,.60,.53,'radio-body','radio');
+   p('dark',.24,-.10,.47,.14,.34,.15,'antenna');
+   p('hardware',-.22,-.22,.49,.23,.12,.25,'top-control');
   });break;
  case 'flashlight-holder':
   pouch(0,.91,-.92,-.54,'band');
   cell(0,-.22,.51,p=>{
-   p('contents',0,-.49,.51,.53,.74,.48,'light-body');
-   p('dark',0,-.14,.51,.82,.25,.78,'oversized-head');
-   p('hardware',0,-.017,.51,.59,.034,.56,'lens');
+   p('contents',0,-.49,.51,.48,.78,.45,'light-body','band');
+   p('dark',0,-.06,.51,.80,.24,.76,'oversized-head');
+   p('hardware',0,.065,.51,.57,.04,.54,'lens');
   });break;
  case 'restraint-pouch':
   solid(.94,-.95,-.35,'leather',.83);lid(.98,-.37,-.09);break;
@@ -216,18 +221,25 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
    });
   }break;
  case 'grenade-pouch':
-  shell('fabric',0,[[-.97,.76,.10,.83,.12],[-.72,.98,.02,1,.13],
-   [-.34,.93,0,.96,.12]],true,'flap','rounded-canister-holder');
-  cell(0,-.28,.52,p=>{
-   p('contents',0,-.49,.52,.65,.69,.50,'sample-canister');
-   p('hardware',0,-.13,.52,.54,.14,.49,'cap');
+  shell('fabric',0,[[-.97,.98,.02,.98,.05],[-.34,.99,0,1,.06]],true,'flap','rounded-canister-holder',.36);
+  cell(0,-.97+(.36+2.9)/H,.50,(_p,g)=>{
+   if(samples.grenade){
+    const model=samples.grenade.clone(true);
+    model.position.set(0,0,0);model.rotation.set(0,0,0);model.visible=true;
+    model.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry=o.geometry.clone();o.visible=true;}});
+    g.add(model);
+   }else{
+    // Default Lab reference matches the existing issued flash art.
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(1.25,1.25,5.8,8),palette.contents);
+    const cap=new THREE.Mesh(new THREE.CylinderGeometry(1.43,1.43,.8,8),palette.dark);cap.position.y=2.85;body.add(cap);g.add(body);
+   }
   });break;
  case 'utility-pouch':
   solid(.96,-.96,-.37,'utility');lid(.99,-.39,-.07);break;
  case 'dump-pouch':
   if(variant==='rolled')solid(.96,-.92,-.08,'dump',.98);
   else shell('fabric',0,[[-.98,.67,.15,.77,.10],[-.79,.85,.10,.92,.12],
-   [-.21,1,0,1,.12]],true,'dump','flared-dump-bag',.46);
+   [-.21,1,0,1,.12]],true,'dump','flared-dump-bag',ATTACHMENT_DUMP_WALL);
   break;
  }
  const interactionSocket=new THREE.Object3D();interactionSocket.name='interaction-socket';
@@ -240,6 +252,8 @@ export function setAttachmentSampleCount(visual:AttachmentVisual,count:number){
  visual.contents.forEach((content,index)=>{content.visible=index<n;});
 }
 export function placeAttachmentVisual(visual:AttachmentVisual,socket:{x:number;y:number;z:number;yaw:number;tilt?:number}){
- visual.root.position.set(socket.x,socket.y,socket.z);
- visual.root.rotation.set(socket.tilt??0,socket.yaw,0,'YXZ');
+ const dump=visual.root.userData.attachmentId==='dump-pouch'&&visual.root.userData.attachmentVariant!=='rolled';
+ const inset=dump?.22:0;
+ visual.root.position.set(socket.x-Math.sin(socket.yaw)*inset,socket.y,socket.z-Math.cos(socket.yaw)*inset);
+ visual.root.rotation.set(dump?.12:socket.tilt??0,socket.yaw,0,'YXZ');
 }

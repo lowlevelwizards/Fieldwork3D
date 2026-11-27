@@ -18,3 +18,11 @@ export function nativePrimaryMagazine(short=false){
 export function nativePrimaryMagazineSize(short=false){
  const g=nativePrimaryMagazine(short),size=g.boundingBox!.getSize(new THREE.Vector3());g.dispose();return size;
 }
+
+import {carriedMagazineGeometry} from './operator-carried-magazines.ts';
+/** Full-size family art, retaining all existing carry-proxy callers unchanged. */
+export function nativeEquippedMagazine(part:string){
+ const g=carriedMagazineGeometry(part,true);if(!g)return null;
+ g.computeBoundingBox();const b=g.boundingBox!,center=b.getCenter(new THREE.Vector3());
+ g.translate(-center.x,-b.max.y,-center.z);g.computeBoundingBox();return g;
+}

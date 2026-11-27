@@ -6,7 +6,7 @@ import {ATTACHMENTS,ATTACHMENT_IDS,attachmentMountRequest,validAttachmentId,
 import {resolveBeltMounts,type BeltRegion} from './operator-belt-mounts.ts';
 import type {BeltStyle} from './operator-belt-profile.ts';
 import {syncGearMarkedMaterials} from './operator-gear-pixel-art.ts';
-import {createAttachmentVisual,placeAttachmentVisual,setAttachmentSampleCount,type AttachmentVisual} from './operator-attachment-visuals.ts';
+import {createAttachmentVisual,placeAttachmentVisual,setAttachmentSampleCount,type AttachmentVisual,type AttachmentSamples} from './operator-attachment-visuals.ts';
 type FixtureItem={id:AttachmentId;region:BeltRegion;variant?:AttachmentVariant};
 export const ATTACHMENT_FIXTURES={
  plainclothes:{style:'plain-belt',items:[{id:'rigid-holster',region:'right-hip'}]},
@@ -28,10 +28,10 @@ export function clearAttachmentPreview(rig:OperatorRig){
  p.group.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
  p.accent.dispose();p.group.removeFromParent();previews.delete(rig);
 }
-export function updateAttachmentPreview(rig:OperatorRig,choice:string,variant:AttachmentVariant,countMode:string,visible:boolean){
+export function updateAttachmentPreview(rig:OperatorRig,choice:string,variant:AttachmentVariant,countMode:string,visible:boolean,samples:AttachmentSamples={}){
  const fixture=attachmentFixture(choice,variant);
  if(!fixture||!visible){const p=previews.get(rig);if(p)p.group.visible=false;return '';}
- const key=choice+':'+variant;
+ const key=choice+':'+variant+':'+(samples.primaryPart??'reference')+':'+(samples.secondaryMagazine?.geometry.uuid??'reference');
  let p=previews.get(rig);
  if(p?.key!==key){
   clearAttachmentPreview(rig);
@@ -45,7 +45,7 @@ export function updateAttachmentPreview(rig:OperatorRig,choice:string,variant:At
   const result=resolveBeltMounts(fixture.style,requests);
   const visuals=result.mounts.map(m=>{
    const item=fixture.items[Number(m.id)];
-   const visual=createAttachmentVisual(item.id,palette,item.variant,true);
+   const visual=createAttachmentVisual(item.id,palette,item.variant,true,samples);
    placeAttachmentVisual(visual,m.socket);group.add(visual.root);return visual;
   });
   const status=visuals.length+'/'+fixture.items.length+' mounted · '+result.rejected.length+' fit rejections';

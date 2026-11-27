@@ -2527,7 +2527,7 @@ function draw(){
   const attachmentChoice=attachmentPreviewSelect.value;
   const attachmentStatus=updateAttachmentPreview(rig,attachmentChoice,
    attachmentVariantSelect.value as AttachmentVariant,attachmentContentsSelect.value,
-   !comparing&&!kitComparing&&!variantComparing);
+   !comparing&&!kitComparing&&!variantComparing,{primaryPart:rig.visualKit.carriedMagazinePart,grenade:rig.flashCanister});
   if(attachmentStatus){
    // Cosmetic samples only. The actual equipment ledger is never populated.
    rig.beltPouch.visible=false;
