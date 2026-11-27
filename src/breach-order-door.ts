@@ -1,3 +1,4 @@
+import {automaticDoorPowered,automaticAssemblyAvailable,operatingLeaves,manualAssemblyBlocked} from './breach-door-operating-modes.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {kickShoveLooseCover,kickReachableImpactFraction} from './breach-door-kick-cover.ts';
 /** Stage 8: explicit authoritative door OPEN/CLOSE/KICK/HOLD order,
@@ -38,6 +39,20 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
     const door=s.doors.find(d=>d.id===n.doorId);
     if(!door){
       failCurrentOrder(s,a,n,'DOOR MISSING');return true;
+    }
+    // Powered entrances respond to sensors, never to a simulated hand.
+    if(door.operatingMode==='automatic'&&!door.latchBroken&&
+       (n.method==='open'||!n.method||n.method==='close'||n.method==='hold')){
+      if(n.method==='close'||n.method==='hold'){
+        failCurrentOrder(s,a,n,'AUTOMATIC DOOR · SENSOR CONTROLLED');return true;
+      }
+      if(!automaticDoorPowered(s)||!automaticAssemblyAvailable(operatingLeaves(s.doors,door))){
+        failCurrentOrder(s,a,n,'AUTOMATIC DOOR UNAVAILABLE');return true;
+      }
+      if(door.open&&(door.openFraction??0)>=.98){pop(a);return true;}
+      a.velocity=0;a.actionTimer+=dt;
+      if(a.actionTimer>4)failCurrentOrder(s,a,n,'AUTOMATIC DOOR OBSTRUCTED');
+      return true;
     }
     if((n.method==='close'&&!door.open)||
        (n.method!=='close'&&n.method!=='kick'&&n.method!=='hold'&&
@@ -302,7 +317,7 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
       // A deliberate CLOSE remains queued but may not close against an
       // actively occupied threshold. Retry at the next fixed tick once
       // the body has cleared, never reverse the panel into the entrant.
-      if(n.method==='close'&&doorClosingContested(s,door)){
+      if(n.method==='close'&&pairedLeaves(s,door).some(leaf=>doorClosingContested(s,leaf))){
         if(s.seconds-a.lastLaneWarnAt>3){
           a.lastLaneWarnAt=s.seconds;
           notify(s,a.name+' CLOSE WAIT · PASSAGE IN USE');
@@ -326,7 +341,7 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
         if(door.open){
           failCurrentOrder(s,a,n,'DOOR MUST BE CLOSED TO HOLD');return true;
         }else{
-          for(const leaf of pairedLeaves(s,door))leaf.heldBy=a.id;
+          door.heldBy=a.id;
           notify(s,door.id+' HELD CLOSED · BRACED');
           battleEvent(s,'door',a,doorCenter(door),door.id+' BRACED');
         }
@@ -341,8 +356,8 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
         battleEvent(s,'door',a,doorCenter(door),door.id+' CLOSING',
           {action:'door-close',objectId:door.id});
       }else{
-        if(pairedLeaves(s,door).some(leaf=>leaf.heldBy)){
-          failCurrentOrder(s,a,n,'DOOR BRACED SHUT');return true;
+        if(manualAssemblyBlocked(pairedLeaves(s,door),a.p)){
+          failCurrentOrder(s,a,n,'DOOR ASSEMBLY BLOCKED');return true;
         }
         for(const leaf of pairedLeaves(s,door)){
           const wasOpening=leaf.open;

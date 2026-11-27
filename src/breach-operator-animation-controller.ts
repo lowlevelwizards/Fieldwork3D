@@ -1253,7 +1253,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         .applyEuler(fit.rotation).add(fit.origin);
       if(i===0&&reloadHandChest)desired.copy(reloadHandChest);
     }
-    if(retention&&handsFreeAction){
+    if((retention&&handsFreeAction||p.primaryGrounded&&(treatmentActive||doorActive||equipmentActive))){
       if(treatmentActive)desired=i===0?leftGrip.clone():rightGrip.clone();
       else if(i===1)desired=leftGrip.clone().add(P(-1,0,3.2));
       else desired=leftGrip.clone();

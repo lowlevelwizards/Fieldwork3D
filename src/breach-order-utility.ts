@@ -1,3 +1,4 @@
+import {retentionBusy} from './breach-weapon-retention-live.ts';
 import {usesUnslungPlacement,prepareGroundedPrimary,hasGroundedPrimary,canRetrieveGroundedPrimary,retrieveGroundedPrimary} from './breach-grounded-primary.ts';
 /** Fixed-step SYNC, RELOAD and FLASH handlers, retaining authored timing.
  * Stable callbacks delegate game-owned events and order completion.
@@ -81,6 +82,7 @@ export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
     return true;
   }
   if(n.kind==='reload'){
+    if(retentionBusy(a)&&a.reload<=0){a.velocity=0;return true;}
     // S8.2 is the same authored RELOAD command, dispatched by the settled
     // physical hand. The issued Glock owns its magazine and timing; the
     // rifle's magazine/reserve/reload fields never change here.

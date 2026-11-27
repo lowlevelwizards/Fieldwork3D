@@ -7,6 +7,7 @@ import {initialRetentionTransition,requestRetentionTransition,advanceRetentionTr
 import {requestSecondarySwitch,advanceSecondarySwitch,initialSecondarySwitch} from './secondary-switching.ts';
 export function beginRetentionTick(a:TeamActor,dt:number){
  a.retentionHolstering=false;
+ if(a.health<=0||a.surrendered){a.retentionTransition=undefined;return;}
  if(!a.retentionTransition)return;
  const sling=readSlingKind(a.weaponConfiguration?.slots.sling);
  const next=advanceRetentionTransition(a.retentionTransition,dt,sling);
@@ -31,7 +32,8 @@ export function prepareHandsFree(a:TeamActor,dt:number,s?:Session):boolean{
  }
  a.velocity=0;a.aim=0;
  if(a.reload>0||a.secondaryReload)return false;
- const mode=preferredHandsFreeRegion(sling,a.equipment?.secondary?.weapon?a.equipment.secondary.holster:undefined)==='side'?'side-slung':'front-slung';
+ const mode=(a.secondarySwitch?.fraction??0)>0||a.retentionTransition?.mode==='front-slung'?
+  'front-slung':preferredHandsFreeRegion(sling,a.equipment?.secondary?.weapon?a.equipment.secondary.holster:undefined)==='side'?'side-slung':'front-slung';
  a.retentionTransition=requestRetentionTransition(a.retentionTransition??initialRetentionTransition(),mode,sling);
  const sw=a.secondarySwitch??initialSecondarySwitch();
  if(sw.fraction>0){

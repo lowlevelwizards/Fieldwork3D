@@ -534,6 +534,10 @@ export class MissionRecorder{
         coverStanceDrop:mix(a.coverStanceDrop??0,
           b.coverStanceDrop??0,alpha),
         reload:mix(a.reload,b.reload,alpha),
+        retentionTransition:a.retentionTransition&&b.retentionTransition&&
+          a.retentionTransition.mode===b.retentionTransition.mode?
+          {...a.retentionTransition,weight:mix(a.retentionTransition.weight,b.retentionTransition.weight,alpha)}:
+          a.retentionTransition,
         secondarySwitch:{...(a.secondarySwitch??initialSecondarySwitch()),
           fraction:mix(a.secondarySwitch?.fraction??0,
             b.secondarySwitch?.fraction??0,alpha)},

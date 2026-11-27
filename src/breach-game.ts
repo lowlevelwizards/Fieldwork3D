@@ -1,3 +1,4 @@
+import {operatingLeaves} from './breach-door-operating-modes.ts';
 import {hardCoveringBlocksPaneContact} from './breach-window-covering-physical.ts';
 import {coveringActionSeconds} from './breach-window-covering-interaction.ts';
 import {plannedControl} from './breach-tactical-control-commands.ts';
@@ -1134,10 +1135,9 @@ export function deletePlanNode(s:Session,id:string,nodeId:number){
  return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{a.plan=proposed;}));
 }
 
-/** A paired entrance is one user interaction but two collision leaves. */
+/** Mechanical linkage, not shared frame identity, determines action scope. */
 function pairedLeaves(s:Session,door:Door):Door[]{
- const pair=door.pairedWith?s.doors.find(d=>d.id===door.pairedWith):undefined;
- return pair?[door,pair]:[door];
+ return operatingLeaves(s.doors,door);
 }
 /** Specialized entry equipment uses the existing door reach/plan system. */
 export function planEntryTool(s:Session,id:string,doorId:string,
