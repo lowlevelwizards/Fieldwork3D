@@ -82,16 +82,12 @@ try{
  await page.locator('#studioWorkflow button[data-studio-step="details"]').click();
  await page.locator('[data-pack-review-slot="armorStyle"]').selectOption('plate-jpc');
  await page.locator('[data-pack-review-slot="rigStyle"]').selectOption('split-front');
- const mountButtons=page.locator('#studioMaterials [data-pack-mount]');
- const modes=await mountButtons.evaluateAll(es=>es.map(e=>e.dataset.packMount).filter(x=>x!=='auto'));
- for(const required of ['independent','direct','shared','adapter'])if(!modes.includes(required))throw Error('Missing mount '+required);
- for(const mode of modes){
-  await page.locator('[data-pack-mount="'+mode+'"]').click();
-  await page.waitForFunction(mode=>document.getElementById('studioCanvas')?.dataset.packMount===mode,mode,{timeout:20000});
-  await page.screenshot({path:out+'/studio-mount-'+mode+'.png'});
- }
+ await page.waitForFunction(()=>document.getElementById('studioCanvas')?.dataset.packMount==='direct');
+ if(await page.locator('#studioMaterials [data-pack-mount]').count())throw Error('Redundant mount options');
  await page.locator('[data-pack-review-slot="armorStyle"]').selectOption('armor-bare');
- await page.waitForFunction(()=>!['direct','adapter'].includes(document.getElementById('studioCanvas')?.dataset.packMount));
+ await page.waitForFunction(()=>document.getElementById('studioCanvas')?.dataset.packMount==='shared');
+ await page.locator('[data-pack-review-slot="rigStyle"]').selectOption('no-rig');
+ await page.waitForFunction(()=>document.getElementById('studioCanvas')?.dataset.packMount==='independent');
  await page.getByRole('button',{name:'Customize head'}).click();
  await page.waitForFunction(()=>document.getElementById('studioCanvas')?.dataset.packReview==='false');
  await writeFile(out+'/report.json',JSON.stringify({report,errors,studioReview:true},null,2));
