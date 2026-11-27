@@ -16,8 +16,8 @@ import {LOADOUT_SLOTS} from '../src/equipment-catalog.ts';
 test('FT1.5 every existing reference belongs to one faction, role and visual snapshot',()=>{
  assert.equal(FACTION_REFERENCES.length,44);
  assert.equal(FACTION_TIMELINES.length,34);
- assert.equal(HISTORICAL_EQUIPMENT.length,35);
- assert.equal(HISTORICAL_ISSUE_RECORDS.length,32);
+ assert.equal(HISTORICAL_EQUIPMENT.length,38);
+ assert.equal(HISTORICAL_ISSUE_RECORDS.length,35);
  const factions=consolidatedFactions();
  assert.equal(factions.length,TIMELINE_ORGANIZATIONS.length);
  assert.equal(factions.reduce((n,f)=>n+f.referenceCount,0),44);
@@ -93,7 +93,7 @@ test('FT1.5 sourced snapshots do not create unsourced gear or date history',()=>
  const sourceIds=new Set(HISTORICAL_ISSUE_RECORDS.map(x=>x.id));
  const markers=points.flatMap(x=>x.researchMarkers);
  assert.ok(markers.every(x=>sourceIds.has(x.recordId)));
- assert.equal(markers.filter(x=>x.marker==='research-window-start').length,32);
+ assert.equal(markers.filter(x=>x.marker==='research-window-start').length,35);
  assert.ok(markers.every(x=>x.marker!=='research-window-end'||
   HISTORICAL_ISSUE_RECORDS.find(r=>r.id===x.recordId).endYear===x.year));
 });
