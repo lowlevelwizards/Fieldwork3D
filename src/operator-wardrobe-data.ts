@@ -1,5 +1,5 @@
 import {PACK_MOUNT_MODES,type PackMountMode} from './operator-equipment-assembly.ts';
-import {beltStyleForEquipment,canonicalBeltStyle} from './operator-belt-profile.ts';
+import {beltStyleForEquipment,canonicalBeltStyle,beltSolidChoices} from './operator-belt-profile.ts';
 /** Tactical Wardrobe 2.0: style recipes, not new weapons or magic inventory.
  * Physical protection, carrying capacity, costs and ownership remain in
  * equipment-catalog / equipment-loadouts / campaign-state.
@@ -209,6 +209,8 @@ export type WardrobeOptions=HelmetCoverConfig&{
  knitSolid?:GarmentSolidId;
  /** Advanced pouch-only solid override; absent means inherit rig textile. */
  pouchSolid?:GarmentSolidId;
+ /** Independent belt dye; an absent value inherits existing gear appearance. */
+ beltSolid?:GarmentSolidId;
  /** Independent visual glove dye. No relation to the selected shirt fabric. */
  gloveSolid?:GloveSolidId;
  /** Replaceable harness material; ignored on sewn/integrated rigs. */
@@ -321,6 +323,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(isGarmentSolidId(v.cuffSolid))result.cuffSolid=v.cuffSolid;
  if(isGarmentSolidId(v.knitSolid))result.knitSolid=v.knitSolid;
  if(isGarmentSolidId(v.pouchSolid))result.pouchSolid=v.pouchSolid;
+ if(isGarmentSolidId(v.beltSolid))result.beltSolid=v.beltSolid;
  if(isGloveSolid(v.gloveSolid))result.gloveSolid=v.gloveSolid;
  if(isHeadwearSolidColorId(v.headwearColor))result.headwearColor=v.headwearColor;
  if(v.beretDrape==='left'||v.beretDrape==='right')result.beretDrape=v.beretDrape;

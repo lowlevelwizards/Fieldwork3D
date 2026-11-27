@@ -1,4 +1,4 @@
-import {beltStyleForEquipment} from './operator-belt-profile.ts';
+import {beltStyleForEquipment,beltSolidChoices} from './operator-belt-profile.ts';
 import {syncLiveUnifiedCarry} from './operator-unified-carry-live.ts';
 import {prepareBeltFlashPouches,restoreBeltFlashRest} from './operator-belt-flash-pouches.ts';
 import {canonicalBeltStyle} from './operator-belt-profile.ts';
@@ -503,6 +503,13 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   r.colors.set(strapMaterial,strapHex===null?
    (r.colors.get(r.gearMaterial)??r.gearMaterial.color).clone():
    new THREE.Color(strapHex));
+  const beltMaterial=r.visualKit.wardrobeGear.beltMaterial;
+  const beltSolid=p.wardrobe?.beltSolid;
+  const independentBelt=isGarmentSolidId(beltSolid)&&beltSolidChoices(clothing.beltStyle).includes(beltSolid);
+  const beltMap=independentBelt?operatorPixelTextures.get('fabric'):r.gearMaterial.map;
+  if(beltMaterial.map!==beltMap){beltMaterial.map=beltMap;beltMaterial.needsUpdate=true;}
+  r.colors.set(beltMaterial,independentBelt?new THREE.Color(garmentSolidHex(beltSolid)):
+   (r.colors.get(r.gearMaterial)??r.gearMaterial.color).clone());
   // One authoritative color ledger owns *every* material before the final
   // pose-time restore and optional injury desaturation. In particular, do not
   // overwrite the selected headgear swatch with the old neutral blend.

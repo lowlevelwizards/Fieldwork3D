@@ -23,6 +23,7 @@ export type WardrobeGearLayers={
  armor:StyleGroups;rig:StyleGroups;belt:StyleGroups;pack:StyleGroups;
  waistRig:StyleGroups;
  pouchMaterial:THREE.MeshStandardMaterial;
+ beltMaterial:THREE.MeshStandardMaterial;
  strapMaterial:THREE.MeshStandardMaterial;
  /** Battlefield-only factories: styles are constructed on first equip. */
  ensureArmor?:(style:string)=>void;ensureRig?:(style:string)=>void;
@@ -107,7 +108,10 @@ export function createWardrobeGearLayers(
   box(battle,strapMaterial,-3.75,.12,side*5.4,1.16,4.15,5.15);
  }
  battle.userData.auxiliaryPouchCells=authoredRigStorageCells('sadf-webbing').auxiliary;
- const belt=createBeltSilhouettes(beltParent,gearFabric,dark,beltHardware),pack:StyleGroups={};
+ const beltMaterial=(gearFabric as THREE.MeshStandardMaterial).clone();
+ beltMaterial.name='Fieldwork independent belt textile';beltMaterial.userData.fieldworkFabric=true;
+ enableBakedGearAO(beltMaterial);
+ const belt=createBeltSilhouettes(beltParent,beltMaterial,dark,beltHardware),pack:StyleGroups={};
  for(const item of wardrobeItemsForSlot('packStyle')){
   const g=make(packParent);pack[item.id]=g;
   switch(item.id){
@@ -140,7 +144,7 @@ export function createWardrobeGearLayers(
  }
  for(const section of [waistRig,belt,pack])
   for(const g of Object.values(section))consolidateVisualGroup(g);
- const visual:WardrobeGearLayers={armor,rig,waistRig,belt,pack,pouchMaterial,strapMaterial,
+ const visual:WardrobeGearLayers={armor,rig,waistRig,belt,pack,pouchMaterial,strapMaterial,beltMaterial,
   ensureArmor,ensureRig};
  visual.ensureAliceWaist=()=>{
   if(visual.aliceWaist)return;

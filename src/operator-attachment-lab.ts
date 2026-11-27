@@ -39,7 +39,7 @@ export function updateAttachmentPreview(rig:OperatorRig,choice:string,variant:At
   clearAttachmentPreview(rig);
   const group=new THREE.Group();group.name='lab-only-attachment-audition';rig.hip.add(group);
   const accent=new THREE.MeshStandardMaterial({color:0xb76442,roughness:.9});
-  const palette={fabric:rig.gearMaterial,dark:rig.weaponDark,hardware:rig.weaponSteel,contents:rig.bootMaterial,accent};
+  const palette={fabric:rig.visualKit.wardrobeGear.beltMaterial,dark:rig.weaponDark,hardware:rig.weaponSteel,contents:rig.bootMaterial,accent};
   // Use the native selected magazine only if its envelope fits. Try the
   // larger dedicated variant first; otherwise use closed utility storage
   // rather than scaling the native item or letting it poke through.
@@ -69,7 +69,7 @@ export function updateAttachmentPreview(rig:OperatorRig,choice:string,variant:At
   p={key,group,visuals,accent,status};previews.set(rig,p);
  }
  p.group.visible=true;
- syncGearMarkedMaterials(rig.gearMaterial);syncGearMarkedMaterials(rig.weaponDark);syncGearMarkedMaterials(rig.bootMaterial);
+ syncGearMarkedMaterials(rig.visualKit.wardrobeGear.beltMaterial);syncGearMarkedMaterials(rig.weaponDark);syncGearMarkedMaterials(rig.bootMaterial);
  for(const v of p.visuals){
   const n=v.contents.length;
   setAttachmentSampleCount(v,countMode==='empty'?0:countMode==='partial'?Math.max(0,n-1):n);

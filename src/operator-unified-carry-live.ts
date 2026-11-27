@@ -109,7 +109,7 @@ export function syncLiveUnifiedCarry(r:OperatorRig,p:Pick<OperatorPose,'unifiedC
  let current=cache.get(r);
  if(current?.held){restore(current.held);current.held=null;}
  if(current?.key===key&&current.manifest===state.manifest){
-  if(appearanceChanged){suppressLegacy(r);syncGearMarkedMaterials(r.gearMaterial);syncGearMarkedMaterials(r.weaponDark);syncGearMarkedMaterials(r.weaponSteel);syncGearMarkedMaterials(r.visualKit.carriedMagazineMaterial);}
+  if(appearanceChanged){suppressLegacy(r);syncGearMarkedMaterials(r.gearMaterial);syncGearMarkedMaterials(r.visualKit.wardrobeGear.beltMaterial);syncGearMarkedMaterials(r.weaponDark);syncGearMarkedMaterials(r.weaponSteel);syncGearMarkedMaterials(r.visualKit.carriedMagazineMaterial);}
   return;
  }
  if(!current||current.key!==key){
@@ -128,7 +128,7 @@ export function syncLiveUnifiedCarry(r:OperatorRig,p:Pick<OperatorPose,'unifiedC
   let h=current.holders.get(id);
   if(h&&h.root.userData.bt4Signature!==signature){destroy(h);current.holders.delete(id);h=undefined;}
   if(!h){
-   h=createHolder(r,p,state.input.storage,owner,part,secondaryWeapon,palette)??undefined;
+   h=createHolder(r,p,state.input.storage,owner,part,secondaryWeapon,p.carrier==='belt'?{...palette,fabric:r.visualKit.wardrobeGear.beltMaterial}:palette)??undefined;
    if(!h){current.unrendered.push(...p.itemIds);continue;}
    h.root.userData.bt4Signature=signature;current.holders.set(id,h);
   }
@@ -151,6 +151,7 @@ export function syncLiveUnifiedCarry(r:OperatorRig,p:Pick<OperatorPose,'unifiedC
  current.manifest=state.manifest;
  suppressLegacy(r);
  for(const m of Object.values(palette))syncGearMarkedMaterials(m);
+ syncGearMarkedMaterials(r.visualKit.wardrobeGear.beltMaterial);
  r.root.userData.bt4Unrendered=[...current.unrendered];
 }
 export function liveUnifiedContentIsExposed(r:OperatorRig,id:string|null|undefined){

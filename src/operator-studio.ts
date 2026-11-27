@@ -1,3 +1,5 @@
+import {beltSolidChoices} from './operator-belt-profile.ts';
+import {setWardrobeBeltSolid} from './operator-wardrobe-data.ts';
 import {equipmentSlotForAppearance} from './operator-wardrobe-unified.ts';
 import {WARDROBE_ITEMS} from './operator-wardrobe-data.ts';
 import {packMountChoices,equipmentAssembly,type PackMountMode} from './operator-equipment-assembly.ts';
@@ -1495,10 +1497,17 @@ function renderMaterials(){
   materialRoot.append(labLink);
  }
 
+ if(activeCategory==='beltStyle'&&outfit.beltStyle!=='no-belt'){
+  const group=row('BELT FINISH','Independent belt and belt-pouch color. Does not change the rig or equipment capacity.');
+  const allowed=beltSolidChoices(outfit.beltStyle);
+  const active=w.beltSolid&&allowed.includes(w.beltSolid)?w.beltSolid:null;
+  group.append(makeButton('MATCH GEAR',!active,()=>changeWardrobe(setWardrobeBeltSolid(current(),outfit.beltStyle,null))));
+  addSolidSwatches(group,allowed,active,id=>changeWardrobe(setWardrobeBeltSolid(current(),outfit.beltStyle,id)));
+ }
  const channel:FabricCamoChannel|null=
   activeCategory==='top'?'top':activeCategory==='trousers'?'trousers':
   activeCategory==='armorStyle'?'armor':
-  activeCategory==='rigStyle'||activeCategory==='beltStyle'?'gear':
+  activeCategory==='rigStyle'?'gear':
   activeCategory==='packStyle'?'pack':null;
  if(channel){
   const choices=fabricCamoChoices(channel,outfit);

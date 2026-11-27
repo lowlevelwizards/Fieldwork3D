@@ -310,7 +310,7 @@ export function createOperatorVisualKit(
  for(const [style,group] of Object.entries(wardrobeGear.armor))
   if(style.startsWith('plate-'))group.userData.fieldworkRimRegion='hard-shell';
  const accessories=createWardrobeAccessoryVisuals(chest,hip,pack,
-  gearFabric,dark,trim);
+  gearFabric,dark,trim,wardrobeGear.beltMaterial);
  // Static layered clothing/armor/pack geometry becomes a few multi-face
  // meshes per material. Keep individually issued magazines unmerged.
  for(const surface of [helmet,cap,hair,jacket,lightShirt,softArmor,
