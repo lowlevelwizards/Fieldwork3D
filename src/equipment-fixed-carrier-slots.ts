@@ -4,7 +4,7 @@
  * Units and axes match the existing operator artwork. */
 import {beltContactSegments,beltSurface} from './operator-belt-frame.ts';
 import type {BeltStyle} from './operator-belt-profile.ts';
-import type {BeltRegion,BeltFootprint} from './operator-belt-mounts.ts';
+import type {BeltRegion} from './operator-belt-mounts.ts';
 import {PACK_PROFILES,proposedPackStyle} from './operator-backpack-catalog.ts';
 import type {MagazinePouchCell} from './operator-magazine-pouch-fit.ts';
 export type Carrier='rig'|'armor'|'belt'|'pocket'|'backpack';
@@ -17,7 +17,7 @@ const waist=(region:BeltRegion,segment:number,range:Span):WaistSlot=>({id:'waist
 const left=waist('left-hip',6,[-3.25,3.25]),right=waist('right-hip',2,[-3.25,3.25]);
 const frontLeft=waist('front-left',0,[-4.98,-1.58]),frontRight=waist('front-right',0,[1.58,4.98]);
 const rear2=[waist('rear-right',4,[-5,-.10]),waist('rear-left',4,[.10,5])];
-const rear3=[waist('rear-right',4,[-5,-1.80]),waist('rear',4,[-1.60,1.60]),waist('rear-left',4,[1.80,5])];
+const rear3=[waist('rear-right',4,[-5,-1.60]),waist('rear',4,[-1.40,1.40]),waist('rear-left',4,[1.60,5])];
 /** Leather has one reversible position; never two independent hip slots.
  * Historical webbing owns the waist as a whole until its full authored
  * reservation map is supplied; conservative rather than duplicate platforms. */
@@ -45,7 +45,7 @@ export function fixedWaistCandidates(style:BeltStyle,slots:readonly WaistSlot[],
    if(f.width>end-start+1e-6||start<-seg.length/2+.34||end>seg.length/2-.34)continue;
    // A joined rear span is a rear placement, not an extra independent slot.
    const region=span.length>1&&seg.index===4?'rear':span[0].region;
-   if(!allowed.includes(region))continue;
+   if(!allowed.includes(region)&&!(region==='rear'&&span.length>1&&span.every(c=>allowed.includes(c.region)||c.region==='rear')))continue;
    const contact=beltSurface(style,seg.index,mid);if(!contact)continue;
    const x=contact.x-contact.normalX*.16,z=contact.z-contact.normalZ*.16;
    const side=region==='left-hip'||region==='right-hip';
@@ -78,7 +78,7 @@ export function waistPlacementsConflict(a:WaistPlacement,b:WaistPlacement){
 export type StorageSlot={id:string;carrier:Exclude<Carrier,'belt'>;accepts:readonly CarryKind[];
  dimensions:Dimensions;concealed:boolean;dedicated?:boolean;cell?:MagazinePouchCell;
  /** Optional physical occupancy keys shared by armor and rig positions. */
- conflicts?:readonly string[]};
+ conflicts?:readonly string[];mount?:Contact};
 const pocketKinds:readonly CarryKind[]=['primary-mag','secondary-mag','shell','wedge','light','misc','medical'];
 const packKinds:readonly CarryKind[]=['primary-mag','secondary-mag','shell','flash','wedge','medical','trauma','radio','light','tool','misc'];
 export function clothingStorage(trousers:string,legsItem:string):StorageSlot[]{
@@ -116,4 +116,26 @@ export function registeredRigStorage(cells:readonly MagazinePouchCell[],carrier:
 export function dimensionsFit(item:Dimensions,slot:Dimensions){
  return [item.width,item.height,item.depth].every(v=>Number.isFinite(v)&&v>0)&&
   item.width<=slot.width+1e-6&&item.height<=slot.height+1e-6&&item.depth<=slot.depth+1e-6;
+}
+
+/** Auxiliary pouches are declared at their artwork construction sites. They
+ * are closed storage, not additional visible mounting faces. */
+export function registeredAuxiliaryStorage(cells:readonly MagazinePouchCell[]):StorageSlot[]{
+ return cells.map((c,i)=>({id:'rig:aux:'+i,carrier:'rig',accepts:['secondary-mag','wedge','light','misc','medical','radio','flash'],
+  dimensions:{width:Math.max(.01,c.width-.20),height:Math.max(.01,c.height-.20),depth:Math.max(.01,c.depth-.20)},concealed:true,dedicated:true,cell:{...c}}));
+}
+/** A bare compatible modular plate front gets one broad or two small
+ * mutually exclusive regions. Existing chest rigs mask this front entirely.
+ * Geometry is constrained by the authored plate envelope supplied by caller. */
+export function modularArmorStorage(style:string,rigStyle:string,frontX:number,width:number,top:number,bottom:number):StorageSlot[]{
+ if(rigStyle!=='no-rig'||!['plate-jpc','plate-standard','plate-heavy'].includes(style))return [];
+ const h=Math.min(7,top-bottom-1.0),w=width-.6;
+ if(w<=0||h<=0||!Number.isFinite(frontX))return [];
+ const kinds:readonly CarryKind[]=['primary-mag','secondary-mag','flash','wedge','medical','radio','light','misc'];
+ const y=top-.85,contact=(z:number):Contact=>({x:frontX-.10,y,z,yaw:Math.PI/2});
+ return [
+  {id:'armor:front-left',carrier:'armor',accepts:kinds,dimensions:{width:(w-.2)/2,height:h,depth:4},concealed:false,mount:contact(-w/4)},
+  {id:'armor:front-right',carrier:'armor',accepts:kinds,dimensions:{width:(w-.2)/2,height:h,depth:4},concealed:false,mount:contact(w/4)},
+  {id:'armor:front-wide',carrier:'armor',accepts:kinds,dimensions:{width:w,height:h,depth:4},concealed:false,mount:contact(0),conflicts:['armor:front-left','armor:front-right']}
+ ];
 }

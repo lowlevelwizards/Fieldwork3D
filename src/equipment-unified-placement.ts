@@ -4,14 +4,14 @@
 import {ATTACHMENTS,attachmentFootprint,type AttachmentId,type AttachmentVariant} from './operator-attachment-catalog.ts';
 import type {BeltStyle} from './operator-belt-profile.ts';
 import {fixedWaistCandidates,fixedWaistSlots,waistPlacementsConflict,dimensionsFit,
- type Carrier,type CarryKind,type Dimensions,type StorageSlot,type WaistPlacement} from './equipment-fixed-carrier-slots.ts';
+ type Carrier,type CarryKind,type Dimensions,type StorageSlot,type WaistPlacement,type Contact} from './equipment-fixed-carrier-slots.ts';
 export type CarryItem={id:string;kind:CarryKind;dimensions:Dimensions;
  /** Optional larger internal capacity claim, e.g. trauma or long tool. */
  units?:number;holder?:AttachmentId;variant?:AttachmentVariant;optional?:boolean};
 export type CarryInput={belt:BeltStyle;holsterSide?:'left'|'right';historicalWaist?:boolean;
  storage:readonly StorageSlot[];items:readonly CarryItem[]};
 export type Placement={itemIds:string[];carrier:Carrier;slotIds:string[];holder?:AttachmentId;
- variant?:AttachmentVariant;waist?:WaistPlacement;concealed:boolean};
+ variant?:AttachmentVariant;waist?:WaistPlacement;mount?:Contact;concealed:boolean};
 export type PlacementManifest={placements:Placement[];unplaced:{id:string;reason:'no-fit'|'duplicate'|'invalid-item'}[];
  valid:boolean;searchTruncated:boolean};
 export const CARRY_PRIORITY:Readonly<Record<CarryKind,readonly Carrier[]>>={
@@ -43,7 +43,8 @@ function holderFits(item:CarryItem,holder:AttachmentId,variant:AttachmentVariant
  // and shell art can protrude by design; their actual fit needs adapter data.
  if(item.kind==='dump'||item.kind==='cosmetic')return true;
  const open=['primary-mag-pouch','pistol-mag-pouch','grenade-pouch','radio-holder','flashlight-holder','wedge-holder'].includes(holder);
- const wall=open?.88:.45;
+ const wall=holder==='grenade-pouch'?.72:holder==='pistol-mag-pouch'?.64:open?.88:.45;
+ if(holder==='pistol-mag-pouch'&&variant==='double')return dimensionsFit(item.dimensions,{width:f.width*.46-wall,height:f.height+1.1,depth:f.depth-wall});
  return dimensionsFit(item.dimensions,{width:f.width-wall,height:f.height+(open?1.1:0),depth:f.depth-wall});
 }
 function itemCandidates(input:CarryInput,item:CarryItem,slots:ReturnType<typeof fixedWaistSlots>):Candidate[]{
@@ -51,10 +52,12 @@ function itemCandidates(input:CarryInput,item:CarryItem,slots:ReturnType<typeof 
  let order=0;
  for(const carrier of CARRY_PRIORITY[item.kind]){
   if(carrier==='belt'){
-   const holder=item.holder??HOLDER[item.kind];if(!holder)continue;
+   const selected=item.holder??HOLDER[item.kind];if(!selected)continue;
+   const families:AttachmentId[]=item.kind==='primary-mag'||item.kind==='misc'?[selected,...(selected==='utility-pouch'?[]:['utility-pouch' as const])]:[selected];
+   for(const holder of families){
    const definition=ATTACHMENTS[holder];
    if(!definition.beltStyles.includes(input.belt)||!definition.carriers.includes('belt'))continue;
-   const variants=item.variant?[item.variant]:holder==='primary-mag-pouch'?['standard','expanded'] as const:['standard'] as const;
+   const variants=item.variant?[item.variant]:holder==='primary-mag-pouch'||holder==='utility-pouch'?['standard','expanded'] as const:['standard'] as const;
    const preference=preferred(item.kind,side);
    for(const variant of variants){
     if(!definition.variants.includes(variant)||!holderFits(item,holder,variant))continue;
@@ -63,9 +66,10 @@ function itemCandidates(input:CarryInput,item:CarryItem,slots:ReturnType<typeof 
      .sort((a,b)=>preference.indexOf(a.region)-preference.indexOf(b.region)||a.ids.length-b.ids.length);
     for(const waist of fits)out.push({itemIds:[item.id],carrier,slotIds:waist.ids,holder,variant,waist,concealed:false,order:order++});
    }
+   }
   }else{
    const candidates=input.storage.filter(s=>s.carrier===carrier&&s.accepts.includes(item.kind)&&dimensionsFit(item.dimensions,s.dimensions))
-    .sort((a,b)=>Number(!!b.dedicated)-Number(!!a.dedicated)||cmp(a.id,b.id));
+    .sort((a,b)=>Number(!!b.dedicated)-Number(!!a.dedicated)||(carrier==='backpack'?Number(a.id.slice(5))-Number(b.id.slice(5)):cmp(a.id,b.id)));
    const units=item.units??1;
    for(let i=0;i<candidates.length;i++){
     const first=candidates[i];
@@ -76,7 +80,13 @@ function itemCandidates(input:CarryInput,item:CarryItem,slots:ReturnType<typeof 
     if(units>1&&(carrier!=='backpack'||run.some((s,j)=>s.id!=='pack:'+(Number(first.id.slice(5))+j))))continue;
     const keys=run.flatMap(s=>[s.id,...s.conflicts??[]]);
     if(new Set(keys).size!==keys.length)continue;
-    out.push({itemIds:[item.id],carrier,slotIds:keys,concealed:first.concealed,order:order++});
+    if(first.mount){
+     const holder=item.holder??HOLDER[item.kind];if(!holder||!ATTACHMENTS[holder].carriers.includes(carrier==='armor'?'armor':'rig'))continue;
+     for(const variant of item.variant?[item.variant]:['standard','expanded'] as const){
+      if(!ATTACHMENTS[holder].variants.includes(variant)||!holderFits(item,holder,variant)||!dimensionsFit(attachmentFootprint(holder,variant),first.dimensions))continue;
+      out.push({itemIds:[item.id],carrier,slotIds:keys,holder,variant,mount:first.mount,concealed:false,order:order++});
+     }
+    }else out.push({itemIds:[item.id],carrier,slotIds:keys,concealed:first.concealed,order:order++});
    }
   }
  }

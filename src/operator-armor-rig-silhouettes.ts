@@ -110,6 +110,10 @@ const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
   const cells=(g.userData.magazinePouchCells??=[]) as MagazinePouchCell[];
   cells.push({x:x+(extra+RIG_MAGAZINE_POUCH_PUFF)*.5,
    y,z,height:h,width:span,depth:depth+extra+RIG_MAGAZINE_POUCH_PUFF,yaw});
+ }else{
+  const cells=(g.userData.auxiliaryPouchCells??=[]) as MagazinePouchCell[];
+  cells.push({x:x+(extra+RIG_MAGAZINE_POUCH_PUFF)*.5,
+   y,z,height:h,width:span,depth:depth+extra+RIG_MAGAZINE_POUCH_PUFF,yaw});
  }
  // Body and its flap are ONE logical self-shadowing pouch, even though
  // each cuboid is a separate pre-merge geometric primitive.

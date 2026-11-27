@@ -9,3 +9,5 @@ Baseline bbe8efe, after backpack harness changes. The existing carry ledger is n
 - BT4.9 contract: consuming a manifest item leaves its holder and reservations in place.
 
 The resolver is not yet the live inventory authority. BT4.6–14 (migration, live visual/animation adapters, field transactions, UI, exhaustive cross-carrier fit and release) must be completed before enabling it. Current V1 paths remain unchanged in this checkpoint.
+
+Auxiliary rig cells are now registered when the real non-magazine pouch is authored. Compatible modular bare plate fronts have a conservative mutually exclusive two-small-or-one-wide layout, using the actual plate envelope. These are staged placement inputs, not a claim of verified fit in moving poses.
