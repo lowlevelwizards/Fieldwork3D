@@ -207,6 +207,7 @@ export function equipRosterGear(roster:RosterState,id:string,slot:LoadoutSlot,
  if(slot==='backpack')return equipRosterCarryGear(roster,id,slot,itemId);
  const member=roster.members.find(m=>m.id===id);
  if(!member)return roster;
+ if(slot==='armor'&&itemId!=='armor-carrier'&&member.loadout.slots.backpack==='backpack-panel')return roster;
  const next=setEquipmentChoice(member.loadout,slot,itemId);
  if(next===member.loadout)return roster;
  return {...roster,members:roster.members.map(m=>m.id===id?
