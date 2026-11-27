@@ -2,6 +2,7 @@
  * Physical protection, carrying capacity, costs and ownership remain in
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
+import {legacyPackStyles,legacyPackDefault} from './operator-backpack-catalog.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {readHelmetSetup,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import {readHelmetField,type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
@@ -465,12 +466,7 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
  choose('beltStyle',slots.belt==='belt-none'?['no-belt']:
   slots.belt==='belt-light'?['plain-belt','light-belt']:['duty-belt','battle-belt','padded-belt'],
   slots.belt==='belt-none'?'no-belt':slots.belt==='belt-light'?'light-belt':'duty-belt');
- choose('packStyle',slots.backpack==='backpack-day'?
-  ['hydration','admin-pack','day-pack','assault-pack','sling-bag']:
-  slots.backpack==='backpack-field'?
-  ['field-pack','rucksack','medic-pack','comms-pack','duffel']:
-  ['no-pack'],slots.backpack==='backpack-day'?'day-pack':
-  slots.backpack==='backpack-field'?'field-pack':'no-pack');
+ choose('packStyle',[...legacyPackStyles(slots.backpack)],legacyPackDefault(slots.backpack));
  choose('trousers',['bdu-trousers','acu-trousers','gorka-trousers','jeans','civilian-cargo','track-pants'],
   'bdu-trousers');
  choose('footwear',slots.feet==='feet-none'?['bare-feet']:slots.feet==='feet-light'?['sneakers','field-boots']:['field-boots'],
