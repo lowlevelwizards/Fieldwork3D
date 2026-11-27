@@ -66,6 +66,7 @@ try{
  }
  // Verify available mount controls on a real pack; exercise each offered
  // configuration (actual equipped armor/rig determines eligibility).
+ await page.locator('#studioWorkflow button[data-studio-step="details"]').click();
  await page.locator('[data-pack-review-slot="armorStyle"]').selectOption('plate-jpc');
  await page.locator('[data-pack-review-slot="rigStyle"]').selectOption('split-front');
  const mountButtons=page.locator('#studioMaterials [data-pack-mount]');
