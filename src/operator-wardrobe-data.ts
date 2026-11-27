@@ -140,7 +140,7 @@ add('packStyle','none',[['no-pack','No backpack']]);
 add('packStyle','day',[
  ['hydration','Hydration carrier'],['admin-pack','Admin pack'],
  ['day-pack','Day pack'],['assault-pack','Assault pack'],
- ['sling-bag','Sling bag']
+ ['sling-bag','Sling bag'],['civilian-pack','Civilian backpack']
 ]);
 add('packStyle','field',[
  ['field-pack','Field pack'],['rucksack','Rucksack'],
