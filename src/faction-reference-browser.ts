@@ -3,7 +3,8 @@ import {FACTION_REFERENCES,type FactionReference} from './faction-reference-cata
 import {referenceVisualStatus} from './faction-reference-audit.ts';
 import {unresolvedReferenceGaps} from './faction-reference-asset-registry.ts';
 import {paintCamoPreview} from './operator-camo-preview-cache.ts';
-import {referencePackStudies,referenceSidearmStudyAvailable} from './faction-reference-preview-options.ts';
+import {resolvedWardrobe,wardrobeItem} from './operator-wardrobe-data.ts';
+import {referencePackStudies,referenceSidearmStudyAvailable,resolveReferencePreview} from './faction-reference-preview-options.ts';
 import {referenceWeaponChoice,referenceWeaponOptions} from './faction-reference-weapons.ts';
 import {FACTION_TIMELINES,timelineForReference}
  from './faction-reference-timelines.ts';
@@ -734,6 +735,8 @@ export class FactionReferenceBrowser{
   const options=referenceWeaponOptions(r.id);
   const issued=referenceWeaponChoice(r.id,this.selectedWeaponPresetId);
   const fit=this.hooks.compatibility(r.id);
+  const preview=resolveReferencePreview(r.id,this.selectedWeaponPresetId,this.selectedPackStudyId,this.selectedSidearmStudy);
+  const outfit=resolvedWardrobe(preview.wardrobe,preview.kit);
   this.detail.replaceChildren();
   if(this.timelineMode&&!this.timelineHasMatch)
    this.detail.append(el('p','reference-compat-warning',
@@ -786,6 +789,7 @@ export class FactionReferenceBrowser{
     picker.addEventListener('change',()=>{
      if(picker.value)this.packPreviewOverrides.set(r.id,picker.value);
      else this.packPreviewOverrides.delete(r.id);
+     this.renderDetail();
      if(!this.root.hidden)this.hooks.onPreview(r.id);
     });
     section.append(picker);
@@ -798,12 +802,27 @@ export class FactionReferenceBrowser{
     picker.addEventListener('change',()=>{
      if(picker.value==='glock')this.sidearmPreviewOverrides.add(r.id);
      else this.sidearmPreviewOverrides.delete(r.id);
+     this.renderDetail();
      if(!this.root.hidden)this.hooks.onPreview(r.id);
     });
     section.append(picker);
    }
    this.detail.append(section);
   }
+  const gear=el('div','reference-gap-list');
+  gear.append(el('strong','','CURRENT APPEARANCE · VISUAL MODEL'));
+  for(const [slot,label] of [
+   ['top','Top'],['trousers','Trousers'],['footwear','Footwear'],
+   ['headwear','Headwear'],['armorStyle','Armor'],['rigStyle','Rig'],
+   ['beltStyle','Belt'],['packStyle','Backpack']
+  ] as const){
+   const name=wardrobeItem(slot,outfit[slot])?.name??outfit[slot];
+   gear.append(el('span','',label+' · '+name));
+  }
+  if(preview.incompatibleChannels.length||preview.technicalIssues.length)
+   gear.append(el('p','reference-compat-warning','Preview compromises: '+
+    [...preview.incompatibleChannels,...preview.technicalIssues].join(', ')));
+  this.detail.append(gear);
   const missing=unresolvedReferenceGaps(r);
   if(missing.length){
    const block=el('div','reference-gap-list');
