@@ -1,0 +1,2 @@
+# WC2.5d — final decorative art cleanup
+Tighten the graphic accent placement and simplify the visible lower silhouette in the classic and SOPMOD miniatures; revise the MOE static accent gesture. Preserve nonfunctional solid game artwork and all animation contact and gameplay data. Reconcile current main and retain the workbench finish exclusion check alongside the new stock-art alias exclusion. Capture and integration gates remain required before release.
