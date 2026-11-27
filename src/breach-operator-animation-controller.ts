@@ -22,7 +22,7 @@ import * as THREE from 'three';
 import {readSlingKind} from './breach-weapon-retention.ts';
 import {sampleSecondaryRetention} from './breach-secondary-retention.ts';
 import {oneHandRetentionWeight} from './breach-weapon-retention-actions.ts';
-import {sampleRetentionTransition} from './breach-weapon-retention-transition.ts';
+import {sampleRetentionTransition,retentionHandRelease} from './breach-weapon-retention-transition.ts';
 import {solveOperatorDirectSlingPose,commitOperatorSlingRibbon} from './breach-operator-sling-pose.ts';
 import {equipmentExterior} from './operator-equipment-exterior.ts';
 import {retentionPackBounds} from './operator-retention-pack.ts';
@@ -68,7 +68,7 @@ import {choreographV4ReloadHand} from './breach-reload-v4-hand.ts';
 import {prepareOperatorPoseDecision,resolveOperatorPoseDecision}
  from './breach-pose-decision.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
-import {cachedCoupledUpperBody,cachedCoordinatedUpperBody,cachedSupportUpperBody,solveUnifiedFallbackArm,continuousElbowPole} from './breach-unified-upper-body.ts';
+import {cachedCoupledUpperBody,cachedCoordinatedUpperBody,cachedSupportUpperBody,solveUnifiedFallbackArm,solveUnifiedRetentionArm,continuousElbowPole} from './breach-unified-upper-body.ts';
 import type {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
 import {ANATOMY,elbowCorridor,equipmentStockPush} from './breach-anatomy.ts';
 import {handlingProfile} from './breach-handling-profiles.ts';
@@ -1174,9 +1174,17 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const sign=i===0?-1:1,arm=r.arms[i];
     if(retention&&(!liveOneHand||i===1)&&!handsFreeAction&&(!switchingSlung||switchPose.pistol<=.08)){
       const shoulder=shoulderFor(i),requested=i===0?retention.left:retention.right;
-      const guide=P(3,-9,sign*2);
-      const solved=solveTwoBone(shoulder,requested,10,10,guide,ARM_LIMITS);
-      arm.bend.copy(solved.bendPlane);arm.outOfReach=!solved.reached;
+      const actualSource=coupled?.arms??coordinatedDynamic?.arms;
+      const corridor=elbowCorridor(handling,sign as -1|1,profile);
+      const sourcePole=actualSource?.[i]?.joint.clone().sub(shoulder)??
+        P(corridor.x,corridor.y,corridor.z).sub(shoulder);
+      const release=retentionHandRelease(retention.mode,sign as -1|1,retentionWeight);
+      const solved=solveUnifiedRetentionArm({
+        shoulder,desired:requested,sourcePole,release,side:sign as -1|1,
+        envelope:poseEnvelope??poseClearanceEnvelope(clothing.armorStyle,clothing.rigStyle,clothing.top),
+        scratch,armIndex:i as 0|1
+      }).solution;
+      arm.bend.copy(solved.bendPlane);arm.outOfReach=requested.distanceTo(shoulder)>19.92||!solved.reached;
       r.elbowSpread[i]=Math.max(0,sign*(solved.joint.z-shoulder.z));
       setOperatorArmSegments(scratch,i as 0|1,shoulder,solved.joint,solved.effector,scratch.sides[i]);
       setOperatorHandPose(scratch,i as 0|1,solved.effector,0);

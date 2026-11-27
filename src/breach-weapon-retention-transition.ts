@@ -12,6 +12,11 @@ export const initialRetentionTransition=():RetentionTransitionState=>
  ({mode:null,desired:null,weight:0});
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const smooth=(x:number)=>{const t=clamp(x);return t*t*(3-2*t);};
+/** Same release fraction for wrist, elbow and hand orientation. */
+export function retentionHandRelease(mode:RetentionPoseMode,side:-1|1,t:number){
+ return side===-1?smooth((t-.15)/.52):
+  mode==='held-one'?0:smooth((t-.58)/.42);
+}
 const duration=(mode:RetentionPoseMode)=>mode==='held-one'?.32:
  mode==='front-slung'?.58:mode==='side-slung'?.74:1.05;
 export function requestRetentionTransition(state:RetentionTransitionState,
@@ -66,8 +71,7 @@ export function sampleRetentionTransition(p:RetentionPoseInput,weight:number):Re
  const follow=(grip:THREE.Vector3)=>grip.clone().sub(p.heldPosition)
   .applyQuaternion(p.heldQuaternion.clone().invert())
   .applyQuaternion(quaternion).add(position);
- const left=follow(p.supportGrip).lerp(target.left,smooth((t-.15)/.52));
- const right=p.mode==='held-one'?follow(p.primaryGrip):
-  follow(p.primaryGrip).lerp(target.right,smooth((t-.58)/.42));
+ const left=follow(p.supportGrip).lerp(target.left,retentionHandRelease(p.mode,-1,t));
+ const right=follow(p.primaryGrip).lerp(target.right,retentionHandRelease(p.mode,1,t));
  return {mode:p.mode,position,quaternion,left,right};
 }
