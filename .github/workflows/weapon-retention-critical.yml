@@ -5,6 +5,8 @@ on:
     paths:
       - 'src/breach-weapon-retention.ts'
       - 'src/weapons/geometry/weapon-retention-sockets.ts'
+      - 'src/weapons/geometry/weapon-retention-visual-sockets.ts'
+      - 'src/breach-weapon-geometry.ts'
       - 'tests/weapon-retention-wr2.test.mjs'
       - 'tests/weapon-retention-wr1.test.mjs'
       - '.github/workflows/weapon-retention-critical.yml'
@@ -12,6 +14,8 @@ on:
     paths:
       - 'src/breach-weapon-retention.ts'
       - 'src/weapons/geometry/weapon-retention-sockets.ts'
+      - 'src/weapons/geometry/weapon-retention-visual-sockets.ts'
+      - 'src/breach-weapon-geometry.ts'
       - 'tests/weapon-retention-wr2.test.mjs'
       - 'tests/weapon-retention-wr1.test.mjs'
       - '.github/workflows/weapon-retention-critical.yml'

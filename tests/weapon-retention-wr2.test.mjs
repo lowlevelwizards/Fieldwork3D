@@ -17,3 +17,26 @@ test('WR2.0 stockless and absent front art are explicit',()=>{
  assert.ok(a.rear.x>=receiver.min.x);
  assert.equal(deriveWeaponRetentionSockets({receiver:box(4,4)}),null);
 });
+
+import * as THREE from 'three';
+import {measureWeaponRetentionSockets} from '../src/weapons/geometry/weapon-retention-visual-sockets.ts';
+test('WR2.1 nested part transforms are measured in the silhouette root frame',()=>{
+ const root=new THREE.Group(),group=new THREE.Group();
+ const mat=new THREE.MeshBasicMaterial();
+ const mesh=(name,x,width,parent=root)=>{
+  const m=new THREE.Mesh(new THREE.BoxGeometry(width,2,2),mat);
+  m.name=name;m.position.x=x;parent.add(m);return m;
+ };
+ mesh('family-receiver-core',0,8);
+ mesh('family-handguard-core',8,8);
+ group.position.x=-8;root.add(group);
+ mesh('family-stock-core',0,6,group);
+ root.position.set(80,40,20);
+ const original=measureWeaponRetentionSockets(root);
+ group.position.x=-4;
+ const folded=measureWeaponRetentionSockets(root);
+ assert.ok(original.rear.x<folded.rear.x);
+ assert.deepEqual(original.front,folded.front);
+ root.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose()});
+ mat.dispose();
+});

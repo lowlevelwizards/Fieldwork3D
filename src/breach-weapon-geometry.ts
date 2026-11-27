@@ -7,6 +7,7 @@ import type {WeaponId} from './breach-combat.ts';
 import {type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {readWeaponFamilyBuild,initialWeaponFamilyBuild,defaultCatalogReference} from './equipment-weapon-families.ts';
 import {buildModularWeaponSilhouette} from './breach-modular-weapon-geometry.ts';
+import {measureWeaponRetentionSockets} from './weapons/geometry/weapon-retention-visual-sockets.ts';
 import {poseConfiguredStock} from './weapon-stock-geometry.ts';
 import {measureVisibleStockContact}
  from './breach-stock-contact-surface.ts';
@@ -43,6 +44,8 @@ export function buildWeaponSilhouette(id:WeaponId,
   // Preserve the original authored stock measurement, even if static
   // submeshes are subsequently baked into larger vertex buffers.
   const stockContact=config?measureVisibleStockContact(root,config):null;
+  // Preserve candidate seats before rigid compilation loses part names.
+  root.userData.retentionSockets=measureWeaponRetentionSockets(root);
   if(config?.weapon===id&&config.build&&
    options.rigidCompilation!=='disabled'&&!config.stockPosition){
    const report=compileValidatedFactoryRigidBody(root,familyBuild);
@@ -66,4 +69,5 @@ export function clearWeaponSilhouette(g:THREE.Group){
  g.clear();
  g.userData.visibleStockContact=null;
  g.userData.rigidCompilation=null;
+ g.userData.retentionSockets=null;
 }
