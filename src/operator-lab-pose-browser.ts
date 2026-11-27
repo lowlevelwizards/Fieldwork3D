@@ -11,33 +11,33 @@ import {M9_APPEARANCE_REFERENCES,isM9AppearanceId}
  from './weapons/geometry/beretta-m9-silhouettes.ts';
 import type {SidearmPreviewId} from './weapons/geometry/sidearm-preview.ts';
 export const POSE_ARMOR_OPTIONS=[
- ['armor-bare','None'],['soft-slick','Soft / Slick'],
- ['soft-vest','Soft Vest'],['soft-flak','Flak'],
- ['plate-slick','Slick Carrier'],['plate-jpc','JPC'],
- ['plate-standard','Plate Carrier'],['plate-heavy','Heavy Carrier'],
- ['plate-legacy','Legacy Armor']
+ ['armor-bare','None'],['soft-slick','Concealable Soft Armor'],
+ ['soft-vest','External Police / Tactical Vest'],['soft-flak','Traditional Fragmentation Vest'],
+ ['plate-slick','Slick Plate Carrier'],['plate-jpc','Lightweight Plate Carrier'],
+ ['plate-standard','Standard Plate Carrier'],['plate-heavy','Heavy Assault Plate Carrier'],
+ ['plate-legacy','Full-Coverage Military Armor']
 ] as const;
 export const POSE_RIG_OPTIONS=[
- ['no-rig','None'],['chest-placard','Placard'],
- ['micro-rig','Micro'],['light-rig','Light'],
- ['chicom-rig','Chicom'],['bandolier','Bandolier'],
- ['full-chest','Full Chest'],['field-webbing','Field Webbing'],
- ['split-front','Split Front'],['alice-lc2','ALICE'],
- ['m1956-lce','M1956'],['lbv','LBV'],['sadf-webbing','SADF']
+ ['no-rig','None'],['chest-placard','Triple Magazine Placard'],
+ ['micro-rig','Micro Chest Rig'],['light-rig','Classic X-Harness Chest Rig'],
+ ['chicom-rig','Classic Three-Cell Canvas Rig'],['bandolier','Minimal Bandolier'],
+ ['full-chest','Full Bib / Patrol Rig'],['field-webbing','Field Webbing'],
+ ['split-front','Split-Front Chest Rig'],['alice-lc2','US ALICE LC-2 Webbing'],
+ ['m1956-lce','US M1956 Canvas Field Webbing'],['lbv','Load-Bearing Vest'],['sadf-webbing','Bush / SADF-Style Webbing']
 ] as const;
 export const POSE_PACK_OPTIONS=[
- ['no-pack','None'],['hydration','Hydration carrier'],['admin-pack','Assault panel'],
- ['day-pack','Tactical daypack'],['assault-pack','Assault pack'],['civilian-pack','Civilian backpack'],
- ['field-pack','ALICE field pack'],['rucksack','Expedition rucksack'],['medic-pack','Medical pack'],
- ['comms-pack','Communications pack']
+ ['no-pack','None'],['hydration','Hydration Carrier'],['admin-pack','Assault Panel'],
+ ['day-pack','Tactical Daypack'],['assault-pack','Assault Pack'],['civilian-pack','Civilian Backpack'],
+ ['field-pack','ALICE Field Pack'],['rucksack','Expedition Rucksack'],['medic-pack','Medical Pack'],
+ ['comms-pack','Communications Pack']
 ] as const;
 export function posePackEquipment(pack:string):string{
  return canonicalPackEquipment(pack)??'backpack-day';
 }
 export const POSE_UNIFORM_OPTIONS=[
- ['bdu-shirt','BDU'],['acu-shirt','ACU'],
- ['combat-shirt','Combat Shirt'],['smock-jacket','Smock'],
- ['gorka-jacket','Gorka']
+ ['bdu-shirt','Classic Field Blouse'],['acu-shirt','Modern Utility Blouse'],
+ ['combat-shirt','Combat Shirt'],['smock-jacket','Windproof Field Smock'],
+ ['gorka-jacket','Mountain / Gorka Jacket']
 ] as const;
 export function poseArmorEquipment(armor:string):
  'armor-none'|'armor-soft'|'armor-carrier'{
