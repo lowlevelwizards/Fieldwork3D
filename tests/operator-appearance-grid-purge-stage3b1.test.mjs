@@ -21,14 +21,14 @@ test('all obsolete garment options are actually gone from the authoritative cata
  assert.deepEqual(wardrobeItemsForSlot('trousers').map(x=>x.id),
   ['bdu-trousers','acu-trousers','gorka-trousers']);
  assert.deepEqual(wardrobeItemsForSlot('footwear').map(x=>x.id),
-  ['bare-feet','field-boots']);
+  ['combat-boots','leather-boots','hiking-boots','hiking-shoes','sneakers','bare-feet']);
  assert.deepEqual(wardrobeItemsForSlot('gloves').map(x=>x.id),
   ['gloves-none','gloves-field']);
  assert.deepEqual(wardrobeItemsForSlot('knees').map(x=>x.id),
   ['knee-none','knee-hard']);
  for(const id of ['field-jacket','t-shirt','softshell',
   'pcu-shell','light-shirt','flannel','jeans','field-trousers',
-  'softshell-trousers','sneakers','hiking-shoes']){
+  'softshell-trousers','field-boots','tall-boots']){
   assert.ok(!['top','trousers','footwear'].some(slot=>
    wardrobeItemsForSlot(slot).some(x=>x.id===id)),id);
  }
@@ -48,7 +48,7 @@ test('no legacy palette, procedural pattern or compatibility migration survives 
  assert.deepEqual(Object.keys(value).filter(x=>x==='patterns'||x==='palette'),[]);
  assert.equal(value.styles.top,undefined);
  assert.equal(value.styles.trousers,undefined);
- assert.equal(value.styles.footwear,undefined);
+ assert.equal(value.styles.footwear,'sneakers');
  assert.equal(value.styles.headwear,'ach');
  assert.equal(value.headwearCamo,'m81-woodland');
  assert.equal(value.headwearColor,'olive-drab');

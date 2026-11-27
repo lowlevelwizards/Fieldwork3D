@@ -19,11 +19,12 @@ const pose=(i)=>({
  down:false,surrender:false,aiming:false,firing:false,turning:0,
  deterministic:true,poseDiagnostics:false
 });
-function geometryFingerprint(root){
+function geometryFingerprint(root,excluded=new Set()){
+ const isExcluded=node=>{for(let p=node;p;p=p.parent)if(excluded.has(p))return true;return false;};
  const h=createHash('sha256');let meshes=0,geometries=0;
  let vertices=0,segments=0;
  root.traverse(node=>{
-  if(!node.isMesh)return;
+  if(!node.isMesh||isExcluded(node))return;
   meshes++;
   const geo=node.geometry;
   if(!geo)return;
@@ -50,7 +51,7 @@ function geometryFingerprint(root){
  return {hash:h.digest('hex'),meshes,geometries,vertices,segments};
 }
 const roundCount=3,batch=5;
-const rounds=[];let initial=null;
+const rounds=[];let initial=null,nonFootwear=null;
 for(let round=0;round<roundCount;round++){
  const rigs=[],times=[];
  try{
@@ -61,7 +62,13 @@ for(let round=0;round<roundCount;round++){
    rigs.push(rig);
   }
   if(!initial){
-   initial=geometryFingerprint(rigs[0].root);
+   const rig=rigs[0];
+   initial=geometryFingerprint(rig.root);
+   // FW artwork is intentional. Keep strict parity over EVERY other rig mesh.
+   const excluded=new Set(rig.feet.map(foot=>foot.shoe));
+   for(const foot of rig.feet){const legacy=foot.lower.userData.garmentBootShaft;if(legacy)excluded.add(legacy);}
+   for(const variants of rig.visualKit.footwear?.models??[])for(const model of Object.values(variants))excluded.add(model.shaft);
+   nonFootwear=geometryFingerprint(rig.root,excluded);
    if(initial.meshes<20||initial.segments<6)
     throw Error('E6.7 rig geometry corpus incomplete');
   }
@@ -81,7 +88,7 @@ for(let round=0;round<roundCount;round++){
 }
 const report={schema:'fieldwork-e6.7-cold-rig-v1',
  environment:{node:process.version,platform:process.platform,
-  arch:process.arch},batch,roundCount,appearance:initial,rounds,
+  arch:process.arch},batch,roundCount,appearance:initial,nonFootwear,rounds,
  caveat:'Real Node CPU createOperatorRig and pose work, not RAF, WebGL compile or iPhone GPU time. Do not gate on elapsed milliseconds.'};
 const i=process.argv.indexOf('--out');
 if(i>=0){const path=process.argv[i+1];

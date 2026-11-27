@@ -24,7 +24,7 @@ test('clothing, equipment and gloves are selected with one item card',()=>{
   ['top','acu-shirt','top','top-uniform'],
   ['trousers','bdu-trousers','legs','legs-field'],
   ['trousers','acu-trousers','legs','legs-field'],
-  ['footwear','field-boots','feet','feet-boots'],
+  ['footwear','combat-boots','feet','feet-boots'],
   ['gloves','gloves-field','hands','hands-gloves'],
   ['armorStyle','armor-bare','armor','armor-none'],
   ['beltStyle','no-belt','belt','belt-none']];

@@ -89,7 +89,7 @@ function groupEnemyKit(spec:Pick<EncounterActorSpec,'role'|'weaponProfile'>|unde
   armorStyle:armored?profile.armorStyle:'armor-bare',
   rigStyle:armored?profile.rigStyle:'no-rig',beltStyle:profile.belt,packStyle:profile.pack,
   gloves:light||group.kind==='security'?'gloves-none':'gloves-field',
-  footwear:light?'sneakers':'field-boots',headset:group.kind==='specialists'?'boom-headset':'comms-none'
+  footwear:light?'sneakers':'combat-boots',headset:group.kind==='specialists'?'boom-headset':'comms-none'
  };
  for(const [slot,id] of Object.entries(styles)){
   const choice=selectWardrobeItem(equipment,wardrobe,slot as WardrobeSlot,id);

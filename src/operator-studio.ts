@@ -1,5 +1,6 @@
 import {beltSolidChoices} from './operator-belt-profile.ts';
 import {setWardrobeBeltSolid} from './operator-wardrobe-data.ts';
+import {canonicalFootwear,footwearColor,footwearColorChoices,resolveFootwearHem} from './operator-footwear-catalog.ts';
 import {equipmentSlotForAppearance} from './operator-wardrobe-unified.ts';
 import {WARDROBE_ITEMS} from './operator-wardrobe-data.ts';
 import {packMountChoices,equipmentAssembly,type PackMountMode} from './operator-equipment-assembly.ts';
@@ -1059,7 +1060,7 @@ function undo(){
  refresh();
 }
 undoButton.addEventListener('click',undo);
-const MATERIAL_LABELS=/^(GLOVES · INDEPENDENT|GLOVE COLOR|SKIN TONE|HAIR COLOR|FACEWEAR FABRIC|MASK BODY|FRAME COLOR|LENS TINT|FABRIC MATERIAL|HEADGEAR FINISH|PASGT SHELL COLOR|PASGT CLOTH COVER|PASGT COVER PATTERN|ACH \/ MICH COVER|ACH \/ MICH SHELL COLOR|FOLIAGE SLITS|COMPATIBLE HEADGEAR PRINTS|GORKA TWO-TONE)/;
+const MATERIAL_LABELS=/^(FOOTWEAR COLOR|GLOVES · INDEPENDENT|GLOVE COLOR|SKIN TONE|HAIR COLOR|FACEWEAR FABRIC|MASK BODY|FRAME COLOR|LENS TINT|FABRIC MATERIAL|HEADGEAR FINISH|PASGT SHELL COLOR|PASGT CLOTH COVER|PASGT COVER PATTERN|ACH \/ MICH COVER|ACH \/ MICH SHELL COLOR|FOLIAGE SLITS|COMPATIBLE HEADGEAR PRINTS|GORKA TWO-TONE)/;
 function studioSectionKind(node:HTMLElement):'materials'|'details'{
  return node.dataset.studioStep==='materials'?'materials':'details';
 }
@@ -1344,6 +1345,10 @@ function renderMaterials(){
  }
  const w=current(),outfit=resolvedWardrobe(w,p.loadout);
  const item=outfit[activeCategory];
+ if(activeCategory==='footwear'&&item!=='bare-feet'){
+  const section=row('FOOTWEAR COLOR','Independent curated colorways.');
+  addSelect(section,footwearColorChoices(item).map(id=>[id,id.toUpperCase()] as const),footwearColor(canonicalFootwear(item)!,w.footwearColor),id=>changeWardrobe({...current(),footwearColor:id}));
+ }
  if(activeCategory==='facewear'){
   const identitySwatches=(heading:string,
    values:readonly string[],colorFor:(id:string)=>{label:string;hex:number},
@@ -2192,8 +2197,8 @@ function renderMaterials(){
  }
  if(activeCategory==='trousers'){
   const section=row('TROUSER HEM');
-  const options=trouserHemOptions(item);
-  addSelect(section,options.map(x=>[x,x.toUpperCase()]),w.trouserHem,
+  const options=trouserHemOptions(item,outfit.footwear);
+  addSelect(section,options.map(x=>[x,x.toUpperCase()]),resolveFootwearHem(item,outfit.footwear,w.trouserHem),
    value=>changeWardrobe({...current(),trouserHem:
     value as WardrobeOptions['trouserHem']}));
  }

@@ -1,3 +1,4 @@
+import {FOOTWEAR,canonicalFootwear} from './operator-footwear-catalog.ts';
 import {BELT_PROFILES,canonicalBeltStyle} from './operator-belt-profile.ts';
 /** Lab-facing single chooser: appearance item is the selected actual slot.
  * Saved version-1 kits remain unchanged, and no visual item grants inventory.
@@ -31,8 +32,7 @@ export function equipmentSlotForAppearance(slot:WardrobeSlot,id:string):
    ['t-shirt','polo-shirt','button-up-shirt','tank-top','hoodie','casual-jacket'].includes(id)?'top-light':'top-uniform'};
   case 'trousers':return {slot:'legs',id:family==='underlayer'?'legs-none':
    family==='civilian'?'legs-light':'legs-field'};
-  case 'footwear':return {slot:'feet',id:family==='unshod'?'feet-none':
-   family==='light'?'feet-light':'feet-boots'};
+  case 'footwear':return {slot:'feet',id:FOOTWEAR[canonicalFootwear(id)??'combat-boots'].equipment};
   case 'gloves':return {slot:'hands',id:id==='gloves-none'?'hands-none':'hands-gloves'};
   default:return null;
  }
@@ -40,6 +40,7 @@ export function equipmentSlotForAppearance(slot:WardrobeSlot,id:string):
 export function selectWardrobeItem(kit:EquipmentLoadout,
  wardrobe:WardrobeOptions,slot:WardrobeSlot,id:string):Selection{
  if(slot==='beltStyle')id=canonicalBeltStyle(id)??id;
+ if(slot==='footwear')id=canonicalFootwear(id)??id;
  if(!wardrobeItem(slot,id))return {kit,wardrobe};
  const actual=equipmentSlotForAppearance(slot,id);
  const next=actual?.slot&&actual.id?
