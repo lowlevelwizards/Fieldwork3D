@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import {addArsenalInspectionLighting} from './inspection-lighting.ts';
 import {configureGraphicRendererOutput} from '../rendering/graphic-lighting-profile.ts';
 
-import {refs,equipped,customEntries,construct,bounds} from './wa-art-models.ts';
+import {refs,customEntries,construct,bounds} from './wa-art-models.ts';
 const q=new URLSearchParams(location.search),platform=q.get('platform');
 const selected=refs.filter(r=>r.platform==='ar15').concat(customEntries.filter(r=>r.custom?.partId==='ar-stock-moe'));
 const holder=document.getElementById('sheet')!,status=document.getElementById('status')!;
