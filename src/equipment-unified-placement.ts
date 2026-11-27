@@ -11,7 +11,7 @@ export type CarryItem={id:string;kind:CarryKind;dimensions:Dimensions;
 export type CarryInput={belt:BeltStyle;holsterSide?:'left'|'right';historicalWaist?:boolean;
  storage:readonly StorageSlot[];items:readonly CarryItem[];
  waistObstacles?:readonly CarryVolume[];chestToHip?:number};
-export type Placement={itemIds:string[];contentIds?:readonly (string|null)[];carrier:Carrier;slotIds:string[];holder?:AttachmentId;
+export type Placement={itemIds:string[];kind?:CarryKind;contentIds?:readonly (string|null)[];carrier:Carrier;slotIds:string[];holder?:AttachmentId;
  variant?:AttachmentVariant;waist?:WaistPlacement;mount?:Contact;volume?:CarryVolume;concealed:boolean};
 export type PlacementManifest={placements:Placement[];unplaced:{id:string;reason:'no-fit'|'duplicate'|'invalid-item'}[];
  valid:boolean;searchTruncated:boolean};
@@ -180,7 +180,7 @@ export function resolveUnifiedCarry(input:CarryInput,maxNodes=12000):PlacementMa
  }
  bestScore=score;bestMask=mask;
  if(count(best)<jobs.length)visit(0,0,'');
- const placements=best.map(({order:_,...p})=>({...p,contentIds:[...p.itemIds,...Array.from({length:Math.max(0,(p.holder?attachmentContentSlots(p.holder,p.variant):1)-p.itemIds.length)},()=>null)]}));
+ const placements=best.map(({order:_,...p})=>({...p,kind:jobs.find(j=>j.item.id===p.itemIds[0])?.item.kind,contentIds:[...p.itemIds,...Array.from({length:Math.max(0,(p.holder?attachmentContentSlots(p.holder,p.variant):1)-p.itemIds.length)},()=>null)]}));
  const placed=new Set(placements.flatMap(p=>p.itemIds));
  const unplaced=[...invalid,...jobs.filter(j=>!placed.has(j.item.id)).map(j=>({id:j.item.id,reason:'no-fit' as const}))].sort((a,b)=>cmp(a.id,b.id));
  return {placements,unplaced,valid:!invalid.length&&!jobs.some(j=>!j.item.optional&&!placed.has(j.item.id)),searchTruncated:truncated};
@@ -189,4 +189,49 @@ export function resolveUnifiedCarry(input:CarryInput,maxNodes=12000):PlacementMa
  * Empty reservations remain occupied until an explicit refit. */
 export function removeManifestContent(manifest:PlacementManifest,id:string):PlacementManifest{
  return {...manifest,placements:manifest.placements.map(p=>p.itemIds.includes(id)?{...p,itemIds:p.itemIds.filter(i=>i!==id),contentIds:(p.contentIds??p.itemIds).map(i=>i===id?null:i)}:p)};
+}
+
+/** Stable deployment retrieval, including the exact occupied content cell.
+ * Callers commit existing authoritative stock separately. No new IDs. */
+const MANIFEST_ACCESS:Readonly<Record<Carrier,number>>={rig:0,armor:0,belt:.12,pocket:.24,backpack:.8};
+export function quoteManifestRetrieval(manifest:PlacementManifest,id:string){
+ const placement=manifest.placements.find(p=>p.itemIds.includes(id));
+ if(!placement)return null;
+ const index=(placement.contentIds??placement.itemIds).indexOf(id);
+ if(index<0)return null;
+ return {placement,cell:index,accessSeconds:MANIFEST_ACCESS[placement.carrier]};
+}
+/** Return or pick up an owned item without changing the fitted layout.
+ * Reuse only an empty compatible holder or a real free concealed cell.
+ * A new exposed holder is never materialized during a mission. */
+export function quoteManifestReturn(manifest:PlacementManifest,item:CarryItem,input:CarryInput):PlacementManifest|null{
+ if(!item.id||manifest.placements.some(p=>p.itemIds.includes(item.id))||
+  !dimensionsFit(item.dimensions,item.dimensions))return null;
+ const carriers=CARRY_PRIORITY[item.kind];
+ const candidates=manifest.placements.map((p,i)=>({p,i})).sort((a,b)=>
+  carriers.indexOf(a.p.carrier)-carriers.indexOf(b.p.carrier)||cmp(a.p.slotIds[0],b.p.slotIds[0]));
+ for(const {p,i} of candidates){
+  if(!carriers.includes(p.carrier))continue;
+  const content=[...p.contentIds??p.itemIds],at=content.indexOf(null);
+  if(at<0)continue;
+  if(p.holder){
+   if(p.kind!==item.kind||!holderFits(item,p.holder,p.variant??'standard'))continue;
+  }else{
+   const slots=input.storage.filter(s=>p.slotIds.includes(s.id));
+   if(!slots.length||slots.some(s=>!s.accepts.includes(item.kind)||!dimensionsFit(item.dimensions,s.dimensions))||
+    (item.units??1)>slots.length)continue;
+  }
+  content[at]=item.id;
+  const placements=manifest.placements.map((entry,j)=>j===i?{...entry,
+   kind:item.kind,itemIds:content.filter((x):x is string=>x!==null),contentIds:content}:entry);
+  return {...manifest,placements,unplaced:manifest.unplaced.filter(x=>x.id!==item.id)};
+ }
+ // Existing internal storage is available without a new visible pouch.
+ const choices=itemCandidates(input,item,fixedWaistSlots(input.belt,input.holsterSide,input.historicalWaist))
+  .filter(c=>c.concealed&&!c.holder&&!c.waist);
+ const slot=choices.find(c=>!manifest.placements.some(p=>conflicts(p,c)));
+ if(!slot)return null;
+ const {order:_,...placement}=slot;
+ return {...manifest,placements:[...manifest.placements,{...placement,kind:item.kind,contentIds:[item.id]}],
+  unplaced:manifest.unplaced.filter(x=>x.id!==item.id)};
 }

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fixedWaistSlots,fixedWaistCandidates,waistPlacementsConflict,clothingStorage,packStorage,registeredRigStorage,modularArmorStorage}
  from '../src/equipment-fixed-carrier-slots.ts';
-import {resolveUnifiedCarry,removeManifestContent} from '../src/equipment-unified-placement.ts';
+import {resolveUnifiedCarry,removeManifestContent,quoteManifestRetrieval,quoteManifestReturn} from '../src/equipment-unified-placement.ts';
 const dimensions=(width,height,depth)=>({width,height,depth});
 const item=(id,kind,w,h,d,extra={})=>({id,kind,dimensions:dimensions(w,h,d),...extra});
 const kit=(belt,items,storage=[],extra={})=>({belt,items,storage,...extra});
@@ -103,4 +103,22 @@ test('BT4: static waist obstacle prevents placing an attachment through a low pa
 test('BT4: same carrier priority preserves a required holster even under impossible demand',()=>{
  const items=[item('sidearm','sidearm',2,5,1),...Array.from({length:4},(_,i)=>item('p'+i,'secondary-mag',1.3,3,1))];
  const m=resolveUnifiedCarry(kit('plain-belt',items));assert.equal(m.valid,false);assert.ok(byId(m,'sidearm'));noOverlap(m);
+});
+
+test('BT4: retrieval and return keep the exact holder and lane; no exposed holder is spawned midmission',()=>{
+ const a=item('a','secondary-mag',1.3,3,1),b=item('b','secondary-mag',1.3,3,1);
+ const input=kit('duty-belt',[a,b]);const original=resolveUnifiedCarry(input);
+ const q=quoteManifestRetrieval(original,'a');assert.equal(q.cell,0);assert.equal(q.accessSeconds,.12);
+ const after=removeManifestContent(original,'a');assert.equal(quoteManifestRetrieval(after,'b').cell,1);
+ assert.equal(quoteManifestReturn(after,item('wrong','primary-mag',1.3,3,1),input),null);
+ const restored=quoteManifestReturn(after,a,input);assert.deepEqual(restored.placements,original.placements);
+ assert.equal(quoteManifestReturn(original,a,input),null);
+ assert.equal(quoteManifestReturn(original,item('c','secondary-mag',1.3,3,1),input),null);
+});
+test('BT4: pick up into a real free concealed position without changing exposed holders',()=>{
+ const input=kit('no-belt',[],clothingStorage('jeans','legs-light'));
+ const empty=resolveUnifiedCarry(input),a=item('small','light',1,3,1);
+ const next=quoteManifestReturn(empty,a,input);assert.equal(next.placements[0].carrier,'pocket');
+ assert.equal(next.placements[0].concealed,true);
+ assert.equal(quoteManifestReturn(next,item('second','light',1,3,1),input),null);
 });

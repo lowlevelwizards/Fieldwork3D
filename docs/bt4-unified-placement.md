@@ -21,3 +21,5 @@ The transaction adapter projects a complete fit to detached V1 carrier fields, c
 The chest pouch construction recipe and headless slot metadata now share one source. A loadout quote can resolve genuine rig cells without instantiating meshes; historical waist metadata and closed P83 cargo are also registered. This prepares roster/pre-deployment integration without adding rendering work to simulation frames.
 
 The resolver now reserves neutral-pose 3D waist/chest envelopes and checks existing rig pouch and backpack body exclusion volumes. These are conservative static fit checks, not dynamic pose collision certification; pack size comes from the canonical profile and existing fitted contact frame.
+
+BT4.9–10 contract: exact content-cell retrieval uses existing access timing by carrier; returns reuse compatible existing holder cells (including their stable lane index) or truly free concealed storage, never generate a new exposed holder during combat. These pure transaction candidates still need to be called by the authoritative reload, item-use and pickup systems before release.
