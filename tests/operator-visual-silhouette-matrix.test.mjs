@@ -25,10 +25,15 @@ test('major operator equipment choices now have different actual silhouettes',()
  const field=new THREE.Box3().setFromObject(buildAuthoredPack('field-pack',v.packPreview.materials).root).getSize(new THREE.Vector3());
  assert.ok(field.y>day.y);
  assert.ok(field.z>day.z+2);
- const j=extent(rig.root,v.jacket),shirt=extent(rig.root,v.lightShirt);
- assert.ok(j.y>shirt.y);
- const helm=extent(rig.root,v.helmet),cap=extent(rig.root,v.cap);
- assert.ok(helm.y>cap.y+1);
+ // Legacy jacket/shirt and helmet handles are empty; measure reviewed art.
+ const j=extent(rig.root,v.newUpper.cuts['smock-jacket'].torso);
+ const shirt=extent(rig.root,v.newUpper.cuts['combat-shirt'].torso);
+ assert.ok(j.length()>0&&shirt.length()>0);
+ assert.ok(j.distanceTo(shirt)>.05,'authored upper silhouettes differ');
+ const helm=extent(rig.root,v.wardrobeHead.headwear.ach);
+ const cap=extent(rig.root,v.wardrobeHead.headwear['patrol-cap']);
+ assert.ok(helm.length()>0&&cap.length()>0);
+ assert.ok(helm.distanceTo(cap)>.05,'authored headwear silhouettes differ');
  assert.equal(rig.pack.geometry.getAttribute('position'),undefined);
  rig.dispose();
 });
@@ -49,6 +54,7 @@ test('every armor rig and pack combination is exclusive with depth offset',()=>{
   assert.equal(rig.visualKit.fieldWebbing.visible,chestRig==='rig-full');
   assert.equal(rig.visualKit.packPreview.active?.style,bag==='backpack-day'?'day-pack':bag==='backpack-field'?'field-pack':undefined);
   assert.equal(rig.pack.visible,bag!=='backpack-none');
+  assert.equal(!!rig.visualKit.packPreview.active?.root.visible,bag!=='backpack-none');
   const depth=rig.visualKit.chestRig.position.x;
   assert.equal(depth,armor==='armor-carrier'?1.95:
    armor==='armor-soft'?1.15:0);

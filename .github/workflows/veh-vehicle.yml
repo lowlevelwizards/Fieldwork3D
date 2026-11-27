@@ -1,6 +1,8 @@
 name: VEH vehicle geometry and contracts
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/worldgen/vehicle-*.ts'
       - 'src/breach-reactive-cover.ts'
@@ -33,6 +35,11 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+# Isolate each PR from manual acceptance and cancel obsolete revisions.
+concurrency:
+  group: veh-vehicle-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   vehicle:
     runs-on: ubuntu-24.04

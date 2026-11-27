@@ -119,6 +119,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   dt=frameDt;
   const appearanceStart=profilePose?performance.now():0;
   const clothing=updateOperatorAppearance(r,p);
+  // Appearance owns pack presence; the pose snapshot predates this update.
+  attachments[EAI.pack].visible=r.pack.visible;
   if(profilePose)appearanceMs=performance.now()-appearanceStart;
   const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
   const smooth=(t:number)=>{const v=clamp(t,0,1);return v*v*(3-2*v)};

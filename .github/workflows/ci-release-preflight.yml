@@ -1,0 +1,40 @@
+name: Fieldwork serialized release preflight
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Open PR number targeting main
+        required: true
+        type: string
+      expected_head:
+        description: Exact full PR head SHA approved for release
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+concurrency:
+  group: fieldwork-release-preflight
+  cancel-in-progress: false
+jobs:
+  release-candidate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/ci-release-coordination.test.mjs
+      - name: Verify current production deployment and public build
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
+      - name: Verify exact PR head and all latest PR workflow results
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_PR: ${{ inputs.pr }}
+          RELEASE_HEAD: ${{ inputs.expected_head }}
+        run: node scripts/verification/ci-release-coordination.mjs

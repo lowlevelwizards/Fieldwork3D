@@ -51,7 +51,7 @@ function geometryFingerprint(root,excluded=new Set()){
  return {hash:h.digest('hex'),meshes,geometries,vertices,segments};
 }
 const roundCount=3,batch=5;
-const rounds=[];let initial=null,nonFootwear=null;
+const rounds=[];let initial=null,nonFootwear=null,nonEquipmentArt=null;
 for(let round=0;round<roundCount;round++){
  const rigs=[],times=[];
  try{
@@ -69,6 +69,13 @@ for(let round=0;round<roundCount;round++){
    for(const foot of rig.feet){const legacy=foot.lower.userData.garmentBootShaft;if(legacy)excluded.add(legacy);}
    for(const variants of rig.visualKit.footwear?.models??[])for(const model of Object.values(variants))excluded.add(model.shaft);
    nonFootwear=geometryFingerprint(rig.root,excluded);
+   // BP canonical art intentionally removes all legacy pack model/overlay groups.
+   // Keep the strict original fingerprint for every mesh outside footwear and
+   // those specific backpack-owned roots, including all limb geometry.
+   const kit=rig.visualKit;
+   for(const group of [rig.pack,kit.packHarness,kit.dayPack,kit.fieldPack,
+     ...Object.values(kit.wardrobeGear.pack??{})])if(group)excluded.add(group);
+   nonEquipmentArt=geometryFingerprint(rig.root,excluded);
    if(initial.meshes<20||initial.segments<6)
     throw Error('E6.7 rig geometry corpus incomplete');
   }
@@ -88,7 +95,7 @@ for(let round=0;round<roundCount;round++){
 }
 const report={schema:'fieldwork-e6.7-cold-rig-v1',
  environment:{node:process.version,platform:process.platform,
-  arch:process.arch},batch,roundCount,appearance:initial,nonFootwear,rounds,
+  arch:process.arch},batch,roundCount,appearance:initial,nonFootwear,nonEquipmentArt,rounds,
  caveat:'Real Node CPU createOperatorRig and pose work, not RAF, WebGL compile or iPhone GPU time. Do not gate on elapsed milliseconds.'};
 const i=process.argv.indexOf('--out');
 if(i>=0){const path=process.argv[i+1];

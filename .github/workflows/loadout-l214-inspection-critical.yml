@@ -1,6 +1,8 @@
 name: L2.14 physical equipment inspection critical
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/equipment-visual-inspection.ts'
       - 'src/equipment-preview.ts'
@@ -13,6 +15,11 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+# Isolate each PR from manual acceptance and cancel obsolete revisions.
+concurrency:
+  group: loadout-l214-inspection-critical-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   inspect:
     runs-on: ubuntu-24.04

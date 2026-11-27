@@ -1,15 +1,23 @@
 name: V14 material readability
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/rendering/breach-material-impact-atom.ts'
       - 'src/breach-effects.ts'
       - 'src/breach-combat-cues.ts'
       - 'src/breach-3d.ts'
       - 'tests/vfx-v5-material-impact.test.mjs'
+      - '.github/workflows/vfx-v14-material.yml'
   workflow_dispatch:
 permissions:
   contents: read
+# Isolate each PR from manual acceptance and cancel obsolete revisions.
+concurrency:
+  group: vfx-v14-material-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   material:
     runs-on: ubuntu-24.04

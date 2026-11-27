@@ -1,6 +1,8 @@
 name: Loadout UX R1 mobile critical
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/campaign-ui.ts'
       - 'src/campaign-style.css'
@@ -18,6 +20,11 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+# Isolate each PR from manual acceptance and cancel obsolete revisions.
+concurrency:
+  group: loadout-ux-r1-critical-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   armory-critical:
     runs-on: ubuntu-24.04
