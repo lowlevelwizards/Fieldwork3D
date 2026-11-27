@@ -1143,6 +1143,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       packBounds:retentionPack,
       rigDepth:p.equipment?.slots.rig&&p.equipment.slots.rig!=='rig-none'?1.5:0,
       beltDepth:p.equipment?.slots.belt&&p.equipment.slots.belt!=='belt-none'?1.25:0,
+      locomotion:{stride:p.stride,speed:physicalSpeed,posture:p.posture,gait:p.gait,
+        injury:p.injury,direction:(p.travelYaw??p.heading)-p.heading},
       motion:{stride:p.stride,speed:physicalSpeed,acceleration:p.acceleration,
         turning:p.turning,massKg:retentionAssembly?.massKg??3,
         inertia:retentionAssembly?.rotationalInertia??100}},retentionWeight):null;
@@ -1179,6 +1181,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       const sourcePole=actualSource?.[i]?.joint.clone().sub(shoulder)??
         P(corridor.x,corridor.y,corridor.z).sub(shoulder);
       const release=retentionHandRelease(retention.mode,sign as -1|1,retentionWeight);
+      const restShoulder=i===0?ANATOMY.shoulderLeft:ANATOMY.shoulderRight;
+      shoulder.lerp(P(restShoulder.x,restShoulder.y,restShoulder.z),release);
       const solved=solveUnifiedRetentionArm({
         shoulder,desired:requested,sourcePole,release,side:sign as -1|1,
         envelope:poseEnvelope??poseClearanceEnvelope(clothing.armorStyle,clothing.rigStyle,clothing.top),
@@ -1187,7 +1191,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       arm.bend.copy(solved.bendPlane);arm.outOfReach=requested.distanceTo(shoulder)>19.92||!solved.reached;
       r.elbowSpread[i]=Math.max(0,sign*(solved.joint.z-shoulder.z));
       setOperatorArmSegments(scratch,i as 0|1,shoulder,solved.joint,solved.effector,scratch.sides[i]);
-      setOperatorHandPose(scratch,i as 0|1,solved.effector,0);
+      setOperatorHandPose(scratch,i as 0|1,solved.effector,
+        clamp(fit.rotation.y,-1,1)*(1-release)+sign*.14*release);
       continue;
     }
     if(secondaryTarget&&secondaryTarget.weight>0){

@@ -3,6 +3,7 @@
  * A future action owner supplies the achieved location, never the renderer. */
 import * as THREE from 'three';
 import {packedRearSurface} from './operator-retention-pack.ts';
+import {sampleRetentionFreeWrist,type RetentionLocomotion} from './operator-retention-locomotion.ts';
 import type {RetentionShape} from './operator-retention-shape.ts';
 import type {EquipmentExterior} from './operator-equipment-exterior.ts';
 import type {SlingKind} from './breach-weapon-retention.ts';
@@ -24,6 +25,7 @@ export type RetentionPoseInput=Readonly<{
  sockets?:WeaponRetentionSockets|null;motion?:SuspensionMotion;
  bounds?:THREE.Box3;rigDepth?:number;beltDepth?:number;
  exterior?:EquipmentExterior;packBounds?:THREE.Box3;shape?:RetentionShape;
+ locomotion?:RetentionLocomotion;
 }>;
 export function retentionPoseSupported(mode:RetentionPoseMode,sling:SlingKind){
  return mode==='held-one'||mode==='front-slung'&&sling!=='none'||
@@ -95,7 +97,7 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
   const {correction}=clearRetentionEnvelope({...p,bounds:p.bounds,position,quaternion:q});
   position.add(correction);
  }
- const right=one?anchor.clone():new THREE.Vector3(3,-8.6,9);
- const left=new THREE.Vector3(3,-8.6,-9);
+ const right=one?anchor.clone():sampleRetentionFreeWrist(1,p.mode,p.locomotion,p.exterior);
+ const left=sampleRetentionFreeWrist(-1,p.mode,p.locomotion,p.exterior);
  return {mode:p.mode,position,quaternion:q,right,left};
 }
