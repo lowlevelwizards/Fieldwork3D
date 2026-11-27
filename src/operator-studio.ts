@@ -79,7 +79,7 @@ import {readCampaign} from './campaign-state.ts';
 import {applyStudioRosterEdits,applyStudioCampaignEdits,
  type StudioAppearanceEdit} from './operator-studio-batch-save.ts';
 import {authoredPackStyle} from './operator-backpack-art.ts';
-import {legacyPackEquipment} from './operator-backpack-catalog.ts';
+import {canonicalPackEquipment} from './operator-backpack-catalog.ts';
 import {supportsDirectPack} from './operator-backpack-fit.ts';
 import {setEquipmentChoice,type EquipmentLoadout} from './equipment-loadouts.ts';
 import {dispatchPilotAppearanceAllowed,dispatchAppearanceSolids,
@@ -550,7 +550,7 @@ function packReviewLook(){
 }
 function packReviewKit(kit:EquipmentLoadout){
  if(!reviewingPacks())return kit;
- const w=packReviewLook(),id=legacyPackEquipment(w.styles.packStyle??'no-pack')??'backpack-none';
+ const w=packReviewLook(),id=canonicalPackEquipment(w.styles.packStyle??'no-pack')??'backpack-none';
  const slots={...kit.slots,backpack:id};
  for(const slot of ['armorStyle','rigStyle','beltStyle'] as const){
   const chosen=w.styles[slot];if(!chosen)continue;
@@ -968,6 +968,7 @@ function posePreview(){
 function canEquip(slot:WardrobeSlot,id:string){
  if(slot==='packStyle'&&reviewingPacks())return id==='no-pack'||!!authoredPackStyle(id);
  const p=member();
+ if(slot==='armorStyle'&&p?.loadout.slots.backpack==='backpack-panel'&&!supportsDirectPack(id))return false;
  return !!p&&resolvedWardrobe(setWardrobeStyle(current(),slot,id),p.loadout)[slot]===id;
 }
 function restoreDraft(look:WardrobeOptions,normalized=false){
