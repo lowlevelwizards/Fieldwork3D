@@ -47,7 +47,7 @@ export function buildWeaponSilhouette(id:WeaponId,
   // submeshes are subsequently baked into larger vertex buffers.
   const stockContact=config?measureVisibleStockContact(root,config):null;
   // Preserve candidate seats before rigid compilation loses part names.
-  const seats=measureWeaponRetentionSockets(root);
+  const seats=measureWeaponRetentionSockets(root,familyBuild);
   root.userData.retentionSockets=seats;
   if(config?.weapon===id)retentionCache.set(config,seats);
   if(config?.weapon===id&&config.build&&
