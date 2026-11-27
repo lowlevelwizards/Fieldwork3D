@@ -2,7 +2,7 @@
  * A visual proxy cannot change the identity or provenance of historical gear.
  */
 import {FT12_HISTORICAL_EQUIPMENT} from './faction-reference-equipment-ft1-2.ts';
-export type HistoricalEquipmentCategory='weapon'|'headwear'|'uniform'|'armor'|'carriage'|'other';
+export type HistoricalEquipmentCategory='weapon'|'headwear'|'uniform'|'armor'|'carriage'|'footwear'|'other';
 export type HistoricalModelMapping={
  kind:'weapon-preset'|'wardrobe-style'|'camouflage'|'equipment';
  id:string;
@@ -66,6 +66,12 @@ export const HISTORICAL_EQUIPMENT:readonly HistoricalEquipment[]=[
  record('ddr-strichtarn','East German NVA Strichtarn field uniform','uniform',
   'Strichtarn field dress used by the East German NVA.',
   camo('east-german-strichtarn','Pattern represented; garment cut not certified.')),
+ record('us-ocp-coyote-boots','US Army coyote brown combat boots','footwear',
+  'Coyote brown boots authorized for OCP and OEF-CP during the transition. Exact boot model and manufacturer are not established.'),
+ record('us-ocp-tan499-belt','US Army Tan 499 trouser belt','carriage',
+  'Uniform trouser belt; not a tactical battle belt or holster platform.'),
+ record('usmc-mccb','Marine Corps Combat Boots (MCCB)','footwear',
+  'Marine Corps combat boot family, with hot-weather and temperate-weather variants.'),
  ...FT12_HISTORICAL_EQUIPMENT
 ];
 export const historicalEquipment=(id:string):HistoricalEquipment|undefined=>
