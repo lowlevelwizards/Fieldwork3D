@@ -2,7 +2,8 @@
  * The authoritative live simulation owns acquisition. Playback only consumes
  * immutable samples. This module is intentionally presentation-only.
  */
-import {isDetected,personDetected,inSight,liveVisibility,observerPointVisible,type Session,type TeamActor} from './breach-game.ts';
+import {isDetected,personDetected,inSight,liveVisibility,liveBodyVisible,observerBodyVisible,observerPointVisible,type Session,type TeamActor} from './breach-game.ts';
+import {friendlyTransportVisible} from './breach-transport-custody.ts';
 import {escortedCivilianVisible} from './breach-civilian-visibility.ts';
 import type {ReplayEffectEvidence} from './breach-replay-effect-evidence.ts';
 
@@ -75,11 +76,11 @@ export function captureReplayKnowledge(
       for(const target of livingHostiles)
         if(inSight(observer,target,s))visibleIds.push(target.id);
       for(const civilian of s.civilians)
-        if(escortedCivilianVisible(civilian)||
-           observerPointVisible(s,observer,civilian.p))
+        if(escortedCivilianVisible(civilian)||friendlyTransportVisible(civilian,s.operators)||
+           (civilian.health<=0?observerBodyVisible(s,observer,civilian.p):observerPointVisible(s,observer,civilian.p)))
           civilianIds.push(civilian.id);
       for(const body of bodies)
-        if(observerPointVisible(s,observer,body.p))
+        if(friendlyTransportVisible(body,s.operators)||observerBodyVisible(s,observer,body.p))
           visibleBodies.push(body.id);
     }
     operatorDetectedActorIds[observer.id]=detectedIds;
@@ -93,12 +94,13 @@ export function captureReplayKnowledge(
   }
   for(const a of s.operators){
     const visible=a.side==='blue'||(a.health>0?
-      isDetected(s,a):liveVisibility(s,a.p));
+      isDetected(s,a):friendlyTransportVisible(a,s.operators)||liveBodyVisible(s,a.p));
     if(visible)visibleActorIds.push(a.id);
     if(a.health<=0&&visible)discovered.add(a.id);
   }
   for(const c of s.civilians)
-    if(escortedCivilianVisible(c)||liveVisibility(s,c.p))
+    if(escortedCivilianVisible(c)||friendlyTransportVisible(c,s.operators)||
+       (c.health<=0?liveBodyVisible(s,c.p):liveVisibility(s,c.p)))
       visibleCivilianIds.push(c.id);
   return {visibleActorIds,visibleCivilianIds,
     discoveredBodyIds:[...discovered],operatorVisibleActorIds,

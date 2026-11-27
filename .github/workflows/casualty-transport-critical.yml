@@ -1,7 +1,7 @@
 name: CT casualty transport critical
 on:
   push:
-    branches: [feature/ct-casualty-transport, feature/ct-carry-refinement]
+    branches: [feature/ct-casualty-transport, feature/ct-carry-refinement, feature/casualty-visibility]
   pull_request:
     paths:
       - 'src/breach-*transport*.ts'
@@ -30,6 +30,6 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - run: node --experimental-strip-types --test tests/casualty-transport-*.test.mjs tests/dispatch-d15-8-transport-route.test.mjs tests/dispatch-d15-capture-transport-presentation.test.mjs tests/civilian-r2-rescue-transport.test.mjs tests/equipment-22-07-transport.test.mjs tests/equipment-22-08-casualty-extraction.test.mjs tests/weapon-retention-wr8.test.mjs tests/weapon-retention-wr10.test.mjs tests/dispatch-d15-capture-transport-go.test.mjs tests/oc-transport-targeting.test.mjs tests/civilian-r2-transport-replay.test.mjs tests/equipment-22-04-treatment.test.mjs tests/breach-roadmap3-context-commands.test.mjs tests/door-operating-modes.test.mjs
+      - run: node --experimental-strip-types --test tests/casualty-transport-*.test.mjs tests/dispatch-d15-8-transport-route.test.mjs tests/dispatch-d15-capture-transport-presentation.test.mjs tests/civilian-r2-rescue-transport.test.mjs tests/equipment-22-07-transport.test.mjs tests/equipment-22-08-casualty-extraction.test.mjs tests/weapon-retention-wr8.test.mjs tests/weapon-retention-wr10.test.mjs tests/dispatch-d15-capture-transport-go.test.mjs tests/oc-transport-targeting.test.mjs tests/civilian-r2-transport-replay.test.mjs tests/equipment-22-04-treatment.test.mjs tests/breach-roadmap3-context-commands.test.mjs tests/door-operating-modes.test.mjs tests/civilian-c6-historical-visibility.test.mjs tests/replay-r42-operator-sight.test.mjs tests/replay-r42c-civilian-sight.test.mjs tests/breach-roadmap2-visibility-contract.test.mjs
       - run: npm run build
       - run: test -f dist/casualty-transport-lab.html

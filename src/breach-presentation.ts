@@ -5,7 +5,7 @@ import {windowApertureSegment,windowBarrierMatches}
  from './worldgen/window-geometry-contract.ts';
 import {preciseGroundEvidenceAt} from './breach-ground-knowledge.ts';
 import {accessibleExteriorWall} from './breach-site-footprint.ts';
-import {type Session,type ShotEvent,liveVisibility,knownAt} from './breach-game.ts';
+import {type Session,type ShotEvent,liveVisibility,liveBodyVisible,knownAt} from './breach-game.ts';
 
 /**
  * Shared tactical presentation policy.
@@ -157,7 +157,7 @@ export function doorVisibility(s:Session,door:Door){
   return {known:live||knownAt(s,p.x,p.y),live};
 }
 export function corpseVisible(s:Session,p:Pt,side:'blue'|'red'){
-  return side==='blue'||liveVisibility(s,p);
+  return side==='blue'||liveBodyVisible(s,p);
 }
 export function contactFade(age:number,duration:number){
   return Math.max(0,Math.min(1,1-age/duration));

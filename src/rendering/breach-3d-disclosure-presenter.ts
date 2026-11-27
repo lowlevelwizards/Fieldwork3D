@@ -1,7 +1,8 @@
 /** Unified presentation disclosure. Never modifies simulation knowledge.
  * In particular, physical camera cutaways cannot reveal unseen objects.
  */
-import {liveVisibility,isDetected,type Session,type TeamActor} from '../breach-game.ts';
+import {liveVisibility,liveBodyVisible,isDetected,type Session,type TeamActor} from '../breach-game.ts';
+import {friendlyTransportVisible} from '../breach-transport-custody.ts';
 import {objectiveLocationKnown} from '../breach-objective-intel.ts';
 import type {Door,Pt} from '../breach-core.ts';
 import type {CivilianActor} from '../breach-civilian-types.ts';
@@ -22,18 +23,19 @@ export function presentActor(s:Session,a:TeamActor,omniscient:boolean,
  if(a.side==='red'&&a.health>0&&a.restrained===true&&
     a.escortLeaderId&&s.operators.some(o=>o.id===a.escortLeaderId&&
       o.side==='blue'&&o.health>0))return true;
+ if(friendlyTransportVisible(a,s.operators))return true;
  if(policy)return replayActorDisclosed(s,a,policy);
  // A live game has no historical sample. Keep its authoritative current
  // actor sight separate from replay's intentionally fail-closed evidence.
  return omniscient||a.side==='blue'||(a.health>0?
-   isDetected(s,a):liveVisibility(s,a.p));
+   isDetected(s,a):liveBodyVisible(s,a.p));
 }
 export function presentCivilian(s:Session,c:CivilianActor,omniscient:boolean,
  policy:ReplayDisclosure|null):boolean{
  // In both live and replay, an actual (historically restored) escort is
  // squad knowledge until STOP or separation. Do not substitute live LOS
  // for a replay frame that never contained custody.
- if(escortedCivilianVisible(c))return true;
+ if(escortedCivilianVisible(c)||friendlyTransportVisible(c,s.operators))return true;
  if(policy){
    if(policy.mode==='full')return true;
    if(policy.mode==='operator')return replayCivilianDisclosed(s,c.id,policy);
@@ -46,7 +48,7 @@ export function presentCivilian(s:Session,c:CivilianActor,omniscient:boolean,
  // An omniscient tactical view already grants model disclosure. Avoid
  // calculating a sight ray that civilianPresentationVisible would discard.
  return omniscient||civilianPresentationVisible(c,false,
-   false,liveVisibility(s,c.p));
+   false,c.health<=0?liveBodyVisible(s,c.p):liveVisibility(s,c.p));
 }
 export function presentDecor(s:Session,detail:{
  position:Pt;microKey:string;fineKey:string

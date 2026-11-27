@@ -1,0 +1,2 @@
+# Casualty visibility
+Reciprocal transport by a living blue operator grants the same model disclosure as an active escort, across tactical and floor-plan views and recorded replay samples. Invalid links do not grant visibility. Downed bodies have a 24-unit (~1.2m) close-awareness zone with normal physical LOS; beyond it ordinary cone rules resume. No changes to living-target detection, ground fog, or world geometry. Nearby contextual casualty queries share the body-specific policy.
