@@ -66,7 +66,7 @@ const appearanceState=new WeakMap<OperatorRig,{
 /** Static appearance inputs can be baked from saved Studio/roster data
  * before the first live animation pose. No motion/IK fields are required. */
 export type OperatorAppearanceInputs=Pick<OperatorPose,
- 'appearanceSeed'|'equipment'|'wardrobe'|'magazineCarryLocations'|
+ 'appearanceSeed'|'equipment'|'wardrobe'|'magazineCarryLocations'|'packPrimaryMagazineMass'|
  'medicalCarryLocation'|'utilityCarryLocation'|'faceStyle'|
  'flashCharges'|'wedgeRemaining'|'restraintRemaining'|'treatmentActive'|
  'weaponConfiguration'|'nvgDeployed'|'down'|'surrender'>;
@@ -273,8 +273,6 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     p.magazineCarryLocations,p.faceStyle,p.wardrobe,p.weaponConfiguration,
     nvgMounted(p),p.nvgDeployed===true);
    const packState=r.visualKit.packPreview;
-   packState.motionScale=packSuspensionScale(packState.active?.style??'no-pack',packState.fit?.mode,
-    packCargoMass(p.equipment,p.magazineCarryLocations,p.medicalCarryLocation,p.utilityCarryLocation));
    // Closed pack cargo is concealed unless its ledger location and an
    // explicit requested external socket both match the authored model.
    if(packState.active&&!r.root.userData.fieldworkInspectPackCargo){
@@ -674,6 +672,13 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   updateOperatorEquipmentDetails(r.equipmentDetails,gear,
     visibleFlashes.length>0,legacySmoke);
   if(gear?.utility==='utility-wedge')r.equipmentDetails.tools['utility-wedge'].visible=false;
+  }
+  // Dynamic magazine weight is intentionally outside the static appearance
+  // fingerprint: firing or replaying a round must not rebuild costume meshes.
+  const packState=r.visualKit.packPreview;
+  if(appearanceChanged||p.packPrimaryMagazineMass!==undefined){
+   packState.motionScale=packSuspensionScale(packState.active?.style??'no-pack',packState.fit?.mode,
+    packCargoMass(p.equipment,p.magazineCarryLocations,p.medicalCarryLocation,p.utilityCarryLocation,p.packPrimaryMagazineMass));
   }
   // Desaturation changes only at injury/surrender transitions, not each
   // animation frame. Replayed appearance or kit changes refresh the palette.

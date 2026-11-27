@@ -141,6 +141,8 @@ export type OperatorPose={
   restraintRemaining?:number;
   medicalCarryLocation?:CarryLocation;utilityCarryLocation?:CarryLocation;
   magazineCarryLocations?:readonly CarryLocation[];
+  /** Read-only deployed magazine mass proxy for pack suspension, not static art. */
+  packPrimaryMagazineMass?:number;
   /** Simulation-owned IDs and actual stowage, used for V4 handoff ONLY. */
   magazineCarryItems?:readonly Pick<CarryPlacement,'id'|'kind'|'location'>[];
   reloadSelectedMagazineId?:string|null;
