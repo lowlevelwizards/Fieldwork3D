@@ -19,10 +19,11 @@ export const DISPATCH_STARTER_CHOICES:
  Readonly<Record<string,DispatchStarterChoiceRecord>>={
  'us-swat-mp5-1995':policy({
   equipment:['primary-smg','head-helmet','armor-soft','rig-light',
-   'belt-standard','backpack-none','utility-radio','tactical-flash'],
+   'belt-standard','backpack-none','utility-radio','tactical-flash',
+   'feet-leather'],
   'weapon-preset':['hk-mp5a3'],
   'wardrobe-style':['pasgt','bdu-shirt','bdu-trousers',
-   'soft-vest','micro-rig','duty-belt','gloves-field','no-pack'],
+   'soft-vest','micro-rig','duty-belt','leather-boots','gloves-field','no-pack'],
   'solid-color':['navy','black'],
   'identity-marking':['label-swat']
  },{
@@ -32,13 +33,13 @@ export const DISPATCH_STARTER_CHOICES:
  }),
  'us-swat-2015':policy({
   equipment:['primary-carbine','head-helmet','armor-soft','rig-light',
-   'belt-standard','backpack-none','utility-radio','tactical-flash',
+   'belt-standard','belt-battle','backpack-none','utility-radio','tactical-flash',
    'top-uniform','legs-field','hands-gloves','hands-none','feet-boots',
    'medical-basic','medical-none','medical-trauma','tactical-none',
    'utility-none','utility-light','rig-none','belt-light'],
   'weapon-preset':['ar-m4a1'],
   'wardrobe-style':['mich-2001','bdu-shirt','bdu-trousers',
-   'soft-vest','micro-rig','duty-belt','no-pack','gloves-field','gloves-none'],
+   'soft-vest','micro-rig','duty-belt','battle-belt','combat-boots','no-pack','gloves-field','gloves-none'],
   'solid-color':['black','navy','charcoal'],
   'identity-marking':['label-swat','label-police']
  },{
@@ -50,9 +51,9 @@ export const DISPATCH_STARTER_CHOICES:
  }),
  'us-police-polo-2020':policy({
   equipment:['head-cap','armor-soft','rig-none','belt-standard',
-   'backpack-none','utility-radio','medical-basic'],
+   'backpack-none','utility-radio','medical-basic','feet-hiking-shoes'],
   'wardrobe-style':['patrol-cap','polo-shirt','acu-trousers',
-   'soft-vest','no-rig','duty-belt','no-pack','gloves-none'],
+   'soft-vest','no-rig','duty-belt','hiking-shoes','no-pack','gloves-none'],
   'solid-color':['navy','black'],
   'identity-marking':['label-police']
  },{
@@ -62,10 +63,10 @@ export const DISPATCH_STARTER_CHOICES:
  }),
  'russian-omon-2002':policy({
   equipment:['primary-carbine','head-helmet','armor-soft','rig-light',
-   'belt-standard','backpack-none','utility-radio'],
+   'belt-standard','backpack-none','utility-radio','feet-leather'],
   'weapon-preset':['ak-aks74u'],
   'wardrobe-style':['pasgt','bdu-shirt','bdu-trousers',
-   'soft-vest','micro-rig','duty-belt','no-pack','gloves-field'],
+   'soft-vest','micro-rig','duty-belt','leather-boots','no-pack','gloves-field'],
   'solid-color':['black'],
   camouflage:['urban-kamysh'],
   'identity-marking':['label-omon']
