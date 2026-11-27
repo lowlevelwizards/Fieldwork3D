@@ -4,7 +4,7 @@
  */
 import * as THREE from 'three';
 import {mapGarmentBoxUV} from './operator-fabric-camo-materials.ts';
-import {mapBoxPixelUV,TILE_WORLD_SIZE} from './rendering/pixel-materials.ts';
+import {mapBoxPixelUV,TILE_WORLD_SIZE,boxFaceVertexRanges} from './rendering/pixel-materials.ts';
 import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
 import {ART_PIXEL} from './rendering/material-art-scale.ts';
 export const PACK_DETAIL_PIXEL=ART_PIXEL;
@@ -53,7 +53,7 @@ export function packVolume(parent:THREE.Group,name:string,m:THREE.Material,p:Pac
  // Four rings preserve actual broad shoulder/base facets; no accidental AO
  // replacement of the sculpt. Broad fabric faces get one lateral AO sample.
  const across=m.userData.fieldworkBakedEquipmentAO===true&&h>=6&&w>=6?2:1;
- const g=metric(new THREE.BoxGeometry(d,h,w,across,3,across),size,p,m);
+ const g=new THREE.BoxGeometry(d,h,w,across,3,across);
  const pos=g.getAttribute('position');
  for(let i=0;i<pos.count;i++){
   const x=pos.getX(i),z=pos.getZ(i),y=pos.getY(i);
@@ -61,6 +61,13 @@ export function packVolume(parent:THREE.Group,name:string,m:THREE.Material,p:Pac
   const t=PACK_VOLUME_RINGS[ring],shape=packRing(d,w,t,cut);
   pos.setXYZ(i,shape.rear+(x/d+.5)*(d*.5-shape.rear),t*h,z*shape.half/(w*.5));
  }
+ // Preserve the physical vertical repeat even when the shoulder band is shorter.
+ const uv=g.getAttribute('uv');
+ for(const face of [0,1,4,5]){
+  const {start,count}=boxFaceVertexRanges(g)[face];
+  for(let i=start;i<start+count;i++)uv.setY(i,pos.getY(i)/h+.5);
+ }
+ metric(g,size,p,m);
  pos.needsUpdate=true;g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();
  bakeGearGeometryAO(g,m);
  return mesh(parent,name,g,m,p);
