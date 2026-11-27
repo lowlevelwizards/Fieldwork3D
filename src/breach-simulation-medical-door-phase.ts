@@ -34,9 +34,9 @@ export type MedicalDoorPhasePort={
 function liveDoorOccupants(s:Session):Pt[]{
   const positions:Pt[]=[];
   for(const operator of s.operators)
-    if(operator.health>0)positions.push(operator.p);
+    if(operator.health>0||operator.carriedById)positions.push(operator.p);
   for(const civilian of s.civilians)
-    if(civilian.health>0)positions.push(civilian.p);
+    if(civilian.health>0||civilian.carriedById)positions.push(civilian.p);
   return positions;
 }
 
@@ -121,7 +121,7 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
     if(door.open&&(door.openFraction??0)<.96&&
        (door.pushTarget??1)<=1.01){
       for(const actor of s.operators){
-        if(actor.health<=0)continue;
+        if(actor.health<=0||actor.carryingId)continue;
         const budget=openingYieldBudget(s,door,actor.id);
         if(budget<.03)continue;
         const candidate=initialOpeningYieldCandidate(door,actor.p,

@@ -1,0 +1,2 @@
+# CT7 — Door and squad traffic integration
+A carried casualty contributes to door leaf occupancy; door-phase opening yield must not relocate the carrier alone. Existing threshold coordinator considers reciprocal patient throat footprint and retains a crossing claim until it clears. Suppress unvalidated solo counterflow retreats while loaded. No lock/leaf bypass or movement of stationary teammates. Actual narrow, double, automatic and opposing-flow scene validation remains necessary.
