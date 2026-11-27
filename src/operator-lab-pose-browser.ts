@@ -1,4 +1,5 @@
 /** Unified Operator Lab model and motion browser: visual-only selections. */
+import {legacyPackEquipment} from './operator-backpack-catalog.ts';
 import {FAMILY_PRESETS,type WeaponFamilyPreset} from './equipment-weapon-families.ts';
 import {ARSENAL_PLATFORMS,ARSENAL_REFERENCES}
  from './arsenal/catalog.ts';
@@ -31,8 +32,7 @@ export const POSE_PACK_OPTIONS=[
  ['comms-pack','Comms'],['duffel','Duffel']
 ] as const;
 export function posePackEquipment(pack:string):'backpack-none'|'backpack-day'|'backpack-field'{
- return pack==='no-pack'?'backpack-none':
-  ['field-pack','rucksack','medic-pack','comms-pack','duffel'].includes(pack)?'backpack-field':'backpack-day';
+ return legacyPackEquipment(pack)??'backpack-day';
 }
 export const POSE_UNIFORM_OPTIONS=[
  ['bdu-shirt','BDU'],['acu-shirt','ACU'],
