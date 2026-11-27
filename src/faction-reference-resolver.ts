@@ -6,7 +6,7 @@ import {readWardrobe,resolvedWardrobe,setWardrobeStyle,setWardrobeFabricSolid,
  setWardrobeFabricCamo,wardrobeConflicts,type WardrobeOptions,type WardrobeSlot}
  from './operator-wardrobe-data.ts';
 import {fabricCamoCompatible} from './operator-fabric-camo-policy.ts';
-import {footwearColorChoices} from './operator-footwear-catalog.ts';
+import {footwearColorChoices,resolveFootwearHem} from './operator-footwear-catalog.ts';
 import {beltSolidChoices} from './operator-belt-profile.ts';
 import {isGloveSolid} from './operator-garment-color-policy.ts';
 import {resolvedTopColorway} from './operator-upper-colorways.ts';
@@ -140,7 +140,7 @@ export function resolveFactionReference(input:FactionReference|string,
   ...(reference.policeVisorFrame?{policeVisorFrame:reference.policeVisorFrame}:{}),
   ...(reference.markings?{markings:reference.markings}:{}),
   ...(reference.sleeveState?{sleeveState:reference.sleeveState}:{}),
-  ...(reference.trouserHem?{trouserHem:reference.trouserHem}:{}),
+  trouserHem:resolveFootwearHem(outfit.trousers,outfit.footwear,reference.trouserHem??wardrobe.trouserHem),
   ...(reference.gloveSolid&&isGloveSolid(reference.gloveSolid)?
     {gloveSolid:reference.gloveSolid}:{})});
  issues.push(...wardrobeConflicts(wardrobe,kit));
