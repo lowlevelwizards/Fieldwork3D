@@ -47,7 +47,7 @@ export type DeploymentInventorySnapshot={
  */
 export function captureDeploymentInventory(
  source:DeploymentInventorySource):DeploymentInventorySnapshot{
- let equipment=readEquipmentLoadout(source.loadout,source.weapon,source.id);
+ let equipment=readEquipmentLoadout(source.loadout,source.weapon,source.id,source.carryMode);
  const config=structuredClone(resolveCatalogConfiguration(source.weaponConfiguration,source.weapon,starterWeaponPreset(source.id)));
  const fitted=fitMagazineInventory(source.id,source.weapon,config,
   source.magazine,source.reserve,source.magazines);
@@ -55,7 +55,7 @@ export function captureDeploymentInventory(
   stageMagazines(fitted.magazines,equipment);
  let unifiedCarry:UnifiedDeployedCarry|undefined;
  if(source.carryMode==='unified'){
-  const fit=quoteUnifiedCarryTransaction({kit:equipment,wardrobe:source.wardrobe,magazines:spareMagazines,
+  const fit=quoteUnifiedCarryTransaction({kit:equipment,wardrobe:source.wardrobe,magazines:fitted.magazines,
    primaryPart:config.build?.parts.magazine,shellReserve:source.weapon==='shotgun'?fitted.reserve:undefined});
   if(!fit.ok)throw Error('UNIFIED CARRY DOES NOT FIT: '+fit.reason);
   equipment=fit.kit;

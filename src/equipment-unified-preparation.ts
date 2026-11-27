@@ -54,3 +54,24 @@ export function unifiedPreparationSummary(input:CarryInput,manifest:PlacementMan
   return {carrier,used:used.size,total:slots.length,items:manifest.placements.filter(p=>p.carrier===carrier).reduce((n,p)=>n+p.itemIds.length,0)};
  });
 }
+
+/** Saved V1 locations are hints, not a second authority. Refit the existing
+ * stock as a single transaction without replacing the save or minting ammo.
+ * Keep the original operator intact on failure, with a specific diagnostic.
+ * Successful output remains in the V1 save shape; runtime manifests are
+ * reconstructed at deployment rather than trusting persisted slot claims. */
+export function quoteSavedCarryMigration<T extends UnifiedPreparationSource>(source:T):
+ {ok:true;operator:T;manifest:PlacementManifest;input:CarryInput}|{ok:false;reason:string;manifest?:PlacementManifest}{
+ const q=quoteUnifiedPreparation(source,{kind:'refit'});
+ if(!q.ok)return q;
+ return {ok:true,operator:{...source,loadout:q.kit,magazines:q.magazines},manifest:q.manifest,input:q.input};
+}
+export function quoteSavedSquadCarryMigration<T extends UnifiedPreparationSource&{id:string}>(members:readonly T[]){
+ const migrated:T[]=[],failures:{id:string;reason:string}[]=[];
+ for(const member of members){
+  const q=quoteSavedCarryMigration(member);
+  if(q.ok)migrated.push(q.operator);else failures.push({id:member.id,reason:q.reason});
+ }
+ // Never partly activate a squad, and never silently reduce its issue.
+ return failures.length?{ok:false as const,failures}:{ok:true as const,members:migrated};
+}

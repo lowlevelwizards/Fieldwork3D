@@ -31,7 +31,7 @@ export function initialEquipmentLoadout(weapon:WeaponId='carbine'):EquipmentLoad
 }
 /** Reject malformed and wrong-slot entries without throwing or altering the
  * authoritative campaign primary weapon, magazine and reserve quantities. */
-export function readEquipmentLoadout(raw:unknown,weapon:WeaponId,owner='operator'):EquipmentLoadout{
+export function readEquipmentLoadout(raw:unknown,weapon:WeaponId,owner='operator',carryMode?:'unified'):EquipmentLoadout{
  const result=initialEquipmentLoadout(isWeapon(weapon)?weapon:'carbine');
  if(!raw||typeof raw!=='object'||(raw as {version?:unknown}).version!==1)
   return result;
@@ -46,7 +46,7 @@ export function readEquipmentLoadout(raw:unknown,weapon:WeaponId,owner='operator
  }
  result.fieldInventory=readFieldInventory((raw as {fieldInventory?:unknown}).fieldInventory,result);
  const secondary=readSecondaryEquipment((raw as {secondary?:unknown}).secondary,owner);
- result.secondary=placeSecondaryMagazines(secondary,secondaryCarrierSpace(result));
+ result.secondary=carryMode==='unified'?secondary:placeSecondaryMagazines(secondary,secondaryCarrierSpace(result));
  return result;
 }
 export function setEquipmentChoice(loadout:EquipmentLoadout,

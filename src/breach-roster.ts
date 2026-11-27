@@ -1,4 +1,4 @@
-import {quoteUnifiedPreparation} from './equipment-unified-preparation.ts';
+import {quoteUnifiedPreparation,quoteSavedSquadCarryMigration} from './equipment-unified-preparation.ts';
 /** LW-15: versioned, bounded individual operator records.
  * Save state belongs to operations, never to the 60Hz world simulation.
  */
@@ -59,7 +59,7 @@ export function initialRoster():RosterState{
 const finite=(x:unknown,min:number,max:number,fallback:number)=>
  typeof x==='number'&&Number.isFinite(x)?
  Math.max(min,Math.min(max,Math.floor(x))):fallback;
-export function readRoster(raw:string|null):RosterState{
+export function readRoster(raw:string|null,carryMode?:'unified'):RosterState{
  const fresh=initialRoster();
  if(!raw)return fresh;
  try{
@@ -87,7 +87,7 @@ export function readRoster(raw:string|null):RosterState{
    return {...base,callsign:typeof f.callsign==='string'&&f.callsign.trim()?
      f.callsign.trim().slice(0,24):base.callsign,
     appearanceSeed:finite(f.appearanceSeed,0,0xffffffff,base.appearanceSeed),
-    loadout:readEquipmentLoadout(f.loadout,weapon,base.id),
+    loadout:readEquipmentLoadout(f.loadout,weapon,base.id,carryMode),
     wardrobe:readWardrobe(f.wardrobe),
     weaponConfiguration:config,
     magazines,loadedMagazineId:readLoadedMagazineId(base.id,weapon,
@@ -356,4 +356,11 @@ export function setRosterWardrobe(roster:RosterState,id:string,raw:unknown):Rost
  if(!roster.members.some(m=>m.id===id))return roster;
  const wardrobe=readWardrobe(raw);
  return {...roster,members:roster.members.map(m=>m.id===id?{...m,wardrobe}:m)};
+}
+
+/** Explicit BT4 migration preflight. Hosts must surface any unfit operator
+ * before switching a squad to the new runtime; no automatic stock repair. */
+export function quoteRosterCarryMigration(roster:RosterState){
+ const q=quoteSavedSquadCarryMigration(roster.members);
+ return q.ok?{ok:true as const,roster:{...roster,members:q.members}}:q;
 }
