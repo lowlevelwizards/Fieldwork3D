@@ -103,14 +103,14 @@ const BASE_REFERENCE_GEAR_PROFILES:Readonly<Record<string,ReferenceGearProfile>>
  'sandf-s2000-2015':{kit:{head:'head-cap',armor:'armor-none'},styles:{headwear:'patrol-cap',armorStyle:'armor-bare',rigStyle:'sadf-webbing',packStyle:'field-pack'},appearance:{headwearCamo:'south-african-s2000',rigSolid:'nutria-brown',packCamo:'south-african-s2000'},
   note:"P83 is the available brown rig proxy; later SANDF-specific kit can replace it."},
  'private-security-iraq-2007':{
-  kit:{head:'head-none',armor:'armor-soft',rig:'rig-light',backpack:'backpack-none'},
-  styles:{headwear:'bare',top:'polo-shirt',trousers:'bdu-trousers',
+  kit:{legs:'legs-light',head:'head-none',armor:'armor-soft',rig:'rig-light',backpack:'backpack-none'},
+  styles:{headwear:'bare',top:'polo-shirt',trousers:'civilian-cargo',
    armorStyle:'soft-vest',rigStyle:'micro-rig',packStyle:'no-pack'},
   appearance:{armorSolid:'black',rigSolid:'black'},
   note:"2007 documented blue polo/khaki trouser/black-armor pairing. Rig and carbine are generic visual proxies, not claimed issue."},
  'ukraine-territorial-2022':{
-  kit:{head:'head-none',armor:'armor-none',rig:'rig-light',backpack:'backpack-none',hands:'hands-none'},
-  styles:{headwear:'bare',top:'button-up-shirt',trousers:'bdu-trousers',
+  kit:{legs:'legs-light',head:'head-none',armor:'armor-none',rig:'rig-light',backpack:'backpack-none',hands:'hands-none'},
+  styles:{headwear:'bare',top:'button-up-shirt',trousers:'civilian-cargo',
    armorStyle:'armor-bare',rigStyle:'chicom-rig',packStyle:'no-pack'},
   appearance:{rigSolid:'olive-drab'},
   note:"Early volunteers' mix of civilian clothes and basic field equipment, not a standardized Ukrainian military uniform."},
