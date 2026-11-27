@@ -45,7 +45,9 @@ on:
       - 'tests/weapon-retention-wr2.test.mjs'
       - 'tests/weapon-retention-wr1.test.mjs'
       - '.github/workflows/weapon-retention-critical.yml'
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/breach-weapon-retention.ts'
       - 'src/breach-game.ts'
@@ -91,11 +93,12 @@ on:
       - '.github/workflows/weapon-retention-critical.yml'
   workflow_dispatch:
 concurrency:
-  group: wr-critical-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: weapon-retention-critical-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
 jobs:
   focused:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

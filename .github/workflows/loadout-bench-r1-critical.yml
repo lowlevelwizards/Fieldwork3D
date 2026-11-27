@@ -1,6 +1,8 @@
 name: Loadout Bench R1 critical
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/equipment-thumbnail-color.ts'
       - 'src/equipment-preview.ts'
@@ -17,7 +19,7 @@ permissions:
   contents: read
 # Isolate each PR from manual acceptance and cancel obsolete revisions.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  group: loadout-bench-r1-critical-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

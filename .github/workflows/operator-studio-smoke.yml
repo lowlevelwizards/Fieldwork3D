@@ -1,6 +1,8 @@
 name: Operator Studio — Critical Mobile Smoke
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'operator-studio.html'
       - 'src/operator-studio.ts'
@@ -20,7 +22,6 @@ on:
       - 'src/arsenal/workbench-screen.ts'
       - 'scripts/smoke-arsenal-lighting-r714.mjs'
       - 'src/operator-studio-toon-lighting.ts'
-      - 'src/operator-visual-kit.ts'
       - 'scripts/smoke-operator-r7-shader.mjs'
       - 'src/operator-studio.css'
       - 'src/operator-appearance-grid.ts'
@@ -65,8 +66,6 @@ on:
       - 'src/operator-helmet-field-policy.ts'
       - 'src/operator-ach-mich-cover-drape.ts'
       - 'src/operator-ach-mich-details.ts'
-      - 'src/operator-ach-mich-cover-drape.ts'
-      - 'src/operator-ach-mich-details.ts'
       - 'src/operator-helmet-cover-geometry.ts'
       - '.github/workflows/operator-studio-smoke.yml'
   workflow_dispatch:
@@ -74,7 +73,7 @@ permissions:
   contents: read
 # Isolate each PR from manual acceptance and cancel obsolete revisions.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  group: operator-studio-smoke-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

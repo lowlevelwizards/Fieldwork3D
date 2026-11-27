@@ -1,6 +1,8 @@
 name: Operator Pose Workbench — mobile authoring smoke
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'pose-workbench.html'
       - 'operator-lab.html'
@@ -21,7 +23,7 @@ permissions:
   contents: read
 # Isolate each PR from manual acceptance and cancel obsolete revisions.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  group: operator-pose-workbench-smoke-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

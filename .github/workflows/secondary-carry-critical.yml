@@ -1,6 +1,8 @@
 name: Secondary S4 physical carry focused
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/secondary-holster-visual.ts'
       - 'src/equipment-magazine-placement.ts'
@@ -13,11 +15,12 @@ on:
       - '.github/workflows/secondary-carry-critical.yml'
   workflow_dispatch:
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: secondary-carry-critical-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   focused:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

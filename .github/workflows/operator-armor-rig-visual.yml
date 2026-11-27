@@ -1,6 +1,8 @@
 name: Armor & Rig — Critical Mobile Silhouettes
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/operator-armor-fit-debug.ts'
       - 'src/operator-uniform-fit-envelope.ts'
@@ -26,7 +28,6 @@ on:
       - 'src/operator-studio.ts'
       - 'docs/operator-r10-color-and-identity.md'
       - 'src/operator-fabric-camo-materials.ts'
-      - 'src/operator-armor-rig-lab.ts'
       - 'scripts/capture-operator-camo-r9.mjs'
       - 'tests/operator-r9-armor-visibility.test.mjs'
       - 'tests/operator-r9-lower-front-straps.test.mjs'
@@ -52,7 +53,7 @@ permissions:
   contents: read
 # Isolate each PR from manual acceptance and cancel obsolete revisions.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  group: operator-armor-rig-visual-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
