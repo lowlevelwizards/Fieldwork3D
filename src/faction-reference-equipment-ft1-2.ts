@@ -15,6 +15,10 @@ const gear=(id:string,name:string,category:HistoricalEquipment['category'],
  id,name,category,description,...(model?{model}:{})
 });
 export const FT12_HISTORICAL_EQUIPMENT:readonly HistoricalEquipment[]=[
+ gear('us-molle-pack-family','US Army MOLLE Pack Family','carriage',
+  'Modular field pack family; not a claim of a specific issued pack or complete loadout.'),
+ gear('au-dpcu-large-pack','Australian DPCU Large Field Pack','carriage',
+  'Australian Army large camouflage field pack; existing rucksack is a visual approximation.'),
  gear('de-flecktarn-five','Bundeswehr Field Uniform · Flecktarn','uniform',
   'German five-color field camouflage introduced progressively beginning in 1991.',
   camouflage('flecktarn','Pattern approximation; field garment cut not verified.')),
@@ -66,6 +70,14 @@ export const FT12_HISTORICAL_EQUIPMENT:readonly HistoricalEquipment[]=[
   modelProxy('ar-m16a2','An M16 silhouette is NOT a FAMAS.'))
 ];
 export const FT12_EVIDENCE:readonly HistoricalEvidence[]=[
+ {id:'us-molle-fielding-2008',title:'2ID receives latest winter equipment',
+  publisher:'U.S. Army',kind:'official',published:'2008-08-27',
+  url:'https://www.army.mil/article/11925/2id_receives_latest_winter_equipment',
+  claim:'The report documents MOLLE equipment fielding to the 2nd Infantry Division in Korea in 2008, including field and assault packs.'},
+ {id:'au-dpcu-pack-timor-2000',title:'Large camouflage pack: Wendy Sharpe, Official Artist to Timor in 2000',
+  publisher:'Australian War Memorial',kind:'museum',
+  url:'https://www.awm.gov.au/collection/C395190',
+  claim:'Museum collection identifies an Australian Army DPCU large pack associated with the official artist in Timor in 2000; not evidence of infantry-wide issue.'},
  {id:'de-flecktarn-1991',title:'Von der Filzlaus zum Dreifarb-Tarndruck',
   publisher:'Bundeswehr',kind:'official',published:'2022',
   url:'https://www.bundeswehr.de/de/meldungen/tarnkleidung-ausruestung-wandel-5542260',
@@ -131,6 +143,12 @@ const a=(timelineId:string,id:string,historicalEquipmentId:string,startYear:numb
  evidenceIds,note,...rest
 });
 export const FT12_ASSOCIATIONS:readonly HistoricalEquipmentAssociation[]=[
+ a('us-army-infantry','army-molle-korea-2008','us-molle-pack-family',2008,2008,'documented-use',
+  ['us-molle-fielding-2008'],'Documented fielding to 2ID in Korea; not a universal issue date or evidence for the exact pack variant.',
+  {theater:'Korea',availability:'emerging'}),
+ a('australian-field','au-dpcu-large-pack-2000','au-dpcu-large-pack',2000,2000,'documented-use',
+  ['au-dpcu-pack-timor-2000'],'Dated collection context is an official artist, not an infantry issue record; retain as tentative research only.',
+  {theater:'East Timor',confidence:'tentative'}),
  a('bundeswehr-field','de-flecktarn-intro-1991','de-flecktarn-five',1991,1991,'documented-use',
   ['de-flecktarn-1991'],'Introduction started in 1991, not simultaneous force-wide adoption.',
   {availability:'emerging'}),

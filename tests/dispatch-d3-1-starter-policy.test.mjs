@@ -1,4 +1,6 @@
 import test from 'node:test';
+import {resolveFactionReference} from '../src/faction-reference-resolver.ts';
+import {dispatchStarterChoiceStatus} from '../src/dispatch-starter-choices.ts';
 import assert from 'node:assert/strict';
 import {newCampaign,equipCampaignGear,equipCampaignWeapon,
  equipCampaignWeaponPreset,buyWeapon,hireRecruit,equipCampaignWeaponFamilyPart,
@@ -56,4 +58,13 @@ test('D3.1 ordinary existing campaigns remain unrestricted by Dispatch policy',(
  assert.equal(mayChooseCampaignContent(c,'equipment','backpack-field','backpack'),true);
  assert.notEqual(equipCampaignGear(c,c.operators[0].id,'backpack','backpack-field'),c);
  assert.notEqual(buyWeapon(c,'rifle'),c);
+});
+
+test('refreshed Dispatch reference belts and footwear remain selectable in their dated policy',()=>{
+ for(const id of ['us-swat-2015','us-swat-mp5-1995','us-police-polo-2020','russian-omon-2002']){
+  const {kit,wardrobe}=resolveFactionReference(id);
+  for(const slot of ['belt','feet'])assert.equal(dispatchStarterChoiceStatus(id,'equipment',kit.slots[slot]),'available',id+' '+slot);
+  for(const slot of ['beltStyle','footwear'])assert.equal(dispatchStarterChoiceStatus(id,'wardrobe-style',wardrobe.styles[slot]),'available',id+' '+slot);
+ }
+ assert.equal(dispatchStarterChoiceStatus('us-swat-2015','equipment','backpack-field'),null);
 });

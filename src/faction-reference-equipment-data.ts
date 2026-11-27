@@ -69,5 +69,11 @@ export const HISTORICAL_ISSUE_RECORDS:readonly HistoricalEquipmentAssociation[]=
   {datePrecision:'approximate',confidence:'tentative'}),
  a('nva-field','nva-strichtarn-1981','ddr-strichtarn',1981,1981,'unknown','documented-use',
   ['ddr-strichtarn-1981'],'Museum identifies a specifically dated 1981 NVA winter field uniform.'),
+ a('us-army-infantry','army-ocp-boots-2015-2019','us-ocp-coyote-boots',2015,2019,'emerging','authorized',
+  ['us-ocp-2015','us-ocp-wear-2015'],'Authorized with OCP or OEF-CP during the July 2015–September 2019 transition; not a universal boot model or proof of co-issue.'),
+ a('us-army-infantry','army-ocp-belt-2015-2019','us-ocp-tan499-belt',2015,2019,'emerging','authorized',
+  ['us-ocp-2015','us-ocp-wear-2015'],'Uniform belt authorization with OCP or OEF-CP; sand remained permitted during transition. No tactical belt claim.'),
+ a('usmc-field','usmc-mccb-2004','usmc-mccb',2004,2004,'unknown','authorized',
+  ['usmc-marpat-2002','usmc-boots-2004'],'Mandatory possession guidance for the boot family in 2004; individual boot variant and field wear not established.'),
  ...FT12_ASSOCIATIONS
 ];
