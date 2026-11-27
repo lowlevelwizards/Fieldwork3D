@@ -906,6 +906,8 @@ function posePreview(){
  };
  poseOperator(rig,armedPose,0);
  canvas.dataset.authoredPack=rig.visualKit.packPreview.active?.style??'legacy';
+ canvas.dataset.packReviewColor=(rig.colors.get(rig.packMaterial)??rig.packMaterial.color).getHexString();
+ canvas.dataset.packReview=String(reviewingPacks());
  // H8 rendering diagnostics: prove the live rig, not just the selector,
  // received the chosen band dye and visible attachment geometry.
  const selectedHelmet=armedPose.wardrobe?.styles.headwear;
