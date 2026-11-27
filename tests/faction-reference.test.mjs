@@ -1,4 +1,6 @@
 import test from 'node:test';
+import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
+import {clearLiveUnifiedCarry} from '../src/operator-unified-carry-live.ts';
 import {quoteUnifiedLoadout} from '../src/equipment-unified-loadout.ts';
 import {waistPlacementsConflict} from '../src/equipment-fixed-carrier-slots.ts';
 import {referencePackStudies,referenceSidearmStudyAvailable,resolveReferencePreview} from '../src/faction-reference-preview-options.ts';
@@ -342,4 +344,40 @@ test('dated costume fixed-slot render quotes are deterministic and nonmutating',
   for(let i=0;i<waist.length;i++)for(let j=i+1;j<waist.length;j++)
    assert.equal(waistPlacementsConflict(waist[i],waist[j]),false,ref.id);
  }
+});
+
+test('reference costumes exercise the actual posed rig and release preview holders when switching',()=>{
+ const rig=createOperatorRig('reference-art-review','blue');
+ const base={x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
+  posture:'stand',injury:0,reload:0,reloadDuration:0,lastThrowAt:-100,
+  lastDoorAt:-100,down:false,surrender:false,aiming:false,firing:false,
+  turning:0,deterministic:true};
+ const examples=[
+  ['us-army-erdl-1970',undefined,false],
+  ['us-army-ocp-2019','medical',false],
+  ['us-navy-aor1-2014','panel',false],
+  ['ukraine-territorial-2022','civilian',false],
+  ['us-police-polo-2020',undefined,true],
+  ['us-swat-2015',undefined,true]
+ ];
+ try{
+  for(const [id,pack,sidearm] of examples){
+   const ref=resolveReferencePreview(id,undefined,pack,sidearm);
+   const {kit,wardrobe,weapon}=ref;
+   const before=JSON.stringify(ref);
+   const carry=quoteUnifiedLoadout({kit,wardrobe,magazines:[],
+    primaryPart:weapon.weaponConfiguration.build?.parts.magazine});
+   poseOperator(rig,{...base,weapon:weapon.weapon,
+    weaponConfiguration:weapon.weaponConfiguration,equipment:kit,wardrobe,
+    unifiedCarry:carry,magazineCarryLocations:[]},0);
+   assert.equal(JSON.stringify(ref),before,id);
+   assert.equal(!!rig.visualKit.packPreview.active,kit.slots.backpack!=='backpack-none',id);
+   const holders=[];
+   rig.root.traverse(o=>{if(o.name.startsWith('bt4-live-'))holders.push(o);});
+   const ids=holders.flatMap(o=>o.userData.bt4SlotIds??[]);
+   assert.equal(new Set(ids).size,ids.length,id+' duplicate holder slot');
+   clearLiveUnifiedCarry(rig);
+   for(const holder of holders)assert.equal(holder.parent,null,id+' stale holder');
+  }
+ }finally{clearLiveUnifiedCarry(rig);rig.dispose();}
 });
