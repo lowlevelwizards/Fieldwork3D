@@ -33,7 +33,7 @@ test('load-bearing hips, optional medical graphic, radio metadata only',()=>{
   for(const [armor,rig,top] of [['armor-bare','no-rig','combat-shirt'],['plate-jpc','chest-placard','combat-shirt'],['plate-standard','full-chest','gorka-jacket']]){
    const art=updatePackPreview(state,true,style,armor,rig,top);
    assert.equal(art.style,style);assert.ok(art.root.visible&&state.harness);
-   assert.equal(state.fit.waistSpans.length,style==='field-pack'||style==='rucksack'?6:0);
+   assert.equal(state.fit.waistSpans.length,style==='field-pack'||style==='rucksack'?8:0);
    state.harness.traverse(o=>{if(o.isMesh)assert.ok(o.geometry.getAttribute('position').array.every(Number.isFinite));});
   }
  }
