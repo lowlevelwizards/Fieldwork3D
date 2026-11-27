@@ -1,3 +1,4 @@
+import {prepareHandsFree} from './breach-weapon-retention-live.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 8: deterministic medical supply recovery, treatment and
  * physical casualty transport. Neutral bodies remain on shared frame arbiter.
@@ -52,6 +53,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
     if(!Number.isFinite(fromTime)||!Number.isFinite(toTime)){
       failCurrentOrder(s,a,n,'MEDICAL STORAGE UNAVAILABLE');return true;
     }
+    if(!prepareHandsFree(a,dt))return true;
     clearCurrentOrderIssue(a);a.velocity=0;a.actionTimer+=dt;
     if(a.actionTimer>=1.35+fromTime+toTime){
       const transferred=transferMedicalSupply(patient.medicalSupplies,
@@ -194,6 +196,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
     }
     a.velocity=0;rotate(a,angle(a.p,patient.p),dt);
     if(s.seconds-a.lastHitAt<.35){a.actionTimer=0;return true;}
+    if(!prepareHandsFree(a,dt))return true;
     if(a.actionTimer===0){
       a.lastTreatmentAt=s.seconds;a.lastTreatmentTargetId=patient.id;
     }

@@ -188,6 +188,7 @@ export type TeamActor=Operator & {
   secondarySwitch:import('./secondary-switching.ts').SecondarySwitchState;
   /** One authored, fixed-step pistol reload; rifle magazine fields are untouched. */
   secondaryReload:import('./secondary-timed-reload.ts').SecondaryTimedReload|null;
+  retentionTransition?:import('./breach-weapon-retention-transition.ts').RetentionTransitionState;
   medical:MedicalCondition;medicalSupplies:FieldMedicalSupplies;
   /** D15.7: real downing / irreversible fatality evidence. */
   downedAt?:number|null;deathAt?:number|null;

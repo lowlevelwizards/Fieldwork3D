@@ -1098,12 +1098,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     Math.sin(Math.PI*contactAge/.64):0;
   const oneHandWeight=oneHandRetentionWeight(p,preparedDecision.action);
   const liveOneHand=oneHandWeight>0&&!p.retentionTransition&&!p.retentionPreview;
+  const liveHandsFree=!!p.retentionTransition&&p.retentionTransition.mode!==null;
+  const handsFreeAction=liveHandsFree&&p.retentionTransition!.weight>=1&&
+    (treatmentActive||doorActive||equipmentActive);
   const retentionMode=liveOneHand?'held-one':p.retentionTransition?
     p.retentionTransition.mode:p.retentionPreview;
   const retentionWeight=liveOneHand?oneHandWeight:p.retentionTransition?.weight??1;
   const retentionAssembly=retentionMode&&config?resolveWeaponAssembly(config):null;
   const retention=retentionMode&&retentionWeight>0&&!p.down&&!p.surrender&&!p.unarmedPreview&&
-    !p.firing&&!reloadActive&&(liveOneHand||!p.aiming&&!doorActive&&!throwActive&&!treatmentActive&&!equipmentActive)&&
+    !p.firing&&!reloadActive&&(liveOneHand||liveHandsFree||!p.aiming&&!doorActive&&!throwActive&&!treatmentActive&&!equipmentActive)&&
     (p.secondarySwitch?.fraction??0)===0?
     sampleRetentionTransition({mode:retentionMode,
       sling:readSlingKind(config?.slots.sling),scale:heldWeapon.scale,
@@ -1143,7 +1146,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }):null;
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
-    if(retention&&(!liveOneHand||i===1)){
+    if(retention&&(!liveOneHand||i===1)&&!handsFreeAction){
       const shoulder=shoulderFor(i),requested=i===0?retention.left:retention.right;
       const guide=P(3,-9,sign*2);
       const solved=solveTwoBone(shoulder,requested,10,10,guide,ARM_LIMITS);
@@ -1237,6 +1240,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       desired=grip.clone().multiply(P(data.lengthScale,1,1))
         .applyEuler(fit.rotation).add(fit.origin);
       if(i===0&&reloadHandChest)desired.copy(reloadHandChest);
+    }
+    if(retention&&handsFreeAction){
+      if(treatmentActive)desired=i===0?leftGrip.clone():rightGrip.clone();
+      else if(i===1)desired=leftGrip.clone().add(P(-1,0,3.2));
+      else desired=leftGrip.clone();
     }
     if(p.unarmedPreview&&p.civilianGesture){
       const gesture=p.civilianGesture;

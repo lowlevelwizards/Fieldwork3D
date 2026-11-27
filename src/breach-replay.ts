@@ -60,6 +60,7 @@ export type ActorFrame=Pick<TeamActor,
 export type ReplayActorFrame=ActorFrame & {
  /** S5.2: recorded explicit weapon hand, optional for all legacy films. */
  secondarySwitch?:SecondarySwitchState;
+ retentionTransition?:TeamActor['retentionTransition'];
  /** S8.2: historical pistol magazine identity, rounds and handoff clock. */
  secondaryEquipment?:SecondaryEquipment;
  secondaryReload?:SecondaryTimedReload|null;
@@ -208,7 +209,8 @@ export function snapshot(s:Session,seenGround?:string[],
       lastNoiseAt:a.lastNoiseAt,
       lastReportAt:a.side==='red'?a.lastReportAt:undefined,
       magazine:a.magazine,reserve:a.reserve,reload:a.reload,
-      secondarySwitch:a.secondarySwitch?{...a.secondarySwitch}:initialSecondarySwitch(),
+      retentionTransition:a.retentionTransition?{...a.retentionTransition}:undefined,
+       secondarySwitch:a.secondarySwitch?{...a.secondarySwitch}:initialSecondarySwitch(),
       secondaryEquipment:a.equipment?.secondary?
         reuseFrozenReplayValue(a.equipment.secondary,prior?.secondaryEquipment,
           ()=>structuredClone(a.equipment!.secondary!)):undefined,
@@ -594,7 +596,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
     if(a)Object.assign(a,copy,{p:position(copy.p),
       // Archived films have no sidearm channel; neutralize stale future
       // state rather than leaking a selected pistol across seek.
-      secondarySwitch:copy.secondarySwitch?{...copy.secondarySwitch}:initialSecondarySwitch(),
+      retentionTransition:copy.retentionTransition?{...copy.retentionTransition}:undefined,
+       secondarySwitch:copy.secondarySwitch?{...copy.secondarySwitch}:initialSecondarySwitch(),
       secondaryReload:copy.secondaryReload?{...copy.secondaryReload}:null,
       // F2: rewind physically carried locations as well as the HUD counters.
       // Archived frames without this optional field keep their old kit.

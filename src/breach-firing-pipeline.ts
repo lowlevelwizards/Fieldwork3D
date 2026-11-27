@@ -1,3 +1,4 @@
+import {retentionBusy} from './breach-weapon-retention-live.ts';
 import {hardWindowCoveringsBlockRay} from './breach-window-covering-optics.ts';
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {advanceInterruptedSecondarySwitch} from './secondary-switching.ts';
@@ -485,6 +486,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   if(a.secondaryReload&&(a.plan[0]?.kind!=='reload'||
       a.plan[0].id!==a.secondaryReload.orderId))a.secondaryReload=null;
+  if(retentionBusy(a)&&a.reload<=0){a.aim=0;a.aimSideTarget=0;return;}
   // An undone/canceled order does not leave the operator permanently
   // half-drawn or lock the primary once a pistol is unissued.
   if(a.secondarySwitch&&a.plan[0]?.kind!=='switch-weapon'&&
