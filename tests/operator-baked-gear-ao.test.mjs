@@ -94,8 +94,7 @@ test('all armor/rig/pack archetypes bake on construction, including older period
   assertShadedTree(r.visualKit.wardrobeGear.armor[id],id);
  for(const id of ['full-chest','split-front','alice-lc2','m1956-lce','sadf-webbing'])
   assertShadedTree(r.visualKit.wardrobeGear.rig[id],id);
- // Default day/field packs use the established single-draw legacy groups.
- // Optional rucksack/assault/admin are constructed in the newer style bank.
+ // Canonical pack art is lazy-built and uses the shared fabric AO.
  if(r.visualKit.packPreview.active)assertShadedTree(r.visualKit.packPreview.active.root,'authored pack');
  for(const id of ['alice-lc2','m1956-lce'])
   assertShadedTree(r.visualKit.wardrobeGear.waistRig[id],id+' waist');
