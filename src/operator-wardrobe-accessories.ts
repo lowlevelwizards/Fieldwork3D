@@ -1,3 +1,5 @@
+import {resolveBeltMounts,type BeltMountRequest} from './operator-belt-mounts.ts';
+import type {BeltStyle} from './operator-belt-profile.ts';
 /** Empty/cosmetic mounting details; deliberately no gameplay capability,
  * magazine capacity, primary weapon or owned stock. */
 import * as THREE from 'three';
@@ -85,7 +87,30 @@ export function createWardrobeAccessoryVisuals(
  return result;
 }
 export function updateWardrobeAccessories(v:WardrobeAccessoryVisuals,
- chosen:WardrobeAccessoryConfiguration){
+ chosen:WardrobeAccessoryConfiguration,beltStyle?:BeltStyle){
  for(const slot of WARDROBE_ACCESSORY_SLOTS)
   for(const [id,g] of Object.entries(v[slot]))g.visible=chosen[slot]===id;
+ if(!beltStyle)return; // compatibility for standalone callers
+ const requests:BeltMountRequest[]=[];
+ for(const slot of ['beltLeft','beltRight'] as const){
+  const id=chosen[slot],region=slot==='beltLeft'?'left-hip':'right-hip';
+  if(id==='none')continue;
+  const size=id==='empty-dump'?[3.3,4.6,2.7]:id==='empty-holster'?[3,5,1.1]:
+   id==='empty-pouch'?[2.7,3.4,2.2]:[2.7,2.7,1.5];
+  requests.push({id:slot,preferred:region,allowed:[region],
+   footprint:{width:size[0],height:size[1],depth:size[2],spaces:0}});
+ }
+ const resolved=resolveBeltMounts(beltStyle,requests);
+ for(const slot of ['beltLeft','beltRight'] as const){
+  const g=v[slot][chosen[slot]];if(!g||chosen[slot]==='none')continue;
+  const mount=resolved.mounts.find(m=>m.id===slot);
+  g.visible=!!mount;
+  if(mount){
+   const sign=slot==='beltLeft'?-1:1;
+   // Existing authored accessory geometry is in hip-local coordinates.
+   // Shift its resting contact to the resolved band without rebuilding it.
+   g.position.set(mount.socket.x,mount.socket.y+1.65,
+    mount.socket.z+sign*mount.footprint.depth*.5-sign*8.25);
+  }
+ }
 }

@@ -8,8 +8,8 @@ export type BeltFrameSegment={index:number;start:WaistPoint;end:WaistPoint;
  x:number;z:number;normalX:number;normalZ:number;yaw:number;length:number};
 export const BELT_CENTER_Y=-1.65;
 export const WAIST_CONTACT:readonly WaistPoint[]=[
- [4.18,-4.6],[4.18,4.6],[2.85,6.34],[-2.85,6.34],
- [-4.18,4.6],[-4.18,-4.6],[-2.85,-6.34],[2.85,-6.34]
+ [4.45,-5.35],[4.45,5.35],[3.70,6.5],[-3.70,6.5],
+ [-4.45,5.35],[-4.45,-5.35],[-3.70,-6.5],[3.70,-6.5]
 ];
 export function beltContactSegments():BeltFrameSegment[]{
  return WAIST_CONTACT.map(([x,z],index)=>{
@@ -27,7 +27,7 @@ export function beltSurface(style:BeltStyle,index:number,along=0){
  const thickness=style==='padded-belt'&&index===0?.5:t;
  const offset=Math.max(-seg.length/2,Math.min(seg.length/2,along));
  const tx=Math.cos(seg.yaw),tz=-Math.sin(seg.yaw);
- return {x:seg.x+seg.normalX*thickness+tx*offset,y:BELT_CENTER_Y,
+ return {x:seg.x+seg.normalX*thickness+tx*offset,y:BELT_CENTER_Y+(style==='padded-belt'&&index!==0?.36:0),
   z:seg.z+seg.normalZ*thickness+tz*offset,yaw:Math.atan2(seg.normalX,seg.normalZ),
   normalX:seg.normalX,normalZ:seg.normalZ};
 }

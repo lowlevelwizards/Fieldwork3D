@@ -45,7 +45,7 @@ export function createBeltSilhouettes(parent:THREE.Group,fabric:THREE.Material,
    }
   }
   // Front fastener at positive X. Broad shapes remain legible at game zoom.
-  const fx=4.18+(style==='padded-belt'?.5:p.thickness);
+  const fx=beltContactSegments()[0].x+(style==='padded-belt'?.5:p.thickness);
   if(style==='plain-belt'){
    // Four sides of a rectangular buckle with fabric visible through the center.
    for(const side of [-1,1]){

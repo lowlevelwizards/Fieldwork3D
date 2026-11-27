@@ -1,3 +1,4 @@
+import {canonicalBeltStyle} from './operator-belt-profile.ts';
 /** OV visual assemblies. Geometry only: the established IK joints, shot transforms,
  * collisions and equipment ledger remain authoritative. Keep compact, readable
  * low-poly silhouettes for the isometric camera.
@@ -441,7 +442,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   };
  }else v.visualChest.userData.shoulderSurfaceCandidates=null;
  updateWardrobeAccessories(v.accessories,
-  wardrobe?.accessories??initialWardrobeAccessories());
+  wardrobe?.accessories??initialWardrobeAccessories(),canonicalBeltStyle(looks.beltStyle));
  updateIdentityVisuals(v.identityVisuals,wardrobe?.markings,
   looks.armorStyle,looks.top,looks.rigStyle);
  v.chestRig.visible=!usingWardrobe&&s.rig==='rig-light';
