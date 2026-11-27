@@ -34,6 +34,8 @@ import type {RetentionPoseMode} from './breach-weapon-retention-pose.ts';
 export type OperatorPose={
   /** Explicit retention audition; live action migration is WR7–WR10. */
   retentionPreview?:RetentionPoseMode;
+  /** Lab-only multiplier, never serialized to live gameplay. */
+  labRetentionMotionScale?:number;
   /** Visual-only reciprocal transport, sampled from live/replay roster. */
   transportCarrier?:{mode:'carry'|'drag';target:{x:number;y:number}};
   transportedMode?:'carry'|'drag';

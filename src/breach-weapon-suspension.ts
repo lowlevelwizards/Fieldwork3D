@@ -7,6 +7,7 @@ export type SuspensionMotion=Readonly<{
  massKg:number;inertia:number;
  momentum?:Readonly<{drive:number;brake:number}>;
  profile?:SlingArtProfile;
+ strength?:number;
  posture?:'stand'|'crouch';gait?:'walk'|'run'|'pie'|'squeeze';
 }>;
 const finite=(v:number|undefined)=>Number.isFinite(v)?v!:0;
@@ -22,7 +23,7 @@ export function sampleSuspensionMotion(sling:SlingKind,m:SuspensionMotion){
   sling==='single'?1:.32;
  const stance=(m.posture==='crouch'?.68:1)*
   (m.gait==='pie'||m.gait==='squeeze'?.55:1);
- const k=freedom*load*stance;
+ const k=freedom*load*stance*clamp(m.strength??1,0,1.5);
  // The fixed-step/replay impulse already decays after a stop. Preserve
  // that residual energy at zero speed; don't invent a second render clock.
  const drive=clamp(finite(m.momentum?.drive),0,1);

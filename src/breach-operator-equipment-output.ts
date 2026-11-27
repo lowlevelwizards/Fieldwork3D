@@ -84,7 +84,7 @@ export function solveOperatorDroppedWeapon(r:OperatorRig,p:OperatorPose,
  // not aim for an imaginary world-floor resting point after the lift.
  if(sling&&p.transportedMode&&!p.worldWeaponReleased){
   const localRest=scratch.held.set(6.5,-2,0);
-  const chestRotation=r.chest.getWorldQuaternion(scratch.inverse);
+  const chestRotation=r.chest.getWorldQuaternion(scratch.orientation);
   const localQ=scratch.flat.setFromAxisAngle(scratch.origin.set(0,0,1),-Math.PI*.5);
   const attachedQ=chestRotation.multiply(localQ);
   const location=localRest.applyMatrix4(r.chest.matrixWorld);
