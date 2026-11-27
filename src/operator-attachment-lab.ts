@@ -35,7 +35,7 @@ export function updateAttachmentPreview(rig:OperatorRig,choice:string,variant:At
  if(p?.key!==key){
   clearAttachmentPreview(rig);
   const group=new THREE.Group();group.name='lab-only-attachment-audition';rig.hip.add(group);
-  const accent=new THREE.MeshStandardMaterial({color:0xa75a46,roughness:.9});
+  const accent=new THREE.MeshStandardMaterial({color:0xb76442,roughness:.9});
   const palette={fabric:rig.gearMaterial,dark:rig.weaponDark,hardware:rig.weaponSteel,contents:rig.bootMaterial,accent};
   const requests=fixture.items.flatMap((item,i)=>{
    const req=attachmentMountRequest(String(i),item.id,fixture.style,item.variant,item.region);

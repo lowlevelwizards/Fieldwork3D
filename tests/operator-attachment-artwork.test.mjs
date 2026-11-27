@@ -16,9 +16,9 @@ test('BT3: all 13 authored families and variants build finite consolidated bound
   assert.ok(v.contents.every(c=>!c.visible));
   setAttachmentSampleCount(v,99);
   assert.ok(v.contents.every(c=>c.visible));
-  const bounds=new THREE.Box3().setFromObject(v.root),size=bounds.getSize(new THREE.Vector3());
+  const bounds=new THREE.Box3().setFromObject(v.holder),size=bounds.getSize(new THREE.Vector3());
   assert.ok([size.x,size.y,size.z].every(Number.isFinite),id);
-  assert.ok(size.x<=v.footprint.width+.03&&size.y<=v.footprint.height+.03&&size.z<=v.footprint.depth+.03,id+' bounds');
+  assert.ok(size.x<=v.footprint.width+.03&&size.y<=v.footprint.height+.03&&size.z<=v.footprint.depth+.03,id+' holder bounds');
   setAttachmentSampleCount(v,0);
   assert.ok(v.contents.every(c=>!c.visible)&&v.holder.visible,id);
   placeAttachmentVisual(v,{x:3,y:2,z:1,yaw:Math.PI/2});
