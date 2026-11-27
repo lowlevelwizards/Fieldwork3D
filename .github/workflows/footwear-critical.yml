@@ -1,6 +1,12 @@
 name: Footwear critical
 on:
   workflow_call:
+  pull_request:
+    branches-ignore: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/footwear-critical.yml'
   workflow_dispatch:
 concurrency:
   group: footwear-critical-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
@@ -14,6 +20,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package.json') }}
       - run: npm install --no-audit --no-fund
       - run: npm run check
       - run: node --experimental-strip-types --test tests/operator-footwear-options.test.mjs tests/breach-motion-boot-forefoot.test.mjs tests/operator-garment-readability-20261103.test.mjs tests/operator-wardrobe-unified.test.mjs tests/operator-wardrobe-pattern-ui.test.mjs

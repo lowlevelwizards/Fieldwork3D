@@ -1,0 +1,32 @@
+name: CI recovery contract validation
+on:
+  push:
+    branches: [ci/queue-recovery-r0-r2-20261127]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-recovery-validation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate queue and routing safety
+        run: |
+          python3 -m unittest discover -s scripts/verification -p test_ci_queue_recovery.py
+          node --test tests/ci-equipment-routing.test.mjs tests/ci-regression-plan.test.mjs tests/ci-specialist-routing.test.mjs tests/ci-movement-routing.test.mjs tests/ci-movement-door-routing.test.mjs tests/ci-weapon-visual-routing.test.mjs tests/ci-after-action-routing.test.mjs tests/ci-replay-mobile-routing.test.mjs tests/ci-replay-legacy-routing.test.mjs tests/ci-replay-director-routing.test.mjs
+          node scripts/verification/ci-workflow-contract.mjs
+          node scripts/verification/ci-workflow-inventory.mjs --check --markdown artifacts/ci-workflow-inventory.md --json artifacts/ci-workflow-inventory.json
+          cat artifacts/ci-workflow-inventory.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci-workflow-inventory
+          path: artifacts/ci-workflow-inventory.*
+          if-no-files-found: warn
