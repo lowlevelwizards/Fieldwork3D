@@ -1,3 +1,4 @@
+import {beltStyleForEquipment,canonicalBeltStyle} from './operator-belt-profile.ts';
 /** Tactical Wardrobe 2.0: style recipes, not new weapons or magic inventory.
  * Physical protection, carrying capacity, costs and ownership remain in
  * equipment-catalog / equipment-loadouts / campaign-state.
@@ -129,13 +130,10 @@ add('rigStyle','full',[
  ['sadf-webbing','Bush / SADF-Style Webbing']
 ]);
 add('beltStyle','none',[['no-belt','No belt']]);
-add('beltStyle','light',[
- ['plain-belt','Clothing belt'],['light-belt','Light utility belt']
-]);
-add('beltStyle','standard',[
- ['duty-belt','Duty belt'],['battle-belt','Battle belt'],
- ['padded-belt','Padded war belt']
-]);
+add('beltStyle','light',[['plain-belt','Leather belt']]);
+add('beltStyle','standard',[['duty-belt','Utility belt']]);
+add('beltStyle','battle',[['battle-belt','Battle belt']]);
+add('beltStyle','padded',[['padded-belt','Padded war belt']]);
 add('packStyle','none',[['no-pack','No backpack']]);
 add('packStyle','day',[
  ['hydration','Hydration carrier'],['admin-pack','Admin pack'],
@@ -255,7 +253,8 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
   for(const slot of WARDROBE_SLOTS){
    const id=v.styles[slot];
    // Retired near-duplicates migrate to their closest approved silhouette.
-   const upgraded=id==='soft-paca'?'soft-slick':
+   const upgraded=slot==='beltStyle'?canonicalBeltStyle(id):
+     id==='soft-paca'?'soft-slick':
     id==='belt-harness'?'field-webbing':
     slot==='facewear'&&['scarf','gas-mask'].includes(id??'')?
      migrateD2Facewear(id).style:
@@ -463,9 +462,7 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
    'chicom-rig','bandolier']:
   ['no-rig'],slots.rig==='rig-full'?'field-webbing':
     slots.rig==='rig-light'?'light-rig':'no-rig');
- choose('beltStyle',slots.belt==='belt-none'?['no-belt']:
-  slots.belt==='belt-light'?['plain-belt','light-belt']:['duty-belt','battle-belt','padded-belt'],
-  slots.belt==='belt-none'?'no-belt':slots.belt==='belt-light'?'light-belt':'duty-belt');
+ desired.beltStyle=beltStyleForEquipment(slots.belt,desired.beltStyle);
  choose('packStyle',[...legacyPackStyles(slots.backpack)],legacyPackDefault(slots.backpack));
  choose('trousers',['bdu-trousers','acu-trousers','gorka-trousers','jeans','civilian-cargo','track-pants'],
   'bdu-trousers');

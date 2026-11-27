@@ -1,3 +1,4 @@
+import {BELT_PROFILES,canonicalBeltStyle} from './operator-belt-profile.ts';
 /** Lab-facing single chooser: appearance item is the selected actual slot.
  * Saved version-1 kits remain unchanged, and no visual item grants inventory.
  * Later category art passes can replace the geometry without adding a second
@@ -21,8 +22,10 @@ export function equipmentSlotForAppearance(slot:WardrobeSlot,id:string):
    family==='soft'?'armor-soft':'armor-carrier'};
   case 'rigStyle':return {slot:'rig',id:family==='none'?'rig-none':
    family==='light'?'rig-light':'rig-full'};
-  case 'beltStyle':return {slot:'belt',id:family==='none'?'belt-none':
-   family==='light'?'belt-light':'belt-standard'};
+  case 'beltStyle':{
+   const style=canonicalBeltStyle(id);
+   return style?{slot:'belt',id:BELT_PROFILES[style].equipment}:null;
+  }
   case 'packStyle':return {slot:'backpack',id:legacyPackEquipment(id)};
   case 'top':return {slot:'top',id:family==='underlayer'?'top-none':
    ['t-shirt','polo-shirt','button-up-shirt','tank-top','hoodie','casual-jacket'].includes(id)?'top-light':'top-uniform'};
@@ -36,9 +39,11 @@ export function equipmentSlotForAppearance(slot:WardrobeSlot,id:string):
 }
 export function selectWardrobeItem(kit:EquipmentLoadout,
  wardrobe:WardrobeOptions,slot:WardrobeSlot,id:string):Selection{
+ if(slot==='beltStyle')id=canonicalBeltStyle(id)??id;
  if(!wardrobeItem(slot,id))return {kit,wardrobe};
  const actual=equipmentSlotForAppearance(slot,id);
  const next=actual?.slot&&actual.id?
   setEquipmentChoice(kit,actual.slot,actual.id):kit;
+ if(slot==='beltStyle'&&actual?.id&&next.slots.belt!==actual.id)return {kit,wardrobe};
  return {kit:next,wardrobe:setWardrobeStyle(readWardrobe(wardrobe),slot,id)};
 }

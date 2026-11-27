@@ -1,3 +1,4 @@
+import {syncGearMarkedMaterials} from './operator-gear-pixel-art.ts';
 /** Stage 11: visual outfit, gear and wound-color presentation ownership.
  * Caches only appearance fingerprints; never solves motion, fires, moves actors
  * or updates replay/simulation state.
@@ -635,6 +636,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     for(const [material,original] of r.colors){
       material.color.copy(original);
       if(downed)material.color.lerp(DOWNED_TINT,.46);
+      if(material instanceof THREE.MeshStandardMaterial)syncGearMarkedMaterials(material);
     }
   }
   if(previousAppearance){

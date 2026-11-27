@@ -54,11 +54,15 @@ test('S4B: one shared carrier budget reserves occupied holster and pistol magazi
  assert.equal(secondaryCarryClaim(equipped).valid,true);
  assert.equal(secondaryCarryClaim(equipped).used.belt,3,
   'holster 1 plus two pistol magazines');
- assert.equal(magazineSpace(equipped).belt,0);
- assert.equal(magazineSpace(loadout).belt,3);
- const primary=stageMagazines([{id:'rook/carbine/extra',weapon:'carbine',rounds:12,
-  location:'belt'}],equipped);
- assert.notEqual(primary[0].location,'belt','primary cannot steal pistol-owned belt space');
+ // BT0 deliberately increased the utility belt from three to four spaces.
+ assert.equal(magazineSpace(equipped).belt,1);
+ assert.equal(magazineSpace(loadout).belt,4);
+ const primary=stageMagazines([
+  {id:'rook/carbine/extra',weapon:'carbine',rounds:12,location:'belt'},
+  {id:'rook/carbine/extra2',weapon:'carbine',rounds:12,location:'belt'}
+ ],equipped);
+ assert.equal(primary[0].location,'belt','one unclaimed utility-belt space remains');
+ assert.notEqual(primary[1].location,'belt','primary cannot steal pistol-owned belt space');
  const beltless={...equipped,slots:{...equipped.slots,belt:'belt-none'}};
  assert.equal(secondaryCarryClaim(beltless).valid,false);
  assert.ok(secondaryCarryClaim(beltless).overflow.includes('belt'));

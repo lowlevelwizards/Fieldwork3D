@@ -1,3 +1,7 @@
+import {attachmentMountRequest,type AttachmentId} from './operator-attachment-catalog.ts';
+import {createAttachmentVisual,placeAttachmentVisual,type AttachmentVisual,type AttachmentPalette} from './operator-attachment-visuals.ts';
+import {resolveBeltMounts,type BeltMountRequest} from './operator-belt-mounts.ts';
+import type {BeltStyle} from './operator-belt-profile.ts';
 /** Empty/cosmetic mounting details; deliberately no gameplay capability,
  * magazine capacity, primary weapon or owned stock. */
 import * as THREE from 'three';
@@ -28,6 +32,8 @@ export function readWardrobeAccessories(raw:unknown):WardrobeAccessoryConfigurat
  }
  return result;
 }
+const ART:Readonly<Record<string,AttachmentId>>={'empty-holster':'rigid-holster','empty-dump':'dump-pouch','empty-pouch':'utility-pouch'};
+const authored=new WeakMap<THREE.Group,{family:AttachmentId;palette:AttachmentPalette;visual?:AttachmentVisual}>();
 type GroupVariants=Record<string,THREE.Group>;
 export type WardrobeAccessoryVisuals=Record<WardrobeAccessorySlot,GroupVariants>;
 const part=(g:THREE.Group,m:THREE.Material,x:number,y:number,z:number,
@@ -50,12 +56,8 @@ export function createWardrobeAccessoryVisuals(
    const g=new THREE.Group();g.visible=false;parent.add(g);result[slot][name]=g;
    const sign=slot==='beltLeft'?-1:1,z=sign*8.25;
    if(slot==='beltLeft'||slot==='beltRight'){
-    if(name==='empty-holster')
-     part(g,dark,-.45,-3.35,z,3.0,5.0,1.1);
-    if(name==='empty-dump')
-     part(g,gear,-.8,-4.0,z,3.3,4.6,2.7);
-    if(name==='empty-pouch')
-     part(g,gear,-.5,-3.2,z,2.7,3.4,2.2);
+    const family=ART[name];
+    if(family)authored.set(g,{family,palette:{fabric:gear,dark,hardware:trim,contents:dark,accent:trim}});
     if(name==='utility-loop'){
      part(g,trim,-.4,-3.2,z,2.7,.6,1.5);
      part(g,trim,-.4,-5.3,z,2.7,.6,1.5);
@@ -85,7 +87,39 @@ export function createWardrobeAccessoryVisuals(
  return result;
 }
 export function updateWardrobeAccessories(v:WardrobeAccessoryVisuals,
- chosen:WardrobeAccessoryConfiguration){
+ chosen:WardrobeAccessoryConfiguration,beltStyle?:BeltStyle){
  for(const slot of WARDROBE_ACCESSORY_SLOTS)
   for(const [id,g] of Object.entries(v[slot]))g.visible=chosen[slot]===id;
+ const style=beltStyle??'duty-belt';
+ const requests:BeltMountRequest[]=[];
+ for(const slot of ['beltLeft','beltRight'] as const){
+  const id=chosen[slot],region=slot==='beltLeft'?'left-hip':'right-hip';
+  if(id==='none')continue;
+  const family=ART[id];
+  if(family){
+   const request=attachmentMountRequest(slot,family,style,family==='dump-pouch'?'rolled':'standard',region,true);
+   if(request)requests.push({...request,allowed:[region]});
+  }else requests.push({id:slot,preferred:region,allowed:[region],
+   footprint:{width:2.7,height:2.7,depth:1.5,spaces:0}});
+ }
+ const resolved=resolveBeltMounts(style,requests);
+ for(const slot of ['beltLeft','beltRight'] as const){
+  const g=v[slot][chosen[slot]];if(!g||chosen[slot]==='none')continue;
+  const mount=resolved.mounts.find(m=>m.id===slot);
+  g.visible=!!mount;
+  if(mount){
+   const entry=authored.get(g);
+   if(entry){
+    if(!entry.visual){entry.visual=createAttachmentVisual(entry.family,entry.palette,entry.family==='dump-pouch'?'rolled':'standard');g.add(entry.visual.root);}
+    placeAttachmentVisual(entry.visual,mount.socket);
+    g.position.set(0,0,0);
+    continue;
+   }
+   const sign=slot==='beltLeft'?-1:1;
+   // Existing authored accessory geometry is in hip-local coordinates.
+   // Shift its resting contact to the resolved band without rebuilding it.
+   g.position.set(mount.socket.x,mount.socket.y+1.65,
+    mount.socket.z+sign*mount.footprint.depth*.5-sign*8.25);
+  }
+ }
 }

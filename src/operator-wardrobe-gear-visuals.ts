@@ -1,3 +1,4 @@
+import {createBeltSilhouettes} from './operator-belt-visuals.ts';
 /** Authored style-specific surface construction for the same broad mechanical
  * armor, rig, belt and pack classes. All cosmetic; no additional capacity.
  */
@@ -41,7 +42,7 @@ export function createWardrobeGearLayers(
  chest:THREE.Group,hip:THREE.Group,packParent:THREE.Mesh,
  armorFabric:THREE.Material,gearFabric:THREE.Material,
  packFabric:THREE.Material,dark:THREE.Material,
- trim:THREE.Material,lazyVariants=false):WardrobeGearLayers{
+ trim:THREE.Material,lazyVariants=false,beltParent:THREE.Group=hip,beltHardware:THREE.Material=trim):WardrobeGearLayers{
  // Standalone Operator Labs receive identical baked AO to gameplay rigs.
  for(const material of [armorFabric,gearFabric,packFabric,trim])
   if(material instanceof THREE.MeshStandardMaterial)
@@ -107,17 +108,7 @@ export function createWardrobeGearLayers(
   }
   box(battle,strapMaterial,-3.75,.12,side*5.4,1.16,4.15,5.15);
  }
- const belt:StyleGroups={},pack:StyleGroups={};
- for(const item of wardrobeItemsForSlot('beltStyle')){
-  const g=make(hip);belt[item.id]=g;
-  if(item.id==='padded-belt'){
-   for(const z of [-5.65,5.65])
-    box(g,gearFabric,-1.8,-2.2,z,2.8,2.4,.85);
-  }else if(item.id==='battle-belt'||item.id==='duty-belt'){
-   for(const z of [-4.8,4.8])
-    box(g,dark,2.2,-2.0,z,.85,2.4,1.6);
-  }
- }
+ const belt=createBeltSilhouettes(beltParent,gearFabric,dark,beltHardware),pack:StyleGroups={};
  for(const item of wardrobeItemsForSlot('packStyle')){
   const g=make(packParent);pack[item.id]=g;
   switch(item.id){
