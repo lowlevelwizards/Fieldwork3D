@@ -1,0 +1,160 @@
+name: Runtime performance acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/breach-runtime-loop.ts'
+      - 'src/breach-performance-timeline.ts'
+      - 'tests/performance-p2-9-ui-attribution.test.mjs'
+      - 'src/breach-squeeze-route.ts'
+      - 'tests/performance-p2-10-route-recovery.test.mjs'
+      - 'src/breach-civilian-response.ts'
+      - 'src/breach-simulation-motion-phase.ts'
+      - 'tests/performance-p2-11-civilian-cadence.test.mjs'
+      - 'src/breach-movement-authority.ts'
+      - 'src/breach-civilian-transport.ts'
+      - 'tests/performance-p2-12-movement-authority.test.mjs'
+      - 'src/breach-motor-traversal.ts'
+      - 'src/breach-mantle.ts'
+      - 'src/breach-navigation.ts'
+      - 'tests/performance-p2-13-traversal-hotpaths.test.mjs'
+      - 'src/breach-actor-neighborhood.ts'
+      - 'src/breach-3d.ts'
+      - 'tests/performance-p6-local-ally-broadphase.test.mjs'
+      - 'src/breach-combat-cues.ts'
+      - 'src/breach-frame-lookup.ts'
+      - 'tests/performance-p6-frame-indices.test.mjs'
+      - 'tests/tactical-integration-18-firefight-b2.test.mjs'
+      - 'scripts/verification/performance-p6-frame-index-bench.mjs'
+      - 'src/rendering/fieldwork-model-compiler.ts'
+      - 'tests/performance-p6-opaque-toon-compiler.test.mjs'
+      - 'tests/performance-p6-runtime-listener-lifecycle.test.mjs'
+      - '.github/workflows/runtime-performance-critical.yml'
+      - 'scripts/verification/runtime-performance-routing.mjs'
+      - 'tests/ci-runtime-performance-routing.test.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'vite.config.ts'
+  workflow_dispatch:
+    inputs:
+      lane:
+        type: choice
+        default: all
+        options:
+          - all
+          - ui-attribution
+          - route-recovery
+          - civilian-sensing
+          - movement-authority
+          - traversal
+          - ally-context
+          - frame-indices
+          - opaque-compiler
+          - runtime-listeners
+permissions:
+  contents: read
+concurrency:
+  group: runtime-performance-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  performance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify routing
+        run: node --test tests/ci-runtime-performance-routing.test.mjs
+      - id: route
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MANUAL_LANE: ${{ inputs.lane }}
+        run: node scripts/verification/runtime-performance-routing.mjs
+      - run: npm install --no-audit --no-fund
+      - name: UI attribution and preceding-frame compatibility
+        if: steps.route.outputs.ui-attribution == 'true'
+        run: >
+          node --experimental-strip-types --test
+          tests/performance-p2-9-ui-attribution.test.mjs
+          tests/performance-p1-5-timeline.test.mjs
+          tests/performance-p1-5-scene-phases.test.mjs
+      - name: Recovery route equivalence and physical safety
+        if: steps.route.outputs.route-recovery == 'true'
+        run: >
+          node --experimental-strip-types --test
+          tests/performance-p2-10-route-recovery.test.mjs
+          tests/performance-p2-7-live-routing.test.mjs
+          tests/breach-normal-lane-priority.test.mjs
+      - name: Civilian cadence and integrated physical contacts
+        if: steps.route.outputs.civilian-sensing == 'true'
+        run: >
+          node --experimental-strip-types --test
+          tests/performance-p2-11-civilian-cadence.test.mjs
+          tests/civilian-r2-behavior.test.mjs
+          tests/civilian-contact-flow-regression.test.mjs
+          tests/breach-closeout-stage2-simulation-phases.test.mjs
+          tests/performance-p2-7-live-routing.test.mjs
+      - name: Exact movement authority and civilian custody parity
+        if: steps.route.outputs.movement-authority == 'true'
+        run: >
+          node --experimental-strip-types --test
+          tests/performance-p2-12-movement-authority.test.mjs
+          tests/civilian-contact-flow-regression.test.mjs
+          tests/breach-closeout-stage2-simulation-phases.test.mjs
+          tests/performance-p2-11-civilian-cadence.test.mjs
+      - name: Traversal parity, physical escape and door integration
+        if: steps.route.outputs.traversal == 'true'
+        run: >
+          node --experimental-strip-types --test
+          tests/performance-p2-13-traversal-hotpaths.test.mjs
+          tests/breach-mantle-contract.test.mjs
+          tests/breach-mantle-session.test.mjs
+          tests/breach-roadmap2-stage7-motor.test.mjs
+          tests/performance-p2-8-sweep-broadphase.test.mjs
+      - name: Focused wall overlap and window traversal regressions
+        if: steps.route.outputs.traversal == 'true'
+        run: >
+          node --experimental-strip-types --test
+          --test-name-pattern='walking both directions|nearby wall|motor reports resolved|tiny static-wall overlap|window classification|closed standard window|angled destination'
+          tests/breach-wall-glide-here-window.test.mjs
+      - name: Seeded 16/88/180 actor, exact safety and existing E6.5 parity
+        if: steps.route.outputs.ally-context == 'true'
+        run: >-
+          node --experimental-strip-types --test
+          tests/performance-p6-local-ally-broadphase.test.mjs
+          tests/refactor-e6-5-ally-context.test.mjs
+          tests/performance-p6-frame-indices.test.mjs
+      - name: Diagnostic baseline versus indexed peer scan at 4/16/32/88/180 actors
+        if: steps.route.outputs.ally-context == 'true'
+        run: node --experimental-strip-types scripts/verification/performance-p6-ally-broadphase-bench.mjs
+      - name: Combat history/visibility and tactical lookup parity
+        if: steps.route.outputs.frame-indices == 'true'
+        run: >-
+          node --experimental-strip-types --test
+          tests/performance-p6-frame-indices.test.mjs
+          tests/phase-a-combat-cues.test.mjs
+          tests/tactical-integration-18-firefight-b2.test.mjs
+      - name: Reproducible baseline-vs-index CPU probe (no FPS thresholds)
+        if: steps.route.outputs.frame-indices == 'true'
+        run: node --experimental-strip-types scripts/verification/performance-p6-frame-index-bench.mjs
+      - name: Reversible opaque Toon compiler and existing rigid owner contracts
+        if: steps.route.outputs.opaque-compiler == 'true'
+        run: >-
+          node --experimental-strip-types --test
+          tests/performance-p6-opaque-toon-compiler.test.mjs
+          tests/refactor-e6-20-universal-model-compiler.test.mjs
+          tests/refactor-e6-21-owner-assembly.test.mjs
+      - name: 30-cycle listener ownership, tactical RAF and idle cadence
+        if: steps.route.outputs.runtime-listeners == 'true'
+        run: >-
+          node --experimental-strip-types --test
+          tests/performance-p6-runtime-listener-lifecycle.test.mjs
+          tests/performance-p2-2-idle-3d-cadence.test.mjs
+          tests/breach-runtime-loop-step12.test.mjs
+      - name: Typecheck and production bundle
+        run: npm run check && npx vite build
