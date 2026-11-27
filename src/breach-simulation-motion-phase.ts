@@ -2,6 +2,7 @@
  * Proposals capture pre-movement positions. A single arbiter decides hard
  * actor/civilian collisions; rejected motion is restored deterministically.
  */
+import {hasTransportLink} from './breach-transport-custody.ts';
 import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
 import {length} from './breach-plan.ts';
 import {proposedCivilianTransportStep,reconcileCivilianTransportFrame}
@@ -52,16 +53,15 @@ export function advanceSimulationMotion(s:Session,h:number,
   let coupledBodyStarts:Map<string,Pt>|null=null;
   for(const carrier of s.operators){
     if(!carrier.carryingId)continue;
-    const civil=s.civilians.find(c=>c.id===carrier.carryingId&&
-      c.carriedById===carrier.id)??(carrier.transportLatched?
-      s.operators.find(o=>o.id===carrier.carryingId&&o.carriedById===carrier.id):undefined);
-    if(!civil)continue;
+    const civil=s.civilians.find(c=>hasTransportLink(carrier,c))??
+      s.operators.find(o=>hasTransportLink(carrier,o));
+    if(!civil||civil.health>0||carrier.health<=0)continue;
     const from=motionStart.get(carrier.id)??carrier.p;
     const bodyFrom=motionStart.get(civil.id)??civil.p;
     // A single ordered roster replaces four filtering/mapping arrays;
     // keep live positions and operator-before-civilian contact semantics.
     const others:Pt[]=[];
-    for(const o of s.operators)if(o!==carrier&&o.health>0)
+    for(const o of s.operators)if(o!==carrier&&o!==civil&&o.health>0)
       others.push(o.p);
     for(const c of s.civilians)if(c!==civil)others.push(c.p);
     const next=proposedCivilianTransportStep(bodyFrom,from,carrier.p,
@@ -180,11 +180,13 @@ export function advanceSimulationMotion(s:Session,h:number,
   let transportLinks:{carrierId:string;bodyId:string}[]|null=null;
   // A transported red or blue TeamActor participates in exactly the same
   // coupled carrier/body arbitration as a neutral civilian casualty.
-  for(const patient of s.operators)if(patient.health<=0&&patient.carriedById){
+  for(const patient of s.operators)if(patient.health<=0&&patient.carriedById&&
+    s.operators.some(c=>c.health>0&&hasTransportLink(c,patient))){
     if(!transportLinks)transportLinks=[];
     transportLinks.push({carrierId:patient.carriedById,bodyId:patient.id});
   }
-  for(const civil of s.civilians)if(civil.carriedById){
+  for(const civil of s.civilians)if(civil.carriedById&&
+    s.operators.some(c=>c.health>0&&hasTransportLink(c,civil))){
     if(!transportLinks)transportLinks=[];
     transportLinks.push({carrierId:civil.carriedById,bodyId:civil.id});
   }

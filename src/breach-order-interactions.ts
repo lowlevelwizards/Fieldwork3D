@@ -19,6 +19,7 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {setCivilianState} from './breach-civilian-types.ts';
 import {RESTRAINT_CONTACT_SECONDS} from './equipment-interaction-timings.ts';
+import {releaseTransport} from './breach-transport-custody.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {canSecureRescuePerson} from './breach-civilian-mission.ts';
 import {CIVILIAN_VOICE_RANGE} from './breach-civilian-context-selection.ts';
@@ -334,8 +335,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       }
       // A stopped/replanned carrier releases the actual actor where the
       // previous resolved physical tick left it. No off-screen relocation.
-      target.carriedById=null;target.transportMode=null;a.carryingId=null;
-      a.transportLatched=false;
+      releaseTransport(a,target);
       a.velocity=0;
       const message=a.name+' RELEASED '+target.name;
       notify(s,message);

@@ -1,0 +1,2 @@
+# CT1 — Shared custody and movement boundary
+Operator and civilian acquisition/release share reciprocal link helpers; legacy operator route orders now propose carrier motion only, with both subject types handled in the shared motion phase. Preserve historical route and toggle semantics, eligibility and mission outcomes. Remove duplicate operator body stepping. Recovery and distinct collision profiles remain CT3–CT7. The existing presentation offsets are unchanged.

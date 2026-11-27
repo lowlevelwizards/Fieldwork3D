@@ -12,6 +12,7 @@ import {fireCorrectionStopReason,cancelFireCorrection}
 import type {Session,TeamActor} from './breach-game.ts';
 import {type Pt} from './breach-core.ts';
 import {bodyClear,sweptBodyClear} from './breach-navigation.ts';
+import {releaseTransport} from './breach-transport-custody.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {advanceWaitOrder} from './breach-order-wait.ts';
 import {executeTacticalUtilityOrder,type UtilityOrderHooks}
@@ -97,13 +98,7 @@ export function createOrderExecutor(port:OrderExecutionPort){
      (n?.interaction!=='release-capture-target'||n.objectId!==a.carryingId)){
     const civil=s.civilians.find(c=>c.id===a.carryingId);
     if(civil)dropCivilianCustody(civil,a);
-    else {
-      const prior=s.operators.find(o=>o.id===a.carryingId);
-      if(prior?.carriedById===a.id){
-         prior.carriedById=null;prior.transportMode=null;
-       }
-      a.carryingId=null;
-    }
+    else releaseTransport(a,s.operators.find(o=>o.id===a.carryingId));
   }
   if(a.haltOnContact){
     const threat=visibleThreat;

@@ -8,6 +8,7 @@ import {advanceMedicalCondition} from './breach-medical-wounds.ts';
 import {sampleBleedingEvidence} from './breach-blood-evidence.ts';
 import {releaseDownedSuspectWeapons} from './breach-suspect-weapons.ts';
 import {advanceDownedVitals,recordActualDown} from './breach-capture-vitals.ts';
+import {releaseTransport} from './breach-transport-custody.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
 import {advanceDoor,doorReachable,initialOpeningYieldCandidate} from './breach-door.ts';
@@ -47,13 +48,7 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
     if(casualty.carryingId&&casualty.health<=0){
       const civil=s.civilians.find(c=>c.id===casualty.carryingId);
       if(civil)dropCivilianCustody(civil,casualty);
-      else {
-        const patient=s.operators.find(o=>o.id===casualty.carryingId);
-        if(patient?.carriedById===casualty.id){
-          patient.carriedById=null;patient.transportMode=null;
-        }
-        casualty.carryingId=null;casualty.transportLatched=false;
-      }
+      else releaseTransport(casualty,s.operators.find(o=>o.id===casualty.carryingId));
     }
     if(casualty.health<=0){
       releaseDownedSuspectWeapons(s,casualty);
@@ -63,8 +58,7 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
         if(casualty.carriedById){
           const carrier=s.operators.find(o=>o.id===casualty.carriedById);
           if(carrier?.carryingId===casualty.id&&carrier.transportLatched){
-            carrier.carryingId=null;carrier.transportLatched=false;
-            casualty.carriedById=null;casualty.transportMode=null;
+            releaseTransport(carrier,casualty);
           }
         }
         s.deaths++;

@@ -2,6 +2,7 @@
  * are separate authorities. The live squad remains the only AI/motor input.
  * A removed operator is archived for replay/debrief, never teleported.
  */
+import {releaseTransport} from './breach-transport-custody.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 
 export type OperationDisposition='completed'|'withdrawn'|'overwhelmed'|'failed';
@@ -54,8 +55,7 @@ export function commitTransportExtractions(s:Session):{patient:TeamActor;carrier
    p.carriedById===carrier.id&&p.health<=0&&inExtraction(s,p.p));
   if(!patient||patient.deathAt!=null||
     s.missionType==='capture'&&patient.id===s.captureTarget)continue;
-  patient.carriedById=null;patient.transportMode=null;
-  carrier.carryingId=null;carrier.transportLatched=false;
+  releaseTransport(carrier,patient);
   patient.plan=[];patient.nav=[];patient.path=[];patient.velocity=0;
   if(s.passageLeases)delete s.passageLeases[patient.id];
   const archive=patient.side==='blue'?

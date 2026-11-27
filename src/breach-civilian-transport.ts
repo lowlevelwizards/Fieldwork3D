@@ -1,6 +1,7 @@
 /** E5-D R2-A1: neutral casualty custody and bounded coupled movement.
  * Uses the existing operator casualty transport geometry, never a second motor.
  * The fixed-tick simulation owns committing BOTH actor positions together. */
+import {canAcquireTransport,acquireTransport,hasTransportLink,releaseTransport} from './breach-transport-custody.ts';
 import type {Pt} from './breach-core.ts';
 import type {CivilianActor} from './breach-civilian-types.ts';
 import {sweptPairMayTouch,type MotionProposal,type MotionDecision}
@@ -11,25 +12,18 @@ import {casualtyTrailingPosition,transportIsClear,type TransportMode}
 export type CivilianCarrier={id:string;health:number;carryingId:string|null;transportLatched?:boolean};
 export function civilianTransportEligible(c:CivilianActor,
  carrier:CivilianCarrier):boolean{
- return carrier.health>0&&c.health<=0&&
-   (!c.carriedById||c.carriedById===carrier.id)&&
-   (!carrier.carryingId||carrier.carryingId===c.id);
+ return canAcquireTransport(carrier,c);
 }
 /** Acquire exclusive ownership only after a real, timed, reachable pickup. */
 export function takeCivilianCustody(c:CivilianActor,
  carrier:CivilianCarrier,mode:TransportMode='drag'):boolean{
- if(!civilianTransportEligible(c,carrier))return false;
- c.carriedById=carrier.id;c.transportMode=mode;
- carrier.carryingId=c.id;
+ if(!acquireTransport(carrier,c,mode))return false;
  c.following=null;c.goal=null;c.nav=[];c.velocity=0;
  return true;
 }
 export function dropCivilianCustody(c:CivilianActor,
  carrier:CivilianCarrier):boolean{
- if(c.carriedById!==carrier.id||carrier.carryingId!==c.id)return false;
- c.carriedById=null;c.transportMode=null;carrier.carryingId=null;
- carrier.transportLatched=false;
- return true;
+ return hasTransportLink(carrier,c)&&releaseTransport(carrier,c);
 }
 /** Bound each body displacement to the carrier's own fixed-tick step.
  * Even the first frame after pickup cannot snap the body to a trailing slot.

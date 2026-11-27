@@ -13,7 +13,8 @@ import {kitMedicalSupplies,transferMedicalSupply,spendMedicalSupply}
 import {treatmentSupplyForWound,treatmentDuration}
  from './breach-medical-treatment.ts';
 import {stabilizeWound} from './breach-medical-wounds.ts';
-import {dropCivilianCustody,takeCivilianCustody,proposedCivilianTransportStep}
+import {acquireTransport,releaseTransport} from './breach-transport-custody.ts';
+import {dropCivilianCustody,takeCivilianCustody}
  from './breach-civilian-transport.ts';
 import {captureTargetTransportEligible}
  from './breach-capture-transport-policy.ts';
@@ -78,10 +79,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
        (friendly&&captureVitalStatus(friendly)==='deceased')||
        (friendly&&friendly.side===a.side&&friendly.surrendered)){
       if(civil&&civil.carriedById===a.id)dropCivilianCustody(civil,a);
-      else if(friendly?.carriedById===a.id){
-        friendly.carriedById=null;friendly.transportMode=null;
-      }
-      if(a.carryingId===n.patientId){a.carryingId=null;a.transportLatched=false;}
+      else if(a.carryingId===n.patientId)releaseTransport(a,friendly);
       pop(a);return true;
     }
     // A stale queued pickup must never overwrite a different reciprocal
@@ -118,8 +116,9 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
             s.rescue.following=null;s.rescue.p=clone(civil.p);
           }
         }else{
-          a.carryingId=patient.id;patient.carriedById=a.id;
-          patient.transportMode=mode;
+          if(!acquireTransport(a,patient,mode)){
+            failCurrentOrder(s,a,n,'CASUALTY TRANSPORT UNAVAILABLE');return true;
+          }
         }
         a.actionTimer=0;clearCurrentOrderIssue(a);
         notify(s,a.name+' '+(mode==='drag'?'DRAGGING':'CARRYING')+' '+
@@ -144,29 +143,13 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
         a.velocity=0;return true;
       }
       if(civil)dropCivilianCustody(civil,a);
-      else {patient.carriedById=null;patient.transportMode=null;}
-      a.carryingId=null;
+      else releaseTransport(a,patient);
       notify(s,('name' in patient?patient.name:'CIVILIAN')+' RELEASED');
       pop(a);return true;
     }
-    const before=clone(a.p);
     approach(a,destination,dt,s,mode==='drag'?.48:.38);
-    if(civil)return true; // Neutral body motion commits with the carrier later.
-    // Apply the same bounded, swept physical body step as civilian rescue.
-    // An operator casualty must never snap 9–16 units across a threshold
-    // on the first pickup tick, even if the carrier has barely moved.
-    const people:Pt[]=[];
-    for(const o of s.operators)if(o!==a&&o!==patient)people.push(o.p);
-    for(const c of s.civilians)people.push(c.p);
-    const attached=proposedCivilianTransportStep(patient.p,before,a.p,
-      a.heading,mode,
-      (from,to)=>sweptBodyClear(from,to,s.doors,8,sessionWorldGeometry(s)),
-      people,dt*36);
-    if(!attached){
-      a.p=before;a.velocity=0;a.nav=[];return true;
-    }
-    patient.priorP=clone(patient.p);patient.p=attached;
-    patient.velocity=0;return true;
+    // Both neutral and operator casualties commit in shared motion phase.
+    return true;
   }
   if(n.kind==='treat'){
     const patient=s.operators.find(o=>o.id===n.patientId&&
