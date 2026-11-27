@@ -1,3 +1,4 @@
+import {OBB} from 'three/addons/math/OBB.js';
 /** BT4.8 staged manifest renderer. Physical holder identities are slot IDs,
  * not contents. Reconcile only when the immutable mission manifest changes.
  * The same exposed content node moves into the support hand and returns to
@@ -170,4 +171,34 @@ export function presentLiveUnifiedHandoff(r:OperatorRig,p:OperatorPose,allowed:b
  r.arms[0].hand.add(l.node);l.node.position.set(field?.item==='flashbang'?.35:0,field?.item==='flashbang'?-3.8:-3,0);
  l.node.rotation.set(0,0,field?.item==='flashbang'?Math.PI*.30:.15);
  l.node.visible=true;current.held=l;
+}
+
+/** Optional Lab-only broad-phase clearance audit after a committed pose.
+ * Oriented holder boxes follow the actual animated parent transforms. A
+ * positive result is a potential collision, not a mesh penetration proof.
+ * No work at all is done unless the author requests this diagnostic. */
+export function auditLiveUnifiedClearance(r:OperatorRig){
+ const current=cache.get(r);if(!current)return [];
+ r.root.updateMatrixWorld(true);
+ const volumes:{id:string;box:OBB}[]=[];
+ for(const [id,h] of current.holders){
+  if(h.concealed||!h.root.visible||!h.root.name.startsWith('bt4-live-')||h.root.name==='bt4-live-cell')continue;
+  const shell=h.root.children.find(o=>o.name==='holder');if(!shell)continue;
+  const box=new THREE.Box3(),inverse=h.root.matrixWorld.clone().invert();
+  shell.traverse(o=>{
+   if(!(o instanceof THREE.Mesh)||!o.visible)return;
+   o.geometry.computeBoundingBox();if(!o.geometry.boundingBox)return;
+   const m=new THREE.Matrix4().multiplyMatrices(inverse,o.matrixWorld);
+   box.union(o.geometry.boundingBox.clone().applyMatrix4(m));
+  });
+  if(box.isEmpty())continue;
+  // Shave the broad-phase proxy very slightly to allow touching edges.
+  const size=box.getSize(new THREE.Vector3()).multiplyScalar(.5);
+  size.set(Math.max(.001,size.x-.04),Math.max(.001,size.y-.04),Math.max(.001,size.z-.04));
+  volumes.push({id,box:new OBB(box.getCenter(new THREE.Vector3()),size).applyMatrix4(h.root.matrixWorld)});
+ }
+ const contacts:string[]=[];
+ for(let i=0;i<volumes.length;i++)for(let j=i+1;j<volumes.length;j++)
+  if(volumes[i].box.intersectsOBB(volumes[j].box))contacts.push(volumes[i].id+' / '+volumes[j].id);
+ return contacts;
 }

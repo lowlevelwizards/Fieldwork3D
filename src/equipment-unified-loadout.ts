@@ -20,7 +20,7 @@ import type {MagazinePouchCell} from './operator-magazine-pouch-fit.ts';
 import {attachmentFootprint,type AttachmentId} from './operator-attachment-catalog.ts';
 import {clothingStorage,packStorage,registeredRigStorage,registeredAuxiliaryStorage,modularArmorStorage,
  type CarryKind,type Dimensions,type CarryVolume} from './equipment-fixed-carrier-slots.ts';
-import {resolveUnifiedCarry,type CarryItem,type CarryInput} from './equipment-unified-placement.ts';
+import {resolveUnifiedCarry,auditInitialUnifiedManifest,type CarryItem,type CarryInput} from './equipment-unified-placement.ts';
 export type UnifiedLoadoutSource={kit:EquipmentLoadout;wardrobe?:WardrobeOptions;magazines:readonly MagazineItem[];
  primaryPart?:string|null;rigCells?:readonly MagazinePouchCell[];auxiliaryCells?:readonly MagazinePouchCell[];
  shellReserve?:number;secondaryMagazineSize?:Dimensions};
@@ -128,6 +128,8 @@ export function quoteUnifiedLoadout(source:UnifiedLoadoutSource){
 export function quoteUnifiedCarryTransaction(source:UnifiedLoadoutSource){
  const {input,manifest}=quoteUnifiedLoadout(source);
  if(!manifest.valid)return {ok:false as const,manifest,reason:manifest.unplaced.map(x=>x.id+': '+x.reason).join(' · ')};
+ const audit=auditInitialUnifiedManifest(input,manifest);
+ if(audit.length)return {ok:false as const,manifest,reason:audit.join(' · ')};
  const locations=new Map<string,Exclude<MagazineLocation,'overflow'>>();
  for(const p of manifest.placements)for(const id of p.itemIds)locations.set(id,p.carrier==='armor'?'rig':p.carrier);
  const kit=structuredClone(source.kit);

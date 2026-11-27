@@ -1,3 +1,4 @@
+import {auditLiveUnifiedClearance} from './operator-unified-carry-live.ts';
 import type {UnifiedDeployedCarry} from './equipment-unified-deployed.ts';
 import {unifiedPreparationSummary} from './equipment-unified-preparation.ts';
 import {quoteUnifiedLoadout} from './equipment-unified-loadout.ts';
@@ -2001,6 +2002,8 @@ const carryAudit=choose<HTMLDetailsElement>('unifiedCarryAudit');
 const carryAuditOutput=choose<HTMLOutputElement>('unifiedCarryAuditOutput');
 const carryAuditVisual=choose<HTMLInputElement>('unifiedCarryVisual');
 const carryAuditShells=choose<HTMLSelectElement>('unifiedCarryShells');
+const carryAuditClearance=choose<HTMLInputElement>('unifiedCarryClearance');
+const carryAuditClearanceOutput=choose<HTMLOutputElement>('unifiedCarryClearanceOutput');
 let carryAuditKey='',carryAuditState:UnifiedDeployedCarry|undefined;
 populateAttachmentPreviewOptions(attachmentPreviewSelect);
 attachmentPreviewSelect.addEventListener('change',()=>{
@@ -2556,6 +2559,11 @@ function draw(){
   }
   // Explicit diagnostic: only calculate on a changed outfit while open.
   carryAuditOutput.dataset.unrendered=String(stagedCarry?(rig.root.userData.bt4Unrendered?.length??0):0);
+  if(stagedCarry&&carryAuditClearance.checked){
+   const hits=auditLiveUnifiedClearance(rig);
+   const msg=hits.length?'POTENTIAL HOLDER CONTACT · '+hits.join(' · '):'NO HOLDER BOX CONTACT IN THIS POSE';
+   if(carryAuditClearanceOutput.textContent!==msg)carryAuditClearanceOutput.textContent=msg;
+  }else carryAuditClearanceOutput.textContent='';
   const attachmentChoice=attachmentPreviewSelect.value;
   const attachmentStatus=updateAttachmentPreview(rig,attachmentChoice,
    attachmentVariantSelect.value as AttachmentVariant,attachmentContentsSelect.value,

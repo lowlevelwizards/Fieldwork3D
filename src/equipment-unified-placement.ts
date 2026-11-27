@@ -235,3 +235,52 @@ export function quoteManifestReturn(manifest:PlacementManifest,item:CarryItem,in
  return {...manifest,placements:[...manifest.placements,{...placement,kind:item.kind,contentIds:[item.id]}],
   unplaced:manifest.unplaced.filter(x=>x.id!==item.id)};
 }
+
+/** Independent pre-deployment audit of the initial solver result. The live
+ * stock owner handles subsequent consumption/exchange, so do not compare
+ * spent mission serials to the original issue list. */
+export function auditInitialUnifiedManifest(input:CarryInput,manifest:PlacementManifest):string[]{
+ const errors:string[]=[],claimed=new Set<string>(),owned=new Set<string>();
+ const items=new Map(input.items.map(i=>[i.id,i]));
+ const waist=fixedWaistSlots(input.belt,input.holsterSide,input.historicalWaist);
+ const slots=new Map(input.storage.map(s=>[s.id,s]));
+ const expectedSlots=new Set([...slots.keys(),...waist.map(s=>s.id)]);
+ for(const p of manifest.placements){
+  if(!p.slotIds.length)errors.push('EMPTY SLOT CLAIM');
+  for(const id of p.slotIds){
+   if(!expectedSlots.has(id))errors.push('UNKNOWN SLOT '+id);
+   if(claimed.has(id))errors.push('DUPLICATE SLOT '+id);
+   claimed.add(id);
+   if(p.carrier==='belt'?!waist.some(s=>s.id===id):slots.get(id)?.carrier!==p.carrier)errors.push('CARRIER MISMATCH '+id);
+  }
+  const content=(p.contentIds??p.itemIds).filter((id):id is string=>id!==null);
+  if(content.length!==p.itemIds.length||content.some((id,i)=>id!==p.itemIds[i]))errors.push('CONTENT CELL MISMATCH '+p.slotIds[0]);
+  const maxContents=p.holder?Math.max(1,attachmentContentSlots(p.holder,p.variant)):1;
+  if(p.itemIds.length>maxContents)errors.push('OVERFILLED HOLDER '+p.slotIds[0]);
+  if(p.waist){
+   if(p.carrier!=='belt'||!p.holder||p.waist.ids.length!==p.slotIds.length||p.waist.ids.some((id,i)=>id!==p.slotIds[i]))errors.push('INVALID WAIST RESERVATION '+p.slotIds[0]);
+   if(!p.volume||input.waistObstacles?.some(v=>volumesOverlap(v,p.volume!)))errors.push('WAIST OBSTRUCTION '+p.slotIds[0]);
+  }
+  for(const id of p.itemIds){
+   if(owned.has(id))errors.push('DUPLICATE ITEM '+id);
+   owned.add(id);const item=items.get(id);
+   if(!item){errors.push('UNISSUED ITEM '+id);continue;}
+   if(item.kind!==p.kind||!CARRY_PRIORITY[item.kind].includes(p.carrier))errors.push('INCOMPATIBLE CARRIER '+id);
+   if(p.holder&&!holderFits(item,p.holder,p.variant??'standard'))errors.push('INCOMPATIBLE HOLDER '+id);
+   if(p.carrier!=='belt'&&!p.holder){
+    const storage=p.slotIds.map(s=>slots.get(s)).filter((s):s is StorageSlot=>!!s);
+    if(!storage.length||storage.length<(item.units??1)||storage.some(s=>!s.accepts.includes(item.kind)||!dimensionsFit(item.dimensions,s.dimensions)))errors.push('INCOMPATIBLE STORAGE '+id);
+   }
+  }
+ }
+ for(let i=0;i<manifest.placements.length;i++)for(let j=i+1;j<manifest.placements.length;j++)
+  if(conflicts(manifest.placements[i],manifest.placements[j]))errors.push('INTERSECTING RESERVATIONS '+i+'/'+j);
+ for(const entry of manifest.unplaced){
+  if(owned.has(entry.id))errors.push('ITEM BOTH PLACED AND UNPLACED '+entry.id);
+  if(!items.has(entry.id))errors.push('UNKNOWN UNPLACED ITEM '+entry.id);
+  owned.add(entry.id);
+ }
+ for(const i of input.items)if(!owned.has(i.id))errors.push('MISSING ITEM '+i.id);
+ if(manifest.valid&&input.items.some(i=>!i.optional&&!manifest.placements.some(p=>p.itemIds.includes(i.id))))errors.push('VALID MANIFEST MISSING REQUIRED STOCK');
+ return errors;
+}
