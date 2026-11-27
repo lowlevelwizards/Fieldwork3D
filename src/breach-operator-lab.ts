@@ -2567,6 +2567,7 @@ if(poseFlags.get('packArtCapture')==='1')Object.assign(window,{
    view==='side'?new THREE.Vector3(70,2,0):
    view==='front'?new THREE.Vector3(0,2,-70):new THREE.Vector3(48,14,56);
   relative.applyAxisAngle(new THREE.Vector3(0,1,0),(rig.legacyYaw??0)-LEGACY_FRAME_YAW);
+  if(view==='above')relative.set(-12,90,10).applyAxisAngle(new THREE.Vector3(0,1,0),(rig.legacyYaw??0)-LEGACY_FRAME_YAW);
   const silhouette=view==='silhouette';
   if(silhouette)relative.set(0,2,70).applyAxisAngle(new THREE.Vector3(0,1,0),(rig.legacyYaw??0)-LEGACY_FRAME_YAW);
   const span=silhouette?29:Math.max(22,size.y+7,size.x+size.z+6);
