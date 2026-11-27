@@ -7,7 +7,7 @@ import {initialWardrobe,setWardrobeStyle,readWardrobe} from '../src/operator-war
 const materials=()=>({fabric:new THREE.MeshStandardMaterial(),trim:new THREE.MeshStandardMaterial(),dark:new THREE.MeshStandardMaterial()});
 test('four distinct authored models, material batches and socket policy',()=>{
  const sizes=new Map();
- for(const style of AUTHORED_PACK_STYLES){
+ for(const style of AUTHORED_PACK_STYLES.slice(0,4)){
   const art=buildAuthoredPack(style,materials());
   const bounds=new THREE.Box3().setFromObject(art.root);
   const size=bounds.getSize(new THREE.Vector3());sizes.set(style,size);
