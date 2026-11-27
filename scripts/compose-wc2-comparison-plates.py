@@ -55,7 +55,8 @@ print(f"WC2 comparison plates: {len(records)} unique factory and sidearm referen
 # The fitted views may independently frame each candidate; only side-shared
 # is a scale-controlled comparison. Never call these images visual approval.
 before_dir = Path("reports/wc2-before")
-before_files = list(before_dir.rglob("manifest.json"))
+before_files = [p for p in before_dir.rglob("manifest.json")
+                if "reports" in json.loads(p.read_text())]
 if before_dir.exists():
     if len(before_files) != 1:
         raise ValueError("Expected exactly one pinned baseline manifest")
