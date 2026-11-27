@@ -21,7 +21,7 @@ import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import * as THREE from 'three';
 import {readSlingKind} from './breach-weapon-retention.ts';
 import {sampleSecondaryRetention} from './breach-secondary-retention.ts';
-import {oneHandRetentionWeight} from './breach-weapon-retention-actions.ts';
+import {oneHandRetentionWeight,retainedActionHands} from './breach-weapon-retention-actions.ts';
 import {sampleRetentionTransition,retentionHandRelease} from './breach-weapon-retention-transition.ts';
 import {solveOperatorDirectSlingPose,commitOperatorSlingRibbon} from './breach-operator-sling-pose.ts';
 import {equipmentExterior} from './operator-equipment-exterior.ts';
@@ -1119,7 +1119,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const liveOneHand=oneHandWeight>0&&!p.retentionTransition&&!p.retentionPreview;
   const liveHandsFree=!!p.retentionTransition&&p.retentionTransition.mode!==null;
   const handsFreeAction=liveHandsFree&&p.retentionTransition!.weight>=1&&
-    (treatmentActive||doorActive||equipmentActive);
+    p.retentionTransition!.mode!=='held-one';
+  const retainedAction=handsFreeAction?
+    retainedActionHands(p,preparedDecision.action):null;
   const retentionMode=switchingSlung?'front-slung':liveOneHand?'held-one':p.retentionTransition?
     p.retentionTransition.mode:p.retentionPreview;
   const retentionWeight=switchingSlung?switchPose.retention:liveOneHand?oneHandWeight:p.retentionTransition?.weight??1;
@@ -1176,7 +1178,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }):null;
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
-    if(retention&&(!liveOneHand||i===1)&&!handsFreeAction&&(!switchingSlung||switchPose.pistol<=.08)){
+    if(retention&&(!liveOneHand||i===1)&&!retainedAction?.[i]&&(!switchingSlung||switchPose.pistol<=.08)){
       const shoulder=shoulderFor(i),requested=i===0?retention.left:retention.right;
       const actualSource=coupled?.arms??coordinatedDynamic?.arms;
       const corridor=elbowCorridor(handling,sign as -1|1,profile);
@@ -1282,7 +1284,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         .applyEuler(fit.rotation).add(fit.origin);
       if(i===0&&reloadHandChest)desired.copy(reloadHandChest);
     }
-    if((retention&&handsFreeAction||p.primaryGrounded&&(treatmentActive||doorActive||equipmentActive))){
+    if(retention&&retainedAction?.[i]){
+      if(treatmentActive)desired=i===0?leftGrip.clone():rightGrip.clone();
+      else if(i===1)desired=leftGrip.clone().add(P(-1,0,3.2));
+      else if(reaching||equipmentActive)desired=leftGrip.clone();
+      // Other actions retain the existing local/world target conversion.
+    }else if(p.primaryGrounded&&(treatmentActive||doorActive||equipmentActive)){
       if(treatmentActive)desired=i===0?leftGrip.clone():rightGrip.clone();
       else if(i===1)desired=leftGrip.clone().add(P(-1,0,3.2));
       else desired=leftGrip.clone();
@@ -1470,9 +1477,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     arm.bend.copy(solved.bendPlane);
     arm.outOfReach=!reachable||!solved.reached||
       (i===0&&reaching&&contactDistance>19.92);
-    if(!releaseLeft&&i===0)r.gripError=Math.max(r.gripError,
+    if(!retention&&!releaseLeft&&i===0)r.gripError=Math.max(r.gripError,
       desired.distanceTo(solved.effector));
-    if(i===1&&!p.surrender)r.gripError=Math.max(r.gripError,
+    if(!retention&&i===1&&!p.surrender)r.gripError=Math.max(r.gripError,
       desired.distanceTo(solved.effector));
     setOperatorArmSegments(scratch,i as 0|1,
       shoulder,solved.joint,solved.effector,scratch.sides[i]);
