@@ -3,7 +3,7 @@ import {beltStyleForEquipment,canonicalBeltStyle} from './operator-belt-profile.
  * Physical protection, carrying capacity, costs and ownership remain in
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
-import {legacyPackStyles,legacyPackDefault,migratePackAppearance} from './operator-backpack-catalog.ts';
+import {packStylesForEquipment,packDefaultForEquipment,migratePackAppearance} from './operator-backpack-catalog.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {readHelmetSetup,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import {readHelmetField,type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
@@ -465,8 +465,8 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
   ['no-rig'],slots.rig==='rig-full'?'field-webbing':
     slots.rig==='rig-light'?'light-rig':'no-rig');
  desired.beltStyle=beltStyleForEquipment(slots.belt,desired.beltStyle);
- choose('packStyle',[...legacyPackStyles(slots.backpack)],legacyPackDefault(slots.backpack));
- if(desired.packStyle==='admin-pack'&&!['plate-jpc','plate-standard'].includes(desired.armorStyle))desired.packStyle='day-pack';
+ choose('packStyle',[...packStylesForEquipment(slots.backpack)],packDefaultForEquipment(slots.backpack));
+ if(desired.packStyle==='admin-pack'&&!['plate-jpc','plate-standard'].includes(desired.armorStyle))desired.packStyle=slots.backpack==='backpack-panel'?'no-pack':'day-pack';
  choose('trousers',['bdu-trousers','acu-trousers','gorka-trousers','jeans','civilian-cargo','track-pants'],
   'bdu-trousers');
  choose('footwear',slots.feet==='feet-none'?['bare-feet']:slots.feet==='feet-light'?['sneakers','field-boots']:['field-boots'],
