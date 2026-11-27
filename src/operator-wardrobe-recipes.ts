@@ -1,3 +1,4 @@
+import {canonicalPackEquipment} from './operator-backpack-catalog.ts';
 /** Curated wardrobe presets built only from active, modeled silhouettes.
  * The obsolete universal palette, procedural prints, unmodeled shirts and
  * commercial/period mismatch variants are intentionally not supported.
@@ -120,6 +121,8 @@ export function applyWardrobeRecipe(selected:WardrobeRecipe):{
  let kit=initialEquipmentLoadout(selected.weapon);
  for(const [slot,id] of Object.entries(selected.gear))
   kit=setEquipmentChoice(kit,slot as LoadoutSlot,id);
+ const packId=selected.styles.packStyle&&canonicalPackEquipment(selected.styles.packStyle);
+ if(packId)kit=setEquipmentChoice(kit,'backpack',packId);
  let wardrobe=initialWardrobe();
  for(const [slot,id] of Object.entries(selected.styles))
   wardrobe=setWardrobeStyle(wardrobe,slot as WardrobeSlot,id);
