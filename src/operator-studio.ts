@@ -912,7 +912,7 @@ function posePreview(){
   appearanceSeed:p.appearanceSeed
  };
  poseOperator(rig,armedPose,0);
- canvas.dataset.authoredPack=rig.visualKit.packPreview.active?.style??'legacy';
+ canvas.dataset.authoredPack=rig.visualKit.packPreview.active?.style??'none';
  canvas.dataset.packMount=rig.visualKit.packPreview.fit?.mode??'none';
  canvas.dataset.packReviewColor=(rig.colors.get(rig.packMaterial)??rig.packMaterial.color).getHexString();
  canvas.dataset.packReview=String(reviewingPacks());
