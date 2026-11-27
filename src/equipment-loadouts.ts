@@ -52,6 +52,9 @@ export function readEquipmentLoadout(raw:unknown,weapon:WeaponId,owner='operator
 export function setEquipmentChoice(loadout:EquipmentLoadout,
  slot:LoadoutSlot,itemId:string):EquipmentLoadout{
  if(!validEquipmentChoice(slot,itemId))return loadout;
+ // A panel cannot be issued without a carrier or left on removed armor.
+ if(slot==='backpack'&&itemId==='backpack-panel'&&loadout.slots.armor!=='armor-carrier')return loadout;
+ if(slot==='armor'&&itemId!=='armor-carrier'&&loadout.slots.backpack==='backpack-panel')return loadout;
  if(loadout.slots[slot]===itemId)return loadout;
  // Never strand a physically issued pistol with no belt for its holster.
  if(slot==='belt'&&itemId==='belt-none'&&loadout.secondary?.weapon)
