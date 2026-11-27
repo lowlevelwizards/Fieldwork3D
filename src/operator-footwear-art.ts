@@ -13,7 +13,7 @@ const STYLES:Record<Exclude<FootwearId,'bare-feet'>,Style>={
  'hiking-shoes':{sole:[[-2.4,bottom],[5.6,bottom],[5.6,-.55],[1.2,-.78],[-2.4,-.6]],upper:[[-2.3,-.6],[5.45,-.55],[5.45,.25],[4.65,.75],[1.45,.75],[-.2,1.25],[-2.25,1.05]],width:5.65,shaft:0,shaftWidth:0},
  sneakers:{sole:[[-2.4,bottom],[5.6,bottom],[5.6,-.82],[-2.4,-.82]],upper:[[-2.3,-.82],[5.5,-.82],[5.5,.5],[1.1,.5],[-.1,.98],[-2.3,.98]],width:5.6,shaft:0,shaftWidth:0}
 };
-type Model={foot:THREE.Group;shaft:THREE.Group;sock:THREE.Mesh|null;upper:THREE.MeshStandardMaterial|null};
+type Model={foot:THREE.Group;shaft:THREE.Group;sock:THREE.Mesh|null;upper:THREE.MeshStandardMaterial|null;build:()=>void};
 export type FootwearVisuals={models:Record<FootwearId,Model>[];materials:THREE.MeshStandardMaterial[];active:FootwearId};
 const material=(color:number,roughness=.9)=>new THREE.MeshStandardMaterial({color,roughness,flatShading:true});
 function prism(parent:THREE.Group,points:readonly Pt[],width:number,mat:THREE.Material,name:string){
@@ -39,7 +39,8 @@ export function createFootwearVisuals(legs:readonly {lower:THREE.Mesh;shoe?:THRE
   for(const id of FOOTWEAR_IDS){
    const foot=group(leg.shoe,'footwear:'+id),shaft=group(leg.lower,'footwear-shaft:'+id);
    const upper=uppers.get(id)??null;
-   let sock:THREE.Mesh|null=null;
+   const model:Model={foot,shaft,sock:null,upper,build:()=>{
+   if(foot.children.length)return;
    if(id==='bare-feet'){
     prism(foot,[[-2.1,bottom],[4.85,bottom],[5.1,-.65],[4.4,.05],[1.2,.25],[-.2,.95],[-2.0,.85]],4.75,skin,'bare-foot');
    }else{
@@ -52,10 +53,12 @@ export function createFootwearVisuals(legs:readonly {lower:THREE.Mesh;shoe?:THRE
      box(shaft,s.shaftWidth,h+.045,s.shaftWidth,.5-h/2+.012,upper!,'shaft');
     }
     const h=(FOOTWEAR[id].height==='mid'?3.48:3.05)/LEG_LOWER_LENGTH;
-    if(FOOTWEAR[id].height!=='high')sock=box(shaft,3.45,h,3.55,.5-h/2,sockMaterial,'sock');
+    if(FOOTWEAR[id].height!=='high')model.sock=box(shaft,3.45,h,3.55,.5-h/2,sockMaterial,'sock');
    }
+   }};
    foot.visible=id==='combat-boots';shaft.visible=false;
-   variants[id]={foot,shaft,sock,upper};
+   variants[id]=model;
+   if(id==='combat-boots')model.build();
   }
   models.push(variants);
  }
@@ -66,6 +69,14 @@ export function updateFootwearVisuals(v:FootwearVisuals,id:string,trousers:strin
  v.active=active;
  for(const variants of v.models)for(const key of FOOTWEAR_IDS){
   const model=variants[key],show=key===active;
+  if(show)model.build();
+  else if(model.foot.children.length){
+   // Release inactive variants instead of retaining every shoe on every NPC.
+   for(const root of [model.foot,model.shaft]){
+    root.traverse(node=>{if(node instanceof THREE.Mesh)node.geometry.dispose();});root.clear();
+   }
+   model.sock=null;
+  }
   model.foot.visible=show;
   model.shaft.visible=show&&key!=='bare-feet'&&(hem!=='unbloused'||trousers==='base-shorts'&&FOOTWEAR[key].height!=='low');
   if(model.sock)model.sock.visible=show&&hem!=='unbloused';
