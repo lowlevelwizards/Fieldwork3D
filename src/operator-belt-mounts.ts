@@ -10,13 +10,13 @@ export const BELT_REGIONS=['front-left','front-right','left-hip','right-hip','re
 export type BeltRegion=typeof BELT_REGIONS[number];
 type RegionSpec={segment:number;offset:number;width:number};
 const REGIONS:Record<BeltRegion,RegionSpec>={
- 'front-left':{segment:0,offset:-3.35,width:3.4},
- 'front-right':{segment:0,offset:3.35,width:3.4},
+ 'front-left':{segment:0,offset:-3.28,width:3.4},
+ 'front-right':{segment:0,offset:3.28,width:3.4},
  'left-hip':{segment:6,offset:-.35,width:6.5},
  'right-hip':{segment:2,offset:.35,width:6.5},
  // All rear regions share the back span and explicitly reserve intervals.
- 'rear-right':{segment:4,offset:-3.35,width:3.4},
- 'rear-left':{segment:4,offset:3.35,width:3.4},
+ 'rear-right':{segment:4,offset:-3.28,width:3.4},
+ 'rear-left':{segment:4,offset:3.28,width:3.4},
  rear:{segment:4,offset:0,width:8.4}
 };
 export type BeltFootprint={width:number;height:number;depth:number;spaces:number};
