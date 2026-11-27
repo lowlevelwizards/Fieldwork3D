@@ -43,6 +43,19 @@ try{
   const png=await page.evaluate(()=>window.fieldworkCapturePack('iso'));
   await writeFile(out+'/'+style+'-alternate-native.png',Buffer.from(png.split(',')[1],'base64'));
  }
+ // Screenshot-reported heavy/legacy armor cases and every compatible pack.
+ for(const armor of ['armor-bare','soft-vest','soft-flak','plate-slick','plate-jpc','plate-standard','plate-heavy','plate-legacy']){
+  await page.locator('#poseArmor').selectOption(armor);
+  await page.locator('#poseRig').selectOption('full-chest');
+  for(const style of ['hydration','day-pack','assault-pack','field-pack','rucksack','medic-pack','comms-pack','civilian-pack',...(['plate-jpc','plate-standard'].includes(armor)?['admin-pack']:[])]){
+   await page.locator('#posePack').selectOption(style);
+   await page.waitForFunction(([a,id])=>document.getElementById('preview')?.dataset.poseFitArmor===a&&document.getElementById('preview')?.dataset.authoredPack===id,[armor,style==='admin-pack'?'assault-panel':style],{timeout:20000});
+   for(const view of ['side','above',...(['plate-heavy','plate-legacy'].includes(armor)?['front','back']:[])]){
+    const png=await page.evaluate(view=>window.fieldworkCapturePack(view),view);
+    await writeFile(out+'/contact-'+armor+'-'+style+'-'+view+'.png',Buffer.from(png.split(',')[1],'base64'));
+   }
+  }
+ }
  await page.locator('#poseArmor').selectOption('armor-bare');
  await page.waitForFunction(()=>document.getElementById('preview')?.dataset.poseFitArmor==='armor-bare');
  if(!(await page.locator('#posePack option[value="admin-pack"]').evaluate(e=>e.disabled)))throw Error('Incompatible panel not disabled');
