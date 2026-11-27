@@ -73,7 +73,7 @@ try{
      JSON.stringify(contrast));
    capture('arsenal-lit-m4-gallery-hero.png',
     await page.locator('.arsenal-hero-media:has(img)').screenshot());
-   await page.locator('.arsenal-hero-open').click();
+   await page.locator('.arsenal-hero-open:not(.arsenal-glock-open)').click();
    const canvas=page.locator('.arsenal-wb-canvas');
    await canvas.waitFor({state:'visible'});
    await page.waitForFunction(()=>
@@ -111,7 +111,7 @@ try{
     throw Error('White dots failed to restore after orbiting');
    await page.locator('.arsenal-wb-back').click();
    await page.locator('.arsenal-card').nth(1).click();
-   await page.locator('.arsenal-hero-open').click();
+   await page.locator('.arsenal-hero-open:not(.arsenal-glock-open)').click();
    await page.waitForFunction(()=>
     document.querySelectorAll('.arsenal-wb-socket:not([hidden])').length>=6);
    if(errors.length)throw Error('Arsenal WebGL error: '+errors.join(' | '));
