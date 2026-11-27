@@ -36,3 +36,10 @@ test('BT3R: larger footprints and higher mounting origins',()=>{
  const s=r.mounts[0].socket,baseline=beltSurface('battle-belt',2,-.25);
  assert.ok(s.y>baseline.y+1);
 });
+
+test('BT3R: long hip attachments reserve a static trouser-pocket standoff',()=>{
+ const q=attachmentMountRequest('pouch','primary-mag-pouch','battle-belt','standard','right-hip');
+ const m=resolveBeltMounts('battle-belt',[q]).mounts[0];
+ assert.ok(m.socket.clearance>0);
+ assert.ok(Math.abs(m.socket.z)+m.socket.clearance+q.footprint.depth*.16>=9.44);
+});

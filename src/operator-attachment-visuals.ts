@@ -14,6 +14,7 @@ export type AttachmentVisual={
  root:THREE.Group;holder:THREE.Group;contents:THREE.Group[];
  contentSockets:THREE.Group[];interactionSocket:THREE.Object3D;
  footprint:ReturnType<typeof attachmentFootprint>;
+ mountBridge:THREE.Mesh;
 };
 type Part=(channel:AttachmentMaterial,x:number,y:number,z:number,w:number,h:number,d:number,name?:string,mark?:GearMark)=>void;
 export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette,
@@ -34,7 +35,13 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
  const b=parts(holder);
  // Real mounting bridge, broad enough to clear the trouser seam, not a
  // floating tab. All other surface details stay on the underlying mesh.
- b('fabric',0,-.16,.10,.68,.32,.20,'mount-bridge');
+ // Dedicated nondecorative mount bridge; its physical depth is adjusted
+ // on a hip contact when clearance requires a short standoff.
+ const bridgeGeo=garmentBoxUV(new THREE.BoxGeometry(W*.68,H*.32,D*.20),
+  W*.68,H*.32,D*.20,palette.fabric);
+ const mountBridge=new THREE.Mesh(bridgeGeo,palette.fabric);
+ mountBridge.name='mount-bridge';mountBridge.position.set(0,-H*.16,D*.10);
+ mountBridge.castShadow=true;mountBridge.receiveShadow=true;root.add(mountBridge);
  const open=(cx:number,cw:number,bottom:number,top:number,mark?:GearMark,channel:AttachmentMaterial='fabric')=>{
   const h=top-bottom,cy=(top+bottom)*.5;
   // Four separate walls plus a floor, meeting at edges, not overlapping
@@ -75,7 +82,7 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
    const bounds=geo.boundingBox!,center=bounds.getCenter(new THREE.Vector3());
    geo.translate(-center.x,-bounds.max.y,-center.z);
    const mag=new THREE.Mesh(geo,palette.contents);mag.name='authored-carried-magazine';
-   mag.position.y=H*.08;mag.castShadow=true;mag.receiveShadow=true;g.add(mag);
+   mag.position.y=-H*.96+H*.14+(bounds.max.y-bounds.min.y)+H*.15;mag.castShadow=true;mag.receiveShadow=true;g.add(mag);
   });break;
  case 'shell-holder':
   b('fabric',0,-.48,.24,.96,.75,.35,'backing');
@@ -151,12 +158,18 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
  const interactionSocket=new THREE.Object3D();interactionSocket.name='interaction-socket';
  interactionSocket.position.set(0,-H*.10,D*.60);root.add(interactionSocket);
  consolidateVisualGroup(holder);
- return {root,holder,contents,contentSockets,interactionSocket,footprint};
+ return {root,holder,contents,contentSockets,interactionSocket,footprint,mountBridge};
 }
 export function setAttachmentSampleCount(visual:AttachmentVisual,count:number){
  const n=Number.isFinite(count)?Math.max(0,Math.floor(count)):0;
  visual.contents.forEach((content,index)=>{content.visible=index<n;});
 }
-export function placeAttachmentVisual(visual:AttachmentVisual,socket:{x:number;y:number;z:number;yaw:number}){
+export function placeAttachmentVisual(visual:AttachmentVisual,socket:{x:number;y:number;z:number;yaw:number;clearance?:number}){
  visual.root.position.set(socket.x,socket.y,socket.z);visual.root.rotation.y=socket.yaw;
+ const shift=Math.max(0,socket.clearance??0),baseDepth=visual.footprint.depth*.20;
+ const delta=shift-visual.holder.position.z;
+ visual.holder.position.z=shift;
+ for(const node of [...visual.contentSockets,visual.interactionSocket])node.position.z+=delta;
+ visual.mountBridge.scale.z=(baseDepth+shift)/baseDepth;
+ visual.mountBridge.position.z=(baseDepth+shift)/2;
 }

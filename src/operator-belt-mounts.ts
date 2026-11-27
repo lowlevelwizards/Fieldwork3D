@@ -1,3 +1,4 @@
+import {LEG_HIP_SIDE} from './breach-leg-geometry.ts';
 /** BT2: deterministic waist reservation. Pure presentation/fit contract;
  * no inventory, capacity grant, reload or gameplay mutation.
  * +X front, +Z right, all units pelvis-local. Named regions avoid the buckle
@@ -23,7 +24,7 @@ export type BeltFootprint={width:number;height:number;depth:number;spaces:number
 export type BeltMountRequest={id:string;footprint:BeltFootprint;
  preferred?:BeltRegion;allowed?:readonly BeltRegion[]};
 export type BeltMount={id:string;region:BeltRegion;segment:number;
- interval:readonly [number,number];socket:NonNullable<ReturnType<typeof beltSurface>>;
+ interval:readonly [number,number];socket:NonNullable<ReturnType<typeof beltSurface>>&{clearance?:number};
  footprint:BeltFootprint};
 export type BeltMountRejection={id:string;reason:'no-belt'|'duplicate'|'invalid-footprint'|'capacity'|'no-fit'};
 export function resolveBeltMounts(style:BeltStyle,requests:readonly BeltMountRequest[]){
@@ -55,7 +56,16 @@ export function resolveBeltMounts(style:BeltStyle,requests:readonly BeltMountReq
    if(interval[0]<-seg.length/2+.35||interval[1]>seg.length/2-.35)continue;
    if(mounts.some(m=>m.segment===spec.segment&&interval[0]<m.interval[1]+.18&&interval[1]>m.interval[0]-.18))continue;
    const contact=beltSurface(style,spec.segment,spec.offset);
-   const socket=contact?{...contact,y:contact.y+Math.min(1.5,BELT_PROFILES[style].height*.45+.35)}:null;
+   // Standing conservative trouser envelope: the hip joint is 4.8 units
+   // outboard, the broad classic field thigh roughly 3.45 units, its
+   // pocket approximately 1.19 units. Allow a small margin on long hip
+   // attachments, instead of sinking their shell into the cargo pocket.
+   const side=region==='left-hip'||region==='right-hip';
+   const pocketEnvelope=LEG_HIP_SIDE+3.45+1.19;
+   const clearance=side&&contact&&f.height>3?
+    Math.max(0,pocketEnvelope+.12-Math.abs(contact.z)-f.depth*.16):0;
+   const socket=contact?{...contact,y:contact.y+Math.min(1.5,BELT_PROFILES[style].height*.45+.35),
+    clearance}:null;
    if(!socket)continue;
    chosen={id,region,segment:spec.segment,interval,socket,footprint:{...f}};break;
   }

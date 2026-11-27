@@ -10,3 +10,5 @@ Reviewed deployed build 54831c0 from user screenshots. Main issues: coplanar edg
 - Regression tests for ring triangle count/winding, texture density, and larger/high mounting contracts.
 
 No live inventory/animation changes; BT4–BT7 remain future integration. Compare in Operator Lab at normal gameplay zoom and across moving BDU/ACU/Gorka fits before approval.
+
+Standing side-mounted holders now reserve a conservative BDU cargo-pocket envelope (joint + thigh + pocket) and retain physical belt contact via a broad adjustable mounting bridge. Dynamic crouch/run and different cuts still require actual render review. The bridge is a real volume, not decorative micro-detail.
