@@ -2,6 +2,7 @@
  * Proposals capture pre-movement positions. A single arbiter decides hard
  * actor/civilian collisions; rejected motion is restored deterministically.
  */
+import {transportProfile} from './breach-transport-navigation.ts';
 import {hasTransportLink} from './breach-transport-custody.ts';
 import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
 import {length} from './breach-plan.ts';
@@ -64,9 +65,11 @@ export function advanceSimulationMotion(s:Session,h:number,
     for(const o of s.operators)if(o!==carrier&&o!==civil&&o.health>0)
       others.push(o.p);
     for(const c of s.civilians)if(c!==civil)others.push(c.p);
+    const mode=civil.transportMode??carrier.plan[0]?.transportMode??'drag';
+    const profile=transportProfile(mode);
     const next=proposedCivilianTransportStep(bodyFrom,from,carrier.p,
-      carrier.heading,civil.transportMode??carrier.plan[0]?.transportMode??'drag',
-      (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,geometry()),others,
+      carrier.heading,mode,
+      (from,to)=>sweptBodyClear(from,to,s.doors,profile.bodyRadius,geometry()),others,
       carrier.transportContact?.kind==='release'?0:h*36);
     if(!next){
       carrier.p=clone(from);carrier.velocity=0;carrier.nav=[];

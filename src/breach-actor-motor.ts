@@ -3,6 +3,7 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
  * Called only from breach-game's fixed 60 Hz session step. It owns no
  * global clock, doesn't change authored orders, and never touches rendering.
  */
+import {linkedTransportPatient,transportProfile} from './breach-transport-navigation.ts';
 import {OPERATOR_RADIUS,pointToSegment,doorLeafSegment,type Pt} from './breach-core.ts';
 import {sweptBodyClear,bodyClear,sweptProfileClear,squeezeFacing,
  twoSidedSqueezePressure} from './breach-navigation.ts';
@@ -133,6 +134,8 @@ export function advanceActorMotor(
   // Observe net fixed-clock body stillness, not transient chosen routes.
   observeGeneratedEntryPhysicalStillness(a,s.seconds);
  }
+ const patient=linkedTransportPatient(s,a);
+ const loadedProfile=patient?transportProfile(patient.transportMode??'drag'):null;
  const traversalStart=profile?beginMotorCpuMeasurement():0;
  // Do not interrupt a continuous physical traversal with route search.
  if(advanceMotorTraversal(a,s,dt,hooks)){
@@ -143,7 +146,7 @@ export function advanceActorMotor(
   if(profile)profile('motor-traversal',finishMotorCpuMeasurement(traversalStart));
   return true;
  }
- if(prepareMotorTraversal(a,p,dt,s,hooks)){
+ if(!loadedProfile&&prepareMotorTraversal(a,p,dt,s,hooks)){
   if(profile)profile('motor-traversal',finishMotorCpuMeasurement(traversalStart));
   return true;
  }
@@ -167,7 +170,7 @@ export function advanceActorMotor(
  // Only transient grid nodes are skipped, never the authored MOVE, a
  // precise physical detour, or an active action/doorway choreography.
  // Every proposed chord needs the SAME full-radius world-truth sweep.
- const canSmoothGrid=a.nav.length>=2&&
+ const canSmoothGrid=!loadedProfile&&a.nav.length>=2&&
    a.side==='blue'&&a.plan[0]?.kind==='move'&&
    !ownsD326FineMotorRoute(a)&&
    !a.plan[0]?.entryDoorId&&a.blockedTime<.2&&
@@ -188,7 +191,7 @@ export function advanceActorMotor(
  // with feet that barely moved. Ordinary authored routes retain 3 units.
  const correcting=!!a.fireRetreatTarget&&
    d(p,a.fireRetreatTarget)<.5;
- if(gap<(correcting?.9:localDetourWaypointTolerance(a,next))){
+ if(gap<(correcting?.9:loadedProfile?Math.min(loadedProfile.waypointTolerance,localDetourWaypointTolerance(a,next)):localDetourWaypointTolerance(a,next))){
   completePreciseLocalDetour(a);
   a.nav.shift();
   if(profile)profile('motor-stride',finishMotorCpuMeasurement(strideStart));
