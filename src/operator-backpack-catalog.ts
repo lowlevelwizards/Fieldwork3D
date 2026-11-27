@@ -80,3 +80,10 @@ export function packDefaultForEquipment(id:string):string{
  if(Object.hasOwn(LEGACY_PACK_STYLES,id))return legacyPackDefault(id);
  return packStylesForEquipment(id)[0];
 }
+
+/** Exact canonical appearance for newly issued equipment. Legacy day/field
+ * looks are preserved on load, never treated as additional capacity. */
+export function issuedPackStyle(id:string):string{
+ const style=PACK_STYLES.find(s=>PACK_PROFILES[s].id===id);
+ return style==='assault-panel'?'admin-pack':style??'no-pack';
+}
