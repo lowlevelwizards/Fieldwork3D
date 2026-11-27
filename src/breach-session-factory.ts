@@ -174,7 +174,8 @@ export function assembleSession(index=0,siteSeed?:number,
   // geometry certification. Never consumes the encounter/worldgen RNG.
   const baseDoorRecords=initialDoors(site??null).map((d,i)=>({
     ...d,locked:d.locked??!!(site&&i>2&&i%7===0&&
-      d.kind!=='shutter'&&d.id!=='FRONT')
+      d.kind!=='shutter'&&d.id!=='FRONT'&&d.pairedWith!=='FRONT'&&
+      d.operatingMode!=='automatic'&&d.operatingMode!=='coupled')
   }));
   const proceduralDoors=!!site&&prebuiltSite===undefined&&!site.training;
   const initialDoorRecords=proceduralDoors?
