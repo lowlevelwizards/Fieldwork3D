@@ -24,7 +24,7 @@ import {readWeaponConfiguration,changeWeaponPlatform,
  type WeaponConfiguration,type WeaponAttachmentSlot}
  from './equipment-weapon-assemblies.ts';
 import {familyPreset,matchingFamilyPreset,type FamilyPartSlot} from './equipment-weapon-families.ts';
-import {issueWeaponPreset,starterWeaponPreset,resolveCatalogConfiguration} from './breach-weapon-issue.ts';
+import {issueStarterWeapon,starterWeaponPreset,resolveCatalogConfiguration} from './breach-weapon-issue.ts';
 import {initialEquipmentLoadout,readEquipmentLoadout,syncPrimaryWeapon,setEquipmentChoice,
  type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
 export type RosterMember={
@@ -39,7 +39,7 @@ export type RosterState={version:1;members:RosterMember[]};
 const names=['rook','moss','ash','vale'] as const;
 const weapons:WeaponId[]=['carbine','smg','rifle','shotgun'];
 const defaultMember=(id:string,i:number):RosterMember=>{
- const issue=issueWeaponPreset(starterWeaponPreset(id));
+ const issue=issueStarterWeapon(id);
  const ammo=freshMagazineIssue(id,issue.weapon,issue.weaponConfiguration);
  return {
   id,callsign:id.toUpperCase(),missions:0,successful:0,

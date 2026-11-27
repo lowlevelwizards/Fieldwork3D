@@ -190,6 +190,7 @@ export type TeamActor=Operator & {
   secondaryReload:import('./secondary-timed-reload.ts').SecondaryTimedReload|null;
   retentionTransition?:import('./breach-weapon-retention-transition.ts').RetentionTransitionState;
   groundedPrimaryId?:number|null;
+  retentionHolstering?:boolean;
   primaryPlacement?:{order:number;kind:'place'|'placed'|'retrieve';elapsed:number};
   medical:MedicalCondition;medicalSupplies:FieldMedicalSupplies;
   /** D15.7: real downing / irreversible fatality evidence. */
@@ -1509,6 +1510,7 @@ export function redoPlan(s:Session,id:string){
 /** The weapon, hand and world share one magazine identity.
  * Ammo moves only at timed detach/insert events, never on animation startup. */
 export function beginReload(s:Session,a:TeamActor):boolean{
+  if(a.groundedPrimaryId!=null||a.retentionHolstering||a.retentionTransition?.weight)return false;
   const w=WEAPONS[a.weapon];
   const capacity=liveMagazineCapacity(a.weapon,a.weaponConfiguration);
   if(a.health<=0||a.reload>0||a.reserve<=0||a.magazine>=capacity)return false;

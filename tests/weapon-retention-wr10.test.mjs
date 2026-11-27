@@ -10,3 +10,25 @@ test('WR10 exact world identity distinguishes temporary placement from evidence'
  assert.equal(hasGroundedPrimary(a),true);
  assert.equal(ownGroundedPrimary({...s,droppedFirearms:[{...item,status:'loose',ownerId:'b'}]},a),undefined);
 });
+
+import {newSession,team} from '../src/breach-game.ts';
+import {setWeaponAttachment} from '../src/equipment-weapon-assemblies.ts';
+import {prepareGroundedPrimary,retrieveGroundedPrimary} from '../src/breach-grounded-primary.ts';
+import {activateSite} from '../src/breach-core.ts';
+test('WR10 new friendly starter is slung; explicit unslung world placement is unique and reversible',()=>{
+ const s=newSession(),a=team(s)[0];
+ try{
+  assert.equal(a.weaponConfiguration.slots.sling,'sling-two-point');
+  a.weaponConfiguration=setWeaponAttachment(a.weaponConfiguration,'sling','sling-none');
+  const ammo=a.magazine;
+  for(let i=0;i<60&&!hasGroundedPrimary(a);i++)prepareGroundedPrimary(s,a,1/60);
+  assert.ok(hasGroundedPrimary(a));
+  const item=ownGroundedPrimary(s,a);
+  assert.ok(item);assert.equal(item.loadedRounds,ammo);
+  prepareGroundedPrimary(s,a,1/60);
+  assert.equal(s.droppedFirearms.filter(w=>w.temporaryPlacement&&w.ownerId===a.id).length,1);
+  assert.equal(retrieveGroundedPrimary(s,a),true);
+  assert.equal(item.status,'retrieved');assert.equal(hasGroundedPrimary(a),false);
+  assert.equal(a.magazine,ammo);
+ }finally{activateSite(null);}
+});

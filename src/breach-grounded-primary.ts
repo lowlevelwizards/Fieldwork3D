@@ -30,7 +30,7 @@ export function retrieveGroundedPrimary(s:Session,a:TeamActor):boolean{
  return true;
 }
 export function prepareGroundedPrimary(s:Session,a:TeamActor,dt:number):boolean{
- if(hasGroundedPrimary(a))return !!ownGroundedPrimary(s,a);
+ if(hasGroundedPrimary(a))return true; // Primary is already off-body, even if secured by someone else.
  if(!usesUnslungPlacement(s,a))return true;
  if(a.reload>0||a.secondaryReload)return false;
  const order=a.plan[0]?.id??-1;

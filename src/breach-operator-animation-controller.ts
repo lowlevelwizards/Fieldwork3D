@@ -1252,7 +1252,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       else if(i===1)desired=leftGrip.clone().add(P(-1,0,3.2));
       else desired=leftGrip.clone();
     }
-    if(p.primaryGrounded&&!treatmentActive&&!equipmentActive&&!doorActive&&!throwActive){
+    if(p.primaryGrounded&&!p.down&&!p.surrender&&!treatmentActive&&!equipmentActive&&!doorActive&&!throwActive){
       desired=P(3,-8.6,sign*9);
     }
     if(p.unarmedPreview&&p.civilianGesture){

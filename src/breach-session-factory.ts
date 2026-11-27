@@ -15,7 +15,7 @@ import {createObjectiveKnowledge} from './breach-objective-intel.ts';
 import {threatGroupFacts} from './briefing/threat-dossier.ts';
 import {attachIntelEvidence,generateOptionalIntel,generatePrimaryIntel} from './breach-optional-intel.ts';
 import {withActions} from './breach-actor-initial-state.ts';
-import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
+import {issueStarterWeapon} from './breach-weapon-issue.ts';
 import {freshMagazineIssue} from './arsenal/live-magazine-capacity.ts';
 import {enemyKitForEncounter} from './breach-enemy-loadouts.ts';
 import {encounterDoctrine,doctrinePersonality,doctrineInitialMorale} from './breach-ai-doctrine.ts';
@@ -65,7 +65,7 @@ export function assembleSession(index=0,siteSeed?:number,
     }
     const friendly=operators.filter(a=>a.side==='blue');
     friendly.forEach((a,i)=>{
-      const issue=issueWeaponPreset(starterWeaponPreset(a.id));
+      const issue=issueStarterWeapon(a.id);
        a.weapon=issue.weapon;a.weaponConfiguration=issue.weaponConfiguration;
       const issueRounds=freshMagazineIssue(a.id,a.weapon,a.weaponConfiguration);
       a.magazine=issueRounds.magazine;a.reserve=issueRounds.reserve;

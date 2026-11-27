@@ -311,6 +311,8 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       a.velocity=0;
       if(!rotate(a,Math.atan2(weapon.p.y-a.p.y,weapon.p.x-a.p.x),dt,s))
         return true;
+      if(weapon.temporaryPlacement&&weapon.ownerId===a.id&&a.groundedPrimaryId===weapon.id&&
+         (a.secondarySwitch?.fraction??0)>0&&!prepareHandsFree(a,dt,s))return true;
       if(!continueContact(a,dt,.75))return true;
       if(weapon.temporaryPlacement&&weapon.ownerId===a.id&&a.groundedPrimaryId===weapon.id){
         if(!retrieveGroundedPrimary(s,a)){failCurrentOrder(s,a,n,'PRIMARY OUT OF REACH');return true;}

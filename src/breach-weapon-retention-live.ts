@@ -6,6 +6,7 @@ import {initialRetentionTransition,requestRetentionTransition,advanceRetentionTr
  retentionTransitionSettled} from './breach-weapon-retention-transition.ts';
 import {requestSecondarySwitch,advanceSecondarySwitch,initialSecondarySwitch} from './secondary-switching.ts';
 export function beginRetentionTick(a:TeamActor,dt:number){
+ a.retentionHolstering=false;
  if(!a.retentionTransition)return;
  const sling=readSlingKind(a.weaponConfiguration?.slots.sling);
  const next=advanceRetentionTransition(a.retentionTransition,dt,sling);
@@ -18,10 +19,12 @@ export function prepareHandsFree(a:TeamActor,dt:number,s?:Session):boolean{
  const sling=readSlingKind(a.weaponConfiguration?.slots.sling);
  if(sling==='none'){
   if(!s)return true;
+  if(a.reload>0||a.secondaryReload)return false;
   const sw=a.secondarySwitch??initialSecondarySwitch();
   if(sw.fraction>0){
    const request=requestSecondarySwitch(sw,'primary',a.equipment?.secondary);
-   a.secondarySwitch=advanceSecondarySwitch(request.state,dt,a.equipment?.secondary);
+   a.retentionHolstering=true;
+  a.secondarySwitch=advanceSecondarySwitch(request.state,dt,a.equipment?.secondary);
    a.velocity=0;a.aim=0;return false;
   }
   return prepareGroundedPrimary(s,a,dt);
@@ -33,6 +36,7 @@ export function prepareHandsFree(a:TeamActor,dt:number,s?:Session):boolean{
  const sw=a.secondarySwitch??initialSecondarySwitch();
  if(sw.fraction>0){
   const request=requestSecondarySwitch(sw,'primary',a.equipment?.secondary);
+  a.retentionHolstering=true;
   a.secondarySwitch=advanceSecondarySwitch(request.state,dt,a.equipment?.secondary);
   return false;
  }

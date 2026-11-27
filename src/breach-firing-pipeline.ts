@@ -487,6 +487,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   if(a.secondaryReload&&(a.plan[0]?.kind!=='reload'||
       a.plan[0].id!==a.secondaryReload.orderId))a.secondaryReload=null;
+  if(a.retentionHolstering){a.aim=0;return;}
   if(a.primaryPlacement?.kind==='place'&&a.reload<=0){a.aim=0;return;}
   if(retentionBusy(a)&&a.reload<=0){a.aim=0;a.aimSideTarget=0;return;}
   // An undone/canceled order does not leave the operator permanently
