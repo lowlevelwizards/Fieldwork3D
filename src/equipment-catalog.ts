@@ -50,11 +50,11 @@ export const EQUIPMENT_CATALOG:Readonly<Record<string,EquipmentDefinition>>={
  'belt-none':{id:'belt-none',name:'No Belt',category:'load-bearing',slot:'belt',massKg:0,bulk:0,capacity:0,description:'No belt or carried equipment.'},
  'belt-light':{id:'belt-light',name:'Leather Belt',category:'load-bearing',slot:'belt',
   massKg:.15,bulk:0,capacity:1,visual:'belt',description:'Simple clothing belt with one small equipment space.'},
- 'belt-standard':{id:'belt-standard',name:'Utility Belt',category:'load-bearing',slot:'belt',
+ 'belt-standard':{id:'belt-standard',name:'Duty Belt',category:'load-bearing',slot:'belt',
   massKg:.5,bulk:1,capacity:4,visual:'belt',description:'Rigid general-purpose service belt.'},
  'belt-battle':{id:'belt-battle',name:'Battle Belt',category:'load-bearing',slot:'belt',
   massKg:.55,bulk:2,capacity:5,visual:'belt',description:'Structured modular equipment belt.'},
- 'belt-padded':{id:'belt-padded',name:'Padded War Belt',category:'load-bearing',slot:'belt',
+ 'belt-padded':{id:'belt-padded',name:'Padded Battle Belt',category:'load-bearing',slot:'belt',
   massKg:.9,bulk:3,capacity:6,visual:'belt',description:'Broad padded load-bearing platform.'},
  ...Object.fromEntries(Object.values(PACK_PROFILES).map(p=>[p.id,{
   id:p.id,name:p.label,category:'load-bearing',slot:'backpack',
