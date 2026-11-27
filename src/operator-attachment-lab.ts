@@ -1,7 +1,7 @@
 /** BT3.7: isolated artwork audition, never serialized to a loadout. */
 import * as THREE from 'three';
 import type {OperatorRig} from './breach-operator-rig.ts';
-import {ATTACHMENTS,ATTACHMENT_IDS,attachmentContentSlots,attachmentMountRequest,validAttachmentId,
+import {ATTACHMENTS,ATTACHMENT_IDS,attachmentMountRequest,validAttachmentId,
  type AttachmentId,type AttachmentVariant} from './operator-attachment-catalog.ts';
 import {resolveBeltMounts,type BeltRegion} from './operator-belt-mounts.ts';
 import type {BeltStyle} from './operator-belt-profile.ts';

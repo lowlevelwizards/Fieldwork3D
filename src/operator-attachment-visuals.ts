@@ -4,7 +4,7 @@
  * Geometry/material lifetime belongs to the owning operator or preview.
  */
 import * as THREE from 'three';
-import {ATTACHMENTS,attachmentFootprint,attachmentVariant,attachmentContentSlots,
+import {attachmentFootprint,attachmentVariant,attachmentContentSlots,
  type AttachmentId,type AttachmentVariant,type AttachmentMaterial} from './operator-attachment-catalog.ts';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
