@@ -365,7 +365,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     channel==='gear'?(clothing.rigStyle==='no-rig'||
      validRigSolid(clothing.rigStyle,storedSolid)):
     channel==='armor'?validArmorSolid(clothing.armorStyle,storedSolid):
-    channel==='top'?solidChoicesFor('top',clothing).includes(storedSolid):true
+    channel==='top'?solidChoicesFor('top',clothing).includes(storedSolid):
+    channel==='pack'?solidChoicesFor('pack',clothing).includes(storedSolid):true
    )?storedSolid:null;
    // A model's iconic textile applies only while the specific channel
    // has no *valid* manual color or print. Stale, incompatible saved
@@ -401,7 +402,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
      const id=channel==='gear'&&clothing.rigStyle!=='no-rig'?
       signature.solid:
       channel==='armor'&&clothing.armorStyle!=='armor-bare'?
-       armorDefault.solid:automaticGear[channel];
+       armorDefault.solid:channel==='pack'&&clothing.packStyle==='civilian-pack'?'navy':automaticGear[channel];
      r.colors.set(material,new THREE.Color(garmentSolidHex(id)));
     }
    }
