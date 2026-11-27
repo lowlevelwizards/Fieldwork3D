@@ -1010,7 +1010,6 @@ function ensureGaitCompare(){
   if(!gaitCompareRig){
     gaitCompareRig=createOperatorRig(operator.value,
       operator.value==='hostile'?'red':'blue');
-     gaitCompareRig.root.userData.fieldworkAuthoredPackPreview=true;
     scene.add(gaitCompareRig.root);
   }
 }
@@ -1109,7 +1108,6 @@ function beginTwoLookComparison(){
  for(let i=0;i<2;i++){
   const body=createOperatorRig(operator.value,
    operator.value==='hostile'?'red':'blue');
-   body.root.userData.fieldworkAuthoredPackPreview=true;
   variantBodies.push(body);scene.add(body.root);
  }
  fit();
@@ -1234,7 +1232,6 @@ kitCompareButton.addEventListener('click',()=>{
  for(let i=0;i<3;i++){
   const body=createOperatorRig(operator.value,
    operator.value==='hostile'?'red':'blue');
-   body.root.userData.fieldworkAuthoredPackPreview=true;
   scene.add(body.root);kitBodies.push(body);
  }
  kitCompareButton.setAttribute('aria-pressed','true');fit();
@@ -1254,7 +1251,6 @@ function ensureComparison(){
   for(const [index,info] of COMPARE_POSES.entries()){
     const body=createOperatorRig(operator.value,
       operator.value==='hostile'?'red':'blue');
-   body.root.userData.fieldworkAuthoredPackPreview=true;
     const column=index%2,row=Math.floor(index/2);
     body.root.position.set((column-.5)*77,0,(row-1)*70);
     scene.add(body.root);comparisonRigs.push(body);
@@ -1395,7 +1391,6 @@ const build=()=>{
   if(rig){clearAttachmentPreview(rig);clearLabBerettaPreview(rig);releaseOperatorPreviewRig(scene,rig);}
   endKitComparison();
   rig=createOperatorRig(operator.value,operator.value==='hostile'?'red':'blue');
-   rig.root.userData.fieldworkAuthoredPackPreview=true;
   scene.add(rig.root);
 };
 operator.addEventListener('change',build);
