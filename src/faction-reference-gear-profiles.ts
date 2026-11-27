@@ -145,7 +145,7 @@ const REFERENCE_WEAR:Readonly<Record<string,ReferenceWear>>={
  'pla-xingkong-2021':['combat-boots','black','plain-belt','black'],
  'swiss-alpenflage-1980':['leather-boots','black','plain-belt','black'],
  'us-desert-1991':['combat-boots','sand','no-belt'],
- 'us-army-ocp-2019':['combat-boots','coyote','plain-belt','brown'],
+ 'us-army-ocp-2019':['combat-boots','coyote','plain-belt','tan'],
  'us-army-ucp-2010':['combat-boots','sand','plain-belt','tan'],
  'us-army-m81-1990':['combat-boots','black','no-belt'],
  'us-army-dcu-2003':['combat-boots','sand','plain-belt','tan'],
