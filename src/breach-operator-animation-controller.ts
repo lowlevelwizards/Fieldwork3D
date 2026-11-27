@@ -22,7 +22,7 @@ import * as THREE from 'three';
 import {readSlingKind} from './breach-weapon-retention.ts';
 import {sampleSecondaryRetention} from './breach-secondary-retention.ts';
 import {oneHandRetentionWeight} from './breach-weapon-retention-actions.ts';
-import {sampleTransportContact} from './breach-transport-contact.ts';
+import {sampleTransportContact,transportContactHands} from './breach-transport-contact.ts';
 import {sampleRetentionTransition} from './breach-weapon-retention-transition.ts';
 import {solveOperatorDirectSlingPose} from './breach-operator-sling-pose.ts';
 import {beginOperatorEquipmentPose,solveOperatorDroppedWeapon,
@@ -1265,11 +1265,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       desired=P(3,-8.6,sign*9);
     }
     if(transportContact&&p.transportContact&&!p.down&&!p.surrender){
-      const target=p.transportContact.point;
+      const target=transportContactHands(p.transportContact,p.heading)[i as 0|1];
       const local=P(target.x-p.x,5-frame.chest.position.y,target.y-p.z);
       local.applyAxisAngle(P(0,1,0),-r.legacyYaw);
       local.applyAxisAngle(P(0,1,0),-frame.chest.rotation.y);
-      desired.copy(P(3,-8.6,sign*9)).lerp(local.add(P(0,0,sign*3.5)),transportContact.reach);
+      desired.copy(P(3,-8.6,sign*9)).lerp(local,transportContact.reach);
     }
     if(p.unarmedPreview&&p.civilianGesture){
       const gesture=p.civilianGesture;

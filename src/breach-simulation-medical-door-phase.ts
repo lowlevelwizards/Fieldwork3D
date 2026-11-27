@@ -51,6 +51,7 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
       else releaseTransport(casualty,s.operators.find(o=>o.id===casualty.carryingId));
     }
     if(casualty.health<=0){
+      casualty.transportContact=undefined;
       releaseDownedSuspectWeapons(s,casualty);
       if(advanceDownedVitals(casualty,h,s.seconds)){
         // A living extraction is no longer possible. Release reciprocal

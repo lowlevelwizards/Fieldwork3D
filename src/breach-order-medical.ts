@@ -94,6 +94,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
     const mode=n.transportMode??'drag';
     if(a.carryingId!==patient.id){
       if(!near(a.p,patient.p,24)){
+        a.actionTimer=0;a.transportContact=undefined;
         const theta=angle(patient.p,a.p);
         const goal={x:patient.p.x+Math.cos(theta)*19,
           y:patient.p.y+Math.sin(theta)*19};
@@ -105,6 +106,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
          ((n.transportPickup||civil||friendly?.side==='red')&&
           !sweptBodyClear(a.p,patient.p,s.doors,5.5,
              sessionWorldGeometry(s)))){
+        a.transportContact=undefined;
         failCurrentOrder(s,a,n,'CASUALTY NOT IN PHYSICAL REACH');return true;
       }
       a.velocity=0;

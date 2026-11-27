@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {makeTransportContact,sampleTransportContact,transportContactDuration} from '../src/breach-transport-contact.ts';
+import {makeTransportContact,sampleTransportContact,transportContactDuration,transportContactHands} from '../src/breach-transport-contact.ts';
 import {beginRetentionTick} from '../src/breach-weapon-retention-live.ts';
 test('CT2 pickup and release contact envelope is recorded and bounded',()=>{
  const body={id:'b',p:{x:12,y:4},heading:1};
@@ -20,4 +20,12 @@ test('CT2 slung primary stays retained throughout custody and returns after rele
  a.carryingId=null;
  for(let i=0;i<120;i++)beginRetentionTick(a,1/60);
  assert.equal(a.retentionTransition,undefined);
+});
+
+test('CT2 visual contact candidates rotate with the recorded casualty and keep their ordering',()=>{
+ const c=makeTransportContact(1,{id:'b',p:{x:12,y:4},heading:0},'drag','pickup',.5);
+ const [l,r]=transportContactHands(c,0);
+ assert.equal(l.x,r.x);assert.ok(l.y<r.y);
+ const [reverseL,reverseR]=transportContactHands(c,Math.PI);
+ assert.deepEqual(reverseL,r);assert.deepEqual(reverseR,l);
 });

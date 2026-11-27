@@ -22,3 +22,16 @@ export function sampleTransportContact(c:TransportContact){
   reach:ease(t/.45)*(1-ease((t-.88)/.12)),
   contact:t>=.45&&t<.88};
 }
+
+/** Body-oriented visual contact candidates. The pair solver later replaces
+ * these coarse shoulder-side samples with exact model joint anchors.
+ * Ordering is relative to the carrier so the arms do not cross. */
+export function transportContactHands(c:TransportContact,carrierHeading:number){
+ const forward={x:Math.cos(c.heading),y:Math.sin(c.heading)};
+ const lateral={x:-forward.y,y:forward.x};
+ const carrierSide={x:-Math.sin(carrierHeading),y:Math.cos(carrierHeading)};
+ const flip=lateral.x*carrierSide.x+lateral.y*carrierSide.y>=0?1:-1;
+ const at=(sign:number):Pt=>({x:c.point.x+forward.x*2+lateral.x*3.5*sign*flip,
+  y:c.point.y+forward.y*2+lateral.y*3.5*sign*flip});
+ return [at(-1),at(1)] as const;
+}
