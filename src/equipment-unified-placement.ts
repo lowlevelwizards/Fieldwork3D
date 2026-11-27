@@ -10,7 +10,7 @@ export type CarryItem={id:string;kind:CarryKind;dimensions:Dimensions;
  units?:number;holder?:AttachmentId;variant?:AttachmentVariant;optional?:boolean};
 export type CarryInput={belt:BeltStyle;holsterSide?:'left'|'right';historicalWaist?:boolean;
  storage:readonly StorageSlot[];items:readonly CarryItem[]};
-export type Placement={itemIds:string[];carrier:Carrier;slotIds:string[];holder?:AttachmentId;
+export type Placement={itemIds:string[];contentIds?:readonly (string|null)[];carrier:Carrier;slotIds:string[];holder?:AttachmentId;
  variant?:AttachmentVariant;waist?:WaistPlacement;mount?:Contact;concealed:boolean};
 export type PlacementManifest={placements:Placement[];unplaced:{id:string;reason:'no-fit'|'duplicate'|'invalid-item'}[];
  valid:boolean;searchTruncated:boolean};
@@ -174,7 +174,7 @@ export function resolveUnifiedCarry(input:CarryInput,maxNodes=12000):PlacementMa
  }
  bestScore=score;bestMask=mask;
  if(count(best)<jobs.length)visit(0,0,'');
- const placements=best.map(({order:_,...p})=>p);
+ const placements=best.map(({order:_,...p})=>({...p,contentIds:[...p.itemIds]}));
  const placed=new Set(placements.flatMap(p=>p.itemIds));
  const unplaced=[...invalid,...jobs.filter(j=>!placed.has(j.item.id)).map(j=>({id:j.item.id,reason:'no-fit' as const}))].sort((a,b)=>cmp(a.id,b.id));
  return {placements,unplaced,valid:!invalid.length&&!jobs.some(j=>!j.item.optional&&!placed.has(j.item.id)),searchTruncated:truncated};
@@ -182,5 +182,5 @@ export function resolveUnifiedCarry(input:CarryInput,maxNodes=12000):PlacementMa
 /** Deployment keeps holders stable; consumption clears only the item cell.
  * Empty reservations remain occupied until an explicit refit. */
 export function removeManifestContent(manifest:PlacementManifest,id:string):PlacementManifest{
- return {...manifest,placements:manifest.placements.map(p=>p.itemIds.includes(id)?{...p,itemIds:p.itemIds.filter(i=>i!==id)}:p)};
+ return {...manifest,placements:manifest.placements.map(p=>p.itemIds.includes(id)?{...p,itemIds:p.itemIds.filter(i=>i!==id),contentIds:(p.contentIds??p.itemIds).map(i=>i===id?null:i)}:p)};
 }

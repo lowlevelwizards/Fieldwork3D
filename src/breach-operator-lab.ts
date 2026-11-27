@@ -1,3 +1,5 @@
+import {quoteUnifiedLoadout} from './equipment-unified-loadout.ts';
+import {registeredMagazinePouches} from './operator-magazine-pouch-fit.ts';
 import {secondaryMagazineArtwork} from './secondary-holster-visual.ts';
 import {attachmentFixture,clearAttachmentPreview,updateAttachmentPreview,populateAttachmentPreviewOptions} from './operator-attachment-lab.ts';
 import {ATTACHMENTS,validAttachmentId,type AttachmentVariant} from './operator-attachment-catalog.ts';
@@ -1994,6 +1996,9 @@ const attachmentPreviewSelect=choose<HTMLSelectElement>('attachmentPreview');
 const attachmentVariantSelect=choose<HTMLSelectElement>('attachmentPreviewVariant');
 const attachmentContentsSelect=choose<HTMLSelectElement>('attachmentPreviewContents');
 const attachmentPreviewStatus=choose<HTMLOutputElement>('attachmentPreviewStatus');
+const carryAudit=choose<HTMLDetailsElement>('unifiedCarryAudit');
+const carryAuditOutput=choose<HTMLOutputElement>('unifiedCarryAuditOutput');
+let carryAuditKey='';
 populateAttachmentPreviewOptions(attachmentPreviewSelect);
 attachmentPreviewSelect.addEventListener('change',()=>{
  const id=attachmentPreviewSelect.value;
@@ -2524,6 +2529,31 @@ function draw(){
       label.style.top=((1-p.y)*window.innerHeight/2)+'px';
       label.hidden=p.z>1||p.z< -1;
     });
+  }
+  // Explicit diagnostic: only calculate on a changed outfit while open.
+  // The current simulation still owns its V1 placement; do not imply that
+  // this quote has mutated gameplay inventory or drawn these holders.
+  if(carryAudit.open&&!comparing&&!kitComparing&&!variantComparing){
+   const look=resolvedWardrobe(wardrobeOptions,currentKit);
+   const waist=rig.visualKit.wardrobeGear.waistRig[look.rigStyle];
+   const chest=rig.visualKit.wardrobeGear.rig[look.rigStyle];
+   const owner=registeredMagazinePouches(waist).length?waist:chest;
+   const cells=registeredMagazinePouches(owner);
+   const auxiliary=chest?.userData.auxiliaryPouchCells??[];
+   const mags=currentCarry.filter(p=>p.kind==='magazine').map(p=>({id:p.id,weapon:currentWeapon,rounds:1}));
+   const part=rig.visualKit.carriedMagazinePart;
+   const key=JSON.stringify([currentKit,look,wardrobeOptions.accessories,mags.map(m=>m.id),part,cells,auxiliary]);
+   if(key!==carryAuditKey){
+    carryAuditKey=key;
+    const {input,manifest}=quoteUnifiedLoadout({kit:currentKit,wardrobe:wardrobeOptions,magazines:mags,
+     primaryPart:part,rigCells:cells,auxiliaryCells:auxiliary});
+    carryAuditOutput.textContent=[
+     (manifest.valid?'FIT':'UNPLACED EQUIPMENT')+' · '+manifest.placements.flatMap(p=>p.itemIds).length+'/'+input.items.length+' ITEMS',
+     ...manifest.placements.map(p=>p.carrier.toUpperCase()+' · '+p.slotIds.join(' / ')+' · '+(p.holder??(p.concealed?'concealed':'authored cell'))+' · '+p.itemIds.join(', ')),
+     ...manifest.unplaced.map(p=>'NO FIT · '+p.id+' · '+p.reason),
+     ...(manifest.searchTruncated?['BOUNDED SEARCH LIMIT REACHED']:[])
+    ].join('\n');
+   }
   }
   const attachmentChoice=attachmentPreviewSelect.value;
   const attachmentStatus=updateAttachmentPreview(rig,attachmentChoice,

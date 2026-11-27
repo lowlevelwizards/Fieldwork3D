@@ -60,6 +60,7 @@ test('BT4: pistol magazine pair can share a double holder with distinct content 
  const spent=removeManifestContent(m,'p1');
  assert.deepEqual(byId(spent,'p2').slotIds,p.slotIds);
  assert.deepEqual(byId(spent,'p2').itemIds,['p2']);
+ assert.deepEqual(byId(spent,'p2').contentIds,[null,'p2']);
  const empty=removeManifestContent(spent,'p2');
  assert.ok(empty.placements.some(x=>!x.itemIds.length&&x.holder==='pistol-mag-pouch'));
 });

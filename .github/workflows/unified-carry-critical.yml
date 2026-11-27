@@ -1,0 +1,30 @@
+name: Unified carry — fixed slots and deterministic fit
+on:
+  pull_request:
+    paths:
+      - 'src/equipment-fixed-carrier-slots.ts'
+      - 'src/equipment-unified-*.ts'
+      - 'src/operator-armor-rig-silhouettes.ts'
+      - 'src/breach-operator-lab.ts'
+      - 'operator-lab.html'
+      - 'tests/equipment-unified-*.test.mjs'
+      - '.github/workflows/unified-carry-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  fixed-slot-fit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm run check
+      - name: Fixed slot placement and real loadout adapter
+        run: node --experimental-strip-types --test tests/equipment-unified-placement.test.mjs tests/equipment-unified-loadout.test.mjs
