@@ -76,6 +76,7 @@ import {existingVisualProxyForContext} from './faction-reference-visual-proxy.ts
 import type {HistoricalLoadoutProposal}
  from './faction-reference-loadout-generator.ts';
 import {resolveFactionReference,referenceLookForKit} from './faction-reference-resolver.ts';
+import {resolveReferencePreview} from './faction-reference-preview-options.ts';
 import {readRoster,initialRoster,
  freshQuickPlayRoster,serializeQuickPlayCosmetics} from './breach-roster.ts';
 import {readCampaign} from './campaign-state.ts';
@@ -857,8 +858,9 @@ function posePreview(){
  // Restore exact unmodified colors before the wardrobe refresh; otherwise
  // a previously disabled debug layer would contaminate the next bake.
  if(lightingInspectorOutput&&rig)restoreOperatorLightingPreview(rig.root);
- const reference=referenceOpen&&!historicalProposalPreview?resolveFactionReference(
-  referenceBrowser.selectedId,referenceBrowser.selectedWeaponPresetId):null;
+ const reference=referenceOpen&&!historicalProposalPreview?resolveReferencePreview(
+  referenceBrowser.selectedId,referenceBrowser.selectedWeaponPresetId,
+  referenceBrowser.selectedPackStudyId,referenceBrowser.selectedSidearmStudy):null;
  // The match comes from an existing authored appearance, not new equipment.
  // A nearest-year reference is advisory only: never borrow its rig silently.
  const proxy=referenceOpen&&historicalProposalPreview?
@@ -895,7 +897,8 @@ function posePreview(){
  const weapon=visualReference?.weapon.weapon??
   reference?.weapon.weapon??p.weapon??configuration.weapon;
  const armed=!clothesOnly&&showWeapon;
- const previewEquipment=inspectKit(historicalDraft?.kit??reference?.kit??packReviewKit(p.loadout));
+ const virtualKit=historicalDraft?.kit??reference?.kit??packReviewKit(p.loadout);
+ const previewEquipment=inspectKit(clothesOnly&&reference?{...virtualKit,secondary:undefined}:virtualKit);
  // Studio carries a representative visible spare bank, never phantom ammo
  // in the live game; preview rig count is capped to actual rig capacity later.
  const sampleMagazines=armed&&previewEquipment.slots.rig!=='rig-none'?
