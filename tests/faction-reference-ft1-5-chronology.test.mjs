@@ -16,8 +16,8 @@ import {LOADOUT_SLOTS} from '../src/equipment-catalog.ts';
 test('FT1.5 every existing reference belongs to one faction, role and visual snapshot',()=>{
  assert.equal(FACTION_REFERENCES.length,44);
  assert.equal(FACTION_TIMELINES.length,34);
- assert.equal(HISTORICAL_EQUIPMENT.length,35);
- assert.equal(HISTORICAL_ISSUE_RECORDS.length,32);
+ assert.equal(HISTORICAL_EQUIPMENT.length,40);
+ assert.equal(HISTORICAL_ISSUE_RECORDS.length,37);
  const factions=consolidatedFactions();
  assert.equal(factions.length,TIMELINE_ORGANIZATIONS.length);
  assert.equal(factions.reduce((n,f)=>n+f.referenceCount,0),44);
@@ -56,7 +56,7 @@ test('FT1.5 all 13 game slots and separately configured appearance channels are 
 });
 test('FT1.5 changes compare each existing slot, never infer switches from environment',()=>{
  const timeline=timelineGearMilestones('us-army-infantry');
- assert.deepEqual(timeline.map(x=>x.year),[1981,1990,1991,2003,2010,2015,2019]);
+ assert.deepEqual(timeline.map(x=>x.year),[1981,1990,1991,2003,2008,2010,2015,2019]);
  const first=timeline.find(x=>x.year===1990).visualSnapshots[0];
  assert.equal(first.kind,'first-appearance');
  assert.equal(first.changes.length,0);
@@ -93,7 +93,7 @@ test('FT1.5 sourced snapshots do not create unsourced gear or date history',()=>
  const sourceIds=new Set(HISTORICAL_ISSUE_RECORDS.map(x=>x.id));
  const markers=points.flatMap(x=>x.researchMarkers);
  assert.ok(markers.every(x=>sourceIds.has(x.recordId)));
- assert.equal(markers.filter(x=>x.marker==='research-window-start').length,32);
+ assert.equal(markers.filter(x=>x.marker==='research-window-start').length,37);
  assert.ok(markers.every(x=>x.marker!=='research-window-end'||
   HISTORICAL_ISSUE_RECORDS.find(r=>r.id===x.recordId).endYear===x.year));
 });
@@ -108,4 +108,14 @@ test('FT1.5 UI is grouped by faction -> role and shows source-separated per-slot
  assert.match(studio,/snapshot\.changes/);
  assert.match(studio,/this\.select\(snapshot\.referenceId\)/);
  assert.match(studio,/onApplyProposedEquipment/);
+});
+
+test('refreshed visual gear snapshots expose independent footwear, belt and weapon attachments',()=>{
+ for(const ref of FACTION_REFERENCES){
+  const settings=referenceGearSettings(ref.id);
+  assert.ok(settings.footwear.some(x=>x.key==='equipment.feet'&&x.value===ref.kit.feet),ref.id);
+  assert.ok(settings.footwear.some(x=>x.key==='detail.footwearColor'),ref.id);
+  assert.ok(settings.carriage.some(x=>x.key==='equipment.belt'),ref.id);
+  assert.ok(settings.weapon.some(x=>x.key.startsWith('attachment.')),ref.id);
+ }
 });

@@ -3,6 +3,9 @@ import {FACTION_REFERENCES,type FactionReference} from './faction-reference-cata
 import {referenceVisualStatus} from './faction-reference-audit.ts';
 import {unresolvedReferenceGaps} from './faction-reference-asset-registry.ts';
 import {paintCamoPreview} from './operator-camo-preview-cache.ts';
+import {resolvedWardrobe,wardrobeItem} from './operator-wardrobe-data.ts';
+import {referencePackStudies,referenceSidearmStudyAvailable,resolveReferencePreview} from './faction-reference-preview-options.ts';
+import {WEAPON_ATTACHMENTS} from './equipment-weapon-assemblies.ts';
 import {referenceWeaponChoice,referenceWeaponOptions} from './faction-reference-weapons.ts';
 import {FACTION_TIMELINES,timelineForReference}
  from './faction-reference-timelines.ts';
@@ -75,6 +78,8 @@ export class FactionReferenceBrowser{
  private readonly apply:HTMLButtonElement;
  private chosen=FACTION_TIMELINES[0].snapshots[0].referenceId;
  private readonly weaponPreviewOverrides=new Map<string,string>();
+ private readonly packPreviewOverrides=new Map<string,string>();
+ private readonly sidearmPreviewOverrides=new Set<string>();
  private readOnly=false;
  constructor(root:HTMLElement,hooks:ReferenceBrowserHooks){
   this.root=root;this.hooks=hooks;
@@ -193,6 +198,8 @@ export class FactionReferenceBrowser{
   if(preferred&&timelines.some(t=>t.id===preferred))this.timeline.value=preferred;
  }
  get selectedId(){return this.chosen;}
+ get selectedPackStudyId(){return this.packPreviewOverrides.get(this.chosen);}
+ get selectedSidearmStudy(){return this.sidearmPreviewOverrides.has(this.chosen);}
  /** Nonpersistent preview variant; applying a look never purchases/issues a rifle. */
  get selectedWeaponPresetId(){
   return this.weaponPreviewOverrides.get(this.chosen) ??
@@ -729,6 +736,8 @@ export class FactionReferenceBrowser{
   const options=referenceWeaponOptions(r.id);
   const issued=referenceWeaponChoice(r.id,this.selectedWeaponPresetId);
   const fit=this.hooks.compatibility(r.id);
+  const preview=resolveReferencePreview(r.id,this.selectedWeaponPresetId,this.selectedPackStudyId,this.selectedSidearmStudy);
+  const outfit=resolvedWardrobe(preview.wardrobe,preview.kit);
   this.detail.replaceChildren();
   if(this.timelineMode&&!this.timelineHasMatch)
    this.detail.append(el('p','reference-compat-warning',
@@ -767,6 +776,62 @@ export class FactionReferenceBrowser{
     'VISUAL PREVIEW ONLY · APPLYING A LOOK DOES NOT CHANGE YOUR EQUIPPED WEAPON'));
    this.detail.append(section);
   }
+  const packStudies=referencePackStudies(r.id);
+  if(packStudies.length||referenceSidearmStudyAvailable(r.id)){
+   const section=el('div','reference-weapon-choices');
+   section.append(el('strong','','OPTIONAL VISUAL STUDIES'),
+    el('small','reference-meta','Costume variants only · not documented issue · not saved by Use Compatible Look'));
+   if(packStudies.length){
+    const picker=el('select','reference-weapon-choice');
+    picker.setAttribute('aria-label','Reference backpack study');
+    picker.append(option('','Original reference pack'));
+    for(const study of packStudies)picker.append(option(study.id,study.label));
+    picker.value=this.selectedPackStudyId??'';
+    picker.addEventListener('change',()=>{
+     if(picker.value)this.packPreviewOverrides.set(r.id,picker.value);
+     else this.packPreviewOverrides.delete(r.id);
+     this.renderDetail();
+     if(!this.root.hidden)this.hooks.onPreview(r.id);
+    });
+    section.append(picker);
+   }
+   if(referenceSidearmStudyAvailable(r.id)){
+    const picker=el('select','reference-weapon-choice');
+    picker.setAttribute('aria-label','Reference sidearm study');
+    picker.append(option('none','Original reference · no sidearm'),option('glock','Optional Glock appearance study'));
+    picker.value=this.selectedSidearmStudy?'glock':'none';
+    picker.addEventListener('change',()=>{
+     if(picker.value==='glock')this.sidearmPreviewOverrides.add(r.id);
+     else this.sidearmPreviewOverrides.delete(r.id);
+     this.renderDetail();
+     if(!this.root.hidden)this.hooks.onPreview(r.id);
+    });
+    section.append(picker);
+   }
+   this.detail.append(section);
+  }
+  const gear=el('div','reference-gap-list');
+  gear.append(el('strong','','CURRENT APPEARANCE · VISUAL MODEL'));
+  for(const [slot,label] of [
+   ['top','Top'],['trousers','Trousers'],['footwear','Footwear'],
+   ['headwear','Headwear'],['armorStyle','Armor'],['rigStyle','Rig'],
+   ['beltStyle','Belt'],['packStyle','Backpack']
+  ] as const){
+   const name=wardrobeItem(slot,outfit[slot])?.name??outfit[slot];
+   gear.append(el('span','',label+' · '+name));
+  }
+  if(preview.incompatibleChannels.length||preview.technicalIssues.length)
+   gear.append(el('p','reference-compat-warning','Preview compromises: '+
+    [...preview.incompatibleChannels,...preview.technicalIssues].join(', ')));
+  this.detail.append(gear);
+  const attachments=el('div','reference-gap-list');
+  attachments.append(el('strong','','VISIBLE WEAPON ART'));
+  const installed=Object.entries(issued.weaponConfiguration.slots)
+   .filter(([slot,id])=>!id.endsWith('-none')&&slot!=='opticMount');
+  for(const [slot,id] of installed)
+   attachments.append(el('span','',slot+' · '+(WEAPON_ATTACHMENTS[id]?.name??id)));
+  attachments.append(el('small','reference-meta','Modeled preset only · not evidence of historical attachment issue'));
+  this.detail.append(attachments);
   const missing=unresolvedReferenceGaps(r);
   if(missing.length){
    const block=el('div','reference-gap-list');

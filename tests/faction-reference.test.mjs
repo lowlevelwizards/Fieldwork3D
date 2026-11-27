@@ -1,4 +1,10 @@
 import test from 'node:test';
+import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
+import {clearLiveUnifiedCarry} from '../src/operator-unified-carry-live.ts';
+import {quoteUnifiedLoadout} from '../src/equipment-unified-loadout.ts';
+import {waistPlacementsConflict} from '../src/equipment-fixed-carrier-slots.ts';
+import {referencePackStudies,referenceSidearmStudyAvailable,resolveReferencePreview} from '../src/faction-reference-preview-options.ts';
+import {canonicalPackEquipment} from '../src/operator-backpack-catalog.ts';
 import assert from 'node:assert/strict';
 import {FACTION_REFERENCES,factionReference} from '../src/faction-reference-catalog.ts';
 import {auditFactionReferences} from '../src/faction-reference-audit.ts';
@@ -255,4 +261,123 @@ test('FAL family is distributed to dated, documented faction previews without fa
  assert.throws(()=>referenceWeaponChoice('ukraine-mm14-2022','fal-5063'),
   /Unsupported preview weapon/);
  assert.deepEqual(auditFactionReferences().issues,[]);
+});
+
+test('reference refresh explicitly selects compatible footwear, belts and canonical backpacks',()=>{
+ for(const ref of FACTION_REFERENCES){
+  const resolved=resolveFactionReference(ref);
+  assert.equal(resolved.kit.slots.feet,ref.kit.feet,ref.id);
+  assert.equal(resolved.kit.slots.belt,ref.kit.belt,ref.id);
+  assert.equal(resolved.kit.slots.backpack,ref.kit.backpack,ref.id);
+  assert.equal(resolved.wardrobe.styles.footwear,ref.styles.footwear,ref.id);
+  assert.equal(resolved.wardrobe.styles.beltStyle,ref.styles.beltStyle,ref.id);
+  assert.equal(resolved.wardrobe.footwearColor,ref.gearAppearance.footwearColor,ref.id);
+  assert.equal(resolved.wardrobe.beltSolid,ref.gearAppearance.beltSolid,ref.id);
+  assert.deepEqual(resolved.technicalIssues,[],ref.id);
+ }
+ assert.equal(resolveFactionReference('us-army-erdl-1970').kit.slots.backpack,'backpack-none');
+ assert.equal(resolveFactionReference('us-army-ocp-2019').kit.slots.backpack,'backpack-assault');
+ assert.equal(resolveFactionReference('nva-strichtarn-1980').kit.slots.belt,'belt-none');
+ assert.equal(resolveFactionReference('us-police-polo-2020').kit.slots.belt,'belt-standard');
+ assert.equal(resolveFactionReference('ukraine-territorial-2022').kit.slots.feet,'feet-light');
+});
+test('new visual weapon options remain reference-only and retain honest proxy fidelity',()=>{
+ const sweden=referenceWeaponChoice('swedish-m90-2000');
+ assert.equal(sweden.presetId,'fnc-service');
+ assert.equal(sweden.fidelity,'proxy');
+ for(const [id,preset] of [['us-swat-mp5-1995','r870-police-wood'],
+  ['us-swat-2015','r870-police-synthetic'],['us-police-polo-2020','r870-police-synthetic']]){
+  const visual=resolveFactionReference(id,preset);
+  assert.equal(visual.weapon.presetId,preset);
+  assert.equal(visual.weapon.weapon,'shotgun');
+  assert.equal(visual.weapon.fidelity,'representative');
+  assert.deepEqual(visual.technicalIssues,[],id);
+ }
+});
+
+test('reference look never carries an incompatible shoe color or waist finish onto owned kit',()=>{
+ const kit=initialEquipmentLoadout('carbine');
+ const before=JSON.stringify(kit);
+ const civilian=referenceLookForKit('ukraine-territorial-2022',kit);
+ assert.ok(civilian.substituted.includes('footwear'));
+ assert.equal(civilian.wardrobe.footwearColor,undefined);
+ assert.equal(JSON.stringify(kit),before);
+});
+
+test('optional pack studies resolve on current assets without altering dated defaults',()=>{
+ for(const ref of FACTION_REFERENCES){
+  const baseline=resolveFactionReference(ref);
+  const snapshot=JSON.stringify(baseline);
+  for(const study of referencePackStudies(ref.id)){
+   const preview=resolveReferencePreview(ref.id,undefined,study.id);
+   assert.equal(preview.kit.slots.backpack,canonicalPackEquipment(study.style),ref.id+' '+study.id);
+   assert.equal(preview.wardrobe.styles.packStyle,study.style);
+   assert.deepEqual(preview.technicalIssues,[],ref.id+' '+study.id);
+   assert.deepEqual(preview.incompatibleChannels,baseline.incompatibleChannels);
+  }
+  assert.equal(JSON.stringify(resolveFactionReference(ref)),snapshot);
+ }
+ assert.throws(()=>resolveReferencePreview('us-desert-1991',undefined,'medical'));
+});
+test('optional sidearm art stays unloaded and is never a historical or saved kit default',()=>{
+ for(const ref of FACTION_REFERENCES){
+  if(!referenceSidearmStudyAvailable(ref.id))continue;
+  const study=resolveReferencePreview(ref.id,undefined,undefined,true);
+  assert.equal(study.kit.secondary.weapon,'glock-g19-gen3');
+  assert.equal(study.kit.secondary.loadedRounds,0);
+  assert.equal(study.kit.secondary.loadedMagazineId,null);
+  assert.deepEqual(study.kit.secondary.spareMagazines,[]);
+  assert.equal(resolveFactionReference(ref).kit.secondary.weapon,null);
+ }
+ assert.throws(()=>resolveReferencePreview('us-desert-1991',undefined,undefined,true));
+});
+
+test('dated costume fixed-slot render quotes are deterministic and nonmutating',()=>{
+ for(const ref of FACTION_REFERENCES){
+  const {kit,wardrobe,weapon}=resolveFactionReference(ref);
+  const source={kit,wardrobe,magazines:[],primaryPart:weapon.weaponConfiguration.build?.parts.magazine};
+  const before=JSON.stringify(source);
+  const first=quoteUnifiedLoadout(source);
+  assert.deepEqual(quoteUnifiedLoadout(source),first,ref.id);
+  assert.equal(JSON.stringify(source),before,ref.id);
+  const waist=first.manifest.placements.flatMap(x=>x.waist?[x.waist]:[]);
+  for(let i=0;i<waist.length;i++)for(let j=i+1;j<waist.length;j++)
+   assert.equal(waistPlacementsConflict(waist[i],waist[j]),false,ref.id);
+ }
+});
+
+test('reference costumes exercise the actual posed rig and release preview holders when switching',()=>{
+ const rig=createOperatorRig('reference-art-review','blue');
+ const base={x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
+  posture:'stand',injury:0,reload:0,reloadDuration:0,lastThrowAt:-100,
+  lastDoorAt:-100,down:false,surrender:false,aiming:false,firing:false,
+  turning:0,deterministic:true};
+ const examples=[
+  ['us-army-erdl-1970',undefined,false],
+  ['us-army-ocp-2019','medical',false],
+  ['us-navy-aor1-2014','panel',false],
+  ['ukraine-territorial-2022','civilian',false],
+  ['us-police-polo-2020',undefined,true],
+  ['us-swat-2015',undefined,true]
+ ];
+ try{
+  for(const [id,pack,sidearm] of examples){
+   const ref=resolveReferencePreview(id,undefined,pack,sidearm);
+   const {kit,wardrobe,weapon}=ref;
+   const before=JSON.stringify(ref);
+   const carry=quoteUnifiedLoadout({kit,wardrobe,magazines:[],
+    primaryPart:weapon.weaponConfiguration.build?.parts.magazine});
+   poseOperator(rig,{...base,weapon:weapon.weapon,
+    weaponConfiguration:weapon.weaponConfiguration,equipment:kit,wardrobe,
+    unifiedCarry:carry,magazineCarryLocations:[]},0);
+   assert.equal(JSON.stringify(ref),before,id);
+   assert.equal(!!rig.visualKit.packPreview.active,kit.slots.backpack!=='backpack-none',id);
+   const holders=[];
+   rig.root.traverse(o=>{if(o.name.startsWith('bt4-live-'))holders.push(o);});
+   const ids=holders.flatMap(o=>o.userData.bt4SlotIds??[]);
+   assert.equal(new Set(ids).size,ids.length,id+' duplicate holder slot');
+   clearLiveUnifiedCarry(rig);
+   for(const holder of holders)assert.equal(holder.parent,null,id+' stale holder');
+  }
+ }finally{clearLiveUnifiedCarry(rig);rig.dispose();}
 });

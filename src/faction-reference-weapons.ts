@@ -15,7 +15,7 @@ export const REFERENCE_WEAPONS:Readonly<Record<string,ReferenceWeaponChoice>>={
  'british-dpm-1995':choice('ar-m16a2','proxy'),
  'nva-strichtarn-1980':choice('ak-akm','exact'),
  'sadf-nutria-1985':choice('fal-5000','representative'),
- 'swedish-m90-2000':choice('ar-m16a2','proxy'),
+ 'swedish-m90-2000':choice('fnc-service','proxy'),
  'rhodesian-brushstroke-1975':choice('fal-5000','representative'),
  'ukraine-mm14-2022':choice('ak-ak74m','representative'),
  'pla-xingkong-2021':choice('ar-m4a1','proxy'),
@@ -63,6 +63,21 @@ export const REFERENCE_WEAPONS:Readonly<Record<string,ReferenceWeaponChoice>>={
 export type ReferenceWeaponAlternative=ReferenceWeaponChoice&{note:string};
 export const REFERENCE_WEAPON_ALTERNATES:
  Readonly<Record<string,readonly ReferenceWeaponAlternative[]>>={
+ // FNC is the closer visual stand-in for the Swedish derivative, not an Ak 5.
+ // Source: https://www.gotavapen.se/gota/ak/ak4_5/ak5_history.htm
+ 'us-swat-mp5-1995':[
+  {presetId:'r870-police-wood',fidelity:'representative',
+   note:'Optional generic period police shotgun visual study; not claimed issue for a specific team.'}
+ ],
+ 'us-swat-2015':[
+  {presetId:'r870-police-synthetic',fidelity:'representative',
+   note:'Optional police shotgun visual study, not a universal SWAT equipment claim.'}
+ ],
+ 'us-police-polo-2020':[
+  {presetId:'r870-police-synthetic',fidelity:'representative',
+   note:'Optional agency-dependent long-gun preview only; not routine patrol issue.'}
+ ],
+ // Police 870 family documentation: https://baltimorepolicemuseum.com/en/component/content/article/482-bpd-weapons?Itemid=101&catid=27
  'bundeswehr-flecktarn-2000':[
   {presetId:'g36-k-dual',fidelity:'representative',
    note:'G36K short-barrel family alternative for role-specific Bundeswehr use; not assumed universal issue in 2000.'}
