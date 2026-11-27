@@ -27,6 +27,7 @@ import {ARSENAL_PLATFORMS,type ArsenalPlatformId} from './catalog.ts';
 import {arsenalFactoryChoices} from './factory-recipes.ts';
 import {arsenalFitFeedback} from './fit-feedback.ts';
 import {arsenalApplyMessage,type ArsenalApplyQuote} from './apply-guidance.ts';
+import {arsenalStockArtChoice} from './catalog.ts';
 import {arsenalFinishFamily,arsenalFinishOption,arsenalPhysicalPartId}
  from './finishes.ts';
 import './arsenal.css';
@@ -363,9 +364,9 @@ export function openArsenalWorkbench(
    // Legacy saved FNC magazine stays valid, but isn't a duplicate choice.
    if(part.id==='fnc-mag30'&&currentPartId(activeSlot)!=='fnc-mag30')
     continue;
-   if(arsenalPhysicalPartId(part.id)!==part.id)continue;
+   if(arsenalPhysicalPartId(part.id)!==part.id||arsenalStockArtChoice(part.id)!==part.id)continue;
    const proposal=proposeArsenalPartChange(draft.working,activeSlot,part.id);
-   const equipped=arsenalPhysicalPartId(currentPartId(activeSlot))===part.id;
+   const equipped=arsenalStockArtChoice(arsenalPhysicalPartId(currentPartId(activeSlot)))===part.id;
    if(!equipped&&!proposal.valid&&!showIncompatible)continue;
    const feedback=arsenalFitFeedback(proposal,equipped);
    const key=activeSlot+':'+part.id;
@@ -380,7 +381,7 @@ export function openArsenalWorkbench(
     // Resolve it at activation time, never capture a stale proposal.
     option.addEventListener('click',()=>{
      const live=proposeArsenalPartChange(draft.working,activeSlot,part.id);
-     const selected=arsenalPhysicalPartId(currentPartId(activeSlot))===part.id;
+     const selected=arsenalStockArtChoice(arsenalPhysicalPartId(currentPartId(activeSlot)))===part.id;
      if(!live.valid){
       const reason=arsenalFitFeedback(live,selected).explanation;
       fitExplanation.hidden=false;

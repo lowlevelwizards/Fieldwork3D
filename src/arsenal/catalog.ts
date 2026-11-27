@@ -89,6 +89,10 @@ export const ARSENAL_PARTS:readonly ArsenalPart[]=[
 ];
 const partMap=new Map(ARSENAL_PARTS.map(part=>[part.id,part]));
 export function arsenalPart(id:string):ArsenalPart|undefined{return partMap.get(id);}
+/** UI-only representation grouping; never rewrites stored recipe identities. */
+export function arsenalStockArtChoice(id:string):string{
+ return id==='ar-fixed-a2'?'ar-fixed':id==='ar-car'?'ar-stock-m4':id;
+}
 export function arsenalPartsForSlot(slot:ArsenalSlot):readonly ArsenalPart[]{
  return ARSENAL_PARTS.filter(part=>part.slot===slot);
 }

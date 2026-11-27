@@ -2,6 +2,7 @@
  * Every shape is an intentionally simplified outside contour for game art.
  */
 import * as THREE from 'three';
+import {addARStockCaricature} from './ar-stock-caricature.ts';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type SlotName} from './profile-primitives.ts';
 import {AR_WA6_LOWER_STEEL,AR_WA6_MAGAZINE_STEEL,AR_MUTED_FDE,AR_POLYMER_RIB} from './weapon-visual-palette.ts';
@@ -94,41 +95,9 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   deflector.userData.arShellDeflector=true;
  }
 
- // Fixed M16 stocks: one long triangular wedge, no rectangular belly.
- if(parts.stock==='ar-fixed'||parts.stock==='ar-fixed-a2'){
-  const a2=parts.stock==='ar-fixed-a2';
-  // A1/A2 retain their relative stock lengths. Both become shorter,
-  // taller and substantially fuller at the attachment wrist.
-  const back=a2?-14.30:-13.74;
-  p('stock',[[back,a2?1.20:1.14],[-6.12,.98],[-6.02,-1.04],
-   [back+.17,a2?-4.18:-4.04]],3.18,1);
-  b('stock',back+.045,a2?-1.49:-1.45,0,.30,
-   a2?5.46:5.28,3.22,0);
- }else{
-  const compact=parts.stock==='ar-compact';
-  const m4=parts.stock==='ar-stock-m4';
-  const rear=compact?-13.85:m4?-14.25:-14.45;
-  const front=compact?-8.4:m4?-8.48:-8.6;
-  b('stock',-7.65,.35,0,4.2,1.45,1.9,0);
-  p('stock',compact?
-   // A thick compact SOPMOD-like cheek shape, without Z inflation.
-   [[rear,1.12],[rear+1.12,1.36],[front,.91],
-    [front,-1.25],[rear+1.48,-3.68],[rear,-3.54]]:
-   m4?
-   // Classic M4 stock: high tube, massive wedge under the rear cheek.
-   // Simplified M4 shell: full-length FLAT comb, short flat rear
-   // heel and one bold diagonal joining its forward collar.
-   [[rear,1.47],[front,1.47],[front,-.75],
-    [rear+2.0,-4.17],[rear+.30,-4.17],[rear,-3.82]]:
-   // Early sliding Fiberlite shape is simpler and visually lighter.
-   // Retro CAR: single thick shape; the lower diagonal reads as a shadow.
-   [[rear,.72],[front,.67],[front,-1.24],
-    [rear+1.35,-2.40],[rear,-1.98]],
-   compact?3.35:m4?3.25:3.0,compact?2:1);
-  if(!compact&&!m4)
-   // One thick flat Fiberlite buttpad, same on CAR-15 and Colt 733.
-   b('stock',rear+.06,-.62,0,.25,2.56,3.04,0);
- }
+ // WC2.5: four symbolic exterior artwork identities. Legacy recipe IDs
+ // retain their existing game-space rear landmarks.
+ addARStockCaricature(root,parts.stock,steel,dark,wood);
 
  // Pistol grips share the same root, but the modern shape has a fuller heel.
  const modern=parts.grip==='ar-grip-poly'||parts.grip==='ar-grip-poly-fde';
