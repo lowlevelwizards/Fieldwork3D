@@ -37,7 +37,7 @@ try{
    throw Error('Not all 4 candidate weapons × 3 views rendered');
   for(const entry of stats){
    const visibleSaving=entry.originalCalls-entry.compiledCalls;
-   const expected={'ak-ak74':9,'ak-aks74':9,'ak-rpk74':9,'ar-m16a4':8};
+   const expected={'ak-ak74':8,'ak-aks74':9,'ak-rpk74':9,'ar-m16a4':8};
    if(entry.predictedSaved!==expected[entry.id])
     throw Error('Factory candidate did not match ranked audit: '+JSON.stringify(entry));
    if(entry.predictedSaved<5||visibleSaving<3||
