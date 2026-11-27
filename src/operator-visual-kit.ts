@@ -75,8 +75,7 @@ export type OperatorVisualKit={
  jacket:THREE.Group;lightShirt:THREE.Group;
  softArmor:THREE.Group;plateCarrier:THREE.Group;
  chestRig:THREE.Group;fieldWebbing:THREE.Group;
- belt:THREE.Group;dayPack:THREE.Group;fieldPack:THREE.Group;
- packHarness:THREE.Group;packPreview:PackPreviewState;
+ belt:THREE.Group;packPreview:PackPreviewState;
  cargoPockets:THREE.Mesh[];bootCuffs:THREE.Mesh[];sleeveCuffs:THREE.Mesh[];
  fieldToeCaps:THREE.Mesh[];lightInstepPanels:THREE.Mesh[];
  rolledForearms:THREE.Mesh[];rolledCuffs:THREE.Mesh[];kneePanels:THREE.Mesh[];
@@ -236,29 +235,6 @@ export function createOperatorVisualKit(
  const belt=bundle(hip);belt.name='operator-belt';
  // The existing pack mesh remains the inertia parent, preserving the exact
  // existing animation. These are surface details, not new physics bodies.
- const dayPack=bundle(pack),fieldPack=bundle(pack);
- // Harness rides with the chest rather than hanging off the animated pack.
- // Its rear end visually meets the bag, while leaving the actual IK alone.
- const packHarness=bundle(chest);
- for(const sign of [-1,1]){
-  part(packHarness,trim,-.5,5.25,sign*5.4,8.1,.65,1.1);
-  part(packHarness,dark,-4.35,-1.7,sign*6.1,3.35,1.0,.75);
-  // Close the last strap span to the backpack front surface.
-  part(packHarness,trim,-6.0,4.55,sign*5.4,3.25,.66,1.0);
- }
- // Pack parent follows existing inertial motion; visible day/field bags are
- // complete distinct silhouettes, not scale variations of the same cube.
- part(dayPack,packFabric,0,.7,0,5.0,8.1,10.2);
- part(dayPack,dark,-2.63,-2.0,0,.3,1.0,8.0);
- for(const sign of [-1,1])
-  part(dayPack,trim,-2.68,1.7,sign*3.45,.24,5.0,.65);
- part(fieldPack,packFabric,-.55,.45,0,6.3,14.2,13.15);
- part(fieldPack,trim,-3.8,5.5,0,.4,2.0,11.4);
- part(fieldPack,dark,-3.8,-4.4,0,.42,1.25,10.6);
- for(const sign of [-1,1]){
-  part(fieldPack,packFabric,-1.5,-2.8,sign*7.75,3.65,6.3,2.3);
-  part(fieldPack,trim,-2.9,1.4,sign*6.65,.6,8.8,.65);
- }
  const cargoPockets:THREE.Mesh[]=[],bootCuffs:THREE.Mesh[]=[],sleeveCuffs:THREE.Mesh[]=[];
  const fieldToeCaps:THREE.Mesh[]=[],lightInstepPanels:THREE.Mesh[]=[];
  const rolledForearms:THREE.Mesh[]=[],rolledCuffs:THREE.Mesh[]=[],kneePanels:THREE.Mesh[]=[];
@@ -314,12 +290,12 @@ export function createOperatorVisualKit(
  // Static layered clothing/armor/pack geometry becomes a few multi-face
  // meshes per material. Keep individually issued magazines unmerged.
  for(const surface of [helmet,cap,hair,jacket,lightShirt,softArmor,
-  plateCarrier,chestRig,fieldWebbing,dayPack,fieldPack,packHarness])
+  plateCarrier,chestRig,fieldWebbing])
    consolidateVisualGroup(surface);
  return {visualChest:chest,baseTorso,wardrobeHead,wardrobeBody,identityVisuals,wardrobeGear,accessories,fieldBlouses,fieldTrousers,newUpper,casualShirts,
   helmet,cap,hair,jacket,lightShirt,
   softArmor,plateCarrier,chestRig,
-  fieldWebbing,belt,dayPack,fieldPack,packHarness,packPreview:createPackPreview(pack,chest,{fabric:packFabric,trim,dark}),cargoPockets,bootCuffs,
+  fieldWebbing,belt,packPreview:createPackPreview(pack,chest,{fabric:packFabric,trim,dark}),cargoPockets,bootCuffs,
   fieldToeCaps,lightInstepPanels,sleeveCuffs,
   rolledForearms,rolledCuffs,kneePanels,eyeMarks,hairMaterial,magazines,
   haircuts,graphicMarks,patchMaterial,patches,
@@ -336,7 +312,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  slots:Slots|undefined,seed:number,magazineLocations:readonly CarryLocation[]=[],
  faceStyle:'blank'|'quiet'|'graphic'='blank',
  wardrobe?:WardrobeOptions,weaponConfiguration?:WeaponConfiguration,
- nvgPresent=false,nvgDeployed=false,authoredPackPreview=false){
+ nvgPresent=false,nvgDeployed=false){
  const s=slots??DEFAULT;
  const magazinePart=weaponConfiguration?.build?.parts.magazine??null;
  if(magazinePart!==v.carriedMagazinePart){
@@ -410,12 +386,12 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   wardrobe?.trouserHem??'bloused',looks.footwear==='bare-feet',looks.top);
  updateWardrobeBodyLayers(v.wardrobeBody,looks.top,looks.trousers,
   looks.knees,looks.wrist);
- const assembly=equipmentAssembly(looks.packStyle,looks.armorStyle,looks.rigStyle,wardrobe?.packMount);
+ const assembly=equipmentAssembly(looks.packStyle,looks.armorStyle,looks.rigStyle);
  updateWardrobeGearLayers(v.wardrobeGear,
   usingWardrobe?looks.armorStyle:'armor-bare',
   usingWardrobe?looks.rigStyle:'no-rig',
   looks.beltStyle,looks.packStyle,looks.top,
-  wardrobe?.aliceLoad??'standard',wardrobe?.m1956Variant??'late',authoredPackPreview&&s.backpack!=='backpack-none'&&assembly.sharedRig);
+  wardrobe?.aliceLoad??'standard',wardrobe?.m1956Variant??'late',usingWardrobe&&s.backpack!=='backpack-none'&&assembly.sharedRig);
  // Record ONLY candidate surfaces for later shoulder/buttplate fitting.
  // The fit is rebuilt on a wardrobe change, not on an animation tick.
  // No stock, joint, ballistics or collision state is mutated here.
@@ -461,25 +437,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  v.fieldWebbing.position.x=armorOffset;
  v.belt.visible=looks.beltStyle!=='no-belt';
  v.belt.scale.set(1,1,1);
- v.dayPack.visible=s.backpack==='backpack-day';
- v.fieldPack.visible=s.backpack==='backpack-field';
- const dayStyle=looks.packStyle;
- v.dayPack.scale.set(dayStyle==='hydration'?.64:
-  dayStyle==='admin-pack'?.79:
-  dayStyle==='assault-pack'?1.17:
-  dayStyle==='sling-bag'?.82:1,
-  dayStyle==='hydration'?.92:dayStyle==='assault-pack'?1.15:1,
-  dayStyle==='sling-bag'?.80:1);
- v.fieldPack.scale.set(dayStyle==='rucksack'?1.15:
-  dayStyle==='duffel'?1.24:1,
-  dayStyle==='medic-pack'?.92:1,
-  dayStyle==='comms-pack'?.90:1);
- v.packHarness.visible=s.backpack!=='backpack-none';
- const authored=updatePackPreview(v.packPreview,authoredPackPreview&&s.backpack!=='backpack-none',looks.packStyle,looks.armorStyle,looks.rigStyle,looks.top,wardrobe?.packMount,looks.beltStyle);
- if(authored){
-  v.dayPack.visible=false;v.fieldPack.visible=false;v.packHarness.visible=false;
-  const overlay=v.wardrobeGear.pack[looks.packStyle];if(overlay)overlay.visible=false;
- }
+ const authored=updatePackPreview(v.packPreview,s.backpack!=='backpack-none',looks.packStyle,looks.armorStyle,usingWardrobe?looks.rigStyle:'no-rig',looks.top,'auto',looks.beltStyle);
  for(const pocket of v.cargoPockets)
   pocket.visible=!usingWardrobe&&s.legs==='legs-field';
  const tallBoot=['field-boots','combat-boots','tall-boots','hiking-boots']
@@ -612,15 +570,14 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  // The key includes only geometry/cut choices, never the camouflage swatch.
  // applyOperatorVisualKit is called on appearance changes, not per frame.
  const armor=v.wardrobeGear.armor[looks.armorStyle],
-  rig=v.wardrobeGear.rig[looks.rigStyle],
-  pack=v.wardrobeGear.pack[looks.packStyle];
+  rig=v.wardrobeGear.rig[looks.rigStyle];
  // Invalidate no pose, IK transform or UV. The stable base fabric mesh is
  // refined once to let armor/rig edges cast actual local shadows onto it.
  refineStaticReceiver(v.baseTorso,BASE_TORSO_VERTEX_BUDGET);
  if(clothTorso)refineStaticReceiver(clothTorso,STATIC_SHIRT_RECEIVER_BUDGET);
  const lightingKey=[looks.top,looks.armorStyle,looks.rigStyle,looks.packStyle,
   wardrobe?.sleeveState??'unrolled',authored?.style??'legacy',assembly.mode].join('/');
- const packs=[pack,v.fieldPack,v.dayPack,v.packPreview.active?.root]
+ const packs=[v.packPreview.active?.root]
   .filter((g):g is THREE.Group=>!!g&&g.visible);
  // R5.3-B: declare real caster/receiver relationships instead of
  // permitting every neighboring box to shade every surface.
