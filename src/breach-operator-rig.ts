@@ -198,8 +198,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   // contact. The stock seats into this pad rather than the arm geometry.
   for(const sign of [-1,1])
     armorPanels.push(block(chest,1.35,4.6,sign*6.05,3.8,3.1,2.0,vest));
-  // Empty animated attachment node. The day and field pack are now complete
-  // exclusive models, so a hidden shared box cannot intersect either one.
+  // Empty animated attachment node for the canonical authored backpack.
   const pack=new THREE.Mesh(new THREE.BufferGeometry(),vest);
   // Front of pack meets the back of the torso (X=-5), not a floating gap.
   pack.position.set(-8.2,0,0);chest.add(pack);
