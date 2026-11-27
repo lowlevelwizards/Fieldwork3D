@@ -1,3 +1,4 @@
+import {packCargoMass,packSuspensionScale} from './operator-backpack-motion.ts';
 import {prepareBeltFlashPouches,restoreBeltFlashRest} from './operator-belt-flash-pouches.ts';
 import {canonicalBeltStyle} from './operator-belt-profile.ts';
 import type {BeltRegion} from './operator-belt-mounts.ts';
@@ -270,6 +271,9 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   applyOperatorVisualKit(r.visualKit,gear,identity,
     p.magazineCarryLocations,p.faceStyle,p.wardrobe,p.weaponConfiguration,
     nvgMounted(p),p.nvgDeployed===true);
+   const packState=r.visualKit.packPreview;
+   packState.motionScale=packSuspensionScale(packState.active?.style??'no-pack',packState.fit?.mode,
+    packCargoMass(p.equipment,p.magazineCarryLocations,p.medicalCarryLocation,p.utilityCarryLocation));
    // Closed pack contents are internal unless explicitly inspected or mounted.
    if(r.visualKit.packPreview.active&&!r.root.userData.fieldworkInspectPackCargo){
     for(const item of [r.medicalPouch,r.utilityTool,r.radioUnit,...r.flashCanisters,...r.wedgeMeshes,...r.cuffMeshes])
