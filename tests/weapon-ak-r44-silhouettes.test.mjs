@@ -5,6 +5,7 @@ import {FAMILY_PRESETS,FAMILY_PARTS} from '../src/equipment-weapon-families.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset,
  setConfiguredFamilyPart,readWeaponConfiguration,resolveWeaponAssembly}
  from '../src/equipment-weapon-assemblies.ts';
+import {buildModularWeaponSilhouette} from '../src/breach-modular-weapon-geometry.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
 import {partVisualBounds} from '../src/weapons/geometry/weapon-visual-anchors.ts';
@@ -20,7 +21,11 @@ function model(id){
  const preset=FAMILY_PRESETS.find(p=>p.id===id);
  assert.ok(preset,id+' preset');
  const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration(preset.weapon),id);
- const group=buildWeaponSilhouette(cfg.weapon,material,material,cfg);
+ // Inspect authored components before the production compiler merges them.
+ const live=buildWeaponSilhouette(cfg.weapon,material,material,cfg);
+ assert.ok(live.children.length<=28,id+' production mesh budget');
+ clearWeaponSilhouette(live);
+ const group=buildModularWeaponSilhouette(cfg.build,material,material);
  group.updateMatrixWorld(true);
  return {group,cfg,preset};
 }

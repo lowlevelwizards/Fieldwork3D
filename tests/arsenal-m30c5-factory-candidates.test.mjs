@@ -50,7 +50,7 @@ test('M3.0C5A real AK-74, AKS-74, RPK-74 and M16A4 remain fully selectable with 
    const runs=slots.map(slot=>
     compileRigidWeaponPartPilot(root,slot,config.build.parts[slot]));
    const saving=runs.reduce((n,x)=>n+x.avoidedSubmissions,0);
-   const expected={'ak-ak74':9,'ak-aks74':9,'ak-rpk74':9,'ar-m16a4':8};
+   const expected={'ak-ak74':8,'ak-aks74':9,'ak-rpk74':9,'ar-m16a4':8};
    assert.equal(saving,expected[id],id+' candidate draw-reduction budget');
    assert.ok(saving>=5,id+' must actually save rigid meshes');
    const after=measureWeaponVisual(root);

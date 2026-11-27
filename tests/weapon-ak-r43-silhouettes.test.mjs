@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import {FAMILY_PRESETS,FAMILY_PARTS} from '../src/equipment-weapon-families.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset,
  resolveWeaponAssembly} from '../src/equipment-weapon-assemblies.ts';
+import {buildModularWeaponSilhouette} from '../src/breach-modular-weapon-geometry.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
 import {partVisualBounds}
@@ -18,7 +19,11 @@ function model(id){
  const preset=FAMILY_PRESETS.find(p=>p.id===id);
  assert.ok(preset,id+' must remain available');
  const config=selectWeaponFamilyPreset(initialWeaponConfiguration(preset.weapon),id);
- const group=buildWeaponSilhouette(config.weapon,material,material,config);
+ // Inspect authored components before the production compiler merges them.
+ const live=buildWeaponSilhouette(config.weapon,material,material,config);
+ assert.ok(live.children.length<=28,id+' production mesh budget');
+ clearWeaponSilhouette(live);
+ const group=buildModularWeaponSilhouette(config.build,material,material);
  group.updateMatrixWorld(true);
  return {group,config,preset};
 }
@@ -44,7 +49,7 @@ function rangeY(mesh){
 }
 test('AK R4.3 retains nine recipes, authoritative contacts and compact mesh budget',()=>{
  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='ak').length,9);
- assert.equal(Object.keys(FAMILY_PARTS).length,93);
+ assert.equal(Object.values(FAMILY_PARTS).filter(p=>p.family==='ar'||p.family==='ak').length,93);
  for(const id of ids){
   const {group,config}=model(id);
   const body=new THREE.Box3().setFromObject(group);
