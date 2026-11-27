@@ -106,7 +106,7 @@ test('C4 palette only offers endpoint-authorized civilian actions',()=>{
  assert.match(palette,/const casualtyAtPlan=routeEndCivilianActions\?/);
  assert.match(palette,/const focusedCivilians=state\.civilians\.filter\(c=>!input\.personFocusId\|\|c\.id===input\.personFocusId\)/);
  assert.match(palette,/nearestPaletteCandidate\(focusedCivilians,at/);
- assert.match(palette,/liveVisibility\(state,c\.p\)/);
+ assert.match(palette,/c\.health<=0&&!c\.carriedById&&liveBodyVisible\(state,c\.p\)/);
 });
 test('C4 actual palette preserves location-specific nearest-target ordering',()=>{
  const palette=source('ui/tactical-palette-controller.ts');
@@ -120,7 +120,7 @@ test('C4 actual palette preserves location-specific nearest-target ordering',()=
  assert.match(palette,/const casualtyAtPlan=routeEndCivilianActions\?/);
  assert.match(palette,/const focusedCivilians=state\.civilians\.filter\(c=>!input\.personFocusId\|\|c\.id===input\.personFocusId\)/);
  assert.match(palette,/nearestPaletteCandidate\(focusedCivilians,at/);
- assert.match(palette,/liveVisibility\(state,c\.p\)/);
+ assert.match(palette,/c\.health<=0&&!c\.carriedById&&liveBodyVisible\(state,c\.p\)/);
  assert.doesNotMatch(palette,/paletteDistance\(finalPoint\(a\),c\.p\)<34/);
 });
 test('C4 HUD and click handlers consume the same gate and reject delayed context actions',()=>{
