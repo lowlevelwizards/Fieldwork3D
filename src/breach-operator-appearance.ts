@@ -1,3 +1,4 @@
+import {packTextile} from './operator-backpack-textiles.ts';
 import {syncGearMarkedMaterials} from './operator-gear-pixel-art.ts';
 /** Stage 11: visual outfit, gear and wound-color presentation ownership.
  * Caches only appearance fingerprints; never solves motion, fires, moves actors
@@ -373,10 +374,12 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
    // A model's iconic textile applies only while the specific channel
    // has no *valid* manual color or print. Stale, incompatible saved
    // choices stay stored for later, but don't obscure another armor default.
-   const iconicPrint=p.wardrobe&&!approvedManual&&!validManualSolid?
+   const directPack=channel==='pack'&&r.visualKit.packPreview.fit?.mode==='direct';
+    const inherited=directPack?(p.wardrobe?.fabricCamo?.armor??armorDefault.print):null;
+    const iconicPrint=p.wardrobe&&!approvedManual&&!validManualSolid?
     channel==='gear'&&clothing.rigStyle!=='no-rig'?signature.print:
     channel==='armor'&&clothing.armorStyle!=='armor-bare'?
-     armorDefault.print:null:null;
+     armorDefault.print:directPack?inherited:null:null;
    const print=approvedManual??(iconicPrint&&
     fabricCamoCompatible(iconicPrint,channel as FabricCamoChannel,clothing)?
      iconicPrint:null);
@@ -404,12 +407,12 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
      const id=channel==='gear'&&clothing.rigStyle!=='no-rig'?
       signature.solid:
       channel==='armor'&&clothing.armorStyle!=='armor-bare'?
-       armorDefault.solid:channel==='pack'&&clothing.packStyle==='civilian-pack'?'navy':automaticGear[channel];
-     r.colors.set(material,new THREE.Color(garmentSolidHex(id)));
+       armorDefault.solid:channel==='pack'&&r.visualKit.packPreview.active?packTextile(clothing.packStyle).solid:automaticGear[channel];
+     r.colors.set(material,directPack&&!validManualSolid&&!print?(r.colors.get(r.vestMaterial)??new THREE.Color(garmentSolidHex(id))).clone():new THREE.Color(garmentSolidHex(id)));
     }
    }
   }
-  const packPrint=p.wardrobe?.fabricCamo?.pack;
+  const packPrint=p.wardrobe?.fabricCamo?.pack??(r.visualKit.packPreview.fit?.mode==='direct'?p.wardrobe?.fabricCamo?.armor??armorDefault.print:undefined);
   const detailHex=packPrint&&fabricCamoCompatible(packPrint,'pack',clothing)?
    garmentSolidHex(resolveAutomaticGearColors({print:packPrint}).pack):
    (r.colors.get(r.packMaterial)??r.packMaterial.color).getHex();
