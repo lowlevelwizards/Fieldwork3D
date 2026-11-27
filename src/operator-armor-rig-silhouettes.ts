@@ -1,3 +1,4 @@
+import {sharedRigClips} from './operator-equipment-assembly.ts';
 /** Fieldwork body-first armor silhouettes. Full authored shells, not scaled
  * copies of one vest. Positive local X is forward; +/-Z is left/right.
  * All visual only: equipment slots remain the sole protection authority.
@@ -350,10 +351,12 @@ export function updateFittedRigHarness(
   // Modular chest panel clips to the pack suspension; no second rear yoke.
   const anchors:Record<string,readonly [number,number,number]>={'micro-rig':[7.90,-.84,2.85],'chest-placard':[8.14,.35,3.30],'split-front':[8.12,1.01,4.75],'full-chest':[8.39,2.62,4.65]};
   const [x,y,z]=anchors[rig]??anchors['chest-placard'];
-  for(const sign of [-1,1]){
-   line([[x,y,sign*z],[fx+.28,2.2,sign*Math.min(5.6,Math.max(3.5,sh)+.35)]],.9,.38,'front');
+  for(const sign of [-1,1] as const){
+   const {upper,lower}=sharedRigClips(frame,sign);
+   const local=(p:Pt):Pt=>[p[0]-frame.rigShiftX,p[1],p[2]];
+   line([[x,y,sign*z],local(upper)],.9,.38,'front');
    const anchor=RIG_LOWER_FRONT_ANCHORS[rig];
-   if(anchor)line([[anchor[0],anchor[1],sign*anchor[2]],[fx+.1,-3.2,sign*5.6]],.85,.38,'front');
+   if(anchor)line([[anchor[0],anchor[1],sign*anchor[2]],local(lower)],.85,.38,'front');
   }
  }else if((rig==='chest-placard'||rig==='micro-rig')&&
     frame.mode==='carrier-placard'){
