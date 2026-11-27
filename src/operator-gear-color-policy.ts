@@ -27,7 +27,8 @@ const PALETTE:Readonly<Record<GarmentSolidId,GearAutoColors>>={
  navy:{armor:'charcoal',gear:'slate',pack:'charcoal'},
  'muted-blue':{armor:'slate',gear:'slate',pack:'charcoal'},
  rust:{armor:'coyote',gear:'brown',pack:'coyote'},
- 'burnt-orange':{armor:'coyote',gear:'brown',pack:'coyote'}
+ 'burnt-orange':{armor:'coyote',gear:'brown',pack:'coyote'},
+ 'medical-red':{armor:'charcoal',gear:'charcoal',pack:'charcoal'}
 };
 const PRINT_EXCEPTIONS:Partial<Record<HeadwearCamoId,GearAutoColors>>={
  multicam:{armor:'coyote',gear:'coyote',pack:'coyote'},
