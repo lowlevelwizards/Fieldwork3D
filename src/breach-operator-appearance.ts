@@ -30,6 +30,7 @@ import {garmentSolidHex,isGarmentSolidId,solidChoicesFor,resolvedCuffSolid,resol
  from './operator-garment-color-policy.ts';
 import {fabricCamoCompatible,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
+import {applyPackDetailPalette} from './operator-backpack-preview.ts';
 import {applyOperatorVisualKit} from './operator-visual-kit.ts';
 import {nvgMounted} from './equipment-night-vision.ts';
 import {updateOperatorEquipmentDetails} from './operator-equipment-details.ts';
@@ -407,6 +408,11 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     }
    }
   }
+  const packPrint=p.wardrobe?.fabricCamo?.pack;
+  const detailHex=packPrint&&fabricCamoCompatible(packPrint,'pack',clothing)?
+   garmentSolidHex(resolveAutomaticGearColors({print:packPrint}).pack):
+   (r.colors.get(r.packMaterial)??r.packMaterial.color).getHex();
+  applyPackDetailPalette(r.visualKit.packPreview,detailHex,r.colors);
   // Plaid is a separate woven shirt fabric, never a military camouflage ID.
   // Shared cloth UVs cover the torso and articulated button-up sleeves.
   const plaid=clothing.top==='button-up-shirt'?
