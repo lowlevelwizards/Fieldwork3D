@@ -26,3 +26,18 @@ export function nativeEquippedMagazine(part:string){
  g.computeBoundingBox();const b=g.boundingBox!,center=b.getCenter(new THREE.Vector3());
  g.translate(-center.x,-b.max.y,-center.z);g.computeBoundingBox();return g;
 }
+
+import {glockMagazineArtDimensions,type GlockAppearanceId} from './weapons/geometry/glock-family-silhouettes.ts';
+/** Shared floorplate artwork; the concealed body is an abstracted insertable envelope. */
+export function nativeSecondaryMagazineSize(id:GlockAppearanceId){
+ const a=glockMagazineArtDimensions(id),s=SIDEARM_OPERATOR_SCALE;
+ return {width:a.bodyWidth*s,height:(a.bodyHeight+a.plateHeight)*s,depth:a.bodyDepth*s};
+}
+export function nativeSecondaryMagazine(id:GlockAppearanceId,bodyMaterial:THREE.Material,plateMaterial:THREE.Material){
+ const a=glockMagazineArtDimensions(id),s=SIDEARM_OPERATOR_SCALE,g=new THREE.Group();
+ const body=new THREE.Mesh(new THREE.BoxGeometry(a.bodyWidth*s,a.bodyHeight*s,a.bodyDepth*s),bodyMaterial);
+ body.position.y=-(a.bodyHeight/2+a.plateHeight)*s;body.name='native-secondary-magazine-body';
+ const base=new THREE.Mesh(new THREE.BoxGeometry(a.plateWidth*s,a.plateHeight*s,a.plateDepth*s),plateMaterial);
+ base.position.y=-a.plateHeight*s/2;base.name='native-secondary-magazine-baseplate';
+ for(const m of [body,base]){m.castShadow=true;m.receiveShadow=true;g.add(m);}return g;
+}

@@ -1,8 +1,6 @@
-import {clearUnifiedCarryPreview,showUnifiedCarryPreview,hideUnifiedCarryPreview,maskLegacyCarryForPreview} from './operator-unified-carry-preview.ts';
-import type {PlacementManifest} from './equipment-unified-placement.ts';
-import type {StorageSlot} from './equipment-fixed-carrier-slots.ts';
+import type {UnifiedDeployedCarry} from './equipment-unified-deployed.ts';
+import {unifiedPreparationSummary} from './equipment-unified-preparation.ts';
 import {quoteUnifiedLoadout} from './equipment-unified-loadout.ts';
-import {registeredMagazinePouches} from './operator-magazine-pouch-fit.ts';
 import {secondaryMagazineArtwork} from './secondary-holster-visual.ts';
 import {attachmentFixture,clearAttachmentPreview,updateAttachmentPreview,populateAttachmentPreviewOptions} from './operator-attachment-lab.ts';
 import {ATTACHMENTS,validAttachmentId,type AttachmentVariant} from './operator-attachment-catalog.ts';
@@ -1397,7 +1395,7 @@ const build=()=>{
   if(variantComparing)endVariantComparison();
   labSwitch=null;
   clearComparison();clearGaitCompare();
-  if(rig){clearUnifiedCarryPreview(rig);clearAttachmentPreview(rig);clearLabBerettaPreview(rig);releaseOperatorPreviewRig(scene,rig);}
+  if(rig){clearAttachmentPreview(rig);clearLabBerettaPreview(rig);releaseOperatorPreviewRig(scene,rig);}
   endKitComparison();
   rig=createOperatorRig(operator.value,operator.value==='hostile'?'red':'blue');
    rig.root.userData.fieldworkAuthoredPackPreview=true;
@@ -2002,7 +2000,8 @@ const attachmentPreviewStatus=choose<HTMLOutputElement>('attachmentPreviewStatus
 const carryAudit=choose<HTMLDetailsElement>('unifiedCarryAudit');
 const carryAuditOutput=choose<HTMLOutputElement>('unifiedCarryAuditOutput');
 const carryAuditVisual=choose<HTMLInputElement>('unifiedCarryVisual');
-let carryAuditKey='',carryAuditManifest:PlacementManifest|undefined,carryAuditStorage:StorageSlot[]=[];
+const carryAuditShells=choose<HTMLSelectElement>('unifiedCarryShells');
+let carryAuditKey='',carryAuditState:UnifiedDeployedCarry|undefined;
 populateAttachmentPreviewOptions(attachmentPreviewSelect);
 attachmentPreviewSelect.addEventListener('change',()=>{
  const id=attachmentPreviewSelect.value;
@@ -2150,6 +2149,27 @@ function draw(){
    ...availableKit,secondary:initialSecondaryEquipment(operator.value,sidearmModel)
   }:baseKit;
   const currentCarry=previewCarry(currentKit,currentWeapon);
+  let stagedCarry:UnifiedDeployedCarry|undefined;
+  if(carryAudit.open&&!comparing&&!kitComparing&&!variantComparing&&!gaitComparing){
+   const mags=currentCarry.filter(p=>p.kind==='magazine').map(p=>({id:p.id,weapon:currentWeapon,rounds:1}));
+   const part=exactWeaponConfig?.build?.parts.magazine;
+   const shellReserve=currentWeapon==='shotgun'?Number(carryAuditShells.value):undefined;
+   carryAuditShells.disabled=currentWeapon!=='shotgun';
+   const key=JSON.stringify([currentKit,wardrobeOptions,mags,part,shellReserve]);
+   if(key!==carryAuditKey){
+    carryAuditKey=key;
+    const {input,manifest}=quoteUnifiedLoadout({kit:currentKit,wardrobe:wardrobeOptions,magazines:mags,primaryPart:part,shellReserve});
+    carryAuditState={input,manifest};
+    const summary=unifiedPreparationSummary(input,manifest);
+    carryAuditOutput.textContent=[
+     (manifest.valid?'FIT':'UNPLACED EQUIPMENT')+' · '+manifest.placements.flatMap(p=>p.itemIds).length+'/'+input.items.length+' ITEMS',
+     ...summary.map(s=>s.carrier.toUpperCase()+' · '+s.used+'/'+s.total+' POSITIONS · '+s.items+' ITEMS'),
+     ...manifest.unplaced.map(p=>'NO FIT · '+p.id+' · '+p.reason),
+     ...(manifest.searchTruncated?['BOUNDED SEARCH LIMIT REACHED']:[])
+    ].join('\n');
+   }
+   if(carryAuditVisual.checked&&attachmentPreviewSelect.value==='off'&&!(sidearm&&isM9AppearanceId(sidearm)))stagedCarry=carryAuditState;
+  }
   const pistolReload=pistolFrame?.reload&&currentKit.secondary?.weapon?{
    orderId:0,selectedId:currentKit.secondary.spareMagazines[0].id,
    elapsed:pistolFrame.reload.progress*1.45,duration:1.45,
@@ -2207,7 +2227,7 @@ function draw(){
     labPistolStance:pistolFrame?.stance,
     labPistolStanceBlend:pistolFrame?.stanceBlend,
     labPistolPitch:pistolFrame?.pitch,
-    labPistolScale:sidearm?LAB_PISTOL_PREVIEW_SCALE:undefined,
+    labPistolScale:sidearm&&!stagedCarry?LAB_PISTOL_PREVIEW_SCALE:undefined,
     handlingOverride:sidearm?'ready':shoulderTrack?'high':selectedHandling,
     poseV3Preview,poseV4ReloadPreview,
     poseV3StrictContact:poseStrictContact.checked,
@@ -2216,7 +2236,7 @@ function draw(){
     pelvisYaw:state.pelvisYaw,
     hybridSupport:gaitReference.value==='candidate',
     deterministic:true,shotHeading:motion.heading,
-     equipment:currentKit,appearanceSeed:labPalette,wardrobe:wardrobeOptions,
+     equipment:currentKit,appearanceSeed:labPalette,wardrobe:wardrobeOptions,unifiedCarry:stagedCarry,
      faceStyle:choose<HTMLSelectElement>('faceTreatment').value as
        'blank'|'quiet'|'graphic',
      magazineCarryLocations:currentCarry.filter(p=>p.kind==='magazine')
@@ -2252,7 +2272,7 @@ function draw(){
       velocity:0,turning:0,physicalContact:null,doorGrip:null,
       handlingIntent:'hold',handlingOverride:'high',
       down:false,injury:0,aiming:false,firing:false,
-      appearanceSeed:labPalette,deterministic:true},0);
+      appearanceSeed:labPalette,unifiedCarry:undefined,deterministic:true},0);
   }
   // The shared wardrobe layer controls hair visibility even in unarmed preview.
   if(variantComparing&&rig.lastPose&&(pinnedLook||uniformComparing)){
@@ -2535,41 +2555,7 @@ function draw(){
     });
   }
   // Explicit diagnostic: only calculate on a changed outfit while open.
-  // The current simulation still owns its V1 placement; do not imply that
-  // this quote has mutated gameplay inventory or drawn these holders.
-  let restoreUnifiedVisibility:(()=>void)|undefined;
-  hideUnifiedCarryPreview(rig);
-  if(carryAudit.open&&!comparing&&!kitComparing&&!variantComparing){
-   const look=resolvedWardrobe(wardrobeOptions,currentKit);
-   const waist=rig.visualKit.wardrobeGear.waistRig[look.rigStyle];
-   const chest=rig.visualKit.wardrobeGear.rig[look.rigStyle];
-   const owner=registeredMagazinePouches(waist).length?waist:chest;
-   const cells=registeredMagazinePouches(owner);
-   const auxiliary=[...(chest?.userData.auxiliaryPouchCells??[]),...(waist?.userData.auxiliaryPouchCells??[])];
-   const mags=currentCarry.filter(p=>p.kind==='magazine').map(p=>({id:p.id,weapon:currentWeapon,rounds:1}));
-   const part=rig.visualKit.carriedMagazinePart;
-   const key=JSON.stringify([currentKit,look,wardrobeOptions.accessories,mags.map(m=>m.id),part,cells,auxiliary]);
-   if(key!==carryAuditKey){
-    carryAuditKey=key;
-    const {input,manifest}=quoteUnifiedLoadout({kit:currentKit,wardrobe:wardrobeOptions,magazines:mags,
-     primaryPart:part,rigCells:cells,auxiliaryCells:auxiliary});
-    carryAuditManifest=manifest;carryAuditStorage=[...input.storage];
-    carryAuditOutput.textContent=[
-     (manifest.valid?'FIT':'UNPLACED EQUIPMENT')+' · '+manifest.placements.flatMap(p=>p.itemIds).length+'/'+input.items.length+' ITEMS',
-     ...manifest.placements.map(p=>p.carrier.toUpperCase()+' · '+p.slotIds.join(' / ')+' · '+(p.holder??(p.concealed?'concealed':'authored cell'))+' · '+p.itemIds.join(', ')),
-     ...manifest.unplaced.map(p=>'NO FIT · '+p.id+' · '+p.reason),
-     ...(manifest.searchTruncated?['BOUNDED SEARCH LIMIT REACHED']:[])
-    ].join('\n');
-   }
-   if(carryAuditVisual.checked&&carryAuditManifest&&attachmentPreviewSelect.value==='off'){
-    const unrendered=showUnifiedCarryPreview(rig,carryAuditKey,carryAuditManifest,carryAuditStorage,owner,{
-     primaryPart:part??(currentWeapon==='rifle'?'fal-mag20':currentWeapon==='smg'?'hk9-mag30':'ar-mag30'),
-     secondaryWeapon:currentKit.secondary?.weapon??undefined,
-     secondaryMagazine:secondaryMagazineArtwork(rig.hip),grenade:rig.flashCanister});
-    carryAuditOutput.dataset.unrendered=String(unrendered.length);
-    restoreUnifiedVisibility=maskLegacyCarryForPreview(rig);
-   }
-  }
+  carryAuditOutput.dataset.unrendered=String(stagedCarry?(rig.root.userData.bt4Unrendered?.length??0):0);
   const attachmentChoice=attachmentPreviewSelect.value;
   const attachmentStatus=updateAttachmentPreview(rig,attachmentChoice,
    attachmentVariantSelect.value as AttachmentVariant,attachmentContentsSelect.value,
@@ -2582,7 +2568,7 @@ function draw(){
   }
   if(attachmentPreviewStatus.textContent!==attachmentStatus)
    attachmentPreviewStatus.textContent=attachmentStatus;
-  try{renderer.render(scene,camera);}finally{restoreUnifiedVisibility?.();}
+  renderer.render(scene,camera);
   if(renderer.info.render.calls<1)
     throw Error('3D renderer returned without drawing an operator');
   canvas.dataset.drawCalls=String(renderer.info.render.calls);

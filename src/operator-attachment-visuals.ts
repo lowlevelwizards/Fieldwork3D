@@ -9,7 +9,7 @@ import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {gearMarkedMaterial,gearBoxMarkUV,type GearMark} from './operator-gear-pixel-art.ts';
 import {TILE_WORLD_SIZE} from './rendering/pixel-recipes.ts';
-import {nativePrimaryMagazine,nativeEquippedMagazine,SIDEARM_OPERATOR_SCALE} from './operator-attachment-reference.ts';
+import {nativePrimaryMagazine,nativeEquippedMagazine,nativeSecondaryMagazine,SIDEARM_OPERATOR_SCALE} from './operator-attachment-reference.ts';
 import {buildGlockAppearance,glockArtSockets,type GlockAppearanceId} from './weapons/geometry/glock-family-silhouettes.ts';
 export type AttachmentPalette=Record<AttachmentMaterial,THREE.Material>;
 export type AttachmentSamples={primaryPart?:string|null;secondaryMagazine?:THREE.Mesh;secondaryWeapon?:GlockAppearanceId;grenade?:THREE.Mesh;omitSidearm?:boolean};
@@ -143,6 +143,7 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
   for(let i=0;i<n;i++){
    const x=(i-(n-1)/2)*.49;pouch(x,w,-.94,-.25);
    cell(x,-.16,.52,(p,g)=>{
+    if(samples.secondaryWeapon){const model=nativeSecondaryMagazine(samples.secondaryWeapon,palette.contents,palette.hardware);model.position.y=H*.04;g.add(model);return;}
     if(samples.secondaryMagazine){const mesh=new THREE.Mesh(samples.secondaryMagazine.geometry.clone(),samples.secondaryMagazine.material);mesh.geometry.computeBoundingBox();const size=mesh.geometry.boundingBox!.getSize(new THREE.Vector3());mesh.position.y=-H*.78+H*.16+size.y/2;g.add(mesh);return;}
     p('contents',x,-.42,.52,w*.68,.72,.50,'magazine-body');
     p('hardware',x,-.075,.52,w*.78,.10,.60,'baseplate');

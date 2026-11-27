@@ -18,7 +18,7 @@ import * as THREE from 'three';
 import {operatorPixelTextures} from './rendering/pixel-materials.ts';
 import {syncHipSecondaryVisual} from './secondary-holster-visual.ts';
 import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
-import {resolvedWardrobe} from './operator-wardrobe-data.ts';
+import {resolvedWardrobe,initialWardrobe} from './operator-wardrobe-data.ts';
 import {equipmentExterior} from './operator-equipment-exterior.ts';
 import {SKIN_TONES,seededSkinTone} from './operator-identity-palette.ts';
 import {isH1ModernHelmet,resolveHelmetSetup} from './operator-helmet-setup-policy.ts';
@@ -98,8 +98,9 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     fingerprintMs,appearanceChanged:appearanceChanged?1:0};
   // Resolve once per appearance fingerprint, including in-place Studio edits.
   // No repeated wardrobe normalization in coupled, coordinated or IK paths.
+  const visualWardrobe=p.unifiedCarry&&!p.wardrobe?initialWardrobe():p.wardrobe;
   const clothing=appearanceChanged?
-    resolvedWardrobe(p.wardrobe,p.equipment):previousAppearance!.outfit;
+    resolvedWardrobe(visualWardrobe,p.equipment):previousAppearance!.outfit;
   if(appearanceChanged){
   // Passive, actual-pelvis-mounted S4 carry. An unissued or unequipped
   // secondary does not materialize. S5 will take over drawing authority.
@@ -270,8 +271,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
    garmentSolidHex(p.wardrobe?.gloveSolid??'ranger-green')));
   const kitStart=traceAppearance?performance.now():0;
   applyOperatorVisualKit(r.visualKit,gear,identity,
-    p.magazineCarryLocations,p.faceStyle,p.wardrobe,p.weaponConfiguration,
-    nvgMounted(p),p.nvgDeployed===true,r.root.userData.fieldworkAuthoredPackPreview===true);
+    p.magazineCarryLocations,p.faceStyle,visualWardrobe,p.weaponConfiguration,
+    nvgMounted(p),p.nvgDeployed===true,!!p.unifiedCarry||r.root.userData.fieldworkAuthoredPackPreview===true);
    // Preview-only: legacy pack contents are internal unless BP13 mounts them.
    if(r.visualKit.packPreview.active){
     for(const item of [r.medicalPouch,r.utilityTool,r.radioUnit,...r.flashCanisters,...r.wedgeMeshes,...r.cuffMeshes])

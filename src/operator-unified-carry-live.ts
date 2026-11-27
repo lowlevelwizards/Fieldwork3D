@@ -9,10 +9,11 @@ import type {UnifiedDeployedCarry} from './equipment-unified-deployed.ts';
 import type {Placement} from './equipment-unified-placement.ts';
 import type {StorageSlot} from './equipment-fixed-carrier-slots.ts';
 import {createAttachmentVisual,placeAttachmentVisual,type AttachmentPalette} from './operator-attachment-visuals.ts';
-import {nativeEquippedMagazine} from './operator-attachment-reference.ts';
+import {nativeEquippedMagazine,nativeSecondaryMagazine} from './operator-attachment-reference.ts';
 import {seatMagazineInPouch,registeredMagazinePouches} from './operator-magazine-pouch-fit.ts';
 import {sampleEquipmentGesture} from './breach-equipment-interaction-pose.ts';
 import {v4AuthoredPouchAnchor} from './breach-reload-v4-magazine-handoff.ts';
+import type {GlockAppearanceId} from './weapons/geometry/glock-family-silhouettes.ts';
 import {syncGearMarkedMaterials} from './operator-gear-pixel-art.ts';
 type Lane={node:THREE.Object3D;parent:THREE.Object3D;position:THREE.Vector3;rotation:THREE.Quaternion;id:string|null;visible:boolean};
 type Holder={root:THREE.Group;lanes:Lane[];concealed:boolean};
@@ -41,7 +42,7 @@ function suppressLegacy(r:OperatorRig){
   ...Object.values(r.visualKit.accessories.beltLeft),...Object.values(r.visualKit.accessories.beltRight)])o.visible=false;
  for(const child of r.hip.children)if(child.name.startsWith('issued-belt-grenade-pouch-'))child.visible=false;
 }
-function concealedProp(r:OperatorRig,p:Placement,parent:THREE.Group,primaryPart:string|undefined){
+function concealedProp(r:OperatorRig,p:Placement,parent:THREE.Group,primaryPart:string|undefined,secondaryWeapon:GlockAppearanceId|undefined){
  const root=new THREE.Group();parent.add(root);
  if(p.kind==='flash'){
   const m=r.flashCanister.clone(true);
@@ -51,16 +52,17 @@ function concealedProp(r:OperatorRig,p:Placement,parent:THREE.Group,primaryPart:
  }else if(p.kind==='wedge'){
   const m=new THREE.Mesh(new THREE.BoxGeometry(3.9,1.45,1.5),r.gearMaterial);root.add(m);
  }else if(p.kind==='secondary-mag'){
-  const m=new THREE.Mesh(new THREE.BoxGeometry(1.35,2.5,1.2),r.weaponDark);root.add(m);
+  if(secondaryWeapon)root.add(nativeSecondaryMagazine(secondaryWeapon,r.weaponDark,r.weaponSteel));
+  else root.add(new THREE.Mesh(new THREE.BoxGeometry(1.35,2.5,1.2),r.weaponDark));
  }else if(p.kind==='primary-mag'&&primaryPart){
   const geo=nativeEquippedMagazine(primaryPart);if(geo)root.add(new THREE.Mesh(geo,r.visualKit.carriedMagazineMaterial));
  }
  return root;
 }
-function createHolder(r:OperatorRig,p:Placement,storage:readonly StorageSlot[],rigOwner:THREE.Group|undefined,primaryPart:string|undefined,palette:AttachmentPalette):Holder|null{
+function createHolder(r:OperatorRig,p:Placement,storage:readonly StorageSlot[],rigOwner:THREE.Group|undefined,primaryPart:string|undefined,secondaryWeapon:GlockAppearanceId|undefined,palette:AttachmentPalette):Holder|null{
  const socket=p.waist?.socket??p.mount;
  if(socket&&p.holder){
-  const v=createAttachmentVisual(p.holder,palette,p.variant,true,{primaryPart,grenade:r.flashCanister,omitSidearm:true});
+  const v=createAttachmentVisual(p.holder,palette,p.variant,true,{primaryPart,secondaryWeapon,grenade:r.flashCanister,omitSidearm:true});
   placeAttachmentVisual(v,socket);
   v.root.name='bt4-live-'+p.holder;v.root.userData.bt4SlotIds=[...p.slotIds];
   (p.carrier==='belt'?r.hip:r.chest).add(v.root);
@@ -87,20 +89,22 @@ function createHolder(r:OperatorRig,p:Placement,storage:readonly StorageSlot[],r
  if(slot?.cell)root.position.set(slot.cell.x,slot.cell.y,slot.cell.z);
  else if(p.carrier==='backpack')root.position.set(0,-2,0);
  else if(p.carrier==='pocket')root.position.set(-.5,-4,6);
- const lanes=(p.contentIds??p.itemIds).map(()=>lane(concealedProp(r,p,root,primaryPart),false));
+ const lanes=(p.contentIds??p.itemIds).map(()=>lane(concealedProp(r,p,root,primaryPart,secondaryWeapon),false));
  return {root,lanes,concealed:true};
 }
 /** Call after legacy appearance on the real rig, before pose constraints.
  * Legacy objects are suppressed for staged actors only. No per-frame
  * geometry construction, no changes to the inventory or simulation. */
-export function syncLiveUnifiedCarry(r:OperatorRig,p:Pick<OperatorPose,'unifiedCarry'|'weaponConfiguration'>,rigStyle:string,appearanceChanged=false){
+export function syncLiveUnifiedCarry(r:OperatorRig,p:Pick<OperatorPose,'unifiedCarry'|'weaponConfiguration'|'equipment'>,rigStyle:string,appearanceChanged=false){
  const state=p.unifiedCarry;
  if(!state){clearLiveUnifiedCarry(r);return;}
- const part=p.weaponConfiguration?.build?.parts.magazine;
+ const primary=p.equipment?.slots.primary;
+ const part=p.weaponConfiguration?.build?.parts.magazine??(primary==='primary-rifle'?'fal-mag20':primary==='primary-smg'?'hk9-mag30':primary==='primary-shotgun'?undefined:'ar-mag30');
+ const secondaryWeapon=p.equipment?.secondary?.weapon??undefined;
  const waist=r.visualKit.wardrobeGear.waistRig[rigStyle];
  const chest=r.visualKit.wardrobeGear.rig[rigStyle];
  const owner=registeredMagazinePouches(waist).length?waist:chest;
- const key=rigStyle+'|'+(part??'');
+ const key=rigStyle+'|'+(part??'')+'|'+(secondaryWeapon??'');
  let current=cache.get(r);
  if(current?.held){restore(current.held);current.held=null;}
  if(current?.key===key&&current.manifest===state.manifest){
@@ -123,7 +127,7 @@ export function syncLiveUnifiedCarry(r:OperatorRig,p:Pick<OperatorPose,'unifiedC
   let h=current.holders.get(id);
   if(h&&h.root.userData.bt4Signature!==signature){destroy(h);current.holders.delete(id);h=undefined;}
   if(!h){
-   h=createHolder(r,p,state.input.storage,owner,part,palette)??undefined;
+   h=createHolder(r,p,state.input.storage,owner,part,secondaryWeapon,palette)??undefined;
    if(!h){current.unrendered.push(...p.itemIds);continue;}
    h.root.userData.bt4Signature=signature;current.holders.set(id,h);
   }

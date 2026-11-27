@@ -15,7 +15,7 @@ import {LEG_HIP_HEIGHT} from './breach-leg-geometry.ts';
 import {armorAttachmentFrame} from './operator-armor-attachment-frame.ts';
 import {fitPack,supportsDirectPack} from './operator-backpack-fit.ts';
 import {proposedPackStyle,PACK_PROFILES} from './operator-backpack-catalog.ts';
-import {nativeEquippedMagazine} from './operator-attachment-reference.ts';
+import {nativeEquippedMagazine,nativeSecondaryMagazineSize} from './operator-attachment-reference.ts';
 import type {MagazinePouchCell} from './operator-magazine-pouch-fit.ts';
 import {attachmentFootprint,type AttachmentId} from './operator-attachment-catalog.ts';
 import {clothingStorage,packStorage,registeredRigStorage,registeredAuxiliaryStorage,modularArmorStorage,
@@ -80,7 +80,7 @@ export function unifiedLoadoutInput(source:UnifiedLoadoutSource):CarryInput{
  if(side?.weapon){
   // Existing holster insertion envelope, not total exposed grip size.
   add('sidearm:'+side.weapon,'sidearm',dim(2.4,5.8,1.5));
-  for(const m of side.spareMagazines)add(m.id,'secondary-mag',source.secondaryMagazineSize??dim(1.35,2.5,1.2));
+  for(const m of side.spareMagazines)add(m.id,'secondary-mag',source.secondaryMagazineSize??nativeSecondaryMagazineSize(side.weapon));
  }
  if(kit.slots.medical==='medical-basic')add('kit:medical','medical',dim(4.0,3,2));
  if(kit.slots.medical==='medical-trauma')add('kit:medical','trauma',dim(5.5,6,3.5),2);

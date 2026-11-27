@@ -37,7 +37,7 @@ export function quoteUnifiedPreparation(source:UnifiedPreparationSource,request:
  const expected=kit.fieldInventory??initialFieldInventory(kit),actual=quote.kit.fieldInventory!;
  if(FIELD_ITEM_IDS.some(id=>fieldQuantity(expected,id)!==fieldQuantity(actual,id)))return {ok:false,reason:'FIELD CONSERVATION FAILURE'};
  const before=kit.secondary,after=quote.kit.secondary;
- if(before?.weapon&&(before.loadedMagazineId!==after?.loadedMagazineId||before.loadedRounds!==after.loadedRounds||
+ if(before?.weapon&&(!after||before.loadedMagazineId!==after.loadedMagazineId||before.loadedRounds!==after.loadedRounds||
   before.spareMagazines.length!==after.spareMagazines.length||before.spareMagazines.some(m=>!after.spareMagazines.some(n=>n.id===m.id&&n.rounds===m.rounds))))
   return {ok:false,reason:'SECONDARY CONSERVATION FAILURE'};
  return quote;
