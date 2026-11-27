@@ -58,6 +58,7 @@ export type ActorFrame=Pick<TeamActor,
   'traversal'|'traversalElapsed'|'traversalElevation'|
   'traversalRetreating'>;
 export type ReplayActorFrame=ActorFrame & {
+ unifiedCarry?:TeamActor['unifiedCarry'];
  /** S5.2: recorded explicit weapon hand, optional for all legacy films. */
  secondarySwitch?:SecondarySwitchState;
  retentionTransition?:TeamActor['retentionTransition'];
@@ -219,6 +220,7 @@ export function snapshot(s:Session,seenGround?:string[],
       secondaryEquipment:a.equipment?.secondary?
         reuseFrozenReplayValue(a.equipment.secondary,prior?.secondaryEquipment,
           ()=>structuredClone(a.equipment!.secondary!)):undefined,
+      unifiedCarry:a.unifiedCarry?reuseFrozenReplayValue(a.unifiedCarry,prior?.unifiedCarry,()=>structuredClone(a.unifiedCarry!)):undefined,
       secondaryReload:a.secondaryReload?{...a.secondaryReload}:null,
       insertedMagazineId:a.insertedMagazineId,
       spareMagazines:reuseFrozenReplayValue(a.spareMagazines,
@@ -610,6 +612,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
        primaryPlacement:copy.primaryPlacement?{...copy.primaryPlacement}:undefined,
        retentionTransition:copy.retentionTransition?{...copy.retentionTransition}:undefined,
        secondarySwitch:copy.secondarySwitch?{...copy.secondarySwitch}:initialSecondarySwitch(),
+      unifiedCarry:copy.unifiedCarry?structuredClone(copy.unifiedCarry):undefined,
       secondaryReload:copy.secondaryReload?{...copy.secondaryReload}:null,
       // F2: rewind physically carried locations as well as the HUD counters.
       // Archived frames without this optional field keep their old kit.

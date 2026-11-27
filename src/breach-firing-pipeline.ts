@@ -1,3 +1,4 @@
+import {unifiedSecondaryAccess} from './equipment-unified-deployed.ts';
 import {hasGroundedPrimary} from './breach-grounded-primary.ts';
 import {retentionBusy} from './breach-weapon-retention-live.ts';
 import {hardWindowCoveringsBlockRay} from './breach-window-covering-optics.ts';
@@ -479,7 +480,9 @@ function fire(s:Session,a:TeamActor,dt:number){
       a.secondaryReload=null;return;
     }
     const progress=advanceTimedSecondaryReload(kit,a.secondaryReload,dt);
-    commitSecondaryReloadStep(s,a,progress);
+    if(progress.ok&&!commitSecondaryReloadStep(s,a,progress)){
+     a.secondaryReload=null;notify(s,a.name+' PISTOL RELOAD INTERRUPTED');return;
+    }
     a.secondaryReload=progress.state;
     if(!progress.ok)notify(s,a.name+' PISTOL RELOAD INTERRUPTED');
     else if(progress.done)notify(s,a.name+' PISTOL RELOADED');
@@ -520,7 +523,7 @@ function fire(s:Session,a:TeamActor,dt:number){
       if(a.plan[0]?.kind!=='reload'&&a.health>0&&!a.surrendered&&
          !a.traversal&&!a.squeeze&&!a.carryingId&&!a.treatmentActive&&
          a.pace!=='run'){
-        const started=beginTimedSecondaryReload(sidearmKit,0);
+        const started=beginTimedSecondaryReload(sidearmKit,0,unifiedSecondaryAccess(a));
         if(started.ok&&started.state){
           a.secondaryReload=started.state;
           notify(s,a.name+' EMERGENCY PISTOL RELOAD');

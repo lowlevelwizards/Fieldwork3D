@@ -26,3 +26,5 @@ BT4.9–10 contract: exact content-cell retrieval uses existing access timing by
 
 ## Rolling BT4 gameplay batch
 BT4.7/9: explicit staged deployment mode now accepts only a complete conserved fit, stores mission-local reservations separately from stock, uses them for field retrieval/spending and wedge return, and reconciles campaign issue reductions without removing holders. Legacy production deployment remains unchanged; explicit opt-in failure leaves actor untouched. Secondary magazine cell exchange helper is staged for the next integration commit. No release until live primary, secondary, visuals, replay and preparation transactions are migrated.
+
+BT4.6/7/9/10: opted-in primary and secondary reloads consume and replace the exact reserved cell; shell loads remove individual planned shell IDs; medical and entry-tool access use the manifest. Primary retention commits at insertion instead of restaging at detach, so a canceled reload leaves the old loaded stock untouched. Replay captures and restores mission reservations, with immutable subtree sharing. Explicit unified deployment remains staged, pending renderer handoff and preparation integration.

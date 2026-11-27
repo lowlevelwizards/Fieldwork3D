@@ -1,3 +1,4 @@
+import {deployedCarryLocation,unifiedPrimaryReloadIndex,exchangeUnifiedMagazine,consumeUnifiedShells,unifiedShellAccess,unifiedSecondaryAccess} from './equipment-unified-deployed.ts';
 import {operatingLeaves} from './breach-door-operating-modes.ts';
 import {hardCoveringBlocksPaneContact} from './breach-window-covering-physical.ts';
 import {coveringActionSeconds} from './breach-window-covering-interaction.ts';
@@ -1526,20 +1527,21 @@ export function beginReload(s:Session,a:TeamActor):boolean{
   const w=WEAPONS[a.weapon];
   const capacity=liveMagazineCapacity(a.weapon,a.weaponConfiguration);
   if(a.health<=0||a.reload>0||a.reserve<=0||a.magazine>=capacity)return false;
-  if(a.weapon!=='shotgun'&&!a.spareMagazines.length){
+  if(a.weapon!=='shotgun'&&!a.spareMagazines.length&&!a.unifiedCarry){
     const replacement=magazineKit(a.id,a.weapon,a.reserve,capacity);
     a.spareMagazines=a.equipment?stageMagazines(replacement,a.equipment):replacement;
   }
   const mode:ReloadMode=a.weapon==='shotgun'?'shells':
     a.magazine===0?'emergency':'retention';
+  const selected=a.weapon==='shotgun'?-1:a.unifiedCarry?unifiedPrimaryReloadIndex(a):chooseReloadMagazine(a.spareMagazines);
+  if(a.unifiedCarry&&(a.weapon==='shotgun'?!Number.isFinite(unifiedShellAccess(a)):selected<0))return false;
   a.reloadMode=mode;a.reloadStartedAt=s.seconds;
-  const selected=a.weapon==='shotgun'?-1:chooseReloadMagazine(a.spareMagazines);
   a.reloadSelectedMagazineId=selected>=0?a.spareMagazines[selected].id:null;
   const source=selected>=0?a.spareMagazines[selected]:undefined;
   a.reloadDuration=reloadTiming(w.reload,injuryReload(a.injuryStage),
     mode,capacity-a.magazine)*
     weaponHandlingModifiers(a.weaponConfiguration).manipulation+
-    reloadMagazineDelay(source);
+    (a.unifiedCarry?(mode==='shells'?unifiedShellAccess(a):deployedCarryLocation(a,source!.id)!.accessSeconds):reloadMagazineDelay(source));
   a.reload=a.reloadDuration;a.reloadRemoved=false;
   a.reloadInserted=false;a.reloadFromRounds=a.magazine;
   a.reloadTargetRounds=Math.min(capacity-a.magazine,a.reserve);
@@ -1558,9 +1560,36 @@ export function advanceReload(s:Session,a:TeamActor,dt:number){
    const staged=Math.min(a.reloadTargetRounds,Math.max(0,
      Math.floor(Math.max(0,t-.20)/.68*a.reloadTargetRounds)));
    const inserted= a.magazine-a.reloadFromRounds;
-   const add=Math.max(0,staged-inserted);
+   const requested=Math.max(0,Math.min(a.reserve,staged-inserted));
+   const add=a.unifiedCarry?consumeUnifiedShells(a,requested):requested;
    if(add){
      a.magazine+=add;a.reserve-=add;
+   }
+ }else if(a.unifiedCarry){
+   // Keep inventory atomic until insertion. An interruption before .82
+   // leaves the old magazine in the gun; the pose still depicts removal.
+   if(!a.reloadInserted&&t>=.82){
+    const index=a.spareMagazines.findIndex(m=>m.id===a.reloadSelectedMagazineId&&m.rounds>0);
+    const incoming=a.spareMagazines[index],oldId=a.insertedMagazineId,oldRounds=a.magazine;
+    const retain=mode==='retention'&&oldRounds>0;
+    const q=incoming?deployedCarryLocation(a,incoming.id):null;
+    const next=incoming&&oldId&&q?.placement.kind==='primary-mag'?
+     exchangeUnifiedMagazine(a.unifiedCarry,incoming.id,retain?oldId:null):null;
+    if(next&&q){
+     a.spareMagazines.splice(index,1);
+     a.reserve-=incoming.rounds;
+     if(retain){a.spareMagazines.push({id:oldId,weapon:a.weapon,rounds:oldRounds,location:q.location});a.reserve+=oldRounds;}
+     else{
+      s.dropped.push({id:s.nextEffectId++,p:clone(a.p),side:a.side,age:0,weapon:a.weapon,rounds:oldRounds,magazineId:oldId});
+      if(s.dropped.length>48)s.dropped.shift();
+     }
+     a.unifiedCarry=next;a.magazine=incoming.rounds;a.insertedMagazineId=incoming.id;
+     a.reloadRemoved=true;a.reloadInserted=true;
+    }else{
+     a.reload=0;a.reloadMode=null;a.reloadSelectedMagazineId=null;
+     a.reloadRemoved=false;a.reloadInserted=false;
+     notify(s,a.name+' RELOAD INTERRUPTED');return;
+    }
    }
  }else{
    if(!a.reloadRemoved&&t>=.29){
@@ -1595,7 +1624,7 @@ export function advanceReload(s:Session,a:TeamActor,dt:number){
    if(mode==='shells'){
      const missing=Math.min(a.reloadTargetRounds,
        a.reloadFromRounds+a.reloadTargetRounds-a.magazine);
-     if(missing>0){a.magazine+=missing;a.reserve-=missing;}
+     if(missing>0){const add=a.unifiedCarry?consumeUnifiedShells(a,Math.min(missing,a.reserve)):missing;a.magazine+=add;a.reserve-=add;}
    }
    a.reloadMode=null;
    a.reloadSelectedMagazineId=null;
@@ -1703,6 +1732,8 @@ export function equipWeaponChoice(s:Session,id:string,next:WeaponId):boolean{
   const a=party(s,id);if(!a||!canEdit(s)||
     !(['carbine','smg','rifle','shotgun'] as WeaponId[]).includes(next))return false;
   if(a.weapon===next)return true;
+  // Unified deployments require a complete preflight refit, never a live reissue.
+  if(a.unifiedCarry)return false;
   a.weapon=next;
   if(a.weaponConfiguration)a.weaponConfiguration=changeWeaponPlatform(a.weaponConfiguration,next);
   const issue=freshMagazineIssue(a.id,next,a.weaponConfiguration);
@@ -1731,7 +1762,7 @@ export function reloadNow(s:Session,id:string):boolean{
     if(a.secondaryReload||!a.equipment?.secondary||a.traversal||
        a.squeeze||a.carryingId||a.treatmentActive||a.pace==='run'||
        a.plan[0]?.kind==='door'||a.plan[0]?.kind==='treat')return false;
-    const started=beginTimedSecondaryReload(a.equipment.secondary,0);
+    const started=beginTimedSecondaryReload(a.equipment.secondary,0,unifiedSecondaryAccess(a));
     if(!started.ok||!started.state)return false;
     a.secondaryReload=started.state;
     notify(s,a.name+' PISTOL RELOADING');

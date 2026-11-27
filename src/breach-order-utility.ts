@@ -1,3 +1,4 @@
+import {unifiedSecondaryAccess} from './equipment-unified-deployed.ts';
 import {retentionBusy} from './breach-weapon-retention-live.ts';
 import {usesUnslungPlacement,prepareGroundedPrimary,hasGroundedPrimary,canRetrieveGroundedPrimary,retrieveGroundedPrimary} from './breach-grounded-primary.ts';
 /** Fixed-step SYNC, RELOAD and FLASH handlers, retaining authored timing.
@@ -92,7 +93,7 @@ export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
       const kit=a.equipment?.secondary;
       if(!kit){h.fail(s,a,n,'NO ISSUED SECONDARY');return true;}
       if(!a.secondaryReload||a.secondaryReload.orderId!==n.id){
-        const started=beginTimedSecondaryReload(kit,n.id);
+        const started=beginTimedSecondaryReload(kit,n.id,unifiedSecondaryAccess(a));
         if(!started.ok||!started.state){
           if(started.reason==='MAGAZINE FULL'){h.pop(a);return true;}
           h.fail(s,a,n,started.reason??'PISTOL RELOAD UNAVAILABLE');
@@ -107,7 +108,9 @@ export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
         h.fail(s,a,n,progressed.reason??'PISTOL RELOAD INTERRUPTED');
         return true;
       }
-      commitSecondaryReloadStep(s,a,progressed);
+      if(!commitSecondaryReloadStep(s,a,progressed)){
+       a.secondaryReload=null;h.fail(s,a,n,'PISTOL RELOAD INTERRUPTED');return true;
+      }
       if(progressed.dropped)
         h.notify(s,a.name+' PISTOL MAGAZINE DROPPED');
       a.secondaryReload=progressed.state;

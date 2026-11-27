@@ -12,8 +12,7 @@ import {entryToolVerdict} from './breach-entry-tools.ts';
 import {canUseEntryTool} from './equipment-entry-tools.ts';
 import {quoteDeployedFieldUse,spendDeployedFieldItem,restoreDeployedWedge}
  from './equipment-deployed-field-use.ts';
-import {equipmentRetrievalSeconds} from './equipment-carry-placement.ts';
-import {initialEquipmentLoadout} from './equipment-loadouts.ts';
+import {deployedEquipmentAccess} from './equipment-unified-deployed.ts';
 import {targetAngle} from './breach-plan.ts';
 import {completeOrder,rotate,clearCurrentOrderIssue,
  failCurrentOrder as failOrder} from './breach-order-lifecycle.ts';
@@ -68,8 +67,8 @@ export function createEntryOrderHandler(port:OrderExecutionPort){
     // Tool retrieval from a backpack or inaccessible overflow is slower
     // than a belt mount. Wedge removal still uses the required tool.
     const access=wedge?wedge.accessSeconds:
-      method==='pick'||method==='unwedge'?0:equipmentRetrievalSeconds(
-        a.equipment??initialEquipmentLoadout(a.weapon),a.spareMagazines,'utility');
+      method==='pick'||method==='unwedge'?0:deployedEquipmentAccess(a,'utility');
+    if(a.unifiedCarry&&!Number.isFinite(access)){failCurrentOrder(s,a,n,'ENTRY TOOL STORAGE UNAVAILABLE');return true;}
     // A hit interrupts fine hand manipulation without consuming a tool.
     if(method==='pick'&&s.seconds-a.lastHitAt<.35){
       a.actionTimer=0;return true;
