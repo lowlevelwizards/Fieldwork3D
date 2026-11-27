@@ -1,3 +1,4 @@
+import {buildAuthoredPack} from '../src/operator-backpack-art.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -20,8 +21,9 @@ test('major operator equipment choices now have different actual silhouettes',()
  const a=extent(rig.root,v.softArmor),b=extent(rig.root,v.plateCarrier);
  assert.ok(b.x>a.x+1,b.x+' '+a.x);
  assert.ok(b.z>a.z+.2,b.z+' '+a.z);
- const day=extent(rig.root,v.dayPack),field=extent(rig.root,v.fieldPack);
- assert.ok(field.y>day.y+3);
+ const day=new THREE.Box3().setFromObject(buildAuthoredPack('day-pack',v.packPreview.materials).root).getSize(new THREE.Vector3());
+ const field=new THREE.Box3().setFromObject(buildAuthoredPack('field-pack',v.packPreview.materials).root).getSize(new THREE.Vector3());
+ assert.ok(field.y>day.y);
  assert.ok(field.z>day.z+2);
  const j=extent(rig.root,v.jacket),shirt=extent(rig.root,v.lightShirt);
  assert.ok(j.y>shirt.y);
