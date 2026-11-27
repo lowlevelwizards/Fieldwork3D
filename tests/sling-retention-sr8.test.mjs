@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import * as THREE from 'three';
-import {clearRetentionEnvelope} from '../src/breach-weapon-retention-clearance.ts';
+import {clearRetentionEnvelope,RETENTION_FABRIC_INSET,RETENTION_SIDE_INSET,RETENTION_PACK_INSET} from '../src/breach-weapon-retention-clearance.ts';
 import {retentionShape,MAX_RETENTION_SUPPORT_POINTS} from '../src/operator-retention-shape.ts';
 import {equipmentExterior} from '../src/operator-equipment-exterior.ts';
 const fit=equipmentExterior('armor-bare','no-rig','combat-shirt');
@@ -7,13 +7,13 @@ const p={mode:'front-slung',bounds:new THREE.Box3(new THREE.Vector3(-2,-2,-1),ne
 test('SR8 resting solve can pull a floating model inward and preserve clearance',()=>{
  const f=clearRetentionEnvelope(p);
  assert.ok(f.correction.x<0);
- assert.ok(Math.abs(f.box.min.x-fit.front(0,0)-.38)<1e-5);
+ assert.ok(Math.abs(f.box.min.x-fit.front(0,0)+RETENTION_FABRIC_INSET)<1e-5);
  const s=clearRetentionEnvelope({...p,mode:'side-slung',position:new THREE.Vector3(0,0,18)});
  assert.ok(s.correction.z<0);
- assert.ok(Math.abs(s.box.min.z-fit.side(0,0,1)-.38)<1e-5);
+ assert.ok(Math.abs(s.box.min.z-fit.side(0,0,1)+RETENTION_SIDE_INSET)<1e-5);
  const b=clearRetentionEnvelope({...p,mode:'back-slung',position:new THREE.Vector3(-18,0,0)});
  assert.ok(b.correction.x>0);
- assert.ok(Math.abs(b.box.max.x-fit.back(0,0)+.38)<1e-5);
+ assert.ok(Math.abs(b.box.max.x-fit.back(0,0)-RETENTION_FABRIC_INSET)<1e-5);
 });
 test('SR8 bounded artwork support rejects the empty global-box corner',()=>{
  const root=new THREE.Group();
@@ -35,5 +35,5 @@ test('SR8 ground correction precedes local fitting; pack stays a real obstructio
  assert.ok(floor.box.min.y+p.chestHeight>=2-1e-6);
  const pack=new THREE.Box3(new THREE.Vector3(-13,-4,-4),new THREE.Vector3(-6,5,4));
  const b=clearRetentionEnvelope({...p,mode:'back-slung',position:new THREE.Vector3(-6,0,0),pack:true,packBounds:pack});
- assert.ok(b.box.max.x<=-13.38+1e-6);
+ assert.ok(b.box.max.x<=-13+RETENTION_PACK_INSET+1e-6);
 });

@@ -4,7 +4,6 @@
 import * as THREE from 'three';
 import type {EquipmentExterior} from './operator-equipment-exterior.ts';
 import type {RetentionShape} from './operator-retention-shape.ts';
-import {packedRearSurface} from './operator-retention-pack.ts';
 import type {RetentionPoseMode} from './breach-weapon-retention-pose.ts';
 export type RetentionClearanceInput=Readonly<{
  mode:RetentionPoseMode;bounds:THREE.Box3;position:THREE.Vector3;
@@ -12,6 +11,12 @@ export type RetentionClearanceInput=Readonly<{
  armorPush:number;pack:boolean;rigDepth?:number;beltDepth?:number;
  exterior?:EquipmentExterior;packBounds?:THREE.Box3;shape?:RetentionShape;
 }>;
+/** Visual contact allowance in chest-art units: fabric and soft kit may
+ * compress slightly. Keep the floor and rigid pack limits independent.
+ * This is not a gameplay collision or a whole-body clipping exemption. */
+export const RETENTION_FABRIC_INSET=.85;
+export const RETENTION_SIDE_INSET=1.05;
+export const RETENTION_PACK_INSET=.20;
 /** Fit against local occupied sections rather than one imaginary plane
  * spanning the entire torso. Positive or negative correction is allowed
  * along the resting normal: a separated silhouette should settle inward.
@@ -48,18 +53,18 @@ function fitLocal(p:RetentionClearanceInput,box:THREE.Box3,correction:THREE.Vect
    const bag=packY&&x>=pack!.min.x-margin&&x<=pack!.max.x+margin;
    if(!body&&!bag)continue;
    const belt=body&&y<-5.5&&y>-9.5?(p.beltDepth??0)*.65:0;
-   const edge=Math.max(body?fit.side(y,x,1)+belt:-Infinity,bag?pack!.max.z:-Infinity);
-   shift=Math.max(shift,edge+margin-z);
+   const edge=Math.max(body?fit.side(y,x,1)+belt-RETENTION_SIDE_INSET:-Infinity,
+    bag?pack!.max.z-RETENTION_PACK_INSET:-Infinity);
+   shift=Math.max(shift,edge-z);
   }else{
    const body=bodyY&&Math.abs(z)<=Math.abs(fit.side(y,0,z<0?-1:1))+margin;
    const bag=p.mode==='back-slung'&&packY&&z>=pack!.min.z-margin&&z<=pack!.max.z+margin;
    if(!body&&!bag)continue;
-   if(p.mode==='front-slung')shift=Math.max(shift,fit.front(y,z)+margin-x);
+   if(p.mode==='front-slung')shift=Math.max(shift,fit.front(y,z)-RETENTION_FABRIC_INSET-x);
    else{
-    const rear=packedRearSurface(body?fit.back(y,z):Infinity,y,z,pack);
-    // A margin-expanded pack edge still has a real support face.
-    const edge=bag?Math.min(rear,pack!.min.x):rear;
-    shift=Math.max(shift,x-edge+margin);
+    const rear=body?fit.back(y,z)+RETENTION_FABRIC_INSET:Infinity;
+    const edge=bag?Math.min(rear,pack!.min.x+RETENTION_PACK_INSET):rear;
+    shift=Math.max(shift,x-edge);
    }
   }
  }

@@ -1,0 +1,3 @@
+# SR18 — visual feedback: body contact and inside-arm side carry
+
+Prioritize a comfortable body-hugging silhouette over strict mesh separation. Front/back fabric contact may inset by .85 chest-art units, side by 1.05; pack allowance .20 and ground clearance remain separate. These are bounded artistic starting values, not physical material deformation. Side and rear use the nearest broad-face orientation; front retains source twist. Right wrist samples the actual installed side silhouette and the shared IK uses an outward bend only for the firing-side arm during side stow. Reduce outward bounce without eliminating secondary motion. Check renders across kits before release; exact overlap at the upper shoulder, hands and small accessories remains a visual review item.

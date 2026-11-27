@@ -59,7 +59,14 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
   new THREE.Vector3(front?1:-1,0,0);
  const z=outward.addScaledVector(axis,-outward.dot(axis)).normalize();
  const y=z.clone().cross(axis).normalize();
- const q=!one?retainedSwing(p.heldQuaternion,axis):
+ const swing=retainedSwing(p.heldQuaternion,axis);
+ // Side/back should lie flat against the wearer. Choose the nearest broad
+ // face rather than letting the stock or magazine point straight outward.
+ // Front retains its source-preserving drop.
+ if(!one&&!front&&new THREE.Vector3(0,0,1).applyQuaternion(swing).dot(z)<0){
+  z.negate();y.negate();
+ }
+ const q=front?swing:
   new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(axis,y,z));
  const suspension=!one&&p.motion?sampleSuspensionMotion(p.sling,p.motion):null;
  if(suspension)
@@ -105,11 +112,40 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
  // Clearance is authoritative: add only a small outward excursion after
  // contact fit, never an inward penetration or floor-changing movement.
  if(suspension){
-  if(front)position.x+=suspension.separation;
-  else if(side)position.z+=suspension.separation;
-  else position.x-=suspension.separation;
+  if(front)position.x+=suspension.separation*.45;
+  else if(side)position.z+=suspension.separation*.25;
+  else position.x-=suspension.separation*.35;
  }
  const right=one?anchor.clone():sampleRetentionFreeWrist(1,p.mode,p.locomotion,p.exterior);
  const left=sampleRetentionFreeWrist(-1,p.mode,p.locomotion,p.exterior);
+ if(side)fitSideCarryWrist(right,p,position,q);
  return {mode:p.mode,position,quaternion:q,right,left};
+}
+
+/** Fit the released right arm OUTSIDE the side-slung silhouette, using
+ * the installed model's cached support points near the hanging arm.
+ * Keep the hand reachable by allowing a little natural elbow flexion. */
+export function fitSideCarryWrist(wrist:THREE.Vector3,p:RetentionPoseInput,
+ position:THREE.Vector3,q:THREE.Quaternion){
+ const axis=new THREE.Vector3(1,0,0).applyQuaternion(q);
+ const atY=(target:number)=>position.x+axis.x*(target-position.y)/Math.min(-.25,axis.y);
+ const x=atY(-7);
+ wrist.x=Math.max(-4.5,Math.min(4.5,x+wrist.x*.35));
+ const v=new THREE.Vector3();
+ let edge=position.z;
+ if(p.shape?.length){
+  for(const point of p.shape){
+   v.copy(point).multiply(p.scale).applyQuaternion(q).add(position);
+   if(v.y>=-15&&v.y<=1&&Math.abs(v.x-wrist.x)<5)edge=Math.max(edge,v.z);
+  }
+ }else if(p.bounds){
+  const b=p.bounds.clone().applyMatrix4(new THREE.Matrix4().compose(position,q,p.scale));
+  edge=Math.max(edge,b.max.z);
+ }else edge+=1.6;
+ wrist.z=Math.max(wrist.z,edge+1.35);
+ // Slightly flex the arm instead of stretching it to the outside target.
+ // The unified IK retains exact bone lengths.
+ const lateral=Math.hypot(wrist.x-1,wrist.z-7);
+ wrist.y=Math.max(wrist.y,-12.3,4-Math.sqrt(Math.max(1,19.3**2-lateral**2)));
+ return wrist;
 }

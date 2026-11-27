@@ -1194,6 +1194,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       shoulder.lerp(P(restShoulder.x,restShoulder.y,restShoulder.z),release);
       const solved=solveUnifiedRetentionArm({
         shoulder,desired:requested,sourcePole,release,side:sign as -1|1,
+        outboardStow:retention.mode==='side-slung'&&i===1,
         envelope:poseEnvelope??poseClearanceEnvelope(clothing.armorStyle,clothing.rigStyle,clothing.top),
         scratch,armIndex:i as 0|1
       }).solution;
