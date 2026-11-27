@@ -42,7 +42,7 @@ try{
       Number(d.retentionWebbing)>0&&d.poseFitArmor===armor&&d.poseFitRig===rig&&d.poseFitWeapon===weapon;
    },{mode,armor,rig,weapon},{timeout:20000});
    for(const view of ['front','side','iso','game']){
-    await page.locator('[data-view="'+view+'"]').click();
+    await page.locator('[data-lab-group="poses"] [data-view="'+view+'"]').click();
     const name=[weapon,armor,rig,sling,mode,view].join('-');
     await page.locator('#preview').screenshot({path:out+'/'+name+'.png'});
    }
