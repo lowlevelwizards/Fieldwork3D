@@ -36,9 +36,9 @@ export const ARSENAL_PLATFORMS:readonly ArsenalPlatform[]=[
  {id:'g3',name:'G3',group:'hk'},
  {id:'hk33',name:'HK33 / HK53',group:'hk'},
  {id:'mp5',name:'MP5',group:'hk'},
- {id:'fal',name:'FN FAL',group:'fal'},
- {id:'fnc',name:'FN FNC',group:'fnc'},
- {id:'g36',name:'HK G36',group:'g36'},
+ {id:'fal',name:'FAL',group:'fal'},
+ {id:'fnc',name:'FNC',group:'fnc'},
+ {id:'g36',name:'G36',group:'g36'},
  {id:'remington870',name:'Remington 870',group:'r870'}
 ];
 export const ARSENAL_CATEGORIES:readonly ArsenalCategory[]=[
