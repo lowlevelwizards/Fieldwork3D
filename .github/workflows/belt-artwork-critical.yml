@@ -1,21 +1,12 @@
 name: Belt artwork — native fit and mobile silhouettes
 on:
-  pull_request:
-    paths:
-      - 'src/operator-belt-*.ts'
-      - 'src/operator-attachment-*.ts'
-      - 'src/operator-gear-pixel-art.ts'
-      - 'src/operator-wardrobe-accessories.ts'
-      - 'tests/operator-belt-*.test.mjs'
-      - 'tests/operator-attachment-artwork.test.mjs'
-      - 'scripts/capture-belt-artwork.mjs'
-      - '.github/workflows/belt-artwork-critical.yml'
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: belt-artwork-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   native-fit:
     runs-on: ubuntu-24.04
