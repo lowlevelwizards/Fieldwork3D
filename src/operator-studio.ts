@@ -1,3 +1,4 @@
+import {packMountChoices,equipmentAssembly,type PackMountMode} from './operator-equipment-assembly.ts';
 /** Operator Studio: contextual appearance editing, not the animation workbench.
  * The hosting game owns authoritative roster/campaign writes. Standalone mode
  * uses the same validated roster persistence for previews and direct access.
@@ -906,6 +907,7 @@ function posePreview(){
  };
  poseOperator(rig,armedPose,0);
  canvas.dataset.authoredPack=rig.visualKit.packPreview.active?.style??'legacy';
+ canvas.dataset.packMount=rig.visualKit.packPreview.fit?.mode??'none';
  canvas.dataset.packReviewColor=(rig.colors.get(rig.packMaterial)??rig.packMaterial.color).getHexString();
  canvas.dataset.packReview=String(reviewingPacks());
  // H8 rendering diagnostics: prove the live rig, not just the selector,
