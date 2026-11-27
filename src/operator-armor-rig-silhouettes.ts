@@ -352,7 +352,8 @@ export function updateFittedRigHarness(
   const [x,y,z]=anchors[rig]??anchors['chest-placard'];
   for(const sign of [-1,1]){
    line([[x,y,sign*z],[fx+.28,2.2,sign*Math.min(5.6,Math.max(3.5,sh)+.35)]],.9,.38,'front');
-   sideTie(sign,-3.2,fx+.1,bx,.62);
+   const anchor=RIG_LOWER_FRONT_ANCHORS[rig];
+   if(anchor)line([[anchor[0],anchor[1],sign*anchor[2]],[fx+.1,-3.2,sign*5.6]],.85,.38,'front');
   }
  }else if((rig==='chest-placard'||rig==='micro-rig')&&
     frame.mode==='carrier-placard'){
