@@ -14,7 +14,7 @@ export function sampleLoadedCarrier(p:LoadedTransportPose,speed:number,stride:nu
  const moving=Math.max(0,Math.min(1,speed/24));
  const drag=p.mode==='drag';
  return {weight,crouch:(drag?4.6:2.4)*weight,
-  torsoLean:(drag?.19:.13)*weight,torsoSide:(drag?0:-.10)*weight,
+  torsoLean:(drag?.19:.24)*weight,torsoSide:(drag?0:-.12)*weight,
   strideSway:Math.sin(stride*.13)*moving*(drag?.022:.042)*weight,
   wristLeft:drag?{x:12,y:-9,z:-4.8}:{x:6,y:3,z:-5},
   wristRight:drag?{x:12,y:-9,z:4.8}:{x:4,y:5,z:8}};

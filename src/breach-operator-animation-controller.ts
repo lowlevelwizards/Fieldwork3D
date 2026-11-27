@@ -22,7 +22,7 @@ import * as THREE from 'three';
 import {readSlingKind} from './breach-weapon-retention.ts';
 import {sampleSecondaryRetention} from './breach-secondary-retention.ts';
 import {oneHandRetentionWeight} from './breach-weapon-retention-actions.ts';
-import {patientTransportContacts,patientRootTransform,patientWrist,TRANSPORT_PATIENT_CHEST_Y,TRANSPORT_PATIENT_HIP_Y} from './breach-transport-patient-pose.ts';
+import {patientTransportContacts,patientRootTransform,patientWrist,patientChestTilt,patientHipOffset,patientDrape,TRANSPORT_PATIENT_CHEST_Y,TRANSPORT_PATIENT_HIP_Y} from './breach-transport-patient-pose.ts';
 import {sampleLoadedCarrier} from './breach-loaded-carrier-pose.ts';
 import {sampleTransportContact,transportContactHands} from './breach-transport-contact.ts';
 import {sampleRetentionTransition} from './breach-weapon-retention-transition.ts';
@@ -355,9 +355,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const root=patientRootTransform(patient,frame.root.scale.x);
     frame.root.position.copy(root.position);frame.root.quaternion.copy(root.quaternion);
     r.legacyYaw=-patient.heading;r.legacyPitch=0;r.legacyRoll=patient.roll;
-    frame.hip.position.set(0,TRANSPORT_PATIENT_HIP_Y,0);frame.hip.rotation.set(0,0,0);
-    frame.chest.position.set(0,TRANSPORT_PATIENT_CHEST_Y,0);frame.chest.rotation.set(0,0,0);
-    frame.head.rotation.set(0,0,patient.mode==='carry'?-.22:0);
+    frame.hip.position.set(patientHipOffset(patient),TRANSPORT_PATIENT_HIP_Y,0);
+    frame.hip.rotation.set(0,0,-.32*patientDrape(patient));
+    frame.chest.position.set(0,TRANSPORT_PATIENT_CHEST_Y,0);frame.chest.rotation.set(0,0,patientChestTilt(patient));
+    frame.head.rotation.set(0,0,.35*patientDrape(patient));
   }
   const legPose=applyOperatorLegIK(workingRig,p,scratch,targets,kick,headingYaw,smooth);
   // B3: all eight lower-body transforms are now computed off-scene.
@@ -1159,7 +1160,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     heldWeapon.quaternion.copy(retention.quaternion);
   }
   if(p.transportPatient&&p.down){
-    frame.chest.position.set(0,TRANSPORT_PATIENT_CHEST_Y,0);frame.chest.rotation.set(0,0,0);
+    frame.chest.position.set(0,TRANSPORT_PATIENT_CHEST_Y,0);frame.chest.rotation.set(0,0,patientChestTilt(p.transportPatient));
   }
   const pairContacts=p.loadedTransport?.patientPose&&!p.down&&!p.surrender?
     patientTransportContacts(p.loadedTransport.patientPose,p.heading):null;
