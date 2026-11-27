@@ -13,6 +13,8 @@ test('BP1 nine unique pack identities plus none; all legacy appearances resolve'
   for(const style of styles)assert.equal(legacyPackEquipment(style),id);
  }
  assert.equal(legacyPackEquipment('bogus'),undefined);
+ assert.equal(legacyPackEquipment('sling-bag'),undefined);
+ assert.equal(legacyPackEquipment('duffel'),undefined);
  assert.equal(quotePackMigration('backpack-day','hydration',1,true).ok,false);
  assert.equal(quotePackMigration('backpack-day','admin-pack',0,false).ok,false);
  assert.equal(quotePackMigration('backpack-field','medic-pack',16,true).ok,false);
