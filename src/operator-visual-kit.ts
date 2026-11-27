@@ -576,7 +576,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  refineStaticReceiver(v.baseTorso,BASE_TORSO_VERTEX_BUDGET);
  if(clothTorso)refineStaticReceiver(clothTorso,STATIC_SHIRT_RECEIVER_BUDGET);
  const lightingKey=[looks.top,looks.armorStyle,looks.rigStyle,looks.packStyle,
-  wardrobe?.sleeveState??'unrolled',authored?.style??'legacy',assembly.mode].join('/');
+  wardrobe?.sleeveState??'unrolled',authored?.style??'none',assembly.mode].join('/');
  const packs=[v.packPreview.active?.root]
   .filter((g):g is THREE.Group=>!!g&&g.visible);
  // R5.3-B: declare real caster/receiver relationships instead of
