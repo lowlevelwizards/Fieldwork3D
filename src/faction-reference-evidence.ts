@@ -70,7 +70,7 @@ export const HISTORICAL_EVIDENCE:readonly HistoricalEvidence[]=[
  {id:'us-ocp-wear-2015',title:'Frequently Asked Questions: Operational Camouflage Pattern Uniform',
   publisher:'U.S. Army',kind:'official',published:'2015-10-26',
   url:'https://www.army.mil/article/156735/frequently_asked_questions_operational_camouflage_pattern_uniform/',
-  claim:'During the uniform transition, Tan 499 belts and coyote brown boots were authorized with OCP or OEF-CP, not UCP.'},
+  claim:'The October 2015 FAQ states that either authorized color of belt, boots or undershirt may be worn with OCP; matching all three colors is not required.'},
  {id:'usmc-boots-2004',title:'Mandatory possession dates for MCCUU and MCCB',
   publisher:'U.S. Marine Corps',kind:'official',published:'2004',
   url:'https://www.marines.mil/News/Messages/Messages-Display/Article/894296/mandatory-possession-dates-for-the-marine-corps-combat-utility-uniforms-mccuu-a/',
