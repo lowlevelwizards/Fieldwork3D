@@ -17,6 +17,6 @@ export const PACK_TEXTILES:Readonly<Record<string,Textile>>={
  'civilian-pack':{solid:'navy',solids:['black','charcoal','navy','muted-blue','rust','burnt-orange','forest-green','khaki','brown','slate'],prints:['m81-woodland','multicam-black','flecktarn','woodland-dpm','kryptek-highlander']},
  'no-pack':{solid:'olive-drab',solids:[],prints:[]}
 };
-export function packTextile(style:string){return PACK_TEXTILES[style==='admin-pack'?'assault-panel':style==='sling-bag'?'civilian-pack':style==='duffel'?'rucksack':style]??PACK_TEXTILES['no-pack'];}
+export function packTextile(style:string){return PACK_TEXTILES[style==='admin-pack'?'assault-panel':style]??PACK_TEXTILES['no-pack'];}
 // Snow prints and desert cover-only variants are deliberately deferred to removable covers.
 export function packPrintCompatible(style:string,id:HeadwearCamoId){return packTextile(style).prints.includes(id);}
