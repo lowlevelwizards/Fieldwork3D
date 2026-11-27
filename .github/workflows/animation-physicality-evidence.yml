@@ -1,0 +1,431 @@
+name: Fieldwork animation and physicality evidence
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/animation-physicality-evidence.yml'
+      - 'a3-physicality-lab.html'
+      - 'docs/animation-a3-*'
+      - 'docs/animation-a3-0-*'
+      - 'docs/animation-a3-1-*'
+      - 'docs/animation-a3-5-*'
+      - 'docs/animation-a3-6-7-*'
+      - 'docs/animation-a3-8-9-*'
+      - 'pose-workbench.html'
+      - 'scripts/audit-animation-a0.mjs'
+      - 'scripts/audit-animation-a3-0.mjs'
+      - 'scripts/audit-animation-a3-1.mjs'
+      - 'scripts/smoke-animation-a3-0.mjs'
+      - 'scripts/verification/animation-evidence-routing.mjs'
+      - 'src/a3-physicality-*'
+      - 'src/a3-physicality-lab-main.ts'
+      - 'src/a3-physicality-probe.ts'
+      - 'src/breach-3d.ts'
+      - 'src/breach-actor-initial-state.ts'
+      - 'src/breach-actor-motor.ts'
+      - 'src/breach-animation-choreography.ts'
+      - 'src/breach-animation-quality.ts'
+      - 'src/breach-combat-reactions.ts'
+      - 'src/breach-combat.ts'
+      - 'src/breach-contextual-crouch.ts'
+      - 'src/breach-contextual-support-contact.ts'
+      - 'src/breach-cover-height.ts'
+      - 'src/breach-cover-stance.ts'
+      - 'src/breach-defense.ts'
+      - 'src/breach-door-actions.ts'
+      - 'src/breach-enemy-decision-controller.ts'
+      - 'src/breach-fire-safety.ts'
+      - 'src/breach-firing-pipeline.ts'
+      - 'src/breach-friendly-safety-volume.ts'
+      - 'src/breach-game.ts'
+      - 'src/breach-kick-foot-choice.ts'
+      - 'src/breach-lockpick-contact.ts'
+      - 'src/breach-motor-route.ts'
+      - 'src/breach-muzzle.ts'
+      - 'src/breach-operator-animation-*'
+      - 'src/breach-operator-animation-contract.ts'
+      - 'src/breach-operator-animation-controller.ts'
+      - 'src/breach-operator-lower-body.ts'
+      - 'src/breach-order-executor.ts'
+      - 'src/breach-order-lifecycle.ts'
+      - 'src/breach-order-movement.ts'
+      - 'src/breach-physical-contact-anchor.ts'
+      - 'src/breach-physical-micro-aim.ts'
+      - 'src/breach-pivot-episode.ts'
+      - 'src/breach-pose-action-state.ts'
+      - 'src/breach-pose-contacts.ts'
+      - 'src/breach-replay.ts'
+      - 'src/breach-shot-resolution.ts'
+      - 'src/breach-tactical-control-commands.ts'
+      - 'src/breach-weapon-clearance.ts'
+      - 'src/breach-weapon-pose.ts'
+      - 'src/operator-pose-workbench-ui.ts'
+      - 'src/operator-workbench-choreography.ts'
+      - 'tests/animation-a0-baseline.test.mjs'
+      - 'tests/animation-a1-choreography.test.mjs'
+      - 'tests/animation-a3-*'
+      - 'tests/animation-a3-0-*'
+      - 'tests/animation-a3-0-physicality.test.mjs'
+      - 'tests/animation-a3-5-*'
+      - 'tests/animation-a3-6-7-*'
+      - 'tests/animation-a3-8-*'
+      - 'tests/animation-a3-9-*'
+      - 'tests/breach-two-sided-fire-recovery.test.mjs'
+      - 'tests/ci-animation-evidence-routing.test.mjs'
+      - 'vite.config.ts'
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: Animation evidence lane
+        type: choice
+        required: true
+        default: a3-finish
+        options:
+          - all
+          - a0-a1
+          - a3-baseline
+          - a3-safety
+          - a3-fire-footwork
+          - a3-contacts
+          - a3-braces
+          - a3-pivot-kick
+          - a3-finish
+permissions:
+  contents: read
+concurrency:
+  group: animation-physicality-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      a0-a1: ${{ steps.select.outputs.a0-a1 }}
+      a3-baseline: ${{ steps.select.outputs.a3-baseline }}
+      a3-safety: ${{ steps.select.outputs.a3-safety }}
+      a3-fire-footwork: ${{ steps.select.outputs.a3-fire-footwork }}
+      a3-contacts: ${{ steps.select.outputs.a3-contacts }}
+      a3-braces: ${{ steps.select.outputs.a3-braces }}
+      a3-pivot-kick: ${{ steps.select.outputs.a3-pivot-kick }}
+      a3-finish: ${{ steps.select.outputs.a3-finish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/ci-animation-evidence-routing.test.mjs
+      - id: select
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVIDENCE_LANE: ${{ inputs.lane }}
+        run: node scripts/verification/animation-evidence-routing.mjs >> "$GITHUB_OUTPUT"
+
+  a0-a1-animation:
+    needs: route
+    if: ${{ needs.route.outputs.a0-a1 == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Animation baseline and choreography tests
+        run: node --experimental-strip-types --test tests/animation-a0-baseline.test.mjs tests/animation-a1-choreography.test.mjs tests/breach-roadmap2-stage11-animation.test.mjs tests/breach-unified-pose-stability.test.mjs tests/operator-pose-workbench.test.mjs tests/door-traversal-d4-pose.test.mjs
+      - name: Capture A0 deterministic scenario report
+        run: node --experimental-strip-types scripts/audit-animation-a0.mjs --out artifacts/animation-a0/report.json
+      - name: Upload reproducible A0 report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: animation-a0-scenario-report
+          path: artifacts/animation-a0/report.json
+          if-no-files-found: ignore
+      - name: Production typecheck and Vite build
+        run: npm run build
+
+  a3-baseline-critical:
+    needs: route
+    if: ${{ needs.route.outputs.a3-baseline == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: A3.0 real-session fixtures, deterministic replay and muzzle authority
+        run: node --experimental-strip-types --test tests/animation-a3-0-physicality.test.mjs tests/physicality-11-lab.test.mjs
+      - name: Existing player-friendly recovery and lateral safety regressions
+        run: node --experimental-strip-types --test --test-name-pattern='short step-back|ally in lane|real player operator' tests/breach-two-sided-fire-recovery.test.mjs
+      - name: A3.0 reproducible baseline performance and simulation report
+        run: node --experimental-strip-types scripts/audit-animation-a3-0.mjs --out artifacts/animation-a3-0/baseline.json
+      - name: Typecheck and production build
+        run: npm run build
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a3-0-actual-session-baseline
+          path: artifacts/animation-a3-0/
+          if-no-files-found: ignore
+
+  a3-baseline-browser:
+    needs: route
+    if: ${{ needs.route.outputs.a3-baseline == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: A3.0 mobile and desktop interactive inspector
+        run: node scripts/smoke-animation-a3-0.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a3-0-physicality-mobile-desktop
+          path: artifacts/animation-a3-0/gallery/
+          if-no-files-found: ignore
+
+  a3-safety-critical:
+    needs: route
+    if: ${{ needs.route.outputs.a3-safety == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: A3.1 body volumes, actual session and legacy safety
+        run: node --experimental-strip-types --test tests/animation-a3-1-friendly-volume.test.mjs tests/animation-a3-0-physicality.test.mjs tests/breach-muzzle-lane-hotfix.test.mjs tests/gameplay-g3-fire-lanes.test.mjs tests/civilian-d2-fire-safety.test.mjs tests/physicality-door-and-glass.test.mjs
+      - name: Legacy point-only clearance compatibility (exclude stale C18 entry-motion fixture)
+        run: node --experimental-strip-types --test --test-name-pattern='C1:|C2:|C3:|C4:' tests/breach-clearing-fire-c.test.mjs
+      - name: Existing operator friendly-fire physical recovery regressions
+        run: node --experimental-strip-types --test --test-name-pattern='short step-back|ally in lane|real player operator' tests/breach-two-sided-fire-recovery.test.mjs
+      - name: A3.1 height-aware seeded current vs legacy performance audit
+        run: node --experimental-strip-types scripts/audit-animation-a3-1.mjs --out artifacts/animation-a3-1/height-aware-baseline.json
+      - name: TypeScript and production build
+        run: npm run build
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: animation-a3-1-safety-report
+          path: artifacts/animation-a3-1/
+          if-no-files-found: ignore
+
+  a3-safety-browser:
+    needs: route
+    if: ${{ needs.route.outputs.a3-safety == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: A3.1 mobile and desktop actual-session lab
+        run: node scripts/smoke-animation-a3-0.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: animation-a3-1-browser-gallery
+          path: artifacts/animation-a3-0/gallery/
+          if-no-files-found: ignore
+
+  a3-fire-footwork-critical:
+    needs: route
+    if: ${{ needs.route.outputs.a3-fire-footwork == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Stage 2 — Canonical aim/hand/weapon and deterministic safety
+        run: node --experimental-strip-types --test tests/animation-a3-2-micro-aim.test.mjs tests/animation-a3-1-friendly-volume.test.mjs
+      - name: Stage 3 — Physical contextual stance and authored policy
+        run: node --experimental-strip-types --test tests/animation-a3-3-contextual-crouch.test.mjs
+      - name: Stage 4 — Minimal physical motor corrections
+        run: node --experimental-strip-types --test tests/animation-a3-4-micro-footwork.test.mjs tests/animation-a3-10-close-stack-fire.test.mjs tests/animation-a3-11-progressive-urgency.test.mjs
+      - name: Physical player-side recovery preserves planned orders at A3.4 step sizes
+        run: node --experimental-strip-types --test --test-name-pattern='short step-back|ally in lane|real player operator' tests/breach-two-sided-fire-recovery.test.mjs
+      - name: Critical actual gameplay and replay regressions
+        run: node --experimental-strip-types --test tests/animation-a3-0-physicality.test.mjs tests/breach-muzzle-lane-hotfix.test.mjs tests/gameplay-g3-fire-lanes.test.mjs tests/breach-179.test.mjs tests/animation-a2-5-continuity.test.mjs
+      - name: Production typecheck and build
+        run: npm run build
+
+  a3-fire-footwork-browser:
+    needs: route
+    if: ${{ needs.route.outputs.a3-fire-footwork == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: A3 physicality actual-session mobile and desktop inspector
+        run: node scripts/smoke-animation-a3-0.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a3-2-4-mobile-desktop-physicality
+          path: artifacts/animation-a3-0/gallery/
+          if-no-files-found: ignore
+
+  a3-contacts-critical:
+    needs: route
+    if: ${{ needs.route.outputs.a3-contacts == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: A3.5 anchor, reach, conflict, release and replay seeking
+        run: node --experimental-strip-types --test tests/animation-a3-5-contact-anchors.test.mjs tests/breach-pose-contacts-compat.test.mjs
+      - name: Real door hand, shared pose, A3 physical safety regressions
+        run: node --experimental-strip-types --test tests/door-traversal-d4-pose.test.mjs tests/door-traversal-d4-live-grip.test.mjs tests/door-traversal-d4-physics.test.mjs tests/animation-a3-0-physicality.test.mjs tests/animation-a3-1-friendly-volume.test.mjs tests/animation-a3-2-micro-aim.test.mjs tests/animation-a3-3-contextual-crouch.test.mjs tests/animation-a3-4-micro-footwork.test.mjs
+      - name: Production TypeScript and Vite build
+        run: npm run build
+
+  a3-contacts-browser:
+    needs: route
+    if: ${{ needs.route.outputs.a3-contacts == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Real-session Physicality Lab in desktop and mobile Chromium
+        run: node scripts/smoke-animation-a3-0.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a3-5-contact-physicality-mobile-desktop
+          path: artifacts/animation-a3-0/gallery/
+          if-no-files-found: ignore
+
+  a3-braces-critical:
+    needs: route
+    if: ${{ needs.route.outputs.a3-braces == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: A3.6 physical wall cover and frame contact selection
+        run: node --experimental-strip-types --test --test-name-pattern='A3.6' tests/animation-a3-6-7-support-contacts.test.mjs
+      - name: A3.7 actual squad shoulder contact selection
+        run: node --experimental-strip-types --test --test-name-pattern='A3.7' tests/animation-a3-6-7-support-contacts.test.mjs
+      - name: Real session and D4 contact replay regression
+        run: node --experimental-strip-types --test tests/animation-a3-0-physicality.test.mjs tests/animation-a3-5-contact-anchors.test.mjs tests/door-traversal-d4-pose.test.mjs tests/door-traversal-d4-live-grip.test.mjs tests/breach-pose-contacts-compat.test.mjs
+      - name: Fire safety and leg motor remain unchanged
+        run: node --experimental-strip-types --test tests/animation-a3-1-friendly-volume.test.mjs tests/animation-a3-4-micro-footwork.test.mjs tests/animation-a2-5-continuity.test.mjs
+      - name: TypeScript and production build
+        run: npm run build
+
+  a3-braces-browser:
+    needs: route
+    if: ${{ needs.route.outputs.a3-braces == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Actual-session Physicality Lab desktop and phone
+        run: node scripts/smoke-animation-a3-0.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a3-6-7-support-contacts-gallery
+          path: artifacts/animation-a3-0/gallery/
+          if-no-files-found: ignore
+
+  a3-pivot-kick-critical:
+    needs: route
+    if: ${{ needs.route.outputs.a3-pivot-kick == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Stable world-aware 180-degree pivot and true lock contacts
+        run: node --experimental-strip-types --test tests/animation-a3-8-turn-episodes.test.mjs tests/animation-a3-8-lockpick-contact.test.mjs
+      - name: A3.9 unified physical cover top and kick support-foot selection
+        run: node --experimental-strip-types --test tests/animation-a3-9-cover-height-source.test.mjs tests/animation-a3-9-kick-leg-choice.test.mjs
+      - name: Existing A3 foot contact, action ownership and D4 door guarantees
+        run: node --experimental-strip-types --test tests/animation-a3-5-contact-anchors.test.mjs tests/animation-a3-6-7-support-contacts.test.mjs tests/animation-a2-3-directional.test.mjs tests/door-traversal-d4-live-grip.test.mjs
+      - name: Typecheck and production bundle
+        run: npm run build
+
+  a3-finish-critical:
+    needs: route
+    if: ${{ needs.route.outputs.a3-finish == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Fixed cover stance, head and muzzle parity
+        run: node --experimental-strip-types --test tests/animation-a3-9-continuous-cover-stance.test.mjs tests/animation-a3-9-cover-height-source.test.mjs tests/animation-a3-9-lab-observability.test.mjs
+      - name: Door kick weight and historical contact continuity
+        run: node --experimental-strip-types --test tests/animation-a3-9-kick-weight-transfer.test.mjs tests/animation-a3-9-kick-leg-choice.test.mjs tests/breach-135.test.mjs tests/door-traversal-d4-live-grip.test.mjs tests/kick-impact-release.test.mjs
+      - name: Existing body safety, physical hand and pose regressions
+        run: node --experimental-strip-types --test tests/animation-a3-1-friendly-volume.test.mjs tests/animation-a3-6-7-support-contacts.test.mjs tests/package-b3-lower-body-output.test.mjs tests/breach-143b.test.mjs
+      - name: TypeScript and production build
+        run: npm run build
+
+  a3-finish-browser:
+    needs: route
+    if: ${{ needs.route.outputs.a3-finish == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Real Physicality Lab phone and desktop
+        run: node scripts/smoke-animation-a3-0.mjs
