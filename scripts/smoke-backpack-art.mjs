@@ -1,4 +1,4 @@
-/** BP4/5 iPhone-size production-geometry preview capture matrix. */
+/** BP6–9 full roster iPhone-size production-geometry preview capture matrix. */
 import {spawn} from 'node:child_process';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
@@ -20,18 +20,28 @@ try{
  await page.locator('#poseUniform').selectOption('combat-shirt');
  await page.locator('#poseAnimation').selectOption('high-ready');
  const report=[];
- for(const [style,id] of [['hydration','hydration'],['admin-pack','assault-panel'],['day-pack','day-pack'],['assault-pack','assault-pack']]){
+ for(const [style,id] of [['hydration','hydration'],['admin-pack','assault-panel'],['day-pack','day-pack'],['assault-pack','assault-pack'],['field-pack','field-pack'],['rucksack','rucksack'],['medic-pack','medic-pack'],['comms-pack','comms-pack'],['civilian-pack','civilian-pack']]){
   await page.locator('#posePack').selectOption(style);
   await page.waitForFunction(id=>document.getElementById('preview')?.dataset.authoredPack===id,id,{timeout:20000});
-  for(const view of ['front','back','side','iso','game']){
+  for(const view of ['game']){
    await page.locator('[data-lab-group="poses"] [data-view="'+view+'"]').click();
    await page.locator('#preview').screenshot({path:out+'/'+id+'-'+view+'.png'});
   }
-  for(const view of ['back','side','iso','front']){
+  for(const view of ['back','side','iso','front','silhouette']){
    const png=await page.evaluate(view=>window.fieldworkCapturePack(view),view);
    await writeFile(out+'/'+id+'-'+view+'-native.png',Buffer.from(png.split(',')[1],'base64'));
   }
   report.push({id,data:await page.locator('#preview').evaluate(e=>({...e.dataset}))});
+ }
+ // A second real equipment combination for civilian, load-bearing and specialist fit.
+ for(const [armor,rig,top,style] of [['armor-bare','no-rig','combat-shirt','civilian-pack'],['armor-bare','alice-lc2','combat-shirt','field-pack'],['plate-standard','full-chest','combat-shirt','rucksack'],['soft-vest','no-rig','combat-shirt','medic-pack'],['plate-jpc','chest-placard','combat-shirt','comms-pack']]){
+  await page.locator('#poseArmor').selectOption(armor);
+  await page.locator('#poseRig').selectOption(rig);
+  await page.locator('#poseUniform').selectOption(top);
+  await page.locator('#posePack').selectOption(style);
+  await page.waitForFunction(id=>document.getElementById('preview')?.dataset.authoredPack===id,style,{timeout:20000});
+  const png=await page.evaluate(()=>window.fieldworkCapturePack('iso'));
+  await writeFile(out+'/'+style+'-alternate-native.png',Buffer.from(png.split(',')[1],'base64'));
  }
  await page.locator('#poseArmor').selectOption('armor-bare');
  await page.waitForFunction(()=>document.getElementById('preview')?.dataset.poseFitArmor==='armor-bare');
