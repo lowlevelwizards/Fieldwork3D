@@ -20,7 +20,7 @@ import {VERIFIED_RIGID_FACTORY_IDS}
 
 const slots=['receiver','barrel','handguard','stock','grip','magazine'];
 const expected={'ak-akms':11,'ak-aks74u':11,'ar-m4a1':8,
- 'ak-ak74':9,'ak-aks74':9,'ak-rpk74':9,'ar-m16a4':8};
+ 'ak-ak74':8,'ak-aks74':9,'ak-rpk74':9,'ar-m16a4':8};
 const load=id=>{
  const ref=ARSENAL_REFERENCES.find(x=>x.id===id);
  assert.ok(ref,id+' reference');

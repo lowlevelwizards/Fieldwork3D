@@ -116,12 +116,13 @@ test('R4.7 lower receiver omits trigger guard but keeps understated rivets',()=>
   dispose(a);
  }
 });
-test('R4.7 fixed wood stocks use one AKM two-quad family and all stocks slimmed',()=>{
+test('R4.7 / WC2.4 fixed wood stocks share one continuous art form',()=>{
  for(const id of ['ak-akm','ak-ak74']){
   const a=build(id),pieces=slot(a.group,'stock');
-  assert.equal(pieces.length,id==='ak-ak74'?3:2,
-   id+' shares two-piece stock plus optional side inset');
-  assert.ok(box(pieces[0]).intersectsBox(box(pieces[1])));
+  assert.equal(pieces.length,id==='ak-ak74'?2:1,
+   id+' shares one solid art volume plus existing side inset');
+  assert.ok(slot(a.group,'receiver').some(m=>box(m).intersectsBox(box(pieces[0]))),
+   id+' art volume remains seated');
   for(const p of pieces)
    assert.ok(box(p).max.z-box(p).min.z<3.15,'slim side-to-side stock');
   dispose(a);
@@ -134,4 +135,30 @@ test('R4.7 fixed wood stocks use one AKM two-quad family and all stocks slimmed'
   dispose(a);
  }
  assert.ok(AK_VISUAL_ANATOMY.gripDepthZ<2.25);
+});
+
+test('WC2.4 solid miniature shells are faceted, seated and keep shared variant artwork',()=>{
+ const solid=['ak-akm','ak-ak74','ak-ak74m','ak-ak103','ak-ak105','ak-rpk74'];
+ const expected=['classic','classic','polymer','polymer','polymer','clubfoot'];
+ const silhouettes=[];
+ for(let i=0;i<solid.length;i++){
+  const a=build(solid[i]);
+  try{
+   const shell=slot(a.group,'stock').find(n=>n.userData.akSolidFurnitureArt);
+   assert.ok(shell,solid[i]+' one authored shell');
+   assert.equal(shell.userData.akSolidFurnitureArt,expected[i]);
+   const pos=shell.geometry.getAttribute('position');
+   const depth=new Set(Array.from({length:pos.count},(_,j)=>Math.abs(pos.getZ(j)).toFixed(3)));
+   assert.ok(depth.size>3,'broad cross-sectional planes');
+   assert.ok(slot(a.group,'receiver').some(n=>box(n).intersectsBox(box(shell))));
+   silhouettes.push(Array.from(pos.array));
+  }finally{dispose(a);}
+ }
+ assert.deepEqual(silhouettes[0],silhouettes[1],'shared classic visual language');
+ assert.deepEqual(silhouettes[2],silhouettes[3],'shared modern furniture');
+ assert.deepEqual(silhouettes[2],silhouettes[4],'compact modern shares furniture');
+ for(const id of ['ak-akms','ak-aks74','ak-aks74u']){
+  const a=build(id);try{assert.ok(slot(a.group,'stock').every(n=>!n.userData.akSolidFurnitureArt));}
+  finally{dispose(a);}
+ }
 });
