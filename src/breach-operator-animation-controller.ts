@@ -1,3 +1,4 @@
+import {liveUnifiedContent,liveUnifiedAnchor,presentLiveUnifiedHandoff} from './operator-unified-carry-live.ts';
 import {sampleOperatorFootContacts,applyOperatorLegIK} from './breach-operator-lower-body.ts';
 import {throwSupportGesture} from './breach-animation-choreography.ts';
 import {sampleEquipmentGesture} from './breach-equipment-interaction-pose.ts';
@@ -624,13 +625,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     reloadMode!=='shells'?
     selectedReloadPouchSlot(v4Carry,p.reloadSelectedMagazineId,
       !p.reloadSelectedMagazineId):null;
-  const v4Magazine=v4Slot?
+  const v4Magazine=p.unifiedCarry?liveUnifiedContent(r,p.reloadSelectedMagazineId):v4Slot?
     r.visualKit.magazines[v4Slot.location][v4Slot.index]:undefined;
   // The target is a real existing rig/belt/pocket magazine. No slot ->
   // no fake retrieval and no missing magazine conjured in the hand.
   // The authored magazine socket is fixed to gear/hip, not based on
   // last-frame world matrices (which broke same-time replay seeks).
-  const v4PouchAnchor=v4Magazine?.visible?
+  const v4PouchAnchor=p.unifiedCarry?liveUnifiedAnchor(r,p.reloadSelectedMagazineId)??undefined:v4Magazine?.visible?
     v4AuthoredPouchAnchor(v4Magazine,r.chest,r.hip)??undefined:
     undefined;
   r.root.userData.reloadV4MagazineSlot=v4Magazine?.visible?
@@ -966,10 +967,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const socket=flash.item==='wedge'?wedgeSocket(flash.location,0):
       flash.item==='zip-tie'?flexCuffSocket(flash.location,0):
       flashCanisterSocket(flash.location==='pocket'?'belt':flash.location,0);
-    const pouch=P(socket.x,socket.y,socket.z);
-    if(socket.bone==='hip')
+    const unifiedAnchor=p.unifiedCarry?liveUnifiedAnchor(r,flash.contentId):null;
+    const pouch=unifiedAnchor??P(socket.x,socket.y,socket.z);
+    if(!unifiedAnchor&&socket.bone==='hip')
       pouch.y+=frame.hip.position.y-frame.chest.position.y;
-    if(socket.bone==='pack'){
+    if(!unifiedAnchor&&socket.bone==='pack'){
       pouch.x+=r.pack.position.x;pouch.y+=r.pack.position.y;
       pouch.z+=r.pack.position.z;
     }
@@ -1651,9 +1653,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     !!p.labPistolContacts);
   // F6.2: one already issued pouch mesh is attached to the *finished*
   // support hand; cancellation and replay rewinds restore it to the pouch.
-  presentFlashHandoff(r,p,equipmentActive);
-  presentWedgeHandoff(r,p,equipmentActive);
-  presentFlexCuffHandoff(r,p,equipmentActive);
+  if(p.unifiedCarry)presentLiveUnifiedHandoff(r,p,equipmentActive);
+  else{
+   presentFlashHandoff(r,p,equipmentActive);
+   presentWedgeHandoff(r,p,equipmentActive);
+   presentFlexCuffHandoff(r,p,equipmentActive);
+  }
   if(profilePose){
    const total=performance.now()-poseStart;
    // 'other' includes gait, arm constraints, IK and transform publication;

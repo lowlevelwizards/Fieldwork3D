@@ -1,3 +1,4 @@
+import {syncLiveUnifiedCarry} from './operator-unified-carry-live.ts';
 import {prepareBeltFlashPouches,restoreBeltFlashRest} from './operator-belt-flash-pouches.ts';
 import {canonicalBeltStyle} from './operator-belt-profile.ts';
 import type {BeltRegion} from './operator-belt-mounts.ts';
@@ -67,7 +68,7 @@ export type OperatorAppearanceInputs=Pick<OperatorPose,
  'appearanceSeed'|'equipment'|'wardrobe'|'magazineCarryLocations'|
  'medicalCarryLocation'|'utilityCarryLocation'|'faceStyle'|
  'flashCharges'|'wedgeRemaining'|'restraintRemaining'|'treatmentActive'|
- 'weaponConfiguration'|'nvgDeployed'|'down'|'surrender'>;
+ 'weaponConfiguration'|'nvgDeployed'|'down'|'surrender'|'unifiedCarry'>;
 export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInputs){
   // Profile serialization separately from the one-time kit rebuild. In-place
   // edits in Studio and replay must still invalidate on the very next pose.
@@ -83,7 +84,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     p.flashCharges??null,p.wedgeRemaining??null,
     p.restraintRemaining??null,p.treatmentActive??null,
     p.weaponConfiguration?.build?.parts.magazine??null,
-    p.nvgDeployed??false,r.root.userData.fieldworkAuthoredPackPreview===true
+    p.nvgDeployed??false,!!p.unifiedCarry,p.unifiedCarry?.manifest.placements.map(q=>[q.slotIds,q.kind,q.holder,q.variant,q.waist?.socket,q.mount])??null,r.root.userData.fieldworkAuthoredPackPreview===true
   ]);
   const fingerprintMs=traceAppearance?performance.now()-fingerprintStart:0;
   r.root.userData.fieldworkLightingAppearanceKey=appearanceKey;
@@ -103,7 +104,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   // Passive, actual-pelvis-mounted S4 carry. An unissued or unequipped
   // secondary does not materialize. S5 will take over drawing authority.
   syncHipSecondaryVisual(r.hip,p.equipment?.secondary,
-   !!p.equipment&&p.equipment.slots.belt!=='belt-none',r.chest,r.pack);
+   !!p.equipment&&p.equipment.slots.belt!=='belt-none',r.chest,r.pack,
+   p.unifiedCarry?.manifest.placements.find(q=>q.kind==='sidearm')?.waist?.socket);
   // Stable career-based presentation, never changing physical collision or IK.
   const identity=p.appearanceSeed??0;
   if(identity!==r.appearanceSeed){
@@ -668,5 +670,6 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     previousAppearance.outfit=clothing;
   }else appearanceState.set(r,{key:appearanceKey,downed,outfit:clothing});
 
+ syncLiveUnifiedCarry(r,p,clothing.rigStyle);
  return clothing;
 }

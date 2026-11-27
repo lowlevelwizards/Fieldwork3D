@@ -1,3 +1,5 @@
+import type {Contact} from './equipment-fixed-carrier-slots.ts';
+import {attachmentFootprint} from './operator-attachment-catalog.ts';
 /** S4: passive, physically issued Glock carry on existing operator bones.
  * All placements use the legacy +X-forward / +Z-right operator coordinate
  * frame, NEVER the public -Z forward frame or weapon mesh art coordinates.
@@ -15,7 +17,7 @@ import type {Anchor3} from './breach-anatomy.ts';
 type Mounted={signature:string;root:THREE.Group;ownedRoots:THREE.Group[];
  holster:THREE.Group;cradle:THREE.Group;
  /** Magazine changes cannot destroy/replace the held Glock model. */
- pouchSignature:string;physicalPouches:Map<string,THREE.Mesh>;
+ pouchSignature:string;physicalPouches:Map<string,THREE.Mesh>;unified:boolean;
  /** Real visible magazine floorplate is part of the existing Glock model. */
  insertedFloorplate:THREE.Mesh|null;
  /** Immutable stowed socket for deterministic, seek-safe draws. */
@@ -154,17 +156,17 @@ function pouchSocket(location:'rig'|'belt'|'backpack'|'pocket',
  */
 export function syncHipSecondaryVisual(hip:THREE.Group,
  state:SecondaryEquipment|undefined,hasBelt:boolean,
- chest?:THREE.Group,pack?:THREE.Object3D):THREE.Group|null{
+ chest?:THREE.Group,pack?:THREE.Object3D,unifiedSocket?:Contact):THREE.Group|null{
  const valid=state?.weapon&&hasBelt?state.weapon:null;
  const signature=valid?[
   valid,state!.holster,JSON.stringify(state!.customization??null),
-  Boolean(chest),Boolean(pack)
+  Boolean(chest),Boolean(pack),JSON.stringify(unifiedSocket??null)
  ].join('|'):'none';
  const prior=mounted.get(hip);
  // S8: changing inserted/spare magazine IDs is NOT a weapon swap.
  // Preserve the drawn rig's model, geometry, materials and hand attachment.
  if(prior?.signature===signature){
-  reconcilePouches(prior,state!,chest,pack);
+  if(!prior.unified)reconcilePouches(prior,state!,chest,pack);
   return prior.root;
  }
  clearHipSecondaryVisual(hip);
@@ -177,6 +179,7 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
  const holster=new THREE.Group();
  holster.name='secondary-holster-mount';
  holster.position.set(.2,-3.6,side*9.25);
+ if(unifiedSocket){holster.position.set(unifiedSocket.x,unifiedSocket.y,unifiedSocket.z);holster.rotation.set(unifiedSocket.tilt??0,unifiedSocket.yaw,0,'YXZ');}
  const pistol=buildGlockAppearance(valid as GlockAppearanceId,{
   customization:state!.customization
  });
@@ -188,15 +191,20 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
  cradle.scale.setScalar(.37);
  cradle.rotation.z=-Math.PI/2;
  pistol.position.set(-socket.x,-socket.y,-socket.z);
- cradle.add(pistol);holster.add(cradle);
+ cradle.add(pistol);
+ if(unifiedSocket){
+  const bounds=new THREE.Box3().setFromObject(cradle),f=attachmentFootprint('rigid-holster');
+  cradle.position.set(-(bounds.min.x+bounds.max.x)/2,-f.height*.89-bounds.min.y,f.depth*.54-(bounds.min.z+bounds.max.z)/2);
+ }
+ holster.add(cradle);
  const shell=new THREE.Mesh(new THREE.BoxGeometry(3.3,5.3,2.1),pouchMaterial());
  shell.name='secondary-holster-shell';
  shell.position.set(-1,-2.5,0);
- shell.castShadow=true;shell.receiveShadow=true;holster.add(shell);
+ shell.castShadow=true;shell.receiveShadow=true; shell.visible=!unifiedSocket;holster.add(shell);
  root.add(holster);hip.add(root);
  const ownedRoots=[root];
  const current:Mounted={signature,root,ownedRoots,holster,cradle,
-  pouchSignature:'',physicalPouches:new Map(),
+  pouchSignature:'',physicalPouches:new Map(),unified:!!unifiedSocket,
   insertedFloorplate:(()=>{
     let floor:THREE.Mesh|null=null;
     pistol.traverse(child=>{
@@ -212,7 +220,7 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
   flashWorld:new THREE.Vector3(),pouchRest:new THREE.Vector3(),
   labPitchRotation:new THREE.Quaternion(),labGripOffset:new THREE.Vector3()};
  mounted.set(hip,current);
- reconcilePouches(current,state!,chest,pack);
+ if(!current.unified)reconcilePouches(current,state!,chest,pack);
  return root;
 }
 

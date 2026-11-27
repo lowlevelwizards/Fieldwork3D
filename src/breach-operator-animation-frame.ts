@@ -41,7 +41,7 @@ export function releaseOperatorAnimationFrame(r:OperatorRig):void{
 export function beginOperatorAnimationFrame(
  r:OperatorRig,p:OperatorPose,dt:number){
  const previouslyHiddenV4=r.root.userData.reloadV4HiddenSource as
-    THREE.Mesh|undefined;
+    THREE.Object3D|undefined;
  if(previouslyHiddenV4)previouslyHiddenV4.visible=true;
  r.root.userData.reloadV4HiddenSource=null;
  const scratch=operatorPoseScratchForRig(r);

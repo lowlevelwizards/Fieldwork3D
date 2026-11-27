@@ -14,13 +14,14 @@ import {RESTRAINT_CONTACT_SECONDS} from './equipment-interaction-timings.ts';
 export type EquipmentInteractionPose={
  readonly item:LiveFieldItem;
  readonly location:FieldCarryLocation;
+ readonly contentId?:string;
  /** Actual elapsed fixed-step order time; recorded in the film, not animated. */
  readonly elapsed:number;
  readonly duration:number;
  readonly progress:number;
 };
 type Observation=Pick<TeamActor,'plan'|'actionTimer'|'equipment'|
- 'spareMagazines'|'flashCharges'|'wedgeRemaining'|'restraintRemaining'>;
+ 'spareMagazines'|'flashCharges'|'wedgeRemaining'|'restraintRemaining'|'unifiedCarry'>;
 /** No effects for hypothetical, failed, or zero-time planned actions.
  * Flash and wedge animations use physical equipment quotes. Both civilian
  * and suspect restraint now share a stock-free fixed-tick contact gesture.
@@ -51,7 +52,7 @@ export function readEquipmentInteraction(
   !Number.isFinite(quote.accessSeconds))
   return null;
  const duration=(item==='wedge'?WEDGE_PLACEMENT_SECONDS:.3)+quote.accessSeconds;
- return {item,location:quote.location,elapsed:actor.actionTimer,
+ return {item,location:quote.location,contentId:quote.contentId,elapsed:actor.actionTimer,
   duration,progress:Math.max(0,Math.min(1,actor.actionTimer/duration))};
 }
 export type EquipmentGesture={

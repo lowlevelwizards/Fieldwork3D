@@ -1,0 +1,23 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createOperatorRig} from '../src/breach-operator-rig.ts';
+import {resolveUnifiedCarry,removeManifestContent} from '../src/equipment-unified-placement.ts';
+import {syncLiveUnifiedCarry,liveUnifiedContent,presentLiveUnifiedHandoff,clearLiveUnifiedCarry} from '../src/operator-unified-carry-live.ts';
+test('BT4 holder mesh survives consumption, exact lane moves into hand and returns on cancellation',()=>{
+ const r=createOperatorRig();
+ const input={belt:'padded-belt',storage:[],items:[{id:'field:flashbang:0',kind:'flash',dimensions:{width:2.5,height:5.8,depth:2.5}}]};
+ let manifest=resolveUnifiedCarry(input);assert.ok(manifest.valid);
+ const p={unifiedCarry:{input,manifest}};
+ syncLiveUnifiedCarry(r,p,'no-rig');
+ const node=liveUnifiedContent(r,'field:flashbang:0'),socket=node.parent,holder=socket.parent;
+ assert.ok(node.visible);assert.equal(r.flashCanister.visible,false);
+ presentLiveUnifiedHandoff(r,{...p,equipmentInteraction:{item:'flashbang',location:'belt',contentId:'field:flashbang:0',elapsed:.25,duration:.42,progress:.6}},true);
+ assert.equal(node.parent,r.arms[0].hand);
+ syncLiveUnifiedCarry(r,p,'no-rig');assert.equal(node.parent,socket);
+ assert.equal(liveUnifiedContent(r,'field:flashbang:0'),node);
+ manifest=removeManifestContent(manifest,'field:flashbang:0');
+ syncLiveUnifiedCarry(r,{unifiedCarry:{input,manifest}},'no-rig');
+ assert.equal(node.visible,false);assert.equal(holder.parent,r.hip);assert.ok(holder.visible);
+ assert.equal(liveUnifiedContent(r,'field:flashbang:0'),undefined);
+ clearLiveUnifiedCarry(r);assert.equal(holder.parent,null);r.dispose();
+});

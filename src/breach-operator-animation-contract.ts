@@ -137,6 +137,7 @@ export type OperatorPose={
   labPistolContacts?:LabPistolContacts;
   /** Lab-only slide-rack hand choreography; gun mesh stays static. */
   labPistolSlideRack?:Readonly<{weight:number;pull:number}>|null;
+  unifiedCarry?:import('./equipment-unified-deployed.ts').UnifiedDeployedCarry;
   equipment?:EquipmentLoadout;flashCharges?:number;wedgeRemaining?:number;
   restraintRemaining?:number;
   medicalCarryLocation?:CarryLocation;utilityCarryLocation?:CarryLocation;
