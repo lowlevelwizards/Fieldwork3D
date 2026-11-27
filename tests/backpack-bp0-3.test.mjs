@@ -60,7 +60,7 @@ test('BP3 pack seat, harness symmetry and direct mount compatibility',()=>{
   assert.equal(fit.spans.length,16);
   for(const span of fit.spans)assert.ok([...span.a,...span.b,...span.normal].every(Number.isFinite));
  }
- const harness=buildPackHarness(fitPack('day-pack','plate-standard','light-rig','combat-shirt'),m);
+ const harness=buildPackHarness(fitPack('day-pack','soft-vest','light-rig','combat-shirt'),m);
  assert.ok(harness.children.length>0);
  assert.equal(buildPackHarness(fitPack('assault-panel','armor-bare','no-rig','combat-shirt'),m).children.length,0);
 });
