@@ -1342,7 +1342,7 @@ function cameraFitZoom(mode:LabCameraFraming){
 
 const debug=new THREE.Group();scene.add(debug);
 const markerColors=[0xf1b77d,0x7cbbae,0xf2d88b,0xa0a8df];
-const markers=Array.from({length:8},(_,i)=>{
+const markers=Array.from({length:10},(_,i)=>{
   const mesh=new THREE.Mesh(new THREE.SphereGeometry(1.45,9,7),
     new THREE.MeshBasicMaterial({color:markerColors[i%4],
       depthTest:false}));
@@ -2306,6 +2306,10 @@ function draw(){
       'LIGHT / STANDARD / HEAVY · PROPORTIONS LOCKED':
       'SIX STANCES · ORBIT / ZOOM TO COMPARE';
   }else showDiagnostics();
+  canvas.dataset.retentionMode=retentionSample?.mode??'';
+  canvas.dataset.retentionWeight=String(retentionSample?.weight??0);
+  canvas.dataset.retentionWebbing=String(rig.slingStraps[0]?.visible?
+    rig.slingStraps[0].geometry.drawRange.count/6:0);
   canvas.dataset.compare=String(comparing);
   canvas.dataset.compareGaits=String(gaitComparing);
   canvas.dataset.silhouette=String(silhouettes);

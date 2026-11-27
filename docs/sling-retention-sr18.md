@@ -1,0 +1,2 @@
+# SR18 — visual audit gate
+Mobile WebGL capture matrix: M4, MP5, AK; bare, heavy, skeletal, concealed and rig layers; front/side/back as compatible; four cameras, loop and diagnostics. Capture output is evidence for visual review, not approval. Backpacks, additional weapon families, animated gait and remaining wardrobe combinations need human inspection; numerical and screenshot-existence checks do not prove clipping or animation quality. Release only after current build and the capture run are verified and findings reviewed.
