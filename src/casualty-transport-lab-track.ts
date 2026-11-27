@@ -42,7 +42,8 @@ export function buildTransportLabTrack(mode:TransportMode,scenario:LabScenario):
     if(gap<1){index++;speed=0;}else{
      const angle=Math.atan2(goal.y-carrier.y,goal.x-carrier.x);
      const turn=Math.atan2(Math.sin(angle-heading),Math.cos(angle-heading));
-     speed=loadedMotorSample(mode,53,53,speed,dt,turn).velocity;heading=angle;
+     speed=loadedMotorSample(mode,53,53,speed,dt,turn).velocity;
+     heading+=Math.max(-dt*5,Math.min(dt*5,turn));
      const amount=Math.min(gap,speed*dt);
      next={x:carrier.x+Math.cos(angle)*amount,y:carrier.y+Math.sin(angle)*amount};
     }
@@ -56,8 +57,8 @@ export function buildTransportLabTrack(mode:TransportMode,scenario:LabScenario):
    else{blocked++;speed=0;}
   }else speed=0;
   const loaded=stage==='loaded'||stage==='release';
-  const pose=loaded?readTransportPatientPose({id:'patient',p:patient,health:0,heading:Math.PI,carriedById:'carrier',transportMode:mode},
-   [{id:'carrier',p:carrier,health:4,heading,carryingId:'patient',velocity:speed,stride,transportContact:contact}]):undefined;
+  const pose=loaded||stage==='pickup'&&mode==='carry'?readTransportPatientPose({id:'patient',p:patient,health:0,heading:Math.PI,carriedById:loaded?'carrier':null,transportMode:mode},
+   [{id:'carrier',p:carrier,health:4,heading,carryingId:loaded?'patient':null,velocity:speed,stride,transportContact:contact}]):undefined;
   samples.push({time,carrier:{...carrier},patient:{...patient},heading,speed,stride,stage,contact,pose,blocked});
  }
  return samples;

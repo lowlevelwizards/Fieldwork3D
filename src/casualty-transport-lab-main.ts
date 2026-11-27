@@ -64,12 +64,12 @@ function draw(){
   if(points){const wrist=carrier.arms[i].hand.getWorldPosition(new THREE.Vector3());errors.push(wrist.distanceTo(points[i]));
    markers[i].position.copy(points[i]);const pos=lines[i].geometry.getAttribute('position');pos.setXYZ(0,wrist.x,wrist.y,wrist.z);pos.setXYZ(1,points[i].x,points[i].y,points[i].z);pos.needsUpdate=true;lines[i].geometry.computeBoundingSphere();}
  }
- const focus=new THREE.Vector3((t.carrier.x+t.patient.x)/2,12,(t.carrier.y+t.patient.y)/2);
+ const focus=new THREE.Vector3((t.carrier.x+t.patient.x)/2,t.pose?.mode==='carry'?21:12,(t.carrier.y+t.patient.y)/2);
  const view=select('view').value;
  const offset=view==='side'?new THREE.Vector3(0,30,145):view==='top'?new THREE.Vector3(0,170,.01):new THREE.Vector3(92,95,110);
  camera.position.copy(focus).add(offset);camera.lookAt(focus);
  const width=Math.max(1,stage.clientWidth),height=Math.max(1,stage.clientHeight),aspect=width/height;
- const vertical=aspect<1?82:62;camera.left=-vertical*aspect;camera.right=vertical*aspect;camera.top=vertical;camera.bottom=-vertical;camera.updateProjectionMatrix();
+ const vertical=t.pose?.mode==='carry'?(aspect<1?48:35):(aspect<1?82:62);camera.left=-vertical*aspect;camera.right=vertical*aspect;camera.top=vertical;camera.bottom=-vertical;camera.updateProjectionMatrix();
  renderer.setSize(width,height,false);renderer.render(scene,camera);
  slider.value=String(frame);detail.textContent=t.stage.toUpperCase()+' · '+t.time.toFixed(2)+'s / FRAME '+frame+'\nSPEED '+t.speed.toFixed(1)+' · SEPARATION '+Math.hypot(t.carrier.x-t.patient.x,t.carrier.y-t.patient.y).toFixed(1)+' · BLOCKED '+t.blocked+'\nWRIST ERROR '+(errors.length?errors.map(e=>e.toFixed(2)).join(' / '):'—');
 }

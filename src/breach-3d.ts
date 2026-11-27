@@ -2618,11 +2618,14 @@ export class TacticalScene3D{
         this.frameActorsById.get(actor.carryingId)??s.civilians.find(c=>c.id===actor.carryingId):undefined;
       const carrierTransport=carrierTransportPresentation(actor,carriedSubject);
       const transportPatientPose=readTransportPatientPose(actor,s.operators);
-      const transportPatient=linkedTransportPatient(s,actor);
-      const loadedTransport=transportPatient&&actor.health>0?{
-        mode:transportPatient.transportMode??'drag' as const,patientId:transportPatient.id,
-        patient:transportPatient.p,heading:transportPatient.heading,
-        patientPose:readTransportPatientPose(transportPatient,s.operators)}:undefined;
+      const pickupId=actor.transportContact?.kind==='pickup'&&actor.transportContact.mode==='carry'?
+        actor.transportContact.patientId:undefined;
+      const transportPatient=linkedTransportPatient(s,actor)??(pickupId?
+        s.operators.find(o=>o.id===pickupId)??s.civilians.find(o=>o.id===pickupId):undefined);
+      const pairPose=transportPatient?readTransportPatientPose(transportPatient,s.operators):undefined;
+      const loadedTransport=transportPatient&&pairPose&&actor.health>0?{
+        mode:pairPose.mode,patientId:transportPatient.id,
+        patient:transportPatient.p,heading:transportPatient.heading,patientPose:pairPose}:undefined;
       const loadedHeading=loadedTransport?loadedCarrierHeading(loadedTransport.mode,
         {x:drawActor.x,y:drawActor.z},loadedTransport.patient,drawActor.heading):null;
       // Airborne body is a fixed-tick simulation outcome. Keep the 3D
