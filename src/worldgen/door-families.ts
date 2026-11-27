@@ -126,7 +126,15 @@ export function styleArchitecturalDoors(site:Site,seed:number):Site{
     frameIntegrity:4.2}:finish==='steel'?{resistance:1.4,latchIntegrity:1.25,
     frameIntegrity:3.2}:finish==='exit'?{resistance:1.15,latchIntegrity:1.1,
     frameIntegrity:3}:null;
-  return {...door,style:finish,kind:mode,
+  // Public glazed sliding entrances can be motorized; private and service
+  // doors remain manual. Both leaves derive the same stable mechanism.
+  const primary=isFront||door.pairedWith==='FRONT';
+  const powered=mode==='sliding'&&finish==='glazed'&&primary&&
+    ['retail','clinic','office'].includes(kind)&&seed%4!==2;
+  const operatingMode:Door['operatingMode']=door.operatingMode??
+    (powered?'automatic':mode==='sliding'&&door.pairedWith&&seed%4===0?
+      'coupled':'independent');
+  return {...door,style:finish,kind:mode,operatingMode,
     ...(mode==='sliding'?{slideDirection:(door.pairedWith?(door.hinge==='b'?1:-1):(seed%2===0?1:-1)) as 1|-1}:{}),
     ...(strength??{})};
  });

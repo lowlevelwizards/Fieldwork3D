@@ -1,3 +1,4 @@
+import {advanceAutomaticDoors,automaticDoorPowered} from './breach-door-operating-modes.ts';
 /** Authoritative first phase: medical deterioration then door state.
  * Runs after the clock advances, before all awareness, movement and fire.
  * Includes real opening-yield movement; no presentation or replay ownership.
@@ -103,7 +104,15 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
   // body during the door phase. Build the positions once per fixed tick,
   // refreshing only if a real opening-yield actually relocated an operator.
   let doorOccupants=liveDoorOccupants(s);
+  // Sensors also protect stationary/downed bodies, without manufacturing a
+  // character interaction or granting an exception to physical collision.
+  const hasAutomatic=s.doors.some(d=>d.operatingMode==='automatic');
+  if(hasAutomatic)advanceAutomaticDoors(s.doors,
+    [...s.operators.map(a=>a.p),...s.civilians.map(c=>c.p)],
+    s.seconds,automaticDoorPowered(s));
   for(const door of s.doors){
+    if(door.operatingMode==='automatic'&&!door.latchBroken&&
+       (!automaticDoorPowered(s)||door.jammed))continue;
     if(door.heldBy){
       const holder=s.operators.find(a=>a.id===door.heldBy);
       if(!holder||holder.health<=0||holder.plan.length>0||
