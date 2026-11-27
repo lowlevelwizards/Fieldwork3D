@@ -16,8 +16,8 @@ import {resolveDatedGearSnapshot,compareDatedGearSnapshots}
 test('FT1.6 preserves complete prior faction research and visual catalogs',()=>{
  assert.equal(FACTION_REFERENCES.length,44);
  assert.equal(FACTION_TIMELINES.length,34);
- assert.equal(HISTORICAL_EQUIPMENT.length,35);
- assert.equal(HISTORICAL_ISSUE_RECORDS.length,32);
+ assert.equal(HISTORICAL_EQUIPMENT.length,38);
+ assert.equal(HISTORICAL_ISSUE_RECORDS.length,35);
  assert.equal(new Set(FACTION_REFERENCES.map(x=>x.id)).size,44);
  assert.ok(TIMELINE_ORGANIZATIONS.length>0);
 });
@@ -45,7 +45,7 @@ test('FT1.6 event lanes re-express all existing snapshots and cited research onl
  const ids=new Set(HISTORICAL_ISSUE_RECORDS.map(x=>x.id));
  assert.deepEqual(new Set(all.filter(x=>x.kind.startsWith('research'))
   .map(x=>x.recordId)),ids);
- assert.equal(all.filter(x=>x.kind==='research-start').length,32);
+ assert.equal(all.filter(x=>x.kind==='research-start').length,35);
  assert.ok(all.filter(x=>x.kind==='visual-baseline').every(x=>
   x.referenceId&&x.to!==null&&x.from===null&&!x.sourceIds.length));
  assert.ok(all.filter(x=>x.kind==='visual-change').every(x=>
