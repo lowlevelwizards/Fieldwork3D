@@ -19,7 +19,7 @@ test('clothing, equipment and gloves are selected with one item card',()=>{
  const choices=[['armorStyle','plate-jpc','armor','armor-carrier'],
   ['rigStyle','full-chest','rig','rig-full'],
   ['beltStyle','battle-belt','belt','belt-battle'],
-  ['packStyle','medic-pack','backpack','backpack-field'],
+  ['packStyle','medic-pack','backpack','backpack-medical'],
   ['top','bdu-shirt','top','top-uniform'],
   ['top','acu-shirt','top','top-uniform'],
   ['trousers','bdu-trousers','legs','legs-field'],
