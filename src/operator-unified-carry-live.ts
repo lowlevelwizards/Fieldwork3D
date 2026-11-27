@@ -109,7 +109,7 @@ export function syncLiveUnifiedCarry(r:OperatorRig,p:Pick<OperatorPose,'unifiedC
  let current=cache.get(r);
  if(current?.held){restore(current.held);current.held=null;}
  if(current?.key===key&&current.manifest===state.manifest){
-  if(appearanceChanged)suppressLegacy(r);
+  if(appearanceChanged){suppressLegacy(r);syncGearMarkedMaterials(r.gearMaterial);syncGearMarkedMaterials(r.weaponDark);syncGearMarkedMaterials(r.weaponSteel);syncGearMarkedMaterials(r.visualKit.carriedMagazineMaterial);}
   return;
  }
  if(!current||current.key!==key){
@@ -139,11 +139,22 @@ export function syncLiveUnifiedCarry(r:OperatorRig,p:Pick<OperatorPose,'unifiedC
    const l=h.lanes[i];l.id=contents[i]??null;restore(l);
    if(l.id)current.items.set(l.id,l);
   }
+  // Closed utility holders have no visible contents by design. A hidden
+  // handoff node can still represent a retrievable owned magazine.
+  if(p.holder==='utility-pouch'&&p.kind==='primary-mag'&&h.lanes.length===0){
+   const l=lane(concealedProp(r,p,h.root,part,secondaryWeapon),false);
+   l.position.set(0,-1,1);h.lanes.push(l);l.id=contents[0]??null;restore(l);
+   if(l.id)current.items.set(l.id,l);
+  }
+  if(p.holder==='rigid-holster'&&p.kind!=='sidearm')for(const l of h.lanes)l.node.visible=false;
  }
  current.manifest=state.manifest;
  suppressLegacy(r);
  for(const m of Object.values(palette))syncGearMarkedMaterials(m);
  r.root.userData.bt4Unrendered=[...current.unrendered];
+}
+export function liveUnifiedContentIsExposed(r:OperatorRig,id:string|null|undefined){
+ const l=id?cache.get(r)?.items.get(id):undefined;return !!l?.visible;
 }
 export function liveUnifiedContent(r:OperatorRig,id:string|null|undefined){
  const l=id?cache.get(r)?.items.get(id):undefined;return l?.node;
@@ -165,11 +176,22 @@ export function presentLiveUnifiedHandoff(r:OperatorRig,p:OperatorPose,allowed:b
  const secondary=!p.down&&!p.surrender?p.secondaryReload:null;
  const progress=secondary?secondary.elapsed/Math.max(.001,secondary.duration):0;
  const id=field&&sampleEquipmentGesture(field).inHand?field.contentId:
-  secondary&&progress>=.66&&progress<.72?secondary.selectedId:null;
+  secondary&&progress>=.26&&progress<.72?secondary.selectedId:null;
  const l=id?current.items.get(id):undefined;
  if(!l)return;
- r.arms[0].hand.add(l.node);l.node.position.set(field?.item==='flashbang'?.35:0,field?.item==='flashbang'?-3.8:-3,0);
- l.node.rotation.set(0,0,field?.item==='flashbang'?Math.PI*.30:.15);
+ if(!field&&secondary){
+  // Same fixed-step lift window as the legacy sidearm reload. Concealed
+  // stock appears only once the support hand has contacted the carrier.
+  const t=Math.max(0,Math.min(1,(progress-.26)/.40)),ease=t*t*(3-2*t);
+  if(!l.visible&&progress<.42)return;
+  r.root.updateMatrixWorld(true);
+  const from=l.node.getWorldPosition(new THREE.Vector3()),to=r.arms[0].hand.getWorldPosition(new THREE.Vector3());
+  r.arms[0].hand.add(l.node);l.node.position.copy(r.arms[0].hand.worldToLocal(from.lerp(to,ease)));
+  l.node.rotation.set(0,0,.15*ease);
+ }else{
+  r.arms[0].hand.add(l.node);l.node.position.set(field?.item==='flashbang'?.35:0,field?.item==='flashbang'?-3.8:-3,0);
+  l.node.rotation.set(0,0,field?.item==='flashbang'?Math.PI*.30:.15);
+ }
  l.node.visible=true;current.held=l;
 }
 

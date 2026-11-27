@@ -65,7 +65,7 @@ export function unifiedLoadoutInput(source:UnifiedLoadoutSource):CarryInput{
  const add=(id:string,kind:CarryKind,dimensions:Dimensions,units=1)=>items.push({id,kind,dimensions,units});
  // The actual selected family envelope is reused as-is, not the old reduced
  // carry proxy. An unsupported native part is explicitly unfit, not guessed.
- const size=nativeMagazineDimensions(source.primaryPart??defaultPart(kit.slots.primary));
+ const size=kit.slots.primary==='primary-shotgun'?null:nativeMagazineDimensions(source.primaryPart??defaultPart(kit.slots.primary));
  for(const m of magazines){
   if(m.weapon==='shotgun')continue;
   add(m.id,'primary-mag',size??dim(NaN,NaN,NaN));

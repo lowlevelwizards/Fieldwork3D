@@ -1,4 +1,4 @@
-import {liveUnifiedContent,liveUnifiedAnchor,presentLiveUnifiedHandoff} from './operator-unified-carry-live.ts';
+import {liveUnifiedContent,liveUnifiedContentIsExposed,liveUnifiedAnchor,presentLiveUnifiedHandoff} from './operator-unified-carry-live.ts';
 import {sampleOperatorFootContacts,applyOperatorLegIK} from './breach-operator-lower-body.ts';
 import {throwSupportGesture} from './breach-animation-choreography.ts';
 import {sampleEquipmentGesture} from './breach-equipment-interaction-pose.ts';
@@ -842,7 +842,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }
     if(!v4SelectedPouchVisible(reloadProgress)){
       v4Magazine.visible=false;
-      r.root.userData.reloadV4HiddenSource=v4Magazine;
+      if(!p.unifiedCarry||liveUnifiedContentIsExposed(r,p.reloadSelectedMagazineId))r.root.userData.reloadV4HiddenSource=v4Magazine;
     }
   }
   attachments[EAI.hand].scale.set(

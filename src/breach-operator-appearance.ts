@@ -1,3 +1,4 @@
+import {beltStyleForEquipment} from './operator-belt-profile.ts';
 import {syncLiveUnifiedCarry} from './operator-unified-carry-live.ts';
 import {prepareBeltFlashPouches,restoreBeltFlashRest} from './operator-belt-flash-pouches.ts';
 import {canonicalBeltStyle} from './operator-belt-profile.ts';
@@ -98,7 +99,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     fingerprintMs,appearanceChanged:appearanceChanged?1:0};
   // Resolve once per appearance fingerprint, including in-place Studio edits.
   // No repeated wardrobe normalization in coupled, coordinated or IK paths.
-  const visualWardrobe=p.unifiedCarry&&!p.wardrobe?initialWardrobe():p.wardrobe;
+  const baseWardrobe=p.wardrobe??initialWardrobe();
+  const visualWardrobe=p.unifiedCarry&&p.equipment?{...baseWardrobe,styles:{...baseWardrobe.styles,beltStyle:beltStyleForEquipment(p.equipment.slots.belt)}}:p.wardrobe;
   const clothing=appearanceChanged?
     resolvedWardrobe(visualWardrobe,p.equipment):previousAppearance!.outfit;
   if(appearanceChanged){
