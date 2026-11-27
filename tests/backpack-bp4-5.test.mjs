@@ -11,8 +11,13 @@ test('four distinct authored models, material batches and socket policy',()=>{
   const art=buildAuthoredPack(style,materials());
   const bounds=new THREE.Box3().setFromObject(art.root);
   const size=bounds.getSize(new THREE.Vector3());sizes.set(style,size);
+  const cap={hydration:5,'assault-panel':7,'day-pack':10,'assault-pack':13}[style];
+  assert.ok(art.root.userData.fieldworkPackComponents<=cap);
+  const graphic=art.root.getObjectByName('pack-pixel-graphics');
+  assert.ok(graphic&&graphic.material.map&&graphic.castShadow===false);
+  assert.ok(graphic.geometry.index.count/3<=30);
   assert.ok(size.toArray().every(n=>Number.isFinite(n)&&n>0));
-  assert.ok(art.root.children.length<=3,'material batching');
+  assert.ok(art.root.children.length<=4,'material batching');
   art.root.traverse(o=>{if(o.isMesh)for(const key of ['position','normal','uv'])assert.ok(o.geometry.getAttribute(key).array.every(Number.isFinite));});
   assert.equal(art.sockets.length,style==='day-pack'?2:style==='assault-pack'?4:0);
   for(const socket of art.sockets)assert.ok(bounds.distanceToPoint(new THREE.Vector3(...socket.point))<.65);
