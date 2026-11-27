@@ -37,10 +37,10 @@ test('load-bearing hips, optional medical graphic, radio metadata only',()=>{
    state.harness.traverse(o=>{if(o.isMesh)assert.ok(o.geometry.getAttribute('position').array.every(Number.isFinite));});
   }
  }
- const marked=buildAuthoredPack('medic-pack',materials(),{medicalMark:true}),plain=buildAuthoredPack('medic-pack',materials());
+ const marked=buildAuthoredPack('medic-pack',materials(),{medicalMark:true}),plain=buildAuthoredPack('medic-pack',materials(),{medicalMark:false});
  assert.ok(marked.root.userData.fieldworkPackGraphicTriangles>plain.root.userData.fieldworkPackGraphicTriangles);
- const comms=buildAuthoredPack('comms-pack',materials());
- assert.ok(comms.sockets.some(s=>s.kind==='antenna'));assert.ok(!comms.root.getObjectByName('antenna'));
+ const comms=buildAuthoredPack('comms-pack',materials(),{antenna:false});
+ assert.ok(comms.sockets.some(s=>s.kind==='antenna'));assert.ok(!comms.root.getObjectByName('radio-antenna-preview'));
 });
 test('civilian pack palette uses existing wardrobe channel; legacy slots stay authoritative',()=>{
  assert.equal(legacyPackEquipment('civilian-pack'),'backpack-day');
