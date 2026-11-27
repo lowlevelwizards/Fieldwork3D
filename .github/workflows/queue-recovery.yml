@@ -1,0 +1,37 @@
+name: Fieldwork queue recovery
+on:
+  push:
+    branches: [ci/queue-recovery-r0-r2-20261127]
+    paths:
+      - '.github/workflows/queue-recovery.yml'
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Request cancellation of superseded PR runs (false = report only)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  pull-requests: read
+  actions: write
+concurrency:
+  group: fieldwork-queue-recovery
+  cancel-in-progress: false
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify cancellation safety
+        run: python3 -m unittest discover -s scripts/verification -p test_ci_queue_recovery.py
+      - name: Inspect and cancel only stale same-repository PR checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPLY: ${{ github.event_name == 'push' || inputs.apply }}
+        run: |
+          if [ "$APPLY" = true ]; then
+            python3 scripts/verification/ci_queue_recovery.py --apply
+          else
+            python3 scripts/verification/ci_queue_recovery.py
+          fi
