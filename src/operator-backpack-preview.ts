@@ -1,5 +1,7 @@
 /** Opt-in art preview. Does not change loadout IDs or inventory. */
 import * as THREE from 'three';
+import {packDetailPalette} from './operator-backpack-colors.ts';
+import {packGraphicAtlas} from './operator-backpack-graphics.ts';
 import {authoredPackStyle,buildAuthoredPack,type AuthoredPack,type AuthoredPackStyle} from './operator-backpack-art.ts';
 import {buildPackHarness,fitPack,mountPackArtwork,type PackFit} from './operator-backpack-fit.ts';
 import {packRibbon,packBox,finishPackArtwork,PACK_DETAIL,type PackPoint,type PackMaterials} from './operator-backpack-geometry.ts';
@@ -10,7 +12,18 @@ export type PackPreviewState={
  harness?:THREE.Group;key?:string;fit?:PackFit;
 };
 export function createPackPreview(parent:THREE.Object3D,chest:THREE.Group,materials:PackMaterials):PackPreviewState{
- return {parent,chest,materials,models:new Map()};
+ return {parent,chest,materials:{fabric:materials.fabric,trim:materials.trim.clone(),dark:materials.dark.clone()},models:new Map()};
+}
+export function applyPackDetailPalette(state:PackPreviewState,hex:number,colors:Map<THREE.MeshStandardMaterial|THREE.MeshBasicMaterial,THREE.Color>){
+ if(!state.active)return;
+ const p=packDetailPalette(hex);
+ for(const [material,value] of [[state.materials.trim,p.trimHex],[state.materials.dark,p.hardwareHex]] as const){
+  if(material instanceof THREE.MeshStandardMaterial){material.color.setHex(value);colors.set(material,material.color.clone());}
+ }
+ const graphic=state.active.root.getObjectByName('pack-pixel-graphics');
+ if(graphic instanceof THREE.Mesh&&graphic.material instanceof THREE.MeshStandardMaterial){
+  const map=packGraphicAtlas(hex);if(graphic.material.map!==map){graphic.material.map=map;graphic.material.needsUpdate=true;}
+ }
 }
 function removeHarness(state:PackPreviewState){
  if(!state.harness)return;
