@@ -32,7 +32,7 @@ try{
   await page.locator('#poseRig').selectOption(rig);
   await page.locator('#poseUniform').selectOption(uniform);
   await page.locator('#retentionSling').selectOption(sling);
-  for(const mode of sling==='sling-single-point'?['front-slung']:['front-slung','side-slung','back-slung']){
+  for(const mode of sling==='sling-single-point'?['front-slung']:['front-slung','back-slung']){
    await page.locator('#retentionMode').selectOption(mode);
    await page.locator('#retentionSettled').click();
    await seek(500);

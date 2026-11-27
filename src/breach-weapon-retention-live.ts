@@ -1,7 +1,7 @@
 /** WR8: fixed-step retention gate after physical contact validation. */
 import {prepareGroundedPrimary} from './breach-grounded-primary.ts';
 import type {Session,TeamActor} from './breach-game.ts';
-import {readSlingKind,preferredHandsFreeRegion} from './breach-weapon-retention.ts';
+import {readSlingKind} from './breach-weapon-retention.ts';
 import {initialRetentionTransition,requestRetentionTransition,advanceRetentionTransition,
  retentionTransitionSettled} from './breach-weapon-retention-transition.ts';
 import {requestSecondarySwitch,advanceSecondarySwitch,initialSecondarySwitch} from './secondary-switching.ts';
@@ -32,8 +32,7 @@ export function prepareHandsFree(a:TeamActor,dt:number,s?:Session):boolean{
  }
  a.velocity=0;a.aim=0;
  if(a.reload>0||a.secondaryReload)return false;
- const mode=(a.secondarySwitch?.fraction??0)>0||a.retentionTransition?.mode==='front-slung'?
-  'front-slung':preferredHandsFreeRegion(sling,a.equipment?.secondary?.weapon?a.equipment.secondary.holster:undefined)==='side'?'side-slung':'front-slung';
+ const mode='front-slung';
  a.retentionTransition=requestRetentionTransition(a.retentionTransition??initialRetentionTransition(),mode,sling);
  const sw=a.secondarySwitch??initialSecondarySwitch();
  if(sw.fraction>0){
