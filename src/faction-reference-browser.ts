@@ -5,6 +5,7 @@ import {unresolvedReferenceGaps} from './faction-reference-asset-registry.ts';
 import {paintCamoPreview} from './operator-camo-preview-cache.ts';
 import {resolvedWardrobe,wardrobeItem} from './operator-wardrobe-data.ts';
 import {referencePackStudies,referenceSidearmStudyAvailable,resolveReferencePreview} from './faction-reference-preview-options.ts';
+import {WEAPON_ATTACHMENTS} from './equipment-weapon-assemblies.ts';
 import {referenceWeaponChoice,referenceWeaponOptions} from './faction-reference-weapons.ts';
 import {FACTION_TIMELINES,timelineForReference}
  from './faction-reference-timelines.ts';
@@ -823,6 +824,14 @@ export class FactionReferenceBrowser{
    gear.append(el('p','reference-compat-warning','Preview compromises: '+
     [...preview.incompatibleChannels,...preview.technicalIssues].join(', ')));
   this.detail.append(gear);
+  const attachments=el('div','reference-gap-list');
+  attachments.append(el('strong','','VISIBLE WEAPON ART'));
+  const installed=Object.entries(issued.weaponConfiguration.slots)
+   .filter(([slot,id])=>!id.endsWith('-none')&&slot!=='opticMount');
+  for(const [slot,id] of installed)
+   attachments.append(el('span','',slot+' · '+(WEAPON_ATTACHMENTS[id]?.name??id)));
+  attachments.append(el('small','reference-meta','Modeled preset only · not evidence of historical attachment issue'));
+  this.detail.append(attachments);
   const missing=unresolvedReferenceGaps(r);
   if(missing.length){
    const block=el('div','reference-gap-list');
