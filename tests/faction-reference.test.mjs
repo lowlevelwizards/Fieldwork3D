@@ -1,4 +1,6 @@
 import test from 'node:test';
+import {quoteUnifiedLoadout} from '../src/equipment-unified-loadout.ts';
+import {waistPlacementsConflict} from '../src/equipment-fixed-carrier-slots.ts';
 import {referencePackStudies,referenceSidearmStudyAvailable,resolveReferencePreview} from '../src/faction-reference-preview-options.ts';
 import {canonicalPackEquipment} from '../src/operator-backpack-catalog.ts';
 import assert from 'node:assert/strict';
@@ -326,4 +328,18 @@ test('optional sidearm art stays unloaded and is never a historical or saved kit
   assert.equal(resolveFactionReference(ref).kit.secondary.weapon,null);
  }
  assert.throws(()=>resolveReferencePreview('us-desert-1991',undefined,undefined,true));
+});
+
+test('dated costume fixed-slot render quotes are deterministic and nonmutating',()=>{
+ for(const ref of FACTION_REFERENCES){
+  const {kit,wardrobe,weapon}=resolveFactionReference(ref);
+  const source={kit,wardrobe,magazines:[],primaryPart:weapon.weaponConfiguration.build?.parts.magazine};
+  const before=JSON.stringify(source);
+  const first=quoteUnifiedLoadout(source);
+  assert.deepEqual(quoteUnifiedLoadout(source),first,ref.id);
+  assert.equal(JSON.stringify(source),before,ref.id);
+  const waist=first.manifest.placements.flatMap(x=>x.waist?[x.waist]:[]);
+  for(let i=0;i<waist.length;i++)for(let j=i+1;j<waist.length;j++)
+   assert.equal(waistPlacementsConflict(waist[i],waist[j]),false,ref.id);
+ }
 });
