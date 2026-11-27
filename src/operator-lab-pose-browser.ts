@@ -24,6 +24,16 @@ export const POSE_RIG_OPTIONS=[
  ['split-front','Split Front'],['alice-lc2','ALICE'],
  ['m1956-lce','M1956'],['lbv','LBV'],['sadf-webbing','SADF']
 ] as const;
+export const POSE_PACK_OPTIONS=[
+ ['no-pack','None'],['hydration','Hydration'],['admin-pack','Admin'],
+ ['day-pack','Day pack'],['assault-pack','Assault pack'],['sling-bag','Sling bag'],
+ ['field-pack','Field pack'],['rucksack','Rucksack'],['medic-pack','Medic'],
+ ['comms-pack','Comms'],['duffel','Duffel']
+] as const;
+export function posePackEquipment(pack:string):'backpack-none'|'backpack-day'|'backpack-field'{
+ return pack==='no-pack'?'backpack-none':
+  ['field-pack','rucksack','medic-pack','comms-pack','duffel'].includes(pack)?'backpack-field':'backpack-day';
+}
 export const POSE_UNIFORM_OPTIONS=[
  ['bdu-shirt','BDU'],['acu-shirt','ACU'],
  ['combat-shirt','Combat Shirt'],['smock-jacket','Smock'],

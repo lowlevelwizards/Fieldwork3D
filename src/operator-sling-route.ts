@@ -27,7 +27,8 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
  // perimeter of a bulky pack. Hidden portions may pass behind the pack.
  // Keep its shoulder lane near the neck but still on the shoulder.
  const outerPack=back?pack:undefined;
- const z=shoulder[2]*(pack?.isEmpty()===false?.88:1),sy=shoulder[1]+margin;
+ const hasPack=!!pack&&!pack.isEmpty();
+ const z=shoulder[2]*(hasPack ? .88 : 1),sy=shoulder[1]+margin;
  const single=profile?.kind==='single';
  const low=profile?.returnHeight??-3.5;
  const surface=(f:number,y:number,lateral:number)=>
@@ -51,8 +52,8 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
  const corner=(f:number)=>f*Math.max(...[0,.4,.82].map(t=>f*surface(f,low,flank*t)));
  const farCorner=corner(-face),nearCorner=corner(face);
  write(0,rear.x,rear.y,rear.z,face,0,side?hipSign:0);
- write(2,crownX,sy-.16,z,face,1,0);
- write(3,oppositeX,sy-.16,z,-face,1,0);
+ write(2,crownX,sy-(hasPack?.10:0),z,face,1,0);
+ write(3,oppositeX,sy-(hasPack?.10:0),z,-face,1,0);
  write(6,farCorner,low,flank,-face,0,1);
  write(7,nearCorner,low,flank,face,0,1);
  write(9,front.x,front.y,front.z,face,0,side?hipSign:0);
@@ -109,7 +110,7 @@ export function routeSlingTransition(out:readonly SlingRibbonKnot[],
   a.point.lerp(b.point,f);
   a.normal.lerp(b.normal,f);
   if(i===2||i===3){ // crown stays outside both shoulder/pack top
-   a.point.y=Math.max(a.point.y,fit.shoulder(-1)[1]+Math.min(.25,width*.16));
+   a.point.y=Math.max(a.point.y,fit.shoulder(-1)[1]+Math.min(.25,width*.16)-(pack?.isEmpty()===false ? .10 : 0));
   }else{
    const sign=i<=4?-1:1;
    const start=Math.atan2(sign*Math.abs(oldZ),oldX);

@@ -12,7 +12,8 @@ test('SR21 a bulky pack does not inflate front shoulder height or flank radius',
  const withPack=createSlingRoute(),without=createSlingRoute(),contact=createSlingContactRoute();
  routeSlingRibbon(withPack,a,b,fit,'front-slung',1.35,box);
  routeSlingRibbon(without,a,b,fit,'front-slung',1.35);
- assert.equal(withPack[2].point.y,without[2].point.y);
+ assert.ok(withPack[2].point.y<=without[2].point.y);
+ assert.ok(without[2].point.y-withPack[2].point.y<.15);
  assert.equal(withPack[6].point.z,without[6].point.z);
  assert.ok(withPack[3].point.x>box.min.x+3);
  fitSlingContactRoute(contact,withPack,fit,1.35,box);

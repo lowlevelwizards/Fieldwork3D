@@ -63,10 +63,10 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset,setWeaponAttachment}
 import {loadArsenalBuildLibrary} from './arsenal/saved-builds.ts';
 import {arsenalRecipeToLegacy,readArsenalRecipe,type ArsenalRecipeV2}
  from './arsenal/recipes.ts';
-import {POSE_ARMOR_OPTIONS,POSE_RIG_OPTIONS,POSE_UNIFORM_OPTIONS,
+import {POSE_ARMOR_OPTIONS,POSE_RIG_OPTIONS,POSE_UNIFORM_OPTIONS,POSE_PACK_OPTIONS,
  POSE_ANIMATIONS,POSE_WEAPON_GROUPS,POSE_SIDEARM_GROUPS,
  posePreset,poseWeaponType,poseSidearm,poseSidearmArtOnly,
- defaultPoseWeapon,poseArmorEquipment,poseRigEquipment}
+ defaultPoseWeapon,poseArmorEquipment,poseRigEquipment,posePackEquipment}
  from './operator-lab-pose-browser.ts';
 import {uniformCutCamoChoices,type UniformCompareCut}
  from './operator-uniform-cut-eligibility.ts';
@@ -227,7 +227,7 @@ function syncPosePickers(){
  const look=resolvedWardrobe(wardrobeOptions,labKit);
  for(const [id,value] of [
   ['poseArmor',look.armorStyle],['poseRig',look.rigStyle],
-  ['poseUniform',look.top]
+  ['poseUniform',look.top],['posePack',look.packStyle]
  ] as const){
   const element=document.getElementById(id) as HTMLSelectElement;
   if(element?.options.length)element.value=value;
@@ -803,6 +803,7 @@ const poseWeaponSelect=choose<HTMLSelectElement>('poseWeapon');
 const poseArmorSelect=choose<HTMLSelectElement>('poseArmor');
 const poseRigSelect=choose<HTMLSelectElement>('poseRig');
 const poseUniformSelect=choose<HTMLSelectElement>('poseUniform');
+const posePackSelect=choose<HTMLSelectElement>('posePack');
 const poseAnimationSelect=choose<HTMLSelectElement>('poseAnimation');
 const poseStrictContact=choose<HTMLInputElement>('poseStrictContact');
 const retentionSling=choose<HTMLSelectElement>('retentionSling');
@@ -859,6 +860,7 @@ const addOptions=(target:HTMLSelectElement,
 addOptions(poseArmorSelect,POSE_ARMOR_OPTIONS);
 addOptions(poseRigSelect,POSE_RIG_OPTIONS);
 addOptions(poseUniformSelect,POSE_UNIFORM_OPTIONS);
+ addOptions(posePackSelect,POSE_PACK_OPTIONS);
 const animationGroups=new Map<string,HTMLOptGroupElement>();
 for(const animation of POSE_ANIMATIONS){
  let group=animationGroups.get(animation.group);
@@ -927,7 +929,7 @@ poseWeaponSelect.addEventListener('change',()=>{
 });
 for(const [element,slot] of [
  [poseArmorSelect,'armorStyle'],[poseRigSelect,'rigStyle'],
- [poseUniformSelect,'top']
+ [poseUniformSelect,'top'],[posePackSelect,'packStyle']
 ] as const){
  element.addEventListener('change',()=>{
   checkpointAppearance();
@@ -937,6 +939,7 @@ for(const [element,slot] of [
     poseArmorEquipment(element.value));
   if(slot==='rigStyle')labKit=setEquipmentChoice(labKit,'rig',
     poseRigEquipment(element.value));
+  if(slot==='packStyle')labKit=setEquipmentChoice(labKit,'backpack',posePackEquipment(element.value));
   syncKit();draw();
  });
 }
@@ -2439,6 +2442,7 @@ function draw(){
   const activeLook=resolvedWardrobe(wardrobeOptions,currentKit);
   canvas.dataset.poseFitArmor=activeLook.armorStyle;
   canvas.dataset.poseFitRig=activeLook.rigStyle;
+   canvas.dataset.poseFitPack=activeLook.packStyle;
   canvas.dataset.poseFitTop=activeLook.top;
   canvas.dataset.lowReadyFit=staticReport?.status??'action';
   canvas.dataset.poseV3DynamicReport=JSON.stringify(
