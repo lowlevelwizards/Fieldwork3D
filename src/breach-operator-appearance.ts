@@ -1,3 +1,4 @@
+import {authoredCargoSocket} from './operator-backpack-sockets.ts';
 import {packCargoMass,packSuspensionScale} from './operator-backpack-motion.ts';
 import {prepareBeltFlashPouches,restoreBeltFlashRest} from './operator-belt-flash-pouches.ts';
 import {canonicalBeltStyle} from './operator-belt-profile.ts';
@@ -274,9 +275,26 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
    const packState=r.visualKit.packPreview;
    packState.motionScale=packSuspensionScale(packState.active?.style??'no-pack',packState.fit?.mode,
     packCargoMass(p.equipment,p.magazineCarryLocations,p.medicalCarryLocation,p.utilityCarryLocation));
-   // Closed pack contents are internal unless explicitly inspected or mounted.
-   if(r.visualKit.packPreview.active&&!r.root.userData.fieldworkInspectPackCargo){
-    for(const item of [r.medicalPouch,r.utilityTool,r.radioUnit,...r.flashCanisters,...r.wedgeMeshes,...r.cuffMeshes])
+   // Closed pack cargo is concealed unless its ledger location and an
+   // explicit requested external socket both match the authored model.
+   if(packState.active&&!r.root.userData.fieldworkInspectPackCargo){
+    const art=packState.active;
+    const mount=(item:THREE.Mesh,kind:'medical'|'utility',request:string|undefined,id:string)=>{
+     if(item.parent!==r.pack||!item.visible)return;
+     const socket=authoredCargoSocket(art,kind,request,id);
+     if(!socket){item.visible=false;return;}
+     item.geometry.computeBoundingBox();
+     const bounds=item.geometry.boundingBox;
+     const half=bounds?(bounds.max.z-bounds.min.z)*Math.abs(item.scale.z)*.5:0;
+     item.position.set(art.root.position.x+socket.point[0],
+      art.root.position.y+socket.point[1],
+      art.root.position.z+socket.point[2]+socket.normal[2]*(half-.06));
+     item.rotation.z=0;
+    };
+    mount(r.medicalPouch,'medical',p.wardrobe?.mounts?.medical,gear?.medical??'medical-none');
+    mount(r.utilityTool,'utility',p.wardrobe?.mounts?.utility,gear?.utility??'utility-none');
+    mount(r.radioUnit,'utility',p.wardrobe?.mounts?.utility,gear?.utility??'utility-none');
+    for(const item of [...r.flashCanisters,...r.wedgeMeshes,...r.cuffMeshes])
      if(item.parent===r.pack)item.visible=false;
    }
   // An occupied functional holster replaces (never overlays) the wardrobe's
