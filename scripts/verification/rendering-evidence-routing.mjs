@@ -72,6 +72,61 @@ export const lanes = {
     "src/rendering/breach-live-shadow-submit-profiler.ts",
     "tests/refactor-e6-16-shadow-submission.test.mjs",
     "scripts/verification/e6-16-shadow-submit-browser.mjs"
+  ],
+  "model-compiler": [
+    "src/rendering/fieldwork-model-compiler.ts",
+    "src/rendering/breach-site-scene-builder.ts",
+    "tests/refactor-e6-20-universal-model-compiler.test.mjs",
+    "scripts/verification/e6-20-main-pass-browser.mjs"
+  ],
+  "assembly-compiler": [
+    "src/rendering/breach-site-scene-builder.ts",
+    "src/rendering/fieldwork-model-compiler.ts",
+    "tests/refactor-e6-21-owner-assembly.test.mjs",
+    "scripts/verification/e6-21-main-pass-browser.mjs"
+  ],
+  "template-cache": [
+    "src/rendering/fieldwork-visual-template-library.ts",
+    "src/rendering/breach-site-openings-builder.ts",
+    "src/rendering/breach-site-scene-builder.ts",
+    "src/breach-3d.ts",
+    "tests/refactor-e6-22-visual-template-library.test.mjs",
+    "tests/refactor-e6-22-template-budget.test.mjs",
+    "tests/refactor-e6-22-architecture-template-integration.test.mjs",
+    "scripts/verification/e6-22-architectural-template-browser.mjs",
+    "scripts/verification/e6-22-architectural-template-node-bench.mjs"
+  ],
+  "fixture-cache": [
+    "src/rendering/breach-fixture-template.ts",
+    "src/rendering/breach-site-scene-builder.ts",
+    "src/breach-3d.ts",
+    "src/rendering/breach-repeated-fixture-batches.ts",
+    "src/rendering/fieldwork-visual-template-library.ts",
+    "tests/refactor-e6-23-rigid-fixture-template.test.mjs",
+    "scripts/verification/e6-23-fixture-template-node-bench.mjs",
+    "scripts/verification/e6-23-fixture-template-browser.mjs"
+  ],
+  "service-cache": [
+    "src/rendering/breach-fixture-template.ts",
+    "src/rendering/breach-site-scene-builder.ts",
+    "src/breach-3d.ts",
+    "tests/refactor-e6-24-service-prop-template.test.mjs",
+    "scripts/verification/e6-24-service-prop-node-bench.mjs",
+    "scripts/verification/e6-24-service-prop-browser.mjs"
+  ],
+  "arsenal-pool": [
+    "src/arsenal/weapon-geometry-pool.ts",
+    "src/arsenal/viewport.ts",
+    "src/arsenal/thumbnailer.ts",
+    "tests/refactor-e6-26-arsenal-geometry-pool.test.mjs",
+    "scripts/verification/e6-26-arsenal-browser.mjs"
+  ],
+  "arsenal-batching": [
+    "src/arsenal/weapon-part-batching.ts",
+    "src/arsenal/viewport.ts",
+    "src/arsenal/thumbnailer.ts",
+    "tests/refactor-e6-27-arsenal-part-batching.test.mjs",
+    "scripts/verification/e6-27-arsenal-part-browser.mjs"
   ]
 };
 export const infrastructure = [".github/workflows/rendering-performance-evidence.yml","scripts/verification/rendering-evidence-routing.mjs","tests/ci-rendering-evidence-routing.test.mjs"];
