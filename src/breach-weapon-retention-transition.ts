@@ -3,7 +3,7 @@
  * Changing between two stows returns through held, never jumps endpoints. */
 import * as THREE from 'three';
 import type {SlingKind} from './breach-weapon-retention.ts';
-import {retentionPoseSupported,sampleRetentionPose,type RetentionPoseInput,
+import {retentionPoseSupported,sampleRetentionPose,retainedSwing,type RetentionPoseInput,
  type RetentionPoseMode,type RetentionPoseSample} from './breach-weapon-retention-pose.ts';
 export type RetentionTransitionState=Readonly<{
  mode:RetentionPoseMode|null;desired:RetentionPoseMode|null;weight:number;
@@ -57,7 +57,18 @@ export function sampleRetentionTransition(p:RetentionPoseInput,weight:number):Re
  if(p.mode==='front-slung'){
   // A drop leads with the vertical motion; no intermediate flipped pose.
   position.y=p.heldPosition.y+(target.position.y-p.heldPosition.y)*smooth(t*1.18);
-  position.x+=Math.sin(Math.PI*t)**2*.45;
+  position.x+=Math.sin(Math.PI*t)**2*.25;
+  // Swing along the muzzle axis first, then settle roll toward the
+  // stable outward-facing attachment plane. At neither endpoint is
+  // the held weapon replaced or its source grip moved independently.
+  const fromAxis=new THREE.Vector3(1,0,0).applyQuaternion(p.heldQuaternion);
+  const toAxis=new THREE.Vector3(1,0,0).applyQuaternion(target.quaternion);
+  const axisArc=new THREE.Quaternion().setFromUnitVectors(fromAxis,toAxis);
+  const partial=new THREE.Quaternion().slerp(axisArc,f);
+  const currentAxis=fromAxis.clone().applyQuaternion(partial).normalize();
+  const swing=retainedSwing(p.heldQuaternion,currentAxis);
+  const targetAtAxis=retainedSwing(target.quaternion,currentAxis);
+  quaternion=swing.slerp(targetAtAxis,smooth((t-.12)/.88));
  }else if(p.mode==='side-slung'){
   // Keep the silhouette in front of the torso until it has moved outboard.
   position.x+=Math.sin(Math.PI*t)**2*1.5;

@@ -327,7 +327,7 @@ export function solveUnifiedRetentionArm(req:Readonly<{
  const reach=delta.length();
  const wrist=reach>19.92?shoulder.clone().addScaledVector(delta,19.92/reach):desired;
  const release=Math.max(0,Math.min(1,req.release));
- const rest=req.outboardStow?new THREE.Vector3(-.45,-3,side*6):neutralMannequinElbowPole(side);
+ const rest=req.outboardStow?new THREE.Vector3(-2.0,-5,side*2.7):neutralMannequinElbowPole(side);
  const pole=continuousElbowPole(shoulder,wrist,
   shoulder.clone().add(sourcePole),shoulder.clone().add(rest),side,release);
  // Near full extension, the downward pole becomes degenerate. A

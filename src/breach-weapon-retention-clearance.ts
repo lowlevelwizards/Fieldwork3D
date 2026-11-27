@@ -14,9 +14,9 @@ export type RetentionClearanceInput=Readonly<{
 /** Visual contact allowance in chest-art units: fabric and soft kit may
  * compress slightly. Keep the floor and rigid pack limits independent.
  * This is not a gameplay collision or a whole-body clipping exemption. */
-export const RETENTION_FABRIC_INSET=.85;
-export const RETENTION_SIDE_INSET=1.05;
-export const RETENTION_PACK_INSET=.20;
+export const RETENTION_FABRIC_INSET=1.55;
+export const RETENTION_SIDE_INSET=1.7;
+export const RETENTION_PACK_INSET=.45;
 /** Fit against local occupied sections rather than one imaginary plane
  * spanning the entire torso. Positive or negative correction is allowed
  * along the resting normal: a separated silhouette should settle inward.
@@ -52,7 +52,7 @@ function fitLocal(p:RetentionClearanceInput,box:THREE.Box3,correction:THREE.Vect
    const body=bodyY&&x>=back-margin&&x<=front+margin;
    const bag=packY&&x>=pack!.min.x-margin&&x<=pack!.max.x+margin;
    if(!body&&!bag)continue;
-   const belt=body&&y<-5.5&&y>-9.5?(p.beltDepth??0)*.65:0;
+   const belt=body&&y<-5.5&&y>-9.5?(p.beltDepth??0)*.30:0;
    const edge=Math.max(body?fit.side(y,x,1)+belt-RETENTION_SIDE_INSET:-Infinity,
     bag?pack!.max.z-RETENTION_PACK_INSET:-Infinity);
    shift=Math.max(shift,edge-z);

@@ -48,9 +48,9 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
  const side=p.mode==='side-slung';
  // X axis is the long silhouette axis; side vector faces outboard.
  const axis=one?new THREE.Vector3(.42,-.88,.22):
-  front?new THREE.Vector3(.08,-.92,p.sling==='single'?.16:.38):
-  side?new THREE.Vector3(.15,-.98,.05):
-  new THREE.Vector3(-.04,-.89,-.45);
+  front?new THREE.Vector3(.03,-.92,p.sling==='single'?.16:.46):
+  side?new THREE.Vector3(.10,-.98,-.015):
+  new THREE.Vector3(-.015,-.86,-.50);
  // A low stance flattens the long silhouette to avoid floor intersections.
  const extent=Math.max(1,p.muzzleX-p.balanceX,p.balanceX-p.stockX)*p.scale.x;
  if(p.chestHeight<extent+8)axis.y*=Math.max(.30,(p.chestHeight-5)/(extent+8));
@@ -59,25 +59,22 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
   new THREE.Vector3(front?1:-1,0,0);
  const z=outward.addScaledVector(axis,-outward.dot(axis)).normalize();
  const y=z.clone().cross(axis).normalize();
- const swing=retainedSwing(p.heldQuaternion,axis);
- // Side/back should lie flat against the wearer. Choose the nearest broad
- // face rather than letting the stock or magazine point straight outward.
- // Front retains its source-preserving drop.
- if(!one&&!front&&new THREE.Vector3(0,0,1).applyQuaternion(swing).dot(z)<0){
-  z.negate();y.negate();
- }
- const q=front?swing:
-  new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(axis,y,z));
+ // All measured sling seats live on the weapon's +Z face. Settle with
+ // that face outward, the broad receiver against the wearer, and the
+ // magazine/grip in the tangent plane. Do not choose a different roll
+ // just because the source ready stance changed or crossed 90 degrees.
+ const q=new THREE.Quaternion().setFromRotationMatrix(
+  new THREE.Matrix4().makeBasis(axis,y,z));
  const suspension=!one&&p.motion?sampleSuspensionMotion(p.sling,p.motion):null;
  if(suspension)
   q.premultiply(new THREE.Quaternion().setFromEuler(
     new THREE.Euler(suspension.roll,suspension.yaw,suspension.pitch)));
  const anchor=one?new THREE.Vector3(5.5,-5.2,9.6+armor):
-  front?new THREE.Vector3((p.exterior?.front(-2.8,0)??(7.1+armor))+1.35,
+  front?new THREE.Vector3((p.exterior?.front(-2.8,0)??(7.1+armor))+.35,
     -3.3,p.sling==='single'?2.4:0):
   side?new THREE.Vector3(1.8,-3.4,
-    (p.exterior?.side(-3.4,1.8,1)??(8.1+armor))+.9):
-  new THREE.Vector3(packedRearSurface(p.exterior?.back(-1,0)??-6.5,-1,0,p.packBounds)-1.25,
+    (p.exterior?.side(-3.4,1.8,1)??(8.1+armor))+.20):
+  new THREE.Vector3(packedRearSurface(p.exterior?.back(-1,0)??-6.5,-1,0,p.packBounds)-.35,
     -1.6,0);
  // The same rendered grip is used at the new pose, not a second socket.
  const localGrip=p.primaryGrip.clone().sub(p.heldPosition)
@@ -142,10 +139,12 @@ export function fitSideCarryWrist(wrist:THREE.Vector3,p:RetentionPoseInput,
   const b=p.bounds.clone().applyMatrix4(new THREE.Matrix4().compose(position,q,p.scale));
   edge=Math.max(edge,b.max.z);
  }else edge+=1.6;
- wrist.z=Math.max(wrist.z,edge+1.35);
+ // The sleeve is allowed a shallow visual contact with the receiver.
+ // Avoid pushing the entire forearm out for one protruding control.
+ wrist.z=Math.max(wrist.z-.65,edge+.65);
  // Slightly flex the arm instead of stretching it to the outside target.
  // The unified IK retains exact bone lengths.
  const lateral=Math.hypot(wrist.x-1,wrist.z-7);
- wrist.y=Math.max(wrist.y,-12.3,4-Math.sqrt(Math.max(1,19.3**2-lateral**2)));
+ wrist.y=Math.max(wrist.y,-14.5,3.6-Math.sqrt(Math.max(1,19.6**2-lateral**2)));
  return wrist;
 }

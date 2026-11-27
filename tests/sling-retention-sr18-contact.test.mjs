@@ -10,8 +10,10 @@ test('SR18 side carry remains between torso and released right arm across repres
   const exterior=equipmentExterior(a,r,t),s=sampleRetentionPose({...p,exterior});
   const shoulder=new THREE.Vector3(1,4,7);
   const arm=solveUnifiedRetentionArm({shoulder,desired:s.right,sourcePole:new THREE.Vector3(4,-9,1),release:1,side:1,outboardStow:true,envelope:poseClearanceEnvelope(a,r,t),scratch:createOperatorPoseScratch(),armIndex:1}).solution;
-  assert.ok(s.right.z>s.position.z+1,a);
-  assert.ok(arm.joint.z>s.position.z,a);
+  assert.ok(s.right.z>s.position.z+.5,a);
+  assert.ok(arm.joint.z>s.position.z-.5,a);
+  assert.ok(arm.joint.z-shoulder.z<5.5,a);
+  assert.ok(s.right.y<-12,a);
   assert.ok(arm.effector.z>s.position.z,a);
   assert.ok(Math.abs(arm.joint.distanceTo(shoulder)-10)<1e-6,a);
   assert.ok(Math.abs(arm.effector.distanceTo(arm.joint)-10)<1e-6,a);
