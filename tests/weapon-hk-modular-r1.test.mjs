@@ -11,6 +11,7 @@ import {initialWeaponConfiguration,readWeaponConfiguration,
 import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
 import {buildWeaponAccessories} from '../src/breach-weapon-accessories.ts';
+import {mountedAccessorySeat} from '../src/weapons/geometry/mounted-accessory-layout.ts';
 import {stocklessMP5K} from '../src/breach-weapon-pose.ts';
 import {attachmentPrice,catalogStockIds} from '../src/equipment-weapon-inventory.ts';
 import {lowReadyArchetype} from '../src/breach-low-ready-archetypes.ts';
@@ -79,9 +80,18 @@ test('standard MP5 can morph from tropical to three-sided rail with optional gri
   x.name.startsWith('family-art-hk-trirail-vertical-grip')).length,0,
   'no duplicate grip in the body builder');
  assert.equal(extras.children.filter(x=>x.name.startsWith('weapon-accessory-foregrip-vertical')).length,2);
+ const seat=mountedAccessorySeat(mounted,'foregrip');
+ assert.ok(seat?.hand,'accepted grip has a shared hand anchor');
+ const contacts=riflePoseContacts('smg',mounted)?.support;
+ assert.ok(contacts,'support contact exists');
+ assert.equal(contacts.near.y,seat.hand.y);
+ assert.equal(contacts.far.y,seat.hand.y);
+ assert.equal((contacts.near.x+contacts.far.x)/2,seat.hand.x);
+ const gripBounds=new THREE.Box3().setFromObject(extras.getObjectByName('weapon-accessory-foregrip-vertical'));
+ assert.ok(seat.hand.y>=gripBounds.min.y && seat.hand.y<=gripBounds.max.y,
+  'preferred palm height falls inside visible grip height');
  extras.traverse(x=>{if(x instanceof THREE.Mesh)x.geometry.dispose()});extras.clear();
  assert.equal(resolveWeaponAssembly(mounted).supportX,7.0);
- assert.equal(riflePoseContacts('smg',mounted)?.support.near.y,-3.65);
  clearWeaponSilhouette(grip);
  assert.equal(setConfiguredFamilyPart(preset('hk-mp5sd3'),'handguard','hk-mp5-trirail').build.parts.handguard,
   'hk-mp5sd-shroud','SD integral front end cannot take the standard MP5 rail');
