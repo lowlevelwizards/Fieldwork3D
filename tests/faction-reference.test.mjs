@@ -256,3 +256,35 @@ test('FAL family is distributed to dated, documented faction previews without fa
   /Unsupported preview weapon/);
  assert.deepEqual(auditFactionReferences().issues,[]);
 });
+
+test('reference refresh explicitly selects compatible footwear, belts and canonical backpacks',()=>{
+ for(const ref of FACTION_REFERENCES){
+  const resolved=resolveFactionReference(ref);
+  assert.equal(resolved.kit.slots.feet,ref.kit.feet,ref.id);
+  assert.equal(resolved.kit.slots.belt,ref.kit.belt,ref.id);
+  assert.equal(resolved.kit.slots.backpack,ref.kit.backpack,ref.id);
+  assert.equal(resolved.wardrobe.styles.footwear,ref.styles.footwear,ref.id);
+  assert.equal(resolved.wardrobe.styles.beltStyle,ref.styles.beltStyle,ref.id);
+  assert.equal(resolved.wardrobe.footwearColor,ref.gearAppearance.footwearColor,ref.id);
+  assert.equal(resolved.wardrobe.beltSolid,ref.gearAppearance.beltSolid,ref.id);
+  assert.deepEqual(resolved.technicalIssues,[],ref.id);
+ }
+ assert.equal(resolveFactionReference('us-army-erdl-1970').kit.slots.backpack,'backpack-none');
+ assert.equal(resolveFactionReference('us-army-ocp-2019').kit.slots.backpack,'backpack-assault');
+ assert.equal(resolveFactionReference('nva-strichtarn-1980').kit.slots.belt,'belt-none');
+ assert.equal(resolveFactionReference('us-police-polo-2020').kit.slots.belt,'belt-standard');
+ assert.equal(resolveFactionReference('ukraine-territorial-2022').kit.slots.feet,'feet-light');
+});
+test('new visual weapon options remain reference-only and retain honest proxy fidelity',()=>{
+ const sweden=referenceWeaponChoice('swedish-m90-2000');
+ assert.equal(sweden.presetId,'fnc-service');
+ assert.equal(sweden.fidelity,'proxy');
+ for(const [id,preset] of [['us-swat-mp5-1995','r870-police-wood'],
+  ['us-swat-2015','r870-police-synthetic'],['us-police-polo-2020','r870-police-synthetic']]){
+  const visual=resolveFactionReference(id,preset);
+  assert.equal(visual.weapon.presetId,preset);
+  assert.equal(visual.weapon.weapon,'shotgun');
+  assert.equal(visual.weapon.fidelity,'representative');
+  assert.deepEqual(visual.technicalIssues,[],id);
+ }
+});
