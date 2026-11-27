@@ -8,7 +8,7 @@ test('WR1 ordinary and one-hand actions preserve support',()=>{
  assert.equal(req({action:'reload'}).primary,'held-two');
 });
 test('WR1 occupied regions and sling capabilities select only valid support',()=>{
- assert.equal(req({action:'hands-free',preferred:'side'}).primary,'side-slung');
+ assert.equal(req({action:'hands-free',preferred:'side'}).primary,'front-slung');
  assert.equal(req({action:'hands-free',occupied:['front','side']}).primary,'back-slung');
  assert.equal(req({sling:'single',action:'hands-free',mobile:true,occupied:['front']}).blocked,'no-compatible-support');
  assert.equal(req({sling:'none',action:'hands-free'}).primary,'grounded');

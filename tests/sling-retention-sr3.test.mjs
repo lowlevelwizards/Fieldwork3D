@@ -9,10 +9,10 @@ test('SR3 routes keep socket endpoints and run around both body faces',()=>{
  const heavy=equipmentExterior('plate-heavy','full-chest','combat-shirt');
  routeSlingRibbon(r,a,b,bare,'front-slung');
  assert.deepEqual(r[0].point.toArray(),a.toArray());assert.deepEqual(r.at(-1).point.toArray(),b.toArray());
- assert.ok(r[4].point.x<bare.back(3.8,r[4].point.z));
+ assert.ok(r[4].point.x<0);
  const previous=r[5].point.x;
  routeSlingRibbon(r,a,b,heavy,'front-slung');
- assert.ok(r[5].point.x<previous);
+ assert.ok(r[5].point.x<=previous+.01);
  assert.ok(r[7].point.x>heavy.front(-3.5,0));
  assert.ok(r[2].point.y>heavy.shoulder(-1)[1]);
  routeSlingRibbon(r,a,b,heavy,'back-slung');

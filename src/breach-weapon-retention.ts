@@ -26,7 +26,7 @@ export function readSlingKind(id:string|undefined):SlingKind{
 }
 function suspension(f:RetentionFacts):RetentionLocation|null{
  const candidates:readonly BodyRegion[]=f.sling==='two'?
-  [f.preferred??'front','front','side','back']:
+  [f.preferred==='back'?'back':'front','front','back']:
   f.sling==='single'?['front']:[];
  for(const region of candidates)
   if(!f.occupied?.includes(region))return locations[region];
@@ -70,5 +70,5 @@ export function retentionReady(request:RetentionRequest,actual:AchievedRetention
 /** Keep the firing-side holster accessible and avoid a loaded back region.
  * This is a game animation preference; no new equipment or action rules. */
 export function preferredHandsFreeRegion(sling:SlingKind,holster?:string):BodyRegion{
- return sling==='two'&&holster!=='belt-right'?'side':'front';
+ void sling;void holster;return 'front';
 }

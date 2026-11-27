@@ -1,0 +1,3 @@
+# Simplified sling and flash mounting
+
+Live feedback on 0701802: 28–29% wider webbing, long diagonal spans from the gun to the shoulder and across the opposite face, minimal contact bends, slight permitted fabric intersections, bounded free-span slack. Retire side-slung from the Lab and new hands-free selection; keep the internal pose for old replay samples and back-transfer interpolation. Flash canister mounts follow fitted textile depth rather than a fixed 9.1 chest X. If a stale rig inventory location has no rig, render on the belt only when a belt exists; otherwise conceal the item. Inventory and charges are unchanged. Visual review remains required; pack/belt socket dimensions are still authored approximations.

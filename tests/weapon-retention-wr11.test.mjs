@@ -10,5 +10,5 @@ test('WR11 transformed silhouette extents clear ground and occupied region',()=>
  const b=clearRetentionEnvelope({...p,mode:'back-slung'});assert.ok(b.box.max.x<=-13+1e-6);
  assert.equal(clearRetentionEnvelope({...p,mode:'held-one'}).correction.length(),0);
  assert.equal(preferredHandsFreeRegion('two','belt-right'),'front');
- assert.equal(preferredHandsFreeRegion('two','belt-left'),'side');
+ assert.equal(preferredHandsFreeRegion('two','belt-left'),'front');
 });
