@@ -16,7 +16,7 @@ const original=[
  'tests/replay-director-reset.test.mjs',
  'tests/replay-*-controller-20261109.test.mjs',
  'tests/replay-lifecycle-controller-20261109.test.mjs',
- '.github/workflows/replay-director-reset.yml'
+ '.github/workflows/replay-mobile-acceptance.yml'
 ];
 test('A6c original director path-glob list is unchanged',()=>{
  assert.deepEqual(replayDirectorResetPaths,original);
@@ -54,13 +54,13 @@ test('A6c source classifier is order stable and independent of duplicate paths',
 });
 test('A6c current shoulder suite is reused under existing primary PR dispatch',()=>{
  const ci=read('ci.yml'),replay=read('replay-mobile-acceptance.yml'),
-  director=read('replay-director-reset.yml');
+  director=read('replay-mobile-acceptance.yml');
  const header=director.slice(0,director.indexOf('\njobs:'));
  assert.match(header,/^  workflow_call:$/m);
  assert.match(header,/^  workflow_dispatch:$/m);
  assert.doesNotMatch(header,/^  pull_request:/m);
  assert.match(replay,/fromJSON\(inputs.lanes\).replayDirectorReset/);
- assert.equal(replay.split('uses: ./.github/workflows/replay-director-reset.yml').length-1,1);
+ assert.equal(ci.split('uses: ./.github/workflows/replay-mobile-acceptance.yml').length-1,1);
  assert.ok(ci.includes('tests/ci-replay-director-routing.test.mjs'));
  assert.ok(ci.includes('needs.specialist-routing.outputs.replayMobileAny'));
  assert.ok(ci.length<10000);

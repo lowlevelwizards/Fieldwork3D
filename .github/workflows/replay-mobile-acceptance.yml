@@ -1,51 +1,206 @@
-name: Replay mobile shared acceptance
+name: Fieldwork replay acceptance
 on:
   workflow_call:
     inputs:
       lanes:
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: Replay acceptance lane
+        type: choice
+        required: true
+        default: replayDirectorReset
+        options:
+          - all
+          - replayR2
+          - replayR43b
+          - replayR44
+          - replayR2Video
+          - replayR3Library
+          - replayR43Visual
+          - replayDirectorReset
 permissions:
   contents: read
   actions: read
 jobs:
-  r2-mobile:
-    if: ${{ fromJSON(inputs.lanes).replayR2 }}
-    uses: ./.github/workflows/replay-r2-ui-smoke.yml
+  replay-ui:
+    if: ${{ (github.event_name == 'workflow_dispatch' && (inputs.lane == 'all' || inputs.lane == 'replayR2')) || (github.event_name != 'workflow_dispatch' && fromJSON(inputs.lanes).replayR2) }}
     permissions:
       contents: read
       actions: read
-  r43b-bodycam:
-    if: ${{ fromJSON(inputs.lanes).replayR43b }}
-    uses: ./.github/workflows/replay-r43b-bodycam-ui.yml
-    permissions:
-      contents: read
-  r44-squad-entry:
-    if: ${{ fromJSON(inputs.lanes).replayR44 }}
-    uses: ./.github/workflows/replay-r44-squad-entry.yml
-    permissions:
-      contents: read
+    concurrency:
+      group: replay-r2-ui-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install chromium
+      - name: Replay R6 — close director and replay interaction contracts
+        run: node --test tests/replay-r5-direct-viewer.test.mjs tests/replay-r3-director.test.mjs tests/replay-r41-incidents.test.mjs tests/replay-r44-squad-entry.test.mjs
+      - name: Replay R7 — plan, shot scheduler and historical disclosure
+        run: node --test tests/replay-r7-director.test.mjs tests/replay-r7-speed.test.mjs tests/replay-r7-cutaway.test.mjs
+      - name: Verify compact replay dock and contextual viewer surfaces
+        run: node scripts/smoke-replay-r2-ui.mjs
+      - name: Replay UX V2 — verify prior Pages release before checkpoint
+        if: ${{ startsWith(github.head_ref, 'feature/replay-ux-v2-') || startsWith(github.head_ref, 'feature/replay-r5-') || startsWith(github.head_ref, 'feature/replay-r6-') || startsWith(github.head_ref, 'feature/replay-r7-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
 
-  r2-video-export:
-    if: ${{ fromJSON(inputs.lanes).replayR2Video }}
-    uses: ./.github/workflows/replay-r2-video-smoke.yml
+  bodycam-ui:
+    if: ${{ (github.event_name == 'workflow_dispatch' && (inputs.lane == 'all' || inputs.lane == 'replayR43b')) || (github.event_name != 'workflow_dispatch' && fromJSON(inputs.lanes).replayR43b) }}
     permissions:
       contents: read
+    concurrency:
+      group: replay-r43b-ui-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install chromium
+      - name: Verify Bodycam toggle, operator switching, and return to tactical
+        run: node scripts/smoke-replay-r43b-bodycam-ui.mjs
+      - name: Verify encoded Bodycam video disclosure pixels
+        run: node scripts/smoke-replay-r43b-video.mjs
+      - name: Verify real operator movement, Bodycam seek and occlusion
+        run: node scripts/smoke-replay-r43b-moving-scene.mjs
+      - name: Verify four-operator indoor entry from Bodycam
+        run: node scripts/smoke-replay-r43b-indoor-entry.mjs
+      - name: Retain player-facing Bodycam screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: replay-r43b-bodycam-ui
+          path: artifacts/replay-r43b-bodycam/
+          if-no-files-found: ignore
+          retention-days: 7
 
-  r3-portable-library:
-    if: ${{ fromJSON(inputs.lanes).replayR3Library }}
-    uses: ./.github/workflows/replay-r3-library-smoke.yml
+  entry-analysis:
+    if: ${{ (github.event_name == 'workflow_dispatch' && (inputs.lane == 'all' || inputs.lane == 'replayR44')) || (github.event_name != 'workflow_dispatch' && fromJSON(inputs.lanes).replayR44) }}
     permissions:
       contents: read
+    concurrency:
+      group: replay-r44-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Deterministic four-operator doorway crossing
+        run: node --experimental-strip-types --test tests/replay-r44-squad-entry.test.mjs tests/replay-r44-real-session.test.mjs
+      - name: Production TypeScript / bundle gate
+        run: npm run build
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install chromium
+      - name: Replay Events rail mobile smoke
+        run: node scripts/smoke-replay-r44-entry-mobile.mjs
 
-  r43-original-bodycam:
-    if: ${{ fromJSON(inputs.lanes).replayR43Visual }}
-    uses: ./.github/workflows/replay-r43-bodycam-qa.yml
+  video-smoke:
+    if: ${{ (github.event_name == 'workflow_dispatch' && (inputs.lane == 'all' || inputs.lane == 'replayR2Video')) || (github.event_name != 'workflow_dispatch' && fromJSON(inputs.lanes).replayR2Video) }}
     permissions:
       contents: read
-  # A6c is intentionally NOT gated by historical feature head prefix.
-  r-director-reset:
-    if: ${{ fromJSON(inputs.lanes).replayDirectorReset }}
-    uses: ./.github/workflows/replay-director-reset.yml
+    concurrency:
+      group: replay-r2-video-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install chromium
+      - name: Chromium replay video + sound integration smoke
+        run: node scripts/smoke-replay-r2-video.mjs
+
+  library-smoke:
+    if: ${{ (github.event_name == 'workflow_dispatch' && (inputs.lane == 'all' || inputs.lane == 'replayR3Library')) || (github.event_name != 'workflow_dispatch' && fromJSON(inputs.lanes).replayR3Library) }}
     permissions:
       contents: read
+    concurrency:
+      group: replay-r3-library-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install chromium
+      - name: Verify IndexedDB save/reload/watch/delete and mobile library
+        run: node scripts/smoke-replay-r3-library.mjs
+
+  bodycam-qa:
+    if: ${{ (github.event_name == 'workflow_dispatch' && (inputs.lane == 'all' || inputs.lane == 'replayR43Visual')) || (github.event_name != 'workflow_dispatch' && fromJSON(inputs.lanes).replayR43Visual) }}
+    permissions:
+      contents: read
+    concurrency:
+      group: replay-r43-visual-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install chromium
+      - name: Audition Bodycam chest, helmet, rewind and landscape in WebGL
+        run: node scripts/smoke-replay-r43-bodycam.mjs
+      - name: Retain first-person comparison frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: replay-r43-bodycam-screenshots
+          path: artifacts/replay-r43-bodycam/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  shoulder-invariants:
+    if: ${{ (github.event_name == 'workflow_dispatch' && (inputs.lane == 'all' || inputs.lane == 'replayDirectorReset')) || (github.event_name != 'workflow_dispatch' && fromJSON(inputs.lanes).replayDirectorReset) }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Deterministic shoulder, disclosure, camera and replay controller transitions
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-director-reset.test.mjs \
+            tests/replay-director-cam.test.mjs \
+            tests/replay-director-r101-shoulder-invariant.test.mjs \
+            tests/replay-bodycam-controller-20261109.test.mjs \
+            tests/replay-camera-controller-20261109.test.mjs \
+            tests/replay-knowledge-controller-20261109.test.mjs \
+            tests/replay-lifecycle-controller-20261109.test.mjs \
+            tests/replay-playback-controller-20261109.test.mjs
+

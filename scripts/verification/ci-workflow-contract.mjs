@@ -14,13 +14,6 @@ const paths={
  arsenalM30:'.github/workflows/arsenal-m30.yml',
  glockArt:'.github/workflows/glock-family-art.yml',
  replayRouter:'.github/workflows/replay-mobile-acceptance.yml',
- replayR2:'.github/workflows/replay-r2-ui-smoke.yml',
- replayR43b:'.github/workflows/replay-r43b-bodycam-ui.yml',
- replayR44:'.github/workflows/replay-r44-squad-entry.yml',
- replayR2Video:'.github/workflows/replay-r2-video-smoke.yml',
- replayR3Library:'.github/workflows/replay-r3-library-smoke.yml',
- replayR43Visual:'.github/workflows/replay-r43-bodycam-qa.yml',
- replayDirectorReset:'.github/workflows/replay-director-reset.yml',
  debrief:'.github/workflows/after-action-acceptance.yml',
  d3retail:'.github/workflows/d3-14d2-retail-recovery.yml',
  d3departure:'.github/workflows/d3-17c-departure.yml',
@@ -191,62 +184,21 @@ export function validateWorkflowContracts(wf){
   for(const needle of ['fromJSON(inputs.lanes).'+lane,"inputs.lane == '"+lane+"'",smoke,artifact,'actions/upload-artifact@v4','FIELDWORK_CI_CHROME'])
    assert.ok(body.includes(needle),job+' missing '+needle);
  }
- // A6a: one nested reusable dispatch for historical replay mobile lanes.
- must('ci','--test tests/ci-replay-mobile-routing.test.mjs');
+ // RC2l: inline seven replay acceptance jobs in the existing shared workflow.
+ for(const check of ['mobile','legacy','director'])
+  must('ci','--test tests/ci-replay-'+check+'-routing.test.mjs');
  must('ci','replay-mobile-acceptance:');
  must('ci','needs.specialist-routing.outputs.replayMobileAny');
  must('ci','needs.specialist-routing.outputs.replayMobileJSON');
  must('ci','uses: ./.github/workflows/replay-mobile-acceptance.yml');
  must('replayRouter','workflow_call:');
+ must('replayRouter','workflow_dispatch:');
  no('replayRouter','  pull_request:');
- for(const [name,key,smoke] of [
-  ['replayR2','replayR2','smoke-replay-r2-ui.mjs'],
-  ['replayR43b','replayR43b','smoke-replay-r43b-bodycam-ui.mjs'],
-  ['replayR44','replayR44','smoke-replay-r44-entry-mobile.mjs']]){
-  must(name,'workflow_call:');
-  must(name,'workflow_dispatch:');
-  no(name,'  pull_request:');
-  must(name,smoke);
-  must('replayRouter','fromJSON(inputs.lanes).'+key);
-  must('replayRouter','uses: ./.github/workflows/'+paths[name].split('/').at(-1));
+ for(const [lane,job,checks] of [["replayR2","replay-ui",["smoke-replay-r2-ui.mjs","tests/replay-r7-cutaway.test.mjs","audit-pages-release-checkpoint.mjs"]],["replayR43b","bodycam-ui",["smoke-replay-r43b-bodycam-ui.mjs","smoke-replay-r43b-indoor-entry.mjs"]],["replayR44","entry-analysis",["smoke-replay-r44-entry-mobile.mjs","tests/replay-r44-real-session.test.mjs"]],["replayR2Video","video-smoke",["smoke-replay-r2-video.mjs","Chromium replay video + sound integration smoke"]],["replayR3Library","library-smoke",["smoke-replay-r3-library.mjs","IndexedDB save/reload/watch/delete"]],["replayR43Visual","bodycam-qa",["smoke-replay-r43-bodycam.mjs","replay-r43-bodycam-screenshots"]],["replayDirectorReset","shoulder-invariants",["tests/replay-director-reset.test.mjs","tests/replay-director-cam.test.mjs","tests/replay-director-r101-shoulder-invariant.test.mjs","tests/replay-bodycam-controller-20261109.test.mjs","tests/replay-camera-controller-20261109.test.mjs","tests/replay-knowledge-controller-20261109.test.mjs","tests/replay-lifecycle-controller-20261109.test.mjs","tests/replay-playback-controller-20261109.test.mjs"]]]){
+  const body=wf.replayRouter.split('\n  '+job+':\n')[1]?.split(/\n  [\w-]+:\n/)[0]||'';
+  for(const needle of ['fromJSON(inputs.lanes).'+lane,"inputs.lane == '"+lane+"'",...checks])
+   assert.ok(body.includes(needle),job+' missing '+needle);
  }
- must('replayR43b','smoke-replay-r43b-indoor-entry.mjs');
- // A6b: same nested replay dispatcher owns archive, video and original
- // 3D bodycam visual evidence, with no independent main PR workflow runs.
- must('ci','--test tests/ci-replay-legacy-routing.test.mjs');
- for(const [key,smoke] of [
-  ['replayR2Video','smoke-replay-r2-video.mjs'],
-  ['replayR3Library','smoke-replay-r3-library.mjs'],
-  ['replayR43Visual','smoke-replay-r43-bodycam.mjs']]){
-  must(key,'workflow_call:');
-  must(key,'workflow_dispatch:');
-  no(key,'  pull_request:');
-  must(key,smoke);
-  must('replayRouter','fromJSON(inputs.lanes).'+key);
-  must('replayRouter','uses: ./.github/workflows/'+paths[key].split('/').at(-1));
- }
- // A6c: unlike historical feature-only replay jobs, the shoulder
- // invariants remain active on EVERY source-owned PR branch.
- must('ci','--test tests/ci-replay-director-routing.test.mjs');
- must('replayDirectorReset','workflow_call:');
- must('replayDirectorReset','workflow_dispatch:');
- no('replayDirectorReset','  pull_request:');
- must('replayRouter','fromJSON(inputs.lanes).replayDirectorReset');
- must('replayRouter','uses: ./.github/workflows/replay-director-reset.yml');
- for(const t of [
-  'tests/replay-director-reset.test.mjs',
-  'tests/replay-director-cam.test.mjs',
-  'tests/replay-director-r101-shoulder-invariant.test.mjs',
-  'tests/replay-bodycam-controller-20261109.test.mjs',
-  'tests/replay-camera-controller-20261109.test.mjs',
-  'tests/replay-knowledge-controller-20261109.test.mjs',
-  'tests/replay-lifecycle-controller-20261109.test.mjs',
-  'tests/replay-playback-controller-20261109.test.mjs'])
-  must('replayDirectorReset',t);
- must('replayR43Visual','replay-r43-bodycam-screenshots');
- must('replayR3Library','IndexedDB save/reload/watch/delete');
- must('replayR2Video','Chromium replay video + sound integration smoke');
- must('replayR44','tests/replay-r44-real-session.test.mjs');
  must('arsenal','smoke-arsenal-m25-visual.mjs');
  must('arsenal','audit-pages-release-checkpoint.mjs');
  must('architecture','breach-critical-suite.mjs');

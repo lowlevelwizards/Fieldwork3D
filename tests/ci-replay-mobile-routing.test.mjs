@@ -19,7 +19,7 @@ const originals={
   'tests/replay-r7-speed.test.mjs','tests/replay-r7-cutaway.test.mjs',
   'src/breach-3d.ts','tests/replay-r5-direct-viewer.test.mjs',
   'scripts/smoke-replay-r2-ui.mjs',
-  '.github/workflows/replay-r2-ui-smoke.yml'
+  '.github/workflows/replay-mobile-acceptance.yml'
  ],
  replayR43b:[
   'index.html','src/breach-main.ts','src/breach-style.css',
@@ -31,7 +31,7 @@ const originals={
   'scripts/smoke-replay-r43b-bodycam-ui.mjs',
   'scripts/smoke-replay-r43b-moving-scene.mjs',
   'scripts/smoke-replay-r43b-indoor-entry.mjs',
-  '.github/workflows/replay-r43b-bodycam-ui.yml'
+  '.github/workflows/replay-mobile-acceptance.yml'
  ],
  replayR44:[
   'index.html','src/breach-main.ts','src/breach-style.css',
@@ -39,7 +39,7 @@ const originals={
   'tests/replay-r44-squad-entry.test.mjs',
   'tests/replay-r44-real-session.test.mjs',
   'scripts/smoke-replay-r44-entry-mobile.mjs',
-  '.github/workflows/replay-r44-squad-entry.yml'
+  '.github/workflows/replay-mobile-acceptance.yml'
  ]
 };
 const eligible={
@@ -84,25 +84,21 @@ test('A6a shared source edit does not launch replay browser checks on unrelated 
  assert.deepEqual(selectReplayMobileSuites([],eligible.replayR44),{
   replayR2:false,replayR43b:false,replayR44:false});
 });
-test('A6a live integration checks two real mobile replay browser lanes',()=>{
+test('A6a integration branch still exercises two real mobile replay browser lanes',()=>{
  const integration='refactor/ci-replay-mobile-shared-a6a-20261121';
- const files=replayMobileSpecs.map(s=>'.github/workflows/'+s.workflow);
- assert.deepEqual(selectReplayMobileSuites(files,integration),{
-  replayR2:false,replayR43b:true,replayR44:true
- });
- const same=selectReplayMobileSuites([...files].reverse().concat(files),integration);
- assert.deepEqual(same,selectReplayMobileSuites(files,integration));
+ const files=['src/breach-main.ts'];
+ assert.deepEqual(selectReplayMobileSuites(files,integration),{replayR2:false,replayR43b:true,replayR44:true});
 });
-test('A6a no independent PR run, manual replay and historical branch guards retained',()=>{
- for(const spec of replayMobileSpecs){
-  const yaml=read(spec.workflow),header=yaml.split('\njobs:')[0];
-  assert.match(header,/^  workflow_call:$/m);
-  assert.match(header,/^  workflow_dispatch:$/m);
-  assert.doesNotMatch(header,/^  pull_request:/m);
-  assert.ok(yaml.includes("github.event_name == 'workflow_dispatch'"),spec.key);
-  for(const prefix of spec.prefixes)assert.ok(
-   yaml.includes("startsWith(github.head_ref, '"+prefix+"')"),prefix);
- }
+test('RC2l shared workflow changes exercise all mobile lanes',()=>{
+ const files=['.github/workflows/replay-mobile-acceptance.yml'];
+ assert.deepEqual(selectReplayMobileSuites(files,'chore/rc-repository-cleanup-batch3'),{replayR2:true,replayR43b:true,replayR44:true});
+});
+test('RC2l shared replay workflow supports manual and reusable dispatch only',()=>{
+ const yaml=read('replay-mobile-acceptance.yml'),header=yaml.split('\njobs:')[0];
+ assert.match(header,/^  workflow_call:$/m);
+ assert.match(header,/^  workflow_dispatch:$/m);
+ assert.doesNotMatch(header,/^  pull_request:/m);
+ for(const key of keySet)assert.ok(yaml.includes("inputs.lane == '"+key+"'"),key);
 });
 test('A6a one compact nested CI lane preserves real R2, Bodycam and squad entry browser evidence',()=>{
  const ci=read('ci.yml'),nested=read('replay-mobile-acceptance.yml');
@@ -114,19 +110,19 @@ test('A6a one compact nested CI lane preserves real R2, Bodycam and squad entry 
  assert.ok(ci.length<10000,'primary CI must not regrow into 10000+ bytes');
  for(const spec of replayMobileSpecs){
   assert.ok(nested.includes('fromJSON(inputs.lanes).'+spec.key),spec.key);
-  assert.equal(nested.split('uses: ./.github/workflows/'+spec.workflow).length-1,1);
+  assert.equal(spec.workflow,'replay-mobile-acceptance.yml');
  }
- const r2=read('replay-r2-ui-smoke.yml');
+ const r2=nested.split('\n  replay-ui:\n')[1].split(/\n  [\w-]+:\n/)[0];
  for(const name of ['smoke-replay-r2-ui.mjs',
   'tests/replay-r7-cutaway.test.mjs','audit-pages-release-checkpoint.mjs'])
   assert.ok(r2.includes(name),name);
- const bodycam=read('replay-r43b-bodycam-ui.yml');
+ const bodycam=nested.split('\n  bodycam-ui:\n')[1].split(/\n  [\w-]+:\n/)[0];
  for(const name of ['smoke-replay-r43b-video.mjs',
   'smoke-replay-r43b-bodycam-ui.mjs','smoke-replay-r43b-moving-scene.mjs',
   'smoke-replay-r43b-indoor-entry.mjs','replay-r43b-bodycam-ui',
   'actions/upload-artifact@v4'])
   assert.ok(bodycam.includes(name),name);
- const r44=read('replay-r44-squad-entry.yml');
+ const r44=nested.split('\n  entry-analysis:\n')[1].split(/\n  [\w-]+:\n/)[0];
  for(const name of ['tests/replay-r44-real-session.test.mjs',
   'smoke-replay-r44-entry-mobile.mjs','npm run build'])
   assert.ok(r44.includes(name),name);

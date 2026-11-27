@@ -9,15 +9,15 @@ const script=name=>readFileSync(new URL('../scripts/'+name,import.meta.url),'utf
 const owned={
  replayR2Video:['src/breach-replay-video.ts','src/breach-replay-audio.ts',
   'src/breach-main.ts','index.html','scripts/smoke-replay-r2-video.mjs',
-  '.github/workflows/replay-r2-video-smoke.yml'],
+  '.github/workflows/replay-mobile-acceptance.yml'],
  replayR3Library:['src/breach-replay-archive.ts','src/breach-replay-motion.ts',
   'src/breach-replay-library.ts','src/breach-replay-portable.ts',
   'src/breach-main.ts','index.html','scripts/smoke-replay-r3-library.mjs',
-  '.github/workflows/replay-r3-library-smoke.yml'],
+  '.github/workflows/replay-mobile-acceptance.yml'],
  replayR43Visual:['src/breach-replay-bodycam.ts','src/breach-3d.ts',
   'src/breach-main.ts','src/breach-operator-rig.ts',
   'scripts/smoke-replay-r43-bodycam.mjs',
-  '.github/workflows/replay-r43-bodycam-qa.yml']
+  '.github/workflows/replay-mobile-acceptance.yml']
 };
 const branches={
  replayR2Video:['feature/replay-r2-audio-'],
@@ -49,7 +49,7 @@ test('A6b unrelated branches and unowned paths never launch historical browser c
   {replayR2Video:false,replayR3Library:false,replayR43Visual:false});
 });
 test('A6b integration branch enables all three real archive/video/bodycam browser suites',()=>{
- const files=replayLegacySpecs.map(s=>'.github/workflows/'+s.workflow);
+ const files=['src/breach-main.ts'];
  assert.deepEqual(selectReplayLegacySuites(files,
   'refactor/ci-replay-archive-visual-a6b-20261121'),
   {replayR2Video:true,replayR3Library:true,replayR43Visual:true});
@@ -59,28 +59,24 @@ test('A6b integration branch enables all three real archive/video/bodycam browse
   'refactor/ci-replay-archive-visual-a6b-20261121'),
   {replayR2:false,replayR43b:false,replayR44:false});
 });
-test('A6b three historical workflows retain manual and full browser acceptance',()=>{
- const nested=workflow('replay-mobile-acceptance.yml');
- const ci=workflow('ci.yml');
+test('RC2l shared replay edits validate every historical acceptance lane',()=>{
+ const files=['.github/workflows/replay-mobile-acceptance.yml'];
+ assert.ok(Object.values(selectReplayLegacySuites(files,'chore/rc-repository-cleanup-batch3')).every(Boolean));
+});
+test('RC2l three legacy replay jobs retain manual and full browser acceptance',()=>{
+ const nested=workflow('replay-mobile-acceptance.yml'),ci=workflow('ci.yml');
  assert.ok(ci.includes('node --test tests/ci-replay-legacy-routing.test.mjs'));
  assert.ok(ci.includes('uses: ./.github/workflows/replay-mobile-acceptance.yml'));
  assert.ok(ci.length<10000);
+ const header=nested.slice(0,nested.indexOf('\njobs:'));
+ assert.match(header,/^  workflow_call:$/m);
+ assert.match(header,/^  workflow_dispatch:$/m);
+ assert.doesNotMatch(header,/^  pull_request:$/m);
  for(const spec of replayLegacySpecs){
-  const w=workflow(spec.workflow),header=w.slice(0,w.indexOf('\njobs:'));
-  assert.match(header,/^  workflow_call:$/m,spec.key);
-  assert.match(header,/^  workflow_dispatch:$/m,spec.key);
-  assert.doesNotMatch(header,/^  pull_request:$/m,spec.key);
-  for(const p of spec.prefixes)
-   assert.ok(w.includes("startsWith(github.head_ref, '"+p+"')"),p);
-  assert.ok(w.includes("github.event_name == 'workflow_dispatch'"),spec.key);
+  assert.equal(spec.workflow,'replay-mobile-acceptance.yml');
+  assert.ok(nested.includes("inputs.lane == '"+spec.key+"'"),spec.key);
   assert.ok(nested.includes('fromJSON(inputs.lanes).'+spec.key),spec.key);
-  assert.equal(nested.split('uses: ./.github/workflows/'+spec.workflow).length-1,
-   1,spec.key);
  }
- for(const [key,name] of [['replayR2Video','replay-r2-video-smoke.yml'],
-  ['replayR3Library','replay-r3-library-smoke.yml'],
-  ['replayR43Visual','replay-r43-bodycam-qa.yml']])
-  assert.ok(replayLegacySpecs.find(s=>s.key===key)?.workflow===name);
 });
 test('A6b real encoder, IndexedDB and dev-only WebGL bodycam evidence survive',()=>{
  const video=script('smoke-replay-r2-video.mjs');
@@ -96,6 +92,6 @@ test('A6b real encoder, IndexedDB and dev-only WebGL bodycam evidence survive',(
  for(const item of ['__fieldworkBodycamQa.activate','maskRestored',
   'colorBuckets','helmet-rewind','saveReplayDebrief','replayLibraryList'])
   assert.ok(qa.includes(item),item);
- assert.ok(workflow('replay-r43-bodycam-qa.yml')
+ assert.ok(workflow('replay-mobile-acceptance.yml')
   .includes('replay-r43-bodycam-screenshots'));
 });

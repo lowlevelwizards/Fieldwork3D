@@ -251,7 +251,7 @@ export function selectAfterActionSuites(paths=[],headRef=''){
 export const replayMobileSpecs=[
  {
   "key": "replayR2",
-  "workflow": "replay-r2-ui-smoke.yml",
+  "workflow": "replay-mobile-acceptance.yml",
   "paths": [
    "index.html",
    "src/breach-style.css",
@@ -269,7 +269,7 @@ export const replayMobileSpecs=[
    "src/breach-3d.ts",
    "tests/replay-r5-direct-viewer.test.mjs",
    "scripts/smoke-replay-r2-ui.mjs",
-   ".github/workflows/replay-r2-ui-smoke.yml"
+   ".github/workflows/replay-mobile-acceptance.yml"
   ],
   "prefixes": [
    "feature/replay-r2-mobile-ui-",
@@ -286,7 +286,7 @@ export const replayMobileSpecs=[
  },
  {
   "key": "replayR43b",
-  "workflow": "replay-r43b-bodycam-ui.yml",
+  "workflow": "replay-mobile-acceptance.yml",
   "paths": [
    "index.html",
    "src/breach-main.ts",
@@ -303,7 +303,7 @@ export const replayMobileSpecs=[
    "scripts/smoke-replay-r43b-bodycam-ui.mjs",
    "scripts/smoke-replay-r43b-moving-scene.mjs",
    "scripts/smoke-replay-r43b-indoor-entry.mjs",
-   ".github/workflows/replay-r43b-bodycam-ui.yml"
+   ".github/workflows/replay-mobile-acceptance.yml"
   ],
   "prefixes": [
    "feature/replay-r43b-"
@@ -311,7 +311,7 @@ export const replayMobileSpecs=[
  },
  {
   "key": "replayR44",
-  "workflow": "replay-r44-squad-entry.yml",
+  "workflow": "replay-mobile-acceptance.yml",
   "paths": [
    "index.html",
    "src/breach-main.ts",
@@ -320,7 +320,7 @@ export const replayMobileSpecs=[
    "tests/replay-r44-squad-entry.test.mjs",
    "tests/replay-r44-real-session.test.mjs",
    "scripts/smoke-replay-r44-entry-mobile.mjs",
-   ".github/workflows/replay-r44-squad-entry.yml"
+   ".github/workflows/replay-mobile-acceptance.yml"
   ],
   "prefixes": [
    "feature/replay-r44-"
@@ -330,12 +330,13 @@ export const replayMobileSpecs=[
 const replayMobileProbe='refactor/ci-replay-mobile-';
 export function selectReplayMobileSuites(paths=[],headRef=''){
  const files=[...new Set(paths)].sort();
+ const infrastructure=files.includes('.github/workflows/replay-mobile-acceptance.yml');
  return Object.fromEntries(replayMobileSpecs.map(spec=>{
   const probe=headRef.startsWith(replayMobileProbe)&&
    ['replayR43b','replayR44'].includes(spec.key);
   const eligible=probe||spec.prefixes.some(prefix=>headRef.startsWith(prefix));
-  return [spec.key,eligible&&files.some(file=>spec.paths.some(glob=>
-   afterActionPathMatches(glob,file)))];
+  return [spec.key,infrastructure||(eligible&&files.some(file=>spec.paths.some(glob=>
+   afterActionPathMatches(glob,file))))];
  }));
 }
 
@@ -345,14 +346,14 @@ export function selectReplayMobileSuites(paths=[],headRef=''){
 export const replayLegacySpecs=[
  {
   "key": "replayR2Video",
-  "workflow": "replay-r2-video-smoke.yml",
+  "workflow": "replay-mobile-acceptance.yml",
   "paths": [
    "src/breach-replay-video.ts",
    "src/breach-replay-audio.ts",
    "src/breach-main.ts",
    "index.html",
    "scripts/smoke-replay-r2-video.mjs",
-   ".github/workflows/replay-r2-video-smoke.yml"
+   ".github/workflows/replay-mobile-acceptance.yml"
   ],
   "prefixes": [
    "feature/replay-r2-audio-"
@@ -360,7 +361,7 @@ export const replayLegacySpecs=[
  },
  {
   "key": "replayR3Library",
-  "workflow": "replay-r3-library-smoke.yml",
+  "workflow": "replay-mobile-acceptance.yml",
   "paths": [
    "src/breach-replay-archive.ts",
    "src/breach-replay-motion.ts",
@@ -369,7 +370,7 @@ export const replayLegacySpecs=[
    "src/breach-main.ts",
    "index.html",
    "scripts/smoke-replay-r3-library.mjs",
-   ".github/workflows/replay-r3-library-smoke.yml"
+   ".github/workflows/replay-mobile-acceptance.yml"
   ],
   "prefixes": [
    "feature/replay-r3-library-",
@@ -379,14 +380,14 @@ export const replayLegacySpecs=[
  },
  {
   "key": "replayR43Visual",
-  "workflow": "replay-r43-bodycam-qa.yml",
+  "workflow": "replay-mobile-acceptance.yml",
   "paths": [
    "src/breach-replay-bodycam.ts",
    "src/breach-3d.ts",
    "src/breach-main.ts",
    "src/breach-operator-rig.ts",
    "scripts/smoke-replay-r43-bodycam.mjs",
-   ".github/workflows/replay-r43-bodycam-qa.yml"
+   ".github/workflows/replay-mobile-acceptance.yml"
   ],
   "prefixes": [
    "feature/replay-r43-"
@@ -395,11 +396,12 @@ export const replayLegacySpecs=[
 ];
 export function selectReplayLegacySuites(paths=[],headRef=''){
  const files=[...new Set(paths)].sort();
+ const infrastructure=files.includes('.github/workflows/replay-mobile-acceptance.yml');
  return Object.fromEntries(replayLegacySpecs.map(spec=>{
   const eligible=headRef.startsWith('refactor/ci-replay-archive-visual-')||
     spec.prefixes.some(prefix=>headRef.startsWith(prefix));
-  return [spec.key,eligible&&files.some(file=>spec.paths.some(glob=>
-   afterActionPathMatches(glob,file)))];
+  return [spec.key,infrastructure||(eligible&&files.some(file=>spec.paths.some(glob=>
+   afterActionPathMatches(glob,file))))];
  }));
 }
 
@@ -419,7 +421,7 @@ export const replayDirectorResetPaths=[
  "tests/replay-director-reset.test.mjs",
  "tests/replay-*-controller-20261109.test.mjs",
  "tests/replay-lifecycle-controller-20261109.test.mjs",
- ".github/workflows/replay-director-reset.yml"
+ ".github/workflows/replay-mobile-acceptance.yml"
 ];
 export function selectReplayDirectorReset(paths=[]){
  const files=[...new Set(paths)].sort();
