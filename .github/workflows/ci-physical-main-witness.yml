@@ -1,0 +1,44 @@
+name: Current-main physical regression witness
+on:
+  push:
+    branches: [ci/physical-main-baseline-20261127]
+    paths: ['.github/workflows/ci-physical-main-witness.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: physical-main-witness
+  cancel-in-progress: true
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 47f2fe5fa024df50c17371acd9d752a8e9b068f8
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Prove main and infrastructure candidate have identical simulation and audit inputs
+        run: |
+          git fetch --no-tags origin bf45636b749d4478a7f6170f0dc363a74ccb0f5f
+          git diff --exit-code 47f2fe5fa024df50c17371acd9d752a8e9b068f8 bf45636b749d4478a7f6170f0dc363a74ccb0f5f -- src package.json scripts/audit-r7-squad-execution.mjs scripts/verification/ci-a8-physical-acceptance.mjs scripts/verification/ci-lock-aware-physical-acceptance.mjs scripts/verification/ci-d3-physical-truth.mjs
+      - run: npm install --no-audit --no-fund
+      - name: Run exact historical and fresh acceptance on deployed main
+        run: |
+          mkdir -p artifacts/main-physical-witness
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --progress --route-quality --d329-cancellation-door-witness > artifacts/main-physical-witness/historical.json
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 22 2700 --d318-fresh22 --progress --route-quality --d329-cancellation-door-witness > artifacts/main-physical-witness/fresh.json
+      - name: Report unmodified acceptance verdicts
+        run: |
+          status=0
+          node scripts/verification/ci-a8-physical-acceptance.mjs historical11 artifacts/main-physical-witness/historical.json || status=1
+          node scripts/verification/ci-a8-physical-acceptance.mjs fresh22 artifacts/main-physical-witness/fresh.json || status=1
+          exit "$status"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exact-deployed-main-physical-witness
+          path: artifacts/main-physical-witness/
