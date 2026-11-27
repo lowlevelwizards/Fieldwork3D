@@ -7,19 +7,19 @@ import {solveUnifiedRetentionArm} from '../src/breach-unified-upper-body.ts';
 import {poseClearanceEnvelope} from '../src/breach-pose-clearance-envelope.ts';
 import {createOperatorPoseScratch} from '../src/breach-operator-pose-scratch.ts';
 const fit=equipmentExterior('plate-heavy','full-chest','combat-shirt');
-test('SR19 contact ribbon reuses 19 knots, preserves sockets, and clears sampled face bends',()=>{
+test('SR19 contact ribbon reuses 19 knots, preserves sockets, and preserves straight intermediate spans',()=>{
  const path=createSlingRoute(),out=createSlingContactRoute();
  const a=new THREE.Vector3(12,2,-1),b=new THREE.Vector3(12,-5,2);
  routeSlingRibbon(path,a,b,fit,'front-slung',1.05);
  fitSlingContactRoute(out,path,fit,1.05,undefined,.2);
  assert.equal(out.length,19);assert.deepEqual(out[0].point.toArray(),a.toArray());assert.deepEqual(out.at(-1).point.toArray(),b.toArray());
  assert.ok(out.every(k=>k.point.toArray().every(Number.isFinite)&&k.normal.length()>.9));
- for(const k of out.slice(1,-1)){
-  const p=k.point,n=k.normal;
-  if(p.y< -9||p.y>fit.shoulder(-1)[1]+.65||Math.abs(n.x)<.90)continue;
-  const edge=n.x>0?fit.front(p.y,p.z):fit.back(p.y,p.z);
-  assert.ok(n.x>0?p.x>=edge-.01:p.x<=edge+.01);
+ for(let i=3;i<out.length-2;i+=2){
+  const mid=out[i-1].point.clone().lerp(out[i+1].point,.5);
+  assert.ok(mid.distanceTo(out[i].point)<1e-8,'no independently snapped intermediate knot');
  }
+ assert.ok(path[2].point.y>fit.shoulder(-1)[1]);
+ assert.ok(path[6].point.z>0);
 });
 test('SR19 single point has a shared short connector before its two loop branches',()=>{
  const path=createSlingRoute(),a=new THREE.Vector3(12,0,2),profile=slingArtProfile('sling-single-point');

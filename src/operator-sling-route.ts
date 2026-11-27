@@ -21,7 +21,7 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
  const face=back?-1:1;
  const shoulderSign: -1|1=-1; // fixed shoulder prevents a mid-frame mirrored route
  const hipSign: -1|1=shoulderSign===-1?1:-1;
- const margin=.18;
+ const margin=Math.min(.25,width*.16);
  const shoulder=fit.shoulder(shoulderSign);
  const z=shoulder[2],sy=Math.max(shoulder[1],pack?pack.max.y:shoulder[1])+margin;
  const single=profile?.kind==='single';
@@ -38,11 +38,13 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
   out[i].point.copy(out[a].point).lerp(out[b].point,t);
   out[i].normal.copy(out[a].normal).lerp(out[b].normal,t).normalize();
  };
- const crownX=surface(face,5.2,z),oppositeX=surface(-face,5.2,z);
+ const crownFace=(f:number)=>f===-1&&pack&&z>=pack.min.z-margin&&z<=pack.max.z+margin?
+  Math.min(surface(f,5.2,z),pack.min.x-margin):surface(f,5.2,z);
+ const crownX=crownFace(face),oppositeX=crownFace(-face);
  const flank=hipSign*Math.max(Math.abs(fit.side(low,0,hipSign)),
   pack&&low>=pack.min.y&&low<=pack.max.y?Math.abs(hipSign===1?pack.max.z:pack.min.z):0)+hipSign*.18;
- const farCorner=surface(-face,low,flank*.82);
- const nearCorner=surface(face,low,flank*.82);
+ const corner=(f:number)=>f*Math.max(...[0,.4,.82].map(t=>f*surface(f,low,flank*t)));
+ const farCorner=corner(-face),nearCorner=corner(face);
  write(0,rear.x,rear.y,rear.z,face,0,side?hipSign:0);
  write(2,crownX,sy,z,face,1,0);
  write(3,oppositeX,sy,z,-face,1,0);
@@ -90,7 +92,7 @@ export function routeSlingTransition(out:readonly SlingRibbonKnot[],
   a.point.lerp(b.point,f);
   a.normal.lerp(b.normal,f);
   if(i===2||i===3){ // crown stays outside both shoulder/pack top
-   a.point.y=Math.max(a.point.y,fit.shoulder(-1)[1]+width*.6+.16);
+   a.point.y=Math.max(a.point.y,fit.shoulder(-1)[1]+Math.min(.25,width*.16));
   }else{
    const sign=i<=4?-1:1;
    const start=Math.atan2(sign*Math.abs(oldZ),oldX);
@@ -112,9 +114,7 @@ export function routeSlingTransition(out:readonly SlingRibbonKnot[],
  return out;
 }
 
-/** Densify the fixed route into shared contact bends. Each span is sampled
- * against the entire authored face at its intermediate point, including
- * pouch width and pack depth. Socket and shoulder crown stay exact.
+/** Subdivide straight spans for stable ribbon normals, not extra bends.
  * No extra scene objects or per-frame geometry traversal. */
 export const SLING_CONTACT_KNOTS=SLING_ROUTE_KNOTS*2-1;
 export function createSlingContactRoute():SlingRibbonKnot[]{

@@ -85,3 +85,27 @@ test('ordinary operator models allocate no physical wedge meshes',()=>{
   assert.equal(rig.wedgeMeshes.length,0);
  }finally{rig.dispose();}
 });
+
+test('fitted flash mounting never floats on a missing chest rig',async()=>{
+ const {setEquipmentChoice}=await import('../src/equipment-loadouts.ts');
+ const {initialWardrobe}=await import('../src/operator-wardrobe-data.ts');
+ const {equipmentExterior}=await import('../src/operator-equipment-exterior.ts');
+ const {fittedFlashCanisterSocket}=await import('../src/equipment-field-visuals.ts');
+ const fit=equipmentExterior('armor-bare','no-rig','bdu-shirt');
+ assert.equal(fittedFlashCanisterSocket('rig',0,fit,false,false,false),null);
+ assert.equal(fittedFlashCanisterSocket('rig',0,fit,false,true,false).bone,'hip');
+ for(const [a,r,t] of [['armor-bare','light-rig','bdu-shirt'],['plate-heavy','full-chest','gorka-jacket']]){
+  const f=equipmentExterior(a,r,t),s=fittedFlashCanisterSocket('rig',0,f,true,true,false);
+  assert.ok(s.x-1.25<=Math.max(...[-1.8,0,1.8].flatMap(dy=>[-.8,0,.8].map(dz=>f.front(s.y+dy,s.z+dz)))));
+ }
+ const rig=createOperatorRig('flash-fit','blue');
+ try{
+  const base=initialEquipmentLoadout(),kit=setEquipmentChoice(base,'rig','rig-none'),w=initialWardrobe();
+  const wardrobe={...w,styles:{...w.styles,armorStyle:'armor-bare',rigStyle:'no-rig',beltStyle:'no-belt',top:'bdu-shirt'}};
+  const noBelt=setEquipmentChoice(kit,'belt','belt-none');
+  poseOperator(rig,{...pose(noBelt,1),wardrobe},0);
+  assert.equal(count(rig),0);
+  poseOperator(rig,{...pose(kit,1),wardrobe:{...wardrobe,styles:{...wardrobe.styles,beltStyle:'duty-belt'}}},0);
+  assert.equal(count(rig),1);assert.equal(rig.flashCanister.parent,rig.hip);
+ }finally{rig.dispose();}
+});
