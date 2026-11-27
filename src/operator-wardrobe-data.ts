@@ -415,6 +415,9 @@ export function matchWardrobeUniformCamo(wardrobe:WardrobeOptions,
 export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
  kit?:EquipmentLoadout):Record<WardrobeSlot,string>{
  const desired={...DEFAULTS,...(wardrobe?.styles??{})};
+ const migrated=migratePackAppearance(desired.packStyle);
+ if(typeof migrated==='string'&&wardrobeItem('packStyle',migrated))desired.packStyle=migrated;
+ else desired.packStyle=DEFAULTS.packStyle;
  if(!kit)return desired;
  // Cosmetic defaults follow the *actual* selected kit when a user hasn't
  // explicitly chosen a style. Choosing light boots must never show field
