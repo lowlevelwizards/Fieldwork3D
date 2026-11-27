@@ -1,5 +1,5 @@
 import type {PackMountMode} from './operator-equipment-assembly.ts';
-/** Opt-in art preview. Does not change loadout IDs or inventory. */
+/** Canonical backpack visuals shared by gameplay, inspection and Studio. Does not change loadout IDs or inventory. */
 import * as THREE from 'three';
 import {packDetailPalette} from './operator-backpack-colors.ts';
 import {packGraphicAtlas} from './operator-backpack-graphics.ts';
