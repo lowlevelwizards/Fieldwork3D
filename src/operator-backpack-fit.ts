@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import {PACK_PROFILES,type PackStyle} from './operator-backpack-catalog.ts';
 import {equipmentExterior} from './operator-equipment-exterior.ts';
-import {packRibbon,packBuckle,finishPackArtwork,PACK_DETAIL,type PackPoint,type PackMaterials} from './operator-backpack-geometry.ts';
+import {packRibbon,packBox,packBuckle,finishPackArtwork,PACK_DETAIL,type PackPoint,type PackMaterials} from './operator-backpack-geometry.ts';
 export const PACK_PIVOT:PackPoint=[-8.2,0,0];
 export type PackMountSpec=Readonly<{
  size:PackPoint;centerY:number;bodyFaceX:number;
@@ -18,6 +18,7 @@ export type PackFit=Readonly<{
  offset:PackPoint;center:PackPoint;
  upperSeats:readonly PackPoint[];lowerSeats:readonly PackPoint[];
  spans:readonly HarnessSpan[];buckles:readonly PackPoint[];
+ waistSpans?:readonly HarnessSpan[];waistBuckle?:PackPoint;
 }>;
 /** Provisional explicit direct-mount whitelist, subject to BP4 carrier art.
  * Bare clothing, concealed/soft armor and legacy vests cannot mount a panel. */
@@ -54,7 +55,8 @@ export function fitPack(style:PackStyle,armor:string,rig:string,top:string,
   upperSeats.push(upper);lowerSeats.push(lower);
   if(profile.harness==='direct')continue;
   const padded=profile.harness!=='light';
-  const width=padded?PACK_DETAIL.paddedStrap:PACK_DETAIL.lightStrap,thickness=padded?.32:.18;
+  const load=profile.harness==='load-bearing';
+  const width=load?1.8:padded?PACK_DETAIL.paddedStrap:PACK_DETAIL.lightStrap,thickness=load?.44:padded?.32:.18;
   const shoulder=fit.shoulder(sign);
   const crownZ=sign*Math.min(Math.abs(shoulder[2]),Math.max(Math.abs(z),3.5));
   const crownY=shoulder[1]+thickness*.5+.08;
@@ -77,7 +79,25 @@ export function fitPack(style:PackStyle,armor:string,rig:string,top:string,
   add(flank,lower,point(-1,0,sign),width*.65);
   buckles.push(buckle);
  }
- return {style,compatible:true,center,offset,upperSeats,lowerSeats,spans,buckles};
+ const waistSpans:HarnessSpan[]=[];
+ let waistBuckle:PackPoint|undefined;
+ // Comms uses a structured shoulder harness but not an expedition hip belt.
+ if(style==='field-pack'||style==='rucksack'){
+  const y=-6.6,thickness=.52,width=style==='rucksack'?2.1:1.65;
+  const frontX=fit.front(y,0)+.35;
+  waistBuckle=point(frontX+.2,y,0);
+  for(const sign of [-1,1] as const){
+   const rear=point(cx+spec.bodyFaceX,y,sign*spec.strapHalfWidth);
+   const sideZ=fit.side(y,0,sign)+sign*.35;
+   const flank=point(0,y,sideZ);
+   const front=point(frontX,y,sideZ*.68);
+   const end=point(frontX,y,sign*.55);
+   waistSpans.push({a:rear,b:flank,normal:point(-1,0,sign),width,thickness},
+    {a:flank,b:front,normal:point(1,0,sign),width,thickness},
+    {a:front,b:end,normal:point(1,0,0),width:1.15,thickness:.3});
+  }
+ }
+ return {style,compatible:true,center,offset,upperSeats,lowerSeats,spans,buckles,waistSpans,waistBuckle};
 }
 /** Chest-local static harness. The active pack shell lives below the
  * independently animated pack parent; only the bag-side seats move with it. */
@@ -93,6 +113,11 @@ export function buildPackHarness(fit:PackFit,m:PackMaterials){
   chain.push(span);
  }
  if(chain.length)packRibbon(root,'shoulder-webbing',m.trim,chain);
+ if(fit.waistSpans?.length){
+  packRibbon(root,'waist-left',m.trim,fit.waistSpans.slice(0,3));
+  packRibbon(root,'waist-right',m.trim,fit.waistSpans.slice(3));
+  if(fit.waistBuckle)packBox(root,'waist-buckle',m.dark,fit.waistBuckle,[.65,1.35,1.85]);
+ }
  for(const [i,p] of fit.buckles.entries())packBuckle(root,'buckle-'+i,m,p,fit.style==='hydration'?.9:1.25);
  return finishPackArtwork(root);
 }
