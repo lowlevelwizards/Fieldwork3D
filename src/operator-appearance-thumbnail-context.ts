@@ -28,7 +28,7 @@ export function appearanceThumbnailContext(
   let next={kit:bareLabEquipment(),wardrobe:initialWardrobe()};
   for(const [baseSlot,baseId] of [
    ['top','bdu-shirt'],['trousers','bdu-trousers'],
-   ['footwear','field-boots'],['headwear','bare']
+   ['footwear','combat-boots'],['headwear','bare']
   ] as const)next=selectWardrobeItem(next.kit,next.wardrobe,baseSlot,baseId);
   return selectWardrobeItem(next.kit,next.wardrobe,slot,id);
  }

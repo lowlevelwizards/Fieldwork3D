@@ -1,3 +1,4 @@
+import {resolveFootwearHem} from './operator-footwear-catalog.ts';
 import {prepareBeltFlashPouches,restoreBeltFlashRest} from './operator-belt-flash-pouches.ts';
 import {canonicalBeltStyle} from './operator-belt-profile.ts';
 import type {BeltRegion} from './operator-belt-mounts.ts';
@@ -282,6 +283,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
    const cosmetic=r.visualKit.accessories[slot]['empty-holster'];
    if(cosmetic)cosmetic.visible=false;
   }
+  for(const material of r.visualKit.footwear.materials)r.colors.set(material,material.color.clone());
   if(traceAppearance)visualKitMs=performance.now()-kitStart;
   r.colors.set(r.visualKit.carriedMagazineMaterial,
     r.visualKit.carriedMagazineMaterial.color.clone());
@@ -327,16 +329,9 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     r.skinMaterial:sleeveMaterial;
   }
   for(const leg of r.feet){
-   const hem=['jeans','civilian-cargo','track-pants'].includes(clothing.trousers)?'unbloused':p.wardrobe?.trouserHem??'bloused';
-   const shortHem=hem==='bloused'||hem==='cuffed';
+   const hem=resolveFootwearHem(clothing.trousers,clothing.footwear,p.wardrobe?.trouserHem);
    setSegmentCut(leg.lower,clothing.trousers==='base-shorts'||hem==='unbloused'?'full':hem);
-   const shaft=leg.lower.userData.garmentBootShaft as THREE.Mesh|undefined;
-   if(shaft)shaft.visible=shortHem&&clothing.footwear!=='bare-feet';
-   leg.lower.material=clothing.trousers==='base-shorts'?
-    r.skinMaterial:r.trouserMaterial;
-   const barefoot=clothing.footwear==='bare-feet';
-   leg.shoe.material=barefoot?r.skinMaterial:r.bootMaterial;
-   leg.shoe.scale.set(1,barefoot?.7:1,barefoot?.88:1);
+   leg.lower.material=clothing.trousers==='base-shorts'?r.skinMaterial:r.trouserMaterial;
   }
   // Independent fabric channels keep the upper garment, trousers, armor and
   // pack textures separate while retaining the original authored pixel UVs.

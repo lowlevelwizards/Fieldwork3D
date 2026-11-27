@@ -1,3 +1,4 @@
+import {canonicalFootwear,footwearColor,footwearColorChoices,resolveFootwearHem} from './operator-footwear-catalog.ts';
 import {equipmentSlotForAppearance} from './operator-wardrobe-unified.ts';
 import {WARDROBE_ITEMS} from './operator-wardrobe-data.ts';
 import {packMountChoices,equipmentAssembly,type PackMountMode} from './operator-equipment-assembly.ts';
@@ -1342,6 +1343,10 @@ function renderMaterials(){
  }
  const w=current(),outfit=resolvedWardrobe(w,p.loadout);
  const item=outfit[activeCategory];
+ if(activeCategory==='footwear'&&item!=='bare-feet'){
+  const section=row('FOOTWEAR COLOR','Independent curated colorways.');
+  addSelect(section,footwearColorChoices(item).map(id=>[id,id.toUpperCase()] as const),footwearColor(canonicalFootwear(item)!,w.footwearColor),id=>changeWardrobe({...current(),footwearColor:id}));
+ }
  if(activeCategory==='facewear'){
   const identitySwatches=(heading:string,
    values:readonly string[],colorFor:(id:string)=>{label:string;hex:number},
@@ -2183,8 +2188,8 @@ function renderMaterials(){
  }
  if(activeCategory==='trousers'){
   const section=row('TROUSER HEM');
-  const options=trouserHemOptions(item);
-  addSelect(section,options.map(x=>[x,x.toUpperCase()]),w.trouserHem,
+  const options=trouserHemOptions(item,outfit.footwear);
+  addSelect(section,options.map(x=>[x,x.toUpperCase()]),resolveFootwearHem(item,outfit.footwear,w.trouserHem),
    value=>changeWardrobe({...current(),trouserHem:
     value as WardrobeOptions['trouserHem']}));
  }

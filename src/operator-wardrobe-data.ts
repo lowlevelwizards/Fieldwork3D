@@ -1,3 +1,4 @@
+import {FOOTWEAR,FOOTWEAR_IDS,canonicalFootwear,footwearForEquipment,footwearColorChoices,footwearHemOptions} from './operator-footwear-catalog.ts';
 import {PACK_MOUNT_MODES,type PackMountMode} from './operator-equipment-assembly.ts';
 import {beltStyleForEquipment,canonicalBeltStyle} from './operator-belt-profile.ts';
 /** Tactical Wardrobe 2.0: style recipes, not new weapons or magic inventory.
@@ -98,9 +99,7 @@ add('trousers','uniform',[
  ['gorka-trousers','Mountain / Gorka Trousers']
 ]);
 add('trousers','civilian',[['jeans','Jeans'],['civilian-cargo','Civilian Cargo Trousers'],['track-pants','Track Pants']]);
-add('footwear','light',[['sneakers','Sneakers']]);
-add('footwear','unshod',[['bare-feet','Bare feet']]);
-add('footwear','boots',[['field-boots','Field boots (foundation)']]);
+for(const id of FOOTWEAR_IDS){const p=FOOTWEAR[id];add('footwear',p.height==='bare'?'unshod':p.height==='low'?'light':'boots',[[id,p.name]]);}
 add('armorStyle','none',[['armor-bare','No armor']]);
 add('armorStyle','soft',[
  ['soft-slick','Concealable Soft Armor'],
@@ -166,7 +165,7 @@ export type TrouserHem=typeof TROUSER_HEMS[number];
 export const sleeveStateOptions=(top:string)=>top==='button-up-shirt'?SLEEVE_STATES:
  top==='bdu-shirt'||top==='acu-shirt'||top==='combat-shirt'?
  SLEEVE_STATES.filter(state=>state!=='short'):['unrolled'] as const;
-export const trouserHemOptions=(trousers:string)=>trousers==='bdu-trousers'||
+export const trouserHemOptions=(trousers:string,footwear?:string)=>footwear?footwearHemOptions(trousers,footwear):trousers==='bdu-trousers'||
  trousers==='acu-trousers'||trousers==='gorka-trousers'?TROUSER_HEMS:['unbloused'] as const;
 export type WardrobeOptions=HelmetCoverConfig&{
  /** Optional additive H1 modern modular helmet configuration. */
@@ -214,6 +213,7 @@ export type WardrobeOptions=HelmetCoverConfig&{
  /** Replaceable harness material; ignored on sewn/integrated rigs. */
  strapSolid?:GarmentSolidId;
  sleeveState:SleeveState;trouserHem:TrouserHem;
+ footwearColor?:string;
  /** Optional visual load size; actual supply and ammunition are unchanged. */
  aliceLoad?:AliceLc2Load;
  /** Cotton-canvas H-suspender load, visual only. */
@@ -227,7 +227,7 @@ export type WardrobeOptions=HelmetCoverConfig&{
 };
 const DEFAULTS:Record<WardrobeSlot,string>={
  headwear:'ach',facewear:'face-none',eyewear:'eyes-none',headset:'comms-none',
- top:'bdu-shirt',trousers:'bdu-trousers',footwear:'field-boots',
+ top:'bdu-shirt',trousers:'bdu-trousers',footwear:'combat-boots',
  armorStyle:'soft-vest',rigStyle:'light-rig',beltStyle:'duty-belt',
  packStyle:'day-pack',gloves:'gloves-field',knees:'knee-none',
  wrist:'wrist-none'
@@ -256,7 +256,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
   for(const slot of WARDROBE_SLOTS){
    const id=v.styles[slot];
    // Retired near-duplicates migrate to their closest approved silhouette.
-   const upgraded=slot==='beltStyle'?canonicalBeltStyle(id):
+   const upgraded=slot==='footwear'?canonicalFootwear(id):slot==='beltStyle'?canonicalBeltStyle(id):
      id==='soft-paca'?'soft-slick':
     id==='belt-harness'?'field-webbing':
     slot==='facewear'&&['scarf','gas-mask'].includes(id??'')?
@@ -278,6 +278,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
      result.styles.headwear='ach';
   }
  }
+ if(typeof v.footwearColor==='string'&&FOOTWEAR_IDS.some(id=>footwearColorChoices(id).includes(v.footwearColor!)))result.footwearColor=v.footwearColor;
  // Additive version-1 config. Unknown/incorrect eyewear options are discarded.
  const d2Options=readD2AccessoryOptions(v.d2Accessories,
   result.styles.facewear??'face-none',result.styles.eyewear??'eyes-none');
@@ -419,6 +420,7 @@ export function matchWardrobeUniformCamo(wardrobe:WardrobeOptions,
 export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
  kit?:EquipmentLoadout):Record<WardrobeSlot,string>{
  const desired={...DEFAULTS,...(wardrobe?.styles??{})};
+ desired.footwear=canonicalFootwear(desired.footwear)??'combat-boots';
  if(!kit)return desired;
  // Cosmetic defaults follow the *actual* selected kit when a user hasn't
  // explicitly chosen a style. Choosing light boots must never show field
@@ -428,7 +430,7 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
  if(!wardrobe?.styles.trousers)
   desired.trousers='bdu-trousers';
  if(!wardrobe?.styles.footwear)
-  desired.footwear=kit.slots.feet==='feet-none'?'bare-feet':'field-boots';
+  desired.footwear=footwearForEquipment(kit.slots.feet);
  if(!wardrobe?.styles.gloves)
   desired.gloves=kit.slots.hands==='hands-none'?'gloves-none':'gloves-field';
  const slots=kit.slots;
@@ -469,8 +471,7 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
  choose('packStyle',[...legacyPackStyles(slots.backpack)],legacyPackDefault(slots.backpack));
  choose('trousers',['bdu-trousers','acu-trousers','gorka-trousers','jeans','civilian-cargo','track-pants'],
   'bdu-trousers');
- choose('footwear',slots.feet==='feet-none'?['bare-feet']:slots.feet==='feet-light'?['sneakers','field-boots']:['field-boots'],
-  slots.feet==='feet-none'?'bare-feet':'field-boots');
+ desired.footwear=footwearForEquipment(slots.feet,desired.footwear);
  // Gloves are a cosmetic layer: explicit on/off stays independent of
  // the combat kit's hands slot, with the loadout used only as default.
  return desired;

@@ -1,3 +1,5 @@
+import {footwearRoots} from './operator-footwear-art.ts';
+import {footwearHemOptions,resolveFootwearHem} from './operator-footwear-catalog.ts';
 import {secondaryMagazineArtwork} from './secondary-holster-visual.ts';
 import {attachmentFixture,clearAttachmentPreview,updateAttachmentPreview,populateAttachmentPreviewOptions} from './operator-attachment-lab.ts';
 import {ATTACHMENTS,validAttachmentId,type AttachmentVariant} from './operator-attachment-catalog.ts';
@@ -645,9 +647,10 @@ function syncWardrobe(){
  }
  colorSelect.value=resolvedTopColorway(compatible.top,wardrobeOptions.topColorway);
  const hemSelect=document.getElementById('wardrobeTrouserHem') as HTMLSelectElement;
- hemSelect.value=wardrobeOptions.trouserHem;
- hemSelect.disabled=!['bdu-trousers','acu-trousers','gorka-trousers'].includes(compatible.trousers)
-  ||compatible.footwear==='bare-feet';
+ const hems=footwearHemOptions(compatible.trousers,compatible.footwear);
+ for(const option of Array.from(hemSelect.options))option.disabled=!hems.some(hem=>hem===option.value);
+ hemSelect.value=resolveFootwearHem(compatible.trousers,compatible.footwear,wardrobeOptions.trouserHem);
+ hemSelect.disabled=hems.length===1;
  const incompatible=wardrobeConflicts(wardrobeOptions,labKit);
  document.getElementById('wardrobeCompatibility')!.textContent=incompatible.length?
   'Style unavailable for current kit: '+incompatible.join(', '):
@@ -1190,7 +1193,7 @@ function isolateKit(body:OperatorRig){
  hide('hands',...body.gloveCovers,...all(v.wardrobeBody.wrist));
  hide('knees',...v.kneePanels,
   ...Object.values(v.wardrobeBody.knees).flat());
- hide('feet',...v.bootCuffs,...v.fieldToeCaps,...v.lightInstepPanels);
+ hide('feet',...footwearRoots(v.footwear));
  // The unarmored body and IK bones remain visible as an inspection
  // mannequin; only item groups are isolated.
 }
