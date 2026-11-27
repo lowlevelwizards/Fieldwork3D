@@ -143,8 +143,8 @@ add('packStyle','day',[
  ['sling-bag','Sling bag'],['civilian-pack','Civilian backpack']
 ]);
 add('packStyle','field',[
- ['field-pack','Field pack'],['rucksack','Rucksack'],
- ['medic-pack','Medic pack'],['comms-pack','Communications pack'],
+ ['field-pack','ALICE field pack'],['rucksack','Expedition rucksack'],
+ ['medic-pack','Medical pack'],['comms-pack','Communications pack'],
  ['duffel','Duffel bag']
 ]);
 add('gloves','gloves',[['gloves-none','Bare hands'],
