@@ -45,7 +45,7 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
  // X axis is the long silhouette axis; side vector faces outboard.
  const axis=one?new THREE.Vector3(.42,-.88,.22):
   front?new THREE.Vector3(.08,-.92,p.sling==='single'?.16:.38):
-  side?new THREE.Vector3(.38,-.90,.12):
+  side?new THREE.Vector3(.15,-.98,.05):
   new THREE.Vector3(-.04,-.80,-.60);
  // A low stance flattens the long silhouette to avoid floor intersections.
  const extent=Math.max(1,p.muzzleX-p.balanceX,p.balanceX-p.stockX)*p.scale.x;
@@ -55,7 +55,7 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
   new THREE.Vector3(front?1:-1,0,0);
  const z=outward.addScaledVector(axis,-outward.dot(axis)).normalize();
  const y=z.clone().cross(axis).normalize();
- const q=front?retainedSwing(p.heldQuaternion,axis):
+ const q=front||side?retainedSwing(p.heldQuaternion,axis):
   new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(axis,y,z));
  if(!one&&p.motion){
   const m=sampleSuspensionMotion(p.sling,p.motion);
@@ -64,7 +64,8 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
  const anchor=one?new THREE.Vector3(5.5,-5.2,9.6+armor):
   front?new THREE.Vector3((p.exterior?.front(-2.8,0)??(7.1+armor))+1.35,
     -3.3,p.sling==='single'?2.4:0):
-  side?new THREE.Vector3(1.0,-2.8,10.7+armor):
+  side?new THREE.Vector3(1.8,-3.4,
+    (p.exterior?.side(-3.4,1.8,1)??(8.1+armor))+.9):
   new THREE.Vector3(p.pack?-13:-8.2,-.5,0);
  // The same rendered grip is used at the new pose, not a second socket.
  const localGrip=p.primaryGrip.clone().sub(p.heldPosition)
