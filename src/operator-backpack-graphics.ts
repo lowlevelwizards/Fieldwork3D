@@ -3,6 +3,7 @@
  * fabric/camo maps. One alpha-tested draw batch per backpack; no shadow caster.
  */
 import * as THREE from 'three';
+import {packDetailPalette} from './operator-backpack-colors.ts';
 import {packRing,PACK_VOLUME_RINGS,PACK_DETAIL_PIXEL,type PackCut,type PackPoint} from './operator-backpack-geometry.ts';
 type Tile={id:string;w:number;h:number;draw:(pixel:(x:number,y:number,tone?:number)=>void)=>void};
 const row=(p:(x:number,y:number,tone?:number)=>void,y:number,a:number,b:number,tone=0)=>{for(let x=a;x<=b;x++)p(x,y,tone);};
@@ -26,16 +27,17 @@ const tiles:readonly Tile[]=[
  {id:'medical-mark',w:11,h:12,draw:p=>{for(let y=7;y<=10;y++)for(let x=3;x<=7;x++)p(x,y,2);for(let y=7;y<=10;y++)p(5,y,3);row(p,8,4,6,3);row(p,9,4,6,3);}}
 ];
 const atlasSize=128,cell=16,columns=atlasSize/cell;
-let shared:THREE.DataTexture|undefined;
-function atlas(){
- if(shared)return shared;
+const atlases=new Map<number,THREE.DataTexture>();
+export function packGraphicAtlas(hex=0x687455){
+ const shared=atlases.get(hex);if(shared)return shared;
+ const palette=packDetailPalette(hex);
  const bytes=new Uint8Array(atlasSize*atlasSize*4);
  for(const [i,tile] of tiles.entries()){
   const ox=(i%columns)*cell,oy=Math.floor(i/columns)*cell;
   tile.draw((x,y,tone=0)=>{
    if(x<0||y<0||x>=tile.w||y>=tile.h)return;
    const k=((oy+y)*atlasSize+ox+x)*4;
-   const color=tone===3?[219,217,195]:tone===2?[71,76,65]:tone===1?[105,110,92]:[49,55,48];
+   const color=tone===3?[219,217,195]:tone===2?palette.hardware:tone===1?palette.webbing:palette.seam;
    bytes.set([...color,255],k);
   });
  }
@@ -43,7 +45,7 @@ function atlas(){
  texture.colorSpace=THREE.SRGBColorSpace;texture.magFilter=THREE.NearestFilter;
  texture.minFilter=THREE.NearestFilter;texture.generateMipmaps=false;texture.needsUpdate=true;
  texture.name='Fieldwork backpack graphic atlas · one art pixel';
- shared=texture;return texture;
+ atlases.set(hex,texture);return texture;
 }
 export type PackGraphic=Readonly<{tile:string;center:PackPoint;size:PackPoint;cut?:PackCut;face?:'rear'|'left'|'right';flat?:boolean}>;
 /** Reuse the exact sculpt ring profile. Only the visible face receives a
@@ -158,7 +160,7 @@ export function attachPackGraphics(root:THREE.Group,graphics:readonly PackGraphi
  geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
  geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
  geo.setIndex(indices);geo.computeVertexNormals();geo.computeBoundingBox();
- const material=new THREE.MeshStandardMaterial({map:atlas(),color:0xffffff,roughness:.96,alphaTest:.5,flatShading:true});
+ const material=new THREE.MeshStandardMaterial({map:packGraphicAtlas(),color:0xffffff,roughness:.96,alphaTest:.5,flatShading:true});
  material.userData.fieldworkStudioSoftGear=true;
  const mesh=new THREE.Mesh(geo,material);mesh.name='pack-pixel-graphics';
  mesh.castShadow=false;mesh.receiveShadow=true;root.add(mesh);
