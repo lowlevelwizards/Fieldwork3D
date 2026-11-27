@@ -31,3 +31,13 @@ export function downedTransportPresentation(
   lift:mode==='carry'?18:2,
   carrierPosition:carrier.p};
 }
+
+/** SR15: only reciprocal recorded custody supplies a carrier animation.
+ * Includes civilians without coupling to any particular actor class. */
+export function carrierTransportPresentation(
+ carrier:Carrier,subject:{id:string;carriedById?:string|null;transportMode?:TransportMode|null;p:Pt}|undefined
+):{mode:TransportMode;target:Pt}|undefined{
+ if(carrier.health<=0||!subject||carrier.carryingId!==subject.id||
+  subject.carriedById!==carrier.id)return undefined;
+ return {mode:subject.transportMode==='carry'?'carry':'drag',target:subject.p};
+}

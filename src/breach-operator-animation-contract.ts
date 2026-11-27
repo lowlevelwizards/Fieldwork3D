@@ -34,6 +34,9 @@ import type {RetentionPoseMode} from './breach-weapon-retention-pose.ts';
 export type OperatorPose={
   /** Explicit retention audition; live action migration is WR7–WR10. */
   retentionPreview?:RetentionPoseMode;
+  /** Visual-only reciprocal transport, sampled from live/replay roster. */
+  transportCarrier?:{mode:'carry'|'drag';target:{x:number;y:number}};
+  transportedMode?:'carry'|'drag';
   /** Explicit fixed-step/replay sample; no renderer-owned timer. */
   retentionTransition?:RetentionTransitionState;
   /** Session owns the actual world primary, even while this actor uses a sidearm. */

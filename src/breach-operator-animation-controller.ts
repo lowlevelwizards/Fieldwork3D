@@ -1122,13 +1122,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.retentionTransition!.mode!=='held-one';
   const retainedAction=handsFreeAction?
     retainedActionHands(p,preparedDecision.action):null;
-  const retentionMode=switchingSlung?'front-slung':liveOneHand?'held-one':p.retentionTransition?
+  const transportStow=!!p.transportCarrier&&hasSuspension&&!p.down&&!p.surrender&&
+    !p.primaryGrounded&&!p.worldWeaponReleased;
+  const retentionMode=transportStow?'front-slung':switchingSlung?'front-slung':liveOneHand?'held-one':p.retentionTransition?
     p.retentionTransition.mode:p.retentionPreview;
-  const retentionWeight=switchingSlung?switchPose.retention:liveOneHand?oneHandWeight:p.retentionTransition?.weight??1;
+  const retentionWeight=transportStow?1:switchingSlung?switchPose.retention:liveOneHand?oneHandWeight:p.retentionTransition?.weight??1;
   const retentionAssembly=retentionMode&&config?resolveWeaponAssembly(config):null;
   const retentionPack=slingKind!=='none'?retentionPackBounds(r,clothing.packStyle,attachments[EAI.pack]):undefined;
   const retention=!p.primaryGrounded&&retentionMode&&retentionWeight>0&&!p.down&&!p.surrender&&!p.unarmedPreview&&
-    (switchingSlung||!p.firing&&!reloadActive&&(liveOneHand||liveHandsFree||!p.aiming&&!doorActive&&!throwActive&&!treatmentActive&&!equipmentActive)&&
+    (transportStow||switchingSlung||!p.firing&&!reloadActive&&(liveOneHand||liveHandsFree||!p.aiming&&!doorActive&&!throwActive&&!treatmentActive&&!equipmentActive)&&
     (p.secondarySwitch?.fraction??0)===0)?
     sampleRetentionTransition({mode:retentionMode,
       sling:readSlingKind(config?.slots.sling),scale:heldWeapon.scale,
@@ -1153,6 +1155,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         turning:p.turning,massKg:retentionAssembly?.massKg??3,
         inertia:retentionAssembly?.rotationalInertia??100}},retentionWeight):null;
   if(retention){
+    if(transportStow)heldWeapon.visible=true;
     heldWeapon.position.copy(retention.position);
     heldWeapon.quaternion.copy(retention.quaternion);
   }
@@ -1178,7 +1181,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }):null;
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
-    if(retention&&(!liveOneHand||i===1)&&!retainedAction?.[i]&&(!switchingSlung||switchPose.pistol<=.08)){
+    if(retention&&!transportStow&&(!liveOneHand||i===1)&&!retainedAction?.[i]&&(!switchingSlung||switchPose.pistol<=.08)){
       const shoulder=shoulderFor(i),requested=i===0?retention.left:retention.right;
       const actualSource=coupled?.arms??coordinatedDynamic?.arms;
       const corridor=elbowCorridor(handling,sign as -1|1,profile);
@@ -1199,7 +1202,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         clamp(fit.rotation.y,-1,1)*(1-release)+sign*.14*release);
       continue;
     }
-    if(secondaryTarget&&secondaryTarget.weight>0){
+    if(!transportStow&&secondaryTarget&&secondaryTarget.weight>0){
       const shoulder=shoulderFor(i);
       const actualSource=coupled?.arms??coordinatedDynamic?.arms;
       const source=switchingSlung&&retention?(i===0?retention.left:retention.right):
@@ -1284,7 +1287,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         .applyEuler(fit.rotation).add(fit.origin);
       if(i===0&&reloadHandChest)desired.copy(reloadHandChest);
     }
-    if(retention&&retainedAction?.[i]){
+    if(transportStow&&retention&&p.transportCarrier){
+      // A compact authored support gesture, not an inferred physical grip.
+      // The real carried subject and elevation remain scene-owned.
+      const carry=p.transportCarrier.mode==='carry';
+      const dx=p.transportCarrier.target.x-p.x,dz=p.transportCarrier.target.y-p.z;
+      const forward=clamp(dx*Math.cos(p.heading)+dz*Math.sin(p.heading),-12,12);
+      desired=shoulder.clone().add(P(carry?-3:Math.min(-3,forward*.55),
+        carry?-5:-13,sign*(carry?1.2:1.8)));
+    }else if(retention&&retainedAction?.[i]){
       if(treatmentActive)desired=i===0?leftGrip.clone():rightGrip.clone();
       else if(i===1)desired=leftGrip.clone().add(P(-1,0,3.2));
       else if(reaching||equipmentActive)desired=leftGrip.clone();

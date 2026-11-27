@@ -130,7 +130,7 @@ import {bakedOperatorCarry,prewarmSavedOperatorCarry}
 import {updateOperatorAppearance} from './breach-operator-appearance.ts';
 import {readEquipmentInteraction} from './breach-equipment-interaction-pose.ts';
 import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
-import {downedTransportPresentation} from './breach-capture-transport-presentation.ts';
+import {downedTransportPresentation,carrierTransportPresentation} from './breach-capture-transport-presentation.ts';
 import {SurrenderedFirearmsPresenter} from './rendering/breach-surrendered-firearms-presenter.ts';
 import {spatialSurfaceKnown,shotVisibility,windowPresentationKnown,windowCoveringPresentationKnown} from './breach-presentation.ts';
 import {markWindowOwner,markWallOwnerKnown,markCoverOwnerKnown} from './rendering/breach-evidence-owner.ts';
@@ -2611,6 +2611,9 @@ export class TacticalScene3D{
       // Only an actual reciprocal GO-time carrier may lift or reorient a
       // downed body. Live and replay use their sampled actor roster.
       const transport=downedTransportPresentation(actor,s.operators);
+      const carriedSubject=actor.carryingId?
+        this.frameActorsById.get(actor.carryingId)??s.civilians.find(c=>c.id===actor.carryingId):undefined;
+      const carrierTransport=carrierTransportPresentation(actor,carriedSubject);
       // Airborne body is a fixed-tick simulation outcome. Keep the 3D
       // miniature at its authored horizontal position, lifted only by the
       // recorded traversal arc (never by render-time speculative physics).
@@ -2880,6 +2883,7 @@ export class TacticalScene3D{
         appearanceSeed:actor.appearanceSeed,
         equipment:actor.equipment,wardrobe:actor.wardrobe,
         retentionTransition:actor.retentionTransition,
+        transportCarrier:carrierTransport,transportedMode:transport?.mode,
          primaryGrounded:actor.groundedPrimaryId!=null,
          secondarySwitch:actor.secondarySwitch,
         secondaryReload:actor.secondaryReload,
