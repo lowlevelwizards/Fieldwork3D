@@ -47,27 +47,22 @@ test('lazy model reuse, carrier compatibility and harness lifecycle',()=>{
  const hydration=updatePackPreview(state,true,'hydration','plate-jpc','no-rig','combat-shirt');
  assert.ok(hydration.root.visible);assert.ok(state.harness.getObjectByName('hydration-hose'));
 });
-test('actual operator preview replaces rather than overlaps legacy; normal rigs unchanged',()=>{
+test('authored backpack is the only production model and incompatible panel falls back without changing inventory',()=>{
  const rig=createOperatorRig('rook','blue');
  let kit=initialEquipmentLoadout();kit=setEquipmentChoice(kit,'armor','armor-carrier');kit=setEquipmentChoice(kit,'backpack','backpack-day');
  let wardrobe=setWardrobeStyle(initialWardrobe(),'armorStyle','plate-jpc');
  const pose={x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,posture:'stand',injury:0,weapon:'carbine',reload:0,reloadDuration:0,lastThrowAt:-100,lastDoorAt:-100,down:false,surrender:false,aiming:false,firing:false,turning:0,deterministic:true,equipment:kit};
  wardrobe=setWardrobeStyle(wardrobe,'packStyle','admin-pack');
  poseOperator(rig,{...pose,wardrobe},0);
- assert.equal(rig.visualKit.packPreview.active,undefined);
- assert.equal(rig.visualKit.dayPack.visible,true);
- rig.root.userData.fieldworkAuthoredPackPreview=true;
- poseOperator(rig,{...pose,wardrobe},0);
  assert.equal(rig.visualKit.packPreview.active.style,'assault-panel');
- assert.equal(rig.visualKit.dayPack.visible,false);
- assert.equal(rig.visualKit.packHarness.visible,false);
- assert.equal(rig.visualKit.wardrobeGear.pack['admin-pack'].visible,false);
  assert.equal(rig.visualKit.packPreview.active.root.parent,rig.pack);
+ assert.equal(rig.visualKit.packPreview.harness,undefined);
  assert.equal(kit.slots.backpack,'backpack-day');
- rig.root.userData.fieldworkAuthoredPackPreview=false;
+ wardrobe=setWardrobeStyle(wardrobe,'armorStyle','plate-heavy');
  poseOperator(rig,{...pose,wardrobe},0);
- assert.equal(rig.visualKit.packPreview.active,undefined);
- assert.equal(rig.visualKit.dayPack.visible,true);
+ assert.equal(rig.visualKit.packPreview.active.style,'day-pack');
+ assert.ok(rig.visualKit.packPreview.harness);
+ assert.equal(kit.slots.backpack,'backpack-day');
  rig.dispose();
 });
 test('retired soft-paca raw saves migrate to current soft-slick',()=>{
