@@ -27,7 +27,7 @@ export const WARDROBE_RECIPES:readonly WardrobeRecipe[]=[
    feet:'feet-boots',armor:'armor-soft',rig:'rig-full',
    backpack:'backpack-field'},
   {headwear:'pasgt',top:'bdu-shirt',trousers:'bdu-trousers',
-   footwear:'field-boots',rigStyle:'field-webbing',
+   footwear:'combat-boots',rigStyle:'field-webbing',
    packStyle:'field-pack'},'m81-woodland'),
  recipe('acu-patrol','Modern Utility Patrol','role','carbine',
   {head:'head-helmet',top:'top-uniform',legs:'legs-field',

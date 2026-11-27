@@ -10,7 +10,7 @@ test('unmodeled light clothing resolves to the remaining honest foundation cuts'
  const w=resolvedWardrobe(initialWardrobe(),k);
  assert.equal(w.top,'bdu-shirt');
  assert.equal(w.trousers,'bdu-trousers');
- assert.equal(w.footwear,'field-boots');
+ assert.equal(w.footwear,'sneakers');
 });
 test('old procedural pattern controls are fully replaced by approved camouflage browsing',()=>{
  const h=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');

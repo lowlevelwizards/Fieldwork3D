@@ -11,7 +11,6 @@ import {canonicalRootOrientation,LEGACY_FRAME_YAW,createCanonicalAttachment} fro
 import type {WeaponId} from './breach-combat.ts';
 import {createFootstepScheduler,type FootstepScheduler}
   from './breach-footsteps.ts';
-import {BOOT_FOREFOOT_OFFSET} from './breach-gait-geometry.ts';
 import {operatorMotionTraits} from './breach-operator-personality.ts';
 import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,LEG_HIP_HEIGHT} from './breach-leg-geometry.ts';
 import type {HandlingProfile} from './breach-handling-profiles.ts';
@@ -237,17 +236,9 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   for(const sideSign of [-1,1]){
     const upper=bone(legacyFrame,4.7,5.3,trousers,LEG_UPPER_LENGTH),
       lower=bone(legacyFrame,4,4.3,trousers,LEG_LOWER_LENGTH);
-    // Boots continue up into the shortened hem. Unlike repainting the
-    // entire shin as rubber, this is a small, joint-following shaft.
-    const shaft=block(lower,0,.35,0,3.84,.32,4.05,boot);
-    shaft.visible=false;
-    lower.userData.garmentBootShaft=shaft;
-    const shoe=block(legacyFrame,0,0,0,8,2.9,5.8,boot);
-    // The mesh transform must remain at the scheduled ankle anchor.
-    // Translate *vertices in local toe-forward +X* instead: the toe box
-    // now extends 5.6 units forward, the heel only 2.4 units behind.
-    // This avoids changing foot IK, grounded contact, yaw or replay.
-    shoe.geometry.translate(BOOT_FOREFOOT_OFFSET,0,0);
+    // Empty animation anchor: the complete footwear shells are its children.
+    const shoe=new THREE.Mesh(new THREE.BufferGeometry(),boot);
+    shoe.name='footwear-ankle-anchor';legacyFrame.add(shoe);
     const ankleLink=bone(legacyFrame,3.8,3.8,boot,2.0);
     ankleLink.visible=false;
     feet.push({upper,lower,shoe,ankleLink,
@@ -402,6 +393,8 @@ export function createOperatorRig(id:string,side:'blue'|'red',
         const m=obj.material as THREE.Material;m.dispose();
       }});
       for(const geo of geometries)geo.dispose();
+       // Inactive footwear materials may not be attached to any mesh.
+       for(const material of visualKit.footwear.materials)material.dispose();
       weaponLensMaterial.dispose();}};
   return rig;
 }

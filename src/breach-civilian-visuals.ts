@@ -80,7 +80,7 @@ export function civilianSharedWardrobe(c:CivilianActor):WardrobeOptions{
  wardrobe.styles={
   headwear:'bare',facewear:'face-none',eyewear:'eyes-none',
   top:c.role==='employee'?'polo-shirt':shirts[seed%shirts.length],
-  trousers:'bdu-trousers',footwear:'field-boots',
+  trousers:'bdu-trousers',footwear:'sneakers',
   armorStyle:'armor-bare',rigStyle:'no-rig',beltStyle:'no-belt',
   packStyle:'no-pack',gloves:'gloves-none',knees:'knee-none',wrist:'wrist-none'
  };
