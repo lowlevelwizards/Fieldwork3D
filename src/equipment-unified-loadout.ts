@@ -1,3 +1,4 @@
+import {authoredRigStorageCells} from './operator-rig-pouch-layout.ts';
 /** BT4: adapt existing authoritative owned inventory into a read-only fit
  * quote. It does not stage, create, spend, or rewrite any legacy item.
  * Authored rig cells are supplied by the actual carrier, not a guessed count. */
@@ -49,8 +50,9 @@ export function unifiedLoadoutInput(source:UnifiedLoadoutSource):CarryInput{
  // Mechanical belt identity, not a legacy cosmetic style alias, grants slots.
  const belt=beltStyleForEquipment(kit.slots.belt);
  const historicalWaist=['field-webbing','alice-lc2','m1956-lce','sadf-webbing'].includes(look.rigStyle);
- const rigCells=look.rigStyle==='no-rig'?[]:source.rigCells??[];
- const auxiliary=look.rigStyle==='no-rig'?[]:source.auxiliaryCells??[];
+ const authored=authoredRigStorageCells(look.rigStyle,wardrobe?.m1956Variant);
+ const rigCells=look.rigStyle==='no-rig'?[]:source.rigCells??authored.magazines;
+ const auxiliary=look.rigStyle==='no-rig'?[]:source.auxiliaryCells??authored.auxiliary;
  const armor=ARMOR_PROPORTIONS[look.armorStyle],frame=armorAttachmentFrame(look.armorStyle,look.top);
  const pack=proposedPackStyle(look.packStyle);
  const packCompatible=!!pack&&(PACK_PROFILES[pack].harness!=='direct'||supportsDirectPack(look.armorStyle));

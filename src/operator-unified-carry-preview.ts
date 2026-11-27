@@ -36,7 +36,7 @@ export function showUnifiedCarryPreview(rig:OperatorRig,key:string,manifest:Plac
    v.root.userData.bt4SlotIds=[...p.slotIds];
    v.root.userData.bt4ContentIds=[...p.contentIds??p.itemIds];
    const contents=p.contentIds??p.itemIds;
-   for(let i=0;i<v.contents.length;i++)v.contents[i].visible=!!contents[i];
+   for(let i=0;i<v.contents.length;i++)v.contents[i].visible=!!contents[i]&&!contents[i]!.startsWith('cosmetic:');
    group(p.carrier==='belt'?rig.hip:rig.chest).add(v.root);
   }else if(rigOwner&&p.carrier==='rig'){
    const slot=storage.find(s=>p.slotIds.includes(s.id));

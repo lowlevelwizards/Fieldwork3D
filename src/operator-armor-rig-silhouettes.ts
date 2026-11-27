@@ -1,3 +1,5 @@
+import {authoredRigPouches,rigPouchCell,RIG_MAGAZINE_POUCH_PUFF} from './operator-rig-pouch-layout.ts';
+export {RIG_MAGAZINE_POUCH_PUFF};
 import {sharedRigClips} from './operator-equipment-assembly.ts';
 /** Fieldwork body-first armor silhouettes. Full authored shells, not scaled
  * copies of one vest. Positive local X is forward; +/-Z is left/right.
@@ -94,7 +96,6 @@ export const RIG_POCKET_CONSTRUCTION:Readonly<Record<string,RigPocketConstructio
  * side of its center in the chest's forward axis. Leave room for it under
  * a physical fabric front, not a face it can clip through.
  */
-export const RIG_MAGAZINE_POUCH_PUFF=1.00;
 const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
  x:number,y:number,z:number,h:number,d:number,depth=1.10,
  isMagazinePouch=true,yaw=0)=>{
@@ -103,18 +104,8 @@ const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
  const extra=rigVisualBudget(style).projection;
  const span=d+(d>=2.3?.17:.11);
  const front=x+depth*.5+extra+RIG_MAGAZINE_POUCH_PUFF;
- if(isMagazinePouch){
-  // Register ONLY physical dedicated ammunition cases, at the source
-  // of their real dimensions. Utility, canteen and admin pockets never
-  // acquire a magazine socket.
-  const cells=(g.userData.magazinePouchCells??=[]) as MagazinePouchCell[];
-  cells.push({x:x+(extra+RIG_MAGAZINE_POUCH_PUFF)*.5,
-   y,z,height:h,width:span,depth:depth+extra+RIG_MAGAZINE_POUCH_PUFF,yaw});
- }else{
-  const cells=(g.userData.auxiliaryPouchCells??=[]) as MagazinePouchCell[];
-  cells.push({x:x+(extra+RIG_MAGAZINE_POUCH_PUFF)*.5,
-   y,z,height:h,width:span,depth:depth+extra+RIG_MAGAZINE_POUCH_PUFF,yaw});
- }
+ const cells=(g.userData[isMagazinePouch?'magazinePouchCells':'auxiliaryPouchCells']??=[]) as MagazinePouchCell[];
+ cells.push(rigPouchCell(style,[x,y,z,h,d,depth,isMagazinePouch,yaw]));
  // Body and its flap are ONE logical self-shadowing pouch, even though
  // each cuboid is a separate pre-merge geometric primitive.
  const partId=style+'/pouch/'+[x,y,z].map(v=>v.toFixed(2)).join('/');
@@ -524,8 +515,6 @@ export function createChestRigSilhouettes(chest:THREE.Group,
  if(!onlyStyle||onlyStyle==='chest-placard'){
   const g=make('chest-placard');
   box(g,fabric,8.18,-2.05,0,.78,5.05,9.10);
-  for(const z of [-2.73,0,2.73])
-   pouch(g,pocketFabric,pocketFabric,8.74,-2.20,z,3.85,2.55,1.08);
   for(const s of [-1,1])
    box(g,dark,7.95,1.2,s*3.65,.40,2.65,.90);
   // Keep the legacy mode marker for existing wardrobe/UI consumers,
@@ -542,11 +531,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   box(g,fabric,7.94,-2.03,0,.82,3.02,7.92);
   // Two substantial front cells and a small high organizer distinguish
   // the complete micro harness from the flat three-cell carrier placard.
-  for(const z of [-1.65,1.65])
-   pouch(g,pocketFabric,pocketFabric,8.54,-2.14,z,3.60,2.80,.91);
   box(g,webbing,8.35,.06,0,.29,.70,5.36);
-  for(const s of [-1,1])
-   pouch(g,pocketFabric,pocketFabric,7.75,-2.62,s*4.60,2.26,1.52,.77,false);
  }
  if(!onlyStyle||onlyStyle==='light-rig'){
   const g=make('light-rig');
@@ -554,7 +539,6 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   shoulderHarness(g,webbing,4.7);
   // The rear X is regenerated at actual armor contact in the fitted harness.
   for(const z of [-4.85,-1.63,1.63,4.85]){
-   pouch(g,pocketFabric,pocketFabric,8.38,-2.18,z,4.63,2.70,1.10);
    // Four independent closure flaps; never read as one continuous panel.
    box(g,pocketFabric,9.35+RIG_MAGAZINE_POUCH_PUFF,-.57,z,.23,.51,2.92);
   }
@@ -566,8 +550,6 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   // Two independent banks with a large, entirely unobstructed center seam.
   for(const s of [-1,1]){
    box(g,fabric,8.12,-2.08,s*4.48,.78,6.30,5.50);
-   for(const p of [3.15,5.92])
-    pouch(g,pocketFabric,pocketFabric,8.77,-2.22,s*p,4.35,2.55,1.11);
    box(g,webbing,8.64,-1.95,s*1.35,.37,4.72,.44);
   }
   // Only two chunky closure tabs bridge toward the opening. The deep
@@ -587,9 +569,6 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    // Open sternum stays readable; the broad hems carry the pockets.
    const half=new THREE.Group();half.position.z=s*3.25;g.add(half);
    fittedArmorBag(half,fabric,7.82,1,3.55,-5.80,4.02,.72,.72);
-   for(const y of [1.28,-2.56,-5.35])
-    pouch(g,pocketFabric,pocketFabric,8.12,y,s*4.20,3.45,3.38,.99,
-     y!==-5.35);
    // Recognizable upper yoke joins the tapered vest panel, without
    // closing the open central sternum.
    box(g,webbing,7.86,2.76,s*3.98,.56,.76,3.18);
@@ -607,8 +586,6 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   box(g,webbing,8.56,1.40,0,.45,1.65,8.82);
   // Distinctive high administrator shelf above the four broad lower cells.
   box(g,fabric,8.69,.25,0,.32,.74,9.65);
-  for(const z of [-4.60,-1.5,1.5,4.60])
-   pouch(g,pocketFabric,pocketFabric,8.65,-3.23,z,4.50,2.58,1.17);
   for(const sign of [-1,1])
    box(g,pocketFabric,8.55,-.45,sign*5.10,.49,1.28,1.28);
  }
@@ -656,7 +633,6 @@ export function createChestRigSilhouettes(chest:THREE.Group,
     [.05,5.70,sign*5.20],1.45,1.04);
    strap(h,webbing,[.05,5.70,sign*5.20],
     [-5.10,-4.7,sign*6.3],1.36,1.04);
-   pouch(g,pocketFabric,pocketFabric,3.1,-5.30,sign*7.65,5.30,3.40,1.49,false);
   }
   box(g,webbing,3.55,-5.7,0,1.35,1.45,14.15);
  }
@@ -667,24 +643,15 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   // Chicom canvas reads by three TALL independent flap pouches and
   // two abbreviated flank pockets, not a modern flat MOLLE array.
   for(const z of [-3.12,0,3.12]){
-   pouch(g,pocketFabric,pocketFabric,8.52,-2.32,z,5.72,2.88,1.06);
    // Oversized Type 56 toggle closures are visually recognizable,
    // rather than three anonymous modern nylon zipper pouches.
    box(g,webbing,9.46+RIG_MAGAZINE_POUCH_PUFF,-.20,z,.36,.55,.64);
   }
-  for(const s of [-1,1])
-   pouch(g,pocketFabric,pocketFabric,8.42,-3.46,s*5.65,2.38,1.65,.75,false);
  }
  if(!onlyStyle||onlyStyle==='bandolier'){
   const g=make('bandolier');
   const h=new THREE.Group();h.name='uniform-fitted-rig-harness';
   h.userData.fitMaterial=webbing;h.userData.spread=4.8;g.add(h);
-  for(let i=0;i<5;i++){
-   const t=i/4,z=3.85-t*7.7,y=3.6-t*7.4;
-   // Four magazine positions plus a deliberate fifth utility cell.
-   pouch(g,pocketFabric,pocketFabric,8.20,y,z,
-     i<4?3.45:2.65,1.76,i<4?1.40:.78,i<4,Math.PI/2);
-  }
  }
  if(!onlyStyle||onlyStyle==='sadf-webbing'){
   const g=make('sadf-webbing');
@@ -695,14 +662,15 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    rearHarness.userData.rearTrimMaterial=webbing;
   }
   for(const s of [-1,1]){
-   for(const z of [3.25,6.05])
-    pouch(g,pocketFabric,pocketFabric,7.78,-2.95,s*z,6.35,2.67,1.52);
    // Differentiate front and flank cargo from the Chicom three-cell
    // apron. Separate rear compartment shapes follow the fitted frame.
    box(g,webbing,7.97,.70,s*5.40,.52,1.42,2.34);
    // Broad P83 waist pockets and belt live on the hip.
   }
  }
+ // Pouch geometry and headless metadata use the same authored recipe.
+ for(const [style,g] of Object.entries(groups))for(const spec of authoredRigPouches(style))
+  pouch(g,pocketFabric,pocketFabric,...spec);
  // Exposed, solid-dark mouth slits make magazine positions readable at
  // phone zoom. These are holes in the rig design language, not ammunition.
  for(const [style,mouths] of Object.entries(RIG_MAGAZINE_MOUTHS)){
