@@ -1,0 +1,37 @@
+name: Equipment domain acceptance
+on:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  select:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backpack: ${{ steps.route.outputs.backpack }}
+      belt: ${{ steps.route.outputs.belt }}
+      footwear: ${{ steps.route.outputs.footwear }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate equipment selection
+        run: node --test tests/ci-equipment-routing.test.mjs
+      - id: route
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/verification/ci-equipment-routing.mjs
+  backpack:
+    needs: select
+    if: needs.select.outputs.backpack == 'true'
+    uses: ./.github/workflows/backpack-critical.yml
+  belt:
+    needs: select
+    if: needs.select.outputs.belt == 'true'
+    uses: ./.github/workflows/belt-artwork-critical.yml
+  footwear:
+    needs: select
+    if: needs.select.outputs.footwear == 'true'
+    uses: ./.github/workflows/footwear-critical.yml

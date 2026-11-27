@@ -5,6 +5,11 @@ on:
       - 'src/**'
       - 'tests/door-operating-modes.test.mjs'
       - '.github/workflows/door-operating-modes.yml'
+# Isolate each PR from manual acceptance and cancel obsolete revisions.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   door-modes:
     runs-on: ubuntu-latest

@@ -1,15 +1,22 @@
 name: V16 fracture debris
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/breach-fracture-record.ts'
       - 'src/breach-reactive-cover.ts'
       - 'src/rendering/breach-fracture-debris.ts'
       - 'src/breach-3d.ts'
       - 'tests/vfx-v16-fracture-debris.test.mjs'
+      - '.github/workflows/vfx-v16-fracture.yml'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: vfx-v16-fracture-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   fracture:
     runs-on: ubuntu-24.04

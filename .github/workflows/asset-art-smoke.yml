@@ -1,6 +1,8 @@
 name: Asset silhouette smoke
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/worldgen/asset-character-visuals.ts'
       - 'src/worldgen/fixture-visuals.ts'
@@ -27,7 +29,6 @@ on:
       - 'tests/public-street-layout-20261108.test.mjs'
       - 'tests/outdoor-service-seating-20261108.test.mjs'
       - 'src/worldgen/landscape-edge-program.ts'
-      - 'src/worldgen/outdoor-fixture-policy.ts'
       - 'tests/exterior-realism-stage1-20261108.test.mjs'
       - 'src/breach-3d.ts'
       - 'src/worldgen/road-service-fixtures.ts'
@@ -35,7 +36,9 @@ on:
       - 'tests/map-29-architecture-hardware.test.mjs'
       - 'src/worldgen/detailed-fixture-visuals.ts'
       - 'src/worldgen/asset-review.ts'
-      - 'tests/map-22-asset-audit.test.mjs tests/map-30-asset-condition.test.mjs tests/map-32-full-asset-render-smoke.test.mjs'
+      - 'tests/map-22-asset-audit.test.mjs'
+      - 'tests/map-30-asset-condition.test.mjs'
+      - 'tests/map-32-full-asset-render-smoke.test.mjs'
       - 'src/asset-lab-main.ts'
       - 'tests/map-21-asset-character-pass.test.mjs'
       - '.github/workflows/asset-art-smoke.yml'
@@ -43,7 +46,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: asset-art-smoke-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   geometry:

@@ -1,6 +1,8 @@
 name: V13 blood and pooling
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/breach-blood-evidence.ts'
       - 'src/breach-impact-evidence-buffer.ts'
@@ -14,6 +16,11 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+# Isolate each PR from manual acceptance and cancel obsolete revisions.
+concurrency:
+  group: vfx-v13-blood-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   blood:
     runs-on: ubuntu-24.04

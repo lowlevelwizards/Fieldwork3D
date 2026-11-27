@@ -1,0 +1,84 @@
+name: Fieldwork operator and loadout acceptance
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: operator-loadout-router-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  select:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      operator-armor-rig-visual: ${{ steps.route.outputs.operator-armor-rig-visual }}
+      operator-pose-workbench-smoke: ${{ steps.route.outputs.operator-pose-workbench-smoke }}
+      operator-studio-smoke: ${{ steps.route.outputs.operator-studio-smoke }}
+      loadout-l214-inspection-critical: ${{ steps.route.outputs.loadout-l214-inspection-critical }}
+      loadout-ux-r1-critical: ${{ steps.route.outputs.loadout-ux-r1-critical }}
+      loadout-bench-r1-critical: ${{ steps.route.outputs.loadout-bench-r1-critical }}
+      operator-animation-integrity: ${{ steps.route.outputs.operator-animation-integrity }}
+      animation-a2-motion: ${{ steps.route.outputs.animation-a2-motion }}
+      operator-motion-gate: ${{ steps.route.outputs.operator-motion-gate }}
+      secondary-carry-critical: ${{ steps.route.outputs.secondary-carry-critical }}
+      weapon-retention-critical: ${{ steps.route.outputs.weapon-retention-critical }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify operator routing
+        run: node --test tests/ci-operator-loadout-routing.test.mjs
+      - id: route
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/verification/ci-operator-loadout-routing.mjs
+  operator-armor-rig-visual:
+    needs: select
+    if: needs.select.outputs.operator-armor-rig-visual == 'true'
+    uses: ./.github/workflows/operator-armor-rig-visual.yml
+  operator-pose-workbench-smoke:
+    needs: select
+    if: needs.select.outputs.operator-pose-workbench-smoke == 'true'
+    uses: ./.github/workflows/operator-pose-workbench-smoke.yml
+  operator-studio-smoke:
+    needs: select
+    if: needs.select.outputs.operator-studio-smoke == 'true'
+    uses: ./.github/workflows/operator-studio-smoke.yml
+  loadout-l214-inspection-critical:
+    needs: select
+    if: needs.select.outputs.loadout-l214-inspection-critical == 'true'
+    uses: ./.github/workflows/loadout-l214-inspection-critical.yml
+  loadout-ux-r1-critical:
+    needs: select
+    if: needs.select.outputs.loadout-ux-r1-critical == 'true'
+    uses: ./.github/workflows/loadout-ux-r1-critical.yml
+  loadout-bench-r1-critical:
+    needs: select
+    if: needs.select.outputs.loadout-bench-r1-critical == 'true'
+    uses: ./.github/workflows/loadout-bench-r1-critical.yml
+  operator-animation-integrity:
+    needs: select
+    if: needs.select.outputs.operator-animation-integrity == 'true'
+    uses: ./.github/workflows/operator-animation-integrity.yml
+  animation-a2-motion:
+    needs: select
+    if: needs.select.outputs.animation-a2-motion == 'true'
+    uses: ./.github/workflows/animation-a2-motion.yml
+  operator-motion-gate:
+    needs: select
+    if: needs.select.outputs.operator-motion-gate == 'true'
+    uses: ./.github/workflows/operator-motion-gate.yml
+  secondary-carry-critical:
+    needs: select
+    if: needs.select.outputs.secondary-carry-critical == 'true'
+    uses: ./.github/workflows/secondary-carry-critical.yml
+  weapon-retention-critical:
+    needs: select
+    if: needs.select.outputs.weapon-retention-critical == 'true'
+    uses: ./.github/workflows/weapon-retention-critical.yml

@@ -1,8 +1,9 @@
 name: Operator motion critical gate
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
-      # Only animation/motion systems, not UI-only src/breach-main.ts changes.
       - 'src/breach-gait.ts'
       - 'src/breach-footsteps.ts'
       - 'src/breach-ik.ts'
@@ -21,7 +22,7 @@ on:
       - '.github/workflows/operator-motion-gate.yml'
   workflow_dispatch:
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: operator-motion-gate-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   motion:
