@@ -2526,13 +2526,23 @@ if(poseFlags.get('packArtCapture')==='1')Object.assign(window,{
    view==='side'?new THREE.Vector3(70,2,0):
    view==='front'?new THREE.Vector3(0,2,-70):new THREE.Vector3(48,14,56);
   relative.applyAxisAngle(new THREE.Vector3(0,1,0),(rig.legacyYaw??0)-LEGACY_FRAME_YAW);
-  const span=Math.max(22,size.y+7,size.x+size.z+6);
+  const silhouette=view==='silhouette';
+  if(silhouette)relative.set(0,2,70).applyAxisAngle(new THREE.Vector3(0,1,0),(rig.legacyYaw??0)-LEGACY_FRAME_YAW);
+  const span=silhouette?29:Math.max(22,size.y+7,size.x+size.z+6);
   const c=new THREE.OrthographicCamera(-span/2,span/2,span/2,-span/2,.1,600);
   c.position.copy(target).add(relative);c.lookAt(target);
   const prior=renderer.getSize(new THREE.Vector2()),ratio=renderer.getPixelRatio();
   try{
    renderer.setPixelRatio(1);renderer.setSize(1000,1000,false);
-   renderer.render(scene,c);
+   if(silhouette){
+    const study=new THREE.Scene();study.background=new THREE.Color(0xc4c5bd);
+    const copy=rig.visualKit.packPreview.active.root.clone(true);
+    copy.matrixAutoUpdate=false;copy.matrix.copy(rig.visualKit.packPreview.active.root.matrixWorld);
+    study.add(copy);
+    const matte=new THREE.MeshBasicMaterial({color:0x455044});
+    study.overrideMaterial=matte;
+    try{renderer.render(study,c);}finally{matte.dispose();}
+   }else renderer.render(scene,c);
    return canvas.toDataURL('image/png');
   }finally{
    renderer.setPixelRatio(ratio);renderer.setSize(prior.x,prior.y,false);renderer.render(scene,camera);
