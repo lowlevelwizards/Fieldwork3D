@@ -1,6 +1,8 @@
 name: V12 surface ownership
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/breach-impact-surface.ts'
       - 'src/breach-ballistic-resolution.ts'
@@ -16,7 +18,7 @@ permissions:
   contents: read
 # Isolate each PR from manual acceptance and cancel obsolete revisions.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  group: vfx-v12-surface-ownership-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

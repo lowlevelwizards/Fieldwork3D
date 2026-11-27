@@ -1,0 +1,79 @@
+name: Fieldwork visual and world acceptance
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: visual-world-router-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  select:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      vfx-v11-production: ${{ steps.route.outputs.vfx-v11-production }}
+      vfx-v12-surface-ownership: ${{ steps.route.outputs.vfx-v12-surface-ownership }}
+      vfx-v13-blood: ${{ steps.route.outputs.vfx-v13-blood }}
+      vfx-v14-material: ${{ steps.route.outputs.vfx-v14-material }}
+      vfx-v15-atmosphere: ${{ steps.route.outputs.vfx-v15-atmosphere }}
+      vfx-v16-fracture: ${{ steps.route.outputs.vfx-v16-fracture }}
+      vfx-v21-visual-cohesion: ${{ steps.route.outputs.vfx-v21-visual-cohesion }}
+      v19-visual-disclosure: ${{ steps.route.outputs.v19-visual-disclosure }}
+      veh-vehicle: ${{ steps.route.outputs.veh-vehicle }}
+      asset-art-smoke: ${{ steps.route.outputs.asset-art-smoke }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify visual routing
+        run: node --test tests/ci-visual-world-routing.test.mjs
+      - id: route
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/verification/ci-visual-world-routing.mjs
+  vfx-v11-production:
+    needs: select
+    if: needs.select.outputs.vfx-v11-production == 'true'
+    uses: ./.github/workflows/vfx-v11-production.yml
+  vfx-v12-surface-ownership:
+    needs: select
+    if: needs.select.outputs.vfx-v12-surface-ownership == 'true'
+    uses: ./.github/workflows/vfx-v12-surface-ownership.yml
+  vfx-v13-blood:
+    needs: select
+    if: needs.select.outputs.vfx-v13-blood == 'true'
+    uses: ./.github/workflows/vfx-v13-blood.yml
+  vfx-v14-material:
+    needs: select
+    if: needs.select.outputs.vfx-v14-material == 'true'
+    uses: ./.github/workflows/vfx-v14-material.yml
+  vfx-v15-atmosphere:
+    needs: select
+    if: needs.select.outputs.vfx-v15-atmosphere == 'true'
+    uses: ./.github/workflows/vfx-v15-atmosphere.yml
+  vfx-v16-fracture:
+    needs: select
+    if: needs.select.outputs.vfx-v16-fracture == 'true'
+    uses: ./.github/workflows/vfx-v16-fracture.yml
+  vfx-v21-visual-cohesion:
+    needs: select
+    if: needs.select.outputs.vfx-v21-visual-cohesion == 'true'
+    uses: ./.github/workflows/vfx-v21-visual-cohesion.yml
+  v19-visual-disclosure:
+    needs: select
+    if: needs.select.outputs.v19-visual-disclosure == 'true'
+    uses: ./.github/workflows/v19-visual-disclosure.yml
+  veh-vehicle:
+    needs: select
+    if: needs.select.outputs.veh-vehicle == 'true'
+    uses: ./.github/workflows/veh-vehicle.yml
+  asset-art-smoke:
+    needs: select
+    if: needs.select.outputs.asset-art-smoke == 'true'
+    uses: ./.github/workflows/asset-art-smoke.yml
