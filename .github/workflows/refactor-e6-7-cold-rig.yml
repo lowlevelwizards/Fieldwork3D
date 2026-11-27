@@ -18,13 +18,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          ref: b2706847eaef1f4a6a67bc600a02c49c5ff892d7
+          ref: bbe8efede791767d7b9cc74082ac20f41fa11a9c
           path: baseline
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - name: Compare same real rig workload across frozen baseline and optimized branch
+      - name: Compare pre-footwear baseline with strict non-footwear parity and bounded artwork
         run: |
           mkdir -p baseline/scripts/verification artifacts/refactor-e6-7
           cp scripts/verification/e6-7-cold-rig-bench.mjs baseline/scripts/verification/e6-7-cold-rig-bench.mjs

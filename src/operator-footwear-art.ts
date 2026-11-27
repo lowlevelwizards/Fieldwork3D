@@ -52,7 +52,7 @@ export function createFootwearVisuals(legs:readonly {lower:THREE.Mesh;shoe?:THRE
      const h=s.shaft/LEG_LOWER_LENGTH;
      box(shaft,s.shaftWidth,h+.045,s.shaftWidth,.5-h/2+.012,upper!,'shaft');
     }
-    const h=(FOOTWEAR[id].height==='mid'?3.48:3.05)/LEG_LOWER_LENGTH;
+    const h=3.48/LEG_LOWER_LENGTH;
     if(FOOTWEAR[id].height!=='high')model.sock=box(shaft,3.45,h,3.55,.5-h/2,sockMaterial,'sock');
    }
    }};

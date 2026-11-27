@@ -16,6 +16,7 @@ test('five authored footwear models and bare feet have exclusive visibility, fin
   assert.equal(r.visualKit.footwear.active,id);
   for(const v of r.visualKit.footwear.models){
    assert.deepEqual(FOOTWEAR_IDS.filter(key=>v[key].foot.visible),[id]);
+   assert.ok(FOOTWEAR_IDS.filter(key=>key!==id).every(key=>!v[key].foot.children.length&&!v[key].shaft.children.length),'inactive footwear is never allocated');
    const signature=[];
    v[id].foot.traverse(o=>{if(o.isMesh){o.geometry.computeBoundingBox();const b=o.geometry.boundingBox;assert.ok(b.min.toArray().every(Number.isFinite));assert.ok(b.max.toArray().every(Number.isFinite));signature.push(o.geometry.attributes.position.array.join(','));}});
    assert.ok(signature.length);

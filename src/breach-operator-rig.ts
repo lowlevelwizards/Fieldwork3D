@@ -394,6 +394,8 @@ export function createOperatorRig(id:string,side:'blue'|'red',
         const m=obj.material as THREE.Material;m.dispose();
       }});
       for(const geo of geometries)geo.dispose();
+       // Inactive footwear materials may not be attached to any mesh.
+       for(const material of visualKit.footwear.materials)material.dispose();
       weaponLensMaterial.dispose();}};
   return rig;
 }
