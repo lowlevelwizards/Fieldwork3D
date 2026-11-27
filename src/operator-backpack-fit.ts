@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import {PACK_PROFILES,type PackStyle} from './operator-backpack-catalog.ts';
 import {equipmentExterior} from './operator-equipment-exterior.ts';
-import {packWebbing,packBuckle,finishPackArtwork,type PackPoint,type PackMaterials} from './operator-backpack-geometry.ts';
+import {packRibbon,packBuckle,finishPackArtwork,PACK_DETAIL,type PackPoint,type PackMaterials} from './operator-backpack-geometry.ts';
 export const PACK_PIVOT:PackPoint=[-8.2,0,0];
 export type PackMountSpec=Readonly<{
  size:PackPoint;centerY:number;bodyFaceX:number;
@@ -54,7 +54,7 @@ export function fitPack(style:PackStyle,armor:string,rig:string,top:string,
   upperSeats.push(upper);lowerSeats.push(lower);
   if(profile.harness==='direct')continue;
   const padded=profile.harness!=='light';
-  const width=padded?1.12:.72,thickness=padded?.28:.15;
+  const width=padded?PACK_DETAIL.paddedStrap:PACK_DETAIL.lightStrap,thickness=padded?.32:.18;
   const shoulder=fit.shoulder(sign);
   const crownZ=sign*Math.min(Math.abs(shoulder[2]),Math.max(Math.abs(z),3.5));
   const crownY=shoulder[1]+thickness*.5+.08;
@@ -73,7 +73,7 @@ export function fitPack(style:PackStyle,armor:string,rig:string,top:string,
   add(rearCrown,frontCrown,point(0,1,0));
   add(frontCrown,front,point(1,1,0));
   add(front,buckle,point(1,0,0));
-  add(buckle,flank,point(1,0,sign),width*.65);
+  add(buckle,flank,point(1,0,sign),width*.7);
   add(flank,lower,point(-1,0,sign),width*.65);
   buckles.push(buckle);
  }
@@ -84,14 +84,16 @@ export function fitPack(style:PackStyle,armor:string,rig:string,top:string,
 export function buildPackHarness(fit:PackFit,m:PackMaterials){
  const root=new THREE.Group();root.name='authored-pack-harness-'+fit.style;
  if(!fit.compatible)return root;
- for(const [i,s] of fit.spans.entries()){
-  const dir=new THREE.Vector3(...s.b).sub(new THREE.Vector3(...s.a)).normalize();
-  let normal=s.normal;
-  if(Math.abs(dir.dot(new THREE.Vector3(...normal).normalize()))>.999)
-   normal=Math.abs(dir.y)<.9?[0,1,0]:[1,0,0];
-  packWebbing(root,'strap-'+i,m.trim,s.a,s.b,s.width,s.thickness,normal);
+ // Each side is one continuous folded webbing ribbon, without internal end caps.
+ let chain:HarnessSpan[]=[];
+ for(const span of fit.spans){
+  if(chain.length&&chain[chain.length-1].b!==span.a){
+   packRibbon(root,'shoulder-webbing',m.trim,chain);chain=[];
+  }
+  chain.push(span);
  }
- for(const [i,p] of fit.buckles.entries())packBuckle(root,'buckle-'+i,m,p,.85);
+ if(chain.length)packRibbon(root,'shoulder-webbing',m.trim,chain);
+ for(const [i,p] of fit.buckles.entries())packBuckle(root,'buckle-'+i,m,p,fit.style==='hydration'?.9:1.25);
  return finishPackArtwork(root);
 }
 /** Root metadata for BP4+ authors: authored model origin remains pack-local,
