@@ -20,6 +20,7 @@ import type {OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import * as THREE from 'three';
 import {readSlingKind} from './breach-weapon-retention.ts';
+import {sampleSecondaryRetention} from './breach-secondary-retention.ts';
 import {oneHandRetentionWeight} from './breach-weapon-retention-actions.ts';
 import {sampleRetentionTransition} from './breach-weapon-retention-transition.ts';
 import {solveOperatorDirectSlingPose} from './breach-operator-sling-pose.ts';
@@ -822,9 +823,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }
   }
   r.reachRequest=null;
-  // S6.1: prevent simultaneous shouldered primary and held sidearm.
+  const slingKind=readSlingKind(config?.slots.sling);
+  const measuredSeats=r.weaponBody.userData.retentionSockets;
+  const hasSuspension=slingKind!=='none'&&!!measuredSeats?.supported.includes(slingKind);
+  const switchPose=sampleSecondaryRetention(p.secondarySwitch?.fraction??0,hasSuspension);
+  const switchingSlung=hasSuspension&&switchPose.retention>0;
+  // Retained primary remains visible while the sidearm is drawn.
   heldWeapon.visible=((!p.down&&!p.surrender)||downProgress<.30)&&
-    (p.secondarySwitch?.fraction??0)<.50;
+    (switchingSlung||(p.secondarySwitch?.fraction??0)<.50);
   droppedWeapon.visible=(p.down||p.surrender)&&downProgress>=.30&&
     !p.worldWeaponReleased;
   if(droppedWeapon.visible&&r.droppedWeaponBody.children.length===0){
@@ -1101,13 +1107,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const liveHandsFree=!!p.retentionTransition&&p.retentionTransition.mode!==null;
   const handsFreeAction=liveHandsFree&&p.retentionTransition!.weight>=1&&
     (treatmentActive||doorActive||equipmentActive);
-  const retentionMode=liveOneHand?'held-one':p.retentionTransition?
+  const retentionMode=switchingSlung?'front-slung':liveOneHand?'held-one':p.retentionTransition?
     p.retentionTransition.mode:p.retentionPreview;
-  const retentionWeight=liveOneHand?oneHandWeight:p.retentionTransition?.weight??1;
+  const retentionWeight=switchingSlung?switchPose.retention:liveOneHand?oneHandWeight:p.retentionTransition?.weight??1;
   const retentionAssembly=retentionMode&&config?resolveWeaponAssembly(config):null;
   const retention=retentionMode&&retentionWeight>0&&!p.down&&!p.surrender&&!p.unarmedPreview&&
-    !p.firing&&!reloadActive&&(liveOneHand||liveHandsFree||!p.aiming&&!doorActive&&!throwActive&&!treatmentActive&&!equipmentActive)&&
-    (p.secondarySwitch?.fraction??0)===0?
+    (switchingSlung||!p.firing&&!reloadActive&&(liveOneHand||liveHandsFree||!p.aiming&&!doorActive&&!throwActive&&!treatmentActive&&!equipmentActive)&&
+    (p.secondarySwitch?.fraction??0)===0)?
     sampleRetentionTransition({mode:retentionMode,
       sling:readSlingKind(config?.slots.sling),scale:heldWeapon.scale,
       heldPosition:heldWeapon.position,heldQuaternion:heldWeapon.quaternion,
@@ -1129,11 +1135,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // are fixed-step facts; this pure pose is never a second combat state.
   // Keep dedicated door/medical/flash gestures in charge when hands are busy.
   const secondaryTarget=p.equipment?.secondary?.weapon&&
-    (p.secondarySwitch?.fraction??0)>.08&&
+    switchPose.pistol>.08&&
     !p.unarmedPreview&&!p.down&&!p.surrender&&!treatmentActive&&
     !equipmentActive&&!doorActive&&!throwActive?
     secondaryUpperBodyTargets({
-      fraction:p.secondarySwitch?.fraction??0,
+      fraction:switchPose.pistol,
       aim:p.aimBlend??(p.aiming?1:0),moving:physicalSpeed>3,
       obstructed:!!p.obstruction||!!p.clearanceBlocked,
       reloadProgress:p.secondaryReload?
@@ -1146,7 +1152,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }):null;
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
-    if(retention&&(!liveOneHand||i===1)&&!handsFreeAction){
+    if(retention&&(!liveOneHand||i===1)&&!handsFreeAction&&(!switchingSlung||switchPose.pistol<=.08)){
       const shoulder=shoulderFor(i),requested=i===0?retention.left:retention.right;
       const guide=P(3,-9,sign*2);
       const solved=solveTwoBone(shoulder,requested,10,10,guide,ARM_LIMITS);
@@ -1159,8 +1165,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     if(secondaryTarget&&secondaryTarget.weight>0){
       const shoulder=shoulderFor(i);
       const actualSource=coupled?.arms??coordinatedDynamic?.arms;
-      const source=actualSource?actualSource[i].effector:
-        i===0?fit.support:fit.primary;
+      const source=switchingSlung&&retention?(i===0?retention.left:retention.right):
+        actualSource?actualSource[i].effector:i===0?fit.support:fit.primary;
       const target=i===0?secondaryTarget.support:secondaryTarget.firing;
       const requested=source.clone().lerp(P(target.x,target.y,target.z),
         secondaryTarget.weight);
@@ -1507,7 +1513,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // S6.1: one 3D Glock follows the finished firing wrist, not uncommitted IK.
   // The fixed-step fraction also gives deterministic replay and reversal.
   presentSecondaryDraw(r.hip,r.arms[1].hand,p.equipment?.secondary,
-    p.secondarySwitch?.fraction??0,!p.down&&!p.surrender,
+    switchPose.pistol,!p.down&&!p.surrender,
     p.shotHeading??p.heading,p.labPistolPitch??0,p.labPistolScale,
     p.labPistolContacts?.primaryFromPivot);
   presentSecondaryReload(r.hip,r.arms[0].hand,p.equipment?.secondary,
