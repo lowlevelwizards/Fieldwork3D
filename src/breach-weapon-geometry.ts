@@ -7,6 +7,7 @@ import type {WeaponId} from './breach-combat.ts';
 import {type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {readWeaponFamilyBuild,initialWeaponFamilyBuild,defaultCatalogReference} from './equipment-weapon-families.ts';
 import {buildModularWeaponSilhouette} from './breach-modular-weapon-geometry.ts';
+import type {WeaponRetentionSockets} from './weapons/geometry/weapon-retention-sockets.ts';
 import {measureWeaponRetentionSockets} from './weapons/geometry/weapon-retention-visual-sockets.ts';
 import {poseConfiguredStock} from './weapon-stock-geometry.ts';
 import {measureVisibleStockContact}
@@ -21,6 +22,7 @@ import {compileValidatedFactoryRigidBody}
 export type WeaponGeometryOptions=Readonly<{
  rigidCompilation?:'validated-factory'|'disabled'
 }>;
+const retentionCache=new WeakMap<WeaponConfiguration,WeaponRetentionSockets|null>();
 export function buildWeaponSilhouette(id:WeaponId,
  steel:THREE.Material,dark:THREE.Material,
  config?:WeaponConfiguration,
@@ -45,7 +47,9 @@ export function buildWeaponSilhouette(id:WeaponId,
   // submeshes are subsequently baked into larger vertex buffers.
   const stockContact=config?measureVisibleStockContact(root,config):null;
   // Preserve candidate seats before rigid compilation loses part names.
-  root.userData.retentionSockets=measureWeaponRetentionSockets(root);
+  const seats=measureWeaponRetentionSockets(root);
+  root.userData.retentionSockets=seats;
+  if(config?.weapon===id)retentionCache.set(config,seats);
   if(config?.weapon===id&&config.build&&
    options.rigidCompilation!=='disabled'&&!config.stockPosition){
    const report=compileValidatedFactoryRigidBody(root,familyBuild);
@@ -55,6 +59,13 @@ export function buildWeaponSilhouette(id:WeaponId,
   return root;
  }
  throw Error('Missing authored weapon reference: '+fallback);
+}
+/** Accessory-only callers use the same measured silhouette seats. */
+export function retentionSocketsForConfiguration(config:WeaponConfiguration,
+ steel:THREE.Material,dark:THREE.Material):WeaponRetentionSockets|null{
+ if(retentionCache.has(config))return retentionCache.get(config)??null;
+ const body=buildWeaponSilhouette(config.weapon,steel,dark,config,{rigidCompilation:'disabled'});
+ try{return retentionCache.get(config)??null;}finally{clearWeaponSilhouette(body);}
 }
 /** Release per-build geometry AND instance buffers when a weapon changes.
  * Materials are shared registry assets, never owned by the silhouette.

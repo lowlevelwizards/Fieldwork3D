@@ -69,3 +69,15 @@ test('WR2.2 production catalog supplies finite candidate anchors for installed s
  }finally{material.dispose();}
  assert.deepEqual(failures,[]);
 });
+
+test('WR2.3 measured seat lands on visible surface rather than an empty envelope corner',()=>{
+ const root=new THREE.Group(),material=new THREE.MeshBasicMaterial();
+ const add=(name,x,y,z)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(4,2,1),material);
+  m.name=name;m.position.set(x,y,z);root.add(m);return m;};
+ add('family-receiver-main',0,0,0);add('family-handguard-main',6,0,0);
+ add('family-handguard-rail',6,1.6,1);
+ const a=measureWeaponRetentionSockets(root);
+ assert.ok(a?.front);
+ assert.ok(a.front.z===.5||a.front.z===1.5);
+ root.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose()});material.dispose();
+});

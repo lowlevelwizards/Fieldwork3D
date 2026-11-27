@@ -5,3 +5,5 @@ Remaining WR2: connect actual silhouette bounds, audit every preset and stock po
 WR2.1 captures root-local candidate metadata before rigid compilation, including nested stock transforms. It does not yet drive visible straps or mounts. The previous remaining checklist still applies to artwork validation.
 
 WR2.2 transfers candidate metadata to the existing live held/drop rig groups and adds a production-catalog regression over all references and alternate stock positions. This checks finite candidate points, not exact hardware contact or visual authenticity. No render pose consumes these seats yet.
+
+WR2.3 adds bounded surface ray queries and a shared configuration cache for hardware/strap seats. Missing front surfaces do not invent two-point anchors. Receiver fallback remains a candidate where ray sampling cannot find a surface; manual artwork acceptance is still required.
