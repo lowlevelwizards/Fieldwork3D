@@ -13,6 +13,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
+    timeout-minutes: 35
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -22,6 +24,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package.json') }}
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       # Source and release artifact come from the SAME checked-out main SHA.
@@ -56,6 +62,15 @@ jobs:
           test -s dist/breach-visual-lab.html
           test -s dist/vehicle-lab.html
           test -s dist/fieldwork-build.json
+      - name: Refuse to publish a superseded main revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current="$(gh api "repos/${GITHUB_REPOSITORY}/branches/main" --jq '.commit.sha')"
+          if [[ "$current" != "$GITHUB_SHA" ]]; then
+            echo "Main advanced to $current; refusing to publish stale $GITHUB_SHA" >&2
+            exit 1
+          fi
       - uses: actions/configure-pages@v5
       # Rerunning a failed Pages job must not leave multiple identically
       # named github-pages artifacts within a single workflow run.

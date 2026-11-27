@@ -1,3 +1,6 @@
+import {issuedPackStyle} from './operator-backpack-catalog.ts';
+import {rearCarrierMount} from './operator-equipment-assembly.ts';
+import {resolvedWardrobe,setWardrobeStyle} from './operator-wardrobe-data.ts';
 import {quoteUnifiedPreparation,quoteSavedSquadCarryMigration} from './equipment-unified-preparation.ts';
 /** LW-15: versioned, bounded individual operator records.
  * Save state belongs to operations, never to the 60Hz world simulation.
@@ -213,8 +216,10 @@ export function equipRoster(roster:RosterState,id:string,weapon:WeaponId):Roster
 export function equipRosterGear(roster:RosterState,id:string,slot:LoadoutSlot,
  itemId:string,carryMode?:'unified'):RosterState{
  if(slot==='primary')return roster;
+ if(slot==='backpack')return equipRosterCarryGear(roster,id,slot,itemId,carryMode);
  const member=roster.members.find(m=>m.id===id);
  if(!member)return roster;
+ if(slot==='armor'&&itemId!=='armor-carrier'&&member.loadout.slots.backpack==='backpack-panel')return roster;
  if(carryMode==='unified'){
   const q=quoteUnifiedPreparation(member,{kind:'gear',slot,id:itemId});
   if(!q.ok)return roster;
@@ -232,10 +237,11 @@ export function equipRosterCarryGear(roster:RosterState,id:string,
  slot:CarryGearSlot,itemId:string,carryMode?:'unified'):RosterState{
  const member=roster.members.find(m=>m.id===id);
  if(!member)return roster;
+ if(slot==='backpack'&&itemId==='backpack-panel'&&!rearCarrierMount(resolvedWardrobe(member.wardrobe,member.loadout).armorStyle))return roster;
  const quote=carryMode==='unified'?quoteUnifiedPreparation(member,{kind:'gear',slot,id:itemId}):quoteCarryGearChange(member.loadout,member.magazines,slot,itemId);
  if(!quote.ok)return roster;
  return {...roster,members:roster.members.map(m=>m.id===id?
-  {...m,loadout:quote.kit,magazines:quote.magazines}:m)};
+  {...m,loadout:quote.kit,magazines:quote.magazines,wardrobe:slot==='backpack'?setWardrobeStyle(m.wardrobe,'packStyle',issuedPackStyle(itemId)):m.wardrobe}:m)};
 }
 /** Restore the exact physical carry snapshot only if it is still current.
  * The caller may show an Undo button, but this owner has final authority.
@@ -371,6 +377,8 @@ export function moveRosterMagazine(roster:RosterState,id:string,
 export function setRosterWardrobe(roster:RosterState,id:string,raw:unknown):RosterState{
  if(!roster.members.some(m=>m.id===id))return roster;
  const wardrobe=readWardrobe(raw);
+ const member=roster.members.find(m=>m.id===id)!;
+ if(member.loadout.slots.backpack==='backpack-panel'&&!rearCarrierMount(resolvedWardrobe(wardrobe,member.loadout).armorStyle))return roster;
  return {...roster,members:roster.members.map(m=>m.id===id?{...m,wardrobe}:m)};
 }
 

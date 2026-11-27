@@ -1,6 +1,8 @@
 name: Operator animation integrity
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/breach-operator-rig.ts'
       - 'src/breach-operator-animation-*.ts'
@@ -35,11 +37,12 @@ on:
       - '.github/workflows/operator-animation-integrity.yml'
   workflow_dispatch:
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: operator-animation-integrity-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   animation:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

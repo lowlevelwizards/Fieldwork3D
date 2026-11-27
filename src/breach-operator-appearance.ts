@@ -1,3 +1,5 @@
+import {authoredCargoSocket} from './operator-backpack-sockets.ts';
+import {packCargoMass,packSuspensionScale} from './operator-backpack-motion.ts';
 import {beltStyleForEquipment,beltSolidChoices} from './operator-belt-profile.ts';
 import {syncLiveUnifiedCarry} from './operator-unified-carry-live.ts';
 import {resolveFootwearHem} from './operator-footwear-catalog.ts';
@@ -70,13 +72,13 @@ function carryLayoutKey(state:OperatorPose['unifiedCarry']){
  carryLayoutKeys.set(state.manifest,key);return key;
 }
 const appearanceState=new WeakMap<OperatorRig,{
- key:string;downed:boolean;outfit:ReturnType<typeof resolvedWardrobe>
+ key:string;downed:boolean;outfit:ReturnType<typeof resolvedWardrobe>;primaryMass?:number
 }>();
 
 /** Static appearance inputs can be baked from saved Studio/roster data
  * before the first live animation pose. No motion/IK fields are required. */
 export type OperatorAppearanceInputs=Pick<OperatorPose,
- 'appearanceSeed'|'equipment'|'wardrobe'|'magazineCarryLocations'|
+ 'appearanceSeed'|'equipment'|'wardrobe'|'magazineCarryLocations'|'packPrimaryMagazineMass'|
  'medicalCarryLocation'|'utilityCarryLocation'|'faceStyle'|
  'flashCharges'|'wedgeRemaining'|'restraintRemaining'|'treatmentActive'|
  'weaponConfiguration'|'nvgDeployed'|'down'|'surrender'|'unifiedCarry'>;
@@ -95,7 +97,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     p.flashCharges??null,p.wedgeRemaining??null,
     p.restraintRemaining??null,p.treatmentActive??null,
     p.weaponConfiguration?.build?.parts.magazine??null,
-    p.nvgDeployed??false,!!p.unifiedCarry,carryLayoutKey(p.unifiedCarry),r.root.userData.fieldworkAuthoredPackPreview===true
+    p.nvgDeployed??false,!!r.root.userData.fieldworkInspectPackCargo,
+    ...(p.unifiedCarry?[true,carryLayoutKey(p.unifiedCarry)]:[])
   ]);
   const fingerprintMs=traceAppearance?performance.now()-fingerprintStart:0;
   r.root.userData.fieldworkLightingAppearanceKey=appearanceKey;
@@ -119,9 +122,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   if(appearanceChanged){
   // Passive, actual-pelvis-mounted S4 carry. An unissued or unequipped
   // secondary does not materialize. S5 will take over drawing authority.
-  syncHipSecondaryVisual(r.hip,p.equipment?.secondary,
-   !!p.equipment&&p.equipment.slots.belt!=='belt-none'&&(!p.unifiedCarry||p.unifiedCarry.manifest.placements.some(q=>q.kind==='sidearm'&&q.waist)),r.chest,r.pack,
-   p.unifiedCarry?.manifest.placements.find(q=>q.kind==='sidearm')?.waist?.socket);
+
   // Stable career-based presentation, never changing physical collision or IK.
   const identity=p.appearanceSeed??0;
   if(identity!==r.appearanceSeed){
@@ -287,10 +288,34 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   const kitStart=traceAppearance?performance.now():0;
   applyOperatorVisualKit(r.visualKit,gear,identity,
     p.magazineCarryLocations,p.faceStyle,visualWardrobe,p.weaponConfiguration,
-    nvgMounted(p),p.nvgDeployed===true,!!p.unifiedCarry||r.root.userData.fieldworkAuthoredPackPreview===true);
-   // Preview-only: legacy pack contents are internal unless BP13 mounts them.
-   if(r.visualKit.packPreview.active){
-    for(const item of [r.medicalPouch,r.utilityTool,r.radioUnit,...r.flashCanisters,...r.wedgeMeshes,...r.cuffMeshes])
+    nvgMounted(p),p.nvgDeployed===true);
+   const packState=r.visualKit.packPreview;
+   const concealPackCargo=!!packState.active&&!r.root.userData.fieldworkInspectPackCargo;
+   r.root.userData.fieldworkConcealPackCargo=concealPackCargo;
+   syncHipSecondaryVisual(r.hip,p.equipment?.secondary,
+    !!p.equipment&&p.equipment.slots.belt!=='belt-none'&&(!p.unifiedCarry||p.unifiedCarry.manifest.placements.some(q=>q.kind==='sidearm'&&q.waist)),r.chest,r.pack,concealPackCargo,
+    p.unifiedCarry?.manifest.placements.find(q=>q.kind==='sidearm')?.waist?.socket);
+   // Closed pack cargo is concealed unless its ledger location and an
+   // explicit requested external socket both match the authored model.
+   if(packState.active&&concealPackCargo){
+    const art=packState.active;
+    const mount=(item:THREE.Mesh,kind:'medical'|'utility',request:string|undefined,id:string)=>{
+     if(item.parent!==r.pack||!item.visible)return;
+     const socket=authoredCargoSocket(art,kind,request,id);
+     if(!socket){item.visible=false;return;}
+     item.geometry.computeBoundingBox();
+     const bounds=item.geometry.boundingBox;
+     const depth=bounds&&!bounds.isEmpty()?bounds.max.z-bounds.min.z:2.3;
+     const half=Number.isFinite(depth)?depth*Math.abs(item.scale.z)*.5:1.15;
+     item.position.set(art.root.position.x+socket.point[0],
+      art.root.position.y+socket.point[1],
+      art.root.position.z+socket.point[2]+socket.normal[2]*(half-.06));
+     item.rotation.z=0;
+    };
+    mount(r.medicalPouch,'medical',p.wardrobe?.mounts?.medical,gear?.medical??'medical-none');
+    mount(r.utilityTool,'utility',p.wardrobe?.mounts?.utility,gear?.utility??'utility-none');
+    mount(r.radioUnit,'utility',p.wardrobe?.mounts?.utility,gear?.utility??'utility-none');
+    for(const item of [...r.flashCanisters,...r.wedgeMeshes,...r.cuffMeshes])
      if(item.parent===r.pack)item.visible=false;
    }
   // An occupied functional holster replaces (never overlays) the wardrobe's
@@ -671,6 +696,13 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     visibleFlashes.length>0,legacySmoke);
   if(gear?.utility==='utility-wedge')r.equipmentDetails.tools['utility-wedge'].visible=false;
   }
+  // Dynamic magazine weight is intentionally outside the static appearance
+  // fingerprint: firing or replaying a round must not rebuild costume meshes.
+  const packState=r.visualKit.packPreview;
+  if(appearanceChanged||previousAppearance?.primaryMass!==p.packPrimaryMagazineMass){
+   packState.motionScale=packSuspensionScale(packState.active?.style??'no-pack',packState.fit?.mode,
+    packCargoMass(p.equipment,p.magazineCarryLocations,p.medicalCarryLocation,p.utilityCarryLocation,p.packPrimaryMagazineMass));
+  }
   // Desaturation changes only at injury/surrender transitions, not each
   // animation frame. Replayed appearance or kit changes refresh the palette.
   const downed=p.down&&!p.surrender;
@@ -685,7 +717,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     previousAppearance.key=appearanceKey;
     previousAppearance.downed=downed;
     previousAppearance.outfit=clothing;
-  }else appearanceState.set(r,{key:appearanceKey,downed,outfit:clothing});
+    previousAppearance.primaryMass=p.packPrimaryMagazineMass;
+  }else appearanceState.set(r,{key:appearanceKey,downed,outfit:clothing,primaryMass:p.packPrimaryMagazineMass});
 
  syncLiveUnifiedCarry(r,p,clothing.rigStyle,appearanceChanged);
  return clothing;

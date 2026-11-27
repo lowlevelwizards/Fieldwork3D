@@ -1,3 +1,6 @@
+import {issuedPackStyle} from './operator-backpack-catalog.ts';
+import {rearCarrierMount} from './operator-equipment-assembly.ts';
+import {resolvedWardrobe,setWardrobeStyle} from './operator-wardrobe-data.ts';
 import {quoteUnifiedPreparation,quoteUnifiedFieldCopy} from './equipment-unified-preparation.ts';
 /** Campaign domain. Nothing here advances in the render/simulation loop. */
 import type {ReportQuality} from './briefing/briefing-types.ts';
@@ -987,8 +990,10 @@ export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
  itemId:string,carryMode?:'unified'):CampaignState{
  if(c.activeContractId||slot==='primary'||
   !mayChooseCampaignContent(c,'equipment',itemId,slot))return c;
+ if(slot==='backpack')return equipCampaignCarryGear(c,id,slot,itemId);
  const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!o)return c;
+ if(slot==='armor'&&itemId!=='armor-carrier'&&o.loadout.slots.backpack==='backpack-panel')return c;
  const fit=carryMode==='unified'?quoteUnifiedPreparation(o,{kind:'gear',slot,id:itemId}):undefined;
  if(fit&&!fit.ok)return c;
  const next=fit?.ok?fit.kit:setEquipmentChoice(o.loadout,slot,itemId);
@@ -1011,10 +1016,11 @@ export function equipCampaignCarryGear(c:CampaignState,id:string,
  if(c.activeContractId||!mayChooseCampaignContent(c,'equipment',itemId,slot))return c;
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!member)return c;
+ if(slot==='backpack'&&itemId==='backpack-panel'&&!rearCarrierMount(resolvedWardrobe(member.wardrobe,member.loadout).armorStyle))return c;
  const quote=carryMode==='unified'?quoteUnifiedPreparation(member,{kind:'gear',slot,id:itemId}):quoteCarryGearChange(member.loadout,member.magazines,slot,itemId);
  if(!quote.ok)return c;
  return {...c,operators:c.operators.map(o=>o.id===id?
-  {...o,loadout:quote.kit,magazines:quote.magazines}:o)};
+  {...o,loadout:quote.kit,magazines:quote.magazines,wardrobe:slot==='backpack'?setWardrobeStyle(o.wardrobe??initialWardrobe(),'packStyle',issuedPackStyle(itemId)):o.wardrobe}:o)};
 }
 /** Reapply a previous physical carry snapshot, atomically, only if this
  * Campaign's current operator kit still matches the recorded transaction.
@@ -1349,6 +1355,7 @@ export function setCampaignWardrobe(c:CampaignState,id:string,
   x.status!=='retired'&&x.status!=='lost');
  if(!member)return c;
  const wardrobe=readWardrobe(raw);
+ if(member.loadout.slots.backpack==='backpack-panel'&&!rearCarrierMount(resolvedWardrobe(wardrobe,member.loadout).armorStyle))return c;
  if(isDispatchPilotCampaign(c)&&
   effectiveDispatchSetup(c).equipmentScope!=='global'&&
   !dispatchPilotAppearanceAllowed(member.wardrobe??initialWardrobe(),wardrobe,member.loadout,

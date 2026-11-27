@@ -22,8 +22,7 @@ test('full role and faction wardrobe matrix uses one head, armor and backpack',(
   assert.deepEqual(shown,head==='bare'?[]:[head],recipe.id);
   assert.equal(Number(r.visualKit.softArmor.visible)+
     Number(r.visualKit.plateCarrier.visible),kit.slots.armor==='armor-none'?0:1);
-  assert.equal(Number(r.visualKit.dayPack.visible)+
-    Number(r.visualKit.fieldPack.visible),kit.slots.backpack==='backpack-none'?0:1);
+  assert.equal(Number(!!r.visualKit.packPreview.active?.root.visible),kit.slots.backpack==='backpack-none'?0:1);
   assert.ok(r.feet.every((foot,i)=>foot.upper.geometry===footGeometry[i]));
   assert.ok(r.arms.every((arm,i)=>arm.hand.geometry===handGeometry[i]));
   assert.ok([...r.root.children].every(o=>o.position.toArray().every(Number.isFinite)));

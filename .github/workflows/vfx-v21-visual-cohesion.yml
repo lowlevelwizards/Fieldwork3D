@@ -1,6 +1,8 @@
 name: V21 visual cohesion
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/breach-**'
       - 'src/rendering/breach-**'
@@ -9,6 +11,11 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+# Isolate each PR from manual acceptance and cancel obsolete revisions.
+concurrency:
+  group: vfx-v21-visual-cohesion-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   v21:
     runs-on: ubuntu-24.04

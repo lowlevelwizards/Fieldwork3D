@@ -1,5 +1,5 @@
 import type {PackMountMode} from './operator-equipment-assembly.ts';
-/** Opt-in art preview. Does not change loadout IDs or inventory. */
+/** Canonical backpack visuals shared by gameplay, inspection and Studio. Does not change loadout IDs or inventory. */
 import * as THREE from 'three';
 import {packDetailPalette} from './operator-backpack-colors.ts';
 import {packGraphicAtlas} from './operator-backpack-graphics.ts';
@@ -10,7 +10,7 @@ import {equipmentExterior} from './operator-equipment-exterior.ts';
 export type PackPreviewState={
  parent:THREE.Object3D;chest:THREE.Group;materials:PackMaterials;
  models:Map<AuthoredPackStyle,AuthoredPack>;active?:AuthoredPack;
- harness?:THREE.Group;key?:string;fit?:PackFit;
+ harness?:THREE.Group;key?:string;fit?:PackFit;motionScale?:number;
 };
 export function createPackPreview(parent:THREE.Object3D,chest:THREE.Group,materials:PackMaterials):PackPreviewState{
  return {parent,chest,materials:{fabric:materials.fabric,trim:materials.trim.clone(),dark:materials.dark.clone()},models:new Map()};

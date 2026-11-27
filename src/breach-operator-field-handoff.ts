@@ -11,6 +11,9 @@ import {visibleFlashCanisters,flashCanisterSocket,
  visibleDoorWedges,wedgeSocket,visibleFlexCuffs,flexCuffSocket}
  from './equipment-field-visuals.ts';
 
+const storedVisible=(r:OperatorRig,location:string)=>
+ location!=='backpack'||r.root.userData.fieldworkConcealPackCargo!==true;
+
 const heldIndex=(r:OperatorRig):number|null=>{
  const v=r.root.userData.fieldworkHeldFlashIndex;
  return typeof v==='number'&&v>=0&&v<r.flashCanisters.length?v:null;
@@ -34,7 +37,7 @@ export function presentFlashHandoff(r:OperatorRig,p:OperatorPose,
   const mesh=r.flashCanisters[old];
   const item=items[old];
   if(mesh){
-   mesh.visible=!!item;
+   mesh.visible=!!item&&storedVisible(r,item.location);
    if(item&&!restoreBeltFlashRest(r,mesh)){
     const socket=flashCanisterSocket(item.location,item.index);
     const parent=socket.bone==='chest'?r.chest:
@@ -74,7 +77,7 @@ export function presentWedgeHandoff(r:OperatorRig,p:OperatorPose,
  if(old!==null&&old!==selected){
   const mesh=r.wedgeMeshes[old],item=items[old];
   if(mesh){
-   mesh.visible=!!item;
+   mesh.visible=!!item&&storedVisible(r,item.location);
    if(item){
     const socket=wedgeSocket(item.location,item.index);
     const parent=socket.bone==='chest'?r.chest:
@@ -114,7 +117,7 @@ export function presentFlexCuffHandoff(r:OperatorRig,p:OperatorPose,
  if(old!==null&&old!==selected){
   const mesh=r.cuffMeshes[old],item=items[old];
   if(mesh){
-   mesh.visible=!!item;
+   mesh.visible=!!item&&storedVisible(r,item.location);
    if(item){
     const socket=flexCuffSocket(item.location,item.index);
     const parent=socket.bone==='chest'?r.chest:

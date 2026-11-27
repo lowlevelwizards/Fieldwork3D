@@ -1,31 +1,39 @@
 name: BP backpack foundation critical
 on:
   push:
-    branches: [art/backpacks-bp0-bp15]
+    branches: [art/backpacks-bp0-bp15, art/backpacks-bp11-15]
   pull_request:
-    branches: [main, art/backpacks-bp5-baseline]
+    branches: [art/backpacks-bp5-baseline, art/backpacks-canonical-auto]
     paths:
       - 'src/operator-backpack-*.ts'
+      - 'src/equipment-backpack-change.ts'
+      - 'src/equipment-carry-gear-change.ts'
       - 'tests/backpack-bp*.test.mjs'
       - 'scripts/*backpack*.mjs'
       - '.github/workflows/backpack-critical.yml'
+  workflow_call:
   workflow_dispatch:
 concurrency:
-  group: bp-critical-${{ github.ref }}
-  cancel-in-progress: true
+  group: bp-critical-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   foundation:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package.json') }}
       - run: npm install --no-audit --no-fund
       - run: npm run check
       - run: git fetch --depth=1 origin efd1b6e9828f4f2d4964362c4a0d1bf7b3707849
       - run: node --experimental-strip-types scripts/audit-backpack-geometry.mjs
-      - run: node --experimental-strip-types --test tests/backpack-bp*.test.mjs tests/operator-wardrobe-unified.test.mjs tests/operator-wardrobe-gear-visuals.test.mjs tests/equipment-carry-gear-change.test.mjs tests/equipment-07-encumbrance.test.mjs tests/operator-visual-fit.test.mjs tests/sling-retention-sr21-pack-motion.test.mjs
+      - run: node --experimental-strip-types --test tests/backpack-bp*.test.mjs tests/operator-wardrobe-unified.test.mjs tests/equipment-01-catalog.test.mjs tests/equipment-20-13-assembly-mass.test.mjs tests/operator-wardrobe-gear-visuals.test.mjs tests/equipment-carry-gear-change.test.mjs tests/equipment-carry-gear-authority.test.mjs tests/equipment-07-encumbrance.test.mjs tests/operator-visual-fit.test.mjs tests/sling-retention-sr21-pack-motion.test.mjs tests/performance-p7-saved-operator.test.mjs tests/f6-flash-handoff.test.mjs tests/f6-wedge-handoff.test.mjs tests/secondary-s8-3-physical-magazine.test.mjs tests/operator-visual-silhouette-matrix.test.mjs tests/refactor-e6-4-attribution.test.mjs
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - run: node scripts/smoke-backpack-art.mjs
         env:

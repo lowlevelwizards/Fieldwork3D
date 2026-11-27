@@ -58,3 +58,22 @@ test('saved static wardrobe and atlas bake runs before pose and reuses the cache
  assert.equal(rig.root.userData.fieldworkLightingAppearanceKey,key);
  rig.dispose();
 });
+
+test('BP11 changing deployed cargo mass changes suspension without static rig rebuild',()=>{
+ const s=newSession(0,2022),actor=s.operators.find(a=>a.side==='blue');
+ actor.equipment=initialEquipmentLoadout(actor.weapon);
+ actor.equipment.slots.backpack='backpack-day';
+ actor.equipment.slots.armor='armor-none';
+ actor.equipment.slots.rig='rig-none';
+ const rig=createOperatorRig(actor.id,actor.side,true);
+ try{
+  const saved={equipment:actor.equipment,magazineCarryLocations:['backpack'],packPrimaryMagazineMass:.8,down:false,surrender:false};
+  updateOperatorAppearance(rig,saved);
+  const state=rig.visualKit.packPreview,art=state.active,key=rig.root.userData.fieldworkLightingAppearanceKey,loaded=state.motionScale;
+  assert.ok(art&&loaded>0);
+  updateOperatorAppearance(rig,{...saved,packPrimaryMagazineMass:.12});
+  assert.equal(state.active,art);
+  assert.equal(rig.root.userData.fieldworkLightingAppearanceKey,key);
+  assert.ok(state.motionScale>loaded);
+ }finally{rig.dispose();}
+});

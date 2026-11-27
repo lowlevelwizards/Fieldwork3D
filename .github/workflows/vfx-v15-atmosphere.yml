@@ -1,15 +1,22 @@
 name: V15 atmosphere and glass
 on:
+  workflow_call:
   pull_request:
+    branches-ignore: [main]
     paths:
       - 'src/breach-atmosphere-evidence.ts'
       - 'src/rendering/breach-dust-puffs.ts'
       - 'src/rendering/window-shatter-presentation.ts'
       - 'src/rendering/breach-vfx-preview-config.ts'
       - 'tests/vfx-v15-atmosphere.test.mjs'
+      - '.github/workflows/vfx-v15-atmosphere.yml'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: vfx-v15-atmosphere-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   atmosphere:
     runs-on: ubuntu-24.04

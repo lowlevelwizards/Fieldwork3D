@@ -17,7 +17,7 @@ import type {Anchor3} from './breach-anatomy.ts';
 type Mounted={signature:string;root:THREE.Group;ownedRoots:THREE.Group[];
  holster:THREE.Group;cradle:THREE.Group;
  /** Magazine changes cannot destroy/replace the held Glock model. */
- pouchSignature:string;physicalPouches:Map<string,THREE.Mesh>;unified:boolean;
+ pouchSignature:string;physicalPouches:Map<string,THREE.Mesh>;concealPackCargo:boolean;unified:boolean;
  /** Real visible magazine floorplate is part of the existing Glock model. */
  insertedFloorplate:THREE.Mesh|null;
  /** Immutable stowed socket for deterministic, seek-safe draws. */
@@ -131,6 +131,7 @@ function reconcilePouches(mount:Mounted,state:SecondaryEquipment,
    const slot=pouchSocket(place,index,side);
    item.position.copy(slot);
   }
+  item.visible=place!=='backpack'||!mount.concealPackCargo;
  }
  for(const [id,item] of mount.physicalPouches){
   if(retained.has(id))continue;
@@ -156,7 +157,7 @@ function pouchSocket(location:'rig'|'belt'|'backpack'|'pocket',
  */
 export function syncHipSecondaryVisual(hip:THREE.Group,
  state:SecondaryEquipment|undefined,hasBelt:boolean,
- chest?:THREE.Group,pack?:THREE.Object3D,unifiedSocket?:Contact):THREE.Group|null{
+ chest?:THREE.Group,pack?:THREE.Object3D,concealPackCargo=false,unifiedSocket?:Contact):THREE.Group|null{
  const valid=state?.weapon&&hasBelt?state.weapon:null;
  const signature=valid?[
   valid,state!.holster,JSON.stringify(state!.customization??null),
@@ -166,7 +167,11 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
  // S8: changing inserted/spare magazine IDs is NOT a weapon swap.
  // Preserve the drawn rig's model, geometry, materials and hand attachment.
  if(prior?.signature===signature){
+  const changed=prior.concealPackCargo!==concealPackCargo;
+  prior.concealPackCargo=concealPackCargo;
   if(!prior.unified)reconcilePouches(prior,state!,chest,pack);
+  if(changed)for(const mesh of prior.physicalPouches.values())
+   mesh.visible=mesh.userData.secondaryMagazineLocation!=='backpack'||!concealPackCargo;
   return prior.root;
  }
  clearHipSecondaryVisual(hip);
@@ -204,7 +209,7 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
  root.add(holster);hip.add(root);
  const ownedRoots=[root];
  const current:Mounted={signature,root,ownedRoots,holster,cradle,
-  pouchSignature:'',physicalPouches:new Map(),unified:!!unifiedSocket,
+  concealPackCargo,pouchSignature:'',physicalPouches:new Map(),unified:!!unifiedSocket,
   insertedFloorplate:(()=>{
     let floor:THREE.Mesh|null=null;
     pistol.traverse(child=>{
@@ -349,7 +354,7 @@ export function presentSecondaryReload(hip:THREE.Group,
    kit.holster==='belt-right'?1:-1,mount.pouchRest);
   mesh.position.copy(original);
   mesh.rotation.set(0,0,0);
-  mesh.visible=true;
+  mesh.visible=loc!=='backpack'||!mount.concealPackCargo;
   if(!active||id!==reload!.selectedId||!mesh.parent)continue;
   // A just-seated physical magazine must not follow the support hand onto
   // the rear slide in an empty-reload Lab study. Simulation meshes unchanged.
@@ -359,6 +364,7 @@ export function presentSecondaryReload(hip:THREE.Group,
   const lift=progress<=.26?0:progress>=.66?1:
     Math.max(0,Math.min(1,(progress-.26)/.40));
   if(lift<=0)continue;
+  mesh.visible=true;
   const ease=lift*lift*(3-2*lift);
   supportHand.updateWorldMatrix(true,false);
   mesh.parent.updateWorldMatrix(true,false);

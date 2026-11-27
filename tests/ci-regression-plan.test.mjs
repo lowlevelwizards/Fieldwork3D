@@ -186,3 +186,9 @@ test('FT1.0 faction timeline modules use Studio-owning CI without broad fallback
  assert.deepEqual(p.unknown,[]);
  assert.equal(p.runBroadCritical,false);
 });
+
+// Keep the migrated routing and release contracts in the always-on primary CI.
+import './ci-equipment-routing.test.mjs';
+import './ci-visual-world-routing.test.mjs';
+import './ci-operator-loadout-routing.test.mjs';
+import './ci-release-coordination.test.mjs';

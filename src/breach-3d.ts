@@ -125,6 +125,7 @@ import {weaponLightEmitting} from './equipment-weapon-light-operations.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter,LIGHT_BEAM_SAMPLES}
  from './equipment-weapon-light-beam.ts';
 import {type Site,type Room,type WideOpening} from './breach-site.ts';
+import {packPrimaryMagazineMass} from './operator-backpack-motion.ts';
 import {bakedOperatorCarry,prewarmSavedOperatorCarry}
  from './rendering/breach-saved-operator-carry-bake.ts';
 import {updateOperatorAppearance} from './breach-operator-appearance.ts';
@@ -1932,6 +1933,7 @@ export class TacticalScene3D{
       wardrobe:a.wardrobe,weaponConfiguration:a.weaponConfiguration,
       unifiedCarry:a.unifiedCarry,
       magazineCarryLocations:precomputed.locations,
+      packPrimaryMagazineMass:packPrimaryMagazineMass(a.spareMagazines,precomputed.magazines),
       medicalCarryLocation:precomputed.medical,
       utilityCarryLocation:precomputed.utility,
       flashCharges:a.flashCharges,wedgeRemaining:a.wedgeRemaining,
@@ -2908,6 +2910,7 @@ export class TacticalScene3D{
         poseDiagnostics:false,
         unifiedCarry:actor.unifiedCarry,
         magazineCarryLocations:carried.locations,
+        packPrimaryMagazineMass:packPrimaryMagazineMass(actor.spareMagazines,carriedMagazines),
         magazineCarryItems:carriedMagazines,
         reloadSelectedMagazineId:actor.reloadSelectedMagazineId,
         medicalCarryLocation:carried.medical,

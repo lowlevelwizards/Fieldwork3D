@@ -40,7 +40,7 @@ test('E6.4 appearance profiler measures the original exact serialization and imm
    p.flashCharges??null,p.wedgeRemaining??null,
    p.restraintRemaining??null,p.treatmentActive??null,
    p.weaponConfiguration?.build?.parts.magazine??null,
-   p.nvgDeployed??false
+   p.nvgDeployed??false,rig.root.userData.fieldworkInspectPackCargo===true
   ]);
   assert.equal(key,exact,'no key semantics changed');
   let stats=rig.root.userData.fieldworkAppearanceCpu;
@@ -49,6 +49,16 @@ test('E6.4 appearance profiler measures the original exact serialization and imm
   updateOperatorAppearance(rig,p);
   stats=rig.root.userData.fieldworkAppearanceCpu;
   assert.equal(stats.appearanceChanged,0,'steady pose never claims a rebuild');
+  assert.equal(rig.root.userData.fieldworkLightingAppearanceKey,key);
+  rig.root.userData.fieldworkInspectPackCargo=true;
+  updateOperatorAppearance(rig,p);
+  assert.equal(rig.root.userData.fieldworkAppearanceCpu.appearanceChanged,1,
+   'explicit pack cargo inspection invalidates the appearance immediately');
+  assert.notEqual(rig.root.userData.fieldworkLightingAppearanceKey,key);
+  assert.equal(JSON.parse(rig.root.userData.fieldworkLightingAppearanceKey).at(-1),true);
+  rig.root.userData.fieldworkInspectPackCargo=false;
+  updateOperatorAppearance(rig,p);
+  assert.equal(rig.root.userData.fieldworkAppearanceCpu.appearanceChanged,1);
   assert.equal(rig.root.userData.fieldworkLightingAppearanceKey,key);
   p.equipment.slots.rig=p.equipment.slots.rig==='rig-none'?
    'rig-full':'rig-none';

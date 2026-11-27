@@ -55,7 +55,7 @@ export function inspectEquipmentMesh(rig:OperatorRig,
  if(target.kind==='medical')return first([rig.medicalPouch]);
  if(target.kind==='utility')return first([rig.utilityTool,rig.radioUnit]);
  if(target.kind==='backpack')
-  return first([rig.visualKit.dayPack,rig.visualKit.fieldPack]);
+  return rig.visualKit.packPreview.active?first([rig.visualKit.packPreview.active.root]):null;
  if(target.kind==='rig')
   return first([rig.visualKit.chestRig,rig.visualKit.fieldWebbing]);
  if(target.kind==='belt')return first([rig.visualKit.belt,rig.beltPouch]);

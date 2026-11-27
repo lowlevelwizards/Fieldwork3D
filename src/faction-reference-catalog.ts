@@ -1,3 +1,4 @@
+import {canonicalPackEquipment} from './operator-backpack-catalog.ts';
 /** Curated real-world *appearance references*, not playable factions or combat doctrine.
  * Every entry is a dated visual interpretation. Missing signature assets are
  * recorded openly; a generic substitute is never asserted to be authentic.
@@ -381,9 +382,11 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
 ] as FactionReference[]).map(reference=>{
  const profile=REFERENCE_GEAR_PROFILES[reference.id];
  if(!profile)throw Error('Missing equipment profile for '+reference.id);
+ const styles={...reference.styles,...profile.styles};
+ const packId=styles.packStyle&&canonicalPackEquipment(styles.packStyle);
  return {...reference,
-  kit:{...reference.kit,...profile.kit},
-  styles:{...reference.styles,...profile.styles},
+  kit:{...reference.kit,...profile.kit,...(packId?{backpack:packId}:{})},
+  styles,
   gearAppearance:profile.appearance,
   gearFitNote:profile.note};
 });
