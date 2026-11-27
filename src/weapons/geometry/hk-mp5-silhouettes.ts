@@ -1,10 +1,10 @@
-/** MP5 9mm miniature family. The 5.56 and 7.62 HK builders are frozen.
+/** MP5 miniature family; WC2 shared exterior sculptural language.
  * Shared receiver + 9mm feed, with three different silhouettes. Geometry is
  * created ONLY when the workbench/weapon configuration changes.
  */
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
-import {addOutline,addCuboid,addFacetedTube,type Outline,type SlotName}
+import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type SlotName}
  from './profile-primitives.ts';
 import {HK_BARREL_ART} from './hk-barrel-profiles.ts';
 import {MP5_VISUAL_ANATOMY} from './weapon-receiver-anatomy.ts';
@@ -15,6 +15,7 @@ import {mp5MagazineOutline,mp5MagazineHeelOutline,MP5_MAG_DEPTH}
 import {addMP5TropicalForearm,addMP5SDShroud,addMP5TriRail,
  addMP5SlimForearm}
  from './hk-mp5-handguard-profiles.ts';
+import {addHKFixedFurnitureArt} from './hk-fixed-furniture-art.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 import {addHKTriggerSelector} from './hk-trigger-selector.ts';
 
@@ -43,10 +44,11 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
    addCuboid(root,slot,parts[slot],ids[slot]++,x,y,z,
     width,height,depth,material);
 
- // Three *identical* 9mm bodies: no uniformly scaled-down MP5K.
- p('receiver',[[-6.10,-1.34],[-6.10,1.05],[-5.48,1.75],
-  [2.63,1.75],[3.35,1.14],[3.35,-1.42],
-  [2.78,-1.71],[-5.37,-1.71]],3.05);
+ // Shared compact visual body: squared ends and a stronger central mass.
+ // Keep the same planar mark surfaces and attachment/contact landmarks.
+ p('receiver',[[-6.10,-1.52],[-6.10,1.29],[-5.63,1.75],
+  [2.82,1.75],[3.35,1.33],[3.35,-1.54],
+  [2.78,-1.89],[-5.37,-1.89]],3.05);
  p('receiver',[[-5.55,-1.33],[-5.16,-2.08],[-4.43,-2.31],
   [-3.17,-2.57],[-2.72,-2.39],[-.53,-2.40],
   [2.46,-2.43],[3.13,-1.44]],2.95,dark);
@@ -60,23 +62,19 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
  // Unique MP5 stock geometry, NOT a G3 stock scaled uniformly.
  if(isK){
   if(parts.stock==='hk-mp5k-pdw-stock'){
-   // Choate-style PDW side folder: coarse upper arm, angled open brace,
-   // pivot and deep buttplate, without tiny screws/bolts or rear rails.
+   // WC2.2 game-art candidate: one continuous carved frame, not two
+   // stacked sticks. Preserve the original shoulder datum and marked pad.
    const pivot=b('stock',-6.33,-.24,-.40,1.03,3.20,3.30,steel);
    pivot.userData.hkMP5PDWHinge=true;
-   const arm=p('stock',[
-    [-12.55,.80],[-6.42,.80],[-6.39,.16],
-    [-10.32,.12],[-12.55,-.43]
-   ],1.93,dark);
-   arm.userData.hkMP5PDWUpper=true;
-   const brace=p('stock',[
-    [-12.55,-1.90],[-12.09,-1.30],[-8.27,-.18],
-    [-7.32,-.18],[-10.89,-1.90]
-   ],1.68,dark);
-   brace.userData.hkMP5PDWBrace=true;
+   const frame=addProfileFrame(root,'stock',parts.stock,ids.stock++,
+    [[-12.72,1.02],[-6.32,.86],[-6.32,.05],[-8.02,-.30],
+     [-12.70,-2.48],[-12.83,-2.20]],
+    [[-11.92,.22],[-11.95,-1.16],[-8.81,.08]],
+    2.12,dark);
+   frame.userData.hkMP5PDWFrame=true;
    const butt=p('stock',[
-    [-13.05,1.02],[-12.53,1.02],[-12.53,-2.36],
-    [-12.82,-2.65],[-13.05,-2.65]
+    [-13.05,1.16],[-12.46,1.10],[-12.46,-2.34],
+    [-12.76,-2.70],[-13.05,-2.57]
    ],3.20,dark);
    butt.userData.hkMP5PDWButt=true;
   }else{
@@ -86,12 +84,8 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
  }else if(parts.stock==='hk-mp5-fixed-stock'){
   // A2 and SD2 share the extended retractable stock's shoulder landmark.
   // One heavy solid polymer shell; no added screws, vents or buttstock rails.
-  const rear=-13.05,start=rear+.43;
-  const fixed=p('stock',[
-   [start,1.07],[-11.39,1.19],[-10.79,1.14],
-   [-6.08,.80],[-6.01,-1.35],[-9.35,-2.37],
-   [start,-2.68]
-  ],3.18,dark);
+  const rear=-13.05;
+  const fixed=addHKFixedFurnitureArt(root,parts.stock,ids.stock++,'compact',dark);
   fixed.userData.hkMP5FixedStock=true;
   const pad=b('stock',rear+.27,-.80,0,.54,3.99,3.54,dark);
   pad.userData.hkMP5FixedButtpad=true;
@@ -99,12 +93,13 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
   const rear=-13.05;
   for(const z of [-1.10,1.10]){
    const rail=b('stock',(-12.53-5.90)/2,.34,z,
-    -5.90+12.53,.50,.50,steel);
+    -5.90+12.53,.78,.68,steel);
    rail.userData.hkMP5RetractRail=true;
   }
   const plate=p('stock',[
-   [rear,1.18],[rear+.62,1.18],[rear+.62,-1.65],
-   [rear+.44,-2.38],[rear+.16,-2.67],[rear,-2.45]
+   [rear,1.18],[rear+1.04,1.12],[rear+.91,-.52],
+   [rear+1.30,-1.51],[rear+.83,-2.39],[rear+.30,-2.71],
+   [rear,-2.45]
   ],3.34,dark);
   plate.userData.hkMP5RetractButt=true;
   const junction=b('stock',-6.09,.34,0,.82,1.0,2.95,steel);

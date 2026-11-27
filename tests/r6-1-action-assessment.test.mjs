@@ -14,13 +14,19 @@ const base=(action,overrides={})=>({
  distance:42,maximumRange:42,unobstructed:true,...overrides
 });
 
-test('R6.1 registry exhaustively classifies 18 current interaction subtypes',()=>{
+test('R6.1 registry exhaustively classifies current interaction subtypes including window coverings',()=>{
  const {interactions}=declaredActionTypes(schema);
  assert.deepEqual(Object.keys(TACTICAL_ACTION_MODALITY).sort(),interactions.sort());
  const categories=Object.values(TACTICAL_ACTION_MODALITY);
  assert.equal(categories.filter(x=>x==='voice').length,5);
  assert.equal(categories.filter(x=>x==='person-contact').length,4);
- assert.equal(categories.filter(x=>x==='object-contact').length,7);
+ const objectActions=['push','open-window','close-window','break-window',
+  'secure-firearm','power-on','power-off','open-covering','close-covering',
+  'half-covering','tilt-covering','untilt-covering','lock-covering','unlock-covering'];
+ assert.deepEqual(Object.keys(TACTICAL_ACTION_MODALITY)
+  .filter(x=>TACTICAL_ACTION_MODALITY[x]==='object-contact').sort(),objectActions.sort());
+ for(const action of objectActions)
+  assert.equal(assessTacticalAction(base(action)).needsContact,true,action);
  assert.equal(categories.filter(x=>x==='release').length,2);
  assert.equal(TACTICAL_ACTION_MODALITY['break-window'],'object-contact');
  assert.equal(assessTacticalAction(base('break-window')).needsContact,true);

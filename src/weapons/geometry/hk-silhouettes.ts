@@ -10,6 +10,7 @@ import {HK_OLIVE_POLYMER,HK_MAG_METAL,HK_MUZZLE_METAL}
 import {HK_BARREL_ART} from './hk-barrel-profiles.ts';
 import {addHKFacetedForearm,addHKHandguardOpenings} from './hk-handguard-profiles.ts';
 import {HK_MAG20_OUTLINE} from './hk-magazine-profiles.ts';
+import {addHKFixedFurnitureArt} from './hk-fixed-furniture-art.ts';
 import {addHKRetractableStock} from './hk-retractable-stock.ts';
 import {addHK556Family} from './hk-556-silhouettes.ts';
 import {addHKMP5Family} from './hk-mp5-silhouettes.ts';
@@ -45,10 +46,11 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   finish:'steel'|'dark'|'wood'|'olive'|'mag'|'muzzle'='steel')=>
   addCuboid(root,slot,parts[slot],ids[slot]++,x,y,z,w,h,d,material(finish));
 
- // Stamped HK receiver and connected trigger housing: deliberately no AR split.
- p('receiver',[[-6.50,-1.43],[-6.50,1.05],[-5.75,1.85],
-   [3.50,1.85],[4.55,1.20],[4.55,-1.36],[3.70,-1.71],
-   [-5.65,-1.71]],3.52);
+ // WC2.3: heavy, slab-sided miniature mass; keep upper art surface,
+ // graphic seating and established end landmarks unchanged.
+ p('receiver',[[-6.50,-1.59],[-6.50,1.36],[-5.92,1.85],
+   [3.66,1.85],[4.55,1.37],[4.55,-1.55],[3.70,-1.96],
+   [-5.65,-1.96]],3.52);
  // One low, stepped HK trigger housing: its outline must not imitate an
  // AR's visually split upper/lower nor the AK's projecting dust cover.
  p('receiver',[[-5.80,-1.28],[-5.34,-2.10],[-4.73,-2.23],
@@ -70,16 +72,9 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  if(retract){
   addHKRetractableStock(root,parts.stock,rear,steel,dark);
  }else{
- const stockStart=rear+.46;
- p('stock',early?[
-  [stockStart,1.22],[-11.18,1.25],[-10.77,1.16],
-  [-6.25,.67],[-6.18,-1.46],[-9.13,-2.49],
-  [-13.76,-3.29],[stockStart,-2.87]
- ]:[
-  [stockStart,1.12],[-11.03,1.13],[-10.61,1.06],
-  [-6.23,.69],[-6.15,-1.44],[-9.52,-2.33],
-  [-14.73,-3.04],[stockStart,-2.85]
- ],3.12,early?'wood':'olive');
+ // WC2.3c: broad 3D art planes, no inflated silhouette.
+ addHKFixedFurnitureArt(root,parts.stock,ids.stock++,early?'wood':'polymer',
+  early?wood:HK_OLIVE_POLYMER);
  // One deliberately thick miniature buttplate: the visible rear remains
  // at the ORIGINAL rear landmark. Its inner end overlaps the stock .10,
  // and the side surfaces stand .19 clear of the stock on either side.

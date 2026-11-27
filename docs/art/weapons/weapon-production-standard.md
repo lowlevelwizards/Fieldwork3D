@@ -1,7 +1,7 @@
 # Fieldwork Breach — Universal Weapon Art & Production Standard
 
-**Status:** Canonical production policy for new weapon families, variants, and substantial revisions to existing weapon art; WA2 adoption on the foundation branch, pending release.  
-**Version:** 2.0 · 2026-11-25 (WA2 art direction; retains v1 technical contract)  
+**Status:** WC2 comparative review candidate; no asset receives grandfathered artistic approval.  
+**Version:** 2.1 · 2026-11-26 (WC2 comparative sculptural direction; retains technical contract)  
 **Owner:** Arsenal / weapon appearance pipeline.  
 **Companion documents:** [R2 silhouette contract](geometry-r2-silhouette-contract.md), [Arsenal V2 baseline](../../arsenal-v2-baseline.md), and the historical AR / AK / FAL / FNC / HK case studies in this directory.
 
@@ -16,24 +16,13 @@ Authentic through interpretation, not replication. A Fieldwork weapon is a sculp
 
 **MUST** prioritize silhouette and negative space over detail; **SHOULD** prefer an integrated shape, rectangular defaults and broad decisive facets; **MAY** exaggerate a characteristic exterior proportion when the paired native-scale view proves improved identity. Never exaggerate everything at once. Simplicity means better selection of shapes, not lower fidelity of intent.
 
-### B. Definitive calibration references
-The following are **approved teaching references for specific strengths**, not fully art-approved weapons or frozen geometry. Source: [verified WA0 visual baseline](https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/45750363645), revision `0f79ca66a2fe27eeabde9e304711892e5628142f`, artifact 15084818826. WA0.4 reviewed all 53 references; WA2 reviewed the selected multi-angle plate again. Paths below identify actual production renders in that archive. For each case, inspect the side-fit, three-quarter-fit, top-fit, front-fit, native-64 and native-128 PNGs. Do not silently substitute a different model or new render for the archived evidence.
+### B. Comparative review — no privileged models
 
-| Reference / archive directory | What to study | What not to copy blindly |
-|---|---|---|
-| `fal/fal-5000-classic/` | Broad angular receiver/furniture, warm vs dark blocks, clear tapered outline | Thin handle and sight features; exact wedge is family-specific |
-| `fnc/fnc-service/` | Integrated mass, sparse graphic marks, open rear outline | Reverse dark layers; atlas is optional, not a universal requirement |
-| `g36/g36-service/` | Purposeful openings, long continuous modern form, clear graphic void | Do not transfer its characteristic architecture into unrelated families |
-| `remington870/r870-police-wood/` | Continuous sculptural wood, bold separation of pump and receiver | Cylinder-dominant family shape is not a rifle template |
-| `glock/glock-g19x/` | Planar economy, compact proportion, true guard opening, strong color block | Tan does not automatically establish adequate substrate separation |
-| `ak/ak-akm/` | Strong sweeping silhouette, warmer material contrast, broad top facets | Do not require wood or the same color palette in modern variants |
-| `ar15/ar-m4a1/` | Compact family identity and modular character | Repeating rail/rib density, interrupted junctions; review at native scale |
-| `g3/hk-g3a4/` and `hk33/hk-hk53a3/` | Slender related family profiles | Thin rear forms and nearly identical dark masses can lose distinction |
-| `mp5/hk-mp5k-pdw/` | Compact, unmistakable family silhouette | Dark central mass can conceal form; preserve its particular character |
-| `beretta/beretta-m9a3/` | Distinct open-top and tan/dark exterior appearance | Busy rear/outline versus Glock; preview-only status remains |
-| `legacy/legacy-shotgun/` | Negative example: disconnected-looking stack of blocks | Do not retire until compatibility and fallback callsites are reviewed |
+WC2 supersedes the earlier benchmark hierarchy. All currently authored models, including FAL, FNC, G36, 870 and Glock, are candidates for preserve, reshape, rebuild or retire on equal evidence. Earlier praise and historical audit ratings establish neither a target shape nor a pass. The WA0 archive remains a historical comparison only. Every design decision must answer whether the visible form more strongly communicates its own identity, at the actual Fieldwork camera distance and in unlit silhouette, without unnecessary geometry.
 
-A comparative example: the verified census shows AR mean 768 triangles, FAL 364, FNC 536, AK 360. The WA1 desktop smoke (run 45752149023) specifically shows FAL 50.00 at 366 triangles/26 meshes and M4A1 at 682 triangles/23 meshes in the same lab. These are different shapes with different needs; a smaller mesh count alone does not mean lower triangle cost or better art. The 53-reference aggregate is not a runtime scene budget.
+Compare the real-world exterior reference (photograph, identified variant, source) with the current production miniature and neighboring Fieldwork models. Exaggerate characteristic relationships, not uniform chunkiness. Prefer one purposefully sculpted volume over stacks of simple primitives when their seams weaken the form; keep genuine negative spaces. A facet is justified by recognition, meaningful depth, silhouette or coherent lighting. Do not copy mechanical internals or real-world construction dimensions.
+
+Use the [WC2 review scope](wc2-caricature-unification-scope.md) for current evidence and staged art decisions. The quantitative WA0 census is a historical cost baseline, not a visual grade or a universal mesh budget.
 
 ### C. Form and depth grammar
 

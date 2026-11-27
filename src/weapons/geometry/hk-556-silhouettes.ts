@@ -14,6 +14,7 @@ import {hk556MagazineOutline,hk556MagazineRibOutlines,
  hk556MagazineHeelOutline,type HK556MagazineId,HK556_MAG_LENGTHS}
  from './hk-556-magazine-profiles.ts';
 import {addHK556Forearm} from './hk-556-handguard-profiles.ts';
+import {addHKFixedFurnitureArt} from './hk-fixed-furniture-art.ts';
 import {addHKRetractableStock} from './hk-retractable-stock.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 import {addHKTriggerSelector} from './hk-trigger-selector.ts';
@@ -34,10 +35,11 @@ export function addHK556Family(root:THREE.Group,build:WeaponFamilyBuild,
  const b=(slot:SlotName,x:number,y:number,z:number,
   w:number,h:number,d:number,material:THREE.Material=steel)=>
    addCuboid(root,slot,parts[slot],ids[slot]++,x,y,z,w,h,d,material);
- // A single leaner 5.56mm stamped receiver. Keep top edge long and flat.
- p('receiver',[[-6.20,-1.38],[-6.20,1.04],[-5.51,1.80],
-  [3.49,1.80],[4.45,1.16],[4.45,-1.35],[3.57,-1.70],
-  [-5.40,-1.70]],3.28);
+ // WC2.3: slender visual center, planar shoulder transitions. The
+ // compact retains this shared body; its shorter furniture carries identity.
+ p('receiver',[[-6.20,-1.20],[-6.20,.92],[-5.40,1.80],
+  [3.32,1.80],[4.45,1.02],[4.45,-1.19],[3.45,-1.56],
+  [-5.28,-1.56]],3.28);
  // One subordinate trigger housing, without a separately modeled guard.
  p('receiver',[[-5.61,-1.32],[-5.18,-2.11],[-4.40,-2.36],
   [-3.17,-2.58],[-2.72,-2.37],[-.62,-2.35],
@@ -50,10 +52,8 @@ export function addHK556Family(root:THREE.Group,build:WeaponFamilyBuild,
   // barrel, magazine and operator grip positions remain unchanged.
   addHKRetractableStock(root,parts.stock,-14.90,steel,dark);
  }else{
-  const rear=-13.88,start=rear+.44;
-  p('stock',[[start,1.16],[-10.94,1.12],[-6.12,.75],
-   [-6.12,-1.42],[-9.10,-2.25],[-13.36,-2.95],
-   [start,-2.75]],2.96,
+  const rear=-13.88;
+  addHKFixedFurnitureArt(root,parts.stock,ids.stock++,'lean',
    parts.stock==='hk33-fixed-stock-black'?dark:HK_OLIVE_POLYMER);
   const pad=b('stock',rear+.27,-.78,0,.54,4.26,3.34,dark);
   pad.userData.hkButtpad=true;
