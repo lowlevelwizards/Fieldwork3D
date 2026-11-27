@@ -2142,7 +2142,7 @@ function draw(){
    inserted:pistolFrame.reload.progress>=.72
   }:null;
   // Preserve legacy physical cargo inspection until BP13 authored mounts.
-  rig.root.userData.fieldworkAuthoredPackPreview=inspectionTarget()?.location!=='backpack';
+  rig.root.userData.fieldworkInspectPackCargo=inspectionTarget()?.location==='backpack';
   if(!comparing)poseOperator(rig,{
     x:motion.x,z:motion.z,
     heading:motion.heading,
