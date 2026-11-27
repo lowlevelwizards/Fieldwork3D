@@ -269,7 +269,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   const kitStart=traceAppearance?performance.now():0;
   applyOperatorVisualKit(r.visualKit,gear,identity,
     p.magazineCarryLocations,p.faceStyle,p.wardrobe,p.weaponConfiguration,
-    nvgMounted(p),p.nvgDeployed===true,r.root.userData.fieldworkAuthoredPackPreview===true);
+    nvgMounted(p),p.nvgDeployed===true);
    // Closed pack contents are internal unless explicitly inspected or mounted.
    if(r.visualKit.packPreview.active&&!r.root.userData.fieldworkInspectPackCargo){
     for(const item of [r.medicalPouch,r.utilityTool,r.radioUnit,...r.flashCanisters,...r.wedgeMeshes,...r.cuffMeshes])
