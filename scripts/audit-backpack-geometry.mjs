@@ -50,7 +50,19 @@ try{
   assert.ok(after.harness.triangles<=before.harness.triangles,style+' harness triangle reduction');
   assert.ok(after.body.drawCalls<=4,style+' body draw budget');
  }
+ const roster=[];
+ for(const style of ['hydration','admin-pack','day-pack','assault-pack','field-pack','rucksack','medic-pack','comms-pack','civilian-pack']){
+  const chest=new THREE.Group(),parent=new THREE.Group();chest.add(parent);
+  const state=createPackPreview(parent,chest,materials());
+  const art=updatePackPreview(state,true,style,'plate-jpc','chest-placard','combat-shirt');
+  assert.ok(art);const body=measure(art.root),harness=measure(state.harness);
+  const cap={hydration:5,'admin-pack':7,'day-pack':10,'assault-pack':13,'field-pack':12,rucksack:12,'medic-pack':7,'comms-pack':8,'civilian-pack':4}[style];
+  assert.ok(body.components<=cap,style+' component budget');assert.ok(body.drawCalls<=4,style+' batch budget');
+  assert.ok(body.triangles<=650&&harness.triangles<=400,style+' geometry budget');
+  roster.push({style:art.style,body,harness});
+ }
  await mkdir('backpack-art-captures',{recursive:true});
  await writeFile('backpack-art-captures/geometry-audit.json',JSON.stringify(rows,null,2));
- console.log(JSON.stringify(rows,null,2));
+ await writeFile('backpack-art-captures/roster-audit.json',JSON.stringify(roster,null,2));
+ console.log(JSON.stringify({beforeAfter:rows,roster},null,2));
 }finally{for(const p of paths)await unlink(p).catch(()=>{});}
