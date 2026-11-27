@@ -12,12 +12,16 @@ test('WR10 exact world identity distinguishes temporary placement from evidence'
 });
 
 import {newSession,team} from '../src/breach-game.ts';
+import {issueStarterWeapon} from '../src/breach-weapon-issue.ts';
 import {setWeaponAttachment} from '../src/equipment-weapon-assemblies.ts';
 import {prepareGroundedPrimary,retrieveGroundedPrimary} from '../src/breach-grounded-primary.ts';
 import {activateSite} from '../src/breach-core.ts';
 test('WR10 new friendly starter is slung; explicit unslung world placement is unique and reversible',()=>{
  const s=newSession(),a=team(s)[0];
  try{
+  // Legacy no-site session intentionally has no configured starter.
+  const issued=issueStarterWeapon(a.id);
+  a.weapon=issued.weapon;a.weaponConfiguration=issued.weaponConfiguration;
   assert.equal(a.weaponConfiguration.slots.sling,'sling-two-point');
   a.weaponConfiguration=setWeaponAttachment(a.weaponConfiguration,'sling','sling-none');
   const ammo=a.magazine;

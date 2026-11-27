@@ -361,6 +361,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.weaponBody.userData.visibleStockContact=
       model.userData.visibleStockContact??null;
     r.weaponBody.userData.retentionSockets=model.userData.retentionSockets??null;
+    const retentionBounds=new THREE.Box3().setFromObject(model);
     while(model.children.length)r.weaponBody.add(model.children[0]);
     r.droppedWeaponBody.userData.visibleStockContact=null;
     // Detachable geometry is copied from precisely the same named AR/AK
@@ -378,9 +379,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     if(config){
       const accessories=buildWeaponAccessories(config,r.weaponSteel,r.weaponDark,
        r.weaponLensMaterial);
+      retentionBounds.union(new THREE.Box3().setFromObject(accessories));
       while(accessories.children.length)
        r.weaponAccessories.add(accessories.children[0]);
     }
+    r.weaponBody.userData.retentionBounds=retentionBounds;
     r.weaponLightLens=r.weaponAccessories.getObjectByName('weapon-light-lens')??null;
     r.droppedLightLens=null;
     const slingMaterial=r.slingStraps[0]?.material;
@@ -1123,6 +1126,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       pack:r.pack.visible,chestHeight:frame.chest.position.y,
       muzzleX:retentionAssembly?.muzzleX??19.5,stockX:retentionAssembly?.stockX??-13.5,
       sockets:r.weaponBody.userData.retentionSockets,
+      bounds:r.weaponBody.userData.retentionBounds,
+      rigDepth:p.equipment?.slots.rig&&p.equipment.slots.rig!=='rig-none'?1.5:0,
+      beltDepth:p.equipment?.slots.belt&&p.equipment.slots.belt!=='belt-none'?1.25:0,
       motion:{stride:p.stride,speed:physicalSpeed,acceleration:p.acceleration,
         turning:p.turning,massKg:retentionAssembly?.massKg??3,
         inertia:retentionAssembly?.rotationalInertia??100}},retentionWeight):null;

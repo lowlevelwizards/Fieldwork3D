@@ -66,3 +66,9 @@ export function retentionReady(request:RetentionRequest,actual:AchievedRetention
  return request.blocked===null&&request.primary===actual.primary&&
   request.secondary===actual.secondary;
 }
+
+/** Keep the firing-side holster accessible and avoid a loaded back region.
+ * This is a game animation preference; no new equipment or action rules. */
+export function preferredHandsFreeRegion(sling:SlingKind,holster?:string):BodyRegion{
+ return sling==='two'&&holster!=='belt-right'?'side':'front';
+}
