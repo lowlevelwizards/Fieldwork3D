@@ -1324,7 +1324,7 @@ function renderMaterials(){
    const labelNode=document.createElement('label');labelNode.textContent=label;assemblyGroup.append(labelNode);
    const select=document.createElement('select');select.dataset.packReviewSlot=slot;
    for(const item of WARDROBE_ITEMS.filter(i=>i.slot===slot)){
-    const option=document.createElement('option');option.value=item.id;option.textContent=item.label;select.append(option);
+    const option=document.createElement('option');option.value=item.id;option.textContent=item.name;select.append(option);
    }
    select.value=outfit[slot];select.disabled=readOnly;
    select.addEventListener('change',()=>update(setWardrobeStyle(w,slot,select.value)));assemblyGroup.append(select);
