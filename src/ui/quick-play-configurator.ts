@@ -70,6 +70,8 @@ export function createQuickPlayConfigurator(options:{
  onGenerate:(settings:QuickPlaySettings)=>void;
  onVisibilityChange?:(visible:boolean)=>void;
  getRoster?:()=>RosterState;
+ /** Host must use unified owner transactions and deployment together. */
+ carryMode?:'unified';
  onEquipField?:(id:string,inventory:FieldInventory)=>boolean;
  onMoveMagazine?:(id:string,magazineId:string,to:FieldCarryLocation)=>boolean;
  onEquipCarryGear?:(id:string,slot:CarryGearSlot,itemId:string)=>boolean;
@@ -240,6 +242,7 @@ export function createQuickPlayConfigurator(options:{
    };
    gadgetHost.replaceChildren(createFieldGadgetEditor({
     loadout:operator.loadout,magazines:operator.magazines,
+    automatic:options.carryMode==='unified'?operator:undefined,
      onInspectLocation:location=>equipmentWorkspace.preview?.highlightCarryLocation(location),
    onInspectItem:item=>equipmentWorkspace.preview?.inspectCarryItem(item),
    onModelThumbnail:item=>equipmentWorkspace.preview?.renderModelThumbnail(item)??null,

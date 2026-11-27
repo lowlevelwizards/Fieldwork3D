@@ -1,3 +1,4 @@
+import {quoteUnifiedPreparation,unifiedPreparationSummary,type UnifiedPreparationSource} from '../equipment-unified-preparation.ts';
 /** L2.12C3: one preview-first control for the existing native and modal
  * rig/belt/pack choices. No inventory mutation until the host commits.
  */
@@ -12,6 +13,7 @@ import './loadout-prep.css';
 export type CarryGearChoiceOptions={
  select:HTMLSelectElement;host:HTMLElement;slot:CarryGearSlot;
  kit:EquipmentLoadout;magazines:readonly MagazineItem[];
+ automatic?:UnifiedPreparationSource;
  onApply:(itemId:string)=>void;
  onInspect?:(where:FieldCarryLocation)=>void;
 };
@@ -41,6 +43,16 @@ export function attachCarryGearChangePreview(options:CarryGearChoiceOptions){
   select.value=kit.slots[slot];
   candidate=next===kit.slots[slot]?null:next;
   if(!candidate){reset();return;}
+  if(options.automatic){
+   const q=quoteUnifiedPreparation(options.automatic,{kind:'gear',slot,id:candidate});
+   panel.hidden=false;details.replaceChildren();panel.dataset.fits=String(q.ok);
+   status.textContent=(q.ok?'READY TO EQUIP: ':'CANNOT EQUIP: ')+(itemDefinition(candidate)?.name??candidate);
+   if(q.ok){
+    message(details,unifiedPreparationSummary(q.input,q.manifest).map(s=>s.carrier.toUpperCase()+' '+s.used+'/'+s.total+' POSITIONS').join(' · '));
+    message(details,'Equipment will be automatically refitted. Existing item identities and quantities are retained.');
+   }else message(details,q.reason);
+   apply.disabled=!q.ok;options.onInspect?.(slot==='rig'?'rig':slot==='belt'?'belt':'backpack');return;
+  }
   const preview=previewCarryGearChange(kit,magazines,slot,candidate,inventory);
   const quote=quoteCarryGearChange(kit,magazines,slot,candidate,inventory);
   panel.hidden=false;details.replaceChildren();
@@ -75,7 +87,8 @@ export function attachCarryGearChangePreview(options:CarryGearChoiceOptions){
   if(!candidate)return;
   // Requote from this immutable snapshot; authoritative owner recomputes
   // against current save state before committing.
-  if(!quoteCarryGearChange(kit,magazines,slot,candidate,inventory).ok)return;
+  const q=options.automatic?quoteUnifiedPreparation(options.automatic,{kind:'gear',slot,id:candidate}):quoteCarryGearChange(kit,magazines,slot,candidate,inventory);
+  if(!q.ok)return;
   const chosen=candidate;
   reset();
   options.onApply(chosen);
