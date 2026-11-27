@@ -26,8 +26,8 @@ export const POSE_RIG_OPTIONS=[
  ['m1956-lce','M1956'],['lbv','LBV'],['sadf-webbing','SADF']
 ] as const;
 export const POSE_PACK_OPTIONS=[
- ['no-pack','None'],['hydration','Hydration'],['admin-pack','Admin'],
- ['day-pack','Day pack'],['assault-pack','Assault pack'],['sling-bag','Sling bag'],
+ ['no-pack','None'],['hydration','Hydration carrier · art preview'],['admin-pack','Assault panel · art preview'],
+ ['day-pack','Tactical daypack · art preview'],['assault-pack','Assault pack · art preview'],['sling-bag','Sling bag'],
  ['field-pack','Field pack'],['rucksack','Rucksack'],['medic-pack','Medic'],
  ['comms-pack','Comms'],['duffel','Duffel']
 ] as const;
