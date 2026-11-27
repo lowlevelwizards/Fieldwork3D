@@ -41,11 +41,15 @@ export function readTransportPatientPose(patient:Patient,carriers:readonly Carri
  const drape=pickup?ease((progress-.38)/.57):1-ease(release);
  if(pickup&&drape<=0)return undefined;
  const h=carrier.heading,c=Math.cos(h),s=Math.sin(h);
- const shoulderX=carrier.p.x-10*c+4.8*s,shoulderZ=carrier.p.y-10*s-4.8*c;
- const idleRise=2*Math.max(0,1-(carrier.velocity??0)/12);
- const high=32.5+idleRise+motion*.28;
+ // Long axis passes fore/aft over ONE shoulder, not through the helmet.
+ // The pelvis is the saddle, above and slightly behind the chest; the
+ // chest hangs in front and the legs behind. The inside flank overlaps
+ // the shoulder padding, with the helmet on the other side of the body.
+ const shoulderX=carrier.p.x+3.6*c-10.8*s,shoulderZ=carrier.p.y+3.6*s+10.8*c;
+ const idleRise=2.4*Math.max(0,1-(carrier.velocity??0)/12);
+ const high=32.8+idleRise+motion*.28;
  const groundHeading=patient.heading;
- const targetHeading=h+Math.PI/2;
+ const targetHeading=h+Math.PI;
  const turn=Math.atan2(Math.sin(targetHeading-groundHeading),Math.cos(targetHeading-groundHeading));
  return {mode,carrierId:carrier.id,heading:groundHeading+turn*drape,roll:Math.PI/2,
   chest:{x:THREE.MathUtils.lerp(patient.p.x,shoulderX,drape),
@@ -59,17 +63,17 @@ export function patientRootTransform(p:TransportPatientPose,scale=1){
  return {position,quaternion:canonicalRootOrientation(0,-p.heading,p.roll),legacy};
 }
 export function patientDrape(p:TransportPatientPose){return p.mode==='carry'?(p.drape??1):0;}
-export function patientChestTilt(p:TransportPatientPose){return .48*patientDrape(p);}
-export function patientHipOffset(p:TransportPatientPose){return -3.8*patientDrape(p);}
+export function patientChestTilt(p:TransportPatientPose){return .82*patientDrape(p);}
+export function patientHipOffset(p:TransportPatientPose){return 3.4*patientDrape(p);}
 export function patientAnkleOffset(p:TransportPatientPose,side:number){
  const w=patientDrape(p);
- return {x:THREE.MathUtils.lerp(-2.0+Math.abs(p.motion)*.45,-16,w),
-  y:THREE.MathUtils.lerp(-20,-8.2,w),z:side*THREE.MathUtils.lerp(.45,1.6,w)};
+ return {x:THREE.MathUtils.lerp(-2.0+Math.abs(p.motion)*.45,-17.5,w),
+  y:THREE.MathUtils.lerp(-20,-7.5,w),z:side*THREE.MathUtils.lerp(.45,1.1,w)};
 }
 export function patientWrist(p:TransportPatientPose,side:number){
  const w=patientDrape(p);
- return {x:THREE.MathUtils.lerp(-1,-13,w),y:THREE.MathUtils.lerp(-11,-3,w),
-  z:side*THREE.MathUtils.lerp(8.4,7.0,w)};
+ return {x:THREE.MathUtils.lerp(-1,-12.5,w),y:THREE.MathUtils.lerp(-11,1.5,w),
+  z:side*THREE.MathUtils.lerp(8.4,7.2,w)};
 }
 
 /** CT10: both hands refer to the same model-space frame as the patient rig.
@@ -80,10 +84,12 @@ export function patientTransportContacts(p:TransportPatientPose,carrierHeading:n
  const center=new THREE.Vector3(p.chest.x,p.chest.y,p.chest.z);
  const local=p.mode==='drag'?
   [new THREE.Vector3(.8,4.8,-7.8),new THREE.Vector3(.8,4.8,7.8)]:
-  [new THREE.Vector3(-2,5.5,3).applyAxisAngle(new THREE.Vector3(0,0,1),patientChestTilt(p)),
-   new THREE.Vector3(patientHipOffset(p)-5,-11,3)];
+  [new THREE.Vector3(-2.8,4.0,5.2).applyAxisAngle(new THREE.Vector3(0,0,1),patientChestTilt(p)),
+   new THREE.Vector3(patientHipOffset(p)-5.8,-9.6,4.8)];
  const world=local.map(v=>v.applyQuaternion(legacy).add(center));
  const side=new THREE.Vector3(-Math.sin(carrierHeading),0,Math.cos(carrierHeading));
- world.sort((a,b)=>a.dot(side)-b.dot(side));
+ // Carry has assigned anatomical tasks: left arm supports the forward
+ // torso, right arm catches the trailing thigh. Drag uses lateral sorting.
+ if(p.mode==='drag')world.sort((a,b)=>a.dot(side)-b.dot(side));
  return [world[0],world[1]] as const;
 }

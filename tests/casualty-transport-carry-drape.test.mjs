@@ -1,12 +1,12 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {readTransportPatientPose,patientDrape,patientChestTilt,patientHipOffset,patientAnkleOffset} from '../src/breach-transport-patient-pose.ts';
 import {buildTransportLabTrack} from '../src/casualty-transport-lab-track.ts';
-test('carry is seated behind the head and independent of physical convergence',()=>{
+test('carry pelvis is seated on one shoulder and independent of physical convergence',()=>{
  const carrier={id:'c',p:{x:100,y:50},health:4,heading:0,carryingId:'p'};
  const subject={id:'p',p:{x:80,y:50},health:0,heading:0,carriedById:'c',transportMode:'carry'};
  const a=readTransportPatientPose(subject,[carrier]),b=readTransportPatientPose({...subject,p:{x:100,y:52}},[carrier]);
- assert.deepEqual(a.chest,b.chest);assert.ok(a.chest.x<carrier.p.x-8);
- assert.ok(patientChestTilt(a)>.3);assert.ok(patientHipOffset(a)<-3);
+ assert.deepEqual(a.chest,b.chest);assert.ok(a.chest.z>carrier.p.y+9);assert.ok(a.chest.x>carrier.p.x+2);
+ assert.ok(patientChestTilt(a)>.7);assert.ok(patientHipOffset(a)>3);
  assert.ok(patientAnkleOffset(a,1).x<-12);
 });
 test('carry pickup arcs into a supported pose before custody and release loses drape',()=>{

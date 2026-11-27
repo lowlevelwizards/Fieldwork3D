@@ -356,9 +356,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     frame.root.position.copy(root.position);frame.root.quaternion.copy(root.quaternion);
     r.legacyYaw=-patient.heading;r.legacyPitch=0;r.legacyRoll=patient.roll;
     frame.hip.position.set(patientHipOffset(patient),TRANSPORT_PATIENT_HIP_Y,0);
-    frame.hip.rotation.set(0,0,-.32*patientDrape(patient));
+    frame.hip.rotation.set(0,0,-.18*patientDrape(patient));
     frame.chest.position.set(0,TRANSPORT_PATIENT_CHEST_Y,0);frame.chest.rotation.set(0,0,patientChestTilt(patient));
-    frame.head.rotation.set(0,0,.35*patientDrape(patient));
+    frame.head.rotation.set(0,0,.25*patientDrape(patient));
   }
   const legPose=applyOperatorLegIK(workingRig,p,scratch,targets,kick,headingYaw,smooth);
   // B3: all eight lower-body transforms are now computed off-scene.
@@ -1201,7 +1201,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       // Convert the paired world anchor through the exact current chest
       // matrix (including loaded lean and pelvis yaw), not just yaw math.
       const requested=pairContacts?frame.chest.worldToLocal(pairContacts[i].clone()):P(target.x,target.y,target.z);
-      const solved=solveTwoBone(shoulder,requested,10,10,P(1,-8,sign*5),ARM_LIMITS);
+      const pole=p.loadedTransport?.mode==='carry'?
+        (i===0?P(5,-6,-4):P(-5,-5,7)):P(1,-8,sign*5);
+      const solved=solveTwoBone(shoulder,requested,10,10,pole,ARM_LIMITS);
       if(diagnosticsEnabled&&pairContacts)r.root.userData.transportContactErrors.push(solved.effector.distanceTo(requested));
       arm.bend.copy(solved.bendPlane);arm.outOfReach=!solved.reached;
       r.elbowSpread[i]=Math.max(0,sign*(solved.joint.z-shoulder.z));
