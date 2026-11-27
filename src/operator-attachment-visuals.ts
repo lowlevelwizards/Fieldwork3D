@@ -59,14 +59,15 @@ export function sculptGeometry(sections:Section[],hollow=false,wall=.30){
   // outer walls (especially the dump bag), leaving a rectangular ghost.
   // Offset the convex six-sided polygon along each edge normal; this
   // preserves the chamfer and guarantees a real, constant planar wall.
-  const inset=(r:Point[],amount:number):Point[]=>r.map((v,i)=>{
-   const prev=r[(i+5)%6],next=r[(i+1)%6];
-   const ax=v[0]-prev[0],az=v[2]-prev[2],al=Math.hypot(ax,az);
-   const bx=next[0]-v[0],bz=next[2]-v[2],bl=Math.hypot(bx,bz);
-   const na=[-az/al,ax/al],nb=[-bz/bl,bx/bl];
-   const denom=1+na[0]*nb[0]+na[1]*nb[1];
-   return [v[0]+amount*(na[0]+nb[0])/denom,v[1],v[2]+amount*(na[1]+nb[1])/denom];
-  });
+  const inset=(r:Point[],amount:number):Point[]=>{
+   const width=r[1][0]-r[0][0],back=r[0][2],front=r[3][2];
+   const cut=front-r[2][2];
+   // Very small outer chamfers disappear under a true polygon offset.
+   // Preserve a tiny inward-only chamfer rather than letting their
+   // vertices cross, which would invert an interior facet.
+   return ring({y:r[0][1],width:width-2*amount,back:back+amount,
+    front:front-amount,cut:Math.max(.06,cut-(2-Math.SQRT2)*amount)});
+  };
   // The cavity floor is a raised slice of the actual taper, not a
   // second copy of the bottom or a vertical prism with a wide footprint.
   const floorY=low+Math.min(wall,height*.2);
@@ -149,6 +150,7 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
   cell(0,-.09,.51,(_p,g)=>{
    const geo=nativePrimaryMagazine(variant==='compact');
    const mag=new THREE.Mesh(geo,palette.contents);mag.name='native-primary-magazine';
+   mag.position.y=Math.max(0,-H*.98+.30+ .04-(-H*.09+geo.boundingBox!.min.y));
    mag.castShadow=true;mag.receiveShadow=true;g.add(mag);
   });break;
  case 'shell-holder':
