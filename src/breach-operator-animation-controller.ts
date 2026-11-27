@@ -20,6 +20,7 @@ import type {OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import * as THREE from 'three';
 import {readSlingKind} from './breach-weapon-retention.ts';
+import {oneHandRetentionWeight} from './breach-weapon-retention-actions.ts';
 import {sampleRetentionTransition} from './breach-weapon-retention-transition.ts';
 import {solveOperatorDirectSlingPose} from './breach-operator-sling-pose.ts';
 import {beginOperatorEquipmentPose,solveOperatorDroppedWeapon,
@@ -1095,13 +1096,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const contactReach=!equipmentActive&&!p.down&&!p.surrender&&!p.firing&&
     contactAge>=0&&contactAge<.64?
     Math.sin(Math.PI*contactAge/.64):0;
-  const retentionMode=p.retentionTransition?
+  const oneHandWeight=oneHandRetentionWeight(p,preparedDecision.action);
+  const liveOneHand=oneHandWeight>0&&!p.retentionTransition&&!p.retentionPreview;
+  const retentionMode=liveOneHand?'held-one':p.retentionTransition?
     p.retentionTransition.mode:p.retentionPreview;
-  const retentionWeight=p.retentionTransition?.weight??1;
+  const retentionWeight=liveOneHand?oneHandWeight:p.retentionTransition?.weight??1;
   const retentionAssembly=retentionMode&&config?resolveWeaponAssembly(config):null;
   const retention=retentionMode&&retentionWeight>0&&!p.down&&!p.surrender&&!p.unarmedPreview&&
-    !p.firing&&!p.aiming&&!reloadActive&&!doorActive&&!throwActive&&!treatmentActive&&
-    !equipmentActive&&(p.secondarySwitch?.fraction??0)===0?
+    !p.firing&&!reloadActive&&(liveOneHand||!p.aiming&&!doorActive&&!throwActive&&!treatmentActive&&!equipmentActive)&&
+    (p.secondarySwitch?.fraction??0)===0?
     sampleRetentionTransition({mode:retentionMode,
       sling:readSlingKind(config?.slots.sling),scale:heldWeapon.scale,
       heldPosition:heldWeapon.position,heldQuaternion:heldWeapon.quaternion,
@@ -1140,7 +1143,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }):null;
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
-    if(retention){
+    if(retention&&(!liveOneHand||i===1)){
       const shoulder=shoulderFor(i),requested=i===0?retention.left:retention.right;
       const guide=P(3,-9,sign*2);
       const solved=solveTwoBone(shoulder,requested,10,10,guide,ARM_LIMITS);
@@ -1181,7 +1184,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         p.labPistolPitch??0,p.labPistolStance==='retention');
       continue;
     }
-    if((manualShort||manualCarry)&&manualSourceFit&&!equipmentActive){
+    if(!retention&&(manualShort||manualCarry)&&manualSourceFit&&!equipmentActive){
       const startShoulder=shoulderFor(i);
       const targetShoulder=new THREE.Vector3(
         ...manualPose!.targets[
@@ -1265,7 +1268,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // V3 arms. Only when neither owns the pair does generic IK run.
     // No second IK pass may undo a validated elbow/armor solution.
     const destinationArms=coupled?.arms??coordinatedDynamic?.arms??null;
-    const pairedArms=!carryTransitionActive&&!authoredBridge&&
+    const pairedArms=!retention&&!carryTransitionActive&&!authoredBridge&&
       !reaching&&!p.unarmedPreview&&contactReach<.001&&!equipmentActive?destinationArms:null;
     if(pairedArms){
       const limb=pairedArms[i];
