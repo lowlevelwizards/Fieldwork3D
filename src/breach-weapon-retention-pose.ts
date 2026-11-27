@@ -3,6 +3,7 @@
  * A future action owner supplies the achieved location, never the renderer. */
 import * as THREE from 'three';
 import {packedRearSurface} from './operator-retention-pack.ts';
+import type {RetentionShape} from './operator-retention-shape.ts';
 import type {EquipmentExterior} from './operator-equipment-exterior.ts';
 import type {SlingKind} from './breach-weapon-retention.ts';
 import type {WeaponRetentionSockets} from './weapons/geometry/weapon-retention-sockets.ts';
@@ -22,7 +23,7 @@ export type RetentionPoseInput=Readonly<{
  muzzleX:number;stockX:number;
  sockets?:WeaponRetentionSockets|null;motion?:SuspensionMotion;
  bounds?:THREE.Box3;rigDepth?:number;beltDepth?:number;
- exterior?:EquipmentExterior;packBounds?:THREE.Box3;
+ exterior?:EquipmentExterior;packBounds?:THREE.Box3;shape?:RetentionShape;
 }>;
 export function retentionPoseSupported(mode:RetentionPoseMode,sling:SlingKind){
  return mode==='held-one'||mode==='front-slung'&&sling!=='none'||
@@ -78,7 +79,7 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
   new THREE.Vector3(p.balanceX*p.scale.x,0,0);
  if(!one&&socket)anchor.y+=4;
  const position=anchor.clone().sub(offset.clone().applyQuaternion(q));
- if(!one){
+ if(!one&&(!p.exterior||!p.bounds)){
   // Conservative silhouette centerline against body/ground. The exact
   // equipment envelope and world obstruction policy is WR11.
   const barrelAxis=new THREE.Vector3(1,0,0).applyQuaternion(q);

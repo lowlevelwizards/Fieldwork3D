@@ -26,6 +26,7 @@ import {sampleRetentionTransition} from './breach-weapon-retention-transition.ts
 import {solveOperatorDirectSlingPose,commitOperatorSlingRibbon} from './breach-operator-sling-pose.ts';
 import {equipmentExterior} from './operator-equipment-exterior.ts';
 import {retentionPackBounds} from './operator-retention-pack.ts';
+import {retentionShape} from './operator-retention-shape.ts';
 import {beginOperatorEquipmentPose,solveOperatorDroppedWeapon,
  finishOperatorEquipmentPose} from './breach-operator-equipment-output.ts';
 import {EQUIPMENT_ATTACHMENT_INDEX as EAI}
@@ -364,6 +365,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       model.userData.visibleStockContact??null;
     r.weaponBody.userData.retentionSockets=model.userData.retentionSockets??null;
     const retentionBounds=new THREE.Box3().setFromObject(model);
+    // Capture before reparenting so cached samples use weapon-art coordinates.
+    const retentionPoints=[...retentionShape([model],retentionBounds)];
+    // Preserve source geometry for the shape compiler without traversing the
+    // animated weapon parent in world space. Reparent after collecting below.
     while(model.children.length)r.weaponBody.add(model.children[0]);
     r.droppedWeaponBody.userData.visibleStockContact=null;
     // Detachable geometry is copied from precisely the same named AR/AK
@@ -381,11 +386,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     if(config){
       const accessories=buildWeaponAccessories(config,r.weaponSteel,r.weaponDark,
        r.weaponLensMaterial);
-      retentionBounds.union(new THREE.Box3().setFromObject(accessories));
+      const accessoryBounds=new THREE.Box3().setFromObject(accessories);
+      retentionPoints.push(...retentionShape([accessories],accessoryBounds));
+      retentionBounds.union(accessoryBounds);
       while(accessories.children.length)
        r.weaponAccessories.add(accessories.children[0]);
     }
     r.weaponBody.userData.retentionBounds=retentionBounds;
+    r.weaponBody.userData.retentionShape=retentionPoints;
     r.weaponLightLens=r.weaponAccessories.getObjectByName('weapon-light-lens')??null;
     r.droppedLightLens=null;
     const slingMaterial=r.slingStraps[0]?.material;
@@ -1130,6 +1138,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       muzzleX:retentionAssembly?.muzzleX??19.5,stockX:retentionAssembly?.stockX??-13.5,
       sockets:r.weaponBody.userData.retentionSockets,
       bounds:r.weaponBody.userData.retentionBounds,
+      shape:r.weaponBody.userData.retentionShape,
       exterior:equipmentExterior(clothing.armorStyle,clothing.rigStyle,clothing.top),
       packBounds:retentionPack,
       rigDepth:p.equipment?.slots.rig&&p.equipment.slots.rig!=='rig-none'?1.5:0,
