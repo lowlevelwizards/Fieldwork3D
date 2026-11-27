@@ -114,6 +114,8 @@ export function referenceGearSettings(referenceId:string):
  put('uniform','detail.knitSolid',w.knitSolid);
  put('accessories','detail.gloveSolid',w.gloveSolid);
  for(const [k,v] of Object.entries(w.markings??{}))put('markings','marking.'+k,v);
+ for(const [slot,value] of Object.entries(resolved.weapon.weaponConfiguration.slots))
+  put('weapon','attachment.'+slot,value);
  put('weapon','preset',resolved.weapon.presetId);
  put('weapon','modelFidelity',resolved.weapon.fidelity);
  return flatten(data);
