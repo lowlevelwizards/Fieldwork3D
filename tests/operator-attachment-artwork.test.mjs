@@ -44,3 +44,34 @@ test('BT3: all representative fixture requests fit their compatible belts',()=>{
  assert.equal(attachmentMountRequest('x','dump-pouch','plain-belt'),null);
  assert.equal(attachmentMountRequest('x','rigid-holster','no-belt'),null);
 });
+
+test('BT3R: native rifle-magazine bounding box fits the full-size holder mouth',async()=>{
+ const {nativePrimaryMagazineSize}=await import('../src/operator-attachment-reference.ts');
+ for(const variant of ['standard','compact','expanded']){
+  const size=nativePrimaryMagazineSize(variant==='compact'),p=attachmentFootprint('primary-mag-pouch',variant);
+  assert.ok(size.x<=p.width*.99-.36,variant+' width');
+  assert.ok(size.z<=p.depth-.36,variant+' depth');
+  assert.ok(size.y<=p.height,variant+' height');
+ }
+ const dump=attachmentFootprint('dump-pouch'),mag=nativePrimaryMagazineSize();
+ assert.ok(dump.width>mag.x&&dump.depth>mag.z*2&&dump.height>mag.y);
+});
+test('BT3R: all authored attachments stay at belt contact without protruding bridges',()=>{
+ const m=new THREE.MeshStandardMaterial(),palette={fabric:m,dark:m,hardware:m,contents:m,accent:m};
+ for(const id of ATTACHMENT_IDS){
+  const v=createAttachmentVisual(id,palette);
+  assert.equal(v.root.getObjectByName('mount-bridge'),undefined);
+  placeAttachmentVisual(v,{x:4,y:0,z:7,yaw:Math.PI/2,tilt:-.075});
+  assert.equal(v.holder.position.z,0);
+  assert.equal(v.root.position.z,7);
+  v.root.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
+ }
+ m.dispose();
+});
+
+test('BT3R: larger dump bag is reserved at the rear; rolled side fixture remains compatible',()=>{
+ const full=attachmentMountRequest('dump','dump-pouch','padded-belt','standard','rear');
+ const rolled=attachmentMountRequest('dump','dump-pouch','padded-belt','rolled','right-hip');
+ assert.equal(resolveBeltMounts('padded-belt',[full]).mounts[0].region,'rear');
+ assert.equal(resolveBeltMounts('padded-belt',[rolled]).mounts[0].region,'right-hip');
+});

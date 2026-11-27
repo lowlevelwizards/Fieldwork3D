@@ -24,11 +24,11 @@ test('BT3R: details are nearest-filtered metric texture pixels, not overlay geom
  assert.equal(map.image.height,Math.ceil(3/ART_PIXEL));
  assert.equal(map.magFilter,THREE.NearestFilter);
  assert.equal(map.channel,1);
- assert.ok(map.image.data.some(x=>x<120));
+ assert.ok(map.image.data.some(x=>x<200));
 });
 test('BT3R: larger footprints and higher mounting origins',()=>{
  assert.ok(attachmentFootprint('primary-mag-pouch').width>=3.2);
- assert.ok(attachmentFootprint('rigid-holster').depth>=2.6);
+ assert.ok(attachmentFootprint('rigid-holster').depth>=2.2);
  assert.ok(attachmentFootprint('shell-holder').width>=5);
  const request=attachmentMountRequest('mag','primary-mag-pouch','battle-belt','standard','right-hip');
  const r=resolveBeltMounts('battle-belt',[request]);
@@ -37,9 +37,11 @@ test('BT3R: larger footprints and higher mounting origins',()=>{
  assert.ok(s.y>baseline.y+1);
 });
 
-test('BT3R: long hip attachments reserve a static trouser-pocket standoff',()=>{
+test('BT3R: long hip attachments retain direct belt contact',()=>{
  const q=attachmentMountRequest('pouch','primary-mag-pouch','battle-belt','standard','right-hip');
  const m=resolveBeltMounts('battle-belt',[q]).mounts[0];
- assert.ok(m.socket.clearance>0);
- assert.ok(Math.abs(m.socket.z)+m.socket.clearance+q.footprint.depth*.16>=9.44);
+ const contact=beltSurface('battle-belt',m.segment,(m.interval[0]+m.interval[1])/2);
+ assert.ok(Math.abs(m.socket.z-contact.z)<=.17);assert.ok(Math.abs(m.socket.x-contact.x)<=.17);
+ assert.ok((m.socket.z-contact.z)*contact.normalZ+(m.socket.x-contact.x)*contact.normalX<0);
+ assert.ok(Math.abs(m.socket.tilt)<.1);
 });

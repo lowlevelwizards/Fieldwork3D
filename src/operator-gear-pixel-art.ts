@@ -4,7 +4,7 @@
  */
 import * as THREE from 'three';
 import {ART_PIXEL} from './rendering/material-art-scale.ts';
-export type GearMark='webbing'|'padding'|'flap'|'band'|'medical'|'utility';
+export type GearMark='webbing'|'padding'|'flap'|'band'|'medical'|'utility'|'radio'|'zipper'|'dump'|'holster'|'leather'|'shell';
 const cache=new Map<string,THREE.DataTexture>();
 const linked=new WeakMap<THREE.Material,Map<string,THREE.MeshStandardMaterial>>();
 export function gearPixelMap(mark:GearMark,w:number,h:number){
@@ -13,15 +13,28 @@ export function gearPixelMap(mark:GearMark,w:number,h:number){
  const pixels=new Uint8Array(nx*ny*4);
  for(let y=0;y<ny;y++)for(let x=0;x<nx;x++){
   let tone=255;
-  if(mark==='webbing'&&y===Math.floor(ny/2)&&x%4!==3)tone=72;
-  if(mark==='padding'&&(x%5===0||y===0))tone=112;
-  if(mark==='flap'&&y===Math.max(0,ny-2))tone=94;
-  if(mark==='band'&&y===Math.floor(ny*.6))tone=95;
+  if(mark==='webbing'&&y===Math.floor(ny/2)&&x%4!==3)tone=158;
+  if(mark==='padding'&&(x%5===0||y===0))tone=177;
+  if(mark==='flap'&&y===Math.max(0,ny-2))tone=156;
+  if(mark==='band'&&y===Math.floor(ny*.6))tone=155;
   if(mark==='utility'&&y===Math.max(0,ny-2))tone=95;
   if(mark==='medical'){
    const cx=Math.floor(nx/2),cy=Math.floor(ny/2);
-   if((x===cx&&Math.abs(y-cy)<=1)||(y===cy&&Math.abs(x-cx)<=1))tone=38;
+   if((x===cx&&Math.abs(y-cy)<=1)||(y===cy&&Math.abs(x-cx)<=1))tone=110;
+   if(y===ny-1)tone=x===nx-2?125:165;
   }
+  if(mark==='webbing'&&y===Math.min(ny-1,Math.floor(ny/2)+1)&&x%4!==3)tone=222;
+  if(mark==='padding'&&y===ny-1)tone=222;
+  if(mark==='utility'&&(x===0||x===nx-1)&&y>0&&y<ny-1)tone=202;
+  if(mark==='zipper'&&y===ny-2)tone=x===nx-2?114:157;
+  if(mark==='zipper'&&y===ny-1)tone=232;
+  if(mark==='radio'&&y===ny-2&&x>0&&x<nx-1)tone=114;
+  if(mark==='radio'&&y===Math.max(0,ny-4))tone=180;
+  if(mark==='dump'&&y===ny-2)tone=152;
+  if(mark==='dump'&&y<ny-2&&(x===1||x===nx-2))tone=200;
+  if(mark==='holster'&&x===nx-2&&y>0&&y<ny-1)tone=170;
+  if(mark==='leather'&&y===0)tone=190;
+  if(mark==='shell'&&y===Math.floor(ny/2))tone=154;
   // Reserve the upper-right corner as the neutral sample for non-art faces.
   if(x===nx-1&&y===ny-1)tone=255;
   const i=(y*nx+x)*4;pixels[i]=pixels[i+1]=pixels[i+2]=tone;pixels[i+3]=255;
@@ -39,7 +52,7 @@ export function gearMarkedMaterial(source:THREE.Material,mark:GearMark,w:number,
  let variants=linked.get(source);if(!variants){variants=new Map();linked.set(source,variants);}
  let material=variants.get(key);if(material)return material;
  material=source.clone();material.name=key;
- material.aoMap=map;material.aoMapIntensity=1;material.needsUpdate=true;
+ material.aoMap=map;material.aoMapIntensity=.42;material.needsUpdate=true;
  variants.set(key,material);return material;
 }
 /** Map only the outward +Z face of a box. Other faces sample a white corner.
@@ -53,7 +66,8 @@ export function gearBoxMarkUV(geometry:THREE.BoxGeometry,w:number,h:number){
  }
  geometry.setAttribute('uv1',new THREE.BufferAttribute(uv,2));
 }
-export function syncGearMarkedMaterials(source:THREE.MeshStandardMaterial){
+export function syncGearMarkedMaterials(source:THREE.Material){
+ if(!(source instanceof THREE.MeshStandardMaterial))return;
  for(const material of linked.get(source)?.values()??[]){
   material.color.copy(source.color);
   if(material.map!==source.map){material.map=source.map;material.needsUpdate=true;}

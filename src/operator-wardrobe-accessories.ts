@@ -97,7 +97,7 @@ export function updateWardrobeAccessories(v:WardrobeAccessoryVisuals,
   if(id==='none')continue;
   const family=ART[id];
   if(family){
-   const request=attachmentMountRequest(slot,family,style,'standard',region,true);
+   const request=attachmentMountRequest(slot,family,style,family==='dump-pouch'?'rolled':'standard',region,true);
    if(request)requests.push({...request,allowed:[region]});
   }else requests.push({id:slot,preferred:region,allowed:[region],
    footprint:{width:2.7,height:2.7,depth:1.5,spaces:0}});
@@ -110,7 +110,7 @@ export function updateWardrobeAccessories(v:WardrobeAccessoryVisuals,
   if(mount){
    const entry=authored.get(g);
    if(entry){
-    if(!entry.visual){entry.visual=createAttachmentVisual(entry.family,entry.palette);g.add(entry.visual.root);}
+    if(!entry.visual){entry.visual=createAttachmentVisual(entry.family,entry.palette,entry.family==='dump-pouch'?'rolled':'standard');g.add(entry.visual.root);}
     placeAttachmentVisual(entry.visual,mount.socket);
     g.position.set(0,0,0);
     continue;

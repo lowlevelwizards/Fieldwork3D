@@ -1,5 +1,6 @@
-/** BT3R2: large readable holder masses; surface marks are metric pixels.
- * +Z outward, +Y up. Sample contents are independent Lab-only objects.
+/** BT3R.8–10: selective silhouette sculpting around actual contents.
+ * Carrier-local +Z outward, +Y up; a holder backs directly onto the carrier.
+ * Six-point chamfered sections provide real shape with no decorative quads.
  */
 import * as THREE from 'three';
 import {attachmentFootprint,attachmentVariant,attachmentContentSlots,
@@ -7,16 +8,64 @@ import {attachmentFootprint,attachmentVariant,attachmentContentSlots,
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {gearMarkedMaterial,gearBoxMarkUV,type GearMark} from './operator-gear-pixel-art.ts';
-import {carriedMagazineGeometry} from './operator-carried-magazines.ts';
+import {TILE_WORLD_SIZE} from './rendering/pixel-recipes.ts';
+import {nativePrimaryMagazine,SIDEARM_OPERATOR_SCALE} from './operator-attachment-reference.ts';
 import {buildGlockAppearance,glockArtSockets} from './weapons/geometry/glock-family-silhouettes.ts';
 export type AttachmentPalette=Record<AttachmentMaterial,THREE.Material>;
 export type AttachmentVisual={
  root:THREE.Group;holder:THREE.Group;contents:THREE.Group[];
  contentSockets:THREE.Group[];interactionSocket:THREE.Object3D;
  footprint:ReturnType<typeof attachmentFootprint>;
- mountBridge:THREE.Mesh;
 };
 type Part=(channel:AttachmentMaterial,x:number,y:number,z:number,w:number,h:number,d:number,name?:string,mark?:GearMark)=>void;
+type Point=[number,number,number];
+type Section={y:number;width:number;back:number;front:number;cut:number};
+function sculptGeometry(sections:Section[],hollow=false,wall=.22){
+ const pos:number[]=[],uv:number[]=[],uv1:number[]=[];
+ const low=sections[0].y,high=sections[sections.length-1].y;
+ const width=Math.max(...sections.map(s=>s.width)),height=high-low;
+ const ring=(s:Section):Point[]=>{
+  const x=s.width/2,c=Math.min(s.cut,x*.5,(s.front-s.back)*.45);
+  return [[-x,s.y,s.back],[x,s.y,s.back],[x,s.y,s.front-c],
+   [x-c,s.y,s.front],[-x+c,s.y,s.front],[-x,s.y,s.front-c]];
+ };
+ const tri=(a:Point,b:Point,c:Point,mark=false)=>{
+  const dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2];
+  const ex=c[0]-a[0],ey=c[1]-a[1],ez=c[2]-a[2];
+  const nx=dy*ez-dz*ey,ny=dz*ex-dx*ez,nz=dx*ey-dy*ex;
+  for(const v of [a,b,c]){
+   pos.push(...v);
+   uv.push((Math.abs(nx)>Math.abs(nz)?v[2]:v[0])/TILE_WORLD_SIZE,
+    (Math.abs(ny)>Math.abs(nx)+Math.abs(nz)?v[2]:v[1])/TILE_WORLD_SIZE);
+   uv1.push(mark?(v[0]+width/2)/width:.999,mark?(v[1]-low)/height:.999);
+  }
+ };
+ const connect=(a:Point[],b:Point[],invert=false,marked=false)=>{
+  for(let i=0;i<6;i++){
+   const j=(i+1)%6,m=marked&&i===3;
+   if(invert){tri(a[i],a[j],b[j],m);tri(a[i],b[j],b[i],m);}
+   else{tri(a[i],b[j],a[j],m);tri(a[i],b[i],b[j],m);}
+  }
+ };
+ const cap=(r:Point[],up:boolean)=>{
+  for(let i=1;i<5;i++)if(up)tri(r[0],r[i+1],r[i]);else tri(r[0],r[i],r[i+1]);
+ };
+ const rings=sections.map(ring);
+ cap(rings[0],false);
+ for(let i=0;i<rings.length-1;i++)connect(rings[i],rings[i+1],false,true);
+ const top=sections[sections.length-1];
+ if(hollow){
+  const inside=ring({...top,width:top.width-2*wall,back:top.back+wall,front:top.front-wall,cut:Math.max(.04,top.cut-wall*.5)});
+  const floor=inside.map(([x,_y,z]):Point=>[x*.95,low+wall,z]);
+  connect(rings[rings.length-1],inside,false);
+  connect(floor,inside,true);cap(floor,true);
+ }else cap(rings[rings.length-1],true);
+ const g=new THREE.BufferGeometry();
+ g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+ g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+ g.setAttribute('uv1',new THREE.Float32BufferAttribute(uv1,2));
+ g.computeVertexNormals();return g;
+}
 export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette,
  requested:AttachmentVariant='standard',sampleContents=false):AttachmentVisual{
  const variant=attachmentVariant(id,requested),footprint=attachmentFootprint(id,variant);
@@ -27,113 +76,110 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
  const contents:THREE.Group[]=[],contentSockets:THREE.Group[]=[];
  const parts=(g:THREE.Group,dx=0,dy=0,dz=0):Part=>(channel,x,y,z,w,h,d,name='panel',mark)=>{
   const source=palette[channel],m=mark?gearMarkedMaterial(source,mark,w*W,h*H):source;
-  const geometry=garmentBoxUV(new THREE.BoxGeometry(w*W,h*H,d*D),w*W,h*H,d*D,m,x*W,y*H,z*D);
-  if(mark)gearBoxMarkUV(geometry,w*W,h*H);
-  const mesh=new THREE.Mesh(geometry,m);mesh.name=name;
-  mesh.position.set((x-dx)*W,(y-dy)*H,(z-dz)*D);mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);
+  const geo=garmentBoxUV(new THREE.BoxGeometry(w*W,h*H,d*D),w*W,h*H,d*D,m,x*W,y*H,z*D);
+  if(mark)gearBoxMarkUV(geo,w*W,h*H);
+  const mesh=new THREE.Mesh(geo,m);mesh.name=name;mesh.position.set((x-dx)*W,(y-dy)*H,(z-dz)*D);
+  mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);
  };
  const b=parts(holder);
- // Real mounting bridge, broad enough to clear the trouser seam, not a
- // floating tab. All other surface details stay on the underlying mesh.
- // Dedicated nondecorative mount bridge; its physical depth is adjusted
- // on a hip contact when clearance requires a short standoff.
- const bridgeGeo=garmentBoxUV(new THREE.BoxGeometry(W*.68,H*.32,D*.20),
-  W*.68,H*.32,D*.20,palette.fabric);
- const mountBridge=new THREE.Mesh(bridgeGeo,palette.fabric);
- mountBridge.name='mount-bridge';mountBridge.position.set(0,-H*.16,D*.10);
- mountBridge.castShadow=true;mountBridge.receiveShadow=true;root.add(mountBridge);
- const open=(cx:number,cw:number,bottom:number,top:number,mark?:GearMark,channel:AttachmentMaterial='fabric')=>{
-  const h=top-bottom,cy=(top+bottom)*.5;
-  // Four separate walls plus a floor, meeting at edges, not overlapping
-  // coplanar face strips. Interior aperture remains real.
-  b(channel,cx,cy,.25,cw,h,.18,'back-wall');
-  b(channel,cx,cy,.89,cw,h,.20,'front-wall',mark);
-  for(const s of [-1,1])b(channel,cx+s*cw*.45,cy,.565,cw*.10,h,.45,'side-wall');
-  b('dark',cx,bottom+.07,.565,cw*.80,.14,.45,'floor');
+ // Back face touches the belt; the lower body narrows modestly away from
+ // the thigh. No mounting bridge, shelf, or independently floating tab.
+ const shell=(channel:AttachmentMaterial,cx:number,sections:readonly (readonly [number,number,number,number,number])[],
+  hollow=false,mark?:GearMark,name='sculpted-body',wall=.22)=>{
+  const s=sections.map(([y,w,back,front,cut])=>({y:y*H,width:w*W,back:back*D,front:front*D,cut:cut*W}));
+  const m=mark?gearMarkedMaterial(palette[channel],mark,Math.max(...s.map(v=>v.width)),s[s.length-1].y-s[0].y):palette[channel];
+  const mesh=new THREE.Mesh(sculptGeometry(s,hollow,wall),m);mesh.name=name;mesh.position.x=cx*W;
+  mesh.castShadow=true;mesh.receiveShadow=true;holder.add(mesh);
  };
- const closed=(cw:number,bottom:number,top:number,mark:GearMark='flap')=>{
-  b('fabric',0,(top+bottom)*.5,.60,cw,top-bottom,.76,'body',mark);
+ const pouch=(cx:number,w:number,bottom:number,top:number,mark:GearMark='band',channel:AttachmentMaterial='fabric')=>{
+  shell(channel,cx,[[bottom,w*.94,.12,.92,.07],[top,w,0,1,.07]],true,mark,'open-pouch',.18);
+ };
+ const solid=(w:number,bottom:number,top:number,mark:GearMark='utility',front=.88)=>{
+  shell('fabric',0,[[bottom,w*.86,.09,front*.89,.10],[bottom+.12,w,0,front,.11],
+   [top,w,.02,front,.10]],false,mark);
+ };
+ const lid=(w:number,bottom:number,top:number)=>{
+  shell('fabric',0,[[bottom,w,.11,1,.09],[top,w*.91,.02,.88,.08]],false,'flap','protective-lid');
+  b('dark',0,bottom-.07,.88,.19,.18,.19,'broad-closure');
  };
  const cell=(x:number,y:number,z:number,draw?:(p:Part,g:THREE.Group)=>void)=>{
   const socket=new THREE.Group();socket.name='content-socket-'+contentSockets.length;
   socket.position.set(x*W,y*H,z*D);root.add(socket);contentSockets.push(socket);
-  const g=new THREE.Group();g.name='sample-content-'+contents.length;socket.add(g);
-  contents.push(g);g.visible=false;
+  const g=new THREE.Group();g.name='sample-content-'+contents.length;socket.add(g);contents.push(g);g.visible=false;
   if(sampleContents&&draw){draw(parts(g,x,y,z),g);consolidateVisualGroup(g);}
  };
  switch(id){
  case 'pistol-mag-pouch':{
-  const n=attachmentContentSlots(id,variant),w=n===2?.44:.90;
+  const n=attachmentContentSlots(id,variant),w=n===2?.46:.94;
   for(let i=0;i<n;i++){
-   const x=(i-(n-1)/2)*.50;
-   open(x,w,-.96,-.24,'band');
-   cell(x,-.15,.56,p=>{
-    p('contents',x,-.44,.56,w*.66,.75,.42,'sample-magazine');
-    p('hardware',x,-.065,.56,w*.78,.12,.57,'baseplate');
+   const x=(i-(n-1)/2)*.49;pouch(x,w,-.94,-.25);
+   cell(x,-.16,.52,p=>{
+    p('contents',x,-.42,.52,w*.68,.72,.50,'magazine-body');
+    p('hardware',x,-.075,.52,w*.78,.10,.60,'baseplate');
    });
   }break;
  }
  case 'primary-mag-pouch':
-  open(0,.98,-.96,-.28,'band');
-  cell(0,-.15,.56,(_p,g)=>{
-   // Actual existing carried AR art profile, no arbitrary scaled proxy.
-   const geo=carriedMagazineGeometry(variant==='compact'?'ar-mag20':'ar-mag30');
-   if(!geo)return;geo.rotateY(Math.PI/2);geo.computeBoundingBox();
-   const bounds=geo.boundingBox!,center=bounds.getCenter(new THREE.Vector3());
-   geo.translate(-center.x,-bounds.max.y,-center.z);
-   const mag=new THREE.Mesh(geo,palette.contents);mag.name='authored-carried-magazine';
-   mag.position.y=-H*.96+H*.14+(bounds.max.y-bounds.min.y)+H*.15;mag.castShadow=true;mag.receiveShadow=true;g.add(mag);
+  pouch(0,.99,-.98,-.25,'band');
+  cell(0,-.09,.51,(_p,g)=>{
+   const geo=nativePrimaryMagazine(variant==='compact');
+   const mag=new THREE.Mesh(geo,palette.contents);mag.name='native-primary-magazine';
+   mag.castShadow=true;mag.receiveShadow=true;g.add(mag);
   });break;
  case 'shell-holder':
-  b('fabric',0,-.48,.24,.96,.75,.35,'backing');
-  // Four separately readable chunky shells, generous gaps and exposed brass.
+  shell('fabric',0,[[-.81,.98,0,.32,.05],[-.12,.98,0,.32,.05]],false,'shell','shell-backing');
   for(let i=0;i<4;i++){
    const x=(i-1.5)*.25;
-   b('dark',x,-.53,.69,.19,.30,.60,'elastic-cell');
+   b('dark',x,-.52,.58,.19,.29,.62,'elastic-cell');
    cell(x,-.16,.64,p=>{
-    p('accent',x,-.39,.64,.17,.63,.46,'shell-body');
-    p('hardware',x,-.79,.64,.17,.16,.46,'shell-base');
+    p('accent',x,-.37,.64,.17,.59,.56,'shell-body');
+    p('hardware',x,-.75,.64,.18,.17,.58,'shell-base');
    });
   }break;
  case 'rigid-holster':
-  open(0,.96,-.98,-.29,undefined,'dark');
-  cell(0,-.22,.55,(_p,g)=>{
+  // Molded shell follows the narrower slide and widens at the mouth.
+  shell('dark',0,[[-.98,.64,.10,.82,.10],[-.78,.72,.06,.90,.09],
+   [-.22,.96,0,1,.10]],true,'holster','tapered-polymer-shell',.18);
+  cell(0,-.19,.54,(_p,g)=>{
    const gun=buildGlockAppearance('glock-g19-gen3',{details:false});
    const pivot=glockArtSockets('glock-g19-gen3').holsterPivot;
    gun.position.set(-pivot.x,-pivot.y,-pivot.z);
-   const cradle=new THREE.Group();cradle.scale.setScalar(.37);cradle.rotation.z=-Math.PI/2;
-   cradle.position.set(-1.45,.95,0);cradle.add(gun);g.add(cradle);
-   // Borrow authored geometry; the preview owns no shared weapon materials.
+   const cradle=new THREE.Group();cradle.scale.setScalar(SIDEARM_OPERATOR_SCALE);cradle.rotation.z=-Math.PI/2;
+   cradle.add(gun);g.add(cradle);cradle.updateMatrixWorld(true);
+   const bounds=new THREE.Box3().setFromObject(cradle);
+   cradle.position.x-=((bounds.min.x+bounds.max.x)/2);
+   cradle.position.y+=-H*.89+H*.19-bounds.min.y;
+   cradle.position.z-=((bounds.min.z+bounds.max.z)/2);
    gun.traverse(o=>{if(o instanceof THREE.Mesh)o.material=palette.contents;});
   });break;
  case 'flap-holster':
-  closed(.91,-.98,-.30);
-  b('fabric',0,-.19,.62,.97,.36,.76,'broad-flap','flap');
-  cell(0,-.20,.56);break;
+  shell('fabric',0,[[-.98,.65,.1,.81,.10],[-.76,.76,.04,.88,.1],[-.29,.92,0,.89,.10]],false,'holster');
+  lid(.98,-.33,-.04);cell(0,-.20,.51);break;
  case 'medical-pouch':
-  closed(.98,-.95,-.10,'medical');
-  b('fabric',0,-.09,.54,.90,.16,.60,'grab-handle');
-  cell(0,-.20,.56);break;
+  solid(.98,-.95,-.09,'medical',.95);
+  b('fabric',0,-.075,.44,.68,.13,.35,'grab-handle');
+  cell(0,-.20,.51);break;
  case 'radio-holder':
-  open(0,.91,-.96,-.44);
-  cell(0,-.32,.56,p=>{
-   p('contents',0,-.47,.56,.72,.68,.42,'radio-body','band');
-   p('dark',.29,-.13,.56,.19,.26,.19,'antenna');
+  pouch(0,.91,-.97,-.49,'band');
+  cell(0,-.22,.51,p=>{
+   p('contents',0,-.50,.51,.72,.72,.60,'radio-body','radio');
+   p('dark',.27,-.10,.47,.16,.20,.17,'antenna');
+   p('hardware',-.24,-.17,.49,.23,.12,.25,'top-control');
   });break;
  case 'flashlight-holder':
-  open(0,.90,-.82,-.43);
-  cell(0,-.24,.56,p=>{
-   p('contents',0,-.46,.56,.48,.72,.45,'body');
-   p('dark',0,-.13,.56,.78,.25,.74,'head');
+  pouch(0,.91,-.92,-.54,'band');
+  cell(0,-.22,.51,p=>{
+   p('contents',0,-.49,.51,.53,.74,.48,'light-body');
+   p('dark',0,-.14,.51,.82,.25,.78,'oversized-head');
+   p('hardware',0,-.017,.51,.59,.034,.56,'lens');
   });break;
  case 'restraint-pouch':
-  closed(.92,-.95,-.32);
-  b('fabric',0,-.18,.60,.96,.31,.76,'case-flap','flap');break;
+  solid(.94,-.95,-.35,'leather',.83);lid(.98,-.37,-.09);break;
  case 'wedge-holder':
-  open(0,.96,-.95,-.38);
+  pouch(0,.95,-.96,-.40,'band');
   for(let i=0;i<2;i++){
    const x=(i-.5)*.43;
-   cell(x,-.16,.56,(_p,g)=>{
+   cell(x,-.18,.51,(_p,g)=>{
     const shape=new THREE.Shape();
     shape.moveTo(-.17*W,-.64*H);shape.lineTo(.17*W,-.64*H);
     shape.lineTo(.17*W,.10*H);shape.closePath();
@@ -143,33 +189,30 @@ export function createAttachmentVisual(id:AttachmentId,palette:AttachmentPalette
    });
   }break;
  case 'grenade-pouch':
-  open(0,.96,-.96,-.40,'flap');
-  cell(0,-.27,.56,p=>{
-   p('contents',0,-.47,.56,.66,.68,.43,'sample-canister');
-   p('hardware',0,-.12,.56,.57,.15,.50,'canister-cap');
+  shell('fabric',0,[[-.97,.76,.10,.83,.12],[-.72,.98,.02,1,.13],
+   [-.34,.93,0,.96,.12]],true,'flap','rounded-canister-holder');
+  cell(0,-.28,.52,p=>{
+   p('contents',0,-.49,.52,.65,.69,.50,'sample-canister');
+   p('hardware',0,-.13,.52,.54,.14,.49,'cap');
   });break;
  case 'utility-pouch':
-  closed(.97,-.96,-.12,'utility');break;
+  solid(.96,-.96,-.37,'utility');lid(.99,-.39,-.07);break;
  case 'dump-pouch':
-  if(variant==='rolled')closed(.98,-.93,-.12,'band');
-  else open(0,.98,-.96,-.16,'band');
+  if(variant==='rolled')solid(.96,-.92,-.08,'dump',.98);
+  else shell('fabric',0,[[-.98,.67,.15,.77,.10],[-.79,.85,.10,.92,.12],
+   [-.21,1,0,1,.12]],true,'dump','flared-dump-bag',.20);
   break;
  }
  const interactionSocket=new THREE.Object3D();interactionSocket.name='interaction-socket';
  interactionSocket.position.set(0,-H*.10,D*.60);root.add(interactionSocket);
  consolidateVisualGroup(holder);
- return {root,holder,contents,contentSockets,interactionSocket,footprint,mountBridge};
+ return {root,holder,contents,contentSockets,interactionSocket,footprint};
 }
 export function setAttachmentSampleCount(visual:AttachmentVisual,count:number){
  const n=Number.isFinite(count)?Math.max(0,Math.floor(count)):0;
  visual.contents.forEach((content,index)=>{content.visible=index<n;});
 }
-export function placeAttachmentVisual(visual:AttachmentVisual,socket:{x:number;y:number;z:number;yaw:number;clearance?:number}){
- visual.root.position.set(socket.x,socket.y,socket.z);visual.root.rotation.y=socket.yaw;
- const shift=Math.max(0,socket.clearance??0),baseDepth=visual.footprint.depth*.20;
- const delta=shift-visual.holder.position.z;
- visual.holder.position.z=shift;
- for(const node of [...visual.contentSockets,visual.interactionSocket])node.position.z+=delta;
- visual.mountBridge.scale.z=(baseDepth+shift)/baseDepth;
- visual.mountBridge.position.z=(baseDepth+shift)/2;
+export function placeAttachmentVisual(visual:AttachmentVisual,socket:{x:number;y:number;z:number;yaw:number;tilt?:number}){
+ visual.root.position.set(socket.x,socket.y,socket.z);
+ visual.root.rotation.set(socket.tilt??0,socket.yaw,0,'YXZ');
 }
