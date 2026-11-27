@@ -72,7 +72,7 @@ try{
     throw Error('Dark M4 still lacks separation from light matte: '+
      JSON.stringify(contrast));
    capture('arsenal-lit-m4-gallery-hero.png',
-    await page.locator('.arsenal-hero-media').screenshot());
+    await page.locator('.arsenal-hero-media:has(img)').screenshot());
    await page.locator('.arsenal-hero-open').click();
    const canvas=page.locator('.arsenal-wb-canvas');
    await canvas.waitFor({state:'visible'});
