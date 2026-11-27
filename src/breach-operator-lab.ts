@@ -2561,7 +2561,7 @@ function draw(){
   carryAuditOutput.dataset.unrendered=String(stagedCarry?(rig.root.userData.bt4Unrendered?.length??0):0);
   if(stagedCarry&&carryAuditClearance.checked){
    const hits=auditLiveUnifiedClearance(rig);
-   const msg=hits.length?'POTENTIAL HOLDER CONTACT · '+hits.join(' · '):'NO HOLDER BOX CONTACT IN THIS POSE';
+   const msg=hits.length?'POTENTIAL HOLDER CONTACT · '+hits.join(' · '):'NO HOLDER / THIGH / PACK BOX CONTACT IN THIS POSE';
    if(carryAuditClearanceOutput.textContent!==msg)carryAuditClearanceOutput.textContent=msg;
   }else carryAuditClearanceOutput.textContent='';
   const attachmentChoice=attachmentPreviewSelect.value;

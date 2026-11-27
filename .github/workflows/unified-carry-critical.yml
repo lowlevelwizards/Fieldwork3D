@@ -6,6 +6,9 @@ on:
       - 'src/equipment-unified-*.ts'
       - 'src/operator-armor-rig-silhouettes.ts'
       - 'src/breach-operator-lab.ts'
+      - 'src/operator-unified-carry-live.ts'
+      - 'src/operator-wardrobe-recipes.ts'
+      - 'tests/operator-wardrobe-recipes.test.mjs'
       - 'operator-lab.html'
       - 'tests/equipment-unified-*.test.mjs'
       - '.github/workflows/unified-carry-critical.yml'
@@ -27,4 +30,4 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run check
       - name: Fixed slot placement and real loadout adapter
-        run: node --experimental-strip-types --test tests/equipment-unified-placement.test.mjs tests/equipment-unified-loadout.test.mjs tests/operator-rig-pouch-layout.test.mjs tests/equipment-unified-deployment.test.mjs tests/equipment-unified-reload.test.mjs tests/operator-unified-carry-live.test.mjs tests/equipment-unified-preparation.test.mjs tests/equipment-unified-matrix.test.mjs tests/equipment-deployment-snapshot.test.mjs tests/equipment-deployed-field-use.test.mjs
+        run: node --experimental-strip-types --test tests/equipment-unified-placement.test.mjs tests/equipment-unified-loadout.test.mjs tests/operator-rig-pouch-layout.test.mjs tests/equipment-unified-deployment.test.mjs tests/equipment-unified-reload.test.mjs tests/operator-unified-carry-live.test.mjs tests/equipment-unified-preparation.test.mjs tests/equipment-unified-matrix.test.mjs tests/equipment-deployment-snapshot.test.mjs tests/equipment-deployed-field-use.test.mjs tests/operator-wardrobe-recipes.test.mjs

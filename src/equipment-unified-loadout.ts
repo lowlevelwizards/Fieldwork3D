@@ -57,7 +57,8 @@ export function unifiedLoadoutInput(source:UnifiedLoadoutSource):CarryInput{
  const auxiliary=look.rigStyle==='no-rig'?[]:source.auxiliaryCells??authored.auxiliary;
  const armor=ARMOR_PROPORTIONS[look.armorStyle],frame=armorAttachmentFrame(look.armorStyle,look.top);
  const pack=proposedPackStyle(look.packStyle);
- const packCompatible=!!pack&&(PACK_PROFILES[pack].harness!=='direct'||supportsDirectPack(look.armorStyle));
+ const packFit=pack?fitPack(pack,look.armorStyle,look.rigStyle,look.top,undefined,wardrobe?.packMount??'auto',belt):undefined;
+ const packCompatible=!!pack&&!!packFit?.compatible&&(PACK_PROFILES[pack].harness!=='direct'||supportsDirectPack(look.armorStyle));
  const storage=[...registeredRigStorage(rigCells),...registeredAuxiliaryStorage(auxiliary),
   ...(armor?modularArmorStorage(look.armorStyle,look.rigStyle,frame.front.x,armor.width,armor.top,armor.bottom):[]),
   ...clothingStorage(look.trousers,kit.slots.legs),...packStorage(look.packStyle,packCompatible)];
@@ -107,9 +108,8 @@ export function unifiedLoadoutInput(source:UnifiedLoadoutSource):CarryInput{
   }
  }
  if(pack&&packCompatible&&pack!=='no-pack'){
-  const fit=fitPack(pack,look.armorStyle,look.rigStyle,look.top,undefined,wardrobe?.packMount??'auto',belt);
-  if(fit.compatible){
-   const [x,y,z]=fit.center,[d,h,w]=PACK_PROFILES[pack].size;
+  if(packFit?.compatible){
+   const [x,y,z]=packFit.center,[d,h,w]=PACK_PROFILES[pack].size;
    waistObstacles.push({min:[x-d/2,y+chestToHip-h/2,z-w/2],max:[x+d/2,y+chestToHip+h/2,z+w/2]});
   }
  }

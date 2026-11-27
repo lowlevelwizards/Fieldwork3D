@@ -203,6 +203,16 @@ export function auditLiveUnifiedClearance(r:OperatorRig){
  const current=cache.get(r);if(!current)return [];
  r.root.updateMatrixWorld(true);
  const volumes:{id:string;box:OBB}[]=[];
+ const obstacles:{id:string;box:OBB}[]=[];
+ const worldBox=(box:THREE.Box3,matrix:THREE.Matrix4)=>{
+  const size=box.getSize(new THREE.Vector3()).multiplyScalar(.5);
+  size.set(Math.max(.001,size.x-.04),Math.max(.001,size.y-.04),Math.max(.001,size.z-.04));
+  // OBB.applyMatrix4 expects a center at the local origin. Transform the
+  // off-center local midpoint explicitly; otherwise rotating the rig can
+  // report contacts at the wrong waist location.
+  const obb=new OBB(new THREE.Vector3(),size).applyMatrix4(matrix);
+  obb.center.copy(box.getCenter(new THREE.Vector3()).applyMatrix4(matrix));return obb;
+ };
  for(const [id,h] of current.holders){
   if(h.concealed||!h.root.visible||!h.root.name.startsWith('bt4-live-')||h.root.name==='bt4-live-cell')continue;
   const shell=h.root.children.find(o=>o.name==='holder');if(!shell)continue;
@@ -214,12 +224,22 @@ export function auditLiveUnifiedClearance(r:OperatorRig){
    box.union(o.geometry.boundingBox.clone().applyMatrix4(m));
   });
   if(box.isEmpty())continue;
-  // Shave the broad-phase proxy very slightly to allow touching edges.
-  const size=box.getSize(new THREE.Vector3()).multiplyScalar(.5);
-  size.set(Math.max(.001,size.x-.04),Math.max(.001,size.y-.04),Math.max(.001,size.z-.04));
-  volumes.push({id,box:new OBB(box.getCenter(new THREE.Vector3()),size).applyMatrix4(h.root.matrixWorld)});
+  volumes.push({id,box:worldBox(box,h.root.matrixWorld)});
+ }
+ // Thigh meshes include their actual animated garment transforms. The
+ // pack body uses authored root bounds, excluding its separate harness.
+ for(let i=0;i<r.legs.length;i++){
+  const mesh=r.legs[i].upper;mesh.geometry.computeBoundingBox();
+  if(mesh.visible&&mesh.geometry.boundingBox)obstacles.push({id:'thigh:'+i,box:worldBox(mesh.geometry.boundingBox,mesh.matrixWorld)});
+ }
+ const pack=r.visualKit.packPreview.active?.root;
+ if(pack?.visible){
+  const inv=pack.matrixWorld.clone().invert(),local=new THREE.Box3();
+  pack.traverse(o=>{if(o instanceof THREE.Mesh&&o.visible){o.geometry.computeBoundingBox();if(o.geometry.boundingBox)local.union(o.geometry.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv,o.matrixWorld)));}});
+  if(!local.isEmpty())obstacles.push({id:'pack-body',box:worldBox(local,pack.matrixWorld)});
  }
  const contacts:string[]=[];
+ for(const v of volumes)for(const o of obstacles)if(v.box.intersectsOBB(o.box))contacts.push(v.id+' / '+o.id);
  for(let i=0;i<volumes.length;i++)for(let j=i+1;j<volumes.length;j++)
   if(volumes[i].box.intersectsOBB(volumes[j].box))contacts.push(volumes[i].id+' / '+volumes[j].id);
  return contacts;
