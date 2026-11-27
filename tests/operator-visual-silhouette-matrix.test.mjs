@@ -47,8 +47,7 @@ test('every armor rig and pack combination is exclusive with depth offset',()=>{
   assert.equal(rig.visualKit.plateCarrier.visible,armor==='armor-carrier');
   assert.equal(rig.visualKit.chestRig.visible,chestRig==='rig-light');
   assert.equal(rig.visualKit.fieldWebbing.visible,chestRig==='rig-full');
-  assert.equal(rig.visualKit.dayPack.visible,bag==='backpack-day');
-  assert.equal(rig.visualKit.fieldPack.visible,bag==='backpack-field');
+  assert.equal(rig.visualKit.packPreview.active?.style,bag==='backpack-day'?'day-pack':bag==='backpack-field'?'field-pack':undefined);
   assert.equal(rig.pack.visible,bag!=='backpack-none');
   const depth=rig.visualKit.chestRig.position.x;
   assert.equal(depth,armor==='armor-carrier'?1.95:
