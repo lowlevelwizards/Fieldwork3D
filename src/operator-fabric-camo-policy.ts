@@ -1,4 +1,4 @@
-import {packPrintCompatible} from './operator-backpack-textiles.ts';
+import {packPrintCompatible,PACK_TEXTILES} from './operator-backpack-textiles.ts';
 /** Fieldwork Stage 2 camouflage garment policy.
  * A print appearing on a uniform does NOT imply it was ever produced as a
  * plate carrier, chest rig, rucksack or combat shirt. This deliberately
@@ -167,5 +167,6 @@ export function fabricCamoChoices(channel:FabricCamoChannel,
 }
 export function fabricCamoAllowedChannels(id:HeadwearCamoId):readonly FabricCamoChannel[]{
  const channels=FABRIC_CAMO_POLICY[id].channels;
- return (id==='aor1'||id==='aor2')&&!channels.includes('pack')?[...channels,'pack']:channels;
+ const pack=Object.values(PACK_TEXTILES).some(p=>p.prints.includes(id));
+ return pack&&!channels.includes('pack')?[...channels,'pack']:channels;
 }
