@@ -1,10 +1,10 @@
 import {FOOTWEAR,FOOTWEAR_IDS,canonicalFootwear,footwearForEquipment,footwearColorChoices,footwearHemOptions} from './operator-footwear-catalog.ts';
-import {beltStyleForEquipment,canonicalBeltStyle,beltSolidChoices} from './operator-belt-profile.ts';
+import {BELT_PROFILES,beltStyleForEquipment,canonicalBeltStyle,beltSolidChoices} from './operator-belt-profile.ts';
 /** Tactical Wardrobe 2.0: style recipes, not new weapons or magic inventory.
  * Physical protection, carrying capacity, costs and ownership remain in
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
-import {packStylesForEquipment,packDefaultForEquipment,migratePackAppearance} from './operator-backpack-catalog.ts';
+import {PACK_PROFILES,packStylesForEquipment,packDefaultForEquipment,migratePackAppearance} from './operator-backpack-catalog.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {readHelmetSetup,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import {readHelmetField,type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
@@ -49,37 +49,37 @@ function add(slot:WardrobeSlot,family:string,records:readonly (readonly [string,
 add('headwear','bare',[['bare','Uncovered']]);
 // Register only actually supported headwear. Ballistic cuts live in Details.
 add('headwear','soft',[
- ['patrol-cap','Patrol cap'],['beanie','Beanie'],['boonie','Boonie hat'],
- ['beret','Military beret']
+ ['patrol-cap','Patrol Cap'],['beanie','Beanie'],['boonie','Boonie Hat'],
+ ['beret','Military Beret']
 ]);
 add('headwear','ballistic',[
- ['soviet-steel','Steel helmet'],['pasgt','PASGT-style helmet'],
- ['ach','Ballistic Helmet'],['mich-2001','MICH High Cut'],['mich-2002','MICH Mid Cut'],
- ['m1-steel','US M1 steel helmet'],['ddr-m56','East German M56 steel helmet'],
+ ['soviet-steel','Steel Helmet'],['pasgt','PASGT-Style Helmet'],
+ ['ach','Ballistic Helmet'],['mich-2001','High-Cut Helmet'],['mich-2002','Mid-Cut Helmet'],
+ ['m1-steel','US M1 Steel Helmet'],['ddr-m56','East German M56 Steel Helmet'],
 ]);
 add('facewear','face',[
- ['face-none','Uncovered'],['balaclava-one','One-opening balaclava'],
- ['balaclava-three','Three-hole balaclava'],
- ['balaclava-open','Open-face balaclava'],['gaiter','Neck gaiter'],
- ['shemagh','Shemagh / field scarf'],['bandana','Bandana'],
- ['half-mask','Tactical half-mask'],
- ['respirator-half','Half-face respirator'],
- ['gas-gp5','Hood gas mask'],['gas-m17','Cheek-filter gas mask'],
- ['gas-m40','Canister gas mask'],['gas-m50','Panoramic gas mask']
+ ['face-none','Uncovered'],['balaclava-one','One-Opening Balaclava'],
+ ['balaclava-three','Three-Hole Balaclava'],
+ ['balaclava-open','Open-Face Balaclava'],['gaiter','Neck Gaiter'],
+ ['shemagh','Shemagh / Field Scarf'],['bandana','Bandana'],
+ ['half-mask','Tactical Half-Mask'],
+ ['respirator-half','Half-Face Respirator'],
+ ['gas-gp5','Hood Gas Mask'],['gas-m17','Cheek-Filter Gas Mask'],
+ ['gas-m40','Canister Gas Mask'],['gas-m50','Panoramic Gas Mask']
 ]);
 add('eyewear','eyewear',[
- ['eyes-none','None'],['glasses-standard','Standard glasses'],
- ['glasses-aviator','Aviator sunglasses'],
- ['glasses-wrap','Shooting glasses'],
- ['glasses-shield','Ballistic eyeshield'],
- ['goggles-low','Low-profile tactical goggles'],
- ['goggles-field','Bulky field goggles'],
- ['goggles-retro','Vintage motor goggles']
+ ['eyes-none','None'],['glasses-standard','Standard Glasses'],
+ ['glasses-aviator','Aviator Sunglasses'],
+ ['glasses-wrap','Shooting Glasses'],
+ ['glasses-shield','Ballistic Eyeshield'],
+ ['goggles-low','Low-Profile Tactical Goggles'],
+ ['goggles-field','Bulky Field Goggles'],
+ ['goggles-retro','Vintage Motor Goggles']
 ]);
 add('headset','headset',[
- ['comms-none','None'],['earpiece','Single earpiece'],
- ['over-ear','Over-ear headset'],['boom-headset','Boom microphone headset'],
- ['helmet-ears','Helmet-integrated hearing protection']
+ ['comms-none','None'],['earpiece','Single Earpiece'],
+ ['over-ear','Over-Ear Headset'],['boom-headset','Boom Microphone Headset'],
+ ['helmet-ears','Helmet-Integrated Hearing Protection']
 ]);
 // The clothed base rig is an internal foundation, not a selectable legacy cut.
 // Stage 3B: only the two approved prototype families remain in the active catalog.
@@ -87,7 +87,7 @@ add('top','uniform',[
  ['bdu-shirt','Classic Field Blouse'],['acu-shirt','Modern Utility Blouse'],
  ['combat-shirt','Combat Shirt'],['smock-jacket','Windproof Field Smock'],
  ['gorka-jacket','Mountain / Gorka Jacket'],
- ['t-shirt','T-shirt'],['button-up-shirt','Button-up Shirt'],
+ ['t-shirt','T-Shirt'],['button-up-shirt','Button-Up Shirt'],
  ['polo-shirt','Polo Shirt'],['tank-top','Tank Top'],['hoodie','Hooded Sweatshirt'],['casual-jacket','Casual Zip Jacket']
 ]);
 // Bare-short placeholders are no longer visible wardrobe options.
@@ -99,18 +99,18 @@ add('trousers','uniform',[
 ]);
 add('trousers','civilian',[['jeans','Jeans'],['civilian-cargo','Civilian Cargo Trousers'],['track-pants','Track Pants']]);
 for(const id of FOOTWEAR_IDS){const p=FOOTWEAR[id];add('footwear',p.height==='bare'?'unshod':p.height==='low'?'light':'boots',[[id,p.name]]);}
-add('armorStyle','none',[['armor-bare','No armor']]);
+add('armorStyle','none',[['armor-bare','No Armor']]);
 add('armorStyle','soft',[
  ['soft-slick','Concealable Soft Armor'],
  ['soft-vest','External Police / Tactical Vest'],
  ['soft-flak','Traditional Fragmentation Vest']
 ]);
 add('armorStyle','plates',[
- ['plate-slick','Slick plate carrier'],
- ['plate-jpc','Light / Skeletonized Plate Carrier'],
+ ['plate-slick','Slick Plate Carrier'],
+ ['plate-jpc','Lightweight Plate Carrier'],
  ['plate-standard','Standard Plate Carrier'],
  ['plate-heavy','Heavy Assault Plate Carrier'],
- ['plate-legacy','Legacy Full-Coverage Military Armor']
+ ['plate-legacy','Full-Coverage Military Armor']
 ]);
 add('rigStyle','none',[['no-rig','None']]);
 add('rigStyle','light',[
@@ -128,28 +128,28 @@ add('rigStyle','full',[
  ['split-front','Split-Front Chest Rig'],
  ['sadf-webbing','Bush / SADF-Style Webbing']
 ]);
-add('beltStyle','none',[['no-belt','No belt']]);
-add('beltStyle','light',[['plain-belt','Leather belt']]);
-add('beltStyle','standard',[['duty-belt','Utility belt']]);
-add('beltStyle','battle',[['battle-belt','Battle belt']]);
-add('beltStyle','padded',[['padded-belt','Padded war belt']]);
-add('packStyle','none',[['no-pack','No backpack']]);
+add('beltStyle','none',[['no-belt',BELT_PROFILES['no-belt'].name]]);
+add('beltStyle','light',[['plain-belt',BELT_PROFILES['plain-belt'].name]]);
+add('beltStyle','standard',[['duty-belt',BELT_PROFILES['duty-belt'].name]]);
+add('beltStyle','battle',[['battle-belt',BELT_PROFILES['battle-belt'].name]]);
+add('beltStyle','padded',[['padded-belt',BELT_PROFILES['padded-belt'].name]]);
+add('packStyle','none',[['no-pack',PACK_PROFILES['no-pack'].label]]);
 add('packStyle','day',[
- ['hydration','Hydration carrier'],['admin-pack','Assault panel'],
- ['day-pack','Tactical daypack'],['assault-pack','Assault pack'],
- ['civilian-pack','Civilian backpack']
+ ['hydration',PACK_PROFILES['hydration'].label],['admin-pack',PACK_PROFILES['assault-panel'].label],
+ ['day-pack',PACK_PROFILES['day-pack'].label],['assault-pack',PACK_PROFILES['assault-pack'].label],
+ ['civilian-pack',PACK_PROFILES['civilian-pack'].label]
 ]);
 add('packStyle','field',[
- ['field-pack','ALICE field pack'],['rucksack','Expedition rucksack'],
- ['medic-pack','Medical pack'],['comms-pack','Communications pack']
+ ['field-pack',PACK_PROFILES['field-pack'].label],['rucksack',PACK_PROFILES['rucksack'].label],
+ ['medic-pack',PACK_PROFILES['medic-pack'].label],['comms-pack',PACK_PROFILES['comms-pack'].label]
 ]);
-add('gloves','gloves',[['gloves-none','Bare hands'],
- ['gloves-field','Field gloves (foundation)']]);
+add('gloves','gloves',[['gloves-none','Bare Hands'],
+ ['gloves-field','Field Gloves']]);
 add('knees','knees',[['knee-none','None'],
- ['knee-hard','Hard knee pads (foundation)']]);
+ ['knee-hard','Hard Knee Pads']]);
 add('wrist','wrist',[
- ['wrist-none','None'],['watch','Field watch'],
- ['wrist-nav','Wrist navigation device']
+ ['wrist-none','None'],['watch','Field Watch'],
+ ['wrist-nav','Wrist Navigation Device']
 ]);
 export const WARDROBE_ITEMS:readonly WardrobeItem[]=ITEMS;
 export const wardrobeItemsForSlot=(slot:WardrobeSlot)=>

@@ -34,7 +34,7 @@ const MASTER:Readonly<Record<Camo6AId,Camo6ABase>>={
   ]
  },
  'ukrainian-mm14':{
-  label:'UKRAINIAN MM-14',description:'Dusty khaki and sage-olive interlocking digital bands, linked steps and deep olive-charcoal branch details',
+  label:'Ukrainian MM-14',description:'Dusty khaki and sage-olive interlocking digital bands, linked steps and deep olive-charcoal branch details',
   colors:[[193,188,164],[165,164,134],[130,142,116],[103,111,86],[62,73,60]],
   targetCoverage:[.28,.25,.23,.16,.08],seed:43,axis:'pixel',
   motifs:[
@@ -58,7 +58,7 @@ const MASTER:Readonly<Record<Camo6AId,Camo6ABase>>={
   ]
  },
  'multicam-tropic':{
-  label:'MULTICAM TROPIC',description:'Original MultiCam index artwork with role-preserving deep olive, jungle, shadow and small pale lichen pigments',
+  label:'MultiCam Tropic',description:'Original MultiCam index artwork with role-preserving deep olive, jungle, shadow and small pale lichen pigments',
   colors:[[75,100,60],[111,129,76],[54,86,49],[71,72,47],[30,51,37],[152,150,95],[94,108,67]],
   targetCoverage:[.16,.23,.21,.18,.12,.07,.03],seed:82,axis:'horizontal',
   motifs:[
@@ -83,7 +83,7 @@ const MASTER:Readonly<Record<Camo6AId,Camo6ABase>>={
   ]
  },
  'ss-leto':{
-  label:'SS-LETO / PARTIZAN',description:'High-contrast summer oak-leaf clusters with irregular lobes, deep olive shadows and khaki negative space',
+  label:'SS-Leto / Partizan',description:'High-contrast summer oak-leaf clusters with irregular lobes, deep olive shadows and khaki negative space',
   colors:[[188,171,117],[132,139,82],[96,118,69],[70,84,51],[117,86,58],[42,53,39]],
   targetCoverage:[.21,.25,.21,.16,.11,.06],seed:132,axis:'leaf',
   motifs:[
@@ -108,7 +108,7 @@ const MASTER:Readonly<Record<Camo6AId,Camo6ABase>>={
   ]
  },
  'multicam-arid':{
-  label:'MULTICAM ARID',description:'Original MultiCam index artwork recolored into dry cream, tan, earth, gray-sage and restrained dark accents',
+  label:'MultiCam Arid',description:'Original MultiCam index artwork recolored into dry cream, tan, earth, gray-sage and restrained dark accents',
   colors:[[200,178,138],[225,208,169],[167,159,128],[146,114,83],[102,93,77],[241,226,194],[181,169,143]],
   targetCoverage:[.24,.24,.22,.15,.08,.05,.02],seed:207,axis:'horizontal',
   motifs:[

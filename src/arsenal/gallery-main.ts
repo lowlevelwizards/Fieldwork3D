@@ -113,6 +113,16 @@ function renderFilters(){
  });
 }
 let observer:IntersectionObserver|null=null;
+// Former display names remain discoverable without becoming canonical labels.
+const platformSearchAliases:Partial<Record<ArsenalPlatformId,string>>={
+ fal:'FN FAL',fnc:'FN FNC',g36:'HK G36 Heckler & Koch G36'
+};
+function matchesFactorySearch(ref:ArsenalReference,term:string):boolean{
+ const alias=platformSearchAliases[ref.platformId]??'';
+ const prefix=ref.platformId==='fal'||ref.platformId==='fnc'?'FN ':ref.platformId==='g36'?'HK ':'';
+ return !term||[ref.id,ref.name,platformName(ref.platformId),alias,prefix+ref.name]
+  .some(value=>value.toLowerCase().includes(term));
+}
 function renderCards(){
  observer?.disconnect();observer=null;
  grid.replaceChildren();
@@ -127,8 +137,7 @@ function renderCards(){
    platformName(ref.recipe.platformId).toLowerCase().includes(term)):
   ARSENAL_REFERENCES.filter(ref=>
    (activePlatform==='all'||ref.platformId===activePlatform)&&
-   (!term||ref.name.toLowerCase().includes(term)||
-    platformName(ref.platformId).toLowerCase().includes(term)));
+   matchesFactorySearch(ref,term));
  count.textContent=visible.length+
   (activePlatform==='saved'?' SAVED BUILDS':' FACTORY CONFIGURATIONS');
  if(!visible.length){

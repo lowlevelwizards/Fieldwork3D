@@ -26,6 +26,8 @@ Run a focused regression with `node --experimental-strip-types --test tests/<nam
 
 ## Maintained references
 
+- [Naming and world identity standard](docs/fieldwork-naming-and-world-identity.md)
+
 - [Architecture ownership and simplification boundaries](docs/release-a-current-architecture-ownership.md)
 - [Campaign guide](docs/CAMPAIGN_MODE.md)
 - [Environment art direction](docs/fieldwork-environment-art.md)

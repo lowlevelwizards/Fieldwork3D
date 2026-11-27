@@ -10,6 +10,8 @@ test('BT0: four physical belts and none; stable identifiers and catalog stats',(
  assert.equal(wardrobeItemsForSlot('beltStyle').length,5);
  for(const style of BELT_STYLES){
   const p=BELT_PROFILES[style],e=EQUIPMENT_CATALOG[p.equipment];
+  assert.equal(e.name,p.name);
+  assert.equal(wardrobeItemsForSlot('beltStyle').find(item=>item.id===style)?.name,p.name);
   assert.equal(e.capacity,p.capacity);assert.equal(e.massKg,p.massKg);assert.equal(e.bulk,p.bulk);
   const selected=selectWardrobeItem(initialEquipmentLoadout(),initialWardrobe(),'beltStyle',style);
   assert.equal(selected.kit.slots.belt,p.equipment);
