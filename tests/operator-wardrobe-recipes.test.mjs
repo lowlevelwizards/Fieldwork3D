@@ -22,3 +22,16 @@ test('BT9: representative roles select the actual belt family; historical webbin
   assert.equal(kit.slots.belt,belt,id);assert.deepEqual(wardrobeConflicts(wardrobe,kit),[],id);
  }
 });
+
+test('specialist and civilian recipes use canonical pack and footwear IDs',()=>{
+ const cases=[['civilian-outdoors','backpack-civilian','feet-hiking-shoes'],
+  ['field-expedition','backpack-expedition','feet-hiking-boots'],
+  ['field-communications','backpack-comms','feet-boots'],
+  ['field-medic','backpack-medical','feet-boots']];
+ for(const [id,pack,feet] of cases){
+  const recipe=WARDROBE_RECIPES.find(r=>r.id===id);assert.ok(recipe,id);
+  const {kit,wardrobe}=applyWardrobeRecipe(recipe);
+  assert.equal(kit.slots.backpack,pack,id);assert.equal(kit.slots.feet,feet,id);
+  assert.deepEqual(wardrobeConflicts(wardrobe,kit),[],id);
+ }
+});

@@ -28,9 +28,9 @@ test('FT1.2 expands researched coverage to nine timelines without touching 44 sn
  for(const t of added)assert.ok(researchTimelineCoverage(t).records>0,t);
  const allIds=new Set(HISTORICAL_EQUIPMENT.map(x=>x.id));
  assert.equal(allIds.size,HISTORICAL_EQUIPMENT.length);
- assert.equal(HISTORICAL_EQUIPMENT.length,19+FT12_HISTORICAL_EQUIPMENT.length);
- assert.equal(HISTORICAL_EVIDENCE.length,15+FT12_EVIDENCE.length);
- assert.equal(HISTORICAL_ISSUE_RECORDS.length,16+FT12_ASSOCIATIONS.length);
+ assert.equal(HISTORICAL_EQUIPMENT.length,22+FT12_HISTORICAL_EQUIPMENT.length);
+ assert.equal(HISTORICAL_EVIDENCE.length,17+FT12_EVIDENCE.length);
+ assert.equal(HISTORICAL_ISSUE_RECORDS.length,19+FT12_ASSOCIATIONS.length);
 });
 
 test('FT1.2 German historical 1991 Flecktarn, 1997 G36 and 2026 arid claims remain separate',()=>{
@@ -111,4 +111,21 @@ test('FT1.2 all sources are distinct HTTPS documents, all records have known ide
   for(const id of a.evidenceIds)assert.ok(sources.has(id),id);
   if(a.issueStatus==='planned')assert.notEqual(a.availability,'standard');
  }
+});
+
+test('dated boot and trouser belt evidence is scoped to its documented windows',()=>{
+ assert.ok(ids('us-army-infantry',2015).includes('us-ocp-coyote-boots'));
+ assert.ok(ids('us-army-infantry',2019).includes('us-ocp-tan499-belt'));
+ assert.ok(!ids('us-army-infantry',2010).includes('us-ocp-coyote-boots'));
+ assert.ok(!ids('us-army-infantry',2020).includes('us-ocp-tan499-belt'));
+ assert.ok(ids('usmc-field',2004).includes('usmc-mccb'));
+});
+
+test('pack research respects artifact context and fielding date',()=>{
+ const us=equipmentAtYear('us-army-infantry',2008).find(x=>x.equipment.id==='us-molle-pack-family');
+ assert.equal(us.record.theater,'Korea');
+ assert.ok(!ids('us-army-infantry',2007).includes('us-molle-pack-family'));
+ const au=equipmentAtYear('australian-field',2000).find(x=>x.equipment.id==='au-dpcu-large-pack');
+ assert.equal(au.record.confidence,'tentative');
+ assert.equal(au.equipment.model,undefined);
 });

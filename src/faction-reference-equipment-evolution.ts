@@ -32,7 +32,7 @@ export type GearEvolutionTimeline={
 const itemCategory=(category:string):GearCategory=>
  category==='uniform'?'uniform':category==='headwear'?'headgear':
  category==='armor'?'armor':category==='carriage'?'carriage':
- category==='weapon'?'weapon':'accessories';
+ category==='weapon'?'weapon':category==='footwear'?'footwear':'accessories';
 const historicalById=new Map(HISTORICAL_EQUIPMENT.map(x=>[x.id,x]));
 const evidenceById=new Map(HISTORICAL_ISSUE_RECORDS.map(x=>[x.id,x]));
 const eventSort=(a:GearEvolutionEvent,b:GearEvolutionEvent)=>
