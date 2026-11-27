@@ -1,0 +1,19 @@
+name: SR sling refinement critical
+on:
+  push:
+    branches: [feature/sr-sling-refinement]
+  workflow_dispatch:
+concurrency:
+  group: sr-critical-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/sling-retention-sr*.test.mjs tests/weapon-retention-wr*.test.mjs tests/breach-roadmap3-sling-pose.test.mjs tests/equipment-21-06-sling-loop.test.mjs
+      - run: npm run build
