@@ -62,3 +62,21 @@ export function quotePackMigration(id:LegacyPackEquipment,style:string,usedSpace
  if(usedSpaces>profile.capacity)return {ok:false as const,reason:'REPACK REQUIRED'};
  return {ok:true as const,style:target,profile};
 }
+
+/** Canonical issue identity for new transactions, separate from legacy
+ * appearance classes. Old saves remain on their existing capacity until
+ * an explicit, validated equipment transaction succeeds. */
+export function canonicalPackEquipment(style:string):string|undefined{
+ const migrated=migratePackAppearance(style);
+ const id=typeof migrated==='string'?proposedPackStyle(migrated):undefined;
+ return id?PACK_PROFILES[id].id:undefined;
+}
+export function packStylesForEquipment(id:string):readonly string[]{
+ if(Object.hasOwn(LEGACY_PACK_STYLES,id))return legacyPackStyles(id);
+ const style=PACK_STYLES.find(s=>PACK_PROFILES[s].id===id);
+ return style==='assault-panel'?['admin-pack']:style?[style]:['no-pack'];
+}
+export function packDefaultForEquipment(id:string):string{
+ if(Object.hasOwn(LEGACY_PACK_STYLES,id))return legacyPackDefault(id);
+ return packStylesForEquipment(id)[0];
+}
