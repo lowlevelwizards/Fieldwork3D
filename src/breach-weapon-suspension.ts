@@ -1,5 +1,6 @@
 /** WR5: analytic, bounded suspension response. Motion is sampled from
  * existing locomotion facts, not a render-time clock or accumulated physics. */
+import {retentionGaitPhase} from './operator-retention-cadence.ts';
 import type {SlingArtProfile} from './operator-sling-profile.ts';
 import type {SlingKind} from './breach-weapon-retention.ts';
 export type SuspensionMotion=Readonly<{
@@ -16,7 +17,7 @@ export function sampleSuspensionMotion(sling:SlingKind,m:SuspensionMotion){
  const speed=clamp(finite(m.speed)/75,0,1);
  const load=clamp(2.7/Math.max(.8,finite(m.massKg)),.55,1.15);
  const inertia=clamp(100/Math.max(40,finite(m.inertia)),.35,1);
- const phase=finite(m.stride)*Math.PI*2;
+ const phase=retentionGaitPhase(m.stride);
  const accel=clamp(finite(m.acceleration)/150,-1,1);
  const turn=clamp(finite(m.turning),-1,1);
  const freedom=sling==='none'?0:m.profile?.kind===sling?m.profile.freedom:
@@ -24,6 +25,8 @@ export function sampleSuspensionMotion(sling:SlingKind,m:SuspensionMotion){
  const stance=(m.posture==='crouch'?.68:1)*
   (m.gait==='pie'||m.gait==='squeeze'?.55:1);
  const k=freedom*load*stance*clamp(m.strength??1,0,1.5);
+ // Disabled suspension must return canonical zero, even for negative phases.
+ if(k===0)return {pitch:0,yaw:0,roll:0,lift:0,sway:0,foreAft:0,separation:0};
  // The fixed-step/replay impulse already decays after a stop. Preserve
  // that residual energy at zero speed; don't invent a second render clock.
  const drive=clamp(finite(m.momentum?.drive),0,1);
@@ -35,7 +38,7 @@ export function sampleSuspensionMotion(sling:SlingKind,m:SuspensionMotion){
   pitch:k*clamp(Math.sin(phase-.55)*pace*.22-lag*.16,-.27,.27),
   yaw:k*inertia*clamp(Math.cos(phase-.7)*pace*.19+turn*.22,-.25,.25),
   roll:k*clamp(Math.sin(phase*2-.85)*pace*.11-turn*.09,-.15,.15),
-  lift:k*clamp(Math.sin(phase*2-.85)*pace*1.55+brake*.64,-1.6,1.6),
+  lift:k*clamp(Math.sin(phase*2-.85)*Math.min(pace,.95)*1.55+brake*.64,-1.6,1.6),
   sway:k*inertia*clamp(Math.sin(phase-.9)*pace*1.55+turn*.75,-1.8,1.8),
   foreAft:k*clamp(-lag*.9+Math.cos(phase-.5)*pace*.48,-1.3,1.3),
   separation:k*clamp((1+Math.sin(phase*2-.85))*.5*pace*.65+brake*.38,0,1)

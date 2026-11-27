@@ -330,9 +330,11 @@ export function solveUnifiedRetentionArm(req:Readonly<{
  const release=Math.max(0,Math.min(1,req.release));
  const rest=req.oneHandHold?new THREE.Vector3(-3.2,-7.0,side*1.6):
   req.outboardStow?new THREE.Vector3(-2.2,-5.8,side*2.5):neutralMannequinElbowPole(side);
- const pole=continuousElbowPole(shoulder,wrist,
-  shoulder.clone().add(sourcePole),shoulder.clone().add(rest),side,
-  req.oneHandHold?Math.max(release,Math.max(0,Math.min(1,req.poseWeight??1))):release);
+ const blend=req.oneHandHold?Math.max(release,Math.max(0,Math.min(1,req.poseWeight??1))):release;
+ // Once free, do not derive a pole from the animated armed solution.
+ // This also removes the near-antipodal source-angle ambiguity at rest.
+ const pole=blend>=1?rest.clone():continuousElbowPole(shoulder,wrist,
+  shoulder.clone().add(sourcePole),shoulder.clone().add(rest),side,blend);
  // Near full extension, the downward pole becomes degenerate. A
  // deterministic rear/outboard reference keeps the bend on the right side.
  return solveUnifiedFallbackArm({

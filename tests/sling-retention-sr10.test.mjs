@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {sampleRetentionFreeWrist} from '../src/operator-retention-locomotion.ts';
 import {equipmentExterior} from '../src/operator-equipment-exterior.ts';
 test('SR10 idle arms hang, walking arms swing in opposite phases, run and crouch are distinct',()=>{
- const idle={speed:0,stride:.25,posture:'stand'};
+ const idle={speed:0,stride:9.5,posture:'stand'};
  const walk={...idle,speed:40,gait:'walk'},run={...walk,gait:'run'};
  const l=sampleRetentionFreeWrist(-1,'front-slung',idle),r=sampleRetentionFreeWrist(1,'front-slung',idle);
  assert.ok(l.y<-14&&r.y<-14);assert.equal(l.x,r.x);
