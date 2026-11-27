@@ -377,12 +377,12 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
    // has no *valid* manual color or print. Stale, incompatible saved
    // choices stay stored for later, but don't obscure another armor default.
    const directPack=channel==='pack'&&r.visualKit.packPreview.fit?.mode==='direct';
-    const inherited=directPack?resolvedArmorPrint:null;
-    const iconicPrint=p.wardrobe&&!approvedManual&&!validManualSolid?
+    const inherited:HeadwearCamoId|null=directPack?resolvedArmorPrint:null;
+    const iconicPrint:HeadwearCamoId|null|undefined=p.wardrobe&&!approvedManual&&!validManualSolid?
     channel==='gear'&&clothing.rigStyle!=='no-rig'?signature.print:
     channel==='armor'&&clothing.armorStyle!=='armor-bare'?
      armorDefault.print:directPack?inherited:null:null;
-   const print=approvedManual??(iconicPrint&&
+   const print:HeadwearCamoId|null=approvedManual??(iconicPrint&&
     fabricCamoCompatible(iconicPrint,channel as FabricCamoChannel,clothing)?
      iconicPrint:null);
    if(channel==='armor')resolvedArmorPrint=print;
