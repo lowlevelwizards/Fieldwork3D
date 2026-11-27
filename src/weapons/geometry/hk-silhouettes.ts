@@ -10,6 +10,7 @@ import {HK_OLIVE_POLYMER,HK_MAG_METAL,HK_MUZZLE_METAL}
 import {HK_BARREL_ART} from './hk-barrel-profiles.ts';
 import {addHKFacetedForearm,addHKHandguardOpenings} from './hk-handguard-profiles.ts';
 import {HK_MAG20_OUTLINE} from './hk-magazine-profiles.ts';
+import {addHKFixedFurnitureArt} from './hk-fixed-furniture-art.ts';
 import {addHKRetractableStock} from './hk-retractable-stock.ts';
 import {addHK556Family} from './hk-556-silhouettes.ts';
 import {addHKMP5Family} from './hk-mp5-silhouettes.ts';
@@ -71,19 +72,9 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  if(retract){
   addHKRetractableStock(root,parts.stock,rear,steel,dark);
  }else{
- const stockStart=rear+.46;
- // WC2.3b: distinct sculptural masses, rather than recolored wedges.
- // Early wood: full rounded gesture expressed in a few broad planar breaks.
- // Polymer: long graphic roof, angular shoulder and confident flat belly.
- p('stock',early?[
-  [stockStart,1.22],[-13.65,1.46],[-11.90,1.56],[-10.18,1.19],
-  [-8.65,.75],[-6.25,.67],[-6.18,-1.46],[-8.42,-1.84],
-  [-10.10,-2.78],[-12.30,-3.57],[-13.89,-3.34],[stockStart,-2.87]
- ]:[
-  [stockStart,1.12],[-10.05,1.12],[-8.05,.69],[-6.23,.69],
-  [-6.15,-1.44],[-7.78,-1.44],[-10.06,-3.10],
-  [-14.42,-3.10],[stockStart,-2.85]
- ],early?3.28:3.12,early?'wood':'olive');
+ // WC2.3c: broad 3D art planes, no inflated silhouette.
+ addHKFixedFurnitureArt(root,parts.stock,ids.stock++,early?'wood':'polymer',
+  early?wood:HK_OLIVE_POLYMER);
  // One deliberately thick miniature buttplate: the visible rear remains
  // at the ORIGINAL rear landmark. Its inner end overlaps the stock .10,
  // and the side surfaces stand .19 clear of the stock on either side.

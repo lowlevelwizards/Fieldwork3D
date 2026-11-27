@@ -14,6 +14,7 @@ import {hk556MagazineOutline,hk556MagazineRibOutlines,
  hk556MagazineHeelOutline,type HK556MagazineId,HK556_MAG_LENGTHS}
  from './hk-556-magazine-profiles.ts';
 import {addHK556Forearm} from './hk-556-handguard-profiles.ts';
+import {addHKFixedFurnitureArt} from './hk-fixed-furniture-art.ts';
 import {addHKRetractableStock} from './hk-retractable-stock.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 import {addHKTriggerSelector} from './hk-trigger-selector.ts';
@@ -51,11 +52,8 @@ export function addHK556Family(root:THREE.Group,build:WeaponFamilyBuild,
   // barrel, magazine and operator grip positions remain unchanged.
   addHKRetractableStock(root,parts.stock,-14.90,steel,dark);
  }else{
-  const rear=-13.88,start=rear+.44;
-  // WC2.3b: deliberately lean, restrained, long diagonal gesture.
-  p('stock',[[start,1.16],[-11.97,1.03],[-9.80,.75],[-6.12,.75],
-   [-6.12,-1.42],[-8.55,-1.58],[-10.32,-1.96],[-12.80,-2.72],
-   [start,-2.75]],2.72,
+  const rear=-13.88;
+  addHKFixedFurnitureArt(root,parts.stock,ids.stock++,'lean',
    parts.stock==='hk33-fixed-stock-black'?dark:HK_OLIVE_POLYMER);
   const pad=b('stock',rear+.27,-.78,0,.54,4.26,3.34,dark);
   pad.userData.hkButtpad=true;

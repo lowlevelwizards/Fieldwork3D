@@ -15,6 +15,7 @@ import {mp5MagazineOutline,mp5MagazineHeelOutline,MP5_MAG_DEPTH}
 import {addMP5TropicalForearm,addMP5SDShroud,addMP5TriRail,
  addMP5SlimForearm}
  from './hk-mp5-handguard-profiles.ts';
+import {addHKFixedFurnitureArt} from './hk-fixed-furniture-art.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 import {addHKTriggerSelector} from './hk-trigger-selector.ts';
 
@@ -83,13 +84,8 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
  }else if(parts.stock==='hk-mp5-fixed-stock'){
   // A2 and SD2 share the extended retractable stock's shoulder landmark.
   // One heavy solid polymer shell; no added screws, vents or buttstock rails.
-  const rear=-13.05,start=rear+.43;
-  // WC2.3b: compact, broad rear volume with a short graphic transition.
-  const fixed=p('stock',[
-   [start,1.07],[-11.38,1.34],[-9.05,1.34],[-7.66,.80],
-   [-6.08,.80],[-6.01,-1.35],[-7.44,-1.65],[-8.28,-2.55],
-   [-9.32,-2.90],[-12.05,-2.90],[start,-2.68]
-  ],3.32,dark);
+  const rear=-13.05;
+  const fixed=addHKFixedFurnitureArt(root,parts.stock,ids.stock++,'compact',dark);
   fixed.userData.hkMP5FixedStock=true;
   const pad=b('stock',rear+.27,-.80,0,.54,3.99,3.54,dark);
   pad.userData.hkMP5FixedButtpad=true;

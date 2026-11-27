@@ -9,6 +9,7 @@ on:
       - 'src/weapons/geometry/hk-silhouettes.ts'
       - 'src/weapons/geometry/hk-556-silhouettes.ts'
       - 'src/weapons/geometry/hk-retractable-stock.ts'
+      - 'src/weapons/geometry/hk-fixed-furniture-art.ts'
       - 'tests/weapon-hk-modular-r1.test.mjs'
       - 'tests/weapon-hk-expansion.test.mjs'
   workflow_dispatch:
@@ -35,11 +36,11 @@ jobs:
       - run: node --experimental-strip-types scripts/audit-weapon-art-inventory.mjs
       - run: node --experimental-strip-types scripts/capture-weapon-art-baseline.mjs
       - run: node --experimental-strip-types scripts/capture-wa0-operator-context.mjs
-      - name: Retrieve pinned pre-WC2.3b WebGL baseline
+      - name: Retrieve pinned rejected WC2.3b WebGL candidate
         uses: actions/download-artifact@v4
         with:
           name: wc2-current-comparison
-          run-id: 45939131526
+          run-id: 45947004961
           github-token: ${{ github.token }}
           path: reports/wc2-before
       - run: |
