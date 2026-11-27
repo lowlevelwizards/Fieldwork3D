@@ -12,7 +12,7 @@ const near=(actual,wanted,message)=>assert.ok(
 test('boot mesh extends mostly forward of its ankle while keeping the ankle pivot at zero',()=>{
  const rig=createOperatorRig('rook','blue');
  for(const foot of rig.feet){
-  const box=foot.shoe.geometry;
+  const box=rig.visualKit.footwear.models[rig.feet.indexOf(foot)]['combat-boots'].foot.children[0].geometry;
   box.computeBoundingBox();
   const min=box.boundingBox.min.x,max=box.boundingBox.max.x;
   near(max,BOOT_LENGTH/2+BOOT_FOREFOOT_OFFSET,'toe projection');

@@ -1,3 +1,5 @@
+import {createFootwearVisuals,updateFootwearVisuals,type FootwearVisuals} from './operator-footwear-art.ts';
+import {resolveFootwearHem} from './operator-footwear-catalog.ts';
 import {equipmentAssembly} from './operator-equipment-assembly.ts';
 import {canonicalBeltStyle} from './operator-belt-profile.ts';
 /** OV visual assemblies. Geometry only: the established IK joints, shot transforms,
@@ -77,8 +79,8 @@ export type OperatorVisualKit={
  chestRig:THREE.Group;fieldWebbing:THREE.Group;
  belt:THREE.Group;dayPack:THREE.Group;fieldPack:THREE.Group;
  packHarness:THREE.Group;packPreview:PackPreviewState;
- cargoPockets:THREE.Mesh[];bootCuffs:THREE.Mesh[];sleeveCuffs:THREE.Mesh[];
- fieldToeCaps:THREE.Mesh[];lightInstepPanels:THREE.Mesh[];
+ cargoPockets:THREE.Mesh[];sleeveCuffs:THREE.Mesh[];
+ footwear:FootwearVisuals;
  rolledForearms:THREE.Mesh[];rolledCuffs:THREE.Mesh[];kneePanels:THREE.Mesh[];
  eyeMarks:THREE.Mesh[];hairMaterial:Material;patchMaterial:Material;patches:THREE.Mesh[];
  magazines:Record<'rig'|'belt'|'pocket',THREE.Mesh[]>;
@@ -259,22 +261,15 @@ export function createOperatorVisualKit(
   part(fieldPack,packFabric,-1.5,-2.8,sign*7.75,3.65,6.3,2.3);
   part(fieldPack,trim,-2.9,1.4,sign*6.65,.6,8.8,.65);
  }
- const cargoPockets:THREE.Mesh[]=[],bootCuffs:THREE.Mesh[]=[],sleeveCuffs:THREE.Mesh[]=[];
- const fieldToeCaps:THREE.Mesh[]=[],lightInstepPanels:THREE.Mesh[]=[];
+ const cargoPockets:THREE.Mesh[]=[],sleeveCuffs:THREE.Mesh[]=[];
+ const footwear=createFootwearVisuals(legs,skin);
  const rolledForearms:THREE.Mesh[]=[],rolledCuffs:THREE.Mesh[]=[],kneePanels:THREE.Mesh[]=[];
  const patches:THREE.Mesh[]=[];
  for(const leg of legs){
   // Thin, leg-mounted pieces follow the solved IK. No additional leg length.
   // Cargo pockets are integrated in the two real trouser cut groups.
   kneePanels.push(part(leg.lower,trim,0,.36,2.25,3.7,.22,1.2));
-  if(leg.shoe){
-   // The shoe's ankle pivot and geometry translation remain unmodified.
-   // Field boots have a raised toe guard and shaft; light shoes have a
-   // thinner, narrower instep and no shaft.
-   bootCuffs.push(part(leg.shoe,dark,-1.55,1.5,0,4.1,1.55,5.0));
-   fieldToeCaps.push(part(leg.shoe,trim,3.45,1.48,0,3.4,.42,5.7));
-   lightInstepPanels.push(part(leg.shoe,trim,1.65,1.48,0,4.3,.20,4.65));
-  }
+
  }
  for(const arm of arms){
   // Low-contrast cloth identifier sewn onto the upper arm's outward face.
@@ -319,8 +314,7 @@ export function createOperatorVisualKit(
  return {visualChest:chest,baseTorso,wardrobeHead,wardrobeBody,identityVisuals,wardrobeGear,accessories,fieldBlouses,fieldTrousers,newUpper,casualShirts,
   helmet,cap,hair,jacket,lightShirt,
   softArmor,plateCarrier,chestRig,
-  fieldWebbing,belt,dayPack,fieldPack,packHarness,packPreview:createPackPreview(pack,chest,{fabric:packFabric,trim,dark}),cargoPockets,bootCuffs,
-  fieldToeCaps,lightInstepPanels,sleeveCuffs,
+  fieldWebbing,belt,dayPack,fieldPack,packHarness,packPreview:createPackPreview(pack,chest,{fabric:packFabric,trim,dark}),cargoPockets,footwear,sleeveCuffs,
   rolledForearms,rolledCuffs,kneePanels,eyeMarks,hairMaterial,magazines,
   haircuts,graphicMarks,patchMaterial,patches,
   rigMagazineHome:chest,carriedMagazineMaterial,
@@ -407,7 +401,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   looks.top==='gorka-jacket')
   fitRigCoveredPockets(v.newUpper.cuts[looks.top].torso,pressRig);
  updateFieldTrouserPrototypes(v.fieldTrousers,looks.trousers,
-  wardrobe?.trouserHem??'bloused',looks.footwear==='bare-feet',looks.top);
+  resolveFootwearHem(looks.trousers,looks.footwear,wardrobe?.trouserHem),looks.footwear==='bare-feet',looks.top);
+ updateFootwearVisuals(v.footwear,looks.footwear,looks.trousers,wardrobe?.trouserHem??'bloused',wardrobe?.footwearColor);
  updateWardrobeBodyLayers(v.wardrobeBody,looks.top,looks.trousers,
   looks.knees,looks.wrist);
  const assembly=equipmentAssembly(looks.packStyle,looks.armorStyle,looks.rigStyle,wardrobe?.packMount);
@@ -482,17 +477,6 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  }
  for(const pocket of v.cargoPockets)
   pocket.visible=!usingWardrobe&&s.legs==='legs-field';
- const tallBoot=['field-boots','combat-boots','tall-boots','hiking-boots']
-  .includes(looks.footwear);
- for(const cuff of v.bootCuffs){
-  cuff.visible=usingWardrobe?tallBoot:s.feet==='feet-boots';
-  cuff.scale.y=looks.footwear==='tall-boots'?1.55:
-   looks.footwear==='hiking-boots'?.85:1;
- }
- for(const toe of v.fieldToeCaps)toe.visible=usingWardrobe?
-  tallBoot:s.feet==='feet-boots';
- for(const instep of v.lightInstepPanels)instep.visible=usingWardrobe?
-  !tallBoot&&looks.footwear!=='bare-feet':s.feet==='feet-light';
  // Old generic sleeve/roll overlays are no longer modeled.
  for(const mesh of v.sleeveCuffs)mesh.visible=false;
  for(const mesh of v.rolledForearms)mesh.visible=false;

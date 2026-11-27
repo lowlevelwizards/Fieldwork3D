@@ -323,7 +323,7 @@ test('EB14 civilian trousers and full sleeves render on shared rig with no field
   assert.ok(r.visualKit.casualShirts.cuts[top].lower.every(g=>g.visible));
   assert.ok(r.visualKit.wardrobeBody.trousers[trousers].every(g=>g.visible));
   assert.ok(Object.values(r.visualKit.fieldTrousers).every(m=>m.thigh.every(g=>!g.visible)));
-  assert.ok(r.visualKit.bootCuffs.every(g=>!g.visible));
+  assert.ok(r.visualKit.footwear.models.every(v=>!v['combat-boots'].shaft.visible));
  }
  r.dispose();
 });
