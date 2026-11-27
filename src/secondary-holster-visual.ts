@@ -363,3 +363,9 @@ export function presentSecondaryReload(hip:THREE.Group,
   // this spare serial and the existing Glock floorplate reappears.
  }
 }
+
+/** Artwork audition only: borrow an actual existing issued spare mesh.
+ * The caller clones its geometry, never transfers its inventory identity. */
+export function secondaryMagazineArtwork(hip:THREE.Group):THREE.Mesh|undefined{
+ return mounted.get(hip)?.physicalPouches.values().next().value;
+}

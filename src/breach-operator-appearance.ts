@@ -1,3 +1,6 @@
+import {prepareBeltFlashPouches,restoreBeltFlashRest} from './operator-belt-flash-pouches.ts';
+import {canonicalBeltStyle} from './operator-belt-profile.ts';
+import type {BeltRegion} from './operator-belt-mounts.ts';
 import type {HeadwearCamoId} from './operator-headwear-camo.ts';
 import {packTextile} from './operator-backpack-textiles.ts';
 import {syncGearMarkedMaterials} from './operator-gear-pixel-art.ts';
@@ -203,9 +206,22 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   ensureRigFlashCanisters(r,visibleFlashes.length);
   const legacySmoke=gear?.tactical==='tactical-smoke'&&
     visibleFlashes.length===0&&p.equipment?.fieldInventory===undefined;
+  const hasVisibleRig=rigItem!=='rig-none'&&clothing.rigStyle!=='no-rig';
+  const beltStyle=canonicalBeltStyle(clothing.beltStyle)??'no-belt';
+  const beltFlashIndices=visibleFlashes.flatMap((item,i)=>item.location==='belt'||(item.location==='rig'&&!hasVisibleRig)?[i]:[]);
+  const blocked:BeltRegion[]=[];
+  if(p.equipment?.secondary?.weapon)blocked.push(p.equipment.secondary.holster==='belt-right'?'right-hip':'left-hip');
+  if(p.medicalCarryLocation==='belt')blocked.push('right-hip');
+  if(p.utilityCarryLocation==='belt')blocked.push('left-hip');
+  if(p.wardrobe?.accessories?.beltLeft&&p.wardrobe.accessories.beltLeft!=='none')blocked.push('left-hip');
+  if(p.wardrobe?.accessories?.beltRight&&p.wardrobe.accessories.beltRight!=='none')blocked.push('right-hip');
+  const beltFlashes=prepareBeltFlashPouches(r,beltStyle,beltFlashIndices,[...new Set(blocked)]);
+  if(beltFlashes.size)r.beltPouch.visible=false;
   r.flashCanisters.forEach((canister,i)=>{
     const placed=visibleFlashes[i];
     const issued=!!placed||(i===0&&legacySmoke);
+    if(beltFlashes.has(i)){canister.visible=restoreBeltFlashRest(r,canister);return;}
+    if(beltFlashIndices.includes(i)){canister.visible=false;return;}
     const socket=issued?fittedFlashCanisterSocket(placed?.location??'belt',
       placed?.index??0,equipmentExterior(clothing.armorStyle,clothing.rigStyle,clothing.top),
       rigItem!=='rig-none'&&clothing.rigStyle!=='no-rig',

@@ -1,3 +1,4 @@
+import {secondaryMagazineArtwork} from './secondary-holster-visual.ts';
 import {attachmentFixture,clearAttachmentPreview,updateAttachmentPreview,populateAttachmentPreviewOptions} from './operator-attachment-lab.ts';
 import {ATTACHMENTS,validAttachmentId,type AttachmentVariant} from './operator-attachment-catalog.ts';
 import {BELT_PROFILES} from './operator-belt-profile.ts';
@@ -2527,7 +2528,7 @@ function draw(){
   const attachmentChoice=attachmentPreviewSelect.value;
   const attachmentStatus=updateAttachmentPreview(rig,attachmentChoice,
    attachmentVariantSelect.value as AttachmentVariant,attachmentContentsSelect.value,
-   !comparing&&!kitComparing&&!variantComparing);
+   !comparing&&!kitComparing&&!variantComparing,{primaryPart:rig.visualKit.carriedMagazinePart,secondaryMagazine:secondaryMagazineArtwork(rig.hip),grenade:rig.flashCanister});
   if(attachmentStatus){
    // Cosmetic samples only. The actual equipment ledger is never populated.
    rig.beltPouch.visible=false;
