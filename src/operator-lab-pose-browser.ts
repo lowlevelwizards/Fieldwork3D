@@ -31,7 +31,7 @@ export const POSE_PACK_OPTIONS=[
  ['field-pack','ALICE field pack'],['rucksack','Expedition rucksack'],['medic-pack','Medical pack'],
  ['comms-pack','Communications pack']
 ] as const;
-export function posePackEquipment(pack:string):'backpack-none'|'backpack-day'|'backpack-field'{
+export function posePackEquipment(pack:string):string{
  return canonicalPackEquipment(pack)??'backpack-day';
 }
 export const POSE_UNIFORM_OPTIONS=[
