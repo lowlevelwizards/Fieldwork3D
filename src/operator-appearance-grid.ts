@@ -326,7 +326,6 @@ export class OperatorAppearanceGrid{
    });
   }
   this.thumbnailRig=createOperatorRig(id,'blue');
-  this.thumbnailRig.root.userData.fieldworkAuthoredPackPreview=true;
   this.grid.dataset.thumbnailRigBuilds=String(
    Number(this.grid.dataset.thumbnailRigBuilds||0)+1);
   this.rigIdentity=id;
