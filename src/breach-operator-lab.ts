@@ -2454,6 +2454,7 @@ function draw(){
   canvas.dataset.poseFitArmor=activeLook.armorStyle;
   canvas.dataset.poseFitRig=activeLook.rigStyle;
    canvas.dataset.poseFitPack=activeLook.packStyle;
+  canvas.dataset.authoredPack=rig.visualKit.packPreview.active?.style??'legacy';
   canvas.dataset.poseFitTop=activeLook.top;
   canvas.dataset.lowReadyFit=staticReport?.status??'action';
   canvas.dataset.poseV3DynamicReport=JSON.stringify(
