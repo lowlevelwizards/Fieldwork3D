@@ -82,7 +82,9 @@ test('D15.5F both renderers consume the shared read-only transport interpretatio
  assert.match(three,/downedTransportPresentation\(actor,s\.operators\)/);
  assert.match(three,/heading:transport\?\.heading\?\?\(previewPreOpen\?/);
  assert.match(three,/const doorFacing=plannedDoor&&handle\?/);
- assert.match(three,/if\(transport\)object\.root\.position\.y\+=transport\.lift/);
+ assert.match(three,/readTransportPatientPose\(actor,s\.operators\)/);
+ assert.match(three,/transportPatient:transportPatientPose/);
+ assert.doesNotMatch(three,/object\.root\.position\.y\+=transport\.lift/);
  assert.match(plan,/downedTransportPresentation\(a,state\.operators\)/);
  assert.match(plan,/transport\?\.mode==='carry'/);
  assert.match(plan,/if\(!transport\)/);

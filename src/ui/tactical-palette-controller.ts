@@ -32,6 +32,7 @@ import {plannedSecondaryHand} from '../secondary-switching.ts';
 import {selectedDoorStackFormation}
  from '../breach-stack-formation-selection.ts';
 import {selectAccessibleSecondaryMagazine} from '../secondary-timed-reload.ts';
+import {projectedTransportPatient} from '../breach-transport-controls.ts';
 import {contextActionChoices,type ContextAction,type ContextOptions}
   from './context-actions.ts';
 import {installPalettePointerGuard} from './palette-pointer-guard.ts';
@@ -508,6 +509,7 @@ export function createTacticalPaletteController(config:{
       c.health<=0&&!c.carriedById&&liveVisibility(state,c.p)):null;
   const secondaryHand=plannedSecondaryHand(a.secondarySwitch,a.plan,node?.id);
   const secondaryKit=a.equipment?.secondary;
+  const projectedTransport=projectedTransportPatient(a.carryingId,a.plan);
   const choices=availableActions(!!selectedWatch,{
     // An interrupted destination is known from a real failed order. Show
     // the OPTION regardless of any unseen subsequent lock state; only the
@@ -537,11 +539,9 @@ export function createTacticalPaletteController(config:{
     stopFollowingCivilian:!!followingAtPlan,
     nearCivilianCasualty:!!casualtyAtPlan,
     nearDownedCaptureTarget:!!downedCaptureAtPlan,
-    carryingCivilian:!!a.carryingId&&state.civilians.some(c=>
-      c.id===a.carryingId&&c.carriedById===a.id),
-    carryingCaptureTarget:!!a.carryingId&&
-      state.operators.some(o=>o.id===a.carryingId&&
-        o.health<=0&&o.carriedById===a.id),
+    transportQueued:!a.carryingId&&!!projectedTransport,
+    carryingCivilian:!!projectedTransport&&state.civilians.some(c=>c.id===projectedTransport),
+    carryingCaptureTarget:!!projectedTransport&&state.operators.some(o=>o.id===projectedTransport&&o.health<=0),
     posture:current.posture,pace:current.pace,
     firePolicy:node?.firePolicyState??a.firePolicy,
     reserve:a.reserve,magazine:a.magazine,

@@ -130,6 +130,9 @@ import {bakedOperatorCarry,prewarmSavedOperatorCarry}
 import {updateOperatorAppearance} from './breach-operator-appearance.ts';
 import {readEquipmentInteraction} from './breach-equipment-interaction-pose.ts';
 import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
+import {linkedTransportPatient} from './breach-transport-navigation.ts';
+import {readTransportPatientPose} from './breach-transport-patient-pose.ts';
+import {loadedCarrierHeading} from './breach-loaded-carrier-pose.ts';
 import {downedTransportPresentation,carrierTransportPresentation} from './breach-capture-transport-presentation.ts';
 import {SurrenderedFirearmsPresenter} from './rendering/breach-surrendered-firearms-presenter.ts';
 import {spatialSurfaceKnown,shotVisibility,windowPresentationKnown,windowCoveringPresentationKnown} from './breach-presentation.ts';
@@ -2614,6 +2617,14 @@ export class TacticalScene3D{
       const carriedSubject=actor.carryingId?
         this.frameActorsById.get(actor.carryingId)??s.civilians.find(c=>c.id===actor.carryingId):undefined;
       const carrierTransport=carrierTransportPresentation(actor,carriedSubject);
+      const transportPatientPose=readTransportPatientPose(actor,s.operators);
+      const transportPatient=linkedTransportPatient(s,actor);
+      const loadedTransport=transportPatient&&actor.health>0?{
+        mode:transportPatient.transportMode??'drag' as const,patientId:transportPatient.id,
+        patient:transportPatient.p,heading:transportPatient.heading,
+        patientPose:readTransportPatientPose(transportPatient,s.operators)}:undefined;
+      const loadedHeading=loadedTransport?loadedCarrierHeading(loadedTransport.mode,
+        {x:drawActor.x,y:drawActor.z},loadedTransport.patient,drawActor.heading):null;
       // Airborne body is a fixed-tick simulation outcome. Keep the 3D
       // miniature at its authored horizontal position, lifted only by the
       // recorded traversal arc (never by render-time speculative physics).
@@ -2872,7 +2883,7 @@ export class TacticalScene3D{
       poseOperator(object.physical,{
         x:drawActor.x,z:drawActor.z,
         heading:transport?.heading??(previewPreOpen?
-          doorFacing:drawActor.heading),
+          doorFacing:loadedHeading??drawActor.heading),
         handlingOverride:previewPreOpen?'high':undefined,
         velocity:actor.traversal?0:actor.velocity,
         seconds:poseSeconds,idleLifeSeconds:actorIdleSeconds,
@@ -2899,6 +2910,7 @@ export class TacticalScene3D{
          weaponConfiguration:actor.weaponConfiguration,
          weaponLightOn:actor.weaponLightOn,
          nvgDeployed:actor.nvgDeployed===true,
+        transportContact:actor.transportContact,loadedTransport,transportPatient:transportPatientPose,
         treatmentActive:actor.treatmentActive,
         treatmentProgress:actor.treatmentProgress,
         // Real GO-time civilian contact flashes a gentle support-hand
@@ -2936,12 +2948,13 @@ export class TacticalScene3D{
           liveMotion?.acceleration[actor.id]??0,
         motionImpulse:replay?.momentum[actor.id]??
           liveMotion?.momentum[actor.id],
-        pelvisYaw:replay?.pelvisYaw[actor.id]??liveMotion?.pelvisYaw[actor.id],
+        pelvisYaw:loadedTransport?.mode==='drag'?undefined:
+           replay?.pelvisYaw[actor.id]??liveMotion?.pelvisYaw[actor.id],
         travelYaw:replay?.travelYaw[actor.id]??
           liveMotion?.travelYaw[actor.id],
         posture:actor.posture,coverStanceDrop:actor.coverStanceDrop??0,
         injury:actor.injuryStage,weapon:actor.weapon,
-        gait:actor.squeeze?'squeeze':
+        gait:loadedTransport?'walk':actor.squeeze?'squeeze':
           actor.plan[0]?.kind==='pie'?'pie':
           actor.pace==='run'||actor.plan[0]?.moveMode==='sprint'?
             'run':'walk',
@@ -2998,7 +3011,8 @@ export class TacticalScene3D{
       // The shared pose solver publishes its local fall/root offset. Restore
       // only the actual transport elevation afterward (as for civilians);
       // otherwise the body stays floor-flat while physically carried.
-      if(transport)object.root.position.y+=transport.lift;
+      // Reciprocal transported subjects already own their full anatomical root.
+      // Do not apply the legacy lift a second time.
       // One existing muzzle flash follows the actual physical Glock socket
       // only once a selected sidearm is completely drawn. The rifle retains
       // its original visual authority in every other phase.

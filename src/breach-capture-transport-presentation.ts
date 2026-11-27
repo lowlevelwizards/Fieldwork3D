@@ -27,7 +27,8 @@ export function downedTransportPresentation(
    carrier.heading+Math.PI/2:
    length>3?Math.atan2(dy,dx):carrier.heading;
  return {carrierId:carrier.id,mode,heading,
-  // Match the established civilian shared-rig visual elevations.
+  // The compact simulation support frame now follows the carrier. The
+  // actual paired torso/limb pose is supplied in CT8–CT10.
   lift:mode==='carry'?18:2,
   carrierPosition:carrier.p};
 }

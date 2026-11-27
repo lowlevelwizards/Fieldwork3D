@@ -2,9 +2,14 @@
  * Proposals capture pre-movement positions. A single arbiter decides hard
  * actor/civilian collisions; rejected motion is restored deterministically.
  */
+import {chooseTransportStep} from './breach-transport-recovery.ts';
+import {proposeAttachedCarry} from './breach-attached-carry.ts';
+import {proposeDragTrail,type DragTrail} from './breach-drag-trail.ts';
+import {linkedTransportPatient,transportProfile} from './breach-transport-navigation.ts';
+import {hasTransportLink} from './breach-transport-custody.ts';
 import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
 import {length} from './breach-plan.ts';
-import {proposedCivilianTransportStep,reconcileCivilianTransportFrame}
+import {reconcileCivilianTransportFrame}
  from './breach-civilian-transport.ts';
 import {civilianSenseDue,stepCivilianResponse} from './breach-civilian-response.ts';
 import {stepCivilianMovement} from './breach-civilian-movement.ts';
@@ -50,30 +55,39 @@ export function advanceSimulationMotion(s:Session,h:number,
   // Allocate custody rollback bookkeeping only if this frame truly
   // carries a civilian. Ordinary traffic and empty missions need none.
   let coupledBodyStarts:Map<string,Pt>|null=null;
+  let dragProposals:Map<string,DragTrail|undefined>|null=null;
+  let transportRadii:Map<string,number>|null=null;
   for(const carrier of s.operators){
     if(!carrier.carryingId)continue;
-    const civil=s.civilians.find(c=>c.id===carrier.carryingId&&
-      c.carriedById===carrier.id)??(carrier.transportLatched?
-      s.operators.find(o=>o.id===carrier.carryingId&&o.carriedById===carrier.id):undefined);
-    if(!civil)continue;
+    const civil=linkedTransportPatient(s,carrier);
+    if(!civil||civil.health>0||carrier.health<=0)continue;
     const from=motionStart.get(carrier.id)??carrier.p;
     const bodyFrom=motionStart.get(civil.id)??civil.p;
-    // A single ordered roster replaces four filtering/mapping arrays;
-    // keep live positions and operator-before-civilian contact semantics.
-    const others:Pt[]=[];
-    for(const o of s.operators)if(o!==carrier&&o.health>0)
-      others.push(o.p);
-    for(const c of s.civilians)if(c!==civil)others.push(c.p);
-    const next=proposedCivilianTransportStep(bodyFrom,from,carrier.p,
-      carrier.heading,civil.transportMode??carrier.plan[0]?.transportMode??'drag',
-      (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,geometry()),others,h*36);
-    if(!next){
-      carrier.p=clone(from);carrier.velocity=0;carrier.nav=[];
-      civil.p=clone(bodyFrom);civil.velocity=0;
+    const mode=civil.transportMode??carrier.plan[0]?.transportMode??'drag';
+    const profile=transportProfile(mode);
+    if(!transportRadii)transportRadii=new Map();
+    transportRadii.set(civil.id,profile.bodyRadius);
+    const clear=(a:Pt,b:Pt)=>sweptBodyClear(a,b,s.doors,profile.bodyRadius,geometry());
+    const intended=carrier.p;
+    const pair=chooseTransportStep(from,intended,to=>{
+      if(mode==='drag')return proposeDragTrail(civil.id,bodyFrom,from,to,carrier.dragTrail,clear);
+      const point=proposeAttachedCarry(bodyFrom,from,to,carrier.heading,h,clear,
+        carrier.transportContact?.kind==='release');
+      return point?{point,trail:undefined}:null;
+    },(a,b)=>sweptBodyClear(a,b,s.doors,OPERATOR_RADIUS,geometry()),
+      !carrier.traversal&&!carrier.squeeze&&!carrier.doorTraversal&&!carrier.transportContact);
+    if(!pair){
+      carrier.p=clone(from);carrier.priorP=clone(from);carrier.velocity=0;
+      civil.p=clone(bodyFrom);civil.priorP=clone(bodyFrom);civil.velocity=0;
+      if(d(from,intended)>.0001)recordRejectedMovementCommit(carrier,'geometry',s.seconds,h);
       continue;
     }
+    if(pair.adjusted){carrier.p=pair.carrier;carrier.velocity=Math.min(carrier.velocity,d(from,pair.carrier)/h);}
+    const next=pair.body.point;
+    const drag=mode==='drag'?pair.body:null;
     if(!coupledBodyStarts)coupledBodyStarts=new Map<string,Pt>();
     coupledBodyStarts.set(carrier.id,clone(bodyFrom));
+    if(drag){if(!dragProposals)dragProposals=new Map();dragProposals.set(carrier.id,drag.trail);}
     civil.priorP=clone(bodyFrom);civil.p=next;civil.velocity=0;
   }
   cpuEnd('carried',carryStart);
@@ -180,16 +194,20 @@ export function advanceSimulationMotion(s:Session,h:number,
   let transportLinks:{carrierId:string;bodyId:string}[]|null=null;
   // A transported red or blue TeamActor participates in exactly the same
   // coupled carrier/body arbitration as a neutral civilian casualty.
-  for(const patient of s.operators)if(patient.health<=0&&patient.carriedById){
+  for(const patient of s.operators)if(patient.health<=0&&patient.carriedById&&
+    s.operators.some(c=>c.health>0&&hasTransportLink(c,patient))){
     if(!transportLinks)transportLinks=[];
     transportLinks.push({carrierId:patient.carriedById,bodyId:patient.id});
   }
-  for(const civil of s.civilians)if(civil.carriedById){
+  for(const civil of s.civilians)if(civil.carriedById&&
+    s.operators.some(c=>c.health>0&&hasTransportLink(c,civil))){
     if(!transportLinks)transportLinks=[];
     transportLinks.push({carrierId:civil.carriedById,bodyId:civil.id});
   }
   const decisions=resolveMovementFrame(proposals,p=>{
     const currentWorld=geometry();
+    const radius=transportRadii?.get(p.id);
+    if(radius!==undefined)return sweptBodyClear(p.from,p.to,s.doors,radius,currentWorld);
     if(p.side==='neutral')return sweptBodyClear(
       p.from,p.to,s.doors,OPERATOR_RADIUS,currentWorld);
     const a=actorById?.get(p.id)??s.operators.find(unit=>unit.id===p.id)!;
@@ -233,6 +251,10 @@ export function advanceSimulationMotion(s:Session,h:number,
     // frame-denial episode rather than treating the next attempted step as
     // physical progress.
     recordRejectedMovementCommit(a,decision.blocked,s.seconds,h);
+  }
+  if(dragProposals)for(const [id,trail] of dragProposals){
+    const carrier=s.operators.find(a=>a.id===id);
+    if(carrier&&!decisions.some(d=>d.id===id&&d.blocked))carrier.dragTrail=trail;
   }
   for(const a of s.operators){
     clearUnrejectedCommit(a,s.seconds);

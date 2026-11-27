@@ -11,7 +11,7 @@ export function beginRetentionTick(a:TeamActor,dt:number){
  if(!a.retentionTransition)return;
  const sling=readSlingKind(a.weaponConfiguration?.slots.sling);
  const next=advanceRetentionTransition(a.retentionTransition,dt,sling);
- a.retentionTransition=next.mode||next.desired?{...next,desired:null}:undefined;
+ a.retentionTransition=next.mode||next.desired?{...next,desired:a.carryingId?next.desired:null}:undefined;
 }
 export function retentionBusy(a:Pick<TeamActor,'retentionTransition'>){
  return !!a.retentionTransition&&(a.retentionTransition.weight>0||!!a.retentionTransition.desired);

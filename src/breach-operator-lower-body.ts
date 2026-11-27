@@ -2,6 +2,7 @@
  * Visual IK cannot teleport planted feet, modify motor position, or decide a
  * new footfall. Replay uses recorded targets, not accumulated render state.
  */
+import {patientAnkleOffset} from './breach-transport-patient-pose.ts';
 import type {OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import type {OperatorPoseScratch} from './breach-operator-pose-scratch.ts';
@@ -114,6 +115,10 @@ export function applyOperatorLegIK(r:OperatorRig,p:OperatorPose,
   const relative=scratch.relative[i].copy(targetWorld)
     .sub(scratch.rootPoint.set(p.x,r.root.position.y,p.z))
     .applyQuaternion(bodyInverse);
+  if(p.transportPatient&&p.down){
+   const offset=patientAnkleOffset(p.transportPatient,sign);
+   relative.set(hipLocal.x+offset.x,hipLocal.y+offset.y,hipLocal.z+offset.z);
+  }
   if(kicking){
    // Bound the *boot*, not only the knee solver. Otherwise solveTwoBone
    // correctly stops at max extension while the shoe/ankle-link is still
@@ -142,7 +147,8 @@ export function applyOperatorLegIK(r:OperatorRig,p:OperatorPose,
   shoe.position.copy(relative);
   const angles=output.shoeRotation[i];
   angles.z=target.pitch??0;
-  angles.y=target.worldYaw-headingYaw;
+  angles.y=p.loadedTransport?.mode==='drag'?0:target.worldYaw-headingYaw;
+  if(p.transportPatient&&p.down)angles.set(0,0,p.transportPatient.mode==='carry'?.35:0);
   shoe.quaternion.setFromEuler(angles);
  }
  // Copy values into stable, owner-registered slot tuples. The publication

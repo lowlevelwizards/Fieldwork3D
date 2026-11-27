@@ -141,6 +141,8 @@ test('pickup latch survives ordinary movement and explicit release for friendly 
    assert.equal(patient.transportMode,mode);
    assert.ok(carrier.p.y>245,'ordinary MOVE must execute while holding casualty');
    assert.ok(patient.p.y>215,'casualty follows through the bend');
+   assert.equal(carrier.retentionTransition?.weight,1,'issued sling remains supported during real movement');
+   assert.ok(carrier.retentionTransition?.desired,'custody keeps retention requested');
    toggling(s);
    assert.equal(planCaptureTransportRelease(s,carrier.id),true);
    toggling(s);

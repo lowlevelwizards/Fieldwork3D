@@ -1,0 +1,2 @@
+# CT3 — Transport-aware motor foundation
+Resolve actual reciprocal patient, use distinct ground profiles, retain more transient corner nodes, tighten waypoint tolerance and disable new traversal acquisition while loaded. Live casualty sweeps use the mode radius; authored intel route remains unchanged. Full pair-route certification and alternate bounded steps are developed in CT4–CT6. Correct stale baseline test values to the existing 25/13-unit helper gaps.
