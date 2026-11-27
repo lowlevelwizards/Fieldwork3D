@@ -7,7 +7,7 @@ import {initialWardrobe,readWardrobe,type WardrobeOptions}
  from './operator-wardrobe-data.ts';
 import type {WeaponId} from './breach-combat.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
-import {applyDeploymentInventory} from './equipment-deployment-snapshot.ts';
+import {applyDeploymentInventory,captureDeploymentInventory,applyCapturedDeploymentInventory,type DeploymentInventorySnapshot} from './equipment-deployment-snapshot.ts';
 import type {MagazineItem} from './breach-magazines.ts';
 import {liveMagazineCapacity,standardReserveRounds,freshMagazineIssue,
  fitMagazineInventory} from './arsenal/live-magazine-capacity.ts';
@@ -122,7 +122,17 @@ export function serializeQuickPlayCosmetics(roster:RosterState):string{
     wardrobe:readWardrobe(m.wardrobe)
   }))});
 }
-export function applyRosterIdentity(s:Session,roster:RosterState){
+export function applyRosterIdentity(s:Session,roster:RosterState,carryMode?:'unified'){
+ const snapshots=new Map<string,DeploymentInventorySnapshot>();
+ if(carryMode==='unified'){
+  // Preflight the entire participating squad. Never mutate a prefix of
+  // actors and then fail on a later operator.
+  for(const a of s.operators){
+   if(a.side!=='blue')continue;
+   const member=roster.members.find(m=>m.id===a.id);if(!member)continue;
+   snapshots.set(a.id,captureDeploymentInventory({...member,carryMode}));
+  }
+ }
  for(const a of s.operators){
   if(a.side!=='blue')continue;
   const member=roster.members.find(m=>m.id===a.id);
@@ -130,7 +140,8 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
    a.name=member.callsign;
    a.appearanceSeed=member.appearanceSeed;
    a.wardrobe=member.wardrobe;
-   applyDeploymentInventory(a,member);
+   const snapshot=snapshots.get(a.id);
+   if(snapshot)applyCapturedDeploymentInventory(a,snapshot);else applyDeploymentInventory(a,member);
    const protection=initialArmorIntegrity(member.loadout);
    a.armorIntegrity=protection.torso;a.helmetIntegrity=protection.head;
    // Persistent wounds affect readiness but never invent fresh fatal damage.

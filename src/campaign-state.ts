@@ -1149,14 +1149,15 @@ function matchingKitSpare(c:CampaignState,id:string,desired:WeaponConfiguration)
   Object.keys(w.catalogBody.parts).length===Object.keys(desired.build!.parts).length&&
   canEquipCampaignCatalogWeapon(c,id,w.id));
 }
-export function canApplyCampaignKitPreset(c:CampaignState,id:string,presetId:string):boolean{
+export function canApplyCampaignKitPreset(c:CampaignState,id:string,presetId:string,carryMode?:'unified'):boolean{
  if(c.activeContractId)return false;
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  const preset=c.kitPresets.find(p=>p.id===presetId);
  if(!member||!preset||!campaignKitWeaponAvailable(c,id,presetId))return false;
- const proposed=readEquipmentLoadout(preset.kit,preset.weapon);
+ const proposed=readEquipmentLoadout(preset.kit,preset.weapon,member.id,carryMode);
  const incoming=proposed.fieldInventory??initialFieldInventory(proposed);
- if(!fieldCarryReport(proposed,member.magazines,incoming).valid)return false;
+ // Unified fit is evaluated after the candidate weapon transfer below.
+ if(carryMode!=='unified'&&!fieldCarryReport(proposed,member.magazines,incoming).valid)return false;
  if(!quoteCampaignFieldStockChange(c,member.loadout,proposed).ok)return false;
  if(c.squadIds.includes(id)){
   const reserved=c.operators.filter(o=>o.id!==id&&c.squadIds.includes(o.id))
@@ -1172,8 +1173,8 @@ export function canApplyCampaignKitPreset(c:CampaignState,id:string,presetId:str
  return Object.entries(preset.kit.slots).every(([slot,itemId])=>
   mayChooseCampaignContent(c,'equipment',itemId,slot as LoadoutSlot));
 }
-export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string):CampaignState{
- if(!canApplyCampaignKitPreset(c,id,presetId))return c;
+export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string,carryMode?:'unified'):CampaignState{
+ if(!canApplyCampaignKitPreset(c,id,presetId,carryMode))return c;
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  const preset=c.kitPresets.find(p=>p.id===presetId);
  if(!member||!preset)return c;
@@ -1189,7 +1190,18 @@ export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string
  const spare=matching?undefined:matchingKitSpare(c,id,desired);
  const swapped=matching?c:spare?equipCampaignCatalogWeapon(c,id,spare.id):c;
  if(swapped===c&&!matching)return c;
- const targetKit=readEquipmentLoadout(preset.kit,preset.weapon);
+ let targetKit=readEquipmentLoadout(preset.kit,preset.weapon,member.id,carryMode);
+ let unifiedMagazines:MagazineItem[]|undefined;
+ if(carryMode==='unified'){
+  const o=swapped.operators.find(x=>x.id===id);if(!o)return c;
+  // Presets are recipes, not sidearm/ammunition ownership. Preserve the
+  // recipient's existing secondary issue (even when the donor differed).
+  targetKit={...targetKit,secondary:o.loadout.secondary};
+  const fitted=fitMagazineInventory(o.id,o.weapon,desired,o.magazine,o.reserve,o.magazines);
+  const q=quoteUnifiedPreparation({...o,...fitted,weaponConfiguration:desired,loadout:targetKit},{kind:'refit'});
+  if(!q.ok)return c;
+  targetKit=q.kit;unifiedMagazines=q.magazines;
+ }
  const fieldStock=quoteCampaignFieldStockChange(swapped,member.loadout,targetKit);
  if(!fieldStock.ok)return c;
  return synchronizeIssuedCatalogBodies({...swapped,supplies:fieldStock.stock,
@@ -1201,7 +1213,7 @@ export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string
    fieldRestockLayout:fieldRestockPreference(targetKit),
    medicalSupplies:normalizedMedicalSupplies(o.medicalSupplies,
     kitMedicalSupplies(readEquipmentLoadout(preset.kit,preset.weapon))),
-   magazines:stageMagazines(fitMagazineInventory(o.id,o.weapon,desired,
+   magazines:unifiedMagazines??stageMagazines(fitMagazineInventory(o.id,o.weapon,desired,
     o.magazine,o.reserve,o.magazines).magazines,preset.kit),
    armorCondition:clampArmorToKit(o.armorCondition,preset.kit)}:o)});
 }

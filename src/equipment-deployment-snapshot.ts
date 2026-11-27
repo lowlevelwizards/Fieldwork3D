@@ -86,6 +86,11 @@ export function captureDeploymentInventory(
 export function applyDeploymentInventory(
  actor:TeamActor,source:DeploymentInventorySource):DeploymentInventorySnapshot{
  const snapshot=captureDeploymentInventory(source);
+ applyCapturedDeploymentInventory(actor,snapshot);
+ return snapshot;
+}
+/** Squad preflight computes every snapshot before mutating any actor. */
+export function applyCapturedDeploymentInventory(actor:TeamActor,snapshot:DeploymentInventorySnapshot):void{
  actor.weapon=snapshot.weapon;
  actor.equipment=snapshot.equipment;
  actor.unifiedCarry=snapshot.unifiedCarry;
@@ -102,7 +107,6 @@ export function applyDeploymentInventory(
  actor.nvgDeployed=false;
  actor.loadMovementScale=snapshot.loadMovementScale;
  actor.reload=0;actor.reloadMode=null;
- return snapshot;
 }
 /** The existing Campaign flash allocator may issue fewer charges than the
  * saved requested kit. Reflect that actual issue in the detached mission
