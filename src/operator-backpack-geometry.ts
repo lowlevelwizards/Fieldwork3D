@@ -4,7 +4,7 @@
  */
 import * as THREE from 'three';
 import {mapGarmentBoxUV} from './operator-fabric-camo-materials.ts';
-import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
+import {mapBoxPixelUV,TILE_WORLD_SIZE} from './rendering/pixel-materials.ts';
 import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
 import {ART_PIXEL} from './rendering/material-art-scale.ts';
 export const PACK_DETAIL_PIXEL=ART_PIXEL;
@@ -79,6 +79,50 @@ export function packWebbing(parent:THREE.Group,name:string,m:THREE.Material,
  const result=packBox(parent,name,m,[center.x,center.y,center.z],[thickness,length,width]);
  result.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x,y,z));
  return result;
+}
+/** One capped rectangular ribbon per uninterrupted strap path. No hidden
+ * internal segment faces or overlapping boxes; metric UV along the path. */
+export function packRibbon(parent:THREE.Group,name:string,m:THREE.Material,
+ spans:readonly Readonly<{a:PackPoint;b:PackPoint;normal:PackPoint;width:number;thickness:number}>[]){
+ if(!spans.length)return;
+ const corners:THREE.Vector3[][]=[],lengths:number[]=[0];
+ for(let i=0;i<=spans.length;i++){
+  const prev=spans[Math.max(0,i-1)],next=spans[Math.min(i,spans.length-1)];
+  const point=new THREE.Vector3(...(i===spans.length?prev.b:next.a));
+  const direction=(s:typeof prev)=>new THREE.Vector3(...s.b).sub(new THREE.Vector3(...s.a)).normalize();
+  const tangent=direction(prev).add(direction(next)).normalize();
+  const x=new THREE.Vector3(...prev.normal).add(new THREE.Vector3(...next.normal));
+  x.addScaledVector(tangent,-x.dot(tangent));
+  if(x.lengthSq()<.001){
+   x.set(Math.abs(tangent.x)<.8?1:0,Math.abs(tangent.x)<.8?0:1,0);
+   x.addScaledVector(tangent,-x.dot(tangent));
+  }
+  x.normalize();const z=x.clone().cross(tangent).normalize();
+  const w=(prev.width+next.width)*.25,d=(prev.thickness+next.thickness)*.25;
+  corners.push([[1,1],[-1,1],[-1,-1],[1,-1]].map(([a,b])=>point.clone().addScaledVector(x,a*d).addScaledVector(z,b*w)));
+  if(i>0)lengths.push(lengths[i-1]+new THREE.Vector3(...prev.b).distanceTo(new THREE.Vector3(...prev.a)));
+ }
+ const positions:number[]=[],uv:number[]=[],indices:number[]=[];
+ const push=(v:THREE.Vector3,u:number,w:number)=>{positions.push(v.x,v.y,v.z);uv.push(u/TILE_WORLD_SIZE,w/TILE_WORLD_SIZE);};
+ for(let face=0;face<4;face++){
+  const start=positions.length/3,n=(face+1)%4;
+  for(let i=0;i<corners.length;i++){
+   push(corners[i][face],0,lengths[i]);push(corners[i][n],corners[i][face].distanceTo(corners[i][n]),lengths[i]);
+  }
+  for(let i=0;i<spans.length;i++){const a=start+i*2;indices.push(a,a+2,a+1,a+1,a+2,a+3);}
+ }
+ for(const end of [0,corners.length-1]){
+  const a=positions.length/3;
+  for(let i=0;i<4;i++)push(corners[end][i],i===0||i===3?1:0,i<2?1:0);
+  if(end===0)indices.push(a,a+1,a+2,a,a+2,a+3);
+  else indices.push(a,a+2,a+1,a,a+3,a+2);
+ }
+ const geo=new THREE.BufferGeometry();
+ geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+ geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+ geo.setIndex(indices);geo.computeVertexNormals();geo.computeBoundingBox();
+ bakeGearGeometryAO(geo,m);
+ return mesh(parent,name,geo,m,[0,0,0]);
 }
 export function packBuckle(parent:THREE.Group,name:string,m:PackMaterials,p:PackPoint,width:number){
  return packBox(parent,name,m.dark,p,[.48,1.0,Math.max(1.1,width+.22)]);
