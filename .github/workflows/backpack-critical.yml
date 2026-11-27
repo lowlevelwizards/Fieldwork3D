@@ -2,6 +2,12 @@ name: BP backpack foundation critical
 on:
   push:
     branches: [art/backpacks-bp0-bp15]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/operator-backpack-*.ts'
+      - 'tests/backpack-bp*.test.mjs'
+      - '.github/workflows/backpack-critical.yml'
   workflow_dispatch:
 concurrency:
   group: bp-critical-${{ github.ref }}
