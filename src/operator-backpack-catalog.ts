@@ -47,7 +47,7 @@ export function legacyPackDefault(id:string):string{
 export function isPackStyle(value:string):value is PackStyle{
  return Object.hasOwn(PACK_PROFILES,value);
 }
-const aliases:Readonly<Record<string,PackStyle>>={'admin-pack':'assault-panel','sling-bag':'civilian-pack',duffel:'rucksack'};
+const aliases:Readonly<Record<string,PackStyle>>={'admin-pack':'assault-panel'};
 export function proposedPackStyle(oldStyle:string):PackStyle|undefined{
  return isPackStyle(oldStyle)?oldStyle:Object.hasOwn(aliases,oldStyle)?aliases[oldStyle]:undefined;
 }
