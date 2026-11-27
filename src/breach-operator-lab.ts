@@ -1808,7 +1808,7 @@ function showDiagnostics(){
       put(i,world.x,world.y,world.z);
     });
     diagnosticText.textContent='REAR / FRONT / SINGLE · '+sockets.supported.join(' / ').toUpperCase()+
-      '\nSTRAP SPANS '+rig.slingStraps.filter(x=>x.visible).map(x=>x.scale.y.toFixed(1)).join(' / ');
+      '\nWEBBING SEGMENTS '+(rig.slingStraps[0]?.visible?rig.slingStraps[0].geometry.drawRange.count/6:0);
     return;
   }
   if(layer==='weapon'){

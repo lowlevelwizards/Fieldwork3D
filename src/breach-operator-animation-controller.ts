@@ -23,7 +23,8 @@ import {readSlingKind} from './breach-weapon-retention.ts';
 import {sampleSecondaryRetention} from './breach-secondary-retention.ts';
 import {oneHandRetentionWeight} from './breach-weapon-retention-actions.ts';
 import {sampleRetentionTransition} from './breach-weapon-retention-transition.ts';
-import {solveOperatorDirectSlingPose} from './breach-operator-sling-pose.ts';
+import {solveOperatorDirectSlingPose,commitOperatorSlingRibbon} from './breach-operator-sling-pose.ts';
+import {equipmentExterior} from './operator-equipment-exterior.ts';
 import {beginOperatorEquipmentPose,solveOperatorDroppedWeapon,
  finishOperatorEquipmentPose} from './breach-operator-equipment-output.ts';
 import {EQUIPMENT_ATTACHMENT_INDEX as EAI}
@@ -1504,7 +1505,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   applyOperatorTraumaPose(r,p,downProgress,frame);
   // Same-frame held/drop world placement without temporary weapon node writes.
   solveOperatorDroppedWeapon(workingRig,p,scratch,downProgress,smooth);
-  solveOperatorDirectSlingPose(workingRig,p,scratch,physicalSpeed,retention?.mode);
+  solveOperatorDirectSlingPose(workingRig,p,scratch,physicalSpeed,retention?.mode,
+    slingKind==='none'?undefined:equipmentExterior(clothing.armorStyle,clothing.rigStyle,clothing.top));
   finishOperatorPoseFrame(r,p,
     scratch.armOutput.transforms[0].quaternion,
     scratch.armOutput.transforms[3].quaternion,equipment);
@@ -1519,6 +1521,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     finalEquipment.attachmentOutputs);
   // Exactly one commit of the six validated, rig-local output stages.
   commitOperatorPoseOutput(r,p);
+  commitOperatorSlingRibbon(r,p);
   // S6.1: one 3D Glock follows the finished firing wrist, not uncommitted IK.
   // The fixed-step fraction also gives deterministic replay and reversal.
   presentSecondaryDraw(r.hip,r.arms[1].hand,p.equipment?.secondary,
