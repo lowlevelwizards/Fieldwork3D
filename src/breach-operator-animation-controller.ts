@@ -19,6 +19,8 @@ import {secondaryUpperBodyTargets,LAB_CLOSE_RETENTION}
 import type {OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import * as THREE from 'three';
+import {readSlingKind} from './breach-weapon-retention.ts';
+import {sampleRetentionPose} from './breach-weapon-retention-pose.ts';
 import {solveOperatorDirectSlingPose} from './breach-operator-sling-pose.ts';
 import {beginOperatorEquipmentPose,solveOperatorDroppedWeapon,
  finishOperatorEquipmentPose} from './breach-operator-equipment-output.ts';
@@ -1089,6 +1091,22 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const contactReach=!equipmentActive&&!p.down&&!p.surrender&&!p.firing&&
     contactAge>=0&&contactAge<.64?
     Math.sin(Math.PI*contactAge/.64):0;
+  const retentionAssembly=config?resolveWeaponAssembly(config):null;
+  const retention=p.retentionPreview&&!p.down&&!p.surrender&&!p.unarmedPreview&&
+    !p.firing&&!p.aiming&&!reloadActive&&!doorActive&&!throwActive&&!treatmentActive&&
+    !equipmentActive&&(p.secondarySwitch?.fraction??0)===0?
+    sampleRetentionPose({mode:p.retentionPreview,
+      sling:readSlingKind(config?.slots.sling),scale:heldWeapon.scale,
+      heldPosition:heldWeapon.position,heldQuaternion:heldWeapon.quaternion,
+      primaryGrip:fit.primary,supportGrip:fit.support,
+      balanceX:retentionAssembly?.balanceX??0,armorPush:p.equipment?.slots.armor==='armor-carrier'?1.2:
+        p.equipment?.slots.armor==='armor-soft'?.6:0,
+      pack:r.pack.visible,chestHeight:frame.chest.position.y,
+      muzzleX:retentionAssembly?.muzzleX??19.5,stockX:retentionAssembly?.stockX??-13.5}):null;
+  if(retention){
+    heldWeapon.position.copy(retention.position);
+    heldWeapon.quaternion.copy(retention.quaternion);
+  }
   beginOperatorArmPose(r,scratch);
   // S6.2: single upper-body IK owner. Draw fraction, aim and reload clocks
   // are fixed-step facts; this pure pose is never a second combat state.
@@ -1111,6 +1129,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }):null;
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
+    if(retention){
+      const shoulder=shoulderFor(i),requested=i===0?retention.left:retention.right;
+      const guide=P(3,-9,sign*2);
+      const solved=solveTwoBone(shoulder,requested,10,10,guide,ARM_LIMITS);
+      arm.bend.copy(solved.bendPlane);arm.outOfReach=!solved.reached;
+      r.elbowSpread[i]=Math.max(0,sign*(solved.joint.z-shoulder.z));
+      setOperatorArmSegments(scratch,i as 0|1,shoulder,solved.joint,solved.effector,scratch.sides[i]);
+      setOperatorHandPose(scratch,i as 0|1,solved.effector,0);
+      continue;
+    }
     if(secondaryTarget&&secondaryTarget.weight>0){
       const shoulder=shoulderFor(i);
       const actualSource=coupled?.arms??coordinatedDynamic?.arms;

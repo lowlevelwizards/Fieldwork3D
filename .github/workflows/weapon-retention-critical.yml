@@ -4,6 +4,9 @@ on:
     branches: [feature/wr-weapon-retention]
     paths:
       - 'src/breach-weapon-retention.ts'
+      - 'src/breach-weapon-retention-pose.ts'
+      - 'src/breach-operator-animation-contract.ts'
+      - 'tests/weapon-retention-wr4.test.mjs'
       - 'src/breach-operator-sling-pose.ts'
       - 'src/breach-weapon-accessories.ts'
       - 'src/breach-operator-equipment-output.ts'
@@ -21,6 +24,9 @@ on:
   pull_request:
     paths:
       - 'src/breach-weapon-retention.ts'
+      - 'src/breach-weapon-retention-pose.ts'
+      - 'src/breach-operator-animation-contract.ts'
+      - 'tests/weapon-retention-wr4.test.mjs'
       - 'src/breach-operator-sling-pose.ts'
       - 'src/breach-weapon-accessories.ts'
       - 'src/breach-operator-equipment-output.ts'
@@ -48,5 +54,5 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - run: node --experimental-strip-types --test tests/weapon-retention-wr1.test.mjs tests/weapon-retention-wr2.test.mjs tests/breach-pose-action-state.test.mjs tests/breach-roadmap3-sling-pose.test.mjs tests/equipment-21-06-sling-loop.test.mjs tests/weapon-retention-wr3.test.mjs tests/secondary-s5-switching.test.mjs
+      - run: node --experimental-strip-types --test tests/weapon-retention-wr1.test.mjs tests/weapon-retention-wr2.test.mjs tests/breach-pose-action-state.test.mjs tests/breach-roadmap3-sling-pose.test.mjs tests/equipment-21-06-sling-loop.test.mjs tests/weapon-retention-wr3.test.mjs tests/weapon-retention-wr4.test.mjs tests/secondary-s5-switching.test.mjs
       - run: npm run build
