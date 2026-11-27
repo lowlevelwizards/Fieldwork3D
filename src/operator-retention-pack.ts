@@ -19,7 +19,7 @@ export function retentionPackBounds(r:Pick<OperatorRig,'pack'|'visualKit'>,
  style:string,pose:Transform):THREE.Box3|undefined{
  if(!r.pack.visible||style==='no-pack')return undefined;
  const v=r.visualKit;
- const roots=[v.wardrobeGear.pack[style],v.dayPack,v.fieldPack,v.packPreview.active?.root].filter((g):g is THREE.Group=>!!g&&g.visible);
+ const roots=[v.packPreview.active?.root].filter((g):g is THREE.Group=>!!g&&g.visible);
  const key=style+'|'+roots.map(g=>g.uuid+':'+g.scale.toArray().join(',')+':'+g.position.toArray().join(',')).join('|');
  let entry=cache.get(r.pack);
  if(!entry||entry.key!==key){
