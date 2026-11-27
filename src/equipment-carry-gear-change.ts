@@ -5,7 +5,7 @@
  */
 import type {MagazineItem} from './breach-magazines.ts';
 import {setEquipmentChoice,type EquipmentLoadout} from './equipment-loadouts.ts';
-import {stageMagazines} from './equipment-magazine-placement.ts';
+import {secondaryCarryClaim,stageMagazines} from './equipment-magazine-placement.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {FIELD_CARRY_LOCATIONS,FIELD_ITEM_IDS,autoPackFieldInventory,
  fieldCarryReport,fieldQuantity,initialFieldInventory,
@@ -96,10 +96,16 @@ export function quoteCarryGearChange(
  inventory:FieldInventory=kit.fieldInventory??initialFieldInventory(kit)
 ):CarryGearChangeQuote{
  const preview=previewCarryGearChange(kit,magazines,slot,itemId,inventory);
+ if(slot==='backpack'&&itemId==='backpack-panel'&&kit.slots.armor!=='armor-carrier')
+  return {ok:false,reason:'COMPATIBLE REAR ARMOR REQUIRED',preview};
  if(!preview.changed)return {ok:false,reason:'NO EQUIPMENT CHANGE',preview};
  if(!preview.fits)return {ok:false,reason:preview.issues.join(' · ')||
   'NO FITTED CARRY CONFIGURATION',preview};
  const next=setEquipmentChoice(kit,slot,itemId);
+ if(!secondaryCarryClaim(next).valid)return {ok:false,reason:'SECONDARY CARRY CAPACITY EXCEEDED',preview};
+ const oldSecondary=kit.secondary?.spareMagazines??[],newSecondary=next.secondary?.spareMagazines??[];
+ if(oldSecondary.length!==newSecondary.length||newSecondary.some(m=>!oldSecondary.some(o=>o.id===m.id&&o.rounds===m.rounds)))
+  return {ok:false,reason:'SECONDARY MAGAZINE OWNERSHIP WOULD CHANGE',preview};
  const placed=stageMagazines(magazines,next);
  const packed=preview.requiresRepack?autoPackFieldInventory(next,placed,inventory):inventory;
  if(!packed)return {ok:false,reason:'NOT ENOUGH SPACE TO REPACK',preview};

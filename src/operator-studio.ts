@@ -1,7 +1,7 @@
 import {canonicalFootwear,footwearColor,footwearColorChoices,resolveFootwearHem} from './operator-footwear-catalog.ts';
 import {equipmentSlotForAppearance} from './operator-wardrobe-unified.ts';
 import {WARDROBE_ITEMS} from './operator-wardrobe-data.ts';
-import {packMountChoices,equipmentAssembly,type PackMountMode} from './operator-equipment-assembly.ts';
+import {equipmentAssembly} from './operator-equipment-assembly.ts';
 /** Operator Studio: contextual appearance editing, not the animation workbench.
  * The hosting game owns authoritative roster/campaign writes. Standalone mode
  * uses the same validated roster persistence for previews and direct access.
@@ -80,7 +80,7 @@ import {readCampaign} from './campaign-state.ts';
 import {applyStudioRosterEdits,applyStudioCampaignEdits,
  type StudioAppearanceEdit} from './operator-studio-batch-save.ts';
 import {authoredPackStyle} from './operator-backpack-art.ts';
-import {legacyPackEquipment} from './operator-backpack-catalog.ts';
+import {canonicalPackEquipment} from './operator-backpack-catalog.ts';
 import {supportsDirectPack} from './operator-backpack-fit.ts';
 import {setEquipmentChoice,type EquipmentLoadout} from './equipment-loadouts.ts';
 import {dispatchPilotAppearanceAllowed,dispatchAppearanceSolids,
@@ -551,7 +551,7 @@ function packReviewLook(){
 }
 function packReviewKit(kit:EquipmentLoadout){
  if(!reviewingPacks())return kit;
- const w=packReviewLook(),id=legacyPackEquipment(w.styles.packStyle??'no-pack')??'backpack-none';
+ const w=packReviewLook(),id=canonicalPackEquipment(w.styles.packStyle??'no-pack')??'backpack-none';
  const slots={...kit.slots,backpack:id};
  for(const slot of ['armorStyle','rigStyle','beltStyle'] as const){
   const chosen=w.styles[slot];if(!chosen)continue;
@@ -878,7 +878,6 @@ function posePreview(){
    });
   }
   rig=createOperatorRig(p.id,'blue');
-  rig.root.userData.fieldworkAuthoredPackPreview=true;
   scene.add(rig.root);
  }
  // Always restore Standard materials before updating authored garments
@@ -914,7 +913,7 @@ function posePreview(){
   appearanceSeed:p.appearanceSeed
  };
  poseOperator(rig,armedPose,0);
- canvas.dataset.authoredPack=rig.visualKit.packPreview.active?.style??'legacy';
+ canvas.dataset.authoredPack=rig.visualKit.packPreview.active?.style??'none';
  canvas.dataset.packMount=rig.visualKit.packPreview.fit?.mode??'none';
  canvas.dataset.packReviewColor=(rig.colors.get(rig.packMaterial)??rig.packMaterial.color).getHexString();
  canvas.dataset.packReview=String(reviewingPacks());
@@ -970,6 +969,7 @@ function posePreview(){
 function canEquip(slot:WardrobeSlot,id:string){
  if(slot==='packStyle'&&reviewingPacks())return id==='no-pack'||!!authoredPackStyle(id);
  const p=member();
+ if(slot==='armorStyle'&&p?.loadout.slots.backpack==='backpack-panel'&&!supportsDirectPack(id))return false;
  return !!p&&resolvedWardrobe(setWardrobeStyle(current(),slot,id),p.loadout)[slot]===id;
 }
 function restoreDraft(look:WardrobeOptions,normalized=false){
@@ -1330,15 +1330,10 @@ function renderMaterials(){
    select.value=outfit[slot];select.disabled=readOnly;
    select.addEventListener('change',()=>update(setWardrobeStyle(w,slot,select.value)));assemblyGroup.append(select);
   }
-  const mounting=row('PACK MOUNTING','Compatible modular configurations only; preview does not issue gear.');
-  const modes=packMountChoices(outfit.packStyle,outfit.armorStyle,outfit.rigStyle);
-  const resolved=equipmentAssembly(outfit.packStyle,outfit.armorStyle,outfit.rigStyle,w.packMount);
-  const labels:Record<PackMountMode,string>={auto:'AUTO',independent:'INDEPENDENT',direct:'DIRECT TO ARMOR',shared:'SHARED RIG',adapter:'ARMOR ADAPTER'};
-  for(const mode of ['auto',...modes] as PackMountMode[]){
-   const button=makeButton(labels[mode],(w.packMount??'auto')===mode,()=>update({...w,packMount:mode}));
-   button.dataset.packMount=mode;mounting.append(button);
-  }
-  const note=document.createElement('small');note.textContent='CURRENT: '+labels[resolved.mode];mounting.append(note);
+  const mounting=row('PACK MOUNTING','Automatically fitted to the selected equipment.');
+  const resolved=equipmentAssembly(outfit.packStyle,outfit.armorStyle,outfit.rigStyle);
+  const note=document.createElement('small');note.dataset.packMountStatus=resolved.mode;
+  note.textContent=resolved.direct?'DIRECT TO ARMOR':resolved.sharedRig?'SHARED RIG HARNESS':'INDEPENDENT HARNESS';mounting.append(note);
   applyStudioStep();return;
  }
  const w=current(),outfit=resolvedWardrobe(w,p.loadout);

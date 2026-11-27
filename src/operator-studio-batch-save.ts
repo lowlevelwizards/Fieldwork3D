@@ -1,3 +1,5 @@
+import {rearCarrierMount} from './operator-equipment-assembly.ts';
+import {resolvedWardrobe} from './operator-wardrobe-data.ts';
 /** Atomic appearance-only operator edits: the tactical game is authoritative.
  * No equipment ownership, primary weapons, reserves or campaign inventory
  * are serialized or changed through this protocol. */
@@ -29,6 +31,9 @@ export function applyStudioRosterEdits(roster:RosterState,
  edits:readonly StudioAppearanceEdit[]):RosterState|null{
  if(!edits.length||edits.some(e=>!roster.members.some(p=>p.id===e.id))||
     new Set(edits.map(e=>e.id)).size!==edits.length)return null;
+ if(edits.some(e=>{const m=roster.members.find(p=>p.id===e.id)!;
+  return m.loadout.slots.backpack==='backpack-panel'&&!rearCarrierMount(resolvedWardrobe(e.wardrobe,m.loadout).armorStyle);
+ }))return null;
  return edits.reduce((state,e)=>setRosterWardrobe(state,e.id,e.wardrobe),roster);
 }
 export function applyStudioCampaignEdits(campaign:CampaignState,
@@ -37,6 +42,9 @@ export function applyStudioCampaignEdits(campaign:CampaignState,
     new Set(edits.map(e=>e.id)).size!==edits.length||
     edits.some(e=>!campaign.operators.some(p=>p.id===e.id&&
       p.status!=='retired'&&p.status!=='lost')))return null;
+ if(edits.some(e=>{const m=campaign.operators.find(p=>p.id===e.id)!;
+  return m.loadout.slots.backpack==='backpack-panel'&&!rearCarrierMount(resolvedWardrobe(e.wardrobe,m.loadout).armorStyle);
+ }))return null;
  // Every proposed edit must pass before ANY operator is mutated.
  if(campaign.rules?.template==='dispatch'&&
  effectiveDispatchSetup(campaign).equipmentScope!=='global'&&edits.some(e=>{

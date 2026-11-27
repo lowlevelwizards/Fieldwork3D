@@ -11,7 +11,6 @@ import type {AliceLc2Load} from './operator-alice-lc2-policy.ts';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {enableBakedGearAO,bakeGearContactAO} from './operator-baked-gear-ao.ts';
-import {wardrobeItemsForSlot} from './operator-wardrobe-data.ts';
 import {createArmorSilhouettes,createChestRigSilhouettes,
  updateAdaptiveArmorFit,updateFittedRigHarness}
  from './operator-armor-rig-silhouettes.ts';
@@ -20,7 +19,7 @@ import {rigContactFrame} from './operator-rig-contact-frame.ts';
 import type {MagazinePouchCell} from './operator-magazine-pouch-fit.ts';
 type StyleGroups=Record<string,THREE.Group>;
 export type WardrobeGearLayers={
- armor:StyleGroups;rig:StyleGroups;belt:StyleGroups;pack:StyleGroups;
+ armor:StyleGroups;rig:StyleGroups;belt:StyleGroups;
  waistRig:StyleGroups;
  pouchMaterial:THREE.MeshStandardMaterial;
  strapMaterial:THREE.MeshStandardMaterial;
@@ -39,7 +38,7 @@ const make=(parent:THREE.Object3D)=>{
  const g=new THREE.Group();g.visible=false;parent.add(g);return g;
 };
 export function createWardrobeGearLayers(
- chest:THREE.Group,hip:THREE.Group,packParent:THREE.Mesh,
+ chest:THREE.Group,hip:THREE.Group,_packParent:THREE.Mesh,
  armorFabric:THREE.Material,gearFabric:THREE.Material,
  packFabric:THREE.Material,dark:THREE.Material,
  trim:THREE.Material,lazyVariants=false,beltParent:THREE.Group=hip,beltHardware:THREE.Material=trim):WardrobeGearLayers{
@@ -108,40 +107,10 @@ export function createWardrobeGearLayers(
   }
   box(battle,strapMaterial,-3.75,.12,side*5.4,1.16,4.15,5.15);
  }
- const belt=createBeltSilhouettes(beltParent,gearFabric,dark,beltHardware),pack:StyleGroups={};
- for(const item of wardrobeItemsForSlot('packStyle')){
-  const g=make(packParent);pack[item.id]=g;
-  switch(item.id){
-   case 'hydration':
-    box(g,dark,-1.9,2.2,0,.25,3.7,2.6);break;
-   case 'admin-pack':
-    box(g,packFabric,-2.9,-1.4,0,1.5,2.5,5.2);break;
-   case 'assault-pack':
-    box(g,packFabric,-3.35,-2.9,0,1.65,3.6,8.8);
-    break;
-   case 'sling-bag':
-    box(g,gearFabric,-2.9,.7,-3.35,.5,5.9,.85);break;
-   case 'rucksack':
-    box(g,packFabric,-3.95,7.4,0,1.0,3.7,11.4);
-    break;
-   case 'medic-pack':
-    box(g,gearFabric,-3.86,1.65,0,.35,3.8,4.0);
-    box(g,dark,-4.1,1.65,0,.24,2.5,.65);
-    box(g,dark,-4.1,1.65,0,.24,.65,2.5);
-    break;
-   case 'comms-pack':
-    box(g,dark,-3.9,5.7,2.8,.3,5.4,.36);
-    box(g,dark,-3.9,5.7,-2.8,.3,5.4,.36);break;
-   case 'duffel':
-    for(const z of [-4.6,4.6])
-     box(g,trim,-3.95,.2,z,.3,8.1,.7);
-    break;
-   default:break;
-  }
- }
- for(const section of [waistRig,belt,pack])
+ const belt=createBeltSilhouettes(beltParent,gearFabric,dark,beltHardware);
+ for(const section of [waistRig,belt])
   for(const g of Object.values(section))consolidateVisualGroup(g);
- const visual:WardrobeGearLayers={armor,rig,waistRig,belt,pack,pouchMaterial,strapMaterial,
+ const visual:WardrobeGearLayers={armor,rig,waistRig,belt,pouchMaterial,strapMaterial,
   ensureArmor,ensureRig};
  visual.ensureAliceWaist=()=>{
   if(visual.aliceWaist)return;
@@ -175,7 +144,7 @@ export function createWardrobeGearLayers(
  return visual;
 }
 export function updateWardrobeGearLayers(v:WardrobeGearLayers,
- armor:string,rig:string,belt:string,pack:string,top='combat-shirt',
+ armor:string,rig:string,belt:string,_pack:string,top='combat-shirt',
  aliceLoad:AliceLc2Load='standard',m1956Variant:M1956Variant='late',sharedPack=false){
  v.ensureArmor?.(armor);v.ensureRig?.(rig);
  if(rig==='alice-lc2'){
@@ -187,7 +156,7 @@ export function updateWardrobeGearLayers(v:WardrobeGearLayers,
   if(v.m1956Waist)updateM1956Variant(v.m1956Waist,m1956Variant);
  }
  for(const [target,id] of [
-  [v.armor,armor],[v.rig,rig],[v.belt,belt],[v.pack,pack]
+  [v.armor,armor],[v.rig,rig],[v.belt,belt]
  ] as const)
   for(const [style,g] of Object.entries(target))g.visible=style===id;
  for(const [style,g] of Object.entries(v.waistRig))g.visible=style===rig;

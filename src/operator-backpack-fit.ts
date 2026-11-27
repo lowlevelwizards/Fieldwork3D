@@ -79,11 +79,6 @@ export function fitPack(style:PackStyle,armor:string,rig:string,top:string,
    if(Math.hypot(...a.map((v,i)=>v-b[i]))>.001)spans.push({a,b,normal,width:wide,thickness});
   };
   add(upper,contour.rear,point(-1,1,0));
-  if(assembly.adapter){
-   buckles.push(contour.rear);
-   const seat=point(fit.back(-2.8,z)-.06,-2.8,z);
-   add(seat,lower,point(-1,0,0),width*.7);continue;
-  }
   add(contour.rear,contour.crown,point(0,1,0));
   add(contour.crown,contour.front,point(0,1,0));
   add(contour.front,front,point(1,1,0));

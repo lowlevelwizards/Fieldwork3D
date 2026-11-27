@@ -26,9 +26,13 @@ export type PackStyle=keyof typeof PACK_PROFILES;
 export const PACK_STYLES=Object.keys(PACK_PROFILES) as PackStyle[];
 export const LEGACY_PACK_STYLES={
  'backpack-none':['no-pack'],
- 'backpack-day':['hydration','admin-pack','day-pack','assault-pack','sling-bag','civilian-pack'],
- 'backpack-field':['field-pack','rucksack','medic-pack','comms-pack','duffel']
+ 'backpack-day':['hydration','admin-pack','day-pack','assault-pack','civilian-pack'],
+ 'backpack-field':['field-pack','rucksack','medic-pack','comms-pack']
 } as const satisfies Record<LegacyPackEquipment,readonly string[]>;
+/** Old saved appearance aliases, never offered as items. */
+export function migratePackAppearance(style:unknown):unknown{
+ return style==='sling-bag'?'civilian-pack':style==='duffel'?'rucksack':style;
+}
 export function legacyPackEquipment(style:string):LegacyPackEquipment|undefined{
  for(const id of Object.keys(LEGACY_PACK_STYLES) as LegacyPackEquipment[])
   if((LEGACY_PACK_STYLES[id] as readonly string[]).includes(style))return id;
@@ -43,17 +47,43 @@ export function legacyPackDefault(id:string):string{
 export function isPackStyle(value:string):value is PackStyle{
  return Object.hasOwn(PACK_PROFILES,value);
 }
-const aliases:Readonly<Record<string,PackStyle>>={'admin-pack':'assault-panel','sling-bag':'civilian-pack',duffel:'rucksack'};
+const aliases:Readonly<Record<string,PackStyle>>={'admin-pack':'assault-panel'};
 export function proposedPackStyle(oldStyle:string):PackStyle|undefined{
  return isPackStyle(oldStyle)?oldStyle:Object.hasOwn(aliases,oldStyle)?aliases[oldStyle]:undefined;
 }
 /** Advisory only: caller must quote the real inventory transaction before changing a save. */
 export function quotePackMigration(id:LegacyPackEquipment,style:string,usedSpaces:number,compatible:boolean){
- const target=legacyPackEquipment(style)===id?proposedPackStyle(style):undefined;
+ const migrated=migratePackAppearance(style);
+ const target=typeof migrated==='string'&&legacyPackEquipment(migrated)===id?proposedPackStyle(migrated):undefined;
  if(!target)return {ok:false as const,reason:'INVALID LEGACY PAIR'};
  if(!Number.isFinite(usedSpaces)||usedSpaces<0)return {ok:false as const,reason:'INVALID OCCUPANCY'};
  const profile=PACK_PROFILES[target];
  if(!compatible&&profile.harness==='direct')return {ok:false as const,reason:'CARRIER MOUNT REQUIRED'};
  if(usedSpaces>profile.capacity)return {ok:false as const,reason:'REPACK REQUIRED'};
  return {ok:true as const,style:target,profile};
+}
+
+/** Canonical issue identity for new transactions, separate from legacy
+ * appearance classes. Old saves remain on their existing capacity until
+ * an explicit, validated equipment transaction succeeds. */
+export function canonicalPackEquipment(style:string):string|undefined{
+ const migrated=migratePackAppearance(style);
+ const id=typeof migrated==='string'?proposedPackStyle(migrated):undefined;
+ return id?PACK_PROFILES[id].id:undefined;
+}
+export function packStylesForEquipment(id:string):readonly string[]{
+ if(Object.hasOwn(LEGACY_PACK_STYLES,id))return legacyPackStyles(id);
+ const style=PACK_STYLES.find(s=>PACK_PROFILES[s].id===id);
+ return style==='assault-panel'?['admin-pack']:style?[style]:['no-pack'];
+}
+export function packDefaultForEquipment(id:string):string{
+ if(Object.hasOwn(LEGACY_PACK_STYLES,id))return legacyPackDefault(id);
+ return packStylesForEquipment(id)[0];
+}
+
+/** Exact canonical appearance for newly issued equipment. Legacy day/field
+ * looks are preserved on load, never treated as additional capacity. */
+export function issuedPackStyle(id:string):string{
+ const style=PACK_STYLES.find(s=>PACK_PROFILES[s].id===id);
+ return style==='assault-panel'?'admin-pack':style??'no-pack';
 }

@@ -32,9 +32,10 @@ test('load-bearing hips, optional medical graphic, radio metadata only',()=>{
   const state=createPackPreview(parent,chest,materials());
   for(const [armor,rig,top] of [['armor-bare','no-rig','combat-shirt'],['plate-jpc','chest-placard','combat-shirt'],['plate-standard','full-chest','gorka-jacket']]){
    const art=updatePackPreview(state,true,style,armor,rig,top);
-   assert.equal(art.style,style);assert.ok(art.root.visible&&state.harness);
+   assert.equal(art.style,style);assert.ok(art.root.visible);
+   assert.equal(!!state.harness,state.fit.mode!=='direct');
    assert.equal(state.fit.waistSpans.length,style==='field-pack'||style==='rucksack'?8:0);
-   state.harness.traverse(o=>{if(o.isMesh)assert.ok(o.geometry.getAttribute('position').array.every(Number.isFinite));});
+   state.harness?.traverse(o=>{if(o.isMesh)assert.ok(o.geometry.getAttribute('position').array.every(Number.isFinite));});
   }
  }
  const marked=buildAuthoredPack('medic-pack',materials(),{medicalMark:true}),plain=buildAuthoredPack('medic-pack',materials(),{medicalMark:false});

@@ -78,3 +78,19 @@ test('S7.4: visually held pistol points along recorded shot yaw rather than turn
  assert.ok(Math.abs(v.x)<1e-5);
  assert.ok(v.z>.99,'pistol barrel aims along the same positive Z outgoing shot');
 });
+
+test('BP13 pack spare stays inside closed shell except during selected handoff',()=>{
+ const f=fixture(),pack=new THREE.Group();f.chest.add(pack);
+ const kit={...f.kit,spareMagazines:f.kit.spareMagazines.map(m=>({...m,location:'backpack'}))};
+ const root=syncHipSecondaryVisual(f.hip,kit,true,f.chest,pack,true);
+ const selected=kit.spareMagazines[0].id,mesh=pack.getObjectByName('secondary-magazine-pouch-'+selected);
+ assert.ok(mesh);assert.equal(mesh.visible,false);
+ presentSecondaryReload(f.hip,f.left,kit,{selectedId:selected,elapsed:.65,duration:1.2});
+ assert.equal(mesh.visible,true);
+ presentSecondaryReload(f.hip,f.left,kit,null);assert.equal(mesh.visible,false);
+ assert.equal(syncHipSecondaryVisual(f.hip,kit,true,f.chest,pack,false),root);
+ assert.equal(mesh.visible,true);
+ assert.equal(syncHipSecondaryVisual(f.hip,kit,true,f.chest,pack,true),root);
+ assert.equal(mesh.visible,false);
+ clearHipSecondaryVisual(f.hip);
+});

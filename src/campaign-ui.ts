@@ -1,3 +1,5 @@
+import {rearCarrierMount} from './operator-equipment-assembly.ts';
+import {resolvedWardrobe} from './operator-wardrobe-data.ts';
 import {uiNode as node,uiButton as button} from './ui/dom-elements.ts';
 /** Campaign screens. Render only on navigation and state changes, never per frame. */
 import {SQUAD_IDENTIFICATION_COLORS,type CampaignState,type Contract}
@@ -2185,6 +2187,8 @@ export class CampaignScreen{
     for(const item of itemsForSlot(slot)){
      const option=node('option','',item.name+' · '+item.massKg.toFixed(2)+' KG');
      option.value=item.id;
+     if(item.id==='backpack-panel'&&!rearCarrierMount(resolvedWardrobe(person.wardrobe,person.loadout).armorStyle))option.disabled=true;
+     if(slot==='armor'&&person.loadout.slots.backpack==='backpack-panel'&&item.id!=='armor-carrier')option.disabled=true;
      if(dispatchPilot&&item.id!==person.loadout.slots[slot]&&
        !mayChooseCampaignContent(c,'equipment',item.id,slot))option.disabled=true;
      select.append(option);

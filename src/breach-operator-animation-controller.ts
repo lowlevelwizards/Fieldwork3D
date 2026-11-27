@@ -119,6 +119,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   dt=frameDt;
   const appearanceStart=profilePose?performance.now():0;
   const clothing=updateOperatorAppearance(r,p);
+  // Appearance owns pack presence; the pose snapshot predates this update.
+  attachments[EAI.pack].visible=r.pack.visible;
   if(profilePose)appearanceMs=performance.now()-appearanceStart;
   const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
   const smooth=(t:number)=>{const v=clamp(t,0,1);return v*v*(3-2*v)};
@@ -241,8 +243,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     position:{x:p.x,y:p.z}});
   // Pack follows the torso with restrained inertia, not separate timing.
   const packMotion=packInertia(p.acceleration??0,motion.torsoSide);
-   const packMotionScale=(r.visualKit.packPreview.fit?.mode==='direct'||r.visualKit.packPreview.fit?.mode==='adapter')?0:
-     r.visualKit.packPreview.active?.style==='hydration'?.35:1;
+   const packMotionScale=r.visualKit.packPreview.motionScale??0;
   attachments[EAI.pack].position.set(-8.2,0,
     packMotion.side*r.personality.packScale*packMotionScale);
   equipment.packEuler.z=packMotion.lean*r.personality.packScale*packMotionScale;

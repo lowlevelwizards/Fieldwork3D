@@ -37,7 +37,12 @@ test('field canisters attach to the correct bones without creating a new rig',()
   const backpack={...base,fieldInventory:
    moveFieldStack(four,'flashbang','rig','backpack')};
   poseOperator(rig,pose(backpack,4),0);
-  assert.equal(count(rig),4);
+  assert.equal(count(rig),0,'internal cargo is concealed in a closed backpack');
+  assert.ok(rig.flashCanisters.every(x=>x.parent===rig.pack));
+  rig.root.userData.fieldworkInspectPackCargo=true;
+  poseOperator(rig,pose(backpack,4),0);
+  assert.equal(count(rig),4,'explicit inspection reveals real owned cargo');
+  rig.root.userData.fieldworkInspectPackCargo=false;
   assert.ok(rig.flashCanisters.every(x=>x.parent===rig.pack));
   const belt={...base,fieldInventory:
    moveFieldStack(four,'flashbang','rig','belt')};

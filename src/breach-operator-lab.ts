@@ -85,6 +85,7 @@ import {MAX_WARDROBE_LOOKS,makeWardrobeLook,readWardrobeLooks,
  from './operator-wardrobe-storage.ts';
 import {WARDROBE_ACCESSORY_SLOTS,WARDROBE_ACCESSORY_OPTIONS}
  from './operator-wardrobe-accessories.ts';
+import {authoredCargoSocketForStyle} from './operator-backpack-sockets.ts';
 import {WARDROBE_MOUNTS,wardrobeMount} from './operator-wardrobe-mounts.ts';
 import {WARDROBE_RECIPES,wardrobeRecipe,applyWardrobeRecipe}
  from './operator-wardrobe-recipes.ts';
@@ -618,7 +619,8 @@ function syncWardrobe(){
    const long=kind==='utility'&&
     ['utility-breach','utility-pry','utility-cutter'].includes(realKit.slots.utility);
    option.disabled=!!candidate&&(!item||candidate.location!==item.location||
-    candidate.socket.bone==='pack'&&realKit.slots.backpack==='backpack-none'||
+    candidate.socket.bone==='pack'&&(!authoredCargoSocketForStyle(compatible.packStyle,kind,
+     candidate.id,realKit.slots[kind]))||
     long&&!candidate.longAllowed);
   }
   const requested=wardrobeOptions.mounts[kind]??'auto';
@@ -1013,7 +1015,6 @@ function ensureGaitCompare(){
   if(!gaitCompareRig){
     gaitCompareRig=createOperatorRig(operator.value,
       operator.value==='hostile'?'red':'blue');
-     gaitCompareRig.root.userData.fieldworkAuthoredPackPreview=true;
     scene.add(gaitCompareRig.root);
   }
 }
@@ -1112,7 +1113,6 @@ function beginTwoLookComparison(){
  for(let i=0;i<2;i++){
   const body=createOperatorRig(operator.value,
    operator.value==='hostile'?'red':'blue');
-   body.root.userData.fieldworkAuthoredPackPreview=true;
   variantBodies.push(body);scene.add(body.root);
  }
  fit();
@@ -1175,8 +1175,7 @@ function isolateKit(body:OperatorRig){
    body.medicalPouch,body.radioUnit,body.utilityTool,
    body.flashCanister])mesh.visible=false;
  }
- hide('pack',body.pack,v.dayPack,v.fieldPack,v.packHarness,
-  ...all(v.wardrobeGear.pack),...all(v.accessories.pack));
+ hide('pack',body.pack,...(v.packPreview.harness?[v.packPreview.harness]:[]),...all(v.accessories.pack));
  hide('clothes',v.jacket,v.lightShirt,
   ...Object.values(v.fieldBlouses).flatMap(b=>[
     b.torso,...b.upper,...b.lower,...b.cuffed,...b.cuffedLower,...b.rolledUpper]),
@@ -1237,7 +1236,6 @@ kitCompareButton.addEventListener('click',()=>{
  for(let i=0;i<3;i++){
   const body=createOperatorRig(operator.value,
    operator.value==='hostile'?'red':'blue');
-   body.root.userData.fieldworkAuthoredPackPreview=true;
   scene.add(body.root);kitBodies.push(body);
  }
  kitCompareButton.setAttribute('aria-pressed','true');fit();
@@ -1257,7 +1255,6 @@ function ensureComparison(){
   for(const [index,info] of COMPARE_POSES.entries()){
     const body=createOperatorRig(operator.value,
       operator.value==='hostile'?'red':'blue');
-   body.root.userData.fieldworkAuthoredPackPreview=true;
     const column=index%2,row=Math.floor(index/2);
     body.root.position.set((column-.5)*77,0,(row-1)*70);
     scene.add(body.root);comparisonRigs.push(body);
@@ -1398,7 +1395,6 @@ const build=()=>{
   if(rig){clearAttachmentPreview(rig);clearLabBerettaPreview(rig);releaseOperatorPreviewRig(scene,rig);}
   endKitComparison();
   rig=createOperatorRig(operator.value,operator.value==='hostile'?'red':'blue');
-   rig.root.userData.fieldworkAuthoredPackPreview=true;
   scene.add(rig.root);
 };
 operator.addEventListener('change',build);
@@ -2151,7 +2147,7 @@ function draw(){
    inserted:pistolFrame.reload.progress>=.72
   }:null;
   // Preserve legacy physical cargo inspection until BP13 authored mounts.
-  rig.root.userData.fieldworkAuthoredPackPreview=inspectionTarget()?.location!=='backpack';
+  rig.root.userData.fieldworkInspectPackCargo=inspectionTarget()?.location==='backpack';
   if(!comparing)poseOperator(rig,{
     x:motion.x,z:motion.z,
     heading:motion.heading,
@@ -2493,7 +2489,7 @@ function draw(){
   syncPanelOption(activeLook.armorStyle);
   canvas.dataset.poseFitRig=activeLook.rigStyle;
    canvas.dataset.poseFitPack=activeLook.packStyle;
-  canvas.dataset.authoredPack=rig.visualKit.packPreview.active?.style??'legacy';
+  canvas.dataset.authoredPack=rig.visualKit.packPreview.active?.style??'none';
   canvas.dataset.poseFitTop=activeLook.top;
   canvas.dataset.lowReadyFit=staticReport?.status??'action';
   canvas.dataset.poseV3DynamicReport=JSON.stringify(
