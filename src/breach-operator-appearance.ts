@@ -285,7 +285,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
      if(!socket){item.visible=false;return;}
      item.geometry.computeBoundingBox();
      const bounds=item.geometry.boundingBox;
-     const half=bounds?(bounds.max.z-bounds.min.z)*Math.abs(item.scale.z)*.5:0;
+     const depth=bounds&&!bounds.isEmpty()?bounds.max.z-bounds.min.z:2.3;
+     const half=Number.isFinite(depth)?depth*Math.abs(item.scale.z)*.5:1.15;
      item.position.set(art.root.position.x+socket.point[0],
       art.root.position.y+socket.point[1],
       art.root.position.z+socket.point[2]+socket.normal[2]*(half-.06));
