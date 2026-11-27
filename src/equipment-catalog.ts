@@ -1,3 +1,4 @@
+import {PACK_PROFILES} from './operator-backpack-catalog.ts';
 /** Equipment 01: declarative equipment identities. Combat numbers remain
  * authoritative in breach-combat; these are carrying/visual metadata only. */
 import type {WeaponId} from './breach-combat.ts';
@@ -55,12 +56,11 @@ export const EQUIPMENT_CATALOG:Readonly<Record<string,EquipmentDefinition>>={
   massKg:.55,bulk:2,capacity:5,visual:'belt',description:'Structured modular equipment belt.'},
  'belt-padded':{id:'belt-padded',name:'Padded War Belt',category:'load-bearing',slot:'belt',
   massKg:.9,bulk:3,capacity:6,visual:'belt',description:'Broad padded load-bearing platform.'},
- 'backpack-none':{id:'backpack-none',name:'No Backpack',category:'load-bearing',slot:'backpack',
-  massKg:0,bulk:0,capacity:0,description:'Travel light.'},
- 'backpack-day':{id:'backpack-day',name:'Day Pack',category:'load-bearing',slot:'backpack',
-  massKg:1.2,bulk:2,capacity:8,visual:'backpack',description:'Small additional equipment storage.'},
- 'backpack-field':{id:'backpack-field',name:'Field Pack',category:'load-bearing',slot:'backpack',
-  massKg:2.4,bulk:4,capacity:16,visual:'backpack',description:'Extended capacity at increased bulk.'},
+ ...Object.fromEntries(Object.values(PACK_PROFILES).map(p=>[p.id,{
+  id:p.id,name:p.label,category:'load-bearing',slot:'backpack',
+  massKg:p.massKg,bulk:p.bulk,capacity:p.capacity,visual:p.capacity||p.role==='hydration'?'backpack':undefined,
+  description:p.role==='none'?'Travel light.':p.role==='hydration'?'Hydration carrier; no general storage.':p.capacity+' magazine-equivalent spaces. No automatic specialist capability.'
+ } satisfies EquipmentDefinition])),
  'top-none':{id:'top-none',name:'Base Underlayer',category:'clothing',slot:'top',massKg:0,bulk:0,description:'Minimal neutral underlayer for wardrobe inspection.'},
  'top-uniform':{id:'top-uniform',name:'Field Jacket',category:'clothing',slot:'top',
   massKg:.85,bulk:1,description:'Standard field uniform.'},
