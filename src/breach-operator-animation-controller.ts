@@ -22,6 +22,7 @@ import * as THREE from 'three';
 import {readSlingKind} from './breach-weapon-retention.ts';
 import {sampleSecondaryRetention} from './breach-secondary-retention.ts';
 import {oneHandRetentionWeight} from './breach-weapon-retention-actions.ts';
+import {patientRootTransform,patientWrist,TRANSPORT_PATIENT_CHEST_Y,TRANSPORT_PATIENT_HIP_Y} from './breach-transport-patient-pose.ts';
 import {sampleLoadedCarrier} from './breach-loaded-carrier-pose.ts';
 import {sampleTransportContact,transportContactHands} from './breach-transport-contact.ts';
 import {sampleRetentionTransition} from './breach-weapon-retention-transition.ts';
@@ -345,6 +346,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // canonicalRoot * legacyFrame(+90 Y) = original Euler(pitch,yaw,roll).
   frame.root.quaternion.copy(
     canonicalRootOrientation(r.legacyPitch,r.legacyYaw,r.legacyRoll));
+  if(p.transportPatient&&p.down){
+    const patient=p.transportPatient;
+    const root=patientRootTransform(patient,frame.root.scale.x);
+    frame.root.position.copy(root.position);frame.root.quaternion.copy(root.quaternion);
+    r.legacyYaw=-patient.heading;r.legacyPitch=0;r.legacyRoll=patient.roll;
+    frame.hip.position.set(0,TRANSPORT_PATIENT_HIP_Y,0);frame.hip.rotation.set(0,0,0);
+    frame.chest.position.set(0,TRANSPORT_PATIENT_CHEST_Y,0);frame.chest.rotation.set(0,0,0);
+    frame.head.rotation.set(0,0,patient.mode==='carry'?-.22:0);
+  }
   const legPose=applyOperatorLegIK(workingRig,p,scratch,targets,kick,headingYaw,smooth);
   // B3: all eight lower-body transforms are now computed off-scene.
   // Only the final B2 publication may write those visible leg nodes.
@@ -1144,6 +1154,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     heldWeapon.position.copy(retention.position);
     heldWeapon.quaternion.copy(retention.quaternion);
   }
+  if(p.transportPatient&&p.down){
+    frame.chest.position.set(0,TRANSPORT_PATIENT_CHEST_Y,0);frame.chest.rotation.set(0,0,0);
+  }
   beginOperatorArmPose(r,scratch);
   // S6.2: single upper-body IK owner. Draw fraction, aim and reload clocks
   // are fixed-step facts; this pure pose is never a second combat state.
@@ -1166,6 +1179,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }):null;
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
+    if(p.transportPatient&&p.down){
+      const base=i===0?ANATOMY.shoulderLeft:ANATOMY.shoulderRight;
+      const shoulder=P(base.x,base.y,base.z),wrist=patientWrist(p.transportPatient,sign);
+      const solved=solveTwoBone(shoulder,P(wrist.x,wrist.y,wrist.z),10,10,P(-4,-6,sign*4),ARM_LIMITS);
+      arm.bend.copy(solved.bendPlane);arm.outOfReach=!solved.reached;
+      r.elbowSpread[i]=Math.max(0,sign*(solved.joint.z-shoulder.z));
+      setOperatorArmSegments(scratch,i as 0|1,shoulder,solved.joint,solved.effector,scratch.sides[i]);
+      setOperatorHandPose(scratch,i as 0|1,solved.effector,0);continue;
+    }
     if(loaded&&!transportContact){
       const shoulder=shoulderFor(i),target=i===0?loaded.wristLeft:loaded.wristRight;
       const requested=P(target.x,target.y,target.z);

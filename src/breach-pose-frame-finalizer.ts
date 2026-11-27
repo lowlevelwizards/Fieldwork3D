@@ -22,7 +22,7 @@ export function applyOperatorTraumaPose(r:OperatorRig,p:OperatorPose,
       canonicalRootOrientation(r.legacyPitch,r.legacyYaw,r.legacyRoll));
   }
   if(p.surrender)chest.rotation.x=.15;
-  else if(p.down){
+  else if(p.down&&!p.transportPatient){
     // Spine and neck settle independently; the fall isn't a single
     // rigid mannequin tipping around the operator origin.
     chest.rotation.x=-.18*Math.sin(Math.PI*downProgress)-.05;
@@ -30,7 +30,7 @@ export function applyOperatorTraumaPose(r:OperatorRig,p:OperatorPose,
   }
   // Wounds do not leave an incapacitated actor standing in the old
   // locomotion/ready pose. Final angles are deterministic from the hit.
-  if(p.down){
+  if(p.down&&!p.transportPatient){
     chest.rotation.y=0;
     head.rotation.x=0;
   }

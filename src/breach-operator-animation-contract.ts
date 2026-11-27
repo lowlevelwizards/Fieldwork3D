@@ -39,6 +39,7 @@ export type OperatorPose={
   /** Session owns the actual world primary, even while this actor uses a sidearm. */
   primaryGrounded?:boolean;
   transportContact?:import('./breach-transport-contact.ts').TransportContact;
+  transportPatient?:import('./breach-transport-patient-pose.ts').TransportPatientPose;
   loadedTransport?:import('./breach-loaded-carrier-pose.ts').LoadedTransportPose;
   /** V3 whole-arm fitting; enabled by the live tactical renderer. */
   poseV3Preview?:boolean;

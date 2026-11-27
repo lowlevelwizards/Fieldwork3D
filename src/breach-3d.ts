@@ -131,6 +131,7 @@ import {updateOperatorAppearance} from './breach-operator-appearance.ts';
 import {readEquipmentInteraction} from './breach-equipment-interaction-pose.ts';
 import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
 import {linkedTransportPatient} from './breach-transport-navigation.ts';
+import {readTransportPatientPose} from './breach-transport-patient-pose.ts';
 import {loadedCarrierHeading} from './breach-loaded-carrier-pose.ts';
 import {downedTransportPresentation} from './breach-capture-transport-presentation.ts';
 import {SurrenderedFirearmsPresenter} from './rendering/breach-surrendered-firearms-presenter.ts';
@@ -2613,6 +2614,7 @@ export class TacticalScene3D{
       // Only an actual reciprocal GO-time carrier may lift or reorient a
       // downed body. Live and replay use their sampled actor roster.
       const transport=downedTransportPresentation(actor,s.operators);
+      const transportPatientPose=readTransportPatientPose(actor,s.operators);
       const transportPatient=linkedTransportPatient(s,actor);
       const loadedTransport=transportPatient&&actor.health>0?{
         mode:transportPatient.transportMode??'drag' as const,patientId:transportPatient.id,
@@ -2903,7 +2905,7 @@ export class TacticalScene3D{
          weaponConfiguration:actor.weaponConfiguration,
          weaponLightOn:actor.weaponLightOn,
          nvgDeployed:actor.nvgDeployed===true,
-        transportContact:actor.transportContact,loadedTransport,
+        transportContact:actor.transportContact,loadedTransport,transportPatient:transportPatientPose,
         treatmentActive:actor.treatmentActive,
         treatmentProgress:actor.treatmentProgress,
         // Real GO-time civilian contact flashes a gentle support-hand
@@ -3003,7 +3005,7 @@ export class TacticalScene3D{
       // The shared pose solver publishes its local fall/root offset. Restore
       // only the actual transport elevation afterward (as for civilians);
       // otherwise the body stays floor-flat while physically carried.
-      if(transport)object.root.position.y+=transport.lift;
+      if(!transportPatientPose){if(transport)object.root.position.y+=transport.lift;}
       // One existing muzzle flash follows the actual physical Glock socket
       // only once a selected sidearm is completely drawn. The rifle retains
       // its original visual authority in every other phase.
