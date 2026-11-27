@@ -24,7 +24,7 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
  const margin=width*.48+.32;
  const lane=fit.slingShoulder(shoulderSign,width);
  const shoulder=lane.crown;
- const z=shoulder[2],sy=Math.max(shoulder[1],back&&pack?pack.max.y:shoulder[1])+margin;
+ const z=shoulder[2],sy=Math.max(shoulder[1],pack?pack.max.y:shoulder[1])+margin;
  const single=profile?.kind==='single';
  const high=profile?.entryHeight??3.8,low=profile?.returnHeight??-3.5;
  const surface=(f:number,y:number,lateral:number)=>
@@ -62,11 +62,11 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
  if(single){
   // One receiver socket, a short shared drop, and a continuous body loop.
   // Both branches meet at the same junction, not at opposite gun ends.
-  const jx=Math.max(rear.x+.10,faceEdge(1,Math.min(3.5,rear.y+2.25),rear.z,rear.z));
-  const jy=Math.min(5.1,rear.y+2.25),jz=rear.z*.88;
+  const jy=rear.y+2.25,jz=rear.z*.88;
+  const jx=Math.max(rear.x+.10,faceEdge(1,jy,jz,jz));
   write(1,jx,jy,jz,1,0,0);
   write(2,crownFront,sy,z,face,1,0);
-  write(8,jx+.035,jy,jz,1,0,0);
+  write(8,jx+.09,jy,jz,1,0,0);
  }
  return out;
 }

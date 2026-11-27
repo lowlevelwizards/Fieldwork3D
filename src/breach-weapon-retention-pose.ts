@@ -47,7 +47,7 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
  const one=p.mode==='held-one',front=p.mode==='front-slung';
  const side=p.mode==='side-slung';
  // X axis is the long silhouette axis; side vector faces outboard.
- const axis=one?new THREE.Vector3(.42,-.88,.22):
+ const axis=one?new THREE.Vector3(.30,-.94,.12):
   front?new THREE.Vector3(.03,-.92,p.sling==='single'?.16:.46):
   side?new THREE.Vector3(.10,-.98,-.015):
   new THREE.Vector3(-.015,-.86,-.50);
@@ -69,13 +69,13 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
  if(suspension)
   q.premultiply(new THREE.Quaternion().setFromEuler(
     new THREE.Euler(suspension.roll,suspension.yaw,suspension.pitch)));
- const anchor=one?new THREE.Vector3(5.5,-5.2,9.6+armor):
+ const anchor=one?new THREE.Vector3(4.4,-9.0,8.3+armor*.5):
   front?new THREE.Vector3((p.exterior?.front(-2.8,0)??(7.1+armor))+.35,
-    -3.3,p.sling==='single'?2.4:0):
+    -4.6,p.sling==='single'?2.4:0):
   side?new THREE.Vector3(1.8,-3.4,
     (p.exterior?.side(-3.4,1.8,1)??(8.1+armor))+.20):
   new THREE.Vector3(packedRearSurface(p.exterior?.back(-1,0)??-6.5,-1,0,p.packBounds)-.35,
-    -1.6,0);
+    -2.8,0);
  // The same rendered grip is used at the new pose, not a second socket.
  const localGrip=p.primaryGrip.clone().sub(p.heldPosition)
   .applyQuaternion(p.heldQuaternion.clone().invert());
@@ -83,7 +83,7 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
  const offset=one?localGrip:socket?
   new THREE.Vector3(socket.x,socket.y,socket.z+.15).multiply(p.scale):
   new THREE.Vector3(p.balanceX*p.scale.x,0,0);
- if(!one&&socket)anchor.y+=4;
+ if(!one&&socket)anchor.y+=3.4;
  const position=anchor.clone().sub(offset.clone().applyQuaternion(q));
  if(suspension){
   position.y+=suspension.lift;
@@ -105,6 +105,14 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
  if(!one&&p.bounds){
   const {correction}=clearRetentionEnvelope({...p,bounds:p.bounds,position,quaternion:q});
   position.add(correction);
+  // The lower end must also stay behind the moving pelvis/thighs.
+  // A small speed-dependent rear clearance is limited to long weapons.
+  if(!front&&!side){
+   const lower=correction.y+p.bounds.clone().applyMatrix4(new THREE.Matrix4().compose(position.clone().sub(correction),q,p.scale)).min.y;
+   const legReach=Math.max(0,Math.min(1,(-lower-9)/10));
+   const speed=Math.max(0,Math.min(1,(p.locomotion?.speed??0)/65));
+   position.x-=legReach*(.38+speed*.95);
+  }
  }
  // Clearance is authoritative: add only a small outward excursion after
  // contact fit, never an inward penetration or floor-changing movement.
@@ -141,10 +149,10 @@ export function fitSideCarryWrist(wrist:THREE.Vector3,p:RetentionPoseInput,
  }else edge+=1.6;
  // The sleeve is allowed a shallow visual contact with the receiver.
  // Avoid pushing the entire forearm out for one protruding control.
- wrist.z=Math.max(wrist.z-.65,edge+.65);
+ wrist.z=Math.max(wrist.z-.65,edge+.58);
  // Slightly flex the arm instead of stretching it to the outside target.
  // The unified IK retains exact bone lengths.
  const lateral=Math.hypot(wrist.x-1,wrist.z-7);
- wrist.y=Math.max(wrist.y,-14.5,3.6-Math.sqrt(Math.max(1,19.6**2-lateral**2)));
+ wrist.y=Math.max(wrist.y,-15.0,3.6-Math.sqrt(Math.max(1,19.6**2-lateral**2)));
  return wrist;
 }

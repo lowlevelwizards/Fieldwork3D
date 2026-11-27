@@ -1,0 +1,3 @@
+# SR19 post-release visual polish
+
+Based on live a79d018 screenshots. Surface-fit 19-knot webbing, lower free-span slack, distinct single-point loop junction, mounted pack fitting for all sling modes; magazine models parent to the selected visible authored pouch owner instead of manually offsetting an independent chest mesh. Legacy exposed organizer cells no longer display a naked replacement family magazine. Lower front/rear resting heights, relax side arm, dedicated held-one shoulder and elbow targets, bounded rear lower-end clearance during locomotion. These are renderer-side art approximations, not cloth simulation or measured thigh contacts; visual acceptance still requires gameplay review. No gameplay inventory, custody or ballistics changes.

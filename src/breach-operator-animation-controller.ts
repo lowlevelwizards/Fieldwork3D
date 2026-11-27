@@ -1245,10 +1245,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         P(corridor.x,corridor.y,corridor.z).sub(shoulder);
       const release=retentionHandRelease(retention.mode,sign as -1|1,retentionWeight);
       const restShoulder=i===0?ANATOMY.shoulderLeft:ANATOMY.shoulderRight;
-      shoulder.lerp(P(restShoulder.x,restShoulder.y-(retention.mode==='side-slung'&&i===1?.4:.22),restShoulder.z),release);
+      const holdingOne=retention.mode==='held-one'&&i===1;
+      const shoulderRelax=holdingOne?retentionWeight*.78:release;
+      shoulder.lerp(P(restShoulder.x,restShoulder.y-(retention.mode==='side-slung'&&i===1?.44:.28),restShoulder.z),shoulderRelax);
       const solved=solveUnifiedRetentionArm({
         shoulder,desired:requested,sourcePole,release,side:sign as -1|1,
         outboardStow:retention.mode==='side-slung'&&i===1,
+        oneHandHold:holdingOne,poseWeight:retentionWeight,
         envelope:poseEnvelope??poseClearanceEnvelope(clothing.armorStyle,clothing.rigStyle,clothing.top),
         scratch,armIndex:i as 0|1
       }).solution;

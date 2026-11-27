@@ -320,6 +320,7 @@ export function solveUnifiedRetentionArm(req:Readonly<{
  shoulder:THREE.Vector3;desired:THREE.Vector3;sourcePole:THREE.Vector3;
  release:number;side:-1|1;envelope:PoseClearanceEnvelope;
  outboardStow?:boolean;
+ oneHandHold?:boolean;poseWeight?:number;
  scratch:OperatorPoseScratch;armIndex:0|1;
 }>):FallbackArmResult{
  const {shoulder,desired,sourcePole,side,envelope,scratch,armIndex}=req;
@@ -327,9 +328,11 @@ export function solveUnifiedRetentionArm(req:Readonly<{
  const reach=delta.length();
  const wrist=reach>19.92?shoulder.clone().addScaledVector(delta,19.92/reach):desired;
  const release=Math.max(0,Math.min(1,req.release));
- const rest=req.outboardStow?new THREE.Vector3(-2.0,-5,side*2.7):neutralMannequinElbowPole(side);
+ const rest=req.oneHandHold?new THREE.Vector3(-3.2,-7.0,side*1.6):
+  req.outboardStow?new THREE.Vector3(-2.2,-5.8,side*2.5):neutralMannequinElbowPole(side);
  const pole=continuousElbowPole(shoulder,wrist,
-  shoulder.clone().add(sourcePole),shoulder.clone().add(rest),side,release);
+  shoulder.clone().add(sourcePole),shoulder.clone().add(rest),side,
+  req.oneHandHold?Math.max(release,Math.max(0,Math.min(1,req.poseWeight??1))):release);
  // Near full extension, the downward pole becomes degenerate. A
  // deterministic rear/outboard reference keeps the bend on the right side.
  return solveUnifiedFallbackArm({
