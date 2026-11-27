@@ -519,12 +519,10 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   v.wardrobeGear.waistRig[looks.rigStyle]:undefined;
  const waist=registeredMagazinePouches(waistCandidate).length?
   waistCandidate:undefined;
- const dedicated=usingWardrobe?
-  registeredMagazinePouches(waist??v.wardrobeGear.rig[looks.rigStyle]):[];
+ const pouchOwner=usingWardrobe?(waist??v.wardrobeGear.rig[looks.rigStyle]):undefined;
+ const dedicated=pouchOwner?.visible?registeredMagazinePouches(pouchOwner):[];
  // Mirroring the fill order never changes where the pouches themselves live.
  const cells=order<0?[...dedicated].reverse():dedicated;
- const rigShift=waist?0:
-  (v.wardrobeGear.rig[looks.rigStyle]?.position.x??0);
  const sample=v.magazines.rig[0]?.geometry;
  if(sample&&!sample.boundingBox)sample.computeBoundingBox();
  const bounds=sample?.boundingBox?.clone()??null;
@@ -536,7 +534,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  }
  let cellCursor=0;
  v.magazines.rig.forEach((mag,i)=>{
-  const parent=waist??v.rigMagazineHome;
+  const parent=pouchOwner??v.rigMagazineHome;
   if(mag.parent!==parent)parent.add(mag);
   mag.scale.set(magazinePart?1:magShape.x,
    magazinePart?1:magShape.y,magazinePart?1:magShape.z);
@@ -554,8 +552,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
    }
    mag.visible=!!place;
    if(place){
-    mag.position.set(place.x+rigShift,place.y,place.z);
-    mag.rotation.y=place.yaw;
+    mag.position.set(place.x,place.y,place.z);
+    mag.rotation.set(0,place.yaw,0);
     mag.userData.magazinePouchCell=seatedIndex;
     mag.userData.magazinePouchStyle=looks.rigStyle;
    }else{
@@ -567,6 +565,9 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   // Older non-wardrobe training rigs still have their own genuine
   // four-cell generic chest rig. They do not gain fabricated side rows.
   mag.visible=i<realRigCount&&i<4;
+  // The legacy mesh itself is the exposed organizer cell. Keep the
+  // original integrated cloth/metal silhouette, not a naked family mag.
+  if(mag.visible&&magazinePart)mag.visible=false;
   if(i<4){
    mag.position.set(s.armor==='armor-carrier'?9.15:
     s.armor==='armor-soft'?8.25:6.65,-1.6,

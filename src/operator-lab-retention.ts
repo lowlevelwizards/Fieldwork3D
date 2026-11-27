@@ -3,10 +3,10 @@ import type {RetentionPoseMode} from './breach-weapon-retention-pose.ts';
 import type {RetentionTransitionState} from './breach-weapon-retention-transition.ts';
 import {retentionPoseSupported} from './breach-weapon-retention-pose.ts';
 import {readSlingKind} from './breach-weapon-retention.ts';
-export const RETENTION_LAB_MODES=['held-one','front-slung','side-slung','back-slung'] as const;
+export const RETENTION_LAB_MODES=['held-one','front-slung','back-slung'] as const;
 export function labRetentionSample(mode:string,slingId:string|undefined,weight:number,
  cycle:boolean,seconds:number):RetentionTransitionState|undefined{
- if(!RETENTION_LAB_MODES.includes(mode as RetentionPoseMode))return undefined;
+ if(!RETENTION_LAB_MODES.includes(mode as typeof RETENTION_LAB_MODES[number]))return undefined;
  const target=mode as RetentionPoseMode;
  if(!retentionPoseSupported(target,readSlingKind(slingId)))return undefined;
  const phase=((Math.max(0,seconds)%3)/3);

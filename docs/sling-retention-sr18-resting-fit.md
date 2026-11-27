@@ -1,0 +1,3 @@
+# SR18 second visual refinement
+
+Resting targets prioritize body contact and a relaxed outer arm. Front/back body surface inset 1.55, side 1.7, pack .45 (art units, not physical deformation). Reduce belt proxy displacement. Settle the measured +Z attachment face outward, with the receiver's broad face parallel to the occupied body surface; source roll no longer changes the final stow. Front transitions preserve the source swing first and progressively settle roll. Right side arm uses a lower wrist, reduced outboard pole and slightly lowered shoulder. These are authored contact approximations; visual approval and motion review remain required.

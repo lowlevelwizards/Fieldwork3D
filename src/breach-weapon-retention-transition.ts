@@ -3,7 +3,7 @@
  * Changing between two stows returns through held, never jumps endpoints. */
 import * as THREE from 'three';
 import type {SlingKind} from './breach-weapon-retention.ts';
-import {retentionPoseSupported,sampleRetentionPose,type RetentionPoseInput,
+import {retentionPoseSupported,sampleRetentionPose,retainedSwing,type RetentionPoseInput,
  type RetentionPoseMode,type RetentionPoseSample} from './breach-weapon-retention-pose.ts';
 export type RetentionTransitionState=Readonly<{
  mode:RetentionPoseMode|null;desired:RetentionPoseMode|null;weight:number;
@@ -12,6 +12,14 @@ export const initialRetentionTransition=():RetentionTransitionState=>
  ({mode:null,desired:null,weight:0});
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const smooth=(x:number)=>{const t=clamp(x);return t*t*(3-2*t);};
+/** Same release fraction for wrist, elbow and hand orientation. */
+export function retentionHandRelease(mode:RetentionPoseMode,side:-1|1,t:number){
+ if(mode==='held-one')return side===-1?smooth((t-.10)/.48):0;
+ if(mode==='front-slung')return side===-1?smooth((t-.06)/.38):
+  smooth((t-.24)/.48);
+ // Release the free arms before the weapon moves around the body.
+ return side===-1?smooth((t-.04)/.30):smooth((t-.16)/.34);
+}
 const duration=(mode:RetentionPoseMode)=>mode==='held-one'?.32:
  mode==='front-slung'?.58:mode==='side-slung'?.74:1.05;
 export function requestRetentionTransition(state:RetentionTransitionState,
@@ -46,7 +54,26 @@ export function sampleRetentionTransition(p:RetentionPoseInput,weight:number):Re
  const f=smooth(t);
  let position=p.heldPosition.clone().lerp(target.position,f);
  let quaternion=p.heldQuaternion.clone().slerp(target.quaternion,f);
- if(p.mode==='back-slung'){
+ if(p.mode==='front-slung'){
+  // A drop leads with the vertical motion; no intermediate flipped pose.
+  position.y=p.heldPosition.y+(target.position.y-p.heldPosition.y)*smooth(t*1.18);
+  position.x+=Math.sin(Math.PI*t)**2*.25;
+  // Swing along the muzzle axis first, then settle roll toward the
+  // stable outward-facing attachment plane. At neither endpoint is
+  // the held weapon replaced or its source grip moved independently.
+  const fromAxis=new THREE.Vector3(1,0,0).applyQuaternion(p.heldQuaternion);
+  const toAxis=new THREE.Vector3(1,0,0).applyQuaternion(target.quaternion);
+  const axisArc=new THREE.Quaternion().setFromUnitVectors(fromAxis,toAxis);
+  const partial=new THREE.Quaternion().slerp(axisArc,f);
+  const currentAxis=fromAxis.clone().applyQuaternion(partial).normalize();
+  const swing=retainedSwing(p.heldQuaternion,currentAxis);
+  const targetAtAxis=retainedSwing(target.quaternion,currentAxis);
+  quaternion=swing.slerp(targetAtAxis,smooth((t-.12)/.88));
+ }else if(p.mode==='side-slung'){
+  // Keep the silhouette in front of the torso until it has moved outboard.
+  position.x+=Math.sin(Math.PI*t)**2*1.5;
+  position.z+=Math.sin(Math.PI*t)**2*1.1;
+ }else if(p.mode==='back-slung'){
   // Keep the gun outboard while transferring it around the torso instead
   // of interpolating straight through the chest.
   const side=sampleRetentionPose({...p,mode:'side-slung'});
@@ -54,11 +81,13 @@ export function sampleRetentionTransition(p:RetentionPoseInput,weight:number):Re
    if(t<.5){
     const a=smooth(t*2);
     position=p.heldPosition.clone().lerp(side.position,a);
+    position.x+=Math.sin(Math.PI*a)**2*1.5;
+    position.z+=Math.sin(Math.PI*a)**2*1.1;
     quaternion=p.heldQuaternion.clone().slerp(side.quaternion,a);
    }else{
     const a=smooth((t-.5)*2);
     position=side.position.clone().lerp(target.position,a);
-    position.z+=Math.sin(Math.PI*a)*5;
+    position.z+=Math.sin(Math.PI*a)**2*5;
     quaternion=side.quaternion.clone().slerp(target.quaternion,a);
    }
   }
@@ -66,8 +95,7 @@ export function sampleRetentionTransition(p:RetentionPoseInput,weight:number):Re
  const follow=(grip:THREE.Vector3)=>grip.clone().sub(p.heldPosition)
   .applyQuaternion(p.heldQuaternion.clone().invert())
   .applyQuaternion(quaternion).add(position);
- const left=follow(p.supportGrip).lerp(target.left,smooth((t-.15)/.52));
- const right=p.mode==='held-one'?follow(p.primaryGrip):
-  follow(p.primaryGrip).lerp(target.right,smooth((t-.58)/.42));
+ const left=follow(p.supportGrip).lerp(target.left,retentionHandRelease(p.mode,-1,t));
+ const right=follow(p.primaryGrip).lerp(target.right,retentionHandRelease(p.mode,1,t));
  return {mode:p.mode,position,quaternion,left,right};
 }

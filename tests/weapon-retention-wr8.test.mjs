@@ -4,6 +4,7 @@ const actor=()=>({weaponConfiguration:{slots:{sling:'sling-two-point'}},reload:0
 test('WR8 waits for achieved retention, then returns to held',()=>{
  const a=actor();assert.equal(prepareHandsFree(a,1/60),false);
  assert.equal(retentionBusy(a),true);
+ assert.equal(a.retentionTransition.desired,'front-slung');
  for(let i=0;i<60;i++){beginRetentionTick(a,1/60);prepareHandsFree(a,1/60);}
  assert.equal(prepareHandsFree(a,1/60),true);
  for(let i=0;i<60;i++)beginRetentionTick(a,1/60);

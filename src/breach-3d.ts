@@ -133,7 +133,7 @@ import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
 import {linkedTransportPatient} from './breach-transport-navigation.ts';
 import {readTransportPatientPose} from './breach-transport-patient-pose.ts';
 import {loadedCarrierHeading} from './breach-loaded-carrier-pose.ts';
-import {downedTransportPresentation} from './breach-capture-transport-presentation.ts';
+import {downedTransportPresentation,carrierTransportPresentation} from './breach-capture-transport-presentation.ts';
 import {SurrenderedFirearmsPresenter} from './rendering/breach-surrendered-firearms-presenter.ts';
 import {spatialSurfaceKnown,shotVisibility,windowPresentationKnown,windowCoveringPresentationKnown} from './breach-presentation.ts';
 import {markWindowOwner,markWallOwnerKnown,markCoverOwnerKnown} from './rendering/breach-evidence-owner.ts';
@@ -2614,6 +2614,9 @@ export class TacticalScene3D{
       // Only an actual reciprocal GO-time carrier may lift or reorient a
       // downed body. Live and replay use their sampled actor roster.
       const transport=downedTransportPresentation(actor,s.operators);
+      const carriedSubject=actor.carryingId?
+        this.frameActorsById.get(actor.carryingId)??s.civilians.find(c=>c.id===actor.carryingId):undefined;
+      const carrierTransport=carrierTransportPresentation(actor,carriedSubject);
       const transportPatientPose=readTransportPatientPose(actor,s.operators);
       const pickupId=actor.transportContact?.kind==='pickup'&&actor.transportContact.mode==='carry'?
         actor.transportContact.patientId:undefined;
@@ -2894,6 +2897,7 @@ export class TacticalScene3D{
         appearanceSeed:actor.appearanceSeed,
         equipment:actor.equipment,wardrobe:actor.wardrobe,
         retentionTransition:actor.retentionTransition,
+        transportCarrier:carrierTransport,transportedMode:transport?.mode,
          primaryGrounded:actor.groundedPrimaryId!=null,
          secondarySwitch:actor.secondarySwitch,
         secondaryReload:actor.secondaryReload,

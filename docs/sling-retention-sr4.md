@@ -1,0 +1,2 @@
+# SR4 — Layering
+Reuse authored skeletal carrier branch width and spread, shoulder landing, and rig mount mode. Narrow ribbon may enter the modeled front opening only on a bare or direct-placard skeletal carrier; broad ribbon and obstructed external harnesses route outside. No invented full tunnel under a solid shoulder pad. Crown remains exterior. A fitted pass-through is a visual hypothesis until captured; additional apertures require authored geometry, not an arbitrary clipping exemption.
