@@ -241,8 +241,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     position:{x:p.x,y:p.z}});
   // Pack follows the torso with restrained inertia, not separate timing.
   const packMotion=packInertia(p.acceleration??0,motion.torsoSide);
-   const packMotionScale=r.visualKit.packPreview.fit?.mode==='direct'?0:
-     r.visualKit.packPreview.active?.style==='hydration'?.35:1;
+   const packMotionScale=r.visualKit.packPreview.motionScale??0;
   attachments[EAI.pack].position.set(-8.2,0,
     packMotion.side*r.personality.packScale*packMotionScale);
   equipment.packEuler.z=packMotion.lean*r.personality.packScale*packMotionScale;
