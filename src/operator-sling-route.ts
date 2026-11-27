@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import type {EquipmentExterior} from './operator-equipment-exterior.ts';
 import type {RetentionPoseMode} from './breach-weapon-retention-pose.ts';
+import {packedRearSurface} from './operator-retention-pack.ts';
 import type {SlingRibbonKnot} from './operator-sling-ribbon.ts';
 export const SLING_ROUTE_KNOTS=10;
 export function createSlingRoute():SlingRibbonKnot[]{
@@ -13,7 +14,7 @@ export function createSlingRoute():SlingRibbonKnot[]{
 }
 export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
  rear:THREE.Vector3,front:THREE.Vector3,fit:EquipmentExterior,
- retention?:RetentionPoseMode,width=1.05){
+ retention?:RetentionPoseMode,width=1.05,pack?:THREE.Box3){
  const back=retention==='back-slung';
  const side=retention==='side-slung';
  const face=back?-1:1;
@@ -22,11 +23,11 @@ export function routeSlingRibbon(out:readonly SlingRibbonKnot[],
  const margin=width*.6+.16;
  const lane=fit.slingShoulder(shoulderSign,width);
  const shoulder=lane.crown;
- const z=shoulder[2],sy=shoulder[1]+margin;
+ const z=shoulder[2],sy=Math.max(shoulder[1],back&&pack?pack.max.y:shoulder[1])+margin;
  const high=3.8,low=-3.5;
  const surface=(f:number,y:number,lateral:number)=>
-  (f===1?fit.front(y,lateral):fit.back(y,lateral))+f*margin;
- const flank=fit.side(low,0,hipSign)+hipSign*margin;
+  (f===1?fit.front(y,lateral):packedRearSurface(fit.back(y,lateral),y,lateral,back?pack:undefined))+f*margin;
+ const flank=(back&&pack?hipSign*Math.max(Math.abs(fit.side(low,0,hipSign)),Math.abs(hipSign===1?pack.max.z:pack.min.z)):fit.side(low,0,hipSign))+hipSign*margin;
  // Use the central panel extent at the wrap corners: diagonal bridges
  // must never cut through the pouch at the edge of the torso.
  const startX=surface(face,high,z);

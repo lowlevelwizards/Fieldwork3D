@@ -22,9 +22,9 @@ function exteriorFor(p:SlingPoseSource){
  return equipmentExterior(w.armorStyle,w.rigStyle,w.top);
 }
 function prepareRibbon(mesh:THREE.Mesh,p:SlingPoseSource,rear:THREE.Vector3,
- front:THREE.Vector3,fit:EquipmentExterior,retention?:RetentionPoseMode){
+ front:THREE.Vector3,fit:EquipmentExterior,retention?:RetentionPoseMode,pack?:THREE.Box3){
  let route=routes.get(mesh);if(!route){route=createSlingRoute();routes.set(mesh,route);}
- routeSlingRibbon(route,rear,front,fit,retention,ribbonWidth(p));
+ routeSlingRibbon(route,rear,front,fit,retention,ribbonWidth(p),pack);
 }
 function ribbonTransform(t:SlingNode){
  t.visible=true;t.position.set(0,0,0);t.quaternion.identity();t.scale.set(1,1,1);
@@ -97,7 +97,7 @@ export function updateOperatorSlingPose(
 }
 export function solveOperatorDirectSlingPose(r:OperatorRig,p:SlingPoseSource,
  scratch:OperatorPoseScratch,physicalSpeed:number,retention?:RetentionPoseMode,
- exterior?:EquipmentExterior):void{
+ exterior?:EquipmentExterior,pack?:THREE.Box3):void{
  const e=scratch.equipmentOutput, straps=e.slingTargets;
  const mode=kind(p),held=e.weapons[0],drop=e.weapons[1];
  for(const strap of straps)strap.visible=false;
@@ -117,7 +117,7 @@ export function solveOperatorDirectSlingPose(r:OperatorRig,p:SlingPoseSource,
  }
  const mesh=r.slingStraps[0];
  if(mesh?.userData.fieldworkSlingRibbon){
-  prepareRibbon(mesh,p,rear,front,exterior??exteriorFor(p),retention);
+  prepareRibbon(mesh,p,rear,front,exterior??exteriorFor(p),retention,pack);
   ribbonTransform(straps[0]);return;
  }
  positionSpans(straps,p,mode,physicalSpeed,scratch.vertical,scratch.slingDelta,

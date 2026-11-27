@@ -2,6 +2,7 @@
  * art frame (+X front,+Y up,+Z right). No world custody or combat changes.
  * A future action owner supplies the achieved location, never the renderer. */
 import * as THREE from 'three';
+import {packedRearSurface} from './operator-retention-pack.ts';
 import type {EquipmentExterior} from './operator-equipment-exterior.ts';
 import type {SlingKind} from './breach-weapon-retention.ts';
 import type {WeaponRetentionSockets} from './weapons/geometry/weapon-retention-sockets.ts';
@@ -21,7 +22,7 @@ export type RetentionPoseInput=Readonly<{
  muzzleX:number;stockX:number;
  sockets?:WeaponRetentionSockets|null;motion?:SuspensionMotion;
  bounds?:THREE.Box3;rigDepth?:number;beltDepth?:number;
- exterior?:EquipmentExterior;
+ exterior?:EquipmentExterior;packBounds?:THREE.Box3;
 }>;
 export function retentionPoseSupported(mode:RetentionPoseMode,sling:SlingKind){
  return mode==='held-one'||mode==='front-slung'&&sling!=='none'||
@@ -46,7 +47,7 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
  const axis=one?new THREE.Vector3(.42,-.88,.22):
   front?new THREE.Vector3(.08,-.92,p.sling==='single'?.16:.38):
   side?new THREE.Vector3(.15,-.98,.05):
-  new THREE.Vector3(-.04,-.80,-.60);
+  new THREE.Vector3(-.04,-.89,-.45);
  // A low stance flattens the long silhouette to avoid floor intersections.
  const extent=Math.max(1,p.muzzleX-p.balanceX,p.balanceX-p.stockX)*p.scale.x;
  if(p.chestHeight<extent+8)axis.y*=Math.max(.30,(p.chestHeight-5)/(extent+8));
@@ -55,7 +56,7 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
   new THREE.Vector3(front?1:-1,0,0);
  const z=outward.addScaledVector(axis,-outward.dot(axis)).normalize();
  const y=z.clone().cross(axis).normalize();
- const q=front||side?retainedSwing(p.heldQuaternion,axis):
+ const q=!one?retainedSwing(p.heldQuaternion,axis):
   new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(axis,y,z));
  if(!one&&p.motion){
   const m=sampleSuspensionMotion(p.sling,p.motion);
@@ -66,7 +67,8 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
     -3.3,p.sling==='single'?2.4:0):
   side?new THREE.Vector3(1.8,-3.4,
     (p.exterior?.side(-3.4,1.8,1)??(8.1+armor))+.9):
-  new THREE.Vector3(p.pack?-13:-8.2,-.5,0);
+  new THREE.Vector3(packedRearSurface(p.exterior?.back(-1,0)??-6.5,-1,0,p.packBounds)-1.25,
+    -1.6,0);
  // The same rendered grip is used at the new pose, not a second socket.
  const localGrip=p.primaryGrip.clone().sub(p.heldPosition)
   .applyQuaternion(p.heldQuaternion.clone().invert());
@@ -86,7 +88,7 @@ export function sampleRetentionPose(p:RetentionPoseInput):RetentionPoseSample|nu
   position.y+=Math.max(0,3-p.chestHeight-min('y'));
   if(front)position.x+=Math.max(0,6.5+armor-min('x'));
   else if(side)position.z+=Math.max(0,9.0+armor-min('z'));
-  else position.x-=Math.max(0,max('x')+(p.pack?10.5:6.5));
+  else if(!p.exterior)position.x-=Math.max(0,max('x')+(p.pack?10.5:6.5));
  }
  if(!one&&p.bounds){
   const {correction}=clearRetentionEnvelope({...p,bounds:p.bounds,position,quaternion:q});

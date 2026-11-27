@@ -25,6 +25,7 @@ import {oneHandRetentionWeight} from './breach-weapon-retention-actions.ts';
 import {sampleRetentionTransition} from './breach-weapon-retention-transition.ts';
 import {solveOperatorDirectSlingPose,commitOperatorSlingRibbon} from './breach-operator-sling-pose.ts';
 import {equipmentExterior} from './operator-equipment-exterior.ts';
+import {retentionPackBounds} from './operator-retention-pack.ts';
 import {beginOperatorEquipmentPose,solveOperatorDroppedWeapon,
  finishOperatorEquipmentPose} from './breach-operator-equipment-output.ts';
 import {EQUIPMENT_ATTACHMENT_INDEX as EAI}
@@ -1115,6 +1116,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.retentionTransition.mode:p.retentionPreview;
   const retentionWeight=switchingSlung?switchPose.retention:liveOneHand?oneHandWeight:p.retentionTransition?.weight??1;
   const retentionAssembly=retentionMode&&config?resolveWeaponAssembly(config):null;
+  const retentionPack=slingKind!=='none'?retentionPackBounds(r,clothing.packStyle,attachments[EAI.pack]):undefined;
   const retention=!p.primaryGrounded&&retentionMode&&retentionWeight>0&&!p.down&&!p.surrender&&!p.unarmedPreview&&
     (switchingSlung||!p.firing&&!reloadActive&&(liveOneHand||liveHandsFree||!p.aiming&&!doorActive&&!throwActive&&!treatmentActive&&!equipmentActive)&&
     (p.secondarySwitch?.fraction??0)===0)?
@@ -1129,6 +1131,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       sockets:r.weaponBody.userData.retentionSockets,
       bounds:r.weaponBody.userData.retentionBounds,
       exterior:equipmentExterior(clothing.armorStyle,clothing.rigStyle,clothing.top),
+      packBounds:retentionPack,
       rigDepth:p.equipment?.slots.rig&&p.equipment.slots.rig!=='rig-none'?1.5:0,
       beltDepth:p.equipment?.slots.belt&&p.equipment.slots.belt!=='belt-none'?1.25:0,
       motion:{stride:p.stride,speed:physicalSpeed,acceleration:p.acceleration,
@@ -1507,7 +1510,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Same-frame held/drop world placement without temporary weapon node writes.
   solveOperatorDroppedWeapon(workingRig,p,scratch,downProgress,smooth);
   solveOperatorDirectSlingPose(workingRig,p,scratch,physicalSpeed,retention?.mode,
-    slingKind==='none'?undefined:equipmentExterior(clothing.armorStyle,clothing.rigStyle,clothing.top));
+    slingKind==='none'?undefined:equipmentExterior(clothing.armorStyle,clothing.rigStyle,clothing.top),retentionPack);
   finishOperatorPoseFrame(r,p,
     scratch.armOutput.transforms[0].quaternion,
     scratch.armOutput.transforms[3].quaternion,equipment);
