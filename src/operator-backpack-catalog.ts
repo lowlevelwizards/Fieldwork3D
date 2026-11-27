@@ -12,10 +12,10 @@ export type PackProfile=Readonly<{
 }>;
 export const PACK_PROFILES={
  'no-pack':{id:'backpack-none',label:'No backpack',capacity:0,massKg:0,bulk:0,harness:'none',role:'none',reference:'',motion:0,size:[0,0,0]},
- hydration:{id:'backpack-hydration',label:'Hydration carrier',capacity:0,massKg:.4,bulk:1,harness:'light',role:'hydration',reference:'ThermoBak',motion:.25,size:[2.4,10,7]},
- 'assault-panel':{id:'backpack-panel',label:'Assault panel',capacity:4,massKg:.6,bulk:1,harness:'direct',role:'general',reference:'Zip-on pack panel',motion:0,size:[3.4,10,11]},
- 'day-pack':{id:'backpack-day',label:'Tactical daypack',capacity:8,massKg:1,bulk:2,harness:'padded',role:'general',reference:'RUSH12',motion:.65,size:[5.2,11,10.5]},
- 'assault-pack':{id:'backpack-assault',label:'Assault pack',capacity:12,massKg:1.6,bulk:3,harness:'padded',role:'general',reference:'3 Day Assault',motion:.6,size:[7,13.8,12]},
+ hydration:{id:'backpack-hydration',label:'Hydration carrier',capacity:0,massKg:.4,bulk:1,harness:'light',role:'hydration',reference:'ThermoBak',motion:.25,size:[2.6,11.8,6]},
+ 'assault-panel':{id:'backpack-panel',label:'Assault panel',capacity:4,massKg:.6,bulk:1,harness:'direct',role:'general',reference:'Zip-on pack panel',motion:0,size:[3.4,10.4,11.5]},
+ 'day-pack':{id:'backpack-day',label:'Tactical daypack',capacity:8,massKg:1,bulk:2,harness:'padded',role:'general',reference:'RUSH12',motion:.65,size:[5.2,12.5,9.3]},
+ 'assault-pack':{id:'backpack-assault',label:'Assault pack',capacity:12,massKg:1.6,bulk:3,harness:'padded',role:'general',reference:'3 Day Assault',motion:.6,size:[8.4,15,12.2]},
  'field-pack':{id:'backpack-field',label:'ALICE field pack',capacity:16,massKg:2.2,bulk:4,harness:'load-bearing',role:'general',reference:'Medium ALICE',motion:.4,size:[8,15,15]},
  rucksack:{id:'backpack-expedition',label:'Expedition rucksack',capacity:24,massKg:3.2,bulk:5,harness:'load-bearing',role:'general',reference:'PLCE Bergen',motion:.7,size:[9.4,19,17]},
  'medic-pack':{id:'backpack-medical',label:'Medical pack',capacity:12,massKg:1.5,bulk:3,harness:'padded',role:'medical',reference:'Medic Assault',motion:.4,size:[6,13,13]},
