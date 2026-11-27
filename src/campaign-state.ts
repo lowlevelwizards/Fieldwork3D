@@ -51,10 +51,10 @@ import {quoteCampaignFieldStockChange,fieldRestockPreference,
  from './equipment-campaign-field-stock.ts';
 import {readWeaponConfiguration,changeWeaponPlatform,
  setWeaponAttachment,
- selectWeaponFamilyPreset,setConfiguredFamilyPart,sameWeaponConfiguration,
+ setConfiguredFamilyPart,sameWeaponConfiguration,
  type WeaponConfiguration,type WeaponAttachmentSlot}
  from './equipment-weapon-assemblies.ts';
-import {defaultCatalogReference,familyPreset,matchingFamilyPreset,type FamilyPartSlot} from './equipment-weapon-families.ts';
+import {familyPreset,matchingFamilyPreset,type FamilyPartSlot} from './equipment-weapon-families.ts';
 import {issueWeaponPreset,starterWeaponPreset,resolveCatalogConfiguration} from './breach-weapon-issue.ts';
 import {attachmentPrice,readAttachmentStock,returnAttachments}
  from './equipment-weapon-inventory.ts';
@@ -778,24 +778,10 @@ const canSpend=canAffordCampaignPurchase;
 /** Prevent deductions when reconciliation would discard a newly purchased gun. */
 export const campaignCatalogStockAtCapacity=(c:CampaignState):boolean=>
  !c.inventory.serializedWeapons||c.inventory.serializedWeapons.length>=MAX_OWNED_WEAPONS;
-/** Historical API alias; no separate class-capacity ledger. */
-export const campaignWeaponStockAtCapacity=campaignCatalogStockAtCapacity;
 const charge=(c:CampaignState,cost:number)=>unlimitedDispatch(c)?c.funds:c.funds-cost;
 export const WEAPON_PRICES:Record<CampaignOperator['weapon'],number>={
  carbine:300,smg:260,rifle:420,shotgun:330
 };
-export function buyWeapon(c:CampaignState,weapon:CampaignOperator['weapon']):CampaignState{
- if(!mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'))return c;
- const price=WEAPON_PRICES[weapon];
- if(!price||c.activeContractId||!canSpend(c,price)||
-  campaignWeaponStockAtCapacity(c))return c;
- const preset=defaultCatalogReference(weapon);
- const body=issueWeaponPreset(preset.id).weaponConfiguration.build;
- if(!body||campaignCatalogStockAtCapacity(c))return c;
- const acquired=newSerializedWeapon(nextCatalogWeaponSerial(c),weapon,c.day,body);
- return projectCatalogInventory({...c,funds:charge(c,price),inventory:{...c.inventory,
-  serializedWeapons:[...(c.inventory.serializedWeapons??[]),acquired]}});
-}
 /** Purchase an actual catalog reference. Transitional prices/authorization use
  * the existing campaign policy; the new owned object retains its own body. */
 export function buyCatalogWeapon(c:CampaignState,presetId:string):CampaignState{
@@ -840,24 +826,6 @@ export function equipCampaignWeaponAttachment(c:CampaignState,id:string,
  return {...c,inventory:{...c.inventory,attachments:quote.stockAfter},
   operators:c.operators.map(m=>m.id===id?{...m,weaponConfiguration:next}:m)};
 }
-/** Family builds are an appearance-only prototype on owned gameplay classes.
- * No fabricated magazines, ammunition, serialized guns or attachment stock.
- * Named physical weapon ownership will be a separate campaign migration.
- */
-export function equipCampaignWeaponPreset(c:CampaignState,id:string,presetId:string):CampaignState{
- if(c.activeContractId||!mayChooseCampaignContent(c,'weapon-preset',presetId))return c;
- const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
- if(!o)return c;
- const next=selectWeaponFamilyPreset(o.weaponConfiguration,presetId);
- if(sameWeaponConfiguration(next,o.weaponConfiguration)||
-  !hasValidPhysicalLayout(next))return c;
- const transfer=quoteAttachmentTransfer(c.inventory.attachments,
-  o.weaponConfiguration,next,Math.max(0,c.funds),false);
- if(!transfer.canCommit||!transfer.stockAfter)return c;
- return synchronizeIssuedCatalogBodies({...c,inventory:{...c.inventory,attachments:transfer.stockAfter},
-  operators:c.operators.map(m=>m.id===id?{...m,weaponConfiguration:next,
-   ...fitMagazineInventory(m.id,m.weapon,next,m.magazine,m.reserve,m.magazines)}:m)});
-}
 export function equipCampaignWeaponFamilyPart(c:CampaignState,id:string,
  slot:FamilyPartSlot,partId:string):CampaignState{
  if(c.activeContractId||!dispatchPilotUnclassifiedEditingEnabled(c))return c;
@@ -890,20 +858,9 @@ export function purchaseAndEquipWeaponAttachment(c:CampaignState,id:string,
   inventory:{...c.inventory,attachments:quote.stockAfter},
   operators:c.operators.map(m=>m.id===id?{...m,weaponConfiguration:next}:m)};
 }
-/** Transitional API for historical callers only; exact serial exchange. */
-export function equipCampaignWeapon(c:CampaignState,id:string,
- weapon:CampaignOperator['weapon']):CampaignState{
- if(c.activeContractId||!WEAPONS.includes(weapon)||
-  !mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'))return c;
- const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
- if(!member||member.weapon===weapon)return c;
- const spare=catalogOwnedStock(c).find(w=>w.platform===weapon&&preflightCatalogIssue(c,id,w.id,true));
- return spare?commitCatalogIssue(c,id,spare.id,true):c;
-}
-
 /** Issue one exact unassigned owned catalog object, including same-category
  * exchanges. No appearance substitution, new asset or hidden purchase. */
-function preflightCatalogIssue(c:CampaignState,id:string,serialId:string,legacyClassPolicy=false){
+function preflightCatalogIssue(c:CampaignState,id:string,serialId:string){
  if(c.activeContractId)return undefined;
  const m=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!m)return undefined;
@@ -912,8 +869,8 @@ function preflightCatalogIssue(c:CampaignState,id:string,serialId:string,legacyC
  const weapon=incoming.platform;
  if(!mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'))return undefined;
  const preset=matchingFamilyPreset(incoming.catalogBody);
- if(!legacyClassPolicy&&(preset?!mayChooseCampaignContent(c,'weapon-preset',preset.id):
-  !dispatchPilotUnclassifiedEditingEnabled(c)))return undefined;
+ if(preset?!mayChooseCampaignContent(c,'weapon-preset',preset.id):
+  !dispatchPilotUnclassifiedEditingEnabled(c))return undefined;
  const base=changeWeaponPlatform(m.weaponConfiguration,weapon);
  const target=readWeaponConfiguration({...base,build:incoming.catalogBody,
   mountSelections:undefined,stockPosition:undefined},weapon);
@@ -930,8 +887,8 @@ export function canEquipCampaignCatalogWeapon(c:CampaignState,id:string,serialId
 export function equipCampaignCatalogWeapon(c:CampaignState,id:string,serialId:string):CampaignState{
  return commitCatalogIssue(c,id,serialId);
 }
-function commitCatalogIssue(c:CampaignState,id:string,serialId:string,legacyClassPolicy=false):CampaignState{
- const plan=preflightCatalogIssue(c,id,serialId,legacyClassPolicy);
+function commitCatalogIssue(c:CampaignState,id:string,serialId:string):CampaignState{
+ const plan=preflightCatalogIssue(c,id,serialId);
  if(!plan)return c;
  const {weapon,target,stockAfter}=plan;
  const normalized=synchronizeIssuedCatalogBodies(c);
@@ -981,7 +938,7 @@ export function retireOperator(c:CampaignState,id:string):CampaignState{
 }
 
 /** Non-weapon issued kit customization. Weapon swaps must go through the
- * stock-aware equipCampaignWeapon path, never through this editor. */
+ * stock-aware exact catalog issue path, never through this editor. */
 export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
  itemId:string):CampaignState{
  if(c.activeContractId||slot==='primary'||

@@ -283,17 +283,6 @@ export function equipRosterCatalogPreset(roster:RosterState,id:string,presetId:s
   weapon:preset.weapon,weaponConfiguration:config,loadout:syncPrimaryWeapon(m.loadout,preset.weapon),
   ...freshMagazineIssue(m.id,preset.weapon,config)}:m)};
 }
-/** Historical same-category recipe edit API. */
-export function configureRosterWeaponPreset(roster:RosterState,id:string,
- presetId:string):RosterState{
- const m=roster.members.find(member=>member.id===id);
- if(!m)return roster;
- const config=selectWeaponFamilyPreset(m.weaponConfiguration,presetId);
- if(config===m.weaponConfiguration||config.build===m.weaponConfiguration.build)return roster;
- return {...roster,members:roster.members.map(member=>member.id===id?
-  {...member,weaponConfiguration:config,
-   ...freshMagazineIssue(member.id,member.weapon,config)}:member)};
-}
 /** Changing model furniture never changes physical weapon ownership or ammunition. */
 export function configureRosterWeaponBodyPart(roster:RosterState,id:string,
  slot:FamilyPartSlot,partId:string):RosterState{

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {initialRoster,equipRoster,configureRosterWeaponPreset,
+import {initialRoster,equipRosterCatalogPreset,
  configureRosterWeaponBodyPart,configureRosterWeapon}
  from '../src/breach-roster.ts';
 import {initialWeaponConfiguration,WEAPON_ATTACHMENT_SLOTS}
@@ -12,8 +12,7 @@ import {workbenchMounts} from '../src/equipment-weapon-workbench-layout.ts';
 
 test('mobile workbench: every current preset retains coherent magazine issue and owned weapon',()=>{
  for(const preset of FAMILY_PRESETS){
-  const roster=equipRoster(initialRoster(),'rook',preset.weapon);
-  const equipped=configureRosterWeaponPreset(roster,'rook',preset.id);
+  const equipped=equipRosterCatalogPreset(initialRoster(),'rook',preset.id);
   const member=equipped.members.find(m=>m.id==='rook');
   assert.equal(member?.weapon,preset.weapon,preset.name);
   assert.equal(member?.weaponConfiguration.build?.family,preset.family,preset.name);
@@ -40,7 +39,7 @@ test('mobile workbench: body sockets and compatible attachment sockets map uniqu
  const legacy=workbenchMounts(original);
  assert.equal(legacy.length,WEAPON_ATTACHMENT_SLOTS.length);
  assert.equal(new Set(legacy.map(m=>m.slot)).size,legacy.length);
- let roster=configureRosterWeaponPreset(initialRoster(),'rook','ar-m4a1');
+ let roster=equipRosterCatalogPreset(initialRoster(),'rook','ar-m4a1');
  const member=roster.members[0];
  const body=workbenchMounts(member.weaponConfiguration,'body');
  const accessories=workbenchMounts(member.weaponConfiguration,'attachments');

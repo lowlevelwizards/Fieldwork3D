@@ -25,11 +25,11 @@ test('Quick Play applies same-class assembly without touching magazines or anoth
  assert.equal(changed.members[0].weaponConfiguration.build.parts.stock,'ar-compact');
  assert.equal(original.members[0].weaponConfiguration.build.parts.stock,rook.weaponConfiguration.build.parts.stock);
 });
-test('Quick Play MP5 choice changes class explicitly via existing ammo reset path',()=>{
+test('Quick Play MP5 choice changes model explicitly via existing ammo reset path',()=>{
  const original=initialRoster(),rook=original.members[0];
  const recipe=recipeFor('hk-mp5a3');
  const q=quoteQuickPlayArsenalEdit(original,rook.id,recipe);
- assert.equal(q.valid,true);assert.equal(q.changesClass,true);
+ assert.equal(q.valid,true);assert.equal(q.changesWeaponIssue,true);
  const changed=applyQuickPlayArsenalEdit(original,rook.id,recipe);
  assert.equal(changed.members[0].weapon,'smg');
  assert.equal(changed.members[0].magazine,

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {newCampaign,readCampaign,saveCampaignKitPreset,applyCampaignKitPreset,
  deleteCampaignKitPreset,renameCampaignOperator,setCampaignOperatorColor,
  SQUAD_IDENTIFICATION_COLORS,cycleCampaignAppearance,buyCatalogWeapon,
- equipCampaignGear,equipCampaignWeapon} from '../src/campaign-state.ts';
+ equipCampaignGear} from '../src/campaign-state.ts';
 import {readKitPresets} from '../src/equipment-presets.ts';
 
 test('loadout presets are durable recipes and never duplicate weapon stock',()=>{

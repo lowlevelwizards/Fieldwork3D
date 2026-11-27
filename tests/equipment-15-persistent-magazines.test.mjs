@@ -5,7 +5,7 @@ import {reserveRounds} from '../src/breach-magazines.ts';
 import {readPersistentMagazines,readLoadedMagazineId,addReserveRounds}
  from '../src/equipment-magazine-persistence.ts';
 import {newCampaign,readCampaign,resupplyOperator,
- acceptContract,resolveOperation,buyWeapon,equipCampaignWeapon} from '../src/campaign-state.ts';
+ acceptContract,resolveOperation,buyCatalogWeapon,equipCampaignOwnedPreset} from '../src/campaign-state.ts';
 
 test('magazine save normalization keeps partial rounds and rejects duplicates and fabricated ammo',()=>{
  const mags=[{id:'rook/carbine/a',weapon:'carbine',rounds:7},
@@ -67,8 +67,8 @@ test('campaign resupply keeps existing IDs, fills partials and never mints extra
 });
 test('weapon swaps cannot retain stale, incompatible magazine instances',()=>{
  let c=newCampaign(54);
- c=buyWeapon(c,'rifle');
- c=equipCampaignWeapon(c,'rook','rifle');
+ c=buyCatalogWeapon(c,'ar-m16a2');
+ c=equipCampaignOwnedPreset(c,'rook','ar-m16a2');
  assert.deepEqual(c.operators[0].magazines,[]);
  assert.equal(c.operators[0].loadedMagazineId,'rook/rifle/loaded');
  assert.equal(c.operators[0].reserve,0);

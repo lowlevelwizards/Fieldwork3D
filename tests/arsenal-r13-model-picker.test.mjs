@@ -15,7 +15,7 @@ test('Workbench offers a contextual factory browser without returning to classic
 test('factory switches preserve explicit Campaign/Quick Play quote and approval gate',()=>{
  const code=src('src/arsenal/workbench-screen.ts');
  assert.match(code,/context\?\.quote\?\.\(build\.recipe\)/);
- assert.match(code,/checked\?\.changesClass/);
+ assert.match(code,/checked\?\.changesWeaponIssue/);
  assert.match(code,/loadMode==='model'/);
  assert.match(code,/savedId=null/);
 });
