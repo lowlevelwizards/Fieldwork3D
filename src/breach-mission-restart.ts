@@ -61,6 +61,7 @@ export function restoreMissionStartingTeam(session:Session,
     const original=initial.get(actor.id);
     if(!original)continue;
     Object.assign(actor,structuredClone(original),{
+      unifiedCarry:original.unifiedCarry?structuredClone(original.unifiedCarry):undefined,
       plan:[],history:{undo:[],redo:[]},path:[],nav:[],activeNode:-1,
     });
   }

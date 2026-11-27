@@ -6,6 +6,10 @@ on:
       - 'src/equipment-unified-*.ts'
       - 'src/operator-armor-rig-silhouettes.ts'
       - 'src/breach-operator-lab.ts'
+      - 'src/breach-campaign-flow.ts'
+      - 'src/breach-mission-restart.ts'
+      - 'src/breach-replay-manifest.ts'
+      - 'scripts/capture-unified-carry.mjs'
       - 'src/operator-unified-carry-live.ts'
       - 'src/operator-gear-pixel-art.ts'
       - 'src/operator-wardrobe-recipes.ts'
@@ -31,4 +35,22 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run check
       - name: Fixed slot placement and real loadout adapter
-        run: node --experimental-strip-types --test tests/equipment-unified-placement.test.mjs tests/equipment-unified-loadout.test.mjs tests/operator-rig-pouch-layout.test.mjs tests/equipment-unified-deployment.test.mjs tests/equipment-unified-reload.test.mjs tests/operator-unified-carry-live.test.mjs tests/equipment-unified-preparation.test.mjs tests/equipment-unified-matrix.test.mjs tests/equipment-deployment-snapshot.test.mjs tests/equipment-deployed-field-use.test.mjs tests/operator-wardrobe-recipes.test.mjs tests/equipment-unified-material-lifecycle.test.mjs tests/equipment-unified-save-migration.test.mjs tests/operator-belt-finish.test.mjs tests/equipment-unified-undo-copy.test.mjs tests/equipment-unified-squad-preflight.test.mjs
+        run: node --experimental-strip-types --test tests/equipment-unified-placement.test.mjs tests/equipment-unified-loadout.test.mjs tests/operator-rig-pouch-layout.test.mjs tests/equipment-unified-deployment.test.mjs tests/equipment-unified-reload.test.mjs tests/operator-unified-carry-live.test.mjs tests/equipment-unified-preparation.test.mjs tests/equipment-unified-matrix.test.mjs tests/equipment-deployment-snapshot.test.mjs tests/equipment-deployed-field-use.test.mjs tests/operator-wardrobe-recipes.test.mjs tests/equipment-unified-material-lifecycle.test.mjs tests/equipment-unified-save-migration.test.mjs tests/operator-belt-finish.test.mjs tests/equipment-unified-undo-copy.test.mjs tests/equipment-unified-squad-preflight.test.mjs tests/equipment-unified-restart.test.mjs
+  mobile-fit-poses:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/capture-unified-carry.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unified-carry-mobile-pose-audit
+          path: unified-carry-captures/
+          if-no-files-found: warn

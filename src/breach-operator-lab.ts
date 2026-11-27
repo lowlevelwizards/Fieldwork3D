@@ -2559,6 +2559,9 @@ function draw(){
   }
   // Explicit diagnostic: only calculate on a changed outfit while open.
   carryAuditOutput.dataset.unrendered=String(stagedCarry?(rig.root.userData.bt4Unrendered?.length??0):0);
+  carryAuditOutput.dataset.active=String(!!stagedCarry);
+  carryAuditOutput.dataset.valid=String(!!stagedCarry?.manifest.valid);
+  carryAuditOutput.dataset.placements=String(stagedCarry?.manifest.placements.length??0);
   if(stagedCarry&&carryAuditClearance.checked){
    const hits=auditLiveUnifiedClearance(rig);
    const msg=hits.length?'POTENTIAL HOLDER CONTACT · '+hits.join(' · '):'NO HOLDER / THIGH / PACK BOX CONTACT IN THIS POSE';
