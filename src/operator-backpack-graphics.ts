@@ -1,5 +1,5 @@
 /** BP5R: pixel-scale, non-volumetric backpack details.
- * One shared 64x64 RGBA atlas, no per-frame texture allocation, no change to
+ * One shared 128x128 RGBA atlas, no per-frame texture allocation, no change to
  * fabric/camo maps. One alpha-tested draw batch per backpack; no shadow caster.
  */
 import * as THREE from 'three';
@@ -98,7 +98,7 @@ export function attachPackGraphics(root:THREE.Group,graphics:readonly PackGraphi
     [v(-w*.38,-h*.31),v(-w*.38,h*.25),v(-w*.28,h*.37),v(w*.28,h*.37),v(w*.38,h*.25),v(w*.38,-h*.31),v(w*.29,-h*.39),v(-w*.29,-h*.39),v(-w*.38,-h*.31)]:
     [v(-w*.39,h*.02),v(-w*.39,h*.26),v(-w*.26,h*.37),v(w*.26,h*.37),v(w*.39,h*.26),v(w*.39,h*.02)];
    const half=PACK_DETAIL_PIXEL*.43;
-   const polygon=path.map((p,i)=>{
+   const polygon=path.map((_,i)=>{
     const a=path[Math.max(0,i-1)],b=path[Math.min(path.length-1,i+1)];
     const tangent=b.clone().sub(a).normalize();
     return new THREE.Vector2(-tangent.y,tangent.x).multiplyScalar(half);
