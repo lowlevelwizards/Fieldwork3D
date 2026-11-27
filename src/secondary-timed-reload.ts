@@ -28,19 +28,19 @@ export const SECONDARY_MAG_INSERT_FRACTION=.72;
  * Stable, physical location is a tie-break when equally loaded magazines
  * exist. The most loaded actual carried magazine wins first.
  */
-export function selectAccessibleSecondaryMagazine(equipment:SecondaryEquipment):
+export function selectAccessibleSecondaryMagazine(equipment:SecondaryEquipment,access?:(id:string)=>number):
  SecondaryMagazine|null{
- let choice:SecondaryMagazine|null=null;
+ let choice:SecondaryMagazine|null=null,bestAccess=Infinity;
  for(const m of equipment.spareMagazines){
   if(m.location==='overflow'||m.rounds<=equipment.loadedRounds)continue;
-  if(!choice||m.rounds>choice.rounds||
-   m.rounds===choice.rounds&&accessCost[m.location]<accessCost[choice.location as keyof typeof accessCost])
-   choice=m;
+  const delay=access?access(m.id):accessCost[m.location];
+  if(!Number.isFinite(delay))continue;
+  if(!choice||m.rounds>choice.rounds||m.rounds===choice.rounds&&delay<bestAccess){choice=m;bestAccess=delay;}
  }
  return choice;
 }
 export function beginTimedSecondaryReload(equipment:SecondaryEquipment|undefined,
- orderId:number):SecondaryReloadStart{
+ orderId:number,access?:(id:string)=>number):SecondaryReloadStart{
  if(!equipment?.weapon||!equipment.loadedMagazineId)
   return {ok:false,state:null,reason:'NO ISSUED SECONDARY'};
  if(!Number.isSafeInteger(orderId)||orderId<0)
@@ -48,12 +48,12 @@ export function beginTimedSecondaryReload(equipment:SecondaryEquipment|undefined
  const cap=SECONDARY_CAPACITY[equipment.weapon];
  if(equipment.loadedRounds>=cap)
   return {ok:false,state:null,reason:'MAGAZINE FULL'};
- const spare=selectAccessibleSecondaryMagazine(equipment);
+ const spare=selectAccessibleSecondaryMagazine(equipment,access);
  if(!spare)
   return {ok:false,state:null,reason:'NO ACCESSIBLE LOADED MAGAZINE'};
  return {ok:true,state:{
   orderId,selectedId:spare.id,elapsed:0,
-  duration:1.20+accessCost[spare.location as keyof typeof accessCost],
+  duration:1.20+(access?access(spare.id):accessCost[spare.location as keyof typeof accessCost]),
   retain:equipment.loadedRounds>0,inserted:false
  }};
 }

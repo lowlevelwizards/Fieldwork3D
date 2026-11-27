@@ -1,6 +1,7 @@
 import {issuedPackStyle} from './operator-backpack-catalog.ts';
 import {rearCarrierMount} from './operator-equipment-assembly.ts';
 import {resolvedWardrobe,setWardrobeStyle} from './operator-wardrobe-data.ts';
+import {quoteUnifiedPreparation,quoteSavedSquadCarryMigration} from './equipment-unified-preparation.ts';
 /** LW-15: versioned, bounded individual operator records.
  * Save state belongs to operations, never to the 60Hz world simulation.
  */
@@ -9,7 +10,7 @@ import {initialWardrobe,readWardrobe,type WardrobeOptions}
  from './operator-wardrobe-data.ts';
 import type {WeaponId} from './breach-combat.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
-import {applyDeploymentInventory} from './equipment-deployment-snapshot.ts';
+import {applyDeploymentInventory,captureDeploymentInventory,applyCapturedDeploymentInventory,type DeploymentInventorySnapshot} from './equipment-deployment-snapshot.ts';
 import type {MagazineItem} from './breach-magazines.ts';
 import {liveMagazineCapacity,standardReserveRounds,freshMagazineIssue,
  fitMagazineInventory} from './arsenal/live-magazine-capacity.ts';
@@ -61,7 +62,7 @@ export function initialRoster():RosterState{
 const finite=(x:unknown,min:number,max:number,fallback:number)=>
  typeof x==='number'&&Number.isFinite(x)?
  Math.max(min,Math.min(max,Math.floor(x))):fallback;
-export function readRoster(raw:string|null):RosterState{
+export function readRoster(raw:string|null,carryMode?:'unified'):RosterState{
  const fresh=initialRoster();
  if(!raw)return fresh;
  try{
@@ -89,7 +90,7 @@ export function readRoster(raw:string|null):RosterState{
    return {...base,callsign:typeof f.callsign==='string'&&f.callsign.trim()?
      f.callsign.trim().slice(0,24):base.callsign,
     appearanceSeed:finite(f.appearanceSeed,0,0xffffffff,base.appearanceSeed),
-    loadout:readEquipmentLoadout(f.loadout,weapon,base.id),
+    loadout:readEquipmentLoadout(f.loadout,weapon,base.id,carryMode),
     wardrobe:readWardrobe(f.wardrobe),
     weaponConfiguration:config,
     magazines,loadedMagazineId:readLoadedMagazineId(base.id,weapon,
@@ -124,7 +125,17 @@ export function serializeQuickPlayCosmetics(roster:RosterState):string{
     wardrobe:readWardrobe(m.wardrobe)
   }))});
 }
-export function applyRosterIdentity(s:Session,roster:RosterState){
+export function applyRosterIdentity(s:Session,roster:RosterState,carryMode?:'unified'){
+ const snapshots=new Map<string,DeploymentInventorySnapshot>();
+ if(carryMode==='unified'){
+  // Preflight the entire participating squad. Never mutate a prefix of
+  // actors and then fail on a later operator.
+  for(const a of s.operators){
+   if(a.side!=='blue')continue;
+   const member=roster.members.find(m=>m.id===a.id);if(!member)continue;
+   snapshots.set(a.id,captureDeploymentInventory({...member,carryMode}));
+  }
+ }
  for(const a of s.operators){
   if(a.side!=='blue')continue;
   const member=roster.members.find(m=>m.id===a.id);
@@ -132,7 +143,8 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
    a.name=member.callsign;
    a.appearanceSeed=member.appearanceSeed;
    a.wardrobe=member.wardrobe;
-   applyDeploymentInventory(a,member);
+   const snapshot=snapshots.get(a.id);
+   if(snapshot)applyCapturedDeploymentInventory(a,snapshot);else applyDeploymentInventory(a,member);
    const protection=initialArmorIntegrity(member.loadout);
    a.armorIntegrity=protection.torso;a.helmetIntegrity=protection.head;
    // Persistent wounds affect readiness but never invent fresh fatal damage.
@@ -202,12 +214,17 @@ export function equipRoster(roster:RosterState,id:string,weapon:WeaponId):Roster
 /** Quick play has unlimited equipment availability, but each individual
  * soldier still has an independent, persistent and compatible configuration. */
 export function equipRosterGear(roster:RosterState,id:string,slot:LoadoutSlot,
- itemId:string):RosterState{
+ itemId:string,carryMode?:'unified'):RosterState{
  if(slot==='primary')return roster;
- if(slot==='backpack')return equipRosterCarryGear(roster,id,slot,itemId);
+ if(slot==='backpack')return equipRosterCarryGear(roster,id,slot,itemId,carryMode);
  const member=roster.members.find(m=>m.id===id);
  if(!member)return roster;
  if(slot==='armor'&&itemId!=='armor-carrier'&&member.loadout.slots.backpack==='backpack-panel')return roster;
+ if(carryMode==='unified'){
+  const q=quoteUnifiedPreparation(member,{kind:'gear',slot,id:itemId});
+  if(!q.ok)return roster;
+  return {...roster,members:roster.members.map(m=>m.id===id?{...m,loadout:q.kit,magazines:q.magazines}:m)};
+ }
  const next=setEquipmentChoice(member.loadout,slot,itemId);
  if(next===member.loadout)return roster;
  return {...roster,members:roster.members.map(m=>m.id===id?
@@ -217,25 +234,25 @@ export function equipRosterGear(roster:RosterState,id:string,slot:LoadoutSlot,
  * The legacy generic gear selector remains for other equipment slots.
  */
 export function equipRosterCarryGear(roster:RosterState,id:string,
- slot:CarryGearSlot,itemId:string):RosterState{
+ slot:CarryGearSlot,itemId:string,carryMode?:'unified'):RosterState{
  const member=roster.members.find(m=>m.id===id);
  if(!member)return roster;
  if(slot==='backpack'&&itemId==='backpack-panel'&&!rearCarrierMount(resolvedWardrobe(member.wardrobe,member.loadout).armorStyle))return roster;
- const quote=quoteCarryGearChange(member.loadout,member.magazines,slot,itemId);
+ const quote=carryMode==='unified'?quoteUnifiedPreparation(member,{kind:'gear',slot,id:itemId}):quoteCarryGearChange(member.loadout,member.magazines,slot,itemId);
  if(!quote.ok)return roster;
  return {...roster,members:roster.members.map(m=>m.id===id?
-  {...m,loadout:quote.kit,magazines:quote.magazines,wardrobe:slot==='backpack'?setWardrobeStyle(m.wardrobe,'packStyle',issuedPackStyle(itemId)):m.wardrobe}:m)};
+  {...m,loadout:quote.kit,magazines:quote.magazines,wardrobe:slot==='backpack'?setWardrobeStyle(m.wardrobe??initialWardrobe(),'packStyle',issuedPackStyle(itemId)):m.wardrobe}:m)};
 }
 /** Restore the exact physical carry snapshot only if it is still current.
  * The caller may show an Undo button, but this owner has final authority.
  */
 export function undoRosterCarryGear(roster:RosterState,id:string,
- expected:CarryUndoSnapshot,before:CarryUndoSnapshot):RosterState{
+ expected:CarryUndoSnapshot,before:CarryUndoSnapshot,carryMode?:'unified'):RosterState{
  const member=roster.members.find(m=>m.id===id);
  if(!member)return roster;
  const current=captureCarryUndo(member.loadout,member.magazines);
  if(JSON.stringify(current)!==JSON.stringify(expected))return roster;
- const quote=quoteCarryUndo(current,before);
+ const quote=quoteCarryUndo(current,before,carryMode==='unified'?member:undefined);
  if(!quote.ok)return roster;
  return {...roster,members:roster.members.map(m=>m.id===id?
   {...m,loadout:quote.restore.loadout,magazines:quote.restore.magazines}:m)};
@@ -244,8 +261,8 @@ export function undoRosterCarryGear(roster:RosterState,id:string,
  * keeps every owned magazine, ammo round, wearable item and issued unit.
  */
 export function copyRosterCarryLayout(roster:RosterState,
- sourceId:string,targetId:string):RosterState{
- if(sourceId===targetId)return roster;
+ sourceId:string,targetId:string,carryMode?:'unified'):RosterState{
+ if(carryMode==='unified'||sourceId===targetId)return roster;
  const source=roster.members.find(m=>m.id===sourceId);
  const target=roster.members.find(m=>m.id===targetId);
  if(!source||!target)return roster;
@@ -259,8 +276,13 @@ export function copyRosterCarryLayout(roster:RosterState,
  * The authoring UI validates capacity before calling this pathway.
  */
 export function equipRosterFieldInventory(roster:RosterState,id:string,
- inventory:FieldInventory):RosterState{
+ inventory:FieldInventory,carryMode?:'unified'):RosterState{
  const member=roster.members.find(m=>m.id===id);if(!member)return roster;
+ if(carryMode==='unified'){
+  const q=quoteUnifiedPreparation(member,{kind:'field',inventory});
+  if(!q.ok)return roster;
+  return {...roster,members:roster.members.map(m=>m.id===id?{...m,loadout:q.kit,magazines:q.magazines}:m)};
+ }
  const next=readFieldInventory(inventory,member.loadout);
  if(!fieldCarryReport(member.loadout,member.magazines,next).valid)return roster;
  return {...roster,members:roster.members.map(m=>m.id===id?
@@ -358,4 +380,11 @@ export function setRosterWardrobe(roster:RosterState,id:string,raw:unknown):Rost
  const member=roster.members.find(m=>m.id===id)!;
  if(member.loadout.slots.backpack==='backpack-panel'&&!rearCarrierMount(resolvedWardrobe(wardrobe,member.loadout).armorStyle))return roster;
  return {...roster,members:roster.members.map(m=>m.id===id?{...m,wardrobe}:m)};
+}
+
+/** Explicit BT4 migration preflight. Hosts must surface any unfit operator
+ * before switching a squad to the new runtime; no automatic stock repair. */
+export function quoteRosterCarryMigration(roster:RosterState){
+ const q=quoteSavedSquadCarryMigration(roster.members);
+ return q.ok?{ok:true as const,roster:{...roster,members:q.members}}:q;
 }

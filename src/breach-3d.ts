@@ -1931,6 +1931,7 @@ export class TacticalScene3D{
     updateOperatorAppearance(physical,{
       appearanceSeed:a.appearanceSeed,equipment:a.equipment,
       wardrobe:a.wardrobe,weaponConfiguration:a.weaponConfiguration,
+      unifiedCarry:a.unifiedCarry,
       magazineCarryLocations:precomputed.locations,
       packPrimaryMagazineMass:packPrimaryMagazineMass(a.spareMagazines,precomputed.magazines),
       medicalCarryLocation:precomputed.medical,
@@ -2907,6 +2908,7 @@ export class TacticalScene3D{
         // This changes rendered anatomy only, not fixed-step ammo/shot.
         poseV3Preview:true,poseV4ReloadPreview:true,
         poseDiagnostics:false,
+        unifiedCarry:actor.unifiedCarry,
         magazineCarryLocations:carried.locations,
         packPrimaryMagazineMass:packPrimaryMagazineMass(actor.spareMagazines,carriedMagazines),
         magazineCarryItems:carriedMagazines,

@@ -36,6 +36,7 @@ import './ui/ux-r1-sheets.css';
 import type {OperationRecord} from './breach-operations.ts';
 
 export type OperationsBoardHooks={
+ carryMode?:'unified';
  board:HTMLElement;toggleButton:HTMLButtonElement;
  getSession:()=>Session;getRoster:()=>RosterState;setRoster:(value:RosterState)=>void;
  getMode:()=>CampaignMode;isReplaying:()=>boolean;
@@ -285,7 +286,7 @@ function renderOperationsBoard(){
   carryUndoButton.setAttribute('aria-label','Undo last physical carry move');
   const canUndoCarry=(operator:typeof member)=>{
    const quote=carryUndo.peek(operator.id,
-    captureCarryUndo(operator.loadout,operator.magazines));
+    captureCarryUndo(operator.loadout,operator.magazines),config.carryMode==='unified'?operator:undefined);
    return quote.ok;
   };
   carryUndoButton.disabled=!canUndoCarry(member)||
@@ -296,9 +297,9 @@ function renderOperationsBoard(){
    const current=old.members.find(m=>m.id===member.id);
    if(!current)return;
    const expected=captureCarryUndo(current.loadout,current.magazines);
-   const undo=carryUndo.peek(member.id,expected);
+   const undo=carryUndo.peek(member.id,expected,config.carryMode==='unified'?current:undefined);
    if(!undo.ok){showFieldworkActionFeedback(undo.reason);return;}
-   const restored=undoRosterCarryGear(old,member.id,expected,undo.restore);
+   const restored=undoRosterCarryGear(old,member.id,expected,undo.restore,config.carryMode);
    if(restored===old){showFieldworkActionFeedback('CARRY UNDO REJECTED · KIT CHANGED');return;}
    carryUndo.clear(member.id);
    config.setRoster(restored);config.saveRoster();config.applyRoster();
@@ -321,7 +322,7 @@ function renderOperationsBoard(){
     const previousFocus=preferredFocus??(document.activeElement instanceof HTMLElement?
      document.activeElement.getAttribute('aria-label'):null);
     const prior=config.getRoster();
-    const next=equipRosterFieldInventory(prior,current.id,inventory);
+    const next=equipRosterFieldInventory(prior,current.id,inventory,config.carryMode);
     if(next===prior)return;
     const before=prior.members.find(m=>m.id===current.id);
     const changed=next.members.find(m=>m.id===current.id);
@@ -350,6 +351,7 @@ function renderOperationsBoard(){
    };
    const editor=createFieldGadgetEditor({
     loadout:current.loadout,magazines:current.magazines,
+    automatic:config.carryMode==='unified'?current:undefined,
     onInspectLocation:location=>equipmentWorkspace.preview?.highlightCarryLocation(location),
    onInspectItem:item=>equipmentWorkspace.preview?.inspectCarryItem(item),
    onModelThumbnail:item=>equipmentWorkspace.preview?.renderModelThumbnail(item)??null,
@@ -383,7 +385,7 @@ function renderOperationsBoard(){
     onCopyLayout:targetId=>{
      if(config.getSession().phase!=='planning'||config.isReplaying())return;
      const before=config.getRoster();
-     const next=copyRosterCarryLayout(before,current.id,targetId);
+     const next=copyRosterCarryLayout(before,current.id,targetId,config.carryMode);
      if(next===before){showFieldworkActionFeedback('CANNOT COPY LAYOUT · CHECK CARRY FIT');return;}
      const old=before.members.find(m=>m.id===targetId);
      const updated=next.members.find(m=>m.id===targetId);
@@ -396,7 +398,7 @@ function renderOperationsBoard(){
     },
     onCopy:(targetId,inventory)=>{
      const before=config.getRoster();
-     const next=equipRosterFieldInventory(before,targetId,inventory);
+     const next=equipRosterFieldInventory(before,targetId,inventory,config.carryMode);
      if(next===before)return;
      const prior=before.members.find(m=>m.id===targetId);
      const target=next.members.find(m=>m.id===targetId);
@@ -683,13 +685,13 @@ function renderOperationsBoard(){
     if(slot==='primary'){
      after=equipRosterCatalogPreset(before,member.id,itemId);
     }else if(slot==='rig'||slot==='belt'||slot==='backpack'){
-     after=equipRosterCarryGear(before,member.id,slot,itemId);
+     after=equipRosterCarryGear(before,member.id,slot,itemId,config.carryMode);
      const old=before.members.find(m=>m.id===member.id);
      const changed=after.members.find(m=>m.id===member.id);
      if(after!==before&&old&&changed)carryUndo.record(member.id,
       captureCarryUndo(old.loadout,old.magazines),
       captureCarryUndo(changed.loadout,changed.magazines));
-    }else after=equipRosterGear(before,member.id,slot,itemId);
+    }else after=equipRosterGear(before,member.id,slot,itemId,config.carryMode);
     if(after===before){
      showFieldworkActionFeedback('EQUIPMENT CHANGE UNAVAILABLE');
      return;

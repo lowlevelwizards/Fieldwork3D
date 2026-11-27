@@ -25,6 +25,7 @@ import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
 
 
 export type QuickPlayControllerHooks={
+  carryMode?:'unified';
   boot:BreachBootConfig;
   randomSeed:()=>number;
   getRoster:()=>RosterState;
@@ -158,6 +159,7 @@ quickPlayCancelButton.addEventListener('click',()=>{
   configurator.open();
 });
 const configurator=createQuickPlayConfigurator({
+  carryMode:config.carryMode,
   getRoster:config.getRoster,onEquipField:config.equipFieldInventory,
   onMoveMagazine:config.moveMagazine,
   onEquipCarryGear:config.equipCarryGear,

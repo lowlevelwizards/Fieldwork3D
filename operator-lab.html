@@ -536,6 +536,13 @@ main[data-lab-active="poses"] #weapon{display:none}
 <label>VARIANT<select id="attachmentPreviewVariant"><option value="standard">STANDARD</option></select></label>
 <label>CONTENTS<select id="attachmentPreviewContents"><option value="full">FULL SAMPLE</option><option value="partial">PARTIAL</option><option value="empty">EMPTY</option></select></label>
 </div><output id="attachmentPreviewStatus" role="status"></output></details>
+<details id="unifiedCarryAudit"><summary>AUTOMATIC CARRY · FIT AUDIT</summary>
+<p class="kit-help">Automatic fit of the current outfit using the staged gameplay renderer. This Lab audition never changes saved inventory. Unfitted items are reported.</p>
+<label><input type="checkbox" id="unifiedCarryVisual"> SHOW AUTOMATIC 3D LAYOUT</label>
+<label>SHELL RESERVE <select id="unifiedCarryShells"><option>0</option><option>4</option><option selected>8</option><option>12</option><option>18</option></select></label>
+<label><input type="checkbox" id="unifiedCarryClearance"> AUDIT HOLDER / THIGH / PACK CLEARANCE</label>
+<output id="unifiedCarryClearanceOutput" role="status"></output>
+<output id="unifiedCarryAuditOutput" style="white-space:pre-wrap;overflow-wrap:anywhere" role="status"></output></details>
 <details id="wardrobePlacement"><summary>ADVANCED / PHYSICAL CARRY</summary>
 <div class="kit-grid">
 <label>MEDICAL POSITION<select data-wardrobe-mount="medical"></select></label>
