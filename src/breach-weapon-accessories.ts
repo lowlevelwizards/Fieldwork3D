@@ -6,6 +6,8 @@ import {WEAPON_ACCESSORY_STEEL,WEAPON_ACCESSORY_POLYMER,
  HK_SD_SUPPRESSOR_METAL,HK_MUZZLE_METAL}
  from './weapons/geometry/weapon-visual-palette.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
+import {retentionSocketsForConfiguration} from './breach-weapon-geometry.ts';
+import {readSlingKind} from './breach-weapon-retention.ts';
 import {resolveWeaponAssembly} from './equipment-weapon-assemblies.ts';
 import {accessoryBox,accessoryTube,accessoryFrame,accessoryProfile,accessoryMergedBoxes}
  from './weapons/geometry/accessory-primitives.ts';
@@ -154,12 +156,13 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
   }else accessoryBox(g,'weapon-accessory-light-rail-bracket',
    lx-1.40,ly+.96,lz,2.25,.80,2.05,metal);
  }
- if(parts.sling.id==='sling-two-point'){
-  // Rigid sling mounting hardware stays on the gun. The actual fabric
-  // loop is positioned by the shared operator rig, not baked to receiver.
-  accessoryMergedBoxes(g,'weapon-accessory-sling-rigid-mounts',[
-   [-9,-.5,2.0,1.4,1,1.2],[10,-.5,2.0,1.4,1,1.2]
-  ],metal);
+ const slingKind=readSlingKind(parts.sling.id);
+ if(slingKind!=='none'){
+  const seats=retentionSocketsForConfiguration(raw,steel,dark);
+  const points=slingKind==='single'?[seats?.single]:
+   [seats?.rear,seats?.front];
+  const boxes=points.flatMap(p=>p?[[p.x,p.y,p.z+.15,1.35,.85,.65] as const]:[]);
+  if(boxes.length)accessoryMergedBoxes(g,'weapon-accessory-sling-rigid-mounts',boxes,metal);
  }
  return g;
 }

@@ -1,0 +1,2 @@
+# WR7 — Live one-hand retention
+Existing door/throw and field-item windows sample one-hand retention. The original support-hand contact remains authoritative; only the firing-hand grip and primary move. Firing, reload, medical, lockpick and secondary ownership take precedence. No new timing or gameplay action authority. Brief post-contact secure/intel gestures retain legacy behavior until further contact coverage.

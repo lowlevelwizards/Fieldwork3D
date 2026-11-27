@@ -2879,7 +2879,9 @@ export class TacticalScene3D{
           actor.traversalElapsed/Math.max(.001,actor.traversal.duration):0,
         appearanceSeed:actor.appearanceSeed,
         equipment:actor.equipment,wardrobe:actor.wardrobe,
-        secondarySwitch:actor.secondarySwitch,
+        retentionTransition:actor.retentionTransition,
+         primaryGrounded:actor.groundedPrimaryId!=null,
+         secondarySwitch:actor.secondarySwitch,
         secondaryReload:actor.secondaryReload,
         // B30: live and replay use the new posing by default.
         // This changes rendered anatomy only, not fixed-step ammo/shot.
@@ -2953,7 +2955,7 @@ export class TacticalScene3D{
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
          doorGrip:previewPreOpen?undefined:doorGrip,physicalContact,
         down:actor.health<=0,surrender:actor.surrendered,
-        worldWeaponReleased:!!actor.downWeaponsReleased||actor.surrendered&&actor.releasedWeaponId!=null,
+        worldWeaponReleased:actor.groundedPrimaryId!=null||!!actor.downWeaponsReleased||actor.surrendered&&actor.releasedWeaponId!=null,
         restrained:actor.restrained===true,
         // Gameplay and replay use the same named NPC transition contract as
         // the Lab. In particular surrender -> cuffed must not snap wrists.

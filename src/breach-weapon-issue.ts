@@ -2,7 +2,7 @@
  * compatibility layer until the separate weapon-stat migration. Never
  * manufacture a variant by changing the simulation class alone. */
 import {familyPreset,defaultCatalogReference,initialWeaponFamilyBuild,validFamilyBuild,type WeaponFamilyBuild,type WeaponFamilyPreset} from './equipment-weapon-families.ts';
-import {initialWeaponConfiguration,readWeaponConfiguration,selectWeaponFamilyPreset,
+import {initialWeaponConfiguration,readWeaponConfiguration,selectWeaponFamilyPreset,setWeaponAttachment,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import type {WeaponId} from './breach-combat.ts';
 
@@ -22,6 +22,11 @@ export function issueWeaponPreset(presetId:string):IssuedWeapon{
 }
 export function starterWeaponPreset(id:string):string{
  return STARTER_WEAPON_PRESETS[id as keyof typeof STARTER_WEAPON_PRESETS]??'ar-m4a1';
+}
+/** New friendly starter kits ship with retention; existing explicit saved kits are unchanged. */
+export function issueStarterWeapon(id:string):IssuedWeapon{
+ const issued=issueWeaponPreset(starterWeaponPreset(id));
+ return {...issued,weaponConfiguration:setWeaponAttachment(issued.weaponConfiguration,'sling','sling-two-point')};
 }
 /** Catalog configuration authority at preparation/save boundaries.
  * Compatibility categories are input only; never persist a missing build

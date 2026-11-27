@@ -1,0 +1,2 @@
+# WR12 — Operator Lab
+Poses workspace exposes sling type, retention position, deterministic transition slider, repeating stow/return, and measured socket diagnostics. Existing camera/animation/timeline/kit controls are reused. Preview edits do not modify saved builds. Automatic mode retains ordinary interaction animations. Actual browser inspection and detailed clearance overlays remain outstanding.

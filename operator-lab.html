@@ -314,6 +314,17 @@ main[data-lab-active="poses"] #weapon{display:none}
   <button type="button" id="poseFrameBack">−1 FRAME</button>
   <button type="button" id="poseFrameNext">+1 FRAME</button>
  </div>
+ <details id="retentionLab"><summary>WEAPON RETENTION / SLINGS</summary>
+ <div class="pose-select-grid">
+  <label>SLING<select id="retentionSling"><option value="build">AS CONFIGURED</option><option value="sling-none">NONE</option><option value="sling-single-point">SINGLE POINT</option><option value="sling-two-point">TWO POINT</option><option value="sling-traditional">TRADITIONAL</option></select></label>
+  <label>POSITION<select id="retentionMode"><option value="auto">FOLLOW ANIMATION</option><option value="held-one">ONE HAND</option><option value="front-slung">FRONT SLUNG</option><option value="side-slung">SIDE SLUNG</option><option value="back-slung">BACK SLUNG</option></select></label>
+  <label>TRANSITION<input id="retentionWeight" type="range" min="0" max="1" step=".01" value="1"/></label>
+  <label><input id="retentionCycle" type="checkbox"/> LOOP STOW / RETURN</label>
+ </div>
+ <div class="pose-quick-controls"><button type="button" id="retentionSockets">SOCKET DIAGNOSTICS</button></div>
+ <output id="retentionStatus" aria-live="polite"></output>
+ <small>Preview only · Use idle, walk or crouch to audition positions; action tracks retain their own hand contacts.</small>
+ </details>
  <small id="poseSavedWeaponHint" aria-live="polite">Saved Arsenal builds preview exact parts and accessories without equipping them.</small>
  <small id="poseWorkspaceHint">Every primary and pistol model · Real operator poses · Play, scrub, orbit or step through frames.</small>
  <small id="poseSidearmHint" aria-live="polite" hidden></small>

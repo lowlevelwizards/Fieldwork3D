@@ -14,7 +14,7 @@ export const ATTACHMENT_PRICES:Readonly<Record<string,number>>={
  'foregrip-none':0,'foregrip-handstop':45,'foregrip-vertical':75,
  'stock-standard':0,'stock-compact':90,'stock-extended':110,
  'light-none':0,'light-compact':135,
- 'sling-none':0,'sling-two-point':55
+ 'sling-none':0,'sling-two-point':55,'sling-single-point':45,'sling-traditional':35
 };
 export const attachmentPrice=(id:string):number=>
  WEAPON_ATTACHMENTS[id]?ATTACHMENT_PRICES[id]??0:-1;

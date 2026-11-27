@@ -189,6 +189,10 @@ export type TeamActor=Operator & {
   secondarySwitch:import('./secondary-switching.ts').SecondarySwitchState;
   /** One authored, fixed-step pistol reload; rifle magazine fields are untouched. */
   secondaryReload:import('./secondary-timed-reload.ts').SecondaryTimedReload|null;
+  retentionTransition?:import('./breach-weapon-retention-transition.ts').RetentionTransitionState;
+  groundedPrimaryId?:number|null;
+  retentionHolstering?:boolean;
+  primaryPlacement?:{order:number;kind:'place'|'placed'|'retrieve';elapsed:number};
   medical:MedicalCondition;medicalSupplies:FieldMedicalSupplies;
   /** D15.7: real downing / irreversible fatality evidence. */
   downedAt?:number|null;deathAt?:number|null;
@@ -830,7 +834,7 @@ export function planSecureDroppedFirearm(s:Session,id:string,weaponId:number):bo
  const queued=addNode(s,id,'interact',from,{
    objectId:'weapon:'+item.id,interaction:'secure-firearm'
  });
- if(queued)notify(s,'SECURE FIREARM QUEUED — EXECUTES ON GO');
+ if(queued)notify(s,item.temporaryPlacement&&item.ownerId===a.id?'RETRIEVE PRIMARY QUEUED — EXECUTES ON GO':'SECURE FIREARM QUEUED — EXECUTES ON GO');
  return queued;
 }
 export function planMove(s:Session,id:string,p:Pt,strafe=false){
@@ -1506,6 +1510,7 @@ export function redoPlan(s:Session,id:string){
 /** The weapon, hand and world share one magazine identity.
  * Ammo moves only at timed detach/insert events, never on animation startup. */
 export function beginReload(s:Session,a:TeamActor):boolean{
+  if(a.groundedPrimaryId!=null||a.retentionHolstering||a.retentionTransition?.weight)return false;
   const w=WEAPONS[a.weapon];
   const capacity=liveMagazineCapacity(a.weapon,a.weaponConfiguration);
   if(a.health<=0||a.reload>0||a.reserve<=0||a.magazine>=capacity)return false;

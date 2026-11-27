@@ -1,0 +1,2 @@
+# WR11 — Body-region clearance
+Cache the configured silhouette and accessory bounds at mesh rebuild. Use transformed extents for conservative front/side/back/ground clearance, armor, rig, belt and pack margins. Prefer front when a right-side pistol holster occupies side retention. This is a coarse presentation envelope, not exact pouch, arm or world collision; individual visual tuning remains. Correct the WR10 test fixture to explicitly issue a starter configuration in a legacy session.

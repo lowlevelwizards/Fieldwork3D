@@ -1,3 +1,5 @@
+import {advanceGroundRecovery} from './breach-grounded-primary.ts';
+import {beginRetentionTick} from './breach-weapon-retention-live.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {fireCorrectionStopReason,cancelFireCorrection}
  from './breach-fire-recovery-policy.ts';
@@ -42,7 +44,9 @@ export function createOrderExecutor(port:OrderExecutionPort){
   profile?:((section:string,elapsedMs:number)=>void)):void{
   // Player-authored positions are sacred. Traffic steering only moves the
   // actor who requested movement, never a stationary friend or held stack.
+  beginRetentionTick(a,dt);
   const n=a.plan[0];
+  if(advanceGroundRecovery(s,a,dt))return;
   a.motorPause=null;
   // An airborne crossing must reach a verified landing before combat pause,
   // waypoint completion, or fresh orders can resume.

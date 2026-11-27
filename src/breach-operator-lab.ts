@@ -57,7 +57,8 @@ import {sampleLabPistolFrame,isLabPistolTrack,LAB_PISTOL_PREVIEW_SCALE}
 import {labPistolContacts} from './operator-lab-pistol-contacts.ts';
 import {presentLabBerettaPreview,clearLabBerettaPreview}
  from './operator-lab-beretta-preview.ts';
-import {initialWeaponConfiguration,selectWeaponFamilyPreset}
+import {labRetentionSample} from './operator-lab-retention.ts';
+import {initialWeaponConfiguration,selectWeaponFamilyPreset,setWeaponAttachment}
  from './equipment-weapon-assemblies.ts';
 import {loadArsenalBuildLibrary} from './arsenal/saved-builds.ts';
 import {arsenalRecipeToLegacy,readArsenalRecipe,type ArsenalRecipeV2}
@@ -804,6 +805,17 @@ const poseRigSelect=choose<HTMLSelectElement>('poseRig');
 const poseUniformSelect=choose<HTMLSelectElement>('poseUniform');
 const poseAnimationSelect=choose<HTMLSelectElement>('poseAnimation');
 const poseStrictContact=choose<HTMLInputElement>('poseStrictContact');
+const retentionSling=choose<HTMLSelectElement>('retentionSling');
+const retentionMode=choose<HTMLSelectElement>('retentionMode');
+const retentionWeight=choose<HTMLInputElement>('retentionWeight');
+const retentionCycle=choose<HTMLInputElement>('retentionCycle');
+const retentionStatus=choose<HTMLOutputElement>('retentionStatus');
+diagnostic.add(new Option('SLING SOCKETS / RETENTION','retention'));
+choose<HTMLButtonElement>('retentionSockets').addEventListener('click',()=>{
+ diagnostic.value=diagnostic.value==='retention'?'off':'retention';draw();
+});
+for(const control of [retentionSling,retentionMode,retentionWeight,retentionCycle])
+ control.addEventListener('input',()=>draw());
 poseStrictContact.addEventListener('change',()=>draw());
 poseWeaponSelect.add(new Option('No Weapon','none'));
 // Show every real Arsenal factory reference, including FAL, FNC and G36.
@@ -1782,6 +1794,23 @@ function showDiagnostics(){
       put(i+2,world.x,world.y,world.z);
     }
   }
+  if(layer==='retention'){
+    rig.root.updateMatrixWorld(true);
+    const sockets=rig.weaponBody.userData.retentionSockets;
+    if(!sockets||!rig.weapon.visible){
+      diagnosticText.textContent='NO VISIBLE PRIMARY SOCKETS';return;
+    }
+    const points=[sockets.rear,sockets.front,sockets.single];
+    points.forEach((point,i)=>{
+      if(!point)return;
+      world.set(point.x,point.y,point.z+.15);
+      rig!.weapon.localToWorld(world);
+      put(i,world.x,world.y,world.z);
+    });
+    diagnosticText.textContent='REAR / FRONT / SINGLE · '+sockets.supported.join(' / ').toUpperCase()+
+      '\nSTRAP SPANS '+rig.slingStraps.filter(x=>x.visible).map(x=>x.scale.y.toFixed(1)).join(' / ');
+    return;
+  }
   if(layer==='weapon'){
     rig.root.updateMatrixWorld(true);
     const g=weaponGrips(labWeapon());
@@ -1999,7 +2028,19 @@ function draw(){
   const savedWeaponConfig=track!=='reload-shotgun'&&poseArsenalRecipe&&
    poseArsenalRecipe.weapon===currentWeapon?
    arsenalRecipeToLegacy(poseArsenalRecipe):undefined;
-  const exactWeaponConfig=savedWeaponConfig??poseWeaponConfig;
+  const sourceWeaponConfig=savedWeaponConfig??poseWeaponConfig;
+  const exactWeaponConfig=!sidearm&&weapon.value!=='none'&&retentionSling.value!=='build'?
+   setWeaponAttachment(sourceWeaponConfig??initialWeaponConfiguration(currentWeapon),'sling',retentionSling.value):
+   sourceWeaponConfig;
+  const retentionSample=!sidearm&&weapon.value!=='none'&&!motion.down&&
+   !motion.reload&&motion.doorAt<0&&motion.throwAt<0&&!contactTrack?
+   labRetentionSample(retentionMode.value,exactWeaponConfig?.slots.sling,
+     Number(retentionWeight.value),retentionCycle.checked,clock):undefined;
+  retentionWeight.disabled=retentionCycle.checked||retentionMode.value==='auto';
+  const message=retentionMode.value==='auto'?'FOLLOW ANIMATION':
+   retentionSample?retentionSample.mode?.toUpperCase()+' · '+Math.round(retentionSample.weight*100)+'%':
+   'UNAVAILABLE · CHECK SLING / ANIMATION';
+  if(retentionStatus.textContent!==message)retentionStatus.textContent=message;
   const baseKit=syncPrimaryWeapon(labKit,currentWeapon);
   const sidearmModel=sidearm?isM9AppearanceId(sidearm)?
    'glock-g19-gen3':sidearm:null;
@@ -2033,6 +2074,7 @@ function draw(){
     injury:Math.max(motion.injury,Number(injury.value),
       track==='reload-wounded'?2:0),
     weapon:currentWeapon,weaponConfiguration:exactWeaponConfig,
+    retentionTransition:retentionSample,
     unarmedPreview:weapon.value==='none'&&track!=='reload-shotgun'&&!sidearm,
     reload:sidearm?0:motion.reload,reloadDuration:1.8,
     reloadMode:track==='reload-retention'?'retention':
@@ -2048,7 +2090,7 @@ function draw(){
     handlingIntent:preOpenTrack?'door':shoulderTrack?'stack':'hold',
     lastThrowAt:motion.throwAt,
     down:motion.down||Number(injury.value)===3,
-    surrender:false,aiming:pistolFrame?
+    surrender:false,aiming:retentionSample?false:pistolFrame?
      pistolFrame.aim>.2:motion.aim>.2,
     firing:!!pistolFrame&&pistolFrame.recoil>.01,turning:motion.turning,
     aimBlend:pistolFrame?.aim??motion.aim,

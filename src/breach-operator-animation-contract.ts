@@ -28,7 +28,16 @@ import type {CarryLocation,CarryPlacement} from './equipment-carry-placement.ts'
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 
+import type {RetentionTransitionState} from './breach-weapon-retention-transition.ts';
+import type {RetentionPoseMode} from './breach-weapon-retention-pose.ts';
+
 export type OperatorPose={
+  /** Explicit retention audition; live action migration is WR7–WR10. */
+  retentionPreview?:RetentionPoseMode;
+  /** Explicit fixed-step/replay sample; no renderer-owned timer. */
+  retentionTransition?:RetentionTransitionState;
+  /** Session owns the actual world primary, even while this actor uses a sidearm. */
+  primaryGrounded?:boolean;
   /** V3 whole-arm fitting; enabled by the live tactical renderer. */
   poseV3Preview?:boolean;
   /** Diagnostic-only: compare against the original strict contact budget. */

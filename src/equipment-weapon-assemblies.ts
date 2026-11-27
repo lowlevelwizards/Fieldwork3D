@@ -120,7 +120,11 @@ export const WEAPON_ATTACHMENTS:Readonly<Record<string,WeaponAttachment>>={
  'sling-none':{id:'sling-none',name:'No Sling',slot:'sling',compatible:ALL,
   massKg:0,massX:0,mountX:-12,mountY:0,mountZ:0},
  'sling-two-point':{id:'sling-two-point',name:'Two-Point Sling',slot:'sling',compatible:ALL,
-  massKg:.13,massX:-2,mountX:-12,mountY:0,mountZ:0}
+  massKg:.13,massX:-2,mountX:-12,mountY:0,mountZ:0},
+ 'sling-single-point':{id:'sling-single-point',name:'Single-Point Sling',slot:'sling',compatible:ALL,
+  massKg:.10,massX:-3,mountX:-5,mountY:0,mountZ:0},
+ 'sling-traditional':{id:'sling-traditional',name:'Traditional Two-Point Sling',slot:'sling',compatible:ALL,
+  massKg:.12,massX:-2,mountX:-12,mountY:0,mountZ:0}
 };
 void ids;
 export type PlatformGeometry={

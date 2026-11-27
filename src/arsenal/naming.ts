@@ -112,7 +112,8 @@ const PART_LABELS:Readonly<Record<string,string>>={
  'muzzle-suppressor':'Suppressor','foregrip-none':'None',
  'foregrip-handstop':'Handstop','foregrip-vertical':'Vertical',
  'light-none':'None','light-compact':'Compact Light',
- 'sling-none':'None','sling-two-point':'Two-Point'
+ 'sling-none':'None','sling-two-point':'Two-Point',
+ 'sling-single-point':'Single-Point','sling-traditional':'Traditional'
 };
 /** UI label is deliberately separate from full reference description. */
 export function arsenalPartName(part:WeaponFamilyPart|WeaponAttachment):string{
