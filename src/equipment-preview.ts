@@ -718,7 +718,7 @@ export class CampaignKitPreview{
   const groups=this.rig.visualKit.wardrobeGear;
   const worn:Partial<Record<LoadoutSlot,THREE.Object3D[]>>={
    armor:Object.values(groups.armor),rig:Object.values(groups.rig),
-   belt:Object.values(groups.belt),backpack:Object.values(groups.pack),
+   belt:Object.values(groups.belt),backpack:this.rig.visualKit.packPreview.active?[this.rig.visualKit.packPreview.active.root]:[],
    primary:[this.rig.weaponBody]
   };
   const fallback:Partial<Record<LoadoutSlot,[number,number,number]>>={
@@ -781,7 +781,7 @@ export class CampaignKitPreview{
    Object.values(groups).some(mesh=>ancestorOf(hit.object,mesh));
   let slot:LoadoutSlot;
   if(ancestorOf(hit.object,this.rig.weaponBody))slot='primary';
-  else if(match(worn.pack))slot='backpack';
+  else if(this.rig.visualKit.packPreview.active&&ancestorOf(hit.object,this.rig.visualKit.packPreview.active.root))slot='backpack';
   else if(match(worn.belt))slot='belt';
   else if(match(worn.rig))slot='rig';
   else if(match(worn.armor))slot='armor';
