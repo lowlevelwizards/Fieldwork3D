@@ -22,19 +22,20 @@ const tiles:readonly Tile[]=[
  {id:'medical',w:1,h:1,draw:p=>p(0,0)},
  {id:'comms-upper',w:10,h:5,draw:p=>{row(p,3,0,9);for(let y=1;y<=2;y++)for(let x=3;x<=6;x++)p(x,y,1);}},
  {id:'civilian-arch',w:1,h:1,draw:p=>p(0,0)},
- {id:'civilian-pocket',w:8,h:5,draw:p=>{row(p,3,0,7);p(3,1,1);p(4,1,1);}}
+ {id:'civilian-pocket',w:8,h:5,draw:p=>{row(p,3,0,7);p(3,1,1);p(4,1,1);}},
+ {id:'medical-mark',w:11,h:12,draw:p=>{for(let y=7;y<=10;y++)for(let x=3;x<=7;x++)p(x,y,2);for(let y=7;y<=10;y++)p(5,y,3);row(p,8,4,6,3);row(p,9,4,6,3);}}
 ];
-const atlasSize=64,cell=16;
+const atlasSize=128,cell=16,columns=atlasSize/cell;
 let shared:THREE.DataTexture|undefined;
 function atlas(){
  if(shared)return shared;
  const bytes=new Uint8Array(atlasSize*atlasSize*4);
  for(const [i,tile] of tiles.entries()){
-  const ox=(i%4)*cell,oy=Math.floor(i/4)*cell;
+  const ox=(i%columns)*cell,oy=Math.floor(i/columns)*cell;
   tile.draw((x,y,tone=0)=>{
    if(x<0||y<0||x>=tile.w||y>=tile.h)return;
    const k=((oy+y)*atlasSize+ox+x)*4;
-   const color=tone===1?[105,110,92]:[49,55,48];
+   const color=tone===3?[219,217,195]:tone===2?[71,76,65]:tone===1?[105,110,92]:[49,55,48];
    bytes.set([...color,255],k);
   });
  }
@@ -54,7 +55,7 @@ export function attachPackGraphics(root:THREE.Group,graphics:readonly PackGraphi
  for(const g of graphics){
   const i=tiles.findIndex(t=>t.id===g.tile);
   if(i<0)throw Error('Unknown backpack graphic '+g.tile);
-  const t=tiles[i],ox=(i%4)*cell,oy=Math.floor(i/4)*cell;
+  const t=tiles[i],ox=(i%columns)*cell,oy=Math.floor(i/columns)*cell;
   const [d,h,w]=g.size,[cx,cy,cz]=g.center;
   if(g.tile==='assault-y'){
    // A flat, mitered Y, sampled from the same solid atlas texel. The
@@ -139,7 +140,7 @@ export function attachPackGraphics(root:THREE.Group,graphics:readonly PackGraphi
    const shape=packRing(d,w,y,g.cut??{});
    const side=g.face==='left'?-1:g.face==='right'?1:0;
    for(const s of [-1,1]){
-    const x=side?(s<0?shape.rear:d*.5):shape.rear-.045;
+    const x=side?(s<0?shape.rear:d*.5):shape.rear-(g.tile==='medical-mark'?.075:.045);
     const z=side?side*(shape.half+.045):s*shape.half;
     pos.push(cx+x,cy+y*h,cz+z);
     // Half-texel inset prevents sampling an adjacent atlas cell.
