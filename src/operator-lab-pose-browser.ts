@@ -1,4 +1,5 @@
 /** Unified Operator Lab model and motion browser: visual-only selections. */
+import {wardrobeItem} from './operator-wardrobe-data.ts';
 import {canonicalPackEquipment} from './operator-backpack-catalog.ts';
 import {FAMILY_PRESETS,type WeaponFamilyPreset} from './equipment-weapon-families.ts';
 import {ARSENAL_PLATFORMS,ARSENAL_REFERENCES}
@@ -11,33 +12,33 @@ import {M9_APPEARANCE_REFERENCES,isM9AppearanceId}
  from './weapons/geometry/beretta-m9-silhouettes.ts';
 import type {SidearmPreviewId} from './weapons/geometry/sidearm-preview.ts';
 export const POSE_ARMOR_OPTIONS=[
- ['armor-bare','None'],['soft-slick','Concealable Soft Armor'],
- ['soft-vest','External Police / Tactical Vest'],['soft-flak','Traditional Fragmentation Vest'],
- ['plate-slick','Slick Plate Carrier'],['plate-jpc','Lightweight Plate Carrier'],
- ['plate-standard','Standard Plate Carrier'],['plate-heavy','Heavy Assault Plate Carrier'],
- ['plate-legacy','Full-Coverage Military Armor']
+ ['armor-bare',wardrobeItem('armorStyle','armor-bare')!.name],['soft-slick',wardrobeItem('armorStyle','soft-slick')!.name],
+ ['soft-vest',wardrobeItem('armorStyle','soft-vest')!.name],['soft-flak',wardrobeItem('armorStyle','soft-flak')!.name],
+ ['plate-slick',wardrobeItem('armorStyle','plate-slick')!.name],['plate-jpc',wardrobeItem('armorStyle','plate-jpc')!.name],
+ ['plate-standard',wardrobeItem('armorStyle','plate-standard')!.name],['plate-heavy',wardrobeItem('armorStyle','plate-heavy')!.name],
+ ['plate-legacy',wardrobeItem('armorStyle','plate-legacy')!.name]
 ] as const;
 export const POSE_RIG_OPTIONS=[
- ['no-rig','None'],['chest-placard','Triple Magazine Placard'],
- ['micro-rig','Micro Chest Rig'],['light-rig','Classic X-Harness Chest Rig'],
- ['chicom-rig','Classic Three-Cell Canvas Rig'],['bandolier','Minimal Bandolier'],
- ['full-chest','Full Bib / Patrol Rig'],['field-webbing','Field Webbing'],
- ['split-front','Split-Front Chest Rig'],['alice-lc2','US ALICE LC-2 Webbing'],
- ['m1956-lce','US M1956 Canvas Field Webbing'],['lbv','Load-Bearing Vest'],['sadf-webbing','Bush / SADF-Style Webbing']
+ ['no-rig',wardrobeItem('rigStyle','no-rig')!.name],['chest-placard',wardrobeItem('rigStyle','chest-placard')!.name],
+ ['micro-rig',wardrobeItem('rigStyle','micro-rig')!.name],['light-rig',wardrobeItem('rigStyle','light-rig')!.name],
+ ['chicom-rig',wardrobeItem('rigStyle','chicom-rig')!.name],['bandolier',wardrobeItem('rigStyle','bandolier')!.name],
+ ['full-chest',wardrobeItem('rigStyle','full-chest')!.name],['field-webbing',wardrobeItem('rigStyle','field-webbing')!.name],
+ ['split-front',wardrobeItem('rigStyle','split-front')!.name],['alice-lc2',wardrobeItem('rigStyle','alice-lc2')!.name],
+ ['m1956-lce',wardrobeItem('rigStyle','m1956-lce')!.name],['lbv',wardrobeItem('rigStyle','lbv')!.name],['sadf-webbing',wardrobeItem('rigStyle','sadf-webbing')!.name]
 ] as const;
 export const POSE_PACK_OPTIONS=[
- ['no-pack','None'],['hydration','Hydration Carrier'],['admin-pack','Assault Panel'],
- ['day-pack','Tactical Daypack'],['assault-pack','Assault Pack'],['civilian-pack','Civilian Backpack'],
- ['field-pack','ALICE Field Pack'],['rucksack','Expedition Rucksack'],['medic-pack','Medical Pack'],
- ['comms-pack','Communications Pack']
+ ['no-pack',wardrobeItem('packStyle','no-pack')!.name],['hydration',wardrobeItem('packStyle','hydration')!.name],['admin-pack',wardrobeItem('packStyle','admin-pack')!.name],
+ ['day-pack',wardrobeItem('packStyle','day-pack')!.name],['assault-pack',wardrobeItem('packStyle','assault-pack')!.name],['civilian-pack',wardrobeItem('packStyle','civilian-pack')!.name],
+ ['field-pack',wardrobeItem('packStyle','field-pack')!.name],['rucksack',wardrobeItem('packStyle','rucksack')!.name],['medic-pack',wardrobeItem('packStyle','medic-pack')!.name],
+ ['comms-pack',wardrobeItem('packStyle','comms-pack')!.name]
 ] as const;
 export function posePackEquipment(pack:string):string{
  return canonicalPackEquipment(pack)??'backpack-day';
 }
 export const POSE_UNIFORM_OPTIONS=[
- ['bdu-shirt','Classic Field Blouse'],['acu-shirt','Modern Utility Blouse'],
- ['combat-shirt','Combat Shirt'],['smock-jacket','Windproof Field Smock'],
- ['gorka-jacket','Mountain / Gorka Jacket']
+ ['bdu-shirt',wardrobeItem('top','bdu-shirt')!.name],['acu-shirt',wardrobeItem('top','acu-shirt')!.name],
+ ['combat-shirt',wardrobeItem('top','combat-shirt')!.name],['smock-jacket',wardrobeItem('top','smock-jacket')!.name],
+ ['gorka-jacket',wardrobeItem('top','gorka-jacket')!.name]
 ] as const;
 export function poseArmorEquipment(armor:string):
  'armor-none'|'armor-soft'|'armor-carrier'{
