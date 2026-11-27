@@ -241,7 +241,7 @@ export function equipRosterCarryGear(roster:RosterState,id:string,
  const quote=carryMode==='unified'?quoteUnifiedPreparation(member,{kind:'gear',slot,id:itemId}):quoteCarryGearChange(member.loadout,member.magazines,slot,itemId);
  if(!quote.ok)return roster;
  return {...roster,members:roster.members.map(m=>m.id===id?
-  {...m,loadout:quote.kit,magazines:quote.magazines,wardrobe:slot==='backpack'?setWardrobeStyle(m.wardrobe,'packStyle',issuedPackStyle(itemId)):m.wardrobe}:m)};
+  {...m,loadout:quote.kit,magazines:quote.magazines,wardrobe:slot==='backpack'?setWardrobeStyle(m.wardrobe??initialWardrobe(),'packStyle',issuedPackStyle(itemId)):m.wardrobe}:m)};
 }
 /** Restore the exact physical carry snapshot only if it is still current.
  * The caller may show an Undo button, but this owner has final authority.
