@@ -49,7 +49,7 @@ test('civilian pack palette uses existing wardrobe channel; legacy slots stay au
  const look=resolvedWardrobe(w,kit);
  assert.equal(look.packStyle,'civilian-pack');
  assert.ok(solidChoicesFor('pack',look).includes('navy'));
- assert.ok(!solidChoicesFor('pack',{...look,packStyle:'day-pack'}).includes('navy'));
+ assert.ok(!solidChoicesFor('pack',{...look,packStyle:'field-pack'}).includes('navy'));
  w=setWardrobeFabricSolid(w,'pack','navy',look);
  assert.equal(readWardrobe(w).fabricSolids.pack,'navy');
  assert.equal(kit.slots.backpack,'backpack-day');

@@ -77,8 +77,8 @@ export function buildAuthoredPack(style:AuthoredPackStyle,m:PackMaterials,option
    // Medium ALICE: a wide soft bag, overhanging lid, three honest pockets.
    vol('alice-main',m.fabric,[0,-.15,0],[8,14,15.5],{topWidth:.82,bottomWidth:.86,topDepth:.83,bottomDepth:.82});
    vol('alice-draped-lid',m.fabric,[-.7,4.8,0],[7.5,4.3,15.7],{topWidth:.87,bottomWidth:1,topDepth:.78},'alice-lid');
-   for(const z of [-4.9,0,4.9]){
-    vol('alice-cargo-pouch',m.fabric,[-3.9,-2.9,z],[3.45,6.4,4.4],{topWidth:1,bottomWidth:.93},'alice-pocket');
+   for(const z of [-5.2,0,5.2]){
+    vol('alice-cargo-pouch',m.fabric,[-4.65,-2.85,z],[4.85,6.7,4.05],{topWidth:.95,bottomWidth:.92,topDepth:.9},'alice-pocket');
    }
    // Simplified aluminum frame: only rails and lower crossbar extend outside bag.
    for(const z of [-5.4,5.4])box('alice-frame-rail',m.dark,[4.25,-.2,z],[.8,15.5,.8]);

@@ -1,3 +1,6 @@
+import {equipmentSlotForAppearance} from './operator-wardrobe-unified.ts';
+import {WARDROBE_ITEMS} from './operator-wardrobe-data.ts';
+import {packMountChoices,equipmentAssembly,type PackMountMode} from './operator-equipment-assembly.ts';
 /** Operator Studio: contextual appearance editing, not the animation workbench.
  * The hosting game owns authoritative roster/campaign writes. Standalone mode
  * uses the same validated roster persistence for previews and direct access.
@@ -541,15 +544,20 @@ const reviewingPacks=()=>activeCategory==='packStyle'&&!dispatchPilotMode&&!refe
 function packReviewLook(){
  const w=packReview??previewWardrobe();
  const p=member();if(!p)return w;
- const armor=resolvedWardrobe(w,p.loadout).armorStyle;
+ const armor=packReview?.styles.armorStyle??resolvedWardrobe(w,p.loadout).armorStyle;
  return w.styles.packStyle==='admin-pack'&&!supportsDirectPack(armor)?
   setWardrobeStyle(w,'armorStyle','plate-jpc'):w;
 }
 function packReviewKit(kit:EquipmentLoadout){
  if(!reviewingPacks())return kit;
  const w=packReviewLook(),id=legacyPackEquipment(w.styles.packStyle??'no-pack')??'backpack-none';
- const armor=w.styles.packStyle==='admin-pack'&&!supportsDirectPack(resolvedWardrobe(w,kit).armorStyle)?'armor-carrier':kit.slots.armor;
- return {...kit,slots:{...kit.slots,backpack:id,armor}};
+ const slots={...kit.slots,backpack:id};
+ for(const slot of ['armorStyle','rigStyle','beltStyle'] as const){
+  const chosen=w.styles[slot];if(!chosen)continue;
+  const mapped=equipmentSlotForAppearance(slot,chosen);
+  if(mapped?.slot&&mapped.id)Object.assign(slots,{[mapped.slot]:mapped.id});
+ }
+ return {...kit,slots};
 }
 const displayedLook=()=>reviewingPacks()?packReviewLook():previewWardrobe();
 const say=(message:string)=>{status.textContent=message;};
@@ -906,6 +914,7 @@ function posePreview(){
  };
  poseOperator(rig,armedPose,0);
  canvas.dataset.authoredPack=rig.visualKit.packPreview.active?.style??'legacy';
+ canvas.dataset.packMount=rig.visualKit.packPreview.fit?.mode??'none';
  canvas.dataset.packReviewColor=(rig.colors.get(rig.packMaterial)??rig.packMaterial.color).getHexString();
  canvas.dataset.packReview=String(reviewingPacks());
  // H8 rendering diagnostics: prove the live rig, not just the selector,
@@ -1310,6 +1319,25 @@ function renderMaterials(){
   addSolidSwatches(group,solidChoicesFor('pack',outfit),w.fabricSolids?.pack??null,id=>update(setWardrobeFabricSolid(w,'pack',id,outfit)));
   const patterns=fabricCamoChoices('pack',outfit);
   if(patterns.length)addCamoSwatches(group,patterns,w.fabricCamo?.pack??null,id=>update(setWardrobeFabricCamo(w,'pack',id,outfit)),'pack-art');
+  const assemblyGroup=row('PREVIEW EQUIPMENT','Temporary armor, chest rig and belt choices; nothing is issued or saved.');
+  for(const [slot,label] of [['armorStyle','Armor'],['rigStyle','Chest rig'],['beltStyle','Belt']] as const){
+   const labelNode=document.createElement('label');labelNode.textContent=label;assemblyGroup.append(labelNode);
+   const select=document.createElement('select');select.dataset.packReviewSlot=slot;
+   for(const item of WARDROBE_ITEMS.filter(i=>i.slot===slot)){
+    const option=document.createElement('option');option.value=item.id;option.textContent=item.name;select.append(option);
+   }
+   select.value=outfit[slot];select.disabled=readOnly;
+   select.addEventListener('change',()=>update(setWardrobeStyle(w,slot,select.value)));assemblyGroup.append(select);
+  }
+  const mounting=row('PACK MOUNTING','Compatible modular configurations only; preview does not issue gear.');
+  const modes=packMountChoices(outfit.packStyle,outfit.armorStyle,outfit.rigStyle);
+  const resolved=equipmentAssembly(outfit.packStyle,outfit.armorStyle,outfit.rigStyle,w.packMount);
+  const labels:Record<PackMountMode,string>={auto:'AUTO',independent:'INDEPENDENT',direct:'DIRECT TO ARMOR',shared:'SHARED RIG',adapter:'ARMOR ADAPTER'};
+  for(const mode of ['auto',...modes] as PackMountMode[]){
+   const button=makeButton(labels[mode],(w.packMount??'auto')===mode,()=>update({...w,packMount:mode}));
+   button.dataset.packMount=mode;mounting.append(button);
+  }
+  const note=document.createElement('small');note.textContent='CURRENT: '+labels[resolved.mode];mounting.append(note);
   applyStudioStep();return;
  }
  const w=current(),outfit=resolvedWardrobe(w,p.loadout);

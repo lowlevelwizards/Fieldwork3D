@@ -209,7 +209,7 @@ const shoulderHarness=(g:THREE.Group,m:THREE.Material,spread=4.8)=>{
 export type FittedRigFrame={
  front:{x:number};back:{x:number};sideRight:{z:number};
  shoulderRight:{z:number};shoulderY:number;rigShiftX:number;
- sideContact?:number;mode?:'carrier-placard'|'external-harness';
+ sideContact?:number;mode?:'carrier-placard'|'external-harness'|'shared-pack';
 };
 /** Explicit RIGHT-HAND local anchors on real authored front rig geometry.
  * Mirroring sign produces the matching left-hand point. These ends
@@ -346,7 +346,16 @@ export function updateFittedRigHarness(
   }
  };
 
- if((rig==='chest-placard'||rig==='micro-rig')&&
+ if(frame.mode==='shared-pack'){
+  // Modular chest panel clips to the pack suspension; no second rear yoke.
+  const anchors:Record<string,readonly [number,number,number]>={'micro-rig':[7.90,-.84,2.85],'chest-placard':[8.14,.35,3.30],'split-front':[8.12,1.01,4.75],'full-chest':[8.39,2.62,4.65]};
+  const [x,y,z]=anchors[rig]??anchors['chest-placard'];
+  for(const sign of [-1,1]){
+   line([[x,y,sign*z],[fx+.28,2.2,sign*Math.min(5.6,Math.max(3.5,sh)+.35)]],.9,.38,'front');
+   const anchor=RIG_LOWER_FRONT_ANCHORS[rig];
+   if(anchor)line([[anchor[0],anchor[1],sign*anchor[2]],[fx+.1,-3.2,sign*5.6]],.85,.38,'front');
+  }
+ }else if((rig==='chest-placard'||rig==='micro-rig')&&
     frame.mode==='carrier-placard'){
   // Modern removable chassis: short visible carrier attachment tabs,
   // absolutely no stand-alone shoulder/back harness on valid receivers.

@@ -23,9 +23,9 @@ export type EquipmentExterior=Readonly<{
  slingShoulder:(sign:-1|1,width:number)=>SlingShoulderLane;
 }>;
 const cache=new Map<string,EquipmentExterior>();
-export function equipmentExterior(armor:string,rig:string,top:string):EquipmentExterior{
+export function equipmentExterior(armor:string,rig:string,top:string,sharedRig=false):EquipmentExterior{
  const env=poseClearanceEnvelope(armor,rig,top);
- const key=env.armor+'|'+env.rig+'|'+top;
+ const key=env.armor+'|'+env.rig+'|'+top+'|'+sharedRig;
  const hit=cache.get(key);if(hit)return hit;
  const a=env.armor,r=env.rig;
  const fit=fittedArmorSurfaces(a,top,ARMOR_PROFILES[a]);
@@ -66,7 +66,7 @@ export function equipmentExterior(armor:string,rig:string,top:string):EquipmentE
  const shoulder=(sign:-1|1):readonly [number,number,number]=>{
   const bare=garmentContactAnchor(top,5.2);
   return [0,Math.max(bare.topY,frame.shoulderY)+
-    (visible?spec.strapThickness*.5:0)+(frame.mode==='external-harness'&&r!=='no-rig'?.32:0),
+    (visible?spec.strapThickness*.5:0)+(!sharedRig&&frame.mode==='external-harness'&&r!=='no-rig'?.32:0),
     sign*frame.shoulderRight.z];
  };
  // Only the modeled skeletal front branch has an authored opening.

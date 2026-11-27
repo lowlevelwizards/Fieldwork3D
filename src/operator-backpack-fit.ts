@@ -1,3 +1,4 @@
+import {equipmentAssembly,rearCarrierMount,type PackMountMode} from './operator-equipment-assembly.ts';
 /** BP3 — staged attachment architecture for bespoke pack art.
  * Geometry is created on kit change only; pose output keeps the existing
  * animated pack parent. Fit is presentation, never a navigation collider.
@@ -13,7 +14,7 @@ export type PackMountSpec=Readonly<{
 }>;
 export type HarnessSpan=Readonly<{a:PackPoint;b:PackPoint;normal:PackPoint;width:number;thickness:number}>;
 export type PackFit=Readonly<{
- style:PackStyle;compatible:boolean;reason?:string;
+ style:PackStyle;compatible:boolean;reason?:string;mode?:PackMountMode;
  /** Static body art offset relative to the existing animated parent. */
  offset:PackPoint;center:PackPoint;
  upperSeats:readonly PackPoint[];lowerSeats:readonly PackPoint[];
@@ -23,7 +24,7 @@ export type PackFit=Readonly<{
 /** Provisional explicit direct-mount whitelist, subject to BP4 carrier art.
  * Bare clothing, concealed/soft armor and legacy vests cannot mount a panel. */
 export function supportsDirectPack(armor:string){
- return armor==='plate-jpc'||armor==='plate-standard';
+ return rearCarrierMount(armor);
 }
 export function defaultPackMount(style:PackStyle):PackMountSpec{
  const size=PACK_PROFILES[style].size;
@@ -33,13 +34,14 @@ export function defaultPackMount(style:PackStyle):PackMountSpec{
 }
 const point=(x:number,y:number,z:number):PackPoint=>[x,y,z];
 export function fitPack(style:PackStyle,armor:string,rig:string,top:string,
- spec:PackMountSpec=defaultPackMount(style)):PackFit{
+ spec:PackMountSpec=defaultPackMount(style),requested:PackMountMode='auto',belt='no-belt'):PackFit{
  const profile=PACK_PROFILES[style];
- const empty={style,offset:point(0,0,0),center:PACK_PIVOT,upperSeats:[],lowerSeats:[],spans:[],buckles:[]};
+ const assembly=equipmentAssembly(style,armor,rig,requested);
+ const empty={style,mode:assembly.mode,offset:point(0,0,0),center:PACK_PIVOT,upperSeats:[],lowerSeats:[],spans:[],buckles:[]};
  if(profile.harness==='none')return {...empty,compatible:true};
- if(profile.harness==='direct'&&!supportsDirectPack(armor))
+ if(!assembly.compatible)
   return {...empty,compatible:false,reason:'COMPATIBLE REAR CARRIER MOUNT REQUIRED'};
- const fit=equipmentExterior(armor,rig,top);
+ const fit=equipmentExterior(armor,rig,top,assembly.sharedRig);
  const [,h,w]=spec.size;
  const ys=[spec.centerY-h*.35,spec.centerY,spec.centerY+h*.35];
  const zs=[0,-w*.32,w*.32];
@@ -53,14 +55,14 @@ export function fitPack(style:PackStyle,armor:string,rig:string,top:string,
   const upper=point(cx+spec.bodyFaceX,spec.centerY+spec.upperY,z);
   const lower=point(cx+spec.bodyFaceX,spec.centerY+spec.lowerY,z);
   upperSeats.push(upper);lowerSeats.push(lower);
-  if(profile.harness==='direct')continue;
+  if(assembly.direct)continue;
   const padded=profile.harness!=='light';
   const load=profile.harness==='load-bearing';
   const width=load?1.8:padded?PACK_DETAIL.paddedStrap:PACK_DETAIL.lightStrap,thickness=load?.44:padded?.32:.18;
   const shoulder=fit.shoulder(sign);
-  const crownZ=sign*Math.min(Math.abs(shoulder[2]),Math.max(Math.abs(z),3.5));
+  const crownZ=sign*Math.min(5.15,Math.max(Math.abs(z),Math.abs(shoulder[2])+(assembly.externalRig?.65:0)));
   const crownY=shoulder[1]+thickness*.5+.08;
-  const frontY=2.2,frontZ=sign*Math.min(5.2,Math.abs(crownZ)+.45);
+  const frontY=2.2,frontZ=sign*Math.min(5.6,Math.abs(crownZ)+.35);
   const front=point(fit.front(frontY,frontZ)+thickness*.5+.15,frontY,frontZ);
   const buckleY=-1.65,buckleZ=sign*5.45;
   const buckle=point(fit.front(buckleY,buckleZ)+thickness*.5+.15,buckleY,buckleZ);
@@ -72,8 +74,20 @@ export function fitPack(style:PackStyle,armor:string,rig:string,top:string,
    if(Math.hypot(...a.map((v,i)=>v-b[i]))>.001)spans.push({a,b,normal,width:wide,thickness});
   };
   add(upper,rearCrown,point(-1,1,0));
-  add(rearCrown,frontCrown,point(0,1,0));
+  if(!assembly.adapter)add(rearCrown,frontCrown,point(0,1,0));
+  if(assembly.adapter){
+   buckles.push(rearCrown);
+   const seat=point(fit.back(-2.8,z)-.18,-2.8,z);
+   add(seat,lower,point(-1,0,0),width*.7);continue;
+  }
   add(frontCrown,front,point(1,1,0));
+  if(assembly.sharedRig){
+   buckles.push(front);
+   // Lower stabilizer reaches the rig wing; the pack remains the rear support.
+   const wing=point(fit.front(-3.2,sign*5.6)+.12,-3.2,sign*5.6);
+   add(wing,flank,point(1,0,sign),width*.7);
+   add(flank,lower,point(-1,0,sign),width*.65);continue;
+  }
   add(front,buckle,point(1,0,0));
   add(buckle,flank,point(1,0,sign),width*.7);
   add(flank,lower,point(-1,0,sign),width*.65);
@@ -83,7 +97,7 @@ export function fitPack(style:PackStyle,armor:string,rig:string,top:string,
  let waistBuckle:PackPoint|undefined;
  // Comms uses a structured shoulder harness but not an expedition hip belt.
  if(style==='field-pack'||style==='rucksack'){
-  const y=-6.6,thickness=.52,width=style==='rucksack'?2.1:1.65;
+  const y=belt==='no-belt'?-6.6:-5.15,thickness=.52,width=style==='rucksack'?2.1:1.65;
   const frontX=fit.front(y,0)+.35;
   waistBuckle=point(frontX+.2,y,0);
   for(const sign of [-1,1] as const){
@@ -97,7 +111,7 @@ export function fitPack(style:PackStyle,armor:string,rig:string,top:string,
     {a:front,b:end,normal:point(1,0,0),width:1.15,thickness:.3});
   }
  }
- return {style,compatible:true,center,offset,upperSeats,lowerSeats,spans,buckles,waistSpans,waistBuckle};
+ return {style,mode:assembly.mode,compatible:true,center,offset,upperSeats,lowerSeats,spans,buckles,waistSpans,waistBuckle};
 }
 /** Chest-local static harness. The active pack shell lives below the
  * independently animated pack parent; only the bag-side seats move with it. */
