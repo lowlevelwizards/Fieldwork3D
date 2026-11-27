@@ -1,8 +1,7 @@
 /** BP10: appearance-only attachment policy. No item or protection changes.
- * Optional modular variants are explicit choices, not assumptions about every pack.
+ * Modular attachment is automatically resolved for every supported combination.
  */
 export type PackMountMode='auto'|'independent'|'direct'|'shared'|'adapter';
-export const PACK_MOUNT_MODES=['auto','independent','direct','shared','adapter'] as const;
 export const SHARED_RIGS=new Set(['micro-rig','chest-placard','split-front','full-chest']);
 export const DIRECT_PACKS=new Set(['hydration','assault-panel','day-pack','assault-pack','medic-pack','comms-pack']);
 export function rearCarrierMount(armor:string){return armor==='plate-jpc'||armor==='plate-standard';}
