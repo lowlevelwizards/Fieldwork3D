@@ -1,0 +1,6 @@
+# WC2.3b — fixed-stock artwork studies
+User rejected the previous fixed-stock differentiation. Reopen WC2.3 before AK/RPK. Pinned baseline: run 45939131526, artifact 15171838558, revision 8f6dd4ae7211b39a356826cfa2da615d1da464b2.
+
+Art-only candidates, intentionally more distinct in monochrome: early G3 wood has fuller organic mass and broad faceted transitions; G3A3 has planar industrial geometry and a clearer flat belly; HK33 has a leaner, narrower, restrained contour; MP5A2/SD2 share a squat, broader silhouette. Keep existing contact landmarks, saved IDs, pads, part ownership, materials and object count. No functional mechanism, real-world dimensions or gameplay changes. Decisions follow the prior reference assessment, not new exact-reference verification.
+
+Workflow creates five multi-view before/after sheets and cross-family shared-scale side/fitted monochrome/top/quarter plate. Draw-call parity checked against pinned baseline; regression tests check independent shell geometry and exact shared MP5 furniture. All acceptance pending: inspect actual renders at native sizes and operator context, revise if still insufficient, verify existing regression checks. Live mission, exact reference verification and unrelated R6.1 integration issue remain open. Do not merge/deploy.

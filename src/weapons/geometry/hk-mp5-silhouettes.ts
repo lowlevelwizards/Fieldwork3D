@@ -84,11 +84,12 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
   // A2 and SD2 share the extended retractable stock's shoulder landmark.
   // One heavy solid polymer shell; no added screws, vents or buttstock rails.
   const rear=-13.05,start=rear+.43;
+  // WC2.3b: compact, broad rear volume with a short graphic transition.
   const fixed=p('stock',[
-   [start,1.07],[-10.95,1.38],[-9.65,1.15],
-   [-6.08,.80],[-6.01,-1.35],[-8.44,-1.87],
-   [-10.08,-2.77],[start,-2.68]
-  ],3.18,dark);
+   [start,1.07],[-11.38,1.34],[-9.05,1.34],[-7.66,.80],
+   [-6.08,.80],[-6.01,-1.35],[-7.44,-1.65],[-8.28,-2.55],
+   [-9.32,-2.90],[-12.05,-2.90],[start,-2.68]
+  ],3.32,dark);
   fixed.userData.hkMP5FixedStock=true;
   const pad=b('stock',rear+.27,-.80,0,.54,3.99,3.54,dark);
   pad.userData.hkMP5FixedButtpad=true;

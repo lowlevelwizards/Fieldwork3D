@@ -72,15 +72,18 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   addHKRetractableStock(root,parts.stock,rear,steel,dark);
  }else{
  const stockStart=rear+.46;
+ // WC2.3b: distinct sculptural masses, rather than recolored wedges.
+ // Early wood: full rounded gesture expressed in a few broad planar breaks.
+ // Polymer: long graphic roof, angular shoulder and confident flat belly.
  p('stock',early?[
-  [stockStart,1.22],[-11.75,1.38],[-10.24,1.04],
-  [-6.25,.67],[-6.18,-1.46],[-8.65,-1.92],
-  [-10.60,-2.87],[-13.76,-3.29],[stockStart,-2.87]
+  [stockStart,1.22],[-13.65,1.46],[-11.90,1.56],[-10.18,1.19],
+  [-8.65,.75],[-6.25,.67],[-6.18,-1.46],[-8.42,-1.84],
+  [-10.10,-2.78],[-12.30,-3.57],[-13.89,-3.34],[stockStart,-2.87]
  ]:[
-  [stockStart,1.12],[-11.65,1.32],[-10.40,1.21],
-  [-6.23,.69],[-6.15,-1.44],[-8.30,-2.17],
-  [-10.15,-3.04],[-14.73,-3.04],[stockStart,-2.85]
- ],3.12,early?'wood':'olive');
+  [stockStart,1.12],[-10.05,1.12],[-8.05,.69],[-6.23,.69],
+  [-6.15,-1.44],[-7.78,-1.44],[-10.06,-3.10],
+  [-14.42,-3.10],[stockStart,-2.85]
+ ],early?3.28:3.12,early?'wood':'olive');
  // One deliberately thick miniature buttplate: the visible rear remains
  // at the ORIGINAL rear landmark. Its inner end overlaps the stock .10,
  // and the side surfaces stand .19 clear of the stock on either side.

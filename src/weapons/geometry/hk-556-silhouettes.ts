@@ -52,9 +52,10 @@ export function addHK556Family(root:THREE.Group,build:WeaponFamilyBuild,
   addHKRetractableStock(root,parts.stock,-14.90,steel,dark);
  }else{
   const rear=-13.88,start=rear+.44;
-  p('stock',[[start,1.16],[-11.80,1.10],[-9.46,.82],[-6.12,.75],
-   [-6.12,-1.42],[-8.78,-1.83],[-11.48,-2.46],[-13.36,-2.95],
-   [start,-2.75]],2.96,
+  // WC2.3b: deliberately lean, restrained, long diagonal gesture.
+  p('stock',[[start,1.16],[-11.97,1.03],[-9.80,.75],[-6.12,.75],
+   [-6.12,-1.42],[-8.55,-1.58],[-10.32,-1.96],[-12.80,-2.72],
+   [start,-2.75]],2.72,
    parts.stock==='hk33-fixed-stock-black'?dark:HK_OLIVE_POLYMER);
   const pad=b('stock',rear+.27,-.78,0,.54,4.26,3.34,dark);
   pad.userData.hkButtpad=true;

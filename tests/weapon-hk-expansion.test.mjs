@@ -140,3 +140,27 @@ test('factory muzzle is excluded when an accessory owns the tip',()=>{
   clearWeaponSilhouette(group);clearWeaponSilhouette(other);
  }
 });
+
+test('WC2.3b: fixed furniture has separate art silhouettes and retained landmarks',()=>{
+ const names=['hk-g3','hk-g3a3','hk-hk33a2','hk-mp5a2','hk-mp5sd2'];
+ const shapes=[];
+ for(const id of names){
+  const {config,group}=create(id);
+  try{
+   const stock=group.children.filter(x=>x.name.startsWith('family-stock-'));
+   assert.equal(stock.length,2,id+' one shell and one pad');
+   const shell=stock.find(x=>x.geometry.type==='ExtrudeGeometry');
+   assert.ok(shell,id+' solid authored shell');
+   const bounds=new THREE.Box3().setFromObject(shell);
+   assert.ok(Math.abs(partVisualBounds(group,'stock').min.x-resolveWeaponAssembly(config).stockX)<.001,id+' rear landmark');
+   shapes.push({positions:Array.from(shell.geometry.getAttribute('position').array),
+    depth:bounds.max.z-bounds.min.z});
+  }finally{clearWeaponSilhouette(group)}
+ }
+ for(let i=0;i<4;i++)for(let j=i+1;j<4;j++)
+  assert.notDeepEqual(shapes[i].positions,shapes[j].positions,'independent art profiles');
+ assert.ok(shapes[0].depth>shapes[1].depth,'wood fuller than polymer');
+ assert.ok(shapes[1].depth>shapes[2].depth,'HK33 restrained visual mass');
+ assert.ok(shapes[3].depth>shapes[2].depth,'MP5 compact broad mass');
+ assert.deepEqual(shapes[3],shapes[4],'A2 and SD2 share fixed furniture exactly');
+});
