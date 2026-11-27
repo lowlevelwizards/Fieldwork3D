@@ -14,7 +14,7 @@ export const ATTACHMENT_FIXTURES={
  field:{style:'padded-belt',items:[{id:'utility-pouch',region:'left-hip',variant:'expanded'},{id:'dump-pouch',region:'right-hip'},{id:'primary-mag-pouch',region:'front-left'}]}
 } satisfies Record<string,{style:BeltStyle;items:FixtureItem[]}>;
 export const ATTACHMENT_FIXTURE_IDS=Object.keys(ATTACHMENT_FIXTURES) as (keyof typeof ATTACHMENT_FIXTURES)[];
-export function attachmentFixture(choice:string,variant:AttachmentVariant='standard'){
+export function attachmentFixture(choice:string,variant:AttachmentVariant='standard'):{style:BeltStyle;items:FixtureItem[]}|null{
  if(Object.prototype.hasOwnProperty.call(ATTACHMENT_FIXTURES,choice))
   return ATTACHMENT_FIXTURES[choice as keyof typeof ATTACHMENT_FIXTURES];
  if(validAttachmentId(choice))return {style:'padded-belt' as BeltStyle,items:[{id:choice,region:'right-hip' as BeltRegion,variant}]};
