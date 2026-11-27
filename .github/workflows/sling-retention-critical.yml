@@ -1,7 +1,7 @@
 name: SR sling refinement critical
 on:
   push:
-    branches: [feature/sr-sling-refinement, feature/sr-sling-contact-polish, feature/sr-simple-sling, feature/sr-authored-sockets, feature/sr-pack-motion]
+    branches: [feature/sr-sling-refinement, feature/sr-sling-contact-polish, feature/sr-simple-sling, feature/sr-authored-sockets, feature/sr-pack-motion, feature/sr-motion-cadence]
   workflow_dispatch:
 concurrency:
   group: sr-critical-${{ github.ref }}

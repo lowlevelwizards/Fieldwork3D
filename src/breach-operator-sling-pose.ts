@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import type {OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import type {OperatorPoseScratch} from './breach-operator-pose-scratch.ts';
+import {retentionGaitPhase} from './operator-retention-cadence.ts';
 import {readSlingKind,type SlingKind} from './breach-weapon-retention.ts';
 import {equipmentExterior,type EquipmentExterior} from './operator-equipment-exterior.ts';
 import {resolvedWardrobe} from './operator-wardrobe-data.ts';
@@ -27,7 +28,7 @@ function prepareRibbon(mesh:THREE.Mesh,p:SlingPoseSource,rear:THREE.Vector3,
  if(!route){route={path:createSlingRoute(),alternate:createSlingRoute(),contact:createSlingContactRoute()};routes.set(mesh,route);}
  routeSlingTransition(route.path,route.alternate,rear,front,fit,retention,ribbonWidth(p),pack,weight,
   slingArtProfile(p.weaponConfiguration?.slots.sling));
- const slack=.12+Math.min(1,Math.max(0,physicalSpeed)/65)*(.11+.10*Math.sin(p.stride*Math.PI*2));
+ const slack=.12+Math.min(1,Math.max(0,physicalSpeed)/65)*(.11+.10*Math.sin(retentionGaitPhase(p.stride)));
  fitSlingContactRoute(route.contact,route.path,fit,ribbonWidth(p),pack,slack);
 }
 function ribbonTransform(t:SlingNode){
@@ -48,7 +49,7 @@ const fallback:WeaponRetentionSockets={rear:{x:-9,y:-.4,z:2.15},front:{x:10,y:-.
 function positionSpans(straps:readonly SlingNode[],p:SlingPoseSource,
  mode:SlingKind,physicalSpeed:number,vertical:THREE.Vector3,delta:THREE.Vector3,
  rear:THREE.Vector3,front:THREE.Vector3,mid1:THREE.Vector3,mid2:THREE.Vector3,retention?:RetentionPoseMode){
- const sway=Math.sin(p.stride*Math.PI*2)*Math.min(1,Math.max(0,physicalSpeed)/80)*.4;
+ const sway=Math.sin(retentionGaitPhase(p.stride))*Math.min(1,Math.max(0,physicalSpeed)/80)*.4;
  // Chest +X forward, +Z right. Two spans rise from the gun to opposite
  // shoulder/side regions and a broad shoulder bridge joins them.
  if(mode==='single'){
