@@ -1,4 +1,6 @@
 import test from 'node:test';
+import {referencePackStudies,referenceSidearmStudyAvailable,resolveReferencePreview} from '../src/faction-reference-preview-options.ts';
+import {canonicalPackEquipment} from '../src/operator-backpack-catalog.ts';
 import assert from 'node:assert/strict';
 import {FACTION_REFERENCES,factionReference} from '../src/faction-reference-catalog.ts';
 import {auditFactionReferences} from '../src/faction-reference-audit.ts';
@@ -296,4 +298,32 @@ test('reference look never carries an incompatible shoe color or waist finish on
  assert.ok(civilian.substituted.includes('footwear'));
  assert.equal(civilian.wardrobe.footwearColor,undefined);
  assert.equal(JSON.stringify(kit),before);
+});
+
+test('optional pack studies resolve on current assets without altering dated defaults',()=>{
+ for(const ref of FACTION_REFERENCES){
+  const baseline=resolveFactionReference(ref);
+  const snapshot=JSON.stringify(baseline);
+  for(const study of referencePackStudies(ref.id)){
+   const preview=resolveReferencePreview(ref.id,undefined,study.id);
+   assert.equal(preview.kit.slots.backpack,canonicalPackEquipment(study.style),ref.id+' '+study.id);
+   assert.equal(preview.wardrobe.styles.packStyle,study.style);
+   assert.deepEqual(preview.technicalIssues,[],ref.id+' '+study.id);
+   assert.deepEqual(preview.incompatibleChannels,baseline.incompatibleChannels);
+  }
+  assert.equal(JSON.stringify(resolveFactionReference(ref)),snapshot);
+ }
+ assert.throws(()=>resolveReferencePreview('us-desert-1991',undefined,'medical'));
+});
+test('optional sidearm art stays unloaded and is never a historical or saved kit default',()=>{
+ for(const ref of FACTION_REFERENCES){
+  if(!referenceSidearmStudyAvailable(ref.id))continue;
+  const study=resolveReferencePreview(ref.id,undefined,undefined,true);
+  assert.equal(study.kit.secondary.weapon,'glock-g19-gen3');
+  assert.equal(study.kit.secondary.loadedRounds,0);
+  assert.equal(study.kit.secondary.loadedMagazineId,null);
+  assert.deepEqual(study.kit.secondary.spareMagazines,[]);
+  assert.equal(resolveFactionReference(ref).kit.secondary.weapon,null);
+ }
+ assert.throws(()=>resolveReferencePreview('us-desert-1991',undefined,undefined,true));
 });
