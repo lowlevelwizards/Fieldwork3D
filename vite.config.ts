@@ -18,6 +18,7 @@ export default defineConfig({
       operatorLab: 'operator-lab.html',
       poseWorkbench: 'pose-workbench.html',
       operatorStudio: 'operator-studio.html',
+      studioPreview: 'studio-preview.html',
       referencePlanning: 'reference-planning.html',
       mapLab: 'map-lab.html',
       enemyAiLab: 'enemy-ai-lab.html',
