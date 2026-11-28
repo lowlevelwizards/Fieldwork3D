@@ -145,6 +145,7 @@ export function openGlockWorkbench(start:GlockRecipe,context:GlockWorkbenchConte
  });
  cancelSave.addEventListener('click',()=>{editBar.hidden=true;});
  confirmSave.addEventListener('click',()=>{
+  if(surface.disposed)return;
   const created=createGlockSavedBuild(loadGlockLibrary(),working,nameInput.value);
   if(!created){status.textContent='Enter a name (saved-build limit: 48).';return;}
   if(!saveGlockLibrary(created.library)){
