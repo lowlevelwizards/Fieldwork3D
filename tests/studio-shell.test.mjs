@@ -42,3 +42,11 @@ test('failed mount and update can retry without retaining retired resources or c
  s.failUpdate(true);s.shell.openArsenal('secondary');assert.equal(s.counts.errors,2);assert.equal(s.counts.disposals,2);assert.equal(old.back(),false);
  s.failUpdate(false);s.button('Retry').click();s.shell.back();assert.equal(s.shell.route.category,'belt');s.shell.dispose();assert.equal(s.counts.disposals,4);
 });
+test('contextual direct entry mounts only the requested workspace and returns to requested category',()=>{
+ const s=setup();s.shell.dispose();const shell=mountStudioShell(s.host,{...s.options,entry:{workspace:'arsenal',slot:'secondary',returnCategory:'secondary'}});
+ assert.deepEqual(shell.route,{workspace:'arsenal',operatorId:'rook',slot:'secondary'});assert.equal(s.counts.mounts,2);
+ shell.back();assert.deepEqual(shell.route,{workspace:'operators',operatorId:'rook',category:'secondary'});shell.dispose();
+ const direct=mountStudioShell(s.host,{...s.options,entry:{workspace:'operators',category:'belt'}});assert.equal(direct.route.category,'belt');direct.dispose();
+ assert.throws(()=>mountStudioShell(s.host,{...s.options,context:{mode:'standalone',operatorId:null,returnTo:'menu'},entry:{workspace:'arsenal',slot:'primary'}}));
+ const standalone=mountStudioShell(s.host,{...s.options,context:{mode:'standalone',operatorId:null,returnTo:'menu'},entry:{workspace:'arsenal'}});assert.equal(standalone.route.workspace,'arsenal');standalone.dispose();
+});
