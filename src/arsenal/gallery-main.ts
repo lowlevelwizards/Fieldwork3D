@@ -63,6 +63,8 @@ const showCategory=(category:'primary'|'secondary')=>{
  layout.hidden=secondary;glockGallery.hidden=!secondary;
  primaryTab.setAttribute('aria-pressed',String(!secondary));
  secondaryTab.setAttribute('aria-pressed',String(secondary));
+ previewQueue.setPaused(secondary);
+ secondaryGallery.setPaused(!secondary);
  if(secondary)secondaryGallery.activate();
  else activatePrimary();
 };
