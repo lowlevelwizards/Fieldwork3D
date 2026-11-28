@@ -20,5 +20,6 @@ test('mobile Workbench groups primary and utility actions without hiding them',(
  assert.match(css,/\.arsenal-wb-utility-actions\{display:flex/);
  assert.match(source,/primaryActions\.append\(chooseModel,load,save,apply\)/);
  assert.match(source,/utilityActions\.append\(undo,redo,saveCopy,fit,side\)/);
- assert.match(source,/document\.body\.style\.overflow=priorBodyOverflow/);
+ assert.match(source,/attachWorkbenchSurface\(overlay,mount\)/);
+ assert.match(get('src/arsenal/workbench-surface.ts'),/if\(!mount\)doc\.body\.style\.overflow=oldOverflow/);
 });
