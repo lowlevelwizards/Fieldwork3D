@@ -1,0 +1,49 @@
+/* SU2.9 / SU4 initial layout. Scoped to Studio; no tactical or campaign resets. */
+body.fw-studio-preview-page{margin:0;min-height:100dvh;display:flex;flex-direction:column;background:var(--fw-bg);color:var(--fw-text);font:400 14px/1.3 var(--fw-font-action);color-scheme:dark}
+.fw-studio-preview-banner{display:flex;justify-content:space-between;gap:8px;padding:6px 12px;background:var(--fw-panel-deep);font-size:10px;color:var(--fw-text-muted)}
+#studioRoot{flex:1;min-height:0;display:flex}
+#studioStatus{margin:0;color:var(--fw-warning)}
+.fw-studio-shell,.fw-studio-shell *{box-sizing:border-box}
+.fw-studio-shell{display:flex;flex:1;min-width:0;min-height:0;flex-direction:column;gap:8px;padding:8px max(12px,env(safe-area-inset-right,0px)) max(8px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));height:calc(100dvh - 30px)}
+.fw-studio-shell [hidden]{display:none!important}
+.fw-studio-header{display:flex;align-items:center;gap:12px;flex:none;border-bottom:1px solid var(--fw-panel-border);padding-bottom:8px}
+.fw-studio-header h1{font:800 24px/1 var(--fw-font-display);margin:0;flex:1}
+.fw-studio-header nav,.fw-studio-view-controls{display:flex;gap:4px;justify-content:center}
+.fw-studio-header button,.fw-studio-equipment-zones button,.fw-studio-view-controls button,.fw-studio-equipment-identity select{min-height:44px;min-width:44px;padding:5px 9px;border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);background:var(--fw-panel);color:var(--fw-text);font:600 12px var(--fw-font-action)}
+.fw-studio-shell button[aria-pressed=true]{border-color:var(--fw-sage)}
+.fw-studio-header button[aria-pressed=true],.fw-studio-equipment-zones button[aria-pressed=true]{background:var(--fw-control-active)}
+.fw-studio-shell button:focus-visible,.fw-studio-shell select:focus-visible{outline:2px solid var(--fw-focus);outline-offset:2px}
+.fw-studio-workspace{flex:1;min-height:0;min-width:0;overflow:auto}
+.fw-studio-equipment{height:100%;display:grid;grid-template-columns:104px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto auto;gap:6px;min-height:0}
+.fw-studio-equipment-identity{grid-column:1/-1;display:flex;justify-content:center}
+.fw-studio-equipment-zones{grid-column:1;grid-row:2/4;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+.fw-studio-equipment-zones button{font:700 12px var(--fw-font-menu)}
+.fw-studio-equipment-preview.campaign-kit-preview{grid-column:2;grid-row:2;height:100%;min-height:0;position:relative;border:0;border-radius:var(--fw-radius-sm)}
+.fw-studio-view-controls{grid-column:2;grid-row:3}
+.fw-studio-equipment-drawer{grid-column:1/-1;grid-row:4;min-width:0;max-height:35dvh;overflow:auto}
+.fw-studio-equipment>p{grid-column:1/-1;margin:0;font-size:12px}
+.fw-studio-equipment-drawer .fw-outfitter-gallery{display:flex;flex-direction:column;gap:4px;min-width:0;height:auto}
+.fw-studio-equipment-drawer .fw-outfitter-gallery-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 8px}
+.fw-studio-equipment-drawer .fw-outfitter-gallery-scroll{display:block;overflow-x:auto;overflow-y:hidden;padding:4px;scrollbar-width:thin;overscroll-behavior-x:contain}
+.fw-studio-equipment-drawer .fw-outfitter-options{display:flex;gap:6px;width:max-content;min-width:100%;align-items:stretch}
+.fw-studio-equipment-drawer .fw-outfitter-option{position:relative;display:flex!important;flex-direction:column;flex:0 0 118px;width:118px!important;min-height:94px!important;max-height:none!important;padding:4px!important;gap:4px;background:var(--fw-panel-deep)!important;border:1px solid var(--fw-panel-border)!important;border-radius:var(--fw-radius-sm);color:var(--fw-text);text-align:left}
+.fw-studio-equipment-drawer .fw-outfitter-option[data-selected=true]::after{content:"";position:absolute;right:7px;top:7px;width:7px;height:7px;border-radius:50%;background:#fff}
+.fw-studio-equipment-drawer .fw-outfitter-option:disabled{opacity:.5}
+.fw-studio-equipment-drawer .fw-outfitter-gallery-image{height:60px;min-height:0;display:grid;place-items:center;overflow:hidden;background:var(--fw-bg)}
+.fw-studio-equipment-drawer .fw-outfitter-gallery-image img{width:100%;height:100%;object-fit:contain}
+.fw-studio-equipment-drawer .fw-outfitter-option-copy{display:flex;flex-direction:column;font-size:11px}
+.fw-studio-equipment-drawer .fw-outfitter-context{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 8px}
+.fw-studio-equipment-drawer .fw-outfitter-context button{min-height:40px;background:var(--fw-panel);color:var(--fw-text);border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm)}
+.fw-studio-equipment-drawer .fw-outfitter-detail-copy{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.fw-studio-arsenal-gallery{min-height:0}
+@media(max-height:600px) and (orientation:landscape){
+ .fw-studio-equipment{grid-template-columns:88px minmax(0,1fr) minmax(0,36%);grid-template-rows:auto minmax(0,1fr) auto}
+ .fw-studio-equipment-drawer{grid-column:3;grid-row:2/4;max-height:none}
+ .fw-studio-equipment-drawer .fw-outfitter-gallery-scroll{overflow-x:auto}
+ .fw-studio-header{padding-bottom:4px}.fw-studio-header h1{font-size:19px}
+}
+@media(max-width:600px) and (orientation:portrait){
+ .fw-studio-preview-banner{font-size:9px}.fw-studio-shell{padding:4px;gap:4px}.fw-studio-header{gap:4px}
+ .fw-studio-equipment{grid-template-columns:72px minmax(0,1fr);gap:4px}
+ .fw-studio-equipment-zones button{font-size:10px;padding:4px}
+}
