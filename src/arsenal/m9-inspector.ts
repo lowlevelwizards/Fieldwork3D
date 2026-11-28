@@ -5,10 +5,8 @@ import {GlockViewport} from './glock-viewport.ts';
 import {M9_APPEARANCE_REFERENCES,type M9AppearanceId}
  from '../weapons/geometry/beretta-m9-silhouettes.ts';
 
-export function openM9Inspector(id:M9AppearanceId):void{
- const active=document.activeElement instanceof HTMLElement?
-  document.activeElement:null;
- const oldOverflow=document.body.style.overflow;
+import {attachWorkbenchSurface,type WorkbenchMount,type WorkbenchHandle} from './workbench-surface.ts';
+export function openM9Inspector(id:M9AppearanceId,mount?:WorkbenchMount):WorkbenchHandle{
  const overlay=document.createElement('section');
  overlay.className='arsenal-wb-screen arsenal-glock-workbench arsenal-m9-inspector';
  overlay.setAttribute('role','dialog');
@@ -51,21 +49,17 @@ export function openM9Inspector(id:M9AppearanceId):void{
  const label=document.createElement('p');label.className='glock-wb-note';
  label.textContent='DRAG TO ROTATE · PINCH TO ZOOM · VISUAL STUDY ONLY';
  footer.append(label);main.append(stage,footer);overlay.append(header,main);
- document.body.append(overlay);
- document.body.style.overflow='hidden';
- const viewport=new GlockViewport(host,id);
- viewport.useTightArtFraming();viewport.side();
- let monochrome=false,closed=false;
- const close=()=>{
-  if(closed)return;closed=true;
-  document.removeEventListener('keydown',onKey);
-  viewport.dispose();overlay.remove();
-  document.body.style.overflow=oldOverflow;active?.focus();
- };
+ const surface=attachWorkbenchSurface(overlay,mount);
+ const viewport=(()=>{try{return new GlockViewport(host,id);}
+  catch(error){surface.dispose(()=>{});throw error;}})();
+ try{viewport.useTightArtFraming();viewport.side();}catch(error){surface.dispose(()=>viewport.dispose());throw error;}
+ let monochrome=false;
+ const dispose=()=>surface.dispose(()=>viewport.dispose());
+ const close=()=>{surface.dispose(()=>viewport.dispose(),true);return true;};
  const onKey=(e:KeyboardEvent)=>{
   if(e.key==='Escape'){e.preventDefault();close();}
  };
- document.addEventListener('keydown',onKey);
+ surface.bindKeys(onKey);
  back.addEventListener('click',close);
  const setView=(button:HTMLButtonElement,action:()=>void)=>{
   action();
@@ -80,4 +74,6 @@ export function openM9Inspector(id:M9AppearanceId):void{
   monochrome=!monochrome;viewport.setModel(id,monochrome);
   clay.setAttribute('aria-pressed',String(monochrome));
  });
+ back.focus();
+ return {requestClose:close,canLeave:()=>true,dispose};
 }
