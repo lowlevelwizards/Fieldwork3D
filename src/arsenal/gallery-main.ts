@@ -17,7 +17,7 @@ import {type ArsenalSavedBuild,loadArsenalBuildLibrary,persistArsenalBuildLibrar
 
 type PrimaryOpen=(source:ArsenalReference|ArsenalSavedBuild,onLibraryChange:(id:string)=>void)=>void;
 export type ArsenalGalleryOptions=Readonly<{initialCategory?:'primary'|'secondary'}>&
- (Readonly<{embedded?:false}>|Readonly<{embedded:true;openPrimary:PrimaryOpen;secondaryOpen:SecondaryGalleryOpen}>);
+ (Readonly<{embedded?:false}>|Readonly<{embedded:true;openPrimary:PrimaryOpen;secondaryOpen:SecondaryGalleryOpen;onSelectCategory?:(category:'primary'|'secondary')=>boolean}>);
 export function mountArsenalGallery(root:HTMLElement,options:ArsenalGalleryOptions={}){
 let disposed=false;
 
@@ -68,8 +68,13 @@ const showCategory=(category:'primary'|'secondary')=>{
  if(secondary)secondaryGallery.activate();
  else activatePrimary();
 };
-primaryTab.addEventListener('click',()=>showCategory('primary'));
-secondaryTab.addEventListener('click',()=>showCategory('secondary'));
+const selectCategory=(category:'primary'|'secondary')=>{
+ if(disposed)return;
+ if(options.embedded&&options.onSelectCategory&&!options.onSelectCategory(category))return;
+ showCategory(category);
+};
+primaryTab.addEventListener('click',()=>selectCategory('primary'));
+secondaryTab.addEventListener('click',()=>selectCategory('secondary'));
 if(!options.embedded)shell.append(heading);
 shell.append(categoryNav,layout,glockGallery);root.append(shell);
 
