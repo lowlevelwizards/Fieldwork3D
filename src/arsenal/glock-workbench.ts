@@ -13,19 +13,18 @@ import {glockHasAccessoryRail,glockHasOpticMount,
 import {loadGlockLibrary,saveGlockLibrary,
  createGlockSavedBuild,type GlockRecipe,type GlockSavedBuild}
  from './glock-saved-builds.ts';
+import {attachWorkbenchSurface,type WorkbenchMount,type WorkbenchHandle} from './workbench-surface.ts';
 export type GlockWorkbenchContext=Readonly<{onLibraryChange?:()=>void}>;
 const action=(label:string,cls='arsenal-wb-action')=>{
  const b=document.createElement('button');b.type='button';
  b.className=cls;b.textContent=label;return b;
 };
-export function openGlockWorkbench(start:GlockRecipe,context:GlockWorkbenchContext){
- const original=start;
+export function openGlockWorkbench(start:GlockRecipe,context:GlockWorkbenchContext,mount?:WorkbenchMount):WorkbenchHandle{
+ let original=start;
  let working=start;
  const undoStack:GlockRecipe[]=[],redoStack:GlockRecipe[]=[];
  type WorkPanel='models'|'sights'|'accessories'|'finish'|'saved';
  let panel:WorkPanel='models';
- const activeBefore=document.activeElement as HTMLElement|null;
- const oldOverflow=document.body.style.overflow;
  const overlay=document.createElement('section');
  overlay.className='arsenal-wb-screen arsenal-glock-workbench';
  overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');
@@ -100,19 +99,21 @@ export function openGlockWorkbench(start:GlockRecipe,context:GlockWorkbenchConte
  overlay.append(head,main);
  // Mount before WebGL camera fitting: a detached mobile viewport has zero
  // CSS width and would mistakenly zoom every Glock several steps too far.
- document.body.append(overlay);document.body.style.overflow='hidden';
- const viewport=new GlockViewport(viewportHost,working.model);
- let closed=false;
- const close=()=>{
-  if(closed)return;closed=true;
-  document.removeEventListener('keydown',onKeys);
-  viewport.dispose();overlay.remove();document.body.style.overflow=oldOverflow;
-  activeBefore?.focus();
+ const surface=attachWorkbenchSurface(overlay,mount);
+ const viewport=(()=>{try{return new GlockViewport(viewportHost,working.model);}
+  catch(error){surface.dispose(()=>{});throw error;}})();
+ const canLeave=()=>surface.disposed||!mount||JSON.stringify(working)===JSON.stringify(original)||
+  window.confirm('Discard unsaved changes to this weapon draft?');
+ const dispose=()=>surface.dispose(()=>viewport.dispose());
+ const close=():boolean=>{
+  if(surface.disposed)return true;
+  if(!canLeave())return false;
+  surface.dispose(()=>viewport.dispose(),true);return true;
  };
  const onKeys=(event:KeyboardEvent)=>{
   if(event.key==='Escape'){event.preventDefault();close();}
  };
- document.addEventListener('keydown',onKeys);
+ surface.bindKeys(onKeys);
  back.addEventListener('click',close);
  function put(next:GlockRecipe){
   if(JSON.stringify(next)===JSON.stringify(working))return;
@@ -150,6 +151,7 @@ export function openGlockWorkbench(start:GlockRecipe,context:GlockWorkbenchConte
    status.textContent='Storage unavailable; build not saved';return;
   }
   editBar.hidden=true;status.textContent='SAVED · '+created.build.name;
+  if(mount){original=working;update();}
   context.onLibraryChange?.();
  });
  const createChoice=(label:string,selected:boolean,callback:()=>void,detail?:string)=>{
@@ -247,5 +249,6 @@ export function openGlockWorkbench(start:GlockRecipe,context:GlockWorkbenchConte
     grid.append(empty);}
   }
  }
- update();back.focus();
+ try{update();back.focus();}catch(error){dispose();throw error;}
+ return {requestClose:close,canLeave,dispose};
 }
