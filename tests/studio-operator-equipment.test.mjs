@@ -29,7 +29,7 @@ function setup(){
    counts.previews++;const p={id,azimuth:azimuth??0,focus,kit,tap:null,disposed:false,
     isReady(){return !this.disposed;},setOnTapSlot(fn){this.tap=fn;},dispose(){this.disposed=true;counts.releases++;},
     setOperatorId(id){this.id=id;},attachHost(){},updateEquipment(w,s,k){this.kit=k;counts.updates++;},
-    getAzimuth(){return this.azimuth;},setAzimuth(n){this.azimuth=n;},clearTransientSelection(){},focusOn(f){this.focus=f;},setSelectedSlot(s){this.slot=s;},selectItemDot(){},renderModelThumbnailAsync(t){return Promise.resolve(t.itemId);}};
+    getAzimuth(){return this.azimuth;},setAzimuth(n){this.azimuth=n;},clearTransientSelection(){},focusOn(f){this.focus=f;},setSelectedSlot(s){this.slot=s;},setWeaponPresentation(held){this.held=held;},selectItemDot(){},renderModelThumbnailAsync(t){return Promise.resolve(t.itemId);}};
    views.push(p);return p;
   },
   createGallery:options=>{counts.galleries++;const g={options,slot:null,root:options.host,show(s){this.slot=s;},getActive(){return this.slot;},dispose(){counts.retired++;}};galleries.push(g);return g;}
