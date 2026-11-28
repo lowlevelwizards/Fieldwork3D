@@ -19,7 +19,8 @@ type PrimaryOpen=(source:ArsenalReference|ArsenalSavedBuild,onLibraryChange:(id:
 export type ArsenalGalleryOptions=Readonly<{initialCategory?:'primary'|'secondary'}>&
  (Readonly<{embedded?:false}>|Readonly<{embedded:true;openPrimary:PrimaryOpen;secondaryOpen:SecondaryGalleryOpen;onSelectCategory?:(category:'primary'|'secondary')=>boolean}>);
 export function mountArsenalGallery(root:HTMLElement,options:ArsenalGalleryOptions={}){
-let disposed=false;
+let disposed=false,visible=true;
+let category:'primary'|'secondary'=options.initialCategory??'primary';
 
 const shell=document.createElement('div');shell.className='arsenal-shell';
 const heading=document.createElement('header');heading.className='arsenal-top';
@@ -57,14 +58,15 @@ secondaryTab.type='button';secondaryTab.textContent='SECONDARY WEAPONS';
 categoryNav.append(primaryTab,secondaryTab);
 const secondaryGallery=mountGlockArsenalGallery(options.embedded?options.secondaryOpen:undefined);
 const glockGallery=secondaryGallery.section;
-const showCategory=(category:'primary'|'secondary')=>{
+const showCategory=(next:'primary'|'secondary')=>{
  if(disposed)return;
+ category=next;
  const secondary=category==='secondary';
  layout.hidden=secondary;glockGallery.hidden=!secondary;
  primaryTab.setAttribute('aria-pressed',String(!secondary));
  secondaryTab.setAttribute('aria-pressed',String(secondary));
- previewQueue.setPaused(secondary);
- secondaryGallery.setPaused(!secondary);
+ previewQueue.setPaused(!visible||secondary);
+ secondaryGallery.setPaused(!visible||!secondary);
  if(secondary)secondaryGallery.activate();
  else activatePrimary();
 };
@@ -238,6 +240,12 @@ function activatePrimary(){
  const first=ARSENAL_REFERENCES.find(ref=>ref.id===selectedId)??ARSENAL_REFERENCES[0];
  if(first)showSelected(first);
 }
+function setVisible(value:boolean){
+ if(disposed)return;
+ visible=value;shell.hidden=!value;
+ previewQueue.setPaused(!visible||category==='secondary');
+ secondaryGallery.setPaused(!visible||category!=='secondary');
+}
 function dispose(){
  if(disposed)return;
  disposed=true;observer?.disconnect();observer=null;
@@ -247,5 +255,5 @@ function dispose(){
 window.addEventListener('pagehide',dispose,{once:true});
 try{showCategory(options.initialCategory??'primary');}
 catch(error){dispose();throw error;}
-return {showCategory,dispose};
+return {showCategory,setVisible,dispose};
 }
