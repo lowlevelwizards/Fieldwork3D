@@ -15,7 +15,8 @@ export type StudioEquipmentSnapshot=Readonly<{
 export type StudioEquipmentPorts=Readonly<{
  readOperator:(id:string)=>StudioEquipmentSnapshot|null;
  equip:(id:string,slot:LoadoutSlot,itemId:string)=>boolean;
- onAdvanced:(id:string)=>void;
+ onAdvanced?:(id:string)=>void;
+ listOperators?:()=>readonly {id:string;callsign:string}[];
  onAutoPack?:(id:string)=>boolean;
 }>;
 
@@ -36,7 +37,22 @@ export function createStudioOperatorEquipment(ports:StudioEquipmentPorts,
   const previewHost=doc.createElement('div');previewHost.className='fw-studio-equipment-preview';
   const drawer=doc.createElement('div');drawer.className='fw-studio-equipment-drawer';
   const note=doc.createElement('p');note.setAttribute('role','status');note.hidden=true;
-  root.append(rail,previewHost,drawer,note);host.append(root);
+  const identity=doc.createElement('div');identity.className='fw-studio-equipment-identity';
+  const roster=ports.listOperators?doc.createElement('select'):null;
+  if(roster){roster.setAttribute('aria-label','Select operator');identity.append(roster);}
+  const viewControls=doc.createElement('div');viewControls.className='fw-studio-view-controls';
+  const viewAction=(label:string,run:()=>void)=>{
+   const button=doc.createElement('button');button.type='button';button.textContent=label;
+   button.addEventListener('click',()=>{if(!disposed)run();});viewControls.append(button);
+  };
+  viewAction('↶',()=>workspace.preview?.rotateBy(-45));
+  viewAction('↷',()=>workspace.preview?.rotateBy(45));
+  viewAction('−',()=>workspace.preview?.zoomBy(.85));
+  viewAction('+',()=>workspace.preview?.zoomBy(1.18));
+  viewAction('FIT',()=>{workspace.preview?.resetZoom();workspace.preview?.focusOn('full');});
+  let held=true;
+  viewAction('WEAPON',()=>{held=!held;workspace.preview?.setWeaponPresentation(held);});
+  root.append(identity,rail,previewHost,viewControls,drawer,note);host.append(root);
   let route=initial,snapshot:StudioEquipmentSnapshot|null=null,disposed=false;
   let activeId:string|null=null,selected:LoadoutSlot|null=null;
   let gallery:ReturnType<Workspace['mountGallery']>|null=null,railGeneration=0;
@@ -68,7 +84,7 @@ export function createStudioOperatorEquipment(ports:StudioEquipmentPorts,
     onAutoPack:ports.onAutoPack?()=>{if(!current.locked){ports.onAutoPack?.(id);refresh();}}:undefined,
     onInspect:(slot,itemId)=>workspace.preview?.selectItemDot(itemId?{kind:'gear',slot,itemId:slot==='primary'?current.member.loadout.slots.primary:itemId}:null),
     onSelectCategory:slot=>{if(!disposed)actions.selectCategory(slot);},
-    onAdvanced:()=>{if(!current.locked)ports.onAdvanced(id);}
+    onAdvanced:ports.onAdvanced?()=>{if(!current.locked)ports.onAdvanced?.(id);}:undefined
    });
    gallery.show(selected);
   }
@@ -78,11 +94,12 @@ export function createStudioOperatorEquipment(ports:StudioEquipmentPorts,
    const next=route.operatorId?ports.readOperator(route.operatorId):null;
    snapshot=next?.member.id===route.operatorId?next:null;
    rail.replaceChildren();controls.clear();setNote('');
+   if(roster){roster.replaceChildren();for(const member of ports.listOperators?.()??[]){const option=doc.createElement('option');option.value=member.id;option.textContent=member.callsign;roster.append(option);}roster.value=route.operatorId??'';}
    if(!snapshot){activeId=null;workspace.releasePreview();drawer.hidden=true;setNote('Select an available operator.');return;}
    const id=snapshot.member.id,changed=id!==activeId;
    const preview=workspace.mountPreview(previewHost,snapshot.member,'full',azimuths.get(id));
    if(changed&&azimuths.has(id))preview.setAzimuth(azimuths.get(id)!);
-   activeId=id;preview.setOnTapSlot(select);
+   activeId=id;preview.setOnTapSlot(select);preview.setWeaponPresentation(held);
    for(const [slot,label] of OUTFITTER_ZONE_LABELS){
     if(!snapshot.sources.has(slot))continue;
     const button=doc.createElement('button');button.type='button';button.textContent=label;button.dataset.slot=slot;
@@ -92,6 +109,7 @@ export function createStudioOperatorEquipment(ports:StudioEquipmentPorts,
    showCategory();
   }
   function dispose(){if(disposed)return;disposed=true;try{rememberOrbit();workspace.dispose();}finally{root.remove();mounted=false;}}
+  roster?.addEventListener('change',()=>{if(!disposed&&roster.value&&!actions.selectOperator(roster.value,route.category))roster.value=route.operatorId??'';});
   try{refresh();}catch(error){dispose();throw error;}
   return {update(next:StudioRoute){
    if(disposed)return;if(next.workspace!=='operators')throw new Error('Operator route required');
