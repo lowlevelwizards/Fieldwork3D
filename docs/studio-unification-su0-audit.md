@@ -210,3 +210,169 @@ Release A SU1–4 foundations; B SU5–9 Operators; C SU10–13 Arsenal; D SU14�
 ## F. Out of scope / unresolved decisions
 
 No gameplay movement, AI, ballistics, campaign economy, new weapons/gear/art redesign, other labs, Pose Workbench authoring or tactical rendering changes. No new framework, new global store or new per-stage CI workflow. Exact slot grouping, narrow breakpoint layout, final preview implementation owner and whether a specific obscure Lab diagnostic survives must be determined from SU1 evidence. A single shared renderer is a target within a mounted Studio, not a mandate to share it with gameplay or remove necessary thumbnail/fixture resources. SU1 runtime and indirect-caller evidence was not executed here; record blockers rather than claiming acceptance. This revision defines the scope and decisions for implementation but does not start runtime migration.
+
+## SU1 checkpoint — indexed dependency and control inventory
+
+Main and branch verified before this checkpoint: main 9c9f7af3913a3d104c1862fa068454b16fc15f42, feature 06cb61eb62b59afcb7eeebf98b250e55e7ede5d6. Open PRs include overlapping R7.4 Campaign controller and Integration R4 iOS Studio CSS; reconcile at release. Local git ls-remote failed DNS; GitHub connector permits pinned file reads/search/writes but no full checkout/browser. Searches below are capped and not an exhaustive reachability proof. No actual timing or screenshot baseline yet; SU1 remains open until actual browser/full checkout evidence. No production release.
+
+### Indexed callers (default branch)
+| Query | Returned | Paths (bounded results) |
+| --- | ---: | --- |
+| operator-lab.html | 30 | operator-lab.html, vite.config.ts, scripts/smoke-armor-r1-ui.mjs, scripts/smoke-operator-lab.mjs, scripts/capture-belt-artwork.mjs, scripts/capture-unified-carry.mjs, scripts/smoke-sling-retention.mjs, scripts/capture-operator-armhole.mjs, scripts/capture-wa0-operator-context.mjs, scripts/smoke-animation-a2.mjs, scripts/smoke-loadout-l214-inspection.mjs, scripts/smoke-eqa3-16j-npc-lab.mjs, scripts/capture-breach-pose-fit.mjs, scripts/capture-breach-pose-v3-dynamic.mjs, scripts/capture-short-stock-transition-phone.mjs, scripts/smoke-backpack-art.mjs, casualty-transport-lab.html, docs/equipment-00-integration-audit.md, docs/ux00-interface-audit.md, weapon-art-lab.html, src/campaign-ui.ts, index.html, scripts/smoke-operator-lab-unified.mjs, a3-physicality-lab.html, src/arsenal/wa-art-lab.ts, scripts/verification/ci-operator-loadout-routing.mjs, pose-workbench.html, scripts/smoke-wa1-weapon-art-lab.mjs, scripts/verification/package-c0-presentation-audit.mjs, tests/breach-166.test.mjs |
+| operator-studio.html | 30 | vite.config.ts, scripts/helmet-h10-ui-smoke.mjs, scripts/helmet-b0-m1-capture.mjs, scripts/capture-operator-d2-masks.mjs, scripts/capture-operator-garment-5.mjs, scripts/smoke-operator-r713-rim.mjs, scripts/smoke-rendering-r718-parity.mjs, scripts/smoke-operator-r715-bleed.mjs, scripts/smoke-operator-r7-shader.mjs, scripts/smoke-operator-lightmap-r5.mjs, scripts/smoke-lightmap-clothes-only.mjs, scripts/pasgt-p5-visual-capture.mjs, scripts/ach-mich-h3-visual-capture.mjs, scripts/helmet-h7-visual-capture.mjs, operator-armor-rig-lab.html, scripts/ach-mich-h4-visual-capture.mjs, scripts/ach-mich-h5-visual-capture.mjs, scripts/ach-mich-h6-visual-capture.mjs, src/reference-planning.ts, scripts/smoke-backpack-art.mjs, scripts/helmet-h9-visual-capture.mjs, scripts/smoke-operator-studio.mjs, src/operator-studio-bridge.ts, scripts/verification/ci-operator-loadout-routing.mjs, scripts/verification/package-c0-presentation-audit.mjs, tests/operator-studio-stage5.test.mjs, tests/operator-studio-main-menu.test.mjs, tests/release-a-studio-resource-lifetime.test.mjs, tests/ux-r2-studio-flow.test.mjs, tests/rendering-shadow-map-512-budget.test.mjs |
+| arsenal.html | 13 | vite.config.ts, scripts/smoke-fnc-arsenal.mjs, scripts/smoke-arsenal-navigation-e1.mjs, scripts/verification/e6-26-arsenal-browser.mjs, scripts/smoke-arsenal-lighting-r714.mjs, scripts/smoke-fal-p1-visual.mjs, scripts/smoke-consolidation-p9-arsenal.mjs, src/campaign-ui.ts, scripts/verification/e6-27-arsenal-part-browser.mjs, scripts/smoke-operator-lab-unified.mjs, tests/arsenal-v2-gallery.test.mjs, tests/arsenal-r14-mobile-style-isolation.test.mjs, tests/ci-regression-plan.test.mjs |
+| createEquipmentWorkspace | 6 | src/ui/equipment-workspace.ts, src/campaign-ui.ts, src/ui/quick-play-configurator.ts, src/breach-operations-board-controller.ts, scripts/verification/r7-0-ui-orchestration-audit.mjs, tests/r7-3-equipment-workspace.test.mjs |
+| fw-studio- | 6 | src/operator-studio-bridge.ts, src/operator-studio.ts, tests/operator-studio-stage5.test.mjs, tests/operator-studio-save-all-stage511.test.mjs, tests/faction-reference-loadout-ft1-3.test.mjs, tests/rendering-r7-light-lab.test.mjs |
+| openArsenalWorkbench | 6 | src/arsenal/workbench-screen.ts, src/arsenal-m27-smoke.ts, src/arsenal-m28-apply-smoke.ts, src/breach-equipment-editor-bridge.ts, src/arsenal/gallery-main.ts, tests/consolidation-p11-arsenal-chrome.test.mjs |
+| openGlockWorkbench | 3 | src/arsenal/glock-workbench.ts, src/arsenal/glock-gallery.ts, tests/consolidation-p11-arsenal-chrome.test.mjs |
+| poseFit | 13 | scripts/capture-breach-pose-fit.mjs, scripts/smoke-operator-lab-unified.mjs, scripts/capture-breach-pose-v3-dynamic.mjs, scripts/capture-short-stock-transition-phone.mjs, src/breach-operator-lab.ts, operator-lab.html, scripts/smoke-sling-retention.mjs, scripts/capture-operator-armhole.mjs, scripts/capture-wa0-operator-context.mjs, scripts/smoke-backpack-art.mjs, scripts/smoke-animation-a2.mjs, tests/operator-lab-unified-poses.test.mjs, tests/arsenal-r10-operator-lab.test.mjs |
+
+### Explicit Lab HTML controls (provisional disposition)
+Every ID found on button/select/input by static HTML scan; generated and non-ID controls require separate review. A disposition retires the duplicate UI, not its underlying behavior. Validate exact consumer and existing regression coverage before deleting.
+
+| ID | Destination | Source |
+| --- | --- | --- |
+| operator | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| weapon | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| injury | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| poseWeapon | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| poseSavedWeapon | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| poseArmor | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| poseRig | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| poseUniform | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| posePack | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| poseAnimation | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| poseFrameBack | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| poseFrameNext | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| retentionSling | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| retentionMode | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| retentionWeight | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| retentionCycle | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| retentionRate | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| retentionMotion | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| retentionHeld | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| retentionSettled | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| retentionSockets | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| retentionRoute | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| poseStrictContact | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| npcLabTrack | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| npcFrameBack | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| npcFrameNext | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| playPause | MERGE viewport / player | operator-lab.html / src/breach-operator-lab.ts |
+| timeline | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| unequipAll | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| wardrobeUndo | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| focusSelected | MERGE viewport / player | operator-lab.html / src/breach-operator-lab.ts |
+| hideSelected | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| showAll | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| pinLook | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| comparePinned | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| bduComparisonPrint | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| acuComparisonPrint | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| compareBlouses | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| faceTreatment | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| kitMagazines | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| kitIsolation | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| inspectionSampleKit | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| inspectionClear | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| inspectionItem | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| inspectionLocation | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| inspectionIndex | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| inspectionPose | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| wardrobeRecipe | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| wardrobeApply | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| outfitName | MERGE presets | operator-lab.html / src/breach-operator-lab.ts |
+| outfitSave | MERGE presets | operator-lab.html / src/breach-operator-lab.ts |
+| outfitSelect | MERGE presets | operator-lab.html / src/breach-operator-lab.ts |
+| outfitLoad | MERGE presets | operator-lab.html / src/breach-operator-lab.ts |
+| outfitExport | MERGE presets | operator-lab.html / src/breach-operator-lab.ts |
+| outfitImport | MERGE presets | operator-lab.html / src/breach-operator-lab.ts |
+| camoTerrainFilter | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| camoStyleFilter | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| camoOriginFilter | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| camoSearchFilter | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| camoCompatibleFilter | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| camoFavoriteFilter | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| headwearCamoReroll | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| attachmentPreview | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| attachmentPreviewVariant | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| attachmentPreviewContents | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| unifiedCarryVisual | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| unifiedCarryShells | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| unifiedCarryClearance | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| wardrobeMagazineOrder | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| wardrobeGloveState | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| wardrobeGloveColor | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| wardrobeTopColorway | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| wardrobeSleeveState | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| wardrobeTrouserHem | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| wardrobeReset | MERGE Operators | operator-lab.html / src/breach-operator-lab.ts |
+| compareKit | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| gaitReference | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| stepFrame | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| restartTrack | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| loopTrack | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| slowMotion | DEBUG playback / contact | operator-lab.html / src/breach-operator-lab.ts |
+| compareGaits | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| comparePose | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| silhouetteMode | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| resetCamera | MERGE viewport / player | operator-lab.html / src/breach-operator-lab.ts |
+| savePoseView | MERGE viewport / player | operator-lab.html / src/breach-operator-lab.ts |
+| diagnostics | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+| diagnosticLayer | DEBUG fixture / geometry | operator-lab.html / src/breach-operator-lab.ts |
+
+### Explicit pose tracks (47)
+| Track | Destination |
+| --- | --- |
+| idle | PLAYER + DEBUG |
+| walk | PLAYER + DEBUG |
+| run | PLAYER + DEBUG |
+| accelerate | DEBUG scenario; review aliases before removal |
+| stop | DEBUG scenario; review aliases before removal |
+| restart | DEBUG scenario; review aliases before removal |
+| back | DEBUG scenario; review aliases before removal |
+| strafe-left | DEBUG scenario; review aliases before removal |
+| strafe-right | DEBUG scenario; review aliases before removal |
+| strafe | DEBUG scenario; review aliases before removal |
+| strafe-stop | DEBUG scenario; review aliases before removal |
+| strafe-reverse | DEBUG scenario; review aliases before removal |
+| mixed | DEBUG scenario; review aliases before removal |
+| turn-90 | DEBUG scenario; review aliases before removal |
+| turn-180 | DEBUG scenario; review aliases before removal |
+| turn | DEBUG scenario; review aliases before removal |
+| pivot-reverse | DEBUG scenario; review aliases before removal |
+| pie | DEBUG scenario; review aliases before removal |
+| look | DEBUG scenario; review aliases before removal |
+| crouch-walk | PLAYER + DEBUG |
+| crouch | DEBUG scenario; review aliases before removal |
+| wounded | DEBUG scenario; review aliases before removal |
+| aim | PLAYER + DEBUG |
+| high-ready | PLAYER + DEBUG |
+| low-ready | PLAYER + DEBUG |
+| ready | DEBUG scenario; review aliases before removal |
+| short-stock | DEBUG scenario; review aliases before removal |
+| active-aim | DEBUG scenario; review aliases before removal |
+| point-shoot | DEBUG scenario; review aliases before removal |
+| ready-to-ads | DEBUG scenario; review aliases before removal |
+| ads-to-low | DEBUG scenario; review aliases before removal |
+| reload | PLAYER + DEBUG |
+| reload-emergency | DEBUG scenario; review aliases before removal |
+| reload-retention | DEBUG scenario; review aliases before removal |
+| reload-shotgun | DEBUG scenario; review aliases before removal |
+| reload-interrupt | DEBUG scenario; review aliases before removal |
+| reload-wounded | DEBUG scenario; review aliases before removal |
+| flash | DEBUG scenario; review aliases before removal |
+| door | DEBUG scenario; review aliases before removal |
+| kick | DEBUG scenario; review aliases before removal |
+| bash | DEBUG scenario; review aliases before removal |
+| down | DEBUG scenario; review aliases before removal |
+| down-forward | DEBUG scenario; review aliases before removal |
+| down-back | DEBUG scenario; review aliases before removal |
+| down-left | DEBUG scenario; review aliases before removal |
+| down-right | DEBUG scenario; review aliases before removal |
+| down-slump | DEBUG scenario; review aliases before removal |
+
+Additional authored track owners: src/breach-lab-tracks.ts, src/operator-lab-pose-browser.ts, src/operator-lab-npc-poses.ts, src/operator-lab-pistol-tracks.ts, src/operator-lab-contact-tracks.ts. Keep their gameplay pose adapters; do not generate a second pose solver. Lab URL flags and dataset hooks are external compatibility surfaces until migrated.
+
+### Architecture checkpoint
+Start with isolated mountable shell/router and injected workspace adapters. No new persistent store, no iframe replacement or default navigation change until context ports and real browser checks. Preserve R7.3 lifecycle, existing transaction boundaries and published storage keys (BREACH_STORAGE_KEYS plus Studio/Lab/Arsenal keys in SU0). SU2 can be developed in parallel as a non-production, dependency-free foundation; no release or claim of SU1 completion. Browser baseline, actual transaction fixtures, exhaustive consumers, and exact per-diagnostic test mapping still required before any destructive migration.
