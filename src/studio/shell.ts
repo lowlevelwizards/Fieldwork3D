@@ -1,7 +1,8 @@
 import {createStudioNavigation,type StudioContext,type StudioEntry,type StudioRoute,type StudioWeaponSlot,type StudioWorkspace} from './navigation.ts';
 
 /** A mounted workspace owns its listeners and resources. update must not remount. */
-export type StudioWorkspaceView={update:(route:StudioRoute)=>void;dispose:()=>void};
+export type StudioWorkspaceView={update:(route:StudioRoute)=>void;dispose:()=>void;
+ canLeave?:(to:StudioRoute|null)=>boolean;back?:()=>boolean};
 export type StudioWorkspaceActions=Readonly<{
  selectOperator:(id:string|null,category?:string|null)=>boolean;
  selectCategory:(category:string|null)=>boolean;
@@ -46,7 +47,7 @@ export function mountStudioShell(host:HTMLElement,options:StudioShellOptions){
   if(restore&&previousFocus?.isConnected)previousFocus.focus();
  }
  const nav=createStudioNavigation(options.context,{
-  canLeave:(from,to)=>!disposed&&options.canLeave(from,to),
+  canLeave:(from,to)=>!disposed&&options.canLeave(from,to)&&(active?.canLeave?.(to)??true),
   onRoute:render,
   onClose:context=>{destroy();options.onClose(context);}
  },options.entry);
@@ -76,12 +77,13 @@ export function mountStudioShell(host:HTMLElement,options:StudioShellOptions){
    if(moveFocus&&!disposed)(route.workspace==='operators'?operators:arsenal).focus();
   }
  }
- back.addEventListener('click',()=>nav.back());
+ const goBack=()=>!disposed&&(active?.back?.()||nav.back());
+ back.addEventListener('click',goBack);
  operators.addEventListener('click',()=>{if(nav.route.workspace==='arsenal')nav.back();});
  arsenal.addEventListener('click',()=>{if(nav.route.workspace==='operators')nav.openArsenal();});
  retry.addEventListener('click',()=>render(nav.route));
  root.addEventListener('keydown',event=>{
-  if(event.key==='Escape'&&!event.defaultPrevented){event.preventDefault();nav.back();}
+  if(event.key==='Escape'&&!event.defaultPrevented){event.preventDefault();goBack();}
  });
  occupiedHosts.add(host);host.append(root);render(nav.route);
  if(!disposed)back.focus();
@@ -89,5 +91,5 @@ export function mountStudioShell(host:HTMLElement,options:StudioShellOptions){
   selectOperator:(id:string|null,category?:string|null)=>!disposed&&nav.selectOperator(id,category),
   selectCategory:(category:string|null)=>!disposed&&nav.selectCategory(category),
   openArsenal:(slot?:StudioWeaponSlot|null)=>!disposed&&nav.openArsenal(slot),
-  back:()=>!disposed&&nav.back(),close:()=>!disposed&&nav.close(),dispose:destroy};
+  back:goBack,close:()=>!disposed&&nav.close(),dispose:destroy};
 }
