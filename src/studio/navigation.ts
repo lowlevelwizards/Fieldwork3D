@@ -5,6 +5,8 @@ export type StudioWeaponSlot='primary'|'secondary';
 export type OperatorRoute=Readonly<{workspace:'operators';operatorId:string|null;category:string|null}>;
 export type ArsenalRoute=Readonly<{workspace:'arsenal';operatorId:string|null;slot:StudioWeaponSlot|null}>;
 export type StudioRoute=OperatorRoute|ArsenalRoute;
+export type StudioEntry=Readonly<{workspace:'operators';category?:string|null}>|
+ Readonly<{workspace:'arsenal';slot?:StudioWeaponSlot|null;returnCategory?:string|null}>;
 export type StudioContext=Readonly<{mode:StudioMode;operatorId:string|null;returnTo:string}>;
 export type StudioNavigationPorts=Readonly<{
  canLeave:(from:StudioRoute,to:StudioRoute|null)=>boolean;
@@ -18,11 +20,13 @@ const sameRoute=(a:StudioRoute,b:StudioRoute):boolean=>a.workspace===b.workspace
  a.operatorId===b.operatorId&&(a.workspace==='operators'&&b.workspace==='operators'?
  a.category===b.category:a.workspace==='arsenal'&&b.workspace==='arsenal'&&a.slot===b.slot);
 
-export function createStudioNavigation(input:StudioContext,ports:StudioNavigationPorts){
+export function createStudioNavigation(input:StudioContext,ports:StudioNavigationPorts,entry:StudioEntry={workspace:'operators'}){
  const context:StudioContext=Object.freeze({...input});
  if(context.mode!=='standalone'&&!context.operatorId)throw new Error('Contextual Studio requires an operator');
- let route:StudioRoute=operators(context.operatorId);
- let returnRoute:OperatorRoute|null=null;
+ if(entry.workspace==='arsenal'&&entry.slot&&!context.operatorId)throw new Error('Weapon slot requires an operator');
+ let route:StudioRoute=entry.workspace==='operators'?operators(context.operatorId,entry.category??null):
+  copyRoute({workspace:'arsenal',operatorId:context.operatorId,slot:entry.slot??null});
+ let returnRoute:OperatorRoute|null=entry.workspace==='arsenal'?operators(context.operatorId,entry.returnCategory??null):null;
  let closed=false,transitioning=false;
  function change(next:StudioRoute,nextReturn:OperatorRoute|null):boolean{
   if(closed||transitioning)return false;
