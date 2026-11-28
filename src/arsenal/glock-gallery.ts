@@ -87,7 +87,7 @@ export type SecondaryGalleryOpen=Readonly<{
  glock:(recipe:ReturnType<typeof factoryGlockRecipe>,onLibraryChange:()=>void)=>void;
  m9:(id:M9AppearanceId)=>void;
 }>;
-export function mountGlockArsenalGallery(open?:SecondaryGalleryOpen):{section:HTMLElement;activate:()=>void;dispose:()=>void}{
+export function mountGlockArsenalGallery(open?:SecondaryGalleryOpen):{section:HTMLElement;activate:()=>void;setPaused:(value:boolean)=>void;dispose:()=>void}{
  const {layout:section,heroMedia:feature,heroTitle:modelLabel,heroHint:desc,
   grid:cards,search,filters,count,openWorkbench,
   savedControls:savedActions}=createArsenalGalleryChrome('secondary');
@@ -285,5 +285,5 @@ export function mountGlockArsenalGallery(open?:SecondaryGalleryOpen):{section:HT
   window.removeEventListener('pagehide',dispose);
  };
  window.addEventListener('pagehide',dispose,{once:true});
- return {section,activate,dispose};
+ return {section,activate,setPaused:previewQueue.setPaused,dispose};
 }
