@@ -83,14 +83,18 @@ class GlockGallerySnapshots{
  }
 }
 
-export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>void}{
+export type SecondaryGalleryOpen=Readonly<{
+ glock:(recipe:ReturnType<typeof factoryGlockRecipe>,onLibraryChange:()=>void)=>void;
+ m9:(id:M9AppearanceId)=>void;
+}>;
+export function mountGlockArsenalGallery(open?:SecondaryGalleryOpen):{section:HTMLElement;activate:()=>void;dispose:()=>void}{
  const {layout:section,heroMedia:feature,heroTitle:modelLabel,heroHint:desc,
   grid:cards,search,filters,count,openWorkbench,
   savedControls:savedActions}=createArsenalGalleryChrome('secondary');
  const renderer=new GlockGallerySnapshots();
  const previewQueue=createArsenalPreviewQueue();
  let observer:IntersectionObserver|null=null;
- let activated=false;
+ let activated=false,disposed=false;
  let selectedSavedId:string|null=null;
  let selectedM9:M9AppearanceId|null=null;
  type GlockFilter='all'|'compact'|'subcompact'|'crossover'|'beretta'|'saved';
@@ -100,10 +104,11 @@ export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>voi
   return saved?.recipe??factoryGlockRecipe(selected);
  };
  openWorkbench.addEventListener('click',()=>{
-  if(selectedM9){openM9Inspector(selectedM9);return;}
-  openGlockWorkbench(recipeForSelection(),{
-   onLibraryChange:()=>{renderFilters();renderCards();}
-  });
+  if(disposed)return;
+  if(selectedM9){if(open)open.m9(selectedM9);else openM9Inspector(selectedM9);return;}
+  const onLibraryChange=()=>{if(!disposed){renderFilters();renderCards();}};
+  if(open)open.glock(recipeForSelection(),onLibraryChange);
+  else openGlockWorkbench(recipeForSelection(),{onLibraryChange});
  });
  const buttons=new Map<SidearmPreviewId,HTMLButtonElement>();
  let selected:GlockAppearanceId='glock-g19-gen3';
@@ -116,6 +121,7 @@ export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>voi
   host.replaceChildren(image);
  };
  const refresh=()=>{
+  if(disposed)return;
   const previewId:SidearmPreviewId=selectedM9??selected;
   const reference=SIDEARM_PREVIEW_REFERENCES.find(r=>r.id===previewId)!;
   modelLabel.textContent=reference.name;
@@ -140,18 +146,21 @@ export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>voi
    if(saved){
     const {rename,duplicate,remove}=createArsenalSavedActionButtons();
     rename.addEventListener('click',()=>{
+     if(disposed)return;
      const next=window.prompt('Rename saved secondary build',saved.name);
      if(next===null)return;
      const changed=renameGlockSavedBuild(loadGlockLibrary(),saved.id,next);
      if(changed&&saveGlockLibrary(changed)){renderFilters();renderCards();}
     });
     duplicate.addEventListener('click',()=>{
+     if(disposed)return;
      const copy=duplicateGlockSavedBuild(loadGlockLibrary(),saved.id);
      if(copy&&saveGlockLibrary(copy.library)){
       selectedSavedId=copy.build.id;renderFilters();renderCards();refresh();
      }
     });
     remove.addEventListener('click',()=>{
+     if(disposed)return;
      if(!window.confirm('Delete '+saved.name+'?'))return;
      if(saveGlockLibrary(deleteGlockSavedBuild(loadGlockLibrary(),saved.id))){
       selectedSavedId=null;renderFilters();renderCards();refresh();
@@ -181,6 +190,7 @@ export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>voi
    .some(text=>text.toLowerCase().includes(q));
  };
  function renderFilters(){
+  if(disposed)return;
   const items=filterOptions.map(([id,label])=>({
    id,name:id==='saved'?label+' · '+loadGlockLibrary().builds.length:label
   }));
@@ -189,6 +199,7 @@ export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>voi
   });
  }
  function renderCards(){
+  if(disposed)return;
   observer?.disconnect();observer=null;
   cards.replaceChildren();
   previewQueue.pruneDetached();
@@ -197,7 +208,7 @@ export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>voi
   if('IntersectionObserver' in window){
    observer=new IntersectionObserver(entries=>{
     for(const entry of entries){
-     if(!entry.isIntersecting)continue;
+     if(disposed||!entry.isIntersecting)continue;
      observer?.unobserve(entry.target);
      const render=deferred.get(entry.target);
      deferred.delete(entry.target);
@@ -234,6 +245,7 @@ export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>voi
    });
    if(choice.kind==='saved')button.dataset.glockSaved=choice.build.id;
    button.addEventListener('click',()=>{
+    if(disposed)return;
     if(isM9AppearanceId(ref.id))selectedM9=ref.id;
     else{selected=ref.id;selectedM9=null;}
     selectedSavedId=choice.kind==='saved'?choice.build.id:null;
@@ -262,12 +274,16 @@ export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>voi
  // Do not allocate a secondary renderer or paint hidden thumbnails while
  // the primary category is selected on initial Arsenal navigation.
  const activate=()=>{
-  if(activated)return;
+  if(activated||disposed)return;
   activated=true;
   renderFilters();renderCards(); // also paints the first selected hero
  };
- window.addEventListener('pagehide',()=>{
-  observer?.disconnect();previewQueue.dispose();renderer.dispose();
- },{once:true});
- return {section,activate};
+ const dispose=()=>{
+  if(disposed)return;
+  disposed=true;observer?.disconnect();observer=null;
+  previewQueue.dispose();renderer.dispose();buttons.clear();section.remove();
+  window.removeEventListener('pagehide',dispose);
+ };
+ window.addEventListener('pagehide',dispose,{once:true});
+ return {section,activate,dispose};
 }
