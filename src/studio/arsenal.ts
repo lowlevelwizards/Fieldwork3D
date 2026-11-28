@@ -41,14 +41,16 @@ export function createStudioArsenal(ports:StudioArsenalPorts={},
   function launch(factory:(mount:WorkbenchMount)=>WorkbenchHandle|undefined){
    if(disposed||active||opening)return;
    opening=true;
+   const trigger=doc.activeElement as HTMLElement|null;
+   const restoreFocus=()=>{if(trigger?.isConnected)trigger.focus();};
    // Keep the initiating control in the document for focus restoration.
    editorHost.hidden=false;gallery.setVisible(false);galleryHost.hidden=true;
    try{
-    const handle=factory({host:editorHost,onClose:()=>{if(!disposed)showGallery();}});
-    if(!handle)showGallery();
+    const handle=factory({host:editorHost,onClose:()=>{if(!disposed){showGallery();restoreFocus();}}});
+    if(!handle){showGallery();restoreFocus();}
     else if(disposed)handle.dispose();else active=handle;
    }catch(error){
-    if(!disposed){showGallery();ports.onError?.(error);}
+    if(!disposed){showGallery();restoreFocus();ports.onError?.(error);}
    }finally{opening=false;}
   }
   const primary:PrimaryOpen=(source,refresh)=>{
