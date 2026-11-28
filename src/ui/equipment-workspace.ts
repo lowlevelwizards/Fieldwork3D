@@ -60,7 +60,7 @@ export function createEquipmentWorkspace(ports:WorkspacePorts={}){
    onAutoPack:options.onAutoPack?()=>{if(current())options.onAutoPack?.();}:undefined,
    onInspect:(slot,itemId)=>{if(current())options.onInspect?.(slot,itemId);},
    onSelectCategory:slot=>{if(current())options.onSelectCategory?.(slot);},
-   onAdvanced:()=>{if(current())options.onAdvanced();}
+   onAdvanced:options.onAdvanced?()=>{if(current())options.onAdvanced?.();}:undefined
   });
   return gallery;
  }

@@ -111,6 +111,6 @@ test('P11: both galleries delegate shell structure while keeping native handling
  assert.match(secondary,/openGlockWorkbench\(/);
  assert.match(secondary,/renderFilters\(\);renderCards\(\)/);
  assert.match(secondary,/previewQueue\.enqueue\(feature/);
- assert.match(primary,/const secondaryGallery=mountGlockArsenalGallery\(\)/);
+ assert.match(primary,/const secondaryGallery=mountGlockArsenalGallery\(options\.embedded\?options\.secondaryOpen:undefined\)/);
  assert.doesNotMatch(shell,/THREE|localStorage|saveGlockLibrary|equipRoster|arsenalRecipeFromLegacy/);
 });

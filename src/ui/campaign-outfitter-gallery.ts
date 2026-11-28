@@ -32,7 +32,7 @@ export type OutfitterGalleryOptions={
  scrollPositions?:Map<string,number>;
  onInspect?:(slot:LoadoutSlot,id:string)=>void;
  onSelectCategory?:(slot:LoadoutSlot)=>void;
- onAdvanced:()=>void;
+ onAdvanced?:()=>void;
 };
 type Choice={id:string;label:string;mass:string;kind:'gear';
  issued:boolean;equipped:boolean;reason?:string;};
@@ -185,7 +185,7 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
     }
    }
   }
-  if(['primary','rig','belt','backpack','utility','tactical'].includes(active)){
+  if(options.onAdvanced&&['primary','rig','belt','backpack','utility','tactical'].includes(active)){
    const carry=action('ARRANGE MAGAZINES & TOOLS',options.onAdvanced,
     'fw-outfitter-context-action fw-outfitter-carry-action');
    carry.disabled=options.locked;context.append(carry);

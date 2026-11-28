@@ -30,6 +30,7 @@ import {arsenalApplyMessage,type ArsenalApplyQuote} from './apply-guidance.ts';
 import {arsenalStockArtChoice} from './catalog.ts';
 import {arsenalFinishFamily,arsenalFinishOption,arsenalPhysicalPartId}
  from './finishes.ts';
+import {attachWorkbenchSurface,type WorkbenchMount,type WorkbenchHandle} from './workbench-surface.ts';
 import './arsenal.css';
 /** Game context is an explicit commit callback; the Workbench owns no inventory. */
 export interface ArsenalWorkbenchApplyContext{
@@ -64,7 +65,6 @@ export function openArsenalWorkbench(
  let showIncompatible=false;
  let pending:ArsenalEditProposal|null=null;
  let previewProposal:ArsenalEditProposal|null=null;
- const priorBodyOverflow=document.body.style.overflow;
  const overlay=document.createElement('section');overlay.className='arsenal-wb-screen';
  if(context)overlay.classList.add('arsenal-wb-has-apply');
  overlay.setAttribute('aria-label','Weapon workbench');
@@ -230,8 +230,8 @@ export function openArsenalWorkbench(
  main.append(stage,nav,panel);
  overlay.append(head,main);
  if(context)overlay.append(commitHint);
- document.body.append(overlay);
- const viewer=new ArsenalViewport(viewportHost,draft.working,slot=>{
+ const surface=attachWorkbenchSurface(overlay,mount);
+ const viewer=(()=>{try{return new ArsenalViewport(viewportHost,draft.working,slot=>{
   const category=ARSENAL_CATEGORIES.find(c=>c.slots.includes(slot));
   if(category){
    activeCategory=category;activeSlot=slot;pending=null;previewProposal=null;renderSelection();
@@ -241,7 +241,7 @@ export function openArsenalWorkbench(
      'instant':'smooth',block:'start'
    });
   }
- });
+ });}catch(error){surface.dispose(()=>{});throw error;}})();
  function currentPartId(slot:ArsenalSlot):string{
   return BODY_SLOTS.includes(slot as FamilyPartSlot)?
    draft.working.parts[slot as FamilyPartSlot]:
@@ -851,6 +851,7 @@ export function openArsenalWorkbench(
   saveDialog.showModal();saveName.focus();saveName.select();
  };
  const saveNew=()=>{
+  if(surface.disposed)return;
   const lib=loadArsenalBuildLibrary();
   const result=createSavedArsenalBuild(lib,draft.working,saveName.value);
   if(!result){saveFeedback.textContent='Name required or saved-build limit reached';return;}
@@ -866,6 +867,7 @@ export function openArsenalWorkbench(
  saveCancel.addEventListener('click',()=>saveDialog.close());
  saveName.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveNew();}});
  save.addEventListener('click',()=>{
+  if(surface.disposed)return;
   if(!savedId){openSaveDialog(defaultName());return;}
   const lib=loadArsenalBuildLibrary();
   const next=overwriteSavedArsenalBuild(lib,savedId,draft.working);
@@ -880,9 +882,9 @@ export function openArsenalWorkbench(
   const current=loadArsenalBuildLibrary().builds.find(x=>x.id===savedId);
   openSaveDialog((current?.name??defaultName())+' Copy');
  });
- renderSelection();
+ try{renderSelection();}catch(error){surface.dispose(()=>viewer.dispose());throw error;}
  apply.addEventListener('click',()=>{
-  if(!context||apply.disabled)return;
+  if(surface.disposed||!context||apply.disabled)return;
   if(pending){saveFeedback.textContent='Confirm or cancel pending part changes first';return;}
   const checked=context.quote?.(draft.working);
   if(checked&&(!checked.valid||checked.canCommit===false)){
@@ -910,13 +912,15 @@ export function openArsenalWorkbench(
   draft=redoArsenalDraft(draft);pending=null;
   viewer.setRecipe(draft.working);renderSelection();
  });
- const close=()=>{
-  if(loadDialog.open){loadDialog.close();return;}
-  if(saveDialog.open){saveDialog.close();return;}
-  if(arsenalDraftDirty(draft)&&
-   !window.confirm('Discard unsaved changes to this weapon draft?'))return;
-  viewer.dispose();overlay.remove();window.removeEventListener('keydown',keys);
-  document.body.style.overflow=priorBodyOverflow;
+ const canLeave=()=>surface.disposed||!arsenalDraftDirty(draft)||
+  window.confirm('Discard unsaved changes to this weapon draft?');
+ const dispose=()=>surface.dispose(()=>viewer.dispose());
+ const close=():boolean=>{
+  if(surface.disposed)return true;
+  if(loadDialog.open){loadDialog.close();return false;}
+  if(saveDialog.open){saveDialog.close();return false;}
+  if(!canLeave())return false;
+  surface.dispose(()=>viewer.dispose(),true);return true;
  };
  const keys=(e:KeyboardEvent)=>{
   if(e.key!=='Escape')return;
@@ -927,7 +931,7 @@ export function openArsenalWorkbench(
   else close();
  };
  back.addEventListener('click',close);
- window.addEventListener('keydown',keys);
- document.body.style.overflow='hidden';
+ surface.bindKeys(keys,window);
  back.focus();
+ return {requestClose:close,canLeave,dispose};
 }

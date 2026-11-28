@@ -1,6 +1,4 @@
-/** Stage 3 standalone Arsenal gallery. No live inventory or loadout mutations.
- * Stage 4 will attach the unified full-screen Workbench to this same shell.
- */
+/** SU2.5: mountable Arsenal gallery; no live inventory or loadout mutations. */
 import {ARSENAL_PLATFORMS,ARSENAL_REFERENCES,
  type ArsenalPlatformId,type ArsenalReference} from './catalog.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
@@ -11,14 +9,19 @@ import {createArsenalPreviewQueue} from './preview-job-queue.ts';
 import {createArsenalSavedActionButtons,renderArsenalFilterButtons,
  createArsenalGalleryCard} from './gallery-browser-controls.ts';
 import {createArsenalGalleryChrome} from './gallery-chrome.ts';
-import {mountGlockArsenalGallery} from './glock-gallery.ts';
+import {mountGlockArsenalGallery,type SecondaryGalleryOpen} from './glock-gallery.ts';
 import {openArsenalWorkbench} from './workbench-screen.ts';
 import {type ArsenalSavedBuild,loadArsenalBuildLibrary,persistArsenalBuildLibrary,
  renameSavedArsenalBuild,deleteSavedArsenalBuild,duplicateSavedArsenalBuild}
  from './saved-builds.ts';
 
-const root=document.getElementById('arsenalRoot');
-if(!root)throw new Error('Missing Arsenal root');
+type PrimaryOpen=(source:ArsenalReference|ArsenalSavedBuild,onLibraryChange:(id:string)=>void)=>void;
+export type ArsenalGalleryOptions=Readonly<{initialCategory?:'primary'|'secondary'}>&
+ (Readonly<{embedded?:false}>|Readonly<{embedded:true;openPrimary:PrimaryOpen;secondaryOpen:SecondaryGalleryOpen;onSelectCategory?:(category:'primary'|'secondary')=>boolean}>);
+export function mountArsenalGallery(root:HTMLElement,options:ArsenalGalleryOptions={}){
+let disposed=false,visible=true;
+let category:'primary'|'secondary'=options.initialCategory??'primary';
+
 const shell=document.createElement('div');shell.className='arsenal-shell';
 const heading=document.createElement('header');heading.className='arsenal-top';
 const brand=document.createElement('div');brand.className='brand';
@@ -30,7 +33,9 @@ const {layout,heroCopy,heroMedia,heroPlatform,heroTitle,openWorkbench,
  savedControls,search,filters,count,grid}=createArsenalGalleryChrome('primary');
 openWorkbench.addEventListener('click',()=>{
  const ref=selectedSaved??ARSENAL_REFERENCES.find(r=>r.id===selectedId);
- if(ref)openArsenalWorkbench(ref,id=>refreshLibrary(id));
+ if(disposed||!ref)return;
+ if(options.embedded)options.openPrimary(ref,refreshLibrary);
+ else openArsenalWorkbench(ref,id=>refreshLibrary(id));
 });
 const {rename,duplicate,remove}=createArsenalSavedActionButtons();
 savedControls.append(rename,duplicate,remove);savedControls.hidden=true;
@@ -51,20 +56,31 @@ primaryTab.type='button';primaryTab.textContent='PRIMARY WEAPONS';
 const secondaryTab=document.createElement('button');
 secondaryTab.type='button';secondaryTab.textContent='SECONDARY WEAPONS';
 categoryNav.append(primaryTab,secondaryTab);
-const secondaryGallery=mountGlockArsenalGallery();
+const secondaryGallery=mountGlockArsenalGallery(options.embedded?options.secondaryOpen:undefined);
 const glockGallery=secondaryGallery.section;
-const showCategory=(category:'primary'|'secondary')=>{
+const showCategory=(next:'primary'|'secondary')=>{
+ if(disposed)return;
+ category=next;
  const secondary=category==='secondary';
  layout.hidden=secondary;glockGallery.hidden=!secondary;
  primaryTab.setAttribute('aria-pressed',String(!secondary));
  secondaryTab.setAttribute('aria-pressed',String(secondary));
+ previewQueue.setPaused(!visible||secondary);
+ secondaryGallery.setPaused(!visible||!secondary);
  if(secondary)secondaryGallery.activate();
+ else activatePrimary();
 };
-primaryTab.addEventListener('click',()=>showCategory('primary'));
-secondaryTab.addEventListener('click',()=>showCategory('secondary'));
-shell.append(heading,categoryNav,layout,glockGallery);root.append(shell);
-showCategory('primary');
+const selectCategory=(category:'primary'|'secondary')=>{
+ if(disposed)return;
+ if(options.embedded&&options.onSelectCategory&&!options.onSelectCategory(category))return;
+ showCategory(category);
+};
+primaryTab.addEventListener('click',()=>selectCategory('primary'));
+secondaryTab.addEventListener('click',()=>selectCategory('secondary'));
+if(!options.embedded)shell.append(heading);
+shell.append(categoryNav,layout,glockGallery);root.append(shell);
 
+let primaryActivated=false;
 let activePlatform:ArsenalPlatformId|'all'|'saved'='all';
 let selectedId='ar-m4a1';
 let selectedSaved:ArsenalSavedBuild|null=null;
@@ -96,6 +112,7 @@ function attachImage(host:HTMLElement,ref:ArsenalReference|ArsenalSavedBuild,siz
  },size==='hero');
 }
 function showSelected(ref:ArsenalReference|ArsenalSavedBuild){
+ if(disposed)return;
  selectedId=ref.id;selectedSaved='recipe' in ref?ref:null;
  heroPlatform.textContent=platformName('recipe' in ref?ref.recipe.platformId:ref.platformId);
  heroTitle.textContent=ref.name;attachImage(heroMedia,ref,'hero');
@@ -104,6 +121,7 @@ function showSelected(ref:ArsenalReference|ArsenalSavedBuild){
   button.setAttribute('aria-pressed',String(button.dataset.arsenalReference===ref.id));
 }
 function renderFilters(){
+ if(disposed)return;
  const tabs:{id:ArsenalPlatformId|'all'|'saved';name:string}[]=[
   {id:'all',name:'All'},...ARSENAL_PLATFORMS,
   {id:'saved',name:'Saved · '+loadArsenalBuildLibrary().builds.length}];
@@ -124,6 +142,7 @@ function matchesFactorySearch(ref:ArsenalReference,term:string):boolean{
   .some(value=>value.toLowerCase().includes(term));
 }
 function renderCards(){
+ if(disposed)return;
  observer?.disconnect();observer=null;
  grid.replaceChildren();
  // Filter changes detach the previous tiles. Prune their expensive pending
@@ -148,7 +167,7 @@ function renderCards(){
  if('IntersectionObserver' in window){
   observer=new IntersectionObserver(entries=>{
    for(const entry of entries){
-    if(!entry.isIntersecting)continue;
+    if(disposed||!entry.isIntersecting)continue;
     observer?.unobserve(entry.target);
     const element=entry.target as HTMLElement;
     const ref=saved.find(r=>r.id===element.dataset.referencePreview)??
@@ -171,6 +190,7 @@ function renderCards(){
  }
 }
 function refreshLibrary(id?:string){
+ if(disposed)return;
  activePlatform='saved';renderFilters();renderCards();
  const saves=loadArsenalBuildLibrary().builds;
  const selected=saves.find(x=>x.id===id)??saves[saves.length-1];
@@ -178,11 +198,13 @@ function refreshLibrary(id?:string){
  else{selectedSaved=null;savedControls.hidden=true;renameBox.hidden=true;}
 }
 rename.addEventListener('click',()=>{
+ if(disposed)return;
  if(!selectedSaved)return;
  renameInput.value=selectedSaved.name;renameBox.hidden=false;renameInput.focus();
 });
 renameCancel.addEventListener('click',()=>{renameBox.hidden=true;});
 renameSave.addEventListener('click',()=>{
+ if(disposed)return;
  if(!selectedSaved)return;
  const updated=renameSavedArsenalBuild(loadArsenalBuildLibrary(),selectedSaved.id,renameInput.value);
  if(!updated){savedFeedback.textContent='Enter a valid name';return;}
@@ -192,6 +214,7 @@ renameSave.addEventListener('click',()=>{
  refreshLibrary(selectedSaved.id);
 });
 duplicate.addEventListener('click',()=>{
+ if(disposed)return;
  if(!selectedSaved)return;
  const copy=duplicateSavedArsenalBuild(loadArsenalBuildLibrary(),selectedSaved.id);
  if(!copy){savedFeedback.textContent='Saved-build limit reached';return;}
@@ -201,6 +224,7 @@ duplicate.addEventListener('click',()=>{
  refreshLibrary(copy.build.id);
 });
 remove.addEventListener('click',()=>{
+ if(disposed)return;
  if(!selectedSaved||!window.confirm('Delete the saved build "'+selectedSaved.name+'"?'))return;
  const after=deleteSavedArsenalBuild(loadArsenalBuildLibrary(),selectedSaved.id);
  if(!persistArsenalBuildLibrary(after)){
@@ -210,7 +234,26 @@ remove.addEventListener('click',()=>{
 });
 
 search.addEventListener('input',renderCards);
-renderFilters();renderCards();
-const first=ARSENAL_REFERENCES.find(ref=>ref.id===selectedId)??ARSENAL_REFERENCES[0];
-if(first)showSelected(first);
-window.addEventListener('pagehide',()=>{observer?.disconnect();previewQueue.dispose();thumbnails.dispose()},{once:true});
+function activatePrimary(){
+ if(primaryActivated||disposed)return;
+ primaryActivated=true;renderFilters();renderCards();
+ const first=ARSENAL_REFERENCES.find(ref=>ref.id===selectedId)??ARSENAL_REFERENCES[0];
+ if(first)showSelected(first);
+}
+function setVisible(value:boolean){
+ if(disposed)return;
+ visible=value;shell.hidden=!value;
+ previewQueue.setPaused(!visible||category==='secondary');
+ secondaryGallery.setPaused(!visible||category!=='secondary');
+}
+function dispose(){
+ if(disposed)return;
+ disposed=true;observer?.disconnect();observer=null;
+ previewQueue.dispose();thumbnails.dispose();secondaryGallery.dispose();recipes.clear();
+ shell.remove();window.removeEventListener('pagehide',dispose);
+}
+window.addEventListener('pagehide',dispose,{once:true});
+try{showCategory(options.initialCategory??'primary');}
+catch(error){dispose();throw error;}
+return {showCategory,setVisible,dispose};
+}

@@ -6,7 +6,8 @@ import {ARSENAL_REFERENCES,ARSENAL_PLATFORMS} from '../src/arsenal/catalog.ts';
 const source=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 test('standalone Arsenal is included in the Vite multi-entry build without replacing Breach',()=>{
  assert.match(source('vite.config.ts'),/arsenal:\s*'arsenal\.html'/);
- assert.match(source('arsenal.html'),/src\/arsenal\/gallery-main\.ts/);
+ assert.match(source('arsenal.html'),/src\/arsenal\/gallery-entry\.ts/);
+ assert.match(source('src/arsenal/gallery-entry.ts'),/mountArsenalGallery\(root\)/);
  assert.match(source('arsenal.html'),/<main id="arsenalRoot"/);
 });
 test('gallery displays the full existing authored model set, not generic class choices',()=>{
