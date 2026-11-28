@@ -1,4 +1,4 @@
-import {createStudioNavigation,type StudioContext,type StudioRoute,type StudioWeaponSlot,type StudioWorkspace} from './navigation.ts';
+import {createStudioNavigation,type StudioContext,type StudioEntry,type StudioRoute,type StudioWeaponSlot,type StudioWorkspace} from './navigation.ts';
 
 /** A mounted workspace owns its listeners and resources. update must not remount. */
 export type StudioWorkspaceView={update:(route:StudioRoute)=>void;dispose:()=>void};
@@ -12,6 +12,7 @@ export type StudioWorkspaceActions=Readonly<{
 export type StudioWorkspaceMount=(host:HTMLElement,route:StudioRoute,actions:StudioWorkspaceActions)=>StudioWorkspaceView;
 export type StudioShellOptions=Readonly<{
  context:StudioContext;
+ entry?:StudioEntry;
  workspaces:Readonly<Record<StudioWorkspace,StudioWorkspaceMount>>;
  canLeave:(from:StudioRoute,to:StudioRoute|null)=>boolean;
  onClose:(context:StudioContext)=>void;
@@ -48,7 +49,7 @@ export function mountStudioShell(host:HTMLElement,options:StudioShellOptions){
   canLeave:(from,to)=>!disposed&&options.canLeave(from,to),
   onRoute:render,
   onClose:context=>{destroy();options.onClose(context);}
- });
+ },options.entry);
  function render(route:StudioRoute){
   if(disposed)return;
   operators.setAttribute('aria-pressed',String(route.workspace==='operators'));
