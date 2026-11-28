@@ -851,6 +851,7 @@ export function openArsenalWorkbench(
   saveDialog.showModal();saveName.focus();saveName.select();
  };
  const saveNew=()=>{
+  if(surface.disposed)return;
   const lib=loadArsenalBuildLibrary();
   const result=createSavedArsenalBuild(lib,draft.working,saveName.value);
   if(!result){saveFeedback.textContent='Name required or saved-build limit reached';return;}
@@ -866,6 +867,7 @@ export function openArsenalWorkbench(
  saveCancel.addEventListener('click',()=>saveDialog.close());
  saveName.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveNew();}});
  save.addEventListener('click',()=>{
+  if(surface.disposed)return;
   if(!savedId){openSaveDialog(defaultName());return;}
   const lib=loadArsenalBuildLibrary();
   const next=overwriteSavedArsenalBuild(lib,savedId,draft.working);
@@ -880,9 +882,9 @@ export function openArsenalWorkbench(
   const current=loadArsenalBuildLibrary().builds.find(x=>x.id===savedId);
   openSaveDialog((current?.name??defaultName())+' Copy');
  });
- renderSelection();
+ try{renderSelection();}catch(error){surface.dispose(()=>viewer.dispose());throw error;}
  apply.addEventListener('click',()=>{
-  if(!context||apply.disabled)return;
+  if(surface.disposed||!context||apply.disabled)return;
   if(pending){saveFeedback.textContent='Confirm or cancel pending part changes first';return;}
   const checked=context.quote?.(draft.working);
   if(checked&&(!checked.valid||checked.canCommit===false)){
